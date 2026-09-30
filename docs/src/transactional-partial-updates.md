@@ -100,8 +100,12 @@ This implementation performs a full-row SQL save after merging the logical
 patch. It is not the v12 selected-column SQL optimization. The extra read and
 savepoint have a cost; row-read privileges, full-row triggers/update privileges and encrypted-field
 re-encryption follow full-save behavior. Model hooks may transform the candidate
-under their usual contract. Review hooks that assumed partial updates skipped
-them, and database triggers that react to the SQL column list.
+under their usual contract. The loaded row first runs the model's `after_fetch`
+hook, exactly as `find()` returns it, so a `before_save` mutator paired with an
+`after_fetch` accessor is applied once rather than to the stored
+representation again. The hook runs while the transaction is borrowed, so ORM
+access from inside it fails closed. Review hooks that assumed partial updates
+skipped them, and database triggers that react to the SQL column list.
 
 ## Caller-owned transactions
 

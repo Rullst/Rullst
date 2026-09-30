@@ -255,6 +255,8 @@ pub struct RemoteVideo {
     pub id: VideoId,
     pub library: LibraryId,
     pub title: String,
+    /// The description as the adapter writes it. For Bunny this is the
+    /// `description` meta tag, not the separate top-level Description field.
     pub description: String,
     pub processing: Processing,
     pub length_seconds: u32,

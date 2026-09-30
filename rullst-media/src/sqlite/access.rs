@@ -5,8 +5,8 @@ use super::{
     transaction::Operation,
 };
 use crate::{
-    Action, Authorization, Clock, MediaError as Error, PlaybackGrant, PlaybackKind, Processing,
-    Reference, Scope, UploadGrant, VideoProvider,
+    Action, Authorization, Clock, MediaError as Error, Processing, Reference, Scope, UploadGrant,
+    VideoProvider,
 };
 
 impl<P: VideoProvider, C: Clock> MediaService<P, C> {
@@ -192,86 +192,14 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         })
         .await
     }
-
-    /// Every new playback grant refreshes provider state, rechecks entitlement
-    /// and fences local revocation. No stale cached ready state on provider outage.
-    pub async fn playback<A: Authorization>(
-        &self,
-        auth: &A,
-        actor: &Reference,
-        scope: &Scope,
-        id: &Reference,
-        ttl: u32,
-        kind: PlaybackKind,
-    ) -> Result<PlaybackGrant, Error> {
-        bounded(async {
-            let permit = self.permit(auth, actor, scope, Action::Play).await?;
-            let before = self.load(scope, id).await?;
-            if before.lifecycle != Lifecycle::Active
-                || !before.published
-                || before.processing != Processing::Ready
-            {
-                return Err(Error::Denied);
-            }
-            if !before.pending {
-                self.plan(
-                    scope,
-                    id,
-                    before.revision,
-                    Kind::Refresh,
-                    None,
-                    Some(permit.expires_at()),
-                )
-                .await?;
-            }
-            let lease = self
-                .claim(scope, id, Some(permit.expires_at()), Some(Kind::Refresh))
-                .await?
-                .ok_or(Error::Conflict)?;
-            let remote = self.execute(&lease).await?;
-            let permit = self.permit(auth, actor, scope, Action::Play).await?;
-            let current = self
-                .finish(lease, remote, None, Some(permit.expires_at()))
-                .await?;
-            if !current.published || current.processing != Processing::Ready {
-                return Err(Error::Denied);
-            }
-            if kind == PlaybackKind::Mp4_720p && !current.mp4_720p {
-                return Err(Error::Unsupported);
-            }
-            let permission = self.permit(auth, actor, scope, Action::Play).await?;
-            let mut tx = Operation::begin(&self.store).await?;
-            tx.until(Some(permission.expires_at()))?;
-            let last = tx.get(scope, id).await?;
-            if last.asset.revision != current.revision
-                || !last.asset.published
-                || last.asset.pending
-            {
-                return Err(Error::Conflict);
-            }
-            let ttl = bounded_ttl(tx.now, permission.expires_at(), ttl, 900)?;
-            let grant = self.provider.playback(
-                current.video.as_ref().ok_or(Error::Configuration)?,
-                tx.now,
-                ttl,
-                kind,
-            )?;
-            if grant.mode != self.store.config.binding.mode
-                || grant.expires_at > permission.expires_at()
-            {
-                return Err(Error::Protocol);
-            }
-            tx.commit().await?;
-            if self.now()? >= grant.expires_at {
-                return Err(Error::Expired);
-            }
-            Ok(grant)
-        })
-        .await
-    }
 }
 
-fn bounded_ttl(now: i64, until: i64, requested: u32, maximum: u32) -> Result<u32, Error> {
+pub(super) fn bounded_ttl(
+    now: i64,
+    until: i64,
+    requested: u32,
+    maximum: u32,
+) -> Result<u32, Error> {
     if requested == 0 || requested > maximum {
         return Err(Error::InvalidInput);
     }

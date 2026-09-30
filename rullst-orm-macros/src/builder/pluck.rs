@@ -74,7 +74,7 @@ fn generate_fetch(method: &str, value_type: TokenStream) -> TokenStream {
         where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
         {
             let query_str = self.to_pluck_sql(column);
-            let query_bindings = self.select_bindings();
+            let query_bindings = self.__rullst_pluck_bindings();
             let mut query = rullst_orm::_sqlx::query_as::<_, (#value_type,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
             for binding in &query_bindings {
                 match binding {

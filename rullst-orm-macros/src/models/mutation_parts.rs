@@ -84,6 +84,7 @@ pub(super) fn instance_hook(parsed: &ParsedModel, method: &str) -> TokenStream {
 /// callbacks and Scout removal. Expects an `observers` binding in scope.
 pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
     let table_name = &parsed.table_name;
+    let redis_cfg = crate::feature_gates::redis();
     let scout_delete = if parsed.searchable {
         quote! {
             let event = rullst_orm::ModelCommittedEvent::new(
@@ -103,7 +104,7 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         {
             let event = rullst_orm::ModelCommittedEvent::new(
                 #table_name,
@@ -113,11 +114,13 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
             );
             rullst_orm::after_commit(move || async move {
                 use rullst_orm::_redis::AsyncCommands;
-                rullst_orm::query_cache::invalidate_table(event.table).await?;
+                // A failed invalidation must not suppress the event.
+                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:deleted", event.table);
                     let _: usize = connection.publish(&topic, &event.payload).await?;
                 }
+                invalidated?;
                 Ok(())
             }).await?;
         }
@@ -133,6 +136,41 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }).await?;
         #scout_delete
+    }
+}
+
+/// Registers the post-commit query-cache invalidation and the Redis
+/// `<operation>`/`saved` events of a saved row. Expects `operation` in scope.
+pub(super) fn saved_redis_effects(parsed: &ParsedModel) -> TokenStream {
+    let table_name = &parsed.table_name;
+    let redis_cfg = crate::feature_gates::redis();
+    quote! {
+        #redis_cfg
+        {
+            let event = rullst_orm::ModelCommittedEvent::new(
+                #table_name,
+                self.id,
+                operation,
+                self.to_json(),
+            );
+            rullst_orm::after_commit(move || async move {
+                use rullst_orm::_redis::AsyncCommands;
+                // A failed invalidation must not suppress the events.
+                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
+                if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
+                    let topic = format!(
+                        "orm:events:{}:{}",
+                        event.table,
+                        event.operation.as_str(),
+                    );
+                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                    let topic = format!("orm:events:{}:saved", event.table);
+                    let _: usize = connection.publish(&topic, &event.payload).await?;
+                }
+                invalidated?;
+                Ok(())
+            }).await?;
+        }
     }
 }
 

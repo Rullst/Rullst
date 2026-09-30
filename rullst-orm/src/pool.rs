@@ -14,6 +14,7 @@ mod savepoint;
 mod telemetry;
 #[doc(hidden)]
 pub use placeholders::portable_subquery;
+pub use placeholders::raw_fragment;
 pub use placeholders::replace_placeholders;
 
 #[cfg(not(any(
@@ -92,6 +93,7 @@ impl Orm {
             .acquire_time_level(tracing::log::LevelFilter::Info)
             .acquire_slow_level(tracing::log::LevelFilter::Warn)
             .acquire_slow_threshold(POOL_SLOW_ACQUIRE_THRESHOLD)
+            .after_release(savepoint::release_outside_transaction)
     }
 
     fn ensure_uninitialized() -> Result<(), crate::Error> {

@@ -20,7 +20,7 @@ async fn service(
 }
 
 #[tokio::test]
-async fn learner_and_webhook_retry_only_expired_refresh_intents() {
+async fn learner_reads_hold_no_lease_and_webhooks_retry_only_expired_refresh_intents() {
     let fixture = Fixture::new().await;
     let dir = tempfile::tempdir().unwrap();
     let clock = TestClock::new();
@@ -58,13 +58,8 @@ async fn learner_and_webhook_retry_only_expired_refresh_intents() {
         MediaError::Unavailable
     );
     fixture.remote.lock().unwrap().fail_reads = false;
-    assert_eq!(
-        app.playback(&auth, &learner, &scope, &id, 60, PlaybackKind::Embed)
-            .await
-            .unwrap_err(),
-        MediaError::Busy
-    );
-    clock.advance(46);
+    // A failed learner read journals nothing, so no viewer waits for a lease.
+    assert!(!app.get(&auth, &teacher, &scope, &id).await.unwrap().pending);
     app.playback(&auth, &learner, &scope, &id, 60, PlaybackKind::Embed)
         .await
         .unwrap();
@@ -145,12 +140,27 @@ async fn absent_or_ambiguous_creation_markers_never_cause_another_post() {
                 .count(),
             1
         );
+        let stopped = app.get(&auth, &teacher, &scope, &id).await.unwrap();
+        assert_eq!(stopped.lifecycle, Lifecycle::Creating);
+        // The unresolved marker is reported instead of staying pending forever,
+        // and the host can abandon it without another create request.
+        assert_eq!(stopped.failure, Some(OperationFailure::CreationUnconfirmed));
+        let discarded = app
+            .discard_failed(&auth, &teacher, &scope, &id, stopped.revision)
+            .await
+            .unwrap();
+        assert_eq!(discarded.lifecycle, Lifecycle::Deleted);
+        assert!(!discarded.pending && discarded.video.is_none());
         assert_eq!(
-            app.get(&auth, &teacher, &scope, &id)
-                .await
+            fixture
+                .remote
+                .lock()
                 .unwrap()
-                .lifecycle,
-            Lifecycle::Creating
+                .calls
+                .iter()
+                .filter(|s| *s == "create")
+                .count(),
+            1
         );
         app.close().await;
     }
@@ -341,5 +351,37 @@ async fn pending_or_failed_processing_never_publishes_and_recovery_needs_deliber
             .unwrap()
             .published
     );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn metadata_update_verifies_the_same_field_it_writes() {
+    let fixture = Fixture::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let app = service(&fixture, &dir, TestClock::new()).await;
+    let auth = Auth::new();
+    let teacher = reference("teacher");
+    let id = reference("lesson");
+    let scope = scope();
+    fixture.remote.lock().unwrap().generated_description = true;
+    let created = app
+        .create(&auth, &teacher, &scope, &id, metadata())
+        .await
+        .unwrap();
+    assert_eq!(created.lifecycle, Lifecycle::Active);
+    assert!(!created.pending);
+    let changed = app
+        .update(
+            &auth,
+            &teacher,
+            &scope,
+            &id,
+            created.revision,
+            Metadata::new("Revised lesson", "Revised transcript").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(!changed.pending);
+    assert_eq!(changed.metadata.description(), "Revised transcript");
     app.close().await;
 }

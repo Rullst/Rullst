@@ -97,6 +97,10 @@ generated API.
   vector/distance values in L2, cosine and inner-product helpers are bound, not
   interpolated. The strict PostgreSQL matrix creates the extension and runs a
   typed live lifecycle. See [RAG Systems & Vector Search](../tutorials/22-rag-vector-search.md).
+- **Generated embeddings:** `ai` implies `pgvector` and adds
+  `save_with_embedding(&rullst_ai::AiClient)` to models with an
+  `#[orm(embedding_for = "...")]` field; the application must also depend on
+  `rullst-ai`.
 - **Bounded Qdrant vectors:** `qdrant` keeps specialized dense-cosine
   collection/upsert/delete/query semantics separate from SQL Active Record,
   with resource/transport bounds, deterministic fallback, authenticated
@@ -129,7 +133,9 @@ generated API.
   idempotent; generated observers are not silently converted into events.
   A nested `Orm::transaction` joins the active transaction through a
   savepoint, so a helper that enqueues inside its own transaction stays atomic
-  with its caller. See
+  with its caller. Concurrent sibling nested transactions take turns on the
+  shared connection, and a savepoint left open makes the enclosing transaction
+  roll back instead of committing. See
   the [transactional outbox tutorial](../tutorials/38-transactional-outbox.md).
 - **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
   PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes
@@ -224,6 +230,13 @@ Load fewer parents per query, raise the cap, or choose explicitly with
 `with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
 to the whole batch, and `unsafe_unlimited()` loads every related row.
 
+Parents that share a related row or group all receive it: every child of one
+`belongs_to` parent, parents whose non-unique `local_key` matches the same
+`has_many`/`has_one` rows, and duplicated parent rows. The shared value is
+cloned for all but the last such parent, so a related model without `Clone`
+loads normally until a row must be shared, and then `get()` fails with a
+`Validation` error instead of leaving a parent without its relation.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL
@@ -263,7 +276,17 @@ the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
 labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
-PostgreSQL; the method is a validated no-op on the other backends.
+PostgreSQL; the method is a validated no-op on the other backends. The enum
+type creation, its label check and `drop_native_enum` use the active
+`Orm::transaction` or test sandbox like the table DDL, so they roll back with it
+and the type can be dropped right after its tables in the same transaction.
+
+Builder filters on a model field whose type derives `Enum` (or
+`Option<...>` of it) work on every backend: on PostgreSQL the comparison,
+`IN` and `BETWEEN` markers of that column become `CAST(? AS "<type_name>")`,
+because a text parameter has no operator against a named enum type. This
+covers `where_eq`, `where_in`, the generated `where_<column>` helpers and
+their `or_`/`not_` variants; `where_like` and raw SQL are unchanged.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
@@ -271,6 +294,15 @@ on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
 builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
 defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
 SQLite and PostgreSQL DDL is unchanged.
+
+`table.float(...)` and `table.boolean(...)` map to `f64` and `bool` model
+fields. PostgreSQL receives `DOUBLE PRECISION` and `BOOLEAN` (an integer
+`ColumnDefault` of `0`/`1` becomes `FALSE`/`TRUE`); MySQL/MariaDB receive
+`DOUBLE` and an `INTEGER` 0/1 flag; SQLite keeps `REAL` and `INTEGER`. This
+applies to newly built DDL only: PostgreSQL columns created by earlier versions
+remain `REAL`/`INTEGER` until a reviewed migration alters them, and a model that
+paired `boolean()` with an integer field on PostgreSQL must switch to `bool`
+(or use `integer()`) for new tables.
 
 ---
 

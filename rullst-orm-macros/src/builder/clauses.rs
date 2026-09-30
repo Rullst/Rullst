@@ -29,6 +29,7 @@ pub fn generate_builder_struct(
         .collect();
     let encrypted_columns_lit = encrypted_columns.clone();
     let subquery_methods = super::subqueries::generate_subquery_methods();
+    let redis_cfg = crate::feature_gates::redis();
 
     quote! {
         #[derive(Clone)]
@@ -53,7 +54,9 @@ pub fn generate_builder_struct(
             pub has_recursive_cte: bool,
             pub with_trashed: bool,
             pub only_trashed: bool,
-            #[cfg(feature = "redis")]
+            select_raw_bound: Option<(String, Vec<rullst_orm::RullstValue>)>,
+            limit_explicit: bool,
+            #redis_cfg
             pub remember_ttl: Option<usize>,
             #(#relation_flags)*
         }
@@ -101,14 +104,32 @@ pub fn generate_builder_struct(
                 }
             }
 
+            /// Bindings of a `select_raw_bindings` fragment while it is still the
+            /// rendered select list; replacing the select list drops them.
+            fn __rullst_select_raw_bindings(&self) -> &[rullst_orm::RullstValue] {
+                match &self.select_raw_bound {
+                    Some((sql, bindings)) if self.selects.as_deref() == Some(sql.as_str()) => bindings,
+                    _ => &[],
+                }
+            }
+
             fn select_bindings(&self) -> Vec<rullst_orm::RullstValue> {
                 self.cte_bindings
                     .iter()
+                    .chain(self.__rullst_select_raw_bindings().iter())
                     .chain(self.join_bindings.iter())
                     .chain(self.scope_bindings.iter())
                     .chain(self.bindings.iter())
                     .chain(self.order_bindings.iter())
                     .cloned()
+                    .collect()
+            }
+
+            /// `to_pluck_sql` replaces the select list, so its fragment's bindings go too.
+            fn __rullst_pluck_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+                self.count_bindings()
+                    .into_iter()
+                    .chain(self.order_bindings.iter().cloned())
                     .collect()
             }
 
@@ -144,7 +165,9 @@ pub fn generate_builder_struct(
                     has_recursive_cte: false,
                     with_trashed: false,
                     only_trashed: false,
-                    #[cfg(feature = "redis")]
+                    select_raw_bound: None,
+                    limit_explicit: false,
+                    #redis_cfg
                     remember_ttl: None,
                     #(#relation_inits)*
                 }
@@ -152,7 +175,7 @@ pub fn generate_builder_struct(
 
             #(#relation_methods)*
 
-            #[cfg(feature = "redis")]
+            #redis_cfg
             pub fn remember(mut self, seconds: usize) -> Self {
                 if seconds == 0 {
                     self.errors.push(rullst_orm::Error::Validation(
@@ -173,6 +196,9 @@ pub fn generate_builder_struct(
                 self
             }
 
+            /// Appends a value for the next unbound `?` of a WHERE fragment
+            /// such as `where_raw`. Raw CTE/select fragments take their values
+            /// through their `_bindings` variants instead.
             pub fn bind<T: Into<rullst_orm::RullstValue>>(mut self, value: T) -> Self {
                 self.bindings.push(value.into());
                 self
@@ -189,8 +215,25 @@ pub fn generate_builder_struct(
 
             #subquery_methods
 
+            /// Sets a caller-owned raw select list without bind markers; use
+            /// [`Self::select_raw_bindings`] for a parameterized one.
             pub fn select_raw(mut self, query: &str) -> Self {
+                self.__rullst_reject_raw_markers("select_raw", query);
                 self.selects = Some(query.to_string());
+                self
+            }
+
+            /// Sets a caller-owned raw select list whose `?` markers take
+            /// `bindings` in order; they are bound after the CTEs and before
+            /// JOIN, scope and WHERE values. A marker/binding mismatch fails closed.
+            pub fn select_raw_bindings<V: Into<rullst_orm::RullstValue>>(mut self, query: &str, bindings: Vec<V>) -> Self {
+                match rullst_orm::raw_fragment(query, bindings.into_iter().map(Into::into).collect()) {
+                    Ok((sql, ordered)) => {
+                        self.selects = Some(sql.clone());
+                        self.select_raw_bound = Some((sql, ordered));
+                    }
+                    Err(error) => self.errors.push(error),
+                }
                 self
             }
 
@@ -416,6 +459,7 @@ pub fn generate_builder_struct(
             }
 
             pub fn limit(mut self, value: usize) -> Self {
+                self.limit_explicit = true;
                 if let Some(max_limit) = rullst_orm::schema::get_max_query_limit() {
                     self.limit = Some(value.min(max_limit));
                 } else {
@@ -426,6 +470,7 @@ pub fn generate_builder_struct(
 
             pub fn unsafe_unlimited(mut self) -> Self {
                 self.limit = None;
+                self.limit_explicit = false;
                 self
             }
 
