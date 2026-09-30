@@ -150,7 +150,10 @@ exercises this boundary through a real proxy; full hosted admission remains pend
 - **Bounded token-bucket rate limiter:** `RateLimiter` keys IPv4 peers per
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
-  that cap; state is process-local, not a distributed limit.
+  that cap; state is process-local, not a distributed limit. When attached to
+  `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
+  and `/ready` probes through, so load shedding or an exhausted bucket cannot
+  fail a liveness probe.
 - **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
   TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
   SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.

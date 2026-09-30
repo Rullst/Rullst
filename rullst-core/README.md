@@ -28,6 +28,8 @@
 - **Bounded Rate Limiting:** `RateLimiter` keys IPv4 peers per address and
   IPv6 peers per /64, and bounds its process-local bucket map to 100,000 keys
   by dropping refilled buckets and evicting the least recently used ones.
+  `Server`'s limiter and Traffic Shield exempt exact `GET`/`HEAD /health` and
+  `/ready` probes.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).

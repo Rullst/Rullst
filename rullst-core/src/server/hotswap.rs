@@ -213,19 +213,11 @@ impl Service<axum::extract::Request> for HotSwapService {
             Err(poisoned) => poisoned.into_inner().clone(),
         };
 
-        if let Some(ref limiter) = self.limiter {
-            let lim = limiter.clone();
-            router = router.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::rate_limit_middleware(lim.clone(), req, next)
-            }));
-        }
-
-        if let Some(ref shield) = self.shield {
-            let sh = shield.clone();
-            router = router.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::backpressure_middleware(sh.clone(), req, next)
-            }));
-        }
+        router = super::traffic::apply_traffic_controls(
+            router,
+            self.limiter.clone(),
+            self.shield.clone(),
+        );
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
         }

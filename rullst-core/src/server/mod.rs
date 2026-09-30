@@ -10,6 +10,7 @@ pub mod dylib_loader;
 pub mod hotswap;
 /// Server-level HTTP middlewares (HMR script injection, static asset compression).
 pub mod server_middleware;
+mod traffic;
 
 #[cfg(test)]
 pub(crate) static TEST_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());

@@ -417,16 +417,23 @@ pub fn apply_lifecycle(router: Router, lifecycle: ApplicationLifecycle) -> Route
     router.layer(from_fn_with_state(lifecycle, lifecycle_middleware))
 }
 
+/// Reports whether `request` is an exact `GET`/`HEAD /health` or `/ready` probe.
+///
+/// Lifecycle admission, the server's rate limiter and its Traffic Shield all
+/// let these probes through so orchestrators observe the process itself.
+pub(crate) fn is_health_probe<B>(request: &axum::http::Request<B>) -> bool {
+    matches!(
+        request.method(),
+        &axum::http::Method::GET | &axum::http::Method::HEAD
+    ) && matches!(request.uri().path(), "/health" | "/ready")
+}
+
 async fn lifecycle_middleware(
     State(lifecycle): State<ApplicationLifecycle>,
     request: Request,
     next: Next,
 ) -> Response {
-    let is_probe = matches!(
-        request.method(),
-        &axum::http::Method::GET | &axum::http::Method::HEAD
-    ) && matches!(request.uri().path(), "/health" | "/ready");
-    if is_probe {
+    if is_health_probe(&request) {
         return next.run(request).await;
     }
 

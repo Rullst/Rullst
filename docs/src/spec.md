@@ -1319,8 +1319,9 @@ the same server-authoritative controls.
   lifecycle-aware server. Its phase is monotonic, its immutable registry has at
   most 32 validated required-component labels, and request admission requires
   both `Ready` and every component bit. Exact `GET`/`HEAD` health probes bypass
-  admission so `/ready` can return a bounded `503` during startup, dependency
-  failure or drain while `/health` stays process-only. The JSON reports counts,
+  admission, and the `Server` rate limiter and Traffic Shield, so `/ready` can
+  return a bounded `503` during startup, dependency failure or drain while
+  `/health` stays process-only. The JSON reports counts,
   not labels or dependency errors. `Server::run_with_shutdown` accepts a
   caller-owned future; when it resolves, the lifecycle changes to draining
   before Axum waits for accepted requests and then becomes stopped. Dependency
