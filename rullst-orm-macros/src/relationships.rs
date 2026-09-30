@@ -118,7 +118,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone());
+                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.get().await
                     })
@@ -135,7 +136,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone());
+                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -152,7 +154,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#pk_ident), self.#fk_ident.clone());
+                        let mut q = #rel_model_ident::query().where_eq(stringify!(#pk_ident), self.#fk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -174,7 +177,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         #lazy_load_check
                         let mut q = #rel_model_ident::query()
                             .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.get().await
                     })
@@ -196,7 +200,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         #lazy_load_check
                         let mut q = #rel_model_ident::query()
                             .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -223,7 +228,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                             return Ok(None);
                         }
                         let mut q = #rel_model_ident::query()
-                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone());
+                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -253,7 +259,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         let mut q = #rel_model_ident::query()
                             .select_raw(&select_raw)
                             .join(#pivot_table, &related_pk, "=", #pivot_rk)
-                            .where_eq(&#pivot_fk, self.#lk_ident.clone());
+                            .where_eq(&#pivot_fk, self.#lk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.get().await
                     })
@@ -303,7 +310,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 if self.#load_flag {
                     let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();
                     if !parent_ids.is_empty() {
-                        let mut query = #rel_model_ident::query().where_in(stringify!(#fk_ident), parent_ids);
+                        let mut query = #rel_model_ident::query().where_in(stringify!(#fk_ident), parent_ids).__rullst_freeze_scope();
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
@@ -317,7 +324,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 if self.#load_flag {
                     let parent_ids: Vec<_> = results.iter().map(|m| m.#fk_ident.clone()).collect();
                     if !parent_ids.is_empty() {
-                        let mut query = #rel_model_ident::query().where_in(stringify!(#pk_ident), parent_ids);
+                        let mut query = #rel_model_ident::query().where_in(stringify!(#pk_ident), parent_ids).__rullst_freeze_scope();
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
@@ -337,7 +344,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         .collect();
                     if !target_ids.is_empty() {
                         let mut query = #rel_model_ident::query()
-                            .where_in(stringify!(#pk_ident), target_ids);
+                            .where_in(stringify!(#pk_ident), target_ids)
+                            .__rullst_freeze_scope();
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
@@ -368,7 +376,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         if !parent_ids.is_empty() {
                             let mut query = #rel_model_ident::query()
                                 .where_in(stringify!(#morph_id_ident), parent_ids)
-                                .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                                .where_eq(stringify!(#morph_type_ident), stringify!(#name))
+                                .__rullst_freeze_scope();
                             if let Some(ref filter) = self.#filter_flag {
                                 query = filter(query);
                             }
@@ -430,7 +439,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 related_ids.sort_unstable();
                                 related_ids.dedup();
 
-                                let mut query = #rel_model_ident::query().where_in("id", related_ids);
+                                let mut query = #rel_model_ident::query().where_in("id", related_ids).__rullst_freeze_scope();
                                 if let Some(ref filter) = self.#filter_flag {
                                     query = filter(query);
                                 }

@@ -1779,6 +1779,11 @@ while portability and semantic review remain the model author's responsibility.
   parent rows). The shared value is cloned for every such parent but the last;
   when the related model does not implement `Clone`, a shared row fails the
   load with a `Validation` error instead of leaving a parent empty.
+* The relation's ownership predicate (foreign key, morph id/type pair or
+  pivot key) forms its own `AND` group before a lazy `<relation>_constrained`
+  or eager `with_<relation>_constrained` modifier runs, like the tenant and
+  model-wide scopes, so an `or_where` in the modifier cannot return another
+  parent's rows.
 
 ### 5.4. Tenant Scope Contract
 

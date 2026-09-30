@@ -77,6 +77,14 @@ pub fn generate_sql_assembly_methods(
             }
         }
 
+        /// Freezes the filters added so far, such as a relation's ownership
+        /// predicate, into their own AND group before a caller's modifier runs.
+        #[doc(hidden)]
+        pub fn __rullst_freeze_scope(mut self) -> Self {
+            self.freeze_scope();
+            self
+        }
+
         fn push_wheres(&self, sql: &mut String) -> bool {
             if self.scope_wheres.is_empty() && self.wheres.is_empty() {
                 return true;
