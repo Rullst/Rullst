@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790758658099,
+  "lastUpdate": 1790760866298,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9669,6 +9669,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/e3b9e079eaa5aac12ab674c20d8f766309e9c3d2"
         },
         "date": 1790758657134,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "90d882121b083bde1dcfb0700d56759f6da1016d",
+          "message": "Merge pull request #345 from Rullst/fix/v13-security-tail-fixes\n\nfix(security,core,auth): IPv6 /64 rate-limit keys, broader body inspection, redaction and CSRF fixes",
+          "timestamp": "2026-09-30T06:13:47-03:00",
+          "tree_id": "ac1f34896a87f13ce2f873769f5201ac4513d9ba",
+          "url": "https://github.com/Rullst/Rullst/commit/90d882121b083bde1dcfb0700d56759f6da1016d"
+        },
+        "date": 1790760865687,
         "tool": "cargo",
         "benches": [
           {
