@@ -1,3 +1,4 @@
+use super::migration_lock::MigrationLock;
 use super::validation::validate_table_name;
 use crate::Error;
 
@@ -210,30 +211,44 @@ fn regenerate_migrations_mod() -> Result<(), Error> {
     Ok(())
 }
 
+/// Applies pending migrations while holding the database's runner lock, so
+/// concurrent runners (for example replicas starting together) apply each
+/// migration once: the executed set is read only after the lock is held.
 #[cfg_attr(test, mutants::skip)]
 async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
     let pool = crate::Orm::try_pool()?;
     let driver = crate::Orm::try_driver()?;
+    let lock = MigrationLock::acquire(pool, driver).await?;
+    let result = run_pending_migrations(pool, driver, migrations).await;
+    lock.release().await;
+    result
+}
 
+#[cfg_attr(test, mutants::skip)]
+async fn run_pending_migrations(
+    pool: &crate::RullstPool,
+    driver: &str,
+    migrations: Vec<Box<dyn Migration>>,
+) -> Result<(), Error> {
     let query_str = match driver {
         "postgres" => {
             "CREATE TABLE IF NOT EXISTS migrations (
                 id SERIAL PRIMARY KEY,
-                migration VARCHAR(255) NOT NULL,
+                migration VARCHAR(255) NOT NULL UNIQUE,
                 batch INTEGER NOT NULL
             )"
         }
         "mysql" => {
             "CREATE TABLE IF NOT EXISTS migrations (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                migration VARCHAR(255) NOT NULL,
+                migration VARCHAR(255) NOT NULL UNIQUE,
                 batch INT NOT NULL
             )"
         }
         _ => {
             "CREATE TABLE IF NOT EXISTS migrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                migration TEXT NOT NULL,
+                migration TEXT NOT NULL UNIQUE,
                 batch INTEGER NOT NULL
             )"
         }
@@ -280,11 +295,23 @@ async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error
     Ok(())
 }
 
+/// Rolls back the last batch while holding the database's runner lock.
 #[cfg_attr(test, mutants::skip)]
 async fn rollback_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
     let pool = crate::Orm::try_pool()?;
     let driver = crate::Orm::try_driver()?;
+    let lock = MigrationLock::acquire(pool, driver).await?;
+    let result = rollback_last_batch(pool, driver, migrations).await;
+    lock.release().await;
+    result
+}
 
+#[cfg_attr(test, mutants::skip)]
+async fn rollback_last_batch(
+    pool: &crate::RullstPool,
+    driver: &str,
+    migrations: Vec<Box<dyn Migration>>,
+) -> Result<(), Error> {
     let table_exists = migrations_table_exists(pool, driver).await?;
 
     if !table_exists {

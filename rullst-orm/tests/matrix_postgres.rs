@@ -173,6 +173,7 @@ async fn test_matrix_postgres_crud() {
     support::exercise_outbox().await;
     support::exercise_large_audit_payload().await;
     support::migrations::exercise_foreign_migrations_table().await;
+    support::migrations::exercise_concurrent_migration_runners().await;
     partial_update_contract::exercise().await;
     exercise_tenant_subqueries().await;
     exercise_boolean_columns().await;
