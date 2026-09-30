@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790758289934,
+  "lastUpdate": 1790760549811,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13281,6 +13281,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4536,
             "range": "± 42",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "90d882121b083bde1dcfb0700d56759f6da1016d",
+          "message": "Merge pull request #345 from Rullst/fix/v13-security-tail-fixes\n\nfix(security,core,auth): IPv6 /64 rate-limit keys, broader body inspection, redaction and CSRF fixes",
+          "timestamp": "2026-09-30T06:13:47-03:00",
+          "tree_id": "ac1f34896a87f13ce2f873769f5201ac4513d9ba",
+          "url": "https://github.com/Rullst/Rullst/commit/90d882121b083bde1dcfb0700d56759f6da1016d"
+        },
+        "date": 1790760549206,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1016,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 836,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1942,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4516,
+            "range": "± 116",
             "unit": "ns/iter"
           }
         ]
