@@ -54,6 +54,9 @@ impl<C: Clock> WebhookOutbox<C> {
                 )
                 .map_err(map)?;
                 broker.publish(control).await.map_err(map_open)?;
+                // Keep the control record under the primary key so an earlier
+                // storage key can be retired once events are drained.
+                broker.reseal_webhook_control(CONTROL).await.map_err(map)?;
                 broker
                     .subscribe(
                         SubscriptionRequest::try_new(EVENTS, GROUP, StartPosition::Earliest)

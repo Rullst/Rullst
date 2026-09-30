@@ -7,6 +7,8 @@ mod support;
 use server::Receiver;
 #[path = "webhook/failures.rs"]
 mod failures;
+#[path = "webhook/rotation.rs"]
+mod rotation;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use support::*;
 

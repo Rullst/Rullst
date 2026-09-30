@@ -113,6 +113,17 @@ impl StorageProfile {
         }
     }
 
+    /// Reports whether a stored row is already sealed under the primary key.
+    #[cfg(feature = "webhooks")]
+    pub(super) fn is_primary_marker(&self, marker: &str) -> bool {
+        match self {
+            Self::Plaintext => true,
+            Self::Encrypted(keyring) => {
+                marker_key_id(marker).is_ok_and(|key_id| key_id == keyring.primary_key_id())
+            }
+        }
+    }
+
     pub(super) fn ensure_key_available(&self, marker: &str) -> Result<()> {
         let Self::Encrypted(keyring) = self else {
             return Err(MessagingError::ConfigurationConflict);
