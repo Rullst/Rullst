@@ -375,20 +375,19 @@ pub fn build_rows_html(
     )
 }
 
+/// Engine label of the pool that Studio queries. It never parses
+/// `DATABASE_URL`, which may name another database than an explicitly
+/// initialized pool.
 pub fn resolve_driver_display_name() -> String {
-    if let Ok(url) = std::env::var("DATABASE_URL") {
-        let url_lower = url.to_lowercase();
-        if url_lower.contains("turso") || url_lower.starts_with("libsql") {
-            return "TURSO / LIBSQL".to_string();
-        } else if url_lower.starts_with("postgres") || url_lower.starts_with("postgresql") {
-            return "POSTGRESQL".to_string();
-        } else if url_lower.starts_with("mysql") || url_lower.starts_with("mariadb") {
-            return "MYSQL / MARIADB".to_string();
-        } else if url_lower.starts_with("sqlite") {
-            return "SQLITE".to_string();
-        }
+    driver_display_name(rullst_core::db::safe_driver())
+}
+
+pub(crate) fn driver_display_name(driver: Option<&str>) -> String {
+    match driver {
+        Some("postgres") => "POSTGRESQL".to_string(),
+        Some("mysql") => "MYSQL / MARIADB".to_string(),
+        Some("sqlite") => "SQLITE".to_string(),
+        Some(other) => other.to_ascii_uppercase(),
+        None => "NOT CONNECTED".to_string(),
     }
-    rullst_core::db::safe_driver()
-        .unwrap_or("sqlite")
-        .to_uppercase()
 }

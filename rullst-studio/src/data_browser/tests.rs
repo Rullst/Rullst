@@ -455,3 +455,21 @@ async fn record_counts_use_the_page_search_predicate() {
     assert!(body.contains("of <strong>0</strong> records"));
     assert!(!body.contains("to <strong>0</strong> of <strong>1</strong>"));
 }
+
+#[test]
+fn engine_labels_name_each_supported_driver() {
+    assert_eq!(driver_display_name(Some("postgres")), "POSTGRESQL");
+    assert_eq!(driver_display_name(Some("mysql")), "MYSQL / MARIADB");
+    assert_eq!(driver_display_name(Some("sqlite")), "SQLITE");
+    assert_eq!(driver_display_name(None), "NOT CONNECTED");
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// The label describes the pool Studio queries, whatever `DATABASE_URL` the
+// process environment names (for example another project's PostgreSQL URL).
+async fn engine_label_describes_the_active_pool() {
+    super::pool::test_sqlite_pool().await;
+    assert_eq!(resolve_driver_display_name(), "SQLITE");
+}
