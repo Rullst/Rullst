@@ -97,7 +97,8 @@ impl HotSwapService {
             "Request task was cancelled or aborted".to_string()
         };
 
-        let html_content = crate::error_console::render_console_html(&message, &capture).await;
+        let html_content =
+            crate::error_console::render_console_html(&message, &capture, None).await;
 
         match axum::response::Response::builder()
             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)

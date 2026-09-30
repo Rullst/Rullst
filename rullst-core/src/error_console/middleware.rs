@@ -19,8 +19,12 @@ use std::net::SocketAddr;
 /// panic payload or backtrace. `Server` mounts this middleware only in debug
 /// builds running in Development.
 #[cfg_attr(mutants, mutants::skip)]
-pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response {
+pub async fn catch_panic_middleware(mut req: Request<Body>, next: Next) -> Response {
     let render_details = console_details_allowed(req.extensions());
+    // Shared with the security headers middleware, which reuses a nonce that
+    // is already present, so the console's inline style and script match the
+    // emitted CSP.
+    let nonce = crate::security::CspNonce::get_or_insert(req.extensions_mut());
     let (handle, panic_slot) = spawn_capturing(async move { next.run(req).await });
 
     match handle.await {
@@ -36,7 +40,8 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
                     "Unhandled application panic".to_string()
                 };
 
-                let html_content = render_console_html(&message, &panic_slot.take()).await;
+                let html_content =
+                    render_console_html(&message, &panic_slot.take(), Some(nonce.as_str())).await;
 
                 match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)

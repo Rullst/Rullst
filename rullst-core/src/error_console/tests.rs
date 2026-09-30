@@ -163,3 +163,47 @@ async fn panic_console_reports_the_panic_site_not_the_middleware() {
     );
     assert!(!body.contains("Could not pinpoint"));
 }
+
+#[tokio::test]
+async fn panic_console_matches_the_default_nonce_csp() {
+    use tower::ServiceExt;
+
+    let router = axum::Router::new()
+        .route("/panic", axum::routing::get(located_panic))
+        .layer(axum::middleware::from_fn(catch_panic_middleware))
+        .layer(axum::middleware::from_fn(
+            crate::security::headers_middleware,
+        ))
+        .layer(axum::Extension(crate::config::SecurityConfig::default()));
+    let response = router
+        .oneshot(
+            axum::http::Request::get("/panic")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let csp = response.headers()["content-security-policy"]
+        .to_str()
+        .unwrap()
+        .to_string();
+    let nonce = csp
+        .split("'nonce-")
+        .nth(1)
+        .and_then(|rest| rest.split('\'').next())
+        .expect("nonce in the CSP")
+        .to_string();
+    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let body = String::from_utf8_lossy(&body);
+
+    assert!(body.contains(&format!("<style nonce=\"{nonce}\">")));
+    assert!(body.contains(&format!("<script nonce=\"{nonce}\">")));
+    assert!(!body.contains("<style>") && !body.contains("<script>"));
+    assert!(!body.contains("fonts.googleapis.com"));
+    assert!(
+        !body.contains(" style="),
+        "inline style attributes need unsafe-inline"
+    );
+}

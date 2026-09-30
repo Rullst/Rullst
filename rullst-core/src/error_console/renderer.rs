@@ -15,8 +15,20 @@ fn panic_source_location(capture: &PanicCapture, backtrace: &str) -> Option<(Str
         .or(location)
 }
 
+/// Renders the development panic console page.
+///
+/// `nonce` is the request's CSP nonce: the inline `<style>` and `<script>`
+/// carry it so the default nonce-based policy allows them. The page loads no
+/// external resource (fonts fall back to system faces).
 #[cfg_attr(mutants, mutants::skip)]
-pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapture) -> String {
+pub(crate) async fn render_console_html(
+    error_message: &str,
+    capture: &PanicCapture,
+    nonce: Option<&str>,
+) -> String {
+    let nonce_attr = nonce.map_or_else(String::new, |nonce| {
+        format!(" nonce=\"{}\"", crate::html::escape_str(nonce))
+    });
     let bt_str = capture.backtrace.clone().unwrap_or_default();
     let source_loc = panic_source_location(capture, &bt_str);
 
@@ -94,8 +106,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
 <head>
     <meta charset="UTF-8">
     <title>Rullst Self-Healing Console 🩹</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
+    <style{nonce_attr}>
         :root {{
             --bg: #030712;
             --surface: #0f172a;
@@ -122,7 +133,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
         body {{
             background-color: var(--bg);
             color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -217,7 +228,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
             font-weight: 700;
             line-height: 1.3;
             color: #fff;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
             word-break: break-word;
         }}
         .panel-grid {{
@@ -253,7 +264,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
             background: rgba(255,255,255,0.02);
             padding: 0.75rem 1.25rem;
             border-bottom: 1px solid var(--border);
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
             font-size: 0.85rem;
             color: var(--text-muted);
             display: flex;
@@ -265,7 +276,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
         .code-body {{
             background: var(--code-bg);
             padding: 1rem 0;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
             font-size: 0.85rem;
             line-height: 1.7;
             overflow-x: auto;
@@ -347,7 +358,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
             color: #cbd5e1;
         }}
         .ai-explanation-box code {{
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
             background: rgba(255,255,255,0.05);
             padding: 0.2rem 0.4rem;
             border-radius: 0.25rem;
@@ -415,7 +426,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
             background: var(--code-bg);
             max-height: 350px;
             overflow-y: auto;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
             font-size: 0.85rem;
             line-height: 1.5;
             padding: 1rem 0;
@@ -457,6 +468,10 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
         @keyframes pulse-shimmer {{
             0% {{ background-position: 200% 0; }}
             100% {{ background-position: -200% 0; }}
+        }}
+        .tip {{
+            color: var(--text-muted);
+            line-height: 1.5;
         }}
         .spinner {{
             width: 1.25rem;
@@ -533,7 +548,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
         </div>
     </div>
 
-    <script>
+    <script{nonce_attr}>
         const file_path = "{file_display}";
         const line_num = parseInt("{line_display}");
         const err_msg = `{escaped_err}`;
@@ -544,7 +559,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
             const autofixBtn = document.getElementById('btn-autofix');
 
             if (file_path === "Unknown File") {{
-                solutionBox.innerHTML = "<div class='empty-state'>Cannot generate solution without file location.<br><br><small style='color: var(--text-muted); line-height: 1.5;'>💡 <b>Tip:</b> If the Rullst AI Assistant is not activated yet, set your <code>GEMINI_API_KEY</code>, <code>OPENAI_API_KEY</code>, or <code>ANTHROPIC_API_KEY</code> environment variable to enable self-healing.</small></div>";
+                solutionBox.innerHTML = "<div class='empty-state'>Cannot generate solution without file location.<br><br><small class='tip'>💡 <b>Tip:</b> If the Rullst AI Assistant is not activated yet, set your <code>GEMINI_API_KEY</code>, <code>OPENAI_API_KEY</code>, or <code>ANTHROPIC_API_KEY</code> environment variable to enable self-healing.</small></div>";
                 return;
             }}
 
@@ -629,6 +644,7 @@ pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapt
         file_display = file_display_js,
         line_display = line_display,
         code_frame_html = code_frame_html,
-        trace_html = trace_html
+        trace_html = trace_html,
+        nonce_attr = nonce_attr
     )
 }
