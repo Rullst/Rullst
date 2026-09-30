@@ -127,7 +127,10 @@ worker_handle.shutdown().await?;
 
 Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
-exactly-once provider delivery, or provider acceptance.
+exactly-once provider delivery, or provider acceptance. Redis promotes
+scheduled jobs by its server clock, so the worker accepts a claimed job whose
+timestamp is at most 300 seconds ahead of the worker's own clock and fails a
+claim that is earlier than that.
 
 Queued jobs store attachment bytes as one base64 string per attachment. Workers
 still accept jobs written with the earlier integer-array encoding, but an older
