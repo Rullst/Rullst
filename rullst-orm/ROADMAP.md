@@ -149,7 +149,7 @@ compile-time schema verified.
   authorization and production ANN index tuning remain separate concerns.
 - [ ] **AI-Powered Auto Migrations**: Any future implementation must be opt-in, previewed and reviewed; autonomous production DDL is not recommended.
 - [ ] **Wasm & Edge Computing**: No supported browser/Cloudflare/Vercel ORM runtime exists.
-- [~] **ORM Sail**: `sail:install` writes a Compose starting point for Postgres, Redis, Meilisearch and pgAdmin; it does not start services or scaffold the application container.
+- [~] **ORM Sail**: `sail:install` writes a local-development Compose starting point for Postgres, Redis, Meilisearch and pgAdmin whose published ports bind `127.0.0.1` (the credentials are fixed development defaults). It refuses to replace an existing `docker-compose.yml` unless `--force` is passed, and it does not start services or scaffold the application container.
 - [ ] **Post-Quantum Field Encryption**: No production `#[orm(encrypt_pq)]` implementation exists; custom cryptography is not recommended.
 - [ ] **Automatic Distributed Graph Traversal**: Manual CTE and bounded SurrealDB read-only GQL are separate foundations, not this capability.
 - [x] **Qdrant / Redis Datastore (bounded)**: Separate capability APIs preserve vector and key-value semantics, enforce transport/resource limits and have live matrix evidence. They are not a universal Active Record backend or cluster/failover certification.

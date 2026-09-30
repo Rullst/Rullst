@@ -23,7 +23,7 @@ pub async fn run_artisan_with_args(
         println!("  status                   Show migrations status");
         println!("  db:seed                  Populate the database with seeders");
         println!(
-            "  sail:install             Generate a default docker-compose.yml (Laravel Sail style)"
+            "  sail:install [--force]   Generate a local docker-compose.yml (Laravel Sail style); --force replaces an existing file"
         );
         return Ok(());
     }
@@ -53,54 +53,11 @@ pub async fn run_artisan_with_args(
             println!("Database seeded successfully!");
         }
         "sail:install" => {
-            println!("Generating docker-compose.yml...");
-            let content = r#"version: '3'
-services:
-  postgres:
-    image: postgres:15
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: rullst
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: password
-    volumes:
-      - sail-postgres:/var/lib/postgresql/data
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - sail-redis:/data
-  meilisearch:
-    image: getmeili/meilisearch:latest
-    ports:
-      - "7700:7700"
-    environment:
-      MEILI_MASTER_KEY: sail
-    volumes:
-      - sail-meilisearch:/meili_data
-  pgadmin:
-    image: dpage/pgadmin4
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rullst.com
-      PGADMIN_DEFAULT_PASSWORD: password
-
-volumes:
-  sail-postgres:
-    driver: local
-  sail-redis:
-    driver: local
-  sail-meilisearch:
-    driver: local
-"#;
-            std::fs::write("docker-compose.yml", content).map_err(|e| {
-                crate::Error::Internal(format!("Failed to write docker-compose.yml: {}", e))
-            })?;
+            let force = args.iter().skip(2).any(|argument| argument == "--force");
+            let path = super::sail::install(std::path::Path::new("."), force)?;
             println!(
-                "docker-compose.yml created successfully! Run `docker compose up -d` to start."
+                "{} created successfully! Run `docker compose up -d` to start.",
+                path.display()
             );
         }
         _ => {

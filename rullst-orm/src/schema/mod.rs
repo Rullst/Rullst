@@ -3,6 +3,7 @@ pub mod column;
 mod enums;
 pub mod join;
 pub mod migration;
+mod sail;
 pub mod schema_builder;
 pub mod validation;
 
