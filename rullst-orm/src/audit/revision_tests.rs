@@ -189,3 +189,36 @@ fn redacted_changes_are_recorded_without_values_and_refuse_restore() {
         Err(crate::Error::Validation(_))
     ));
 }
+
+#[test]
+fn added_and_removed_sensitive_keys_are_withheld_from_the_patch() {
+    const WITHHELD: &str = "plain-credential-value";
+    let nested_without = json!({"settings": {"region": "eu"}});
+    let nested_with = json!({"settings": {"region": "eu", "api_token": WITHHELD}});
+    let top_without = json!({"name": "same"});
+    let top_with = json!({"name": "same", "password": WITHHELD});
+    for (before, after) in [
+        (&nested_without, &nested_with),
+        (&nested_with, &nested_without),
+        (&top_without, &top_with),
+        (&top_with, &top_without),
+    ] {
+        let patch = build_reverse_patch(&before.to_string(), &after.to_string())
+            .expect("build patch")
+            .expect("changed values");
+        assert!(
+            !patch.contains(WITHHELD),
+            "a sensitive value reached the patch"
+        );
+        let decoded: Value = serde_json::from_str(&patch).expect("decode patch");
+        let operation = &decoded["operations"][0];
+        let present = if before.to_string().contains(WITHHELD) {
+            &operation["before"]
+        } else {
+            &operation["after"]
+        };
+        assert_eq!(present, &json!({"present": true, "value": null}));
+        assert_eq!(operation["restorable"], json!(false));
+        assert!(apply_reverse_patch(after.clone(), &patch).is_err());
+    }
+}

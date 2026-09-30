@@ -48,7 +48,9 @@ ALTER TABLE rullst_audits
 
 Fields whose names contain password, token, secret, API key, credential, cookie
 or similar markers must use `#[orm(masked)]` on auditable models. Their values
-are never retained in audit payloads or reverse patches.
+are never retained in audit payloads or reverse patches. The same applies to
+such keys inside JSON fields: when an update adds or removes one, the reverse
+patch keeps only the key's presence and that revision cannot be restored.
 
 `#[orm(masked)]` and `#[orm(encrypted)]` fields appear as `"***"` in every
 generated audit payload, whatever their name. When an update changes one of
