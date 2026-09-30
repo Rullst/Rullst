@@ -268,3 +268,42 @@ async fn extraction_failures_keep_their_413_and_415_status() {
         .unwrap_err();
     assert_eq!(err.into_response().status(), StatusCode::BAD_REQUEST);
 }
+
+#[derive(Debug, Deserialize, Validate)]
+struct Address {
+    #[validate(length(min = 5, message = "Zip too short"))]
+    zip: String,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+struct Signup {
+    #[validate(nested)]
+    address: Address,
+    #[validate(nested)]
+    previous: Vec<Address>,
+}
+
+#[tokio::test]
+async fn nested_struct_and_list_errors_are_reported_with_their_paths() {
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(
+            r#"{"address": {"zip": "1"}, "previous": [{"zip": "12345"}, {"zip": "2"}]}"#,
+        ))
+        .unwrap();
+    let err = ValidatedJson::<Signup>::from_request(req, &())
+        .await
+        .unwrap_err();
+    let ValidationError::ValidationError { errors, .. } = &err else {
+        panic!("expected a validation failure");
+    };
+    let formatted = format_errors(errors);
+    assert_eq!(formatted["address.zip"], ["Zip too short"]);
+    assert_eq!(formatted["previous[1].zip"], ["Zip too short"]);
+    assert_eq!(formatted.len(), 2, "{formatted:?}");
+
+    let response = err.into_response();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let body = body_string(response).await;
+    assert!(body.contains("address.zip"), "{body}");
+}

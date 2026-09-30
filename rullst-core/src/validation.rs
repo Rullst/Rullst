@@ -113,20 +113,47 @@ fn htmx_fragment(status: StatusCode, html: String) -> Response {
     response
 }
 
-fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
-    let mut map = HashMap::new();
-    for (field, field_errors) in errors.field_errors() {
-        let messages: Vec<String> = field_errors
-            .iter()
-            .map(|fe| {
-                fe.message
-                    .as_ref()
-                    .map(|m| m.to_string())
-                    .unwrap_or_else(|| format!("Invalid value for field '{}'", field))
-            })
-            .collect();
-        map.insert(field.to_string(), messages);
+/// Visits every field error, including those of `#[validate(nested)]`
+/// structs (`address.zip`) and lists (`items[0].name`), with its field path.
+fn visit_field_errors(
+    errors: &validator::ValidationErrors,
+    prefix: &str,
+    visit: &mut impl FnMut(&str, &validator::ValidationError),
+) {
+    for (field, kind) in errors.errors() {
+        let path = if prefix.is_empty() {
+            field.to_string()
+        } else {
+            format!("{prefix}.{field}")
+        };
+        match kind {
+            validator::ValidationErrorsKind::Field(field_errors) => {
+                for field_error in field_errors {
+                    visit(&path, field_error);
+                }
+            }
+            validator::ValidationErrorsKind::Struct(inner) => {
+                visit_field_errors(inner, &path, visit);
+            }
+            validator::ValidationErrorsKind::List(items) => {
+                for (index, inner) in items {
+                    visit_field_errors(inner, &format!("{path}[{index}]"), visit);
+                }
+            }
+        }
     }
+}
+
+fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    visit_field_errors(errors, "", &mut |path, field_error| {
+        let message = field_error
+            .message
+            .as_ref()
+            .map(|message| message.to_string())
+            .unwrap_or_else(|| format!("Invalid value for field '{path}'"));
+        map.entry(path.to_string()).or_default().push(message);
+    });
     map
 }
 
