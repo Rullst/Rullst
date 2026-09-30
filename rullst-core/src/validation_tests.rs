@@ -307,3 +307,38 @@ async fn nested_struct_and_list_errors_are_reported_with_their_paths() {
     let body = body_string(response).await;
     assert!(body.contains("address.zip"), "{body}");
 }
+
+#[derive(Debug, Deserialize, Validate)]
+struct Login {
+    #[validate(length(min = 12))]
+    password: String,
+    #[validate(email)]
+    email: String,
+}
+
+#[tokio::test]
+async fn display_and_debug_never_contain_the_rejected_values() {
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(
+            r#"{"password": "canary-pw-1", "email": "canary-mail"}"#,
+        ))
+        .unwrap();
+    let err = ValidatedJson::<Login>::from_request(req, &())
+        .await
+        .unwrap_err();
+
+    let display = err.to_string();
+    let debug = format!("{err:?}");
+    for rendered in [&display, &debug] {
+        assert!(
+            !rendered.contains("canary"),
+            "a rejected value was formatted"
+        );
+    }
+    assert_eq!(
+        display,
+        "Validation error: email (email), password (length)"
+    );
+    assert!(debug.contains("\"password\": [\"length\"]"), "{debug}");
+}

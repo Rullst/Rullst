@@ -28,7 +28,11 @@ pub use validator::Validate;
 /// [`ValidationError::ExtractionError`]; they use a fixed message chosen from the
 /// rejection's status and log the detail server-side at `debug` level on the
 /// `rullst::validation` target.
-#[derive(Debug)]
+///
+/// `Display` and `Debug` list only field paths and validator codes. The
+/// `validator` derive stores each rejected input as a `value` parameter, so
+/// the raw errors (which can hold a password or other personal data) are
+/// never formatted.
 pub enum ValidationError {
     /// A deserialization error occurred before validation could run (e.g. malformed JSON body).
     ExtractionError {
@@ -54,10 +58,48 @@ impl std::fmt::Display for ValidationError {
                 write!(f, "Extraction error: {}", message)
             }
             ValidationError::ValidationError { errors, .. } => {
-                write!(f, "Validation error: {:?}", errors)
+                f.write_str("Validation error: ")?;
+                for (index, (path, codes)) in error_codes(errors).iter().enumerate() {
+                    if index > 0 {
+                        f.write_str(", ")?;
+                    }
+                    write!(f, "{path} ({})", codes.join(", "))?;
+                }
+                Ok(())
             }
         }
     }
+}
+
+impl std::fmt::Debug for ValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ValidationError::ExtractionError { message, is_htmx } => f
+                .debug_struct("ExtractionError")
+                .field("message", message)
+                .field("is_htmx", is_htmx)
+                .finish(),
+            ValidationError::ValidationError { errors, is_htmx } => f
+                .debug_struct("ValidationError")
+                .field("errors", &error_codes(errors))
+                .field("is_htmx", is_htmx)
+                .finish(),
+        }
+    }
+}
+
+/// Field paths and their validator codes, sorted; never parameters or values.
+fn error_codes(
+    errors: &validator::ValidationErrors,
+) -> std::collections::BTreeMap<String, Vec<String>> {
+    let mut codes = std::collections::BTreeMap::<String, Vec<String>>::new();
+    visit_field_errors(errors, "", &mut |path, field_error| {
+        codes
+            .entry(path.to_string())
+            .or_default()
+            .push(field_error.code.to_string());
+    });
+    codes
 }
 
 impl std::error::Error for ValidationError {}
