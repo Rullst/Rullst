@@ -47,7 +47,7 @@ and pending hosted/package admission. The facade feature is `mail-postgres`.
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
-- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
+- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
@@ -523,6 +523,18 @@ Oversized content is rejected, never truncated. The link, homograph and
 secret-redaction scans are single forward passes, so their cost grows linearly
 with the bounded body. They still run on the calling task; bound user-supplied
 text at the request edge as well.
+
+The local inspector chooses its checks from the declared MIME type (compared
+case-insensitively), the filename extension and the content signature
+together. Both policies reject executable magic, executable or script-host
+extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
+similar), SVG by type, extension or content, active PDF content wherever a
+`%PDF-` header appears in the first KiB, and a declared type that disagrees
+with a known extension or signature. `strict()` also rejects HTML extensions,
+HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions and
+opaque formats; `allowing_opaque()` still accepts HTML and other opaque
+content. PDF names written with `#xx` escapes or inside compressed streams are
+not decoded.
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
 aggregate before transport encoding. Provider/account limits can be lower. The
