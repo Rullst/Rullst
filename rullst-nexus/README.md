@@ -35,6 +35,11 @@ applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
 change.
 
+Search matches the typed text literally (`%` and `_` are not wildcards) in the
+visible text, textarea, e-mail and URL columns. It is case-insensitive on
+PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
+collation on MySQL/MariaDB.
+
 ## Tenant-scoped CRUD and mutation audit
 
 Models whose rows belong to one tenant may opt into an exact text-column scope.

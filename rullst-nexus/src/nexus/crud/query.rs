@@ -1,5 +1,6 @@
 //! Query building and parameter extraction for Nexus CRUD.
 
+use super::dialect::{contains_pattern, search_predicate};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use serde::Deserialize;
 
@@ -148,17 +149,19 @@ pub fn build_table_query(
                 .iter()
                 .enumerate()
                 .map(|(idx, col)| {
-                    if driver == "postgres" {
-                        format!("{} LIKE ${}", col, binds.len() + idx + 1)
+                    let placeholder = if driver == "postgres" {
+                        format!("${}", binds.len() + idx + 1)
                     } else {
-                        format!("{} LIKE ?", col)
-                    }
+                        "?".to_string()
+                    };
+                    search_predicate(col, &placeholder, driver)
                 })
                 .collect();
 
             predicates.push(format!("({})", where_clauses.join(" OR ")));
 
-            let search_term = format!("%{}%", q);
+            // `%` and `_` typed by the administrator are literal characters.
+            let search_term = contains_pattern(q);
             for _ in 0..text_fields.len() {
                 binds.push(search_term.clone());
             }
@@ -257,7 +260,10 @@ mod tests {
             Some("tenant-a"),
         );
 
-        assert!(sql.contains("(title LIKE ?)") || sql.contains("(title LIKE $1)"));
+        assert!(
+            sql.contains("(title LIKE ? ESCAPE '!')")
+                || sql.contains("(CAST(title AS TEXT) ILIKE $1 ESCAPE '!')")
+        );
         assert!(sql.contains("tenant_id = ?") || sql.contains("tenant_id = $2"));
         assert_eq!(binds, ["%needle%", "tenant-a"]);
     }

@@ -72,6 +72,11 @@ number, relation, date, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
 `NOT NULL` constraint therefore rejects clearing a required typed column.
 
+Search matches the typed text literally (`%` and `_` are not wildcards) in the
+visible text, textarea, e-mail and URL columns. It is case-insensitive on
+PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
+collation on MySQL/MariaDB.
+
 A `password` field is never displayed: the list shows a fixed mask and the
 edit form an empty input, and leaving it empty keeps the stored value. Nexus
 writes a new value exactly as typed and does **not** hash it. Keep hash columns
