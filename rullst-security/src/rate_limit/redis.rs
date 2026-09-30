@@ -2,10 +2,13 @@
 
 use super::RateLimitError;
 use crate::telemetry::SecurityStore;
+use connection::SharedConnection;
 use dashmap::DashMap;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+mod connection;
 
 const MAX_WINDOW: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_CLIENT_KEY_BYTES: usize = 1024;
@@ -40,13 +43,16 @@ pub struct RateLimitDecision {
 
 #[derive(Clone)]
 enum Backend {
-    Redis(Box<redis::Client>),
+    /// One lazily opened multiplexed connection shared by every clone.
+    Redis(Arc<SharedConnection>),
     OfflineMock(Arc<DashMap<String, (Instant, u64)>>),
 }
 
 /// Atomic fixed-window limiter shared through Redis.
 ///
-/// Empty and `mock_*` URLs select an explicit process-local fallback so offline
+/// A limiter and its clones share one lazily opened multiplexed connection
+/// and reconnect after a connection-level failure instead of opening a
+/// connection per check. Empty and `mock_*` URLs select an explicit process-local fallback so offline
 /// tests remain deterministic. Production startup should call
 /// [`Self::require_distributed`] to reject that mode.
 #[derive(Clone)]
@@ -88,10 +94,10 @@ impl RedisRateLimiter {
         let backend = if redis_url.is_empty() || redis_url.starts_with("mock_") {
             Backend::OfflineMock(Arc::new(DashMap::new()))
         } else {
-            Backend::Redis(Box::new(
+            Backend::Redis(Arc::new(SharedConnection::new(
                 redis::Client::open(redis_url)
                     .map_err(|error| RateLimitError::Backend(error.to_string()))?,
-            ))
+            )))
         };
         Ok(Self {
             max_requests,
@@ -126,7 +132,7 @@ impl RedisRateLimiter {
         }
         let redis_key = self.redis_key(client_key);
         let decision = match &self.backend {
-            Backend::Redis(client) => self.check_redis(client, &redis_key).await?,
+            Backend::Redis(shared) => self.check_redis(shared, &redis_key).await?,
             Backend::OfflineMock(store) => self.check_offline(store, &redis_key),
         };
         if !decision.allowed {
@@ -142,11 +148,11 @@ impl RedisRateLimiter {
 
     async fn check_redis(
         &self,
-        client: &redis::Client,
+        shared: &SharedConnection,
         redis_key: &str,
     ) -> Result<RateLimitDecision, RateLimitError> {
-        let mut connection = client
-            .get_multiplexed_async_connection()
+        let mut handle = shared
+            .connection()
             .await
             .map_err(|error| RateLimitError::Backend(error.to_string()))?;
         let (current, ttl_ms): (i64, i64) = redis::cmd("EVAL")
@@ -154,9 +160,12 @@ impl RedisRateLimiter {
             .arg(1)
             .arg(redis_key)
             .arg(self.window_ms)
-            .query_async(&mut connection)
+            .query_async(&mut handle.connection)
             .await
-            .map_err(|error| RateLimitError::Backend(error.to_string()))?;
+            .map_err(|error| {
+                shared.discard_if_broken(handle.generation, &error);
+                RateLimitError::Backend(error.to_string())
+            })?;
         if current <= 0 || ttl_ms < 0 {
             return Err(RateLimitError::InvalidBackendResponse);
         }
@@ -188,6 +197,10 @@ impl RedisRateLimiter {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod connection_tests;
 
 #[cfg(test)]
 mod tests {
