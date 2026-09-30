@@ -863,8 +863,10 @@ request; consumers must deduplicate/authorize at their side-effect boundary.
 
 Expose bounded inventory/terminal inspection, explicit failed-occurrence retry,
 permanent cancellation and retention of terminal rows only. Automatic attempts
-and the delivery window are bounded. Deadlines, clock rollback, namespace/key
-drift and non-durable/unavailable state fail closed. Reuse verified TLS, bounded
+and the delivery window are bounded. Deadlines, clock rollback beyond a
+five-second cross-instance skew tolerance (a trailing instance adopts the
+monotonic recorded namespace time), namespace/key drift and
+non-durable/unavailable state fail closed. Reuse verified TLS, bounded
 pools/SQL deadlines, explicit initialization and runtime without DDL privileges.
 Document UTC-only behavior, unchanged per-process cron, broker deduplication
 retention, backup/failover obligations and host-owned authorization. Required

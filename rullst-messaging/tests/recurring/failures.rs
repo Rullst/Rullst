@@ -33,7 +33,8 @@ pub async fn run(url: &str) {
     tx.rollback().await.unwrap();
     let lease = store.claim(1).await.unwrap().remove(0);
     assert_eq!(lease.metadata().attempts(), 1);
-    // Time is rechecked after waiting, not merely when the operation starts.
+    // Time is rechecked after waiting, not merely when the operation starts;
+    // a regression beyond the cross-host skew tolerance fails closed.
     let mut tx = admin.begin().await.unwrap();
     sqlx::query("SELECT namespace FROM rullst_recurring_control WHERE namespace=$1 FOR UPDATE")
         .bind(&namespace)
@@ -43,10 +44,10 @@ pub async fn run(url: &str) {
     let clone = store.clone();
     let task = tokio::spawn(async move { clone.schedules(None, 1).await });
     tokio::time::sleep(Duration::from_millis(100)).await;
-    clock.advance(-1);
+    clock.advance(-5_001);
     tx.rollback().await.unwrap();
     assert_eq!(task.await.unwrap(), Err(RecurringError::Clock));
-    clock.advance(1);
+    clock.advance(5_001);
     assert!(
         PostgresRecurringStore::connect(
             url,
