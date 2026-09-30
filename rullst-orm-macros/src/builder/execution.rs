@@ -184,14 +184,9 @@ pub fn generate_execution_methods(
                 None => per_page,
             };
             let current_page = page.max(1);
-            let mut total_builder = self.clone();
-            total_builder.selects = Some("COUNT(*)".to_string());
-            total_builder.limit = None;
-            total_builder.offset = None;
-            total_builder.order_by = None;
-
-            let query_str = total_builder.to_sql();
-            let count_bindings = total_builder.count_bindings();
+            // The total counts the rows `get()` returns, DISTINCT and groups included.
+            let query_str = self.to_count_sql();
+            let count_bindings = self.__rullst_count_query_bindings();
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, count_bindings.len());
             }
@@ -255,7 +250,7 @@ pub fn generate_execution_methods(
                 return Err(self.errors[0].clone());
             }
             let query_str = self.to_count_sql();
-            let count_bindings = self.count_bindings();
+            let count_bindings = self.__rullst_count_query_bindings();
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, count_bindings.len());
             }

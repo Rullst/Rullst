@@ -1688,6 +1688,11 @@ while portability and semantic review remain the model author's responsibility.
   clamps to it and `unsafe_unlimited()` removes it for one query.
   `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
   effective value in `PaginationResult::per_page` and `last_page`.
+* `count()` and the `paginate()` total count the rows `get()` would return
+  without its limit and offset. With `distinct()` or `group_by()` they count
+  that row query as a derived table (`SELECT COUNT(*) FROM (...) AS
+  __rullst_count`, keeping a DISTINCT select list); otherwise they count the
+  filtered rows directly.
 * `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
   subquery with portable `?` markers, even when its own `to_sql()` rendered
   PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is

@@ -195,15 +195,50 @@ pub fn generate_sql_assembly_methods(
             let mut sql = String::with_capacity(estimated_capacity);
 
             self.push_ctes(&mut sql);
-            sql.push_str("SELECT COUNT(*)");
+            // DISTINCT and GROUP BY decide which rows the query returns, so
+            // their count wraps that row query instead of counting table rows.
+            let wrapped = self.__rullst_count_wraps_rows();
+            if !wrapped {
+                sql.push_str("SELECT COUNT(*)");
+            } else if self.is_distinct {
+                sql.push_str("SELECT COUNT(*) FROM (");
+                self.push_select(&mut sql);
+            } else {
+                sql.push_str("SELECT COUNT(*) FROM (SELECT 1");
+            }
             self.push_from(&mut sql);
             self.push_joins(&mut sql);
             let first_where = self.push_wheres(&mut sql);
             self.push_soft_deletes(&mut sql, first_where);
             self.push_group_by(&mut sql);
             self.push_havings(&mut sql);
+            if wrapped {
+                sql.push_str(") AS __rullst_count");
+            }
 
             self.format_postgres(&sql)
+        }
+
+        fn __rullst_count_wraps_rows(&self) -> bool {
+            self.is_distinct || self.group_by.is_some()
+        }
+
+        /// Bindings of `to_count_sql`: a wrapped DISTINCT count keeps the
+        /// select list, including a `select_raw_bindings` fragment's values.
+        fn __rullst_count_query_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+            let select_raw: &[rullst_orm::RullstValue] = if self.is_distinct {
+                self.__rullst_select_raw_bindings()
+            } else {
+                &[]
+            };
+            self.cte_bindings
+                .iter()
+                .chain(select_raw.iter())
+                .chain(self.join_bindings.iter())
+                .chain(self.scope_bindings.iter())
+                .chain(self.bindings.iter())
+                .cloned()
+                .collect()
         }
 
         pub fn to_pluck_sql(&self, column: &str) -> String {

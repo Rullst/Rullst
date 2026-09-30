@@ -241,7 +241,9 @@ Generated builders start with a global row cap (`Orm::set_max_query_limit`,
 `unsafe_unlimited()` removes it for one explicit query. `paginate(page,
 per_page)` clamps `per_page` to the same cap, because the value often comes
 from request input; `PaginationResult::per_page` and `last_page` report the
-effective page size.
+effective page size. `count()` and the `paginate()` total count the rows the
+query returns: a `distinct()` or `group_by()` query is counted as a derived
+table, so the total is the number of distinct rows or groups.
 
 Eager loading runs one related-model query for all parents of a batch and
 never assigns relations from a result truncated by that cap: when the related
