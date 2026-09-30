@@ -38,6 +38,12 @@ validated limit is 1–100,000 records; status transition and pruning commit in
 one transaction, and `purge_completed_history` removes the retained successes.
 Rows still contain the original payload, so access control and retention policy
 belong to the host. Redis/custom drivers do not inherit this policy implicitly.
+The Redis driver bounds its own failure state instead: failed jobs (with
+payloads) and dead letters are each retained up to 10,000 entries by default,
+the oldest evicted atomically, and
+`RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)` accepts
+1–100,000 for each. Failures recorded before that bound existed are not
+indexed and are never evicted automatically.
 
 `Queue::dispatch_at` persists a due timestamp for at most 366 days through the
 built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock

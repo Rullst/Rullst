@@ -1,4 +1,8 @@
 //! Lua scripts that make each Redis queue state transition atomic.
+//!
+//! Failure retention is bounded: every script that appends to the dead-letter
+//! list trims it to the configured count (newest kept), and the failure script
+//! indexes failed jobs by server time and evicts the oldest beyond the limit.
 
 pub(super) const CLAIM_SCRIPT: &str = r#"
 local now = redis.call('TIME')
@@ -19,6 +23,7 @@ end
 if ok and type(envelope) == 'table' and type(envelope.id) == 'string' and envelope.id ~= '' then
     if redis.call('HEXISTS', KEYS[3], envelope.id) == 1 then
         redis.call('RPUSH', KEYS[4], cjson.encode({ raw = raw, error = 'duplicate processing job id' }))
+        redis.call('LTRIM', KEYS[4], -tonumber(ARGV[1]), -1)
         return redis.error_reply('duplicate processing job id')
     end
     redis.call('HSET', KEYS[3], envelope.id, raw)
@@ -34,6 +39,7 @@ if ok and type(envelope) == 'table' and type(envelope.id) == 'string' then
     redis.call('HDEL', KEYS[2], envelope.id)
 end
 redis.call('RPUSH', KEYS[3], cjson.encode({ raw = ARGV[1], error = ARGV[2] }))
+redis.call('LTRIM', KEYS[3], -tonumber(ARGV[3]), -1)
 return 1
 "#;
 
@@ -54,6 +60,8 @@ redis.call('HDEL', KEYS[2], ARGV[1])
 return 1
 "#;
 
+// KEYS[4] indexes failed job ids by failure time; ARGV[4] is the retention
+// limit. Failures recorded before the index existed are not counted.
 pub(super) const FAIL_SCRIPT: &str = r#"
 local raw = redis.call('HGET', KEYS[2], ARGV[1])
 if not raw then return 0 end
@@ -62,9 +70,19 @@ if expected and expected ~= '' then
     local ok, envelope = pcall(cjson.decode, raw)
     if not ok or type(envelope) ~= 'table' or envelope.attempts ~= tonumber(expected) then return 0 end
 end
+local now = redis.call('TIME')
+local failed_at_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
 redis.call('ZREM', KEYS[1], raw)
 redis.call('HDEL', KEYS[2], ARGV[1])
 redis.call('HSET', KEYS[3], ARGV[1], cjson.encode({ raw = raw, error = ARGV[2] }))
+redis.call('ZADD', KEYS[4], failed_at_ms, ARGV[1])
+local excess = redis.call('ZCARD', KEYS[4]) - tonumber(ARGV[4])
+if excess > 0 then
+    for _, evicted in ipairs(redis.call('ZRANGE', KEYS[4], 0, excess - 1)) do
+        redis.call('HDEL', KEYS[3], evicted)
+    end
+    redis.call('ZREMRANGEBYRANK', KEYS[4], 0, excess - 1)
+end
 return 1
 "#;
 
@@ -115,6 +133,7 @@ for _, raw in ipairs(stalled) do
         redis.call('RPUSH', KEYS[4], cjson.encode({ raw = raw, error = 'invalid stalled job envelope' }))
     end
 end
+redis.call('LTRIM', KEYS[4], -tonumber(ARGV[2]), -1)
 return recovered
 "#;
 

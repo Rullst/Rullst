@@ -144,7 +144,13 @@ Ok(())
 
 With `queue-redis`, construct `Queue::redis(redis_url)` instead. The Redis
 driver uses atomic Lua transitions for pending, processing, failed, and
-dead-letter state. Like the cache, each driver shares one lazily opened
+dead-letter state. Failed jobs (with their payloads) and dead letters are each
+retained up to 10,000 entries; recording one more evicts the oldest in the same
+script. `RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)`
+accepts 1–100,000 for each (pass the configured driver to `Queue::custom`).
+Failed jobs recorded before this bound was introduced are not indexed, so they
+are neither counted nor evicted; remove them from the `:failed` hash
+explicitly. Like the cache, each driver shares one lazily opened
 multiplexed connection and reconnects after a failed operation. Production validation must still cover Redis persistence,
 eviction policy, credentials/TLS, failover, monitoring, and worker recovery in
 the target topology.

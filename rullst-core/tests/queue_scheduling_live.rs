@@ -276,6 +276,65 @@ async fn redis_deferred_claims_wait_for_their_delay_and_are_fenced() {
 }
 
 #[tokio::test]
+async fn redis_failed_jobs_and_dead_letters_are_retained_up_to_the_limit() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let namespace = unique_namespace("retention");
+    let driver = RedisDriver::new(redis_url.clone())
+        .expect("Redis queue configuration")
+        .try_with_namespace(&namespace)
+        .expect("isolated queue namespace")
+        .try_with_failure_retention(2, 2)
+        .expect("bounded retention");
+
+    for index in 0..3 {
+        driver
+            .push(&format!("failed-{index}"), "job", "{}")
+            .await
+            .expect("push failing job");
+        let claim = driver.pop().await.expect("claim").expect("job");
+        driver
+            .mark_failed_attempt(&claim.id, claim.attempts, "terminal")
+            .await
+            .expect("record failure");
+    }
+    for _ in 0..3 {
+        driver
+            .push("invalid", "job", "not-json")
+            .await
+            .expect("push malformed payload");
+        assert!(driver.pop().await.is_err());
+    }
+
+    let client = redis::Client::open(redis_url).expect("Redis client");
+    let mut connection = client
+        .get_multiplexed_async_connection()
+        .await
+        .expect("Redis connection");
+    let queue_key = format!("rullst:queue:{namespace}");
+    let mut failed: Vec<String> = redis::cmd("HKEYS")
+        .arg(format!("{queue_key}:failed"))
+        .query_async(&mut connection)
+        .await
+        .expect("failed ids");
+    failed.sort();
+    assert_eq!(failed, vec!["failed-1".to_string(), "failed-2".to_string()]);
+    let indexed: u64 = redis::cmd("ZCARD")
+        .arg(format!("{queue_key}:failed:index"))
+        .query_async(&mut connection)
+        .await
+        .expect("failure index size");
+    assert_eq!(indexed, 2);
+    let dead_letters: u64 = redis::cmd("LLEN")
+        .arg(format!("{queue_key}:dead-letter"))
+        .query_async(&mut connection)
+        .await
+        .expect("dead-letter size");
+    assert_eq!(dead_letters, 2);
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")

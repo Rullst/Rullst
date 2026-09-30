@@ -15,6 +15,11 @@ pub mod redis_driver {
     use serde::Deserialize;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+    /// Failed jobs and dead letters each retained by default (newest kept).
+    pub const DEFAULT_FAILURE_RETENTION: usize = 10_000;
+    /// Upper bound accepted by [`RedisDriver::try_with_failure_retention`].
+    pub const MAX_FAILURE_RETENTION: usize = 100_000;
+
     #[derive(Deserialize)]
     struct RedisJobEnvelope {
         id: String,
@@ -28,6 +33,10 @@ pub mod redis_driver {
     ///
     /// Operations share one lazily opened multiplexed connection. If it breaks,
     /// the failing operation returns its error and the next one reconnects.
+    ///
+    /// Failed jobs (with their payloads) and dead letters are retained up to
+    /// [`DEFAULT_FAILURE_RETENTION`] each; the oldest are evicted atomically
+    /// when a new one is recorded. See [`Self::try_with_failure_retention`].
     pub struct RedisDriver {
         shared: SharedRedisConnection,
         queue_key: String,
@@ -35,7 +44,10 @@ pub mod redis_driver {
         processing_index_key: String,
         scheduled_key: String,
         failed_key: String,
+        failed_index_key: String,
         dead_letter_key: String,
+        failed_retention: usize,
+        dead_letter_retention: usize,
     }
 
     impl RedisDriver {
@@ -74,7 +86,32 @@ pub mod redis_driver {
             self.processing_index_key = format!("{queue_key}:processing:index");
             self.scheduled_key = format!("{queue_key}:scheduled");
             self.failed_key = format!("{queue_key}:failed");
+            self.failed_index_key = format!("{queue_key}:failed:index");
             self.dead_letter_key = format!("{queue_key}:dead-letter");
+            Ok(self)
+        }
+
+        /// Sets how many failed jobs and dead letters are retained, each
+        /// between 1 and [`MAX_FAILURE_RETENTION`].
+        ///
+        /// Recording a failure beyond the limit evicts the oldest failed job
+        /// (by failure time) or dead letter in the same atomic script. Failed
+        /// jobs recorded before this retention index existed are not counted
+        /// or evicted.
+        pub fn try_with_failure_retention(
+            mut self,
+            failed_jobs: usize,
+            dead_letters: usize,
+        ) -> Result<Self, QueueError> {
+            for limit in [failed_jobs, dead_letters] {
+                if !(1..=MAX_FAILURE_RETENTION).contains(&limit) {
+                    return Err(QueueError::InvalidConfiguration(format!(
+                        "Redis failure retention must be between 1 and {MAX_FAILURE_RETENTION}"
+                    )));
+                }
+            }
+            self.failed_retention = failed_jobs;
+            self.dead_letter_retention = dead_letters;
             Ok(self)
         }
 
@@ -84,9 +121,12 @@ pub mod redis_driver {
                 processing_index_key: format!("{queue_key}:processing:index"),
                 scheduled_key: format!("{queue_key}:scheduled"),
                 failed_key: format!("{queue_key}:failed"),
+                failed_index_key: format!("{queue_key}:failed:index"),
                 dead_letter_key: format!("{queue_key}:dead-letter"),
                 queue_key,
                 shared: SharedRedisConnection::new(client),
+                failed_retention: DEFAULT_FAILURE_RETENTION,
+                dead_letter_retention: DEFAULT_FAILURE_RETENTION,
             }
         }
 
@@ -100,6 +140,7 @@ pub mod redis_driver {
                 .arg(&self.dead_letter_key)
                 .arg(raw)
                 .arg(reason)
+                .arg(self.dead_letter_retention)
                 .query_async::<i64>(&mut connection)
                 .await
                 .map_err(|error| {
@@ -186,14 +227,16 @@ pub mod redis_driver {
             let expected = attempt
                 .map(|attempt| attempt.to_string())
                 .unwrap_or_default();
+            let retention = self.failed_retention.to_string();
             self.transition(
                 FAIL_SCRIPT,
                 &[
                     &self.processing_key,
                     &self.processing_index_key,
                     &self.failed_key,
+                    &self.failed_index_key,
                 ],
-                &[job_id, error, &expected],
+                &[job_id, error, &expected, &retention],
                 job_id,
                 "mark_failed",
                 attempt,
@@ -282,6 +325,7 @@ pub mod redis_driver {
                 .arg(&self.processing_index_key)
                 .arg(&self.dead_letter_key)
                 .arg(&self.scheduled_key)
+                .arg(self.dead_letter_retention)
                 .query_async(&mut connection)
                 .await
                 .map_err(|error| {
@@ -388,6 +432,7 @@ pub mod redis_driver {
                 .arg(&self.queue_key)
                 .arg(&self.dead_letter_key)
                 .arg(cutoff.to_string())
+                .arg(self.dead_letter_retention)
                 .query_async::<u64>(&mut connection)
                 .await
                 .map_err(|error| {
@@ -443,40 +488,5 @@ pub mod redis_driver {
 
     #[cfg(test)]
     #[allow(clippy::unwrap_used, clippy::expect_used)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn claimed_envelope_requires_valid_json_payload() {
-            let result =
-                parse_claimed_job(r#"{"id":"job-1","name":"test","payload":"{bad","attempts":1}"#);
-            assert!(matches!(result, Err(QueueError::Serialization(_))));
-        }
-
-        #[test]
-        fn claimed_envelope_is_strict_and_lossless() {
-            let job = parse_claimed_job(
-                r#"{"id":"job-1","name":"test","payload":"{\"ok\":true}","attempts":2}"#,
-            )
-            .unwrap();
-            assert_eq!(job.id, "job-1");
-            assert_eq!(job.payload["ok"], true);
-            assert_eq!(job.attempts, 2);
-        }
-
-        #[test]
-        fn namespace_is_bounded_and_syntax_checked() {
-            let valid = RedisDriver::new("redis://127.0.0.1/")
-                .unwrap()
-                .try_with_namespace("tenant_42-prod");
-            assert!(valid.is_ok());
-
-            for invalid in ["", "../shared", "contains space"] {
-                let result = RedisDriver::new("redis://127.0.0.1/")
-                    .unwrap()
-                    .try_with_namespace(invalid);
-                assert!(matches!(result, Err(QueueError::InvalidConfiguration(_))));
-            }
-        }
-    }
+    mod tests;
 }
