@@ -80,6 +80,10 @@ async fn studio_views_use_the_shared_resolver_and_never_invent_sqlite() {
     assert!(dashboard.contains("No database is configured for Rullst Studio"));
     let (status, _) = get(&app, "/studio/tables/users").await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    let (status, tools) = get(&app, "/studio/migrations").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(tools.contains("Database unavailable:"));
+    assert!(tools.contains("No database is configured for Rullst Studio"));
     for uri in ["/studio/features", "/studio/er"] {
         let (status, page) = get(&app, uri).await;
         assert_eq!(status, StatusCode::OK);
