@@ -87,7 +87,10 @@
   the final component of a compound name joined by `_`, `-` or `.`
   (`DB_PASSWORD`, `access_token`, `client-secret`, `app.db.password`) or when
   a final `key`/`id` component follows it (`SECRET_KEY`, `session_id`).
-  Records over
+  An unquoted `Authorization`/`Proxy-Authorization` or `Cookie`/`Set-Cookie`
+  value is redacted to the end of its line, so later cookies and credentials
+  containing spaces are covered; only a recognized authentication scheme such
+  as `Bearer`, `Basic`, `Digest` or `Token` is kept. Records over
   64 KiB are replaced wholesale by an oversized-record marker. The host must
   invoke it before emitting untrusted log fields; pattern matching is not a
   guarantee that arbitrary sensitive content can be recognized.
