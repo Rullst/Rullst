@@ -3,8 +3,8 @@
 mod support;
 
 use rullst_orm::polyglot::{
-    CollectionName, DocumentId, DocumentPage, DocumentRepository, GraphQuery, GraphRepository,
-    PolyglotError, SurrealAuth, SurrealConfig, SurrealDbStore,
+    CollectionName, DocumentId, DocumentInventory, DocumentPage, DocumentRepository, GraphQuery,
+    GraphRepository, PolyglotError, SurrealAuth, SurrealConfig, SurrealDbStore,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -131,4 +131,28 @@ async fn test_matrix_surrealdb_document_contract() {
             .await
             .expect("repeat delete")
     );
+
+    // All-digit IDs stay string keys: they round-trip and the inventory
+    // follows the portable `DocumentId` order ("10" before "9").
+    let numeric = CollectionName::new("numeric_events").expect("valid collection");
+    for (id, sequence) in [("9", 9), ("10", 10)] {
+        let id = DocumentId::new(id).expect("valid id");
+        store
+            .create(&numeric, &id, &event(sequence))
+            .await
+            .expect("create all-digit event");
+        assert_eq!(
+            store
+                .find(&numeric, &id)
+                .await
+                .expect("find all-digit event"),
+            Some(event(sequence))
+        );
+    }
+    let entries = store
+        .list_entries(&numeric, DocumentPage::new(0, 10).expect("bounded page"))
+        .await
+        .expect("list all-digit inventory");
+    let ids: Vec<&str> = entries.iter().map(|entry| entry.id().as_str()).collect();
+    assert_eq!(ids, ["10", "9"]);
 }

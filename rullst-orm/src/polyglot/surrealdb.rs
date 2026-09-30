@@ -454,12 +454,18 @@ fn decode_document_entry<T: DeserializeOwned>(
     Ok(DocumentEntry::new(id, entity))
 }
 
+/// The `/key/:table/:id` route of one document. SurrealDB parses the `:id`
+/// segment as a value, so an all-digit ID such as `9` would become a numeric
+/// key that sorts numerically, unlike the portable string order of
+/// `DocumentId`. The ID is therefore sent as a quoted string literal; the
+/// `DocumentId` grammar contains no quote or backslash to escape.
 fn record_route(
     live: &LiveSurreal,
     collection: &CollectionName,
     id: &DocumentId,
 ) -> Result<Url, PolyglotError> {
-    live.route(&["key", collection.as_str(), id.as_str()])
+    let key = format!("\"{}\"", id.as_str());
+    live.route(&["key", collection.as_str(), &key])
 }
 
 fn surreal_mock<T>(store: &SurrealDbStore<T>) -> Result<&MockDocumentStore<T>, PolyglotError> {

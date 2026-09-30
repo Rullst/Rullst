@@ -324,6 +324,14 @@ requires HTTPS outside loopback unless cleartext is explicitly enabled, redacts
 authentication in `Debug`, streams through a configurable 1 KiB–8 MiB memory
 ceiling, and sends namespace/database headers on every scoped request.
 
+Every `DocumentId` is stored as a string record key, including all-digit IDs
+such as `9` (sent as a quoted key; SurrealDB would otherwise parse them as
+numbers). Inventory pages therefore follow the portable string order, `10`
+before `9`, on SurrealDB as on MongoDB. Records written by earlier versions
+under an ID that SurrealDB parsed as a number, `NULL` or an exponent (for
+example `9`, `null` or `1e5`) keep that non-string key and are not found by
+these string IDs; rewrite them under their string key when upgrading.
+
 Graph queries must start with `MATCH`; semicolons, caller-provided `LIMIT`, and
 the `INSERT`, `SET`, `REMOVE`, and `DELETE` tokens are rejected. The adapter
 then appends its own 1–1,000 row limit. This is a conservative read boundary,

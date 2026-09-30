@@ -71,7 +71,7 @@ async fn list_records(
 #[tokio::test]
 async fn live_http_contract_sets_scope_and_uses_bounded_sql_page() {
     let router = Router::new()
-        .route("/key/events/evt-1", post(create_record))
+        .route("/key/events/%22evt-1%22", post(create_record))
         .route("/sql", post(list_records));
     let (endpoint, server) = spawn_test_server(router).await;
     let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
@@ -130,7 +130,7 @@ async fn oversized_responses_are_rejected_before_deserialization() {
         (StatusCode::OK, "x".repeat(2048))
     }
     let (endpoint, server) =
-        spawn_test_server(Router::new().route("/key/events/evt-1", post(oversized))).await;
+        spawn_test_server(Router::new().route("/key/events/%22evt-1%22", post(oversized))).await;
     let config = SurrealConfig::new(endpoint, "main", "app", SurrealAuth::None)
         .with_response_limit(1024)
         .unwrap();
