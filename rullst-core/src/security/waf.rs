@@ -165,11 +165,13 @@ async fn inspect_and_restore_body(req: Request) -> Result<Request, Box<Response>
 
 /// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
 pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
-    // 1. Inspect User-Agent for known bots or scrapers
+    // 1. Inspect User-Agent for known bots or scrapers. Header values are
+    // decoded lossily: an obs-text byte (0x80-0xFF) that `to_str` rejects must
+    // not hide the rest of the value from inspection.
     if let Some(ua) = req
         .headers()
         .get(header::USER_AGENT)
-        .and_then(|v| v.to_str().ok())
+        .map(|value| String::from_utf8_lossy(value.as_bytes()))
     {
         let ua_lower = ua.to_lowercase();
         let suspicious_agents = req
@@ -204,8 +206,8 @@ pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
         if let Some(payload) = req
             .headers()
             .get(header_name)
-            .and_then(|value| value.to_str().ok())
-            && contains_malicious_pattern(payload)
+            .map(|value| String::from_utf8_lossy(value.as_bytes()))
+            && contains_malicious_pattern(&payload)
         {
             return forbidden_response();
         }
@@ -227,6 +229,28 @@ mod tests {
     use super::*;
     use axum::{Router, body::Bytes, http::Request, routing::post};
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn obs_text_bytes_cannot_hide_inspected_header_values() {
+        let app = Router::new()
+            .route("/items", post(|body: Bytes| async move { body }))
+            .route_layer(axum::middleware::from_fn(waf_middleware));
+        for (name, value) in [
+            (header::REFERER, &b"https://x.example/?q=<script>\xff"[..]),
+            (header::COOKIE, &b"q=../../etc/passwd\xff"[..]),
+            (header::USER_AGENT, &b"GPTBot/1.0 \xff"[..]),
+        ] {
+            let request = Request::post("/items")
+                .header(name.clone(), HeaderValue::from_bytes(value).unwrap())
+                .body(Body::empty())
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::FORBIDDEN,
+                "{name}"
+            );
+        }
+    }
 
     #[tokio::test]
     async fn case_and_suffix_variants_cannot_skip_body_inspection() {
