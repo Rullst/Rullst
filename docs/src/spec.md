@@ -2749,7 +2749,9 @@ sending.
 * `StatefulChat<M>` uses static dispatch over `ChatMemory`, requires a trusted
   `TenantContext` and validated `ConversationId`, loads only the configured even
   number of recent messages, applies the guarded `AiClient`, and persists the
-  user/assistant exchange only after generation succeeds.
+  user/assistant exchange only after generation succeeds. A response that the
+  guardrail would block on replay is rejected as a generation failure and not
+  persisted.
 * `InMemoryChatMemory` is deterministic, tenant-partitioned, cardinality-bound,
   and intended for tests/local use. The opt-in `sql-memory` adapter supports
   SQLite, PostgreSQL, MySQL, and MariaDB through a dedicated SQLx Any pool.
