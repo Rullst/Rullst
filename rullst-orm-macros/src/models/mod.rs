@@ -21,6 +21,16 @@ pub use query_ops::{generate_query_methods, generate_search_method};
 pub use redis_ops::generate_redis_hash_methods;
 pub use update_builder::generate_update_builder;
 
+impl ParsedModel {
+    /// The soft-delete marker column, when the model uses soft deletes.
+    pub fn soft_delete_column(&self) -> Option<&str> {
+        self.soft_delete
+            .as_ref()
+            .filter(|_| self.has_soft_deletes)
+            .map(|config| config.column.as_str())
+    }
+}
+
 pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;

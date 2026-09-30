@@ -84,6 +84,38 @@ pub(super) async fn exercise() {
         .expect("other tenant rows");
     assert_eq!(other, 1, "{driver} must not delete another tenant's rows");
 
+    // A mistyped tenant context fails closed instead of reaching `tenant_id = 5`,
+    // which MySQL/MariaDB would compare numerically with '5' and '5-acme'.
+    for tenant in ["5", "5-acme"] {
+        insert_item(tenant, 1).await;
+    }
+    let mistyped_read = with_tenant(5_i32, async { ContractBulkItem::query().get().await }).await;
+    let mistyped_delete = with_tenant(5_i32, async {
+        ContractBulkItem::query().delete_all().await
+    })
+    .await;
+    for (operation, failed_closed) in [
+        (
+            "read",
+            matches!(&mistyped_read, Err(rullst_orm::Error::Validation(message)) if message.contains("tenant context type")),
+        ),
+        (
+            "delete_all",
+            matches!(&mistyped_delete, Err(rullst_orm::Error::Validation(message)) if message.contains("tenant context type")),
+        ),
+    ] {
+        assert!(
+            failed_closed,
+            "{driver} mistyped tenant {operation} must fail closed"
+        );
+    }
+    for tenant in ["5", "5-acme"] {
+        let rows = with_tenant(tenant, async { ContractBulkItem::query().count().await })
+            .await
+            .expect("typed tenant count");
+        assert_eq!(rows, 1, "{driver} {tenant}");
+    }
+
     Schema::create("contract_bulk_posts", |table: &mut Blueprint| {
         table.id();
         table.string("title").not_null();

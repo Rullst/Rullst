@@ -367,6 +367,32 @@ A prepared version section does not establish that its tag or crates exist.
   instead of scanning the whole keyspace, and a failed invalidation no longer
   suppresses `orm:events` publication.
 
+### ORM macros second-pass review fixes
+
+- Eager loading assigns shared related rows to every parent instead of only
+  the first (`belongs_to`, `has_one`, `has_many`, `belongs_to_many`).
+- Generated Redis and embedding APIs follow `rullst-orm`'s own `redis`/`ai`
+  features instead of the application's; `rullst-orm` gains an `ai` feature.
+- Redis model hashes are keyed by application namespace and tenant and fail
+  closed outside the tenant scope. Hashes stored under the old
+  `orm:<table>:<id>` keys are no longer read.
+- Raw CTE and select fragments take explicit bindings through the new
+  `with_raw_bindings`, `with_recursive_raw_bindings` and `select_raw_bindings`;
+  bind markers in `with_raw`/`with_recursive_raw`/`select_raw` are rejected
+  instead of consuming the tenant binding.
+- `#[derive(Nexus)]` honours ORM `skip`, `hidden`, `masked`, `encrypted` and
+  `SecretString` semantics: skipped fields are omitted and protected fields are
+  hidden, read-only password widgets.
+- `delete_all()` rejects limit, offset, order, join, group and CTE clauses
+  instead of deleting every matching row.
+- Builder filters work on PostgreSQL native enum columns.
+- Partial updates and revision restores run `after_fetch` before re-saving.
+- Scout search falls back to SQL when a shared index truncated results before
+  tenant scoping (`scout::MAX_SEARCH_HITS`).
+- `save()` no longer rewrites the soft-delete marker; only delete, restore and
+  force delete change it.
+- Tenant-scoped reads and bulk deletes reject a mistyped tenant context.
+
 ### ORM review fixes
 
 - Typed subqueries in `where_exists`, `or_where_exists`, `with_cte` and

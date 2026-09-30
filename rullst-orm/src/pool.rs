@@ -14,6 +14,7 @@ mod savepoint;
 mod telemetry;
 #[doc(hidden)]
 pub use placeholders::portable_subquery;
+pub use placeholders::raw_fragment;
 pub use placeholders::replace_placeholders;
 
 #[cfg(not(any(

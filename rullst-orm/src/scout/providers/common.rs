@@ -6,7 +6,7 @@ use url::Url;
 use crate::Error;
 
 pub const MAX_RESPONSE_BYTES: usize = 4 * 1_048_576;
-pub const MAX_SEARCH_HITS: usize = 1_000;
+pub use crate::scout::MAX_SEARCH_HITS;
 
 pub fn mock_requested(values: &[&str]) -> bool {
     values.iter().any(|value| {

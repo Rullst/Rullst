@@ -103,9 +103,21 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
 
     let lookup = audit_lookup(parsed);
     let revision_lookup = revision_lookup(parsed);
-    let before_tx = audit_before_tx(&lookup);
+    // save() never writes the soft-delete marker, so the audited post-state
+    // (and the handle) take the stored marker instead of a stale one.
+    let soft_delete_sync = parsed.soft_delete_column().map(|column| {
+        let column = syn::Ident::new(column, parsed.name.span());
+        quote! {
+            if let Some(old_model) = old_model_for_audit.as_ref() {
+                self.#column = old_model.#column.clone();
+            }
+        }
+    });
+    let before_tx = audit_before_tx(&lookup, soft_delete_sync);
     let after_tx = audit_after_tx(table_name);
-    let revision_restore = revision_restore(table_name, &revision_lookup);
+    let restored_after_fetch =
+        super::update_builder::after_fetch_hook(parsed, &quote::format_ident!("restored"));
+    let revision_restore = revision_restore(table_name, &revision_lookup, &restored_after_fetch);
 
     quote! {
         #[rullst_orm::_tracing::instrument(
@@ -199,7 +211,11 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     }
 }
 
-fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
+fn revision_restore(
+    table_name: &str,
+    lookup: &TokenStream,
+    restored_after_fetch: &TokenStream,
+) -> TokenStream {
     quote! {
         /// Restores one bounded update revision and records the compensating
         /// mutation under the active audit principal.
@@ -285,6 +301,9 @@ fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
                             "audit revision attempted to change the model identity".to_string(),
                         ));
                     }
+                    // The patch matches stored values; the save lifecycle then
+                    // expects the representation every read returns.
+                    #restored_after_fetch
                     let restore_context = rullst_orm::audit::current_audit_context()
                         .ok_or_else(|| rullst_orm::Error::Validation(
                             "revision restore requires an active audit context".to_string(),
@@ -425,7 +444,7 @@ fn revision_lookup(parsed: &ParsedModel) -> TokenStream {
     }
 }
 
-fn audit_before_tx(lookup: &TokenStream) -> TokenStream {
+fn audit_before_tx(lookup: &TokenStream, soft_delete_sync: Option<TokenStream>) -> TokenStream {
     quote! {
         let mut old_model_for_audit = if !is_new {
             let driver = rullst_orm::Orm::driver()?;
@@ -437,6 +456,7 @@ fn audit_before_tx(lookup: &TokenStream) -> TokenStream {
         if let Some(old_model) = old_model_for_audit.as_mut() {
             old_model.__rullst_decrypt_encrypted_fields()?;
         }
+        #soft_delete_sync
     }
 }
 

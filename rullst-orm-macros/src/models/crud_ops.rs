@@ -1,5 +1,6 @@
 use crate::models::mutation_parts::{
-    TenantPredicate, deleted_effects, instance_hook, tenant_guard, tenant_predicate,
+    TenantPredicate, deleted_effects, instance_hook, saved_redis_effects, tenant_guard,
+    tenant_predicate,
 };
 use crate::models::save_entrypoints;
 use crate::parser::{EncryptedFieldKind, ParsedModel};
@@ -52,6 +53,9 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 
     let mut update_sets = vec![];
     let mut bind_updates = vec![];
+    // Only delete()/restore()/force_delete() change the soft-delete marker; a
+    // stale handle must not undelete (or delete) its row through save().
+    let soft_delete_column = parsed.soft_delete_column();
 
     for field_name in normal_fields {
         let field_name_str = field_name.to_string();
@@ -85,9 +89,14 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             };
             bind_inserts.push(binding.clone());
 
-            update_sets.push(format!("{} = ?", field_name_str));
-            bind_updates.push(binding);
+            if soft_delete_column != Some(field_name_str.as_str()) {
+                update_sets.push(format!("{} = ?", field_name_str));
+                bind_updates.push(binding);
+            }
         }
+    }
+    if update_sets.is_empty() {
+        update_sets.push("id = id".to_string());
     }
 
     let insert_columns_str = insert_columns.join(", ");
@@ -118,6 +127,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     };
 
     let save_entrypoints = save_entrypoints::generate(parsed);
+    let saved_redis_effects = saved_redis_effects(parsed);
 
     quote! {
         #save_entrypoints
@@ -225,32 +235,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             } else {
                 rullst_orm::ModelOperation::Updated
             };
-            #[cfg(feature = "redis")]
-            {
-                let event = rullst_orm::ModelCommittedEvent::new(
-                    #table_name,
-                    self.id,
-                    operation,
-                    self.to_json(),
-                );
-                rullst_orm::after_commit(move || async move {
-                    use rullst_orm::_redis::AsyncCommands;
-                    // A failed invalidation must not suppress the events.
-                    let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
-                    if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
-                        let topic = format!(
-                            "orm:events:{}:{}",
-                            event.table,
-                            event.operation.as_str(),
-                        );
-                        let _: usize = connection.publish(&topic, &event.payload).await?;
-                        let topic = format!("orm:events:{}:saved", event.table);
-                        let _: usize = connection.publish(&topic, &event.payload).await?;
-                    }
-                    invalidated?;
-                    Ok(())
-                }).await?;
-            }
+            #saved_redis_effects
             let event = rullst_orm::ModelCommittedEvent::new(
                 #table_name,
                 self.id,

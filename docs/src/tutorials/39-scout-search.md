@@ -102,6 +102,11 @@ The shared adapter boundary enforces:
 - five-second connect and twenty-second request deadlines;
 - disabled redirects and no secret-bearing error bodies.
 
+The hit cap (`rullst_orm::scout::MAX_SEARCH_HITS`) applies to the whole shared
+index, before generated tenant, model-wide and soft-delete scopes. For a model
+with such a scope, an answer of 1,000 IDs is treated as truncated and
+`search()` answers from the SQL fallback instead.
+
 Meilisearch and Algolia asynchronous indexing tasks are awaited with a bounded
 poll loop. Elasticsearch uses `refresh=wait_for` for the adapter operations.
 

@@ -13,7 +13,7 @@ directly, because generated code calls the matching runtime API.
 | `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. Code that opens a separate connection is outside that sandbox. |
 | `#[derive(PersonalData)]` | Declares application-selected personal-data fields; it is metadata, not automatic privacy compliance. |
 | `#[derive(Enum)]` | Generates a closed bounded label contract shared by string parsing/display, Serde, `RullstValue` and SQLx codecs. `#[rullst_enum(type_name = "...", rename_all = "snake_case")]` and per-variant `rename` are validated at compile time; schema DDL is owned by `Blueprint::native_enum`. |
-| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. Other shared `#[orm(...)]` options are skipped, and ORM relation fields are left out of the metadata. |
+| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. ORM relation fields and `#[orm(skip)]`/`#[sqlx(skip)]` fields are left out of the metadata; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields (only `#[nexus(kind = "password")]` exposes an `#[orm(hidden)]` field, write-only), and `#[orm(masked)]` fields default to `Password`. Other shared `#[orm(...)]` options are skipped. |
 
 ## Compile-time safety boundaries
 
@@ -52,6 +52,17 @@ Comment rejection covers `--`, block-comment delimiters, and MySQL's `#`.
 Database enums accept 1–64 unit variants with unique labels of at most 63 bytes
 from the portable ASCII allowlist. PostgreSQL native enums require the
 `strict-postgres` runtime profile; SQLx Any cannot decode its custom types.
+Builder comparisons on a field whose type implements `DatabaseEnum` bind
+`CAST(? AS "<type_name>")` on PostgreSQL; the derive detects such fields at
+compile time through the field type, not its name.
+
+Optional generated APIs follow the runtime's features, not the application's:
+`rullst-orm` opts this crate into `runtime-feature-gates` and forwards its
+`redis` and `ai` features, so the Redis cache/hash/event code and
+`save_with_embedding` are emitted or omitted at expansion time. Without that
+opt-in (an older runtime) the output keeps the legacy
+`#[cfg(feature = "redis")]`/`#[cfg(feature = "ai")]` attributes, which the
+invoking crate evaluates.
 
 Randomized encrypted fields cannot be used as ordinary generated filter/order
 columns. Tenant scope and model policies are generated only when explicitly

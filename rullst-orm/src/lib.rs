@@ -126,6 +126,8 @@ pub use polyglot::{
 };
 #[doc(hidden)]
 pub use pool::portable_subquery;
+#[doc(hidden)]
+pub use pool::raw_fragment;
 pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,

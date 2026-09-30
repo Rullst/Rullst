@@ -17,6 +17,10 @@ pub trait SearchEngine: Send + Sync {
     async fn search(&self, table: &str, query: &str) -> Result<Vec<i32>, crate::Error>;
 }
 
+/// Most IDs one provider search returns. The built-in HTTP providers request
+/// and enforce this many hits for the whole index, before any model scope.
+pub const MAX_SEARCH_HITS: usize = 1_000;
+
 pub(crate) const MAX_SEARCH_DOCUMENT_BYTES: usize = 1_048_576;
 pub(crate) const MAX_SEARCH_QUERY_BYTES: usize = 1_024;
 

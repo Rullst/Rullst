@@ -29,6 +29,49 @@ struct TenantArticle {
     title: String,
 }
 
+/// A real ORM model: Nexus must follow its skip and confidentiality markers.
+#[derive(Clone, Debug, Default, rullst::db::Orm, rullst::db::FromRow, Nexus)]
+#[allow(dead_code)]
+#[orm(table = "nexus_patients")]
+struct NexusPatient {
+    id: i32,
+    name: String,
+    #[sqlx(default, skip)]
+    display_name: String,
+    #[orm(hidden)]
+    reset_token: String,
+    #[orm(encrypted)]
+    diagnosis: String,
+    cpf: Option<rullst::db::SecretString>,
+    #[orm(masked)]
+    api_token: String,
+}
+
+#[test]
+fn derive_nexus_follows_orm_field_semantics() {
+    let fields = NexusPatient::nexus_fields();
+    assert!(fields.iter().all(|field| field.name != "display_name"));
+    for sealed in ["reset_token", "diagnosis", "cpf"] {
+        let field = fields
+            .iter()
+            .find(|field| field.name == sealed)
+            .expect("protected field metadata");
+        assert!(field.hidden && field.readonly, "{sealed}");
+        assert_eq!(field.kind, FieldKind::Password, "{sealed}");
+    }
+    let masked = fields
+        .iter()
+        .find(|field| field.name == "api_token")
+        .expect("masked field metadata");
+    assert_eq!(masked.kind, FieldKind::Password);
+    assert!(!masked.hidden);
+    let name = fields
+        .iter()
+        .find(|field| field.name == "name")
+        .expect("plain field metadata");
+    assert_eq!(name.kind, FieldKind::Text);
+}
+
 #[test]
 fn derive_nexus_generates_model_and_widget_metadata() {
     assert_eq!(DerivedArticle::nexus_table(), "derived_articles");
