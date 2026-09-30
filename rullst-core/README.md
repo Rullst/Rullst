@@ -55,6 +55,9 @@
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
   Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
   `purge_failed_jobs`.
+- **POSIX Cron in UTC:** `Scheduler::task` evaluates five-field POSIX
+  expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and names, and a day
+  matching either restricted day field runs the task.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.

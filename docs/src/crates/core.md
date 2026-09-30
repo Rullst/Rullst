@@ -83,6 +83,14 @@ delay keeps the claiming worker out of a hot loop, and it still reports
 stays pending and is re-offered every five seconds instead of being failed.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
+`Scheduler::task` takes a POSIX five-field expression (`minute hour
+day-of-month month day-of-week`) evaluated in UTC. Day-of-week accepts 0-7
+(0 and 7 are Sunday, 1 is Monday) and names, so `0 9 * * 1-5` runs Monday to
+Friday. When both day fields are restricted, a day matching either one runs
+the task (`0 0 1 * 1` is the 1st plus every Monday); a field starting with `*`
+keeps the intersection. Earlier releases passed the fields to the `cron`
+crate unchanged, where 1 was Sunday and 0 was rejected. Messaging's durable
+recurring publications keep their documented `cron`-crate projection.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained

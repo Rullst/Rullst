@@ -830,7 +830,9 @@ The fifth owner-selected increment belongs to the existing Messaging crate as
 optional `schedules-postgres`, with an explicit facade feature. It coordinates
 bounded UTC cron occurrences across instances through one authoritative PostgreSQL
 database and relays them to the existing static `MessageBroker` contract. Core's
-process-local `Scheduler` retains its API and behavior. A broker publication is
+process-local `Scheduler` retains its API; it evaluates POSIX five-field
+expressions in UTC (weekday 0/7=Sun, either restricted day field matches),
+unlike the projection below. A broker publication is
 not proof of handler completion or an exactly-once external effect.
 
 Require a server-owned namespace, immutable limits and explicit encrypted storage

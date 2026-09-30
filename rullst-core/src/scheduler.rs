@@ -3,6 +3,7 @@
 //! Declarative cron jobs with bounded, observable execution lifecycles.
 
 use crate::error_buffer::{ERROR_BUFFER_CAPACITY, ErrorBuffer, ErrorReporter, error_buffer};
+use cron_expression::CronSchedule;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -71,10 +72,13 @@ pub enum SchedulerFailurePolicy {
 pub type ScheduledHandler =
     Arc<Box<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>>;
 
+#[path = "scheduler_cron.rs"]
+mod cron_expression;
+
 /// A single scheduled task with a cron expression and async handler.
 pub struct ScheduledTask {
     label: String,
-    schedule: cron::Schedule,
+    schedule: CronSchedule,
     handler: ScheduledHandler,
 }
 
@@ -112,20 +116,27 @@ impl Scheduler {
         self
     }
 
-    /// Registers a recurring task using a standard five-field cron expression.
+    /// Registers a recurring task using a POSIX five-field cron expression,
+    /// evaluated in UTC: `minute hour day-of-month month day-of-week`.
+    ///
+    /// Day-of-week accepts 0-7 (0 and 7 are Sunday, 1 is Monday) and English
+    /// names such as `MON`, in lists, ranges and range steps (`1-5`,
+    /// `FRI-SUN`, `1-5/2`, `*/2`). As in POSIX cron, when both day-of-month
+    /// and day-of-week are restricted (neither starts with `*`), the task runs
+    /// on a day matching either field; otherwise both must match. Minute,
+    /// hour, day-of-month and month use the usual ranges, names, lists and
+    /// steps. There is no seconds or year field and no time-zone selection.
     ///
     /// # Errors
-    /// Returns [`SchedulerError::InvalidCron`] when the expression cannot be
-    /// parsed.
+    /// Returns [`SchedulerError::InvalidCron`] when the expression does not
+    /// have exactly five fields or a field is invalid.
     pub fn task<F, Fut>(mut self, cron_expr: &str, handler: F) -> Result<Self, SchedulerError>
     where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let full_expr = format!("0 {cron_expr} *");
-        let schedule: cron::Schedule = full_expr.parse().map_err(|error: cron::error::Error| {
-            SchedulerError::InvalidCron(cron_expr.to_string(), error.to_string())
-        })?;
+        let schedule = CronSchedule::parse(cron_expr)
+            .map_err(|error| SchedulerError::InvalidCron(cron_expr.to_string(), error))?;
         let boxed: ScheduledHandler = Arc::new(Box::new(move || Box::pin(handler())));
 
         self.tasks.push(ScheduledTask {
@@ -262,7 +273,7 @@ async fn run_task_loop(
         }
 
         let now = chrono::Utc::now();
-        let Some(next) = task.schedule.upcoming(chrono::Utc).next() else {
+        let Some(next) = task.schedule.next_after(&now) else {
             errors.report(SchedulerError::ScheduleExhausted {
                 label: task.label.clone(),
             });
@@ -457,7 +468,7 @@ mod tests {
         }));
         let task = ScheduledTask {
             label: "every second".to_string(),
-            schedule: "* * * * * * *".parse().unwrap(),
+            schedule: CronSchedule::every_second(),
             handler,
         };
         let (shutdown_tx, shutdown) = watch::channel(false);
