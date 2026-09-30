@@ -164,19 +164,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            crate::subscription::validate_provider_subscription_id(subscription_id)?;
-            let client = crate::providers::http_client()?;
-            crate::providers::send_http(
-                client
-                    .delete(format!(
-                        "https://api.lemonsqueezy.com/v1/subscriptions/{}",
-                        subscription_id
-                    ))
-                    .bearer_auth(&self.api_key),
-                "lemonsqueezy",
-                "cancel subscription",
-            )
-            .await?;
+            super::lemonsqueezy_subscription::cancel(&self.api_key, subscription_id).await?;
         }
         Ok(())
     }
@@ -188,31 +176,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            crate::subscription::validate_provider_subscription_id(subscription_id)?;
-            let client = crate::providers::http_client()?;
-            let payload = serde_json::json!({
-                "data": {
-                    "type": "subscriptions",
-                    "id": subscription_id,
-                    "attributes": {
-                        "pause": {
-                            "mode": "void"
-                        }
-                    }
-                }
-            });
-            crate::providers::send_http(
-                client
-                    .patch(format!(
-                        "https://api.lemonsqueezy.com/v1/subscriptions/{}",
-                        subscription_id
-                    ))
-                    .bearer_auth(&self.api_key)
-                    .json(&payload),
-                "lemonsqueezy",
-                "pause subscription",
-            )
-            .await?;
+            super::lemonsqueezy_subscription::pause(&self.api_key, subscription_id).await?;
         }
         Ok(())
     }

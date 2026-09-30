@@ -1,4 +1,4 @@
-use super::{http_client, send_http_json};
+use super::{http_client, send_http, send_http_json};
 use crate::{
     CapitalError,
     subscription::{validate_provider_subscription_id, validate_trial_end},
@@ -50,6 +50,69 @@ async fn extend_trial_at(
     bind_response(subscription_id, trial_ends_at, &body)
 }
 
+// Every Lemon Squeezy JSON:API call carries its media type, including the
+// legacy pause and cancel operations.
+const JSON_API: &str = "application/vnd.api+json";
+
+pub(super) async fn pause(api_key: &str, subscription_id: &str) -> Result<(), CapitalError> {
+    validate_provider_subscription_id(subscription_id)?;
+    let endpoint = format!("{LEMON_SUBSCRIPTIONS_ENDPOINT}/{subscription_id}");
+    pause_at(api_key, &endpoint, subscription_id).await
+}
+
+async fn pause_at(
+    api_key: &str,
+    endpoint: &str,
+    subscription_id: &str,
+) -> Result<(), CapitalError> {
+    let payload = json!({
+        "data": {
+            "type": "subscriptions",
+            "id": subscription_id,
+            "attributes": {
+                "pause": {
+                    "mode": "void"
+                }
+            }
+        }
+    });
+    send_http(
+        http_client()?
+            .patch(endpoint)
+            .bearer_auth(api_key)
+            .header("Accept", JSON_API)
+            .header("Content-Type", JSON_API)
+            .json(&payload),
+        "lemonsqueezy",
+        "pause subscription",
+    )
+    .await?;
+    Ok(())
+}
+
+pub(super) async fn cancel(api_key: &str, subscription_id: &str) -> Result<(), CapitalError> {
+    validate_provider_subscription_id(subscription_id)?;
+    cancel_at(
+        api_key,
+        &format!("{LEMON_SUBSCRIPTIONS_ENDPOINT}/{subscription_id}"),
+    )
+    .await
+}
+
+async fn cancel_at(api_key: &str, endpoint: &str) -> Result<(), CapitalError> {
+    send_http(
+        http_client()?
+            .delete(endpoint)
+            .bearer_auth(api_key)
+            .header("Accept", JSON_API)
+            .header("Content-Type", JSON_API),
+        "lemonsqueezy",
+        "cancel subscription",
+    )
+    .await?;
+    Ok(())
+}
+
 fn request_body(subscription_id: &str, trial_ends_at: &str) -> Value {
     json!({
         "data": {
@@ -94,7 +157,7 @@ fn bind_response(
 #[cfg(all(test, feature = "axum"))]
 mod tests {
     use super::*;
-    use axum::{Json, Router, extract::State, http::HeaderMap, routing::patch};
+    use axum::{Json, Router, body::Bytes, extract::State, http::HeaderMap, routing::patch};
     use tokio::sync::mpsc;
 
     #[derive(Debug)]
@@ -129,9 +192,51 @@ mod tests {
         }))
     }
 
+    async fn capture(
+        State(sender): State<mpsc::UnboundedSender<CapturedRequest>>,
+        headers: HeaderMap,
+        body: Bytes,
+    ) -> Json<Value> {
+        sender
+            .send(CapturedRequest {
+                authorization: header(&headers, "authorization"),
+                accept: header(&headers, "accept"),
+                content_type: header(&headers, "content-type"),
+                body: serde_json::from_slice(&body).unwrap_or(Value::Null),
+            })
+            .expect("capture receiver remains open");
+        Json(json!({"data": {"type": "subscriptions", "id": "43"}}))
+    }
+
+    #[tokio::test]
+    async fn pause_and_cancel_send_json_api_media_types() {
+        let (base, mut receiver, server) = start_fixture().await;
+        let endpoint = format!("{base}/v1/subscriptions/43");
+        pause_at("lemon_fixture", &endpoint, "43")
+            .await
+            .expect("pause");
+        let request = receiver.recv().await.expect("captured pause");
+        assert_eq!(request.accept.as_deref(), Some(JSON_API));
+        assert_eq!(request.content_type.as_deref(), Some(JSON_API));
+        assert_eq!(
+            request.body.pointer("/data/attributes/pause/mode"),
+            Some(&json!("void"))
+        );
+
+        cancel_at("lemon_fixture", &endpoint).await.expect("cancel");
+        let request = receiver.recv().await.expect("captured cancel");
+        assert_eq!(
+            request.authorization.as_deref(),
+            Some("Bearer lemon_fixture")
+        );
+        assert_eq!(request.accept.as_deref(), Some(JSON_API));
+        server.abort();
+    }
+
     #[tokio::test]
     async fn trial_update_uses_json_api_and_binds_response() {
-        let (endpoint, mut receiver, server) = start_fixture().await;
+        let (base, mut receiver, server) = start_fixture().await;
+        let endpoint = format!("{base}/v1/subscriptions/42");
         extend_trial_at("lemon_fixture", &endpoint, "42", 1_900_000_000)
             .await
             .expect("trial update");
@@ -192,6 +297,7 @@ mod tests {
         let (sender, receiver) = mpsc::unbounded_channel();
         let router = Router::new()
             .route("/v1/subscriptions/42", patch(fixture))
+            .route("/v1/subscriptions/43", patch(capture).delete(capture))
             .with_state(sender);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
@@ -202,10 +308,6 @@ mod tests {
                 .await
                 .expect("serve Lemon fixture");
         });
-        (
-            format!("http://{address}/v1/subscriptions/42"),
-            receiver,
-            server,
-        )
+        (format!("http://{address}"), receiver, server)
     }
 }
