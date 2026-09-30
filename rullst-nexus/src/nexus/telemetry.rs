@@ -5,6 +5,10 @@ use crate::nexus::ai_chat::detect_ai_provider;
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
 
+/// Nothing in Core, the ORM or the AI client records spans automatically.
+const EMPTY_SPANS_HTML: &str = "<div class=\"nexus-span-empty\">No local spans have been \
+     recorded yet. Application or framework code must record TraceSpan values explicitly.</div>";
+
 /// GET /nexus/telemetry — Microsecond Telemetry & Async Spans in Rullst Nexus.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn nexus_telemetry_page(
@@ -32,11 +36,7 @@ pub async fn nexus_telemetry_page(
     let mut spans_html = String::new();
 
     if recorded_spans.is_empty() {
-        spans_html.push_str(
-            r#"<div class="nexus-span-empty">
-                No active telemetry spans recorded yet. Send HTTP requests or execute ORM queries to stream live microsecond traces.
-            </div>"#,
-        );
+        spans_html.push_str(EMPTY_SPANS_HTML);
     } else {
         // The collector keeps spans oldest-first; show the most recent ones.
         for s in recorded_spans.iter().rev().take(15) {
@@ -72,7 +72,7 @@ pub async fn nexus_telemetry_page(
                 <span>⚡ Telemetry Spans &amp; Microsecond Metrics</span>
                 <span class="nexus-badge nexus-badge-tokio">TOKIO MONITOR</span>
             </h2>
-            <p class="nexus-panel-lead">Microsecond execution latency, Tokio event loop metrics, RSS memory usage, and OpenTelemetry spans.</p>
+            <p class="nexus-panel-lead">Tokio scheduler latency, RSS memory usage, and trace spans that code records explicitly in the local collector.</p>
         </div>
     </div>
 
@@ -100,9 +100,9 @@ pub async fn nexus_telemetry_page(
         </div>
     </div>
 
-    <!-- Active Async Telemetry Spans -->
+    <!-- Recently recorded trace spans -->
     <div class="nexus-box">
-        <h3 class="nexus-box-title">Active Async Telemetry Spans</h3>
+        <h3 class="nexus-box-title">Recently Recorded Trace Spans</h3>
         <div class="nexus-feed">
             {}
         </div>
@@ -153,5 +153,11 @@ mod tests {
         let newest = html.find("nexus-span-order-19").expect("newest span");
         let older = html.find("nexus-span-order-18").expect("older span");
         assert!(newest < older, "the newest span is listed first");
+    }
+
+    #[test]
+    fn empty_state_does_not_promise_automatic_http_or_orm_spans() {
+        assert!(EMPTY_SPANS_HTML.contains("must record TraceSpan values explicitly"));
+        assert!(!EMPTY_SPANS_HTML.contains("HTTP requests"));
     }
 }
