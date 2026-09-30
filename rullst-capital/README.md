@@ -935,7 +935,7 @@ construction. The signed request now carries its parsed `tpAmb`, so a caller
 cannot reinterpret a homologation DPS as production (or the reverse). An
 authorized NFS-e may embed the submitted signed DPS: its signature is allowed
 only inside `infNFSe/DPS`, and the authority's single root signature is the one
-verified.
+verified. That signed embedded DPS must carry the submitted DPS Id and `tpAmb`.
 Certificate bytes, passphrases, and derived PEM are redacted and zeroized where
 owned by Rullst.
 The production profile applies one exact, documented in-memory compatibility

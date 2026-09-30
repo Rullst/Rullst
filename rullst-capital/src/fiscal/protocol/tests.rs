@@ -307,14 +307,22 @@ fn authority_signature_is_verified_beside_the_embedded_dps_signature() {
         2,
         "fixture must carry the embedded DPS and the root signature"
     );
-    validate_authorized_nfse(authorized_nfse(), ACCESS_KEY).expect("genuine NFS-e shape");
+    validate_authorized_nfse(
+        authorized_nfse(),
+        ACCESS_KEY,
+        DPS_ID,
+        NfseApiEnvironment::Homologation,
+    )
+    .expect("genuine NFS-e shape");
     assert!(
         request
             .parse_response(201, NfseEnvironment::Homologation, &success_body())
             .is_ok()
     );
 
-    let signature_start = signed_dps().find("<Signature xmlns").expect("DPS signature");
+    let signature_start = signed_dps()
+        .find("<Signature xmlns")
+        .expect("DPS signature");
     let dps_signature = &signed_dps()[signature_start..signed_dps().len() - "</DPS>".len()];
     let root_signature_start = authorized_nfse()
         .rfind("<Signature xmlns")
@@ -331,6 +339,49 @@ fn authority_signature_is_verified_beside_the_embedded_dps_signature() {
         // A tampered embedded DPS breaks the authority's digest.
         authorized_nfse().replacen("<tpAmb>2</tpAmb>", "<tpAmb>1</tpAmb>", 1),
     ] {
-        assert!(validate_authorized_nfse(&invalid, ACCESS_KEY).is_err());
+        assert!(
+            validate_authorized_nfse(
+                &invalid,
+                ACCESS_KEY,
+                DPS_ID,
+                NfseApiEnvironment::Homologation
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn authorization_is_bound_to_the_signed_embedded_dps() {
+    const OTHER_DPS_ID: &str = "DPS355030821122233300018100001000000000000102";
+    let embedded = |id: &str, environment: u8| {
+        sign_fixture(
+            &format!(
+                "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{id}\"><tpAmb>{environment}</tpAmb></infDPS></DPS>"
+            ),
+            id,
+        )
+    };
+    let request = NfseIssueRequest::try_from_signed_dps(signed_dps()).expect("request");
+    for nfse in [
+        // A validly signed NFS-e for another DPS, wrapped with this idDps.
+        sign_nfse(&embedded(OTHER_DPS_ID, 2)),
+        // The same DPS Id authorized in the other environment.
+        sign_nfse(&embedded(DPS_ID, 1)),
+        // No embedded DPS at all.
+        sign_nfse(""),
+    ] {
+        let mut body: serde_json::Value =
+            serde_json::from_slice(&success_body()).expect("success JSON");
+        body["nfseXmlGZipB64"] = json!(encoded_xml(&nfse));
+        assert!(
+            request
+                .parse_response(
+                    201,
+                    NfseEnvironment::Homologation,
+                    &serde_json::to_vec(&body).expect("JSON"),
+                )
+                .is_err()
+        );
     }
 }

@@ -74,7 +74,8 @@ fn authorization() -> NfseIssueResponse {
         let id = format!("NFS{ACCESS_KEY}");
         sign_fixture(
             &format!(
-                "<NFSe xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infNFSe Id=\"{id}\"/></NFSe>"
+                "<NFSe xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infNFSe Id=\"{id}\">{}</infNFSe></NFSe>",
+                signed_dps(DPS_ID)
             ),
             &id,
         )

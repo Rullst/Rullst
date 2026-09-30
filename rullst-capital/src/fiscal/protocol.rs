@@ -252,7 +252,12 @@ fn parse_authorization(
     let processed_at = parse_timestamp(&wire.processed_at)?;
     let compressed = decode_base64(&wire.nfse_xml_gzip_base64)?;
     let authorized_xml = gunzip_bounded(&compressed, MAX_SEFIN_RESPONSE_BYTES)?;
-    validate_authorized_nfse(&authorized_xml, &wire.access_key)?;
+    validate_authorized_nfse(
+        &authorized_xml,
+        &wire.access_key,
+        expected_dps_id,
+        expected_environment,
+    )?;
     let warnings = validate_messages(wire.alertas.unwrap_or_default(), false)?;
     Ok(NfseIssueAuthorization {
         environment,

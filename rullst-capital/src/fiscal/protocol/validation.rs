@@ -82,7 +82,12 @@ fn signed_environment(
     }
 }
 
-pub(super) fn validate_authorized_nfse(xml: &str, access_key: &str) -> Result<(), FiscalError> {
+pub(super) fn validate_authorized_nfse(
+    xml: &str,
+    access_key: &str,
+    expected_dps_id: &str,
+    expected_environment: NfseApiEnvironment,
+) -> Result<(), FiscalError> {
     if xml.is_empty() || xml.len() > MAX_SEFIN_RESPONSE_BYTES || xml.contains("<!DOCTYPE") {
         return Err(response_error(
             "authorized NFS-e XML is empty, oversized or unsafe",
@@ -123,6 +128,12 @@ pub(super) fn validate_authorized_nfse(xml: &str, access_key: &str) -> Result<()
         return Err(response_error("infNFSe Id must be unique in the NFS-e"));
     }
     let signature = validate_nfse_signature_layout(&document, root, information, &expected_id)?;
+    validate_embedded_dps(
+        &document,
+        information,
+        expected_dps_id,
+        expected_environment,
+    )?;
     // SEFIN embeds the submitted signed DPS inside infNFSe, so a genuine
     // NFS-e has two signatures. Verify the authority's own root signature by
     // moving it to the front (sibling order does not change what it signs)
@@ -172,6 +183,48 @@ fn validate_nfse_signature_layout<'a, 'input>(
     }
     validate_reference(signature, expected_id)?;
     Ok(signature)
+}
+
+// Binds the authorization to this request inside the signed infNFSe rather
+// than only through the unsigned JSON wrapper: the embedded DPS must carry the
+// submitted Id and the requested tpAmb.
+fn validate_embedded_dps(
+    document: &roxmltree::Document<'_>,
+    information: roxmltree::Node<'_, '_>,
+    expected_dps_id: &str,
+    expected_environment: NfseApiEnvironment,
+) -> Result<(), FiscalError> {
+    let binding_error = || response_error("signed NFS-e does not embed the submitted DPS");
+    let dps = single_nfse_child(information, "DPS").ok_or_else(binding_error)?;
+    let dps_information = single_nfse_child(dps, "infDPS").ok_or_else(binding_error)?;
+    if dps_information.attribute("Id") != Some(expected_dps_id)
+        || document
+            .descendants()
+            .filter(|node| node.attribute("Id") == Some(expected_dps_id))
+            .count()
+            != 1
+    {
+        return Err(binding_error());
+    }
+    if signed_environment(dps_information).map_err(|_| binding_error())? != expected_environment {
+        return Err(response_error(
+            "signed NFS-e DPS environment does not match the request",
+        ));
+    }
+    Ok(())
+}
+
+fn single_nfse_child<'a, 'input>(
+    parent: roxmltree::Node<'a, 'input>,
+    name: &str,
+) -> Option<roxmltree::Node<'a, 'input>> {
+    let mut children = parent.children().filter(|node| {
+        node.is_element()
+            && node.tag_name().name() == name
+            && node.tag_name().namespace() == Some(NFSE_NAMESPACE)
+    });
+    let child = children.next()?;
+    children.next().is_none().then_some(child)
 }
 
 fn root_signature_first(
