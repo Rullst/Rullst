@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790730579061,
+  "lastUpdate": 1790735060983,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9417,6 +9417,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/3597ec1993110cc059af6df3e369e0ee9eaa7aaf"
         },
         "date": 1790730578453,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "346377ee9b2309c8f47c1ff05224af8837dce495",
+          "message": "Merge pull request #335 from Rullst/fix/v13-orm-low-fixes\n\nfix(orm): rollback bookkeeping, driver detection, DDL literals and generated-code robustness",
+          "timestamp": "2026-09-29T22:58:16-03:00",
+          "tree_id": "a3219ab0aff4c606df30a3ba952e26e36bcd155f",
+          "url": "https://github.com/Rullst/Rullst/commit/346377ee9b2309c8f47c1ff05224af8837dce495"
+        },
+        "date": 1790735060371,
         "tool": "cargo",
         "benches": [
           {
