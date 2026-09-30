@@ -198,6 +198,9 @@ fn has_unknown_config(value: &toml::Table) -> bool {
                 "user_agent_blocklist",
                 "enable_pii_masking",
                 "csrf_signed_webhook_paths",
+                "trusted_proxies",
+                "trusted_proxy_header",
+                "trust_forwarded_proto",
             ],
         ),
     ];

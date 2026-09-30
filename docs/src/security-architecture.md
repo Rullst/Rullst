@@ -35,7 +35,7 @@ additional Security controls require explicit composition.
 | :--- | :--- |
 | Sites and API backends | Bounded WAF/RASP inspection, HTML sanitization, CSP/security headers, login abuse controls, ownership/role helpers, WebSocket-origin validation and audit primitives are available. Application policy and negative route tests remain necessary. |
 | Multiple application instances | The opt-in Redis limiter has an atomic shared-budget contract. Production must require distributed mode explicitly. Process-local jails, bans and counters do not become shared because the application has more replicas. |
-| Reverse proxy | Verified socket identity is the default. Forwarded addresses need an explicit trusted-hop policy; an arbitrary client header cannot establish the rate-limit or ban identity. |
+| Reverse proxy | Verified socket identity is the default. Core's `TrustedProxyLayer` (`Server::trusted_proxies` or `[security] trusted_proxies`) accepts a forwarded address only from listed proxy networks; an arbitrary client header cannot establish the rate-limit or ban identity. |
 | Host and cloud account | OS/SSH patching, firewall rules, IAM, secret custody, backup/restore and privileged container configuration belong to the deployment operator/provider. The crate does not administer these systems. |
 | Network availability | Application request limits can reduce specific abuse. Network saturation and upstream DDoS filtering require infrastructure controls outside the application process. |
 
@@ -84,7 +84,11 @@ object-level ownership check.
 
 The direct socket peer is the default network identity. A deployment must not
 accept `Forwarded` or `X-Forwarded-For` until its exact proxy hops are configured
-and tested. Body limits must be outer to any middleware that buffers content.
+and tested. Core implements the first stage as `TrustedProxyLayer`, which
+`Server::trusted_proxies` mounts outside the security baseline, lifecycle,
+Traffic Shield and rate limiter in both the static and hot-reload servers (see
+[identity and network trust](#identity-and-network-trust)). Body limits must be
+outer to any middleware that buffers content.
 Webhook routes may bypass browser CSRF only by exact path and only when their
 provider signature middleware is mandatory.
 
@@ -169,6 +173,47 @@ most 16,384 keys and fails closed for new keys while it is full. Never trust
 client. Tenant membership and roles must come from an authenticated session or a
 cryptographically trusted internal gateway.
 
+### Trusted-proxy client resolution
+
+`rullst_core::security::TrustedProxyLayer` is the explicit policy for
+deployments behind reverse proxies. `TrustedProxyConfig::new` accepts at most 64
+IPv4/IPv6 addresses or CIDR networks; it rejects `/0`, host bits and duplicates,
+and normalizes IPv4-mapped IPv6 entries. An empty policy never reads forwarding
+headers. List only the networks your own proxies connect from: any host inside a
+listed network can choose the client address.
+
+- Only when the socket peer is trusted does the layer read exactly one header:
+  `X-Forwarded-For` (default) or RFC 7239 `Forwarded` (`with_header`). The two
+  are never merged, and header lines form one list in their received order.
+- The list is walked right to left, skipping trusted proxies; the first
+  untrusted address is the client, and if every hop is trusted the left-most is
+  used. Text to the left of the client entry is never parsed, so a client cannot
+  choose its identity or force a fallback by padding its own header.
+- Ports, IPv6 brackets and IPv4-mapped addresses are normalized. `unknown`,
+  obfuscated `_identifiers`, unquoted RFC 7239 IPv6/ports, duplicate
+  parameters and other malformed entries are rejected. At most 4,096 bytes and
+  32 entries are examined from the right.
+- A missing, malformed, oversized or over-long header from a trusted peer keeps
+  the socket peer, never fails the request and emits one `tracing` event
+  (`debug` when missing, otherwise `warn` with the reason) naming the header and
+  peer but never the header contents.
+- On success the request's `ConnectInfo<SocketAddr>` becomes the client IP with
+  port 0, so every existing consumer (Core and Security rate limiters, honeypots,
+  the error console and Nexus lockout) uses it unchanged. Every request with peer
+  metadata also receives a `ClientAddr` extension (client IP, original peer,
+  `via_trusted_proxy`), which has no public constructor.
+- `trust_forwarded_proto(true)` additionally reports the scheme from that trusted
+  peer as `ClientAddr::forwarded_proto`: one unambiguous `X-Forwarded-Proto`
+  value, or the `proto=` of the selected `Forwarded` element. Nexus accepts an
+  `https` report as TLS evidence for Basic Auth. Enable it only when every
+  trusted proxy overwrites the value.
+
+The hot-reload development server now also supplies `ConnectInfo` from the
+accepted socket. The layer does not authenticate a proxy beyond its network
+address, cannot detect a trusted proxy that forwards client-supplied headers
+unchanged, and does not replace authenticated per-user limits or distributed
+rate-limit state.
+
 ## Request and response inspection
 
 RASP/WAF rules are bounded to avoid uncontrolled CPU or memory work. They can
@@ -210,7 +255,9 @@ Neither those workflows nor this crate certify an application for SOC 2, ISO
 - Mount middleware in a tested order and use exact webhook CSRF exemptions.
 - Configure secure session, webhook, audit, and encryption keys; reject weak or
   empty live credentials.
-- Define trusted proxies and use the direct peer as the default identity.
+- Define trusted proxies with `Server::trusted_proxies` (or `[security]
+  trusted_proxies`) listing only the real proxy networks, and use the direct
+  peer as the default identity.
 - Apply owner/tenant/role checks server-side for every data operation.
 - Validate per-response CSP nonces against rendered pages.
 - Export telemetry and audit records to durable, access-controlled storage.

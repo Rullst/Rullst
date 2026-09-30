@@ -112,8 +112,12 @@ names are server-owned configuration and should not contain personal data.
 PostgreSQL must use permanent tables, fsync, full-page writes, synchronous commits
 and a writable primary. Remote connections require verified TLS. All operations
 serialize through the namespace control row and recheck persisted server time
-after lock waits and around commit. The host remains responsible for trusted
-clock discipline, database credentials, backup encryption, anti-rollback policy,
+after lock waits and around commit. Instances share that recorded time but not
+a clock: an instance whose clock trails it by at most five seconds adopts the
+recorded time, so shared time never moves backwards and no lease or deadline is
+judged earlier, while a larger regression fails with `RecurringError::Clock`.
+The host remains responsible for trusted clock discipline (a clock running far
+ahead still blocks the others until real time catches up), database credentials, backup encryption, anti-rollback policy,
 failover and capacity monitoring. These checks do not certify a deployment's
 backup/failover design.
 

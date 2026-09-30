@@ -12,6 +12,7 @@ pub mod hotswap;
 mod scheduler_supervision;
 /// Server-level HTTP middlewares (HMR script injection, static asset compression).
 pub mod server_middleware;
+mod stack;
 mod traffic;
 
 #[cfg(test)]

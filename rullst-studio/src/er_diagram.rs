@@ -92,13 +92,7 @@ fn append_relation(diagram: &mut String, from_table: &str, row: &SchemaRow) {
     diagram.push_str("\"\n");
 }
 
-fn configured_pool() -> Result<&'static rullst_core::db::RullstPool, sqlx::Error> {
-    rullst_core::db::safe_pool()
-        .ok_or_else(|| sqlx::Error::Configuration("Studio database pool is not configured".into()))
-}
-
-async fn get_sqlite_schema() -> Result<String, sqlx::Error> {
-    let pool = configured_pool()?;
+async fn get_sqlite_schema(pool: &rullst_core::db::RullstPool) -> Result<String, sqlx::Error> {
     let tables = rullst_orm::_sqlx::query(
         "SELECT name FROM sqlite_schema WHERE type = 'table' \
          AND name NOT LIKE 'sqlite_%' AND name != '_sqlx_migrations' ORDER BY name",
@@ -131,8 +125,11 @@ async fn get_sqlite_schema() -> Result<String, sqlx::Error> {
 /// PostgreSQL 12+ reports information-schema identifiers as the `name` type,
 /// which the default `sqlx::Any` driver cannot decode, so every text column is
 /// cast to `VARCHAR`. Bind markers are renumbered for the same build.
-async fn get_postgres_schema() -> Result<String, sqlx::Error> {
-    let pool = configured_pool()?;
+///
+/// A column is listed once, whatever the number of constraints it belongs to,
+/// and composite foreign keys pair each referencing column with the
+/// referenced column at the same key position (`conkey`/`confkey`).
+async fn get_postgres_schema(pool: &rullst_core::db::RullstPool) -> Result<String, sqlx::Error> {
     let tables = rullst_orm::_sqlx::query(
         "SELECT CAST(table_name AS VARCHAR) AS name FROM information_schema.tables \
          WHERE table_schema = 'public' AND table_name != '_sqlx_migrations' \
@@ -147,15 +144,19 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
         let mut columns_query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
             "SELECT CAST(c.column_name AS VARCHAR) AS name, \
                     CAST(c.data_type AS VARCHAR) AS kind, \
-             CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END AS pk \
+                    CASE WHEN EXISTS ( \
+                        SELECT 1 FROM information_schema.table_constraints tc \
+                        JOIN information_schema.key_column_usage kcu \
+                          ON tc.constraint_catalog = kcu.constraint_catalog \
+                         AND tc.constraint_schema = kcu.constraint_schema \
+                         AND tc.constraint_name = kcu.constraint_name \
+                        WHERE tc.constraint_type = 'PRIMARY KEY' \
+                          AND tc.table_schema = c.table_schema \
+                          AND tc.table_name = c.table_name \
+                          AND kcu.table_name = c.table_name \
+                          AND kcu.column_name = c.column_name \
+                    ) THEN 1 ELSE 0 END AS pk \
              FROM information_schema.columns c \
-             LEFT JOIN information_schema.key_column_usage kcu \
-               ON c.table_schema = kcu.table_schema AND c.table_name = kcu.table_name \
-              AND c.column_name = kcu.column_name \
-             LEFT JOIN information_schema.table_constraints tc \
-               ON kcu.constraint_schema = tc.constraint_schema \
-              AND kcu.constraint_name = tc.constraint_name \
-              AND tc.constraint_type = 'PRIMARY KEY' \
              WHERE c.table_schema = 'public' AND c.table_name = ",
         );
         columns_query
@@ -167,20 +168,24 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
         append_entity(&mut diagram, &table, &columns);
 
         let mut relations_query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
-            "SELECT CAST(kcu.column_name AS VARCHAR) AS from_column, \
-                    CAST(ccu.table_name AS VARCHAR) AS to_table, \
-                    CAST(ccu.column_name AS VARCHAR) AS to_column \
-             FROM information_schema.table_constraints tc \
-             JOIN information_schema.key_column_usage kcu \
-               ON tc.constraint_name = kcu.constraint_name \
-              AND tc.table_schema = kcu.table_schema \
-             JOIN information_schema.constraint_column_usage ccu \
-               ON ccu.constraint_name = tc.constraint_name \
-              AND ccu.table_schema = tc.table_schema \
-             WHERE tc.constraint_type = 'FOREIGN KEY' \
-               AND tc.table_schema = 'public' AND tc.table_name = ",
+            "SELECT CAST(a.attname AS VARCHAR) AS from_column, \
+                    CAST(rt.relname AS VARCHAR) AS to_table, \
+                    CAST(ra.attname AS VARCHAR) AS to_column \
+             FROM pg_catalog.pg_constraint con \
+             JOIN pg_catalog.pg_class t ON t.oid = con.conrelid \
+             JOIN pg_catalog.pg_namespace n ON n.oid = t.relnamespace \
+             JOIN pg_catalog.pg_class rt ON rt.oid = con.confrelid \
+             CROSS JOIN LATERAL unnest(con.conkey, con.confkey) \
+                  WITH ORDINALITY AS k(attnum, refattnum, position) \
+             JOIN pg_catalog.pg_attribute a \
+               ON a.attrelid = con.conrelid AND a.attnum = k.attnum \
+             JOIN pg_catalog.pg_attribute ra \
+               ON ra.attrelid = con.confrelid AND ra.attnum = k.refattnum \
+             WHERE con.contype = 'f' AND n.nspname = 'public' AND t.relname = ",
         );
-        relations_query.push_bind(&table);
+        relations_query
+            .push_bind(&table)
+            .push(" ORDER BY con.conname, k.position");
         for relation in build_for_driver(&mut relations_query, "postgres")?
             .fetch_all(pool)
             .await?
@@ -191,8 +196,7 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
     Ok(diagram)
 }
 
-async fn get_mysql_schema() -> Result<String, sqlx::Error> {
-    let pool = configured_pool()?;
+async fn get_mysql_schema(pool: &rullst_core::db::RullstPool) -> Result<String, sqlx::Error> {
     let tables = rullst_orm::_sqlx::query(
         "SELECT table_name AS name FROM information_schema.tables \
          WHERE table_schema = DATABASE() AND table_name != '_sqlx_migrations' \
@@ -231,11 +235,14 @@ async fn get_mysql_schema() -> Result<String, sqlx::Error> {
     Ok(diagram)
 }
 
-async fn schema_for_driver(driver: &str) -> Result<String, sqlx::Error> {
+async fn schema_for_driver(
+    pool: &rullst_core::db::RullstPool,
+    driver: &str,
+) -> Result<String, sqlx::Error> {
     match driver {
-        "postgres" => get_postgres_schema().await,
-        "mysql" | "mariadb" => get_mysql_schema().await,
-        "sqlite" | "libsql" | "turso" => get_sqlite_schema().await,
+        "postgres" => get_postgres_schema(pool).await,
+        "mysql" | "mariadb" => get_mysql_schema(pool).await,
+        "sqlite" | "libsql" | "turso" => get_sqlite_schema(pool).await,
         _ => Err(sqlx::Error::Configuration(
             format!("ER diagram does not support database driver `{driver}`").into(),
         )),
@@ -243,8 +250,15 @@ async fn schema_for_driver(driver: &str) -> Result<String, sqlx::Error> {
 }
 
 async fn render_er_diagram() -> Html<String> {
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let (diagram, notice) = match schema_for_driver(driver).await {
+    // The first database view initializes the pool with the shared resolver;
+    // the driver is read afterwards so that it describes that pool.
+    let schema = match crate::data_browser::ensure_pool_initialized().await {
+        Ok(pool) => {
+            schema_for_driver(pool, rullst_core::db::safe_driver().unwrap_or("sqlite")).await
+        }
+        Err(error) => Err(error),
+    };
+    let (diagram, notice) = match schema {
         Ok(diagram) => (diagram, String::new()),
         Err(error) => (
             String::from("erDiagram\n"),

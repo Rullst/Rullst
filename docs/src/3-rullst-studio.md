@@ -69,6 +69,8 @@ mounted push-only ingestion router.
   store. Audit-chain integrity displays `Unavailable` until a verifier is
   connected.
 - `/studio/capital`: the in-process revenue view; it is not an accounting ledger.
+  Its table lists the 20 most recent webhook events and its badge counts every
+  event the process-local manager retains (at most 100).
 - `/studio/traces`: local spans plus authenticated attribute-free distributed
   records and explicit slow/repeated SQL-label heuristics.
 - `/studio/cache`: metadata-only view of an explicitly supplied Memory/Redis
@@ -83,16 +85,23 @@ overhead.
 ## Tooling boundaries
 
 - The data browser reads, searches, and paginates allowlisted SQLx identifiers.
-  A page shows at most 25 rows; the database cuts each cell's text to 256
+  A page shows at most 25 rows, ordered by the complete primary key (otherwise
+  by every selected column); the database cuts each cell's text to 256
   characters before it reaches Studio (key columns keep up to 16 KiB for row
   actions, and a longer key makes its row read-only), and search terms are
-  limited to 256 bytes.
+  limited to 256 bytes. Search matches the displayed columns (at most 256),
+  and the record count uses the same predicate.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is
-  required and backend-specific types remain read-only. A table is read-only
+  required and backend-specific types, including MySQL/MariaDB unsigned or
+  zero-filled integers, remain read-only. A row offers only the
+  actions whose form (for Edit, with a maximum-size value) fits the 64 KiB
+  request limit, and an empty text key is addressable. A table is read-only
   when a primary-key column falls outside the ASCII identifier boundary or the
-  256-column cap, and rows with a `NULL` key value offer no actions. Each write
+  256-column cap or uses a floating-point type (its rendered text is rounded),
+  and rows whose key is `NULL`, is not decodable as text or contains a line
+  break or NUL offer no actions. Each write
   runs in a transaction that commits only when exactly one row changed; any
   other count is rolled back and fails (non-transactional engines such as
   MySQL MyISAM cannot roll back). SQLite, PostgreSQL, MySQL, and MariaDB run
@@ -100,14 +109,21 @@ overhead.
   renumbers bind markers to `$n` for PostgreSQL and reads information-schema
   identifiers as `VARCHAR`, so the table view, search, row actions and ER
   diagram also work there; the PostgreSQL contract runs under that build and
-  under `strict-postgres`. This does not supply application tenant/RBAC,
+  under `strict-postgres`. PostgreSQL browsing covers the `public` schema, and
+  every data statement names that schema so that `search_path` cannot select a
+  same-named table elsewhere. This does not supply application tenant/RBAC,
   audit history, undo, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
   routes.
 - The request SSE records method, URI, status and latency. It deliberately does
   not capture bodies or headers, which commonly contain credentials and PII.
-- The jobs view lists the bounded snapshot exposed by a supplied queue. SQLite
+- The jobs view lists the 50 most recent records exposed by a supplied queue;
+  its processing/failed/completed counts describe only that window, while the
+  pending count and the purge actions cover the whole queue. Studio previews at
+  most 256 payload and 512 error characters without scanning further, but the
+  queue listing still returns each record's complete payload and error, so the
+  snapshot bounds records, not payload bytes. SQLite
   deletes successful rows by default; an application can explicitly select
   `Queue::sqlite_with_completed_history` for bounded, transactionally pruned
   completion history and can purge that history from Studio. Retained payloads
@@ -116,17 +132,21 @@ overhead.
   the verified local marker, so the raw `jobs_monitor::router` returns `403`
   for them when mounted outside `Studio::into_router`.
 - The ER view inspects SQLite, PostgreSQL, MySQL, or MariaDB metadata with bound
-  lookup values and normalizes Mermaid identifiers. An unconfigured or
+  lookup values and normalizes Mermaid identifiers. Each column is listed once,
+  and composite foreign keys pair their columns by key position. An unconfigured or
   unsupported source remains visibly unavailable.
 - The feature-flags page changes the database table used by `DbFeatureDriver`.
   Toggles require the verified local marker; the raw `feature_flags::router`
   returns `403` for them. Viewing the page never changes the schema: a missing
   `rullst_feature_flags` table is reported with the schema to add in an
-  application migration.
+  application migration, while connection, permission or column errors are
+  reported as query failures without that guidance.
   A successful toggle invalidates already-warm drivers in the same process;
   other processes and direct writers converge by TTL unless the host distributes
   an invalidation signal.
-- The environment page redacts values by default and adds only a safe projection
+- The environment page redacts values by default, also redacts an allowlisted
+  value that carries URL user information, a bearer token or a secret-named
+  assignment (such as `?access_token=`), and adds only a safe projection
   of process-global `RullstConfig`; URLs, filesystem paths, secrets, cookies and
   credentials are omitted.
 - Cache inspection returns at most 100 UI rows containing an opaque keyed

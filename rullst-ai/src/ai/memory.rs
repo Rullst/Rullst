@@ -13,7 +13,7 @@ mod sql;
 mod support;
 #[cfg(feature = "sql-memory")]
 pub use sql::{SqlChatBackend, SqlChatMemory};
-use support::{unix_timestamp, validate_content};
+use support::{unix_timestamp, validate_content, validate_response};
 
 const MAX_CONVERSATION_ID_BYTES: usize = 128;
 const MAX_MESSAGE_BYTES: usize = 64 * 1024;
@@ -144,7 +144,8 @@ impl ChatMemoryEntry {
     }
 }
 
-/// Consistent recent history plus the revision used for compare-and-swap.
+/// Consistent recent history plus the revision used for compare-and-swap. The
+/// window is empty once host retention removed every message of a conversation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChatHistory {
     revision: i64,
@@ -160,7 +161,7 @@ impl ChatHistory {
             || revision & 1 != 0
             || entries.len() > MAX_HISTORY_MESSAGES
             || entries.len() & 1 != 0
-            || (revision == 0) != entries.is_empty()
+            || (revision == 0 && !entries.is_empty())
         {
             return Err(ChatMemoryError::CorruptHistory);
         }
@@ -455,7 +456,8 @@ where
     /// turn. A provider response that the guardrail would block is therefore
     /// rejected with [`StatefulChatError::Generation`] carrying
     /// [`AiError::BlockedByFirewall`] and neither half of the exchange is
-    /// persisted, so one response cannot make the conversation unusable.
+    /// persisted, so one response cannot make the conversation unusable. An
+    /// empty or oversized response is likewise a `Generation` failure.
     pub async fn send(
         &self,
         tenant: &TenantContext,
@@ -478,7 +480,7 @@ where
             .send()
             .await
             .map_err(StatefulChatError::Generation)?;
-        validate_content(&response)?;
+        validate_response(&response).map_err(StatefulChatError::Generation)?;
         AiGuardrails::prepare(&response).map_err(StatefulChatError::Generation)?;
         let revision = self
             .memory

@@ -190,6 +190,8 @@ pub struct OtaManager {
     rollback_counter: u64,
     trusted_key: VerifyingKey,
     pending_manifest: Option<OtaManifest>,
+    /// Manifest whose store commit failed with an outcome-unknown error.
+    uncertain_commit: Option<OtaManifest>,
 }
 
 impl OtaManager {
@@ -229,6 +231,7 @@ impl OtaManager {
             rollback_counter,
             trusted_key,
             pending_manifest: None,
+            uncertain_commit: None,
         })
     }
 
@@ -382,12 +385,13 @@ impl OtaManager {
     ///
     /// A store failure leaves the manifest verified and available for retry.
     /// A store may report a failure after it durably committed the counter, for
-    /// example when an acknowledgement is lost. When a retry's compare-and-set
-    /// then reports that the store already holds exactly this manifest's
+    /// example when an acknowledgement is lost. When a retry of that same
+    /// manifest's commit then reports that the store already holds exactly its
     /// counter, and a fresh [`RollbackCounterStore::load`] confirms it, the
     /// earlier commit is completed and the receipt is returned. Any other
-    /// conflict means this manager is stale and should be reconstructed from
-    /// the store before another update is verified. Platform code should flash
+    /// conflict, including one for a manifest this manager never attempted,
+    /// means this manager is stale and should be reconstructed from the store
+    /// before another update is verified. Platform code should flash
     /// and validate [`Self::verified_target_partition`] before calling this
     /// method, then coordinate the returned receipt with its bootloader.
     pub fn commit_verified_update_with_store<S: RollbackCounterStore>(
@@ -403,10 +407,18 @@ impl OtaManager {
         if let Err(error) =
             counter_store.compare_and_set(self.rollback_counter, manifest.rollback_counter)
         {
-            if reports_committed_counter(error, manifest.rollback_counter)
+            if self.uncertain_commit.as_ref() == Some(&manifest)
+                && reports_committed_counter(error, manifest.rollback_counter)
                 && counter_store.load() == Ok(manifest.rollback_counter)
             {
                 return Ok(self.apply_verified_manifest(manifest));
+            }
+            if !matches!(
+                error,
+                RollbackCounterError::Conflict { .. } | RollbackCounterError::NonMonotonic { .. }
+            ) {
+                // The store may have committed this manifest's counter.
+                self.uncertain_commit = Some(manifest);
             }
             self.status = OtaStatus::Verified;
             return Err(error.into());
@@ -423,6 +435,7 @@ impl OtaManager {
         self.firmware_version.clone_from(&manifest.version);
         self.rollback_counter = manifest.rollback_counter;
         self.pending_manifest = None;
+        self.uncertain_commit = None;
         self.status = OtaStatus::Idle;
 
         OtaCommit {

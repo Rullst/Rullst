@@ -193,6 +193,28 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Trusted-proxy client resolution
+
+- Add `rullst_core::security::TrustedProxyLayer` and
+  `Server::trusted_proxies(TrustedProxyConfig)`, or `[security]`
+  `trusted_proxies`, `trusted_proxy_header` and `trust_forwarded_proto` in
+  `Rullst.toml`. Only a socket peer inside at most 64 validated networks may
+  report the client, through `X-Forwarded-For` (default) or RFC 7239
+  `Forwarded`, never both; `/0`, host bits and duplicates are rejected.
+- The chain is walked right to left, examining at most 4 KiB and 32 entries,
+  and text left of the client entry is never parsed. Missing or malformed
+  chains keep the peer and log without header contents.
+- On success `ConnectInfo` becomes the client IP with port 0, so the Core and
+  Security rate limiters, honeypots, the error console and the Nexus lockout
+  isolate clients behind a proxy without application middleware. A
+  `ClientAddr` extension records the client, the original peer and the opt-in
+  forwarded scheme.
+- The layer is mounted outside the security baseline, lifecycle, Traffic
+  Shield and rate limiter, and health probes keep their exemption behind it.
+  The hot-reload server now also supplies `ConnectInfo`.
+- Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
+  `deploy:doctor` reviews configured networks (threat case `CORE-03`).
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or
@@ -284,6 +306,29 @@ A prepared version section does not establish that its tag or crates exist.
   releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
   existing shells require an explicit application-owned dependency update.
 
+### Auth, AI and IoT low-severity review fixes
+
+- Auth: the SQLite passkey and JWT revocation stores reject every in-memory or
+  URI-selected target, and passkey usage and revocation survive a backward
+  clock step.
+- Auth: session cookie extraction ignores unrelated malformed cookies, JWT
+  lifetimes under one second are rejected, and concurrent first calls to
+  `get_app_key` in development agree on one key.
+- Auth: duplicate registrations return `InvalidAction`, delivered or failed
+  outbox rows no longer block sign-ups or silently drop resets, and API-token
+  and email-login state tolerate up to 5 s of cross-host clock skew.
+- AI: `FallbackProvider` never switches embedding models after a failure, a
+  relative Markdown image next to an unrelated link no longer blocks a RAG
+  prompt, and blocks caused by the combined context are audited as
+  `ContextRejected`.
+- AI: a tool approval survives an audit failure before the tool runs; chat
+  memory keeps in-memory SQLite stable, accepts fully expired histories and
+  reports invalid model responses as generation failures; padded `mock_*` keys
+  are labelled offline.
+- IoT: CoAP rejects `.`/`..` Uri-Path segments and checks the datagram ceiling
+  with exact option sizes; OTA lost-acknowledgement reconciliation applies
+  only when the same manifest is retried.
+
 ### Auth review fixes
 
 - `SqlRecoveryStore` rejects passwords over 72 bytes with `InvalidInput` before
@@ -343,6 +388,30 @@ A prepared version section does not establish that its tag or crates exist.
   cannot receive Apple's `form_post` callback. New `AuthSessionForm` consumes
   the same stored challenge from a bounded form POST, and tutorial 42 explains
   the `SameSite=None; Secure` challenge cookie it needs.
+
+### Mail, capital and messaging second-pass review fixes
+
+- Azure Communication Services sends work again: the driver no longer builds
+  `emails:send` as a URL scheme, which made every real delivery fail. The
+  `http://localhost:<port>` managed-identity endpoint that Azure Container Apps
+  injects is accepted and pinned to loopback addresses.
+- The homograph check compares scripts per host label and ignores the query,
+  so single-script Greek or Cyrillic IDN links and non-Latin query text no
+  longer block delivery, while Latin-lookalike labels are still rejected.
+- `PaidInvoiceDelivery::from` sets a verified sender.
+- Queued attachment bytes are stored as base64 (legacy integer arrays are still
+  accepted), cutting enqueue and worker memory from about 32x to about 1.3x the
+  attachment size. Upgrade workers before producers.
+- Strict attachment inspection again rejects unrecognized declared types such
+  as `text/html` behind a benign extension.
+- `FailoverDriver` forwards tenant context to its primary and fallbacks.
+- Wise status reads no longer report bounced, charged-back, unknown or
+  mismatched transfers as Processing; `get_transfer_state` returns the typed
+  state and `with_sandbox_api()` targets the sandbox.
+- MySQL/MariaDB webhook replay claims inside a caller transaction reject an
+  event claimed concurrently after the transaction's snapshot.
+- Recurring publication instances tolerate up to 5 s of cross-host clock skew
+  instead of failing with `Clock`.
 
 ### Capital review fixes
 
@@ -530,6 +599,27 @@ A prepared version section does not establish that its tag or crates exist.
   maintenance. JavaScript execution and production exploitation have not been
   established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
   for the demonstrated defect, application actions and admission boundaries.
+
+### Studio low-severity review fixes
+
+- Studio table pages are ordered by primary key, the record count and search
+  use the same predicate over the displayed columns, and PostgreSQL statements
+  name the `public` schema so `search_path` cannot pick another table.
+- Row actions: floating-point keys and keys that are NULL, undecodable or
+  contain line breaks or NUL are read-only; empty text keys work; actions are
+  offered only when their form fits the 64 KiB limit; row mutations work when
+  the raw browser is nested under `/studio`; MySQL/MariaDB unsigned and
+  zerofill integers are read-only.
+- The PostgreSQL ER diagram lists each column once and pairs composite foreign
+  keys correctly, and the ER and feature-flag pages connect to the configured
+  database on first visit.
+- Feature flags show migration DDL only for a missing table, and the Database
+  Tools page reports an unavailable database.
+- The environment viewer no longer panics on non-Unicode variables and hides
+  credential-shaped values of allowlisted keys.
+- Queue status counts, the Capital webhook badge and the dashboard database
+  label describe what they actually measure, and queue previews no longer scan
+  whole payloads.
 
 ### Studio, AI and IoT second-pass review fixes
 

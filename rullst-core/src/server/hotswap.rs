@@ -24,6 +24,7 @@ pub struct HotSwapService {
     pub(crate) shield: Option<crate::resilience::TrafficShield>,
     pub(crate) limiter: Option<crate::resilience::RateLimiter>,
     pub(crate) lifecycle: Option<crate::lifecycle::ApplicationLifecycle>,
+    pub(crate) trusted_proxy: Option<crate::security::TrustedProxyLayer>,
 }
 
 impl HotSwapService {
@@ -221,6 +222,10 @@ impl Service<axum::extract::Request> for HotSwapService {
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
         }
+        // Outermost, as in the static server stack.
+        if let Some(ref layer) = self.trusted_proxy {
+            router = router.layer(layer.clone());
+        }
         let method = req.method().to_string();
         let path = req.uri().path().to_string();
         let start = std::time::Instant::now();
@@ -242,6 +247,59 @@ impl Service<axum::extract::Request> for HotSwapService {
                 Err(join_err) => Self::handle_panic_error(join_err).await,
             }
         })
+    }
+}
+
+/// Development listener adapter that records each accepted socket peer.
+///
+/// `HotSwapService` is its own connection factory and therefore never received
+/// `ConnectInfo`; this private wrapper supplies it so the rate limiter and the
+/// trusted-proxy layer observe the real peer during hot reload too.
+#[derive(Clone)]
+pub(crate) struct PeerAwareHotSwap(pub(crate) HotSwapService);
+
+impl<'a> Service<axum::serve::IncomingStream<'a, tokio::net::TcpListener>> for PeerAwareHotSwap {
+    type Response = ConnectedHotSwap;
+    type Error = std::convert::Infallible;
+    type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+    #[cfg_attr(mutants, mutants::skip)]
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(
+        &mut self,
+        stream: axum::serve::IncomingStream<'a, tokio::net::TcpListener>,
+    ) -> Self::Future {
+        std::future::ready(Ok(ConnectedHotSwap {
+            inner: self.0.clone(),
+            peer: *stream.remote_addr(),
+        }))
+    }
+}
+
+/// Per-connection hot-reload service carrying the accepted socket peer.
+#[derive(Clone)]
+pub(crate) struct ConnectedHotSwap {
+    pub(crate) inner: HotSwapService,
+    pub(crate) peer: std::net::SocketAddr,
+}
+
+impl Service<axum::extract::Request> for ConnectedHotSwap {
+    type Response = axum::response::Response;
+    type Error = std::convert::Infallible;
+    type Future = <HotSwapService as Service<axum::extract::Request>>::Future;
+
+    #[cfg_attr(mutants, mutants::skip)]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Service::<axum::extract::Request>::poll_ready(&mut self.inner, cx)
+    }
+
+    fn call(&mut self, mut req: axum::extract::Request) -> Self::Future {
+        req.extensions_mut()
+            .insert(axum::extract::ConnectInfo(self.peer));
+        Service::<axum::extract::Request>::call(&mut self.inner, req)
     }
 }
 

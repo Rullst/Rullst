@@ -44,8 +44,11 @@ the product name alone is not treated as compatibility evidence.
 `AiClient::auto()` and Nexus use the same `AutoAiConfig` resolver. Its fallback
 order is OpenAI (or its explicitly configured compatible endpoint), Anthropic,
 Gemini, DeepSeek, Groq, then Ollama. Empty environment values are absent;
-`mock_*` credentials are labeled as offline. Configuration is not a health probe.
-With no provider it retains the deterministic offline fallback.
+`mock_*` credentials are labeled as offline using the same whitespace trimming
+the providers apply. Configuration is not a health probe.
+With no provider it retains the deterministic offline fallback. Embeddings never
+fall back to another model after a failure, because vectors from different
+models are not comparable; only providers without embeddings are skipped.
 
 Groq uses `GROQ_API_KEY` and an explicit account-supported `GROQ_MODEL` through
 the [documented compatible endpoint](https://console.groq.com/docs/openai).
@@ -182,7 +185,9 @@ reordering history or automatically repeating a billable provider call.
 Tenant and conversation IDs are case-sensitive on every backend: MySQL and
 MariaDB tables declare both key columns `CHARACTER SET ascii COLLATE ascii_bin`,
 and every tenant-scoped MySQL/MariaDB statement also compares the key
-byte-exactly.
+byte-exactly. An in-memory SQLite URL (`sqlite::memory:` or `mode=memory`)
+keeps one pooled connection for the pool's lifetime, because a replacement
+connection would open an empty database; its history is still lost on restart.
 
 ```rust,no_run
 # use rullst_ai::{AiClient, ChatMemoryConfig, ConversationId, SqlChatMemory, StatefulChat, providers::openai::OpenAiProvider};
@@ -209,7 +214,10 @@ let turn = chat.send(&tenant, &conversation, "What changed?").await?;
 The SQL adapter stores message text as supplied by the application. Encryption,
 retention, erasure policy, authenticated conversation ownership inside a
 tenant, provider-call audit, backups, and conflict retry UX remain host
-responsibilities. The generated `make:chat-session` scaffold remains useful
+responsibilities. A retention job may delete the oldest message rows by
+`created_at_epoch`, including all of them: the conversation keeps its revision
+and continues with an empty history window. Use `delete_conversation` to erase a
+conversation. The generated `make:chat-session` scaffold remains useful
 when the application wants to own or customize its models, migrations, or the
 Turso-primary implementation.
 
@@ -250,7 +258,11 @@ The MySQL 8.0 and MariaDB matrices run this migration against legacy tables.
 context budgets, guarded generation, source metadata, and mandatory secret-minimized auditing in one
 typed operation. A trusted `TenantContext` is required and every returned document must carry the
 same tenant tag. Empty retrieval fails with `RagError::NoContext` instead of generating an
-ungrounded answer.
+ungrounded answer. Each passage is guarded on its own and the assembled prompt again; a block
+that only the combined passages trigger returns `RagError::Generation` with the guardrail
+error, is audited as `ContextRejected` and never reaches the provider. The Markdown-image
+heuristic judges each image: a relative inline image such as `![logo](assets/logo.png)` next
+to an unrelated link is not treated as a beacon.
 
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production

@@ -57,7 +57,8 @@ impl CoapMethod {
 pub enum CoapCodecError {
     /// RFC 7252 limits tokens to eight bytes.
     TokenTooLong,
-    /// A simplified URI path segment is empty, contains `/`, or has controls.
+    /// A simplified URI path segment is empty, `.` or `..` (which RFC 7252
+    /// forbids as Uri-Path values), contains `/`, or has controls.
     InvalidPathSegment,
     /// An option value exceeds its RFC 7252 length limit or cannot be
     /// represented by the base option encoding.
@@ -117,12 +118,16 @@ impl CoapRequest {
     }
 
     /// Appends one decoded URI-Path segment. `/` separators are not accepted
-    /// inside a segment; callers should append each segment separately. A
+    /// inside a segment; callers should append each segment separately. The
+    /// dot segments `.` and `..` are rejected because RFC 7252 section 5.10.1
+    /// requires the URI to be resolved before it is split into options. A
     /// segment longer than the RFC 7252 limit of 255 bytes is rejected with
     /// [`CoapCodecError::OptionTooLarge`].
     pub fn path_segment(mut self, segment: impl Into<String>) -> Result<Self, CoapCodecError> {
         let segment = segment.into();
         if segment.is_empty()
+            || segment == "."
+            || segment == ".."
             || segment.contains('/')
             || segment.chars().any(|character| character.is_control())
         {
@@ -132,10 +137,10 @@ impl CoapRequest {
             return Err(CoapCodecError::OptionTooLarge);
         }
         let existing_path_bytes = self.path.iter().try_fold(0usize, |total, current| {
-            total.checked_add(3usize.saturating_add(current.len()))
+            total.checked_add(uri_path_option_bytes(current.len())?)
         });
         let projected_path_bytes = existing_path_bytes
-            .and_then(|total| total.checked_add(3usize.saturating_add(segment.len())))
+            .and_then(|total| total.checked_add(uri_path_option_bytes(segment.len())?))
             .and_then(|total| total.checked_add(4 + self.token.len()))
             .ok_or(CoapCodecError::DatagramTooLarge)?;
         if projected_path_bytes > MAX_COAP_DATAGRAM_BYTES {
@@ -220,6 +225,18 @@ fn append_option(
     datagram.extend_from_slice(&length_extension);
     datagram.extend_from_slice(value);
     Ok(())
+}
+
+/// Exact encoded size of one Uri-Path option. Its delta (11 for the first
+/// segment, 0 afterwards) always fits in the header nibble, so only the value
+/// length can need extension bytes.
+fn uri_path_option_bytes(length: usize) -> Option<usize> {
+    let extension = match classify_option_component(length)? {
+        CoapOptionComponent::Inline(_) => 0,
+        CoapOptionComponent::ExtendedOne(_) => 1,
+        CoapOptionComponent::ExtendedTwo(_) => 2,
+    };
+    1usize.checked_add(extension)?.checked_add(length)
 }
 
 fn ensure_room(datagram: &[u8], additional: usize) -> Result<(), CoapCodecError> {
@@ -327,6 +344,19 @@ mod tests {
             .and_then(|request| request.path_segment("bad/path")),
             Err(CoapCodecError::InvalidPathSegment)
         );
+        for dot_segment in [".", ".."] {
+            assert_eq!(
+                CoapRequest::new(
+                    CoapMessageType::Confirmable,
+                    CoapMethod::Get,
+                    1,
+                    Vec::<u8>::new()
+                )
+                .and_then(|request| request.path_segment("files"))
+                .and_then(|request| request.path_segment(dot_segment)),
+                Err(CoapCodecError::InvalidPathSegment)
+            );
+        }
         assert_eq!(
             CoapRequest::new(
                 CoapMessageType::Confirmable,
@@ -362,6 +392,31 @@ mod tests {
             assert_eq!(
                 request().and_then(|request| request.path_segment("a".repeat(length))),
                 Err(CoapCodecError::OptionTooLarge)
+            );
+        }
+    }
+
+    #[test]
+    fn path_bound_uses_the_exact_uri_path_option_size() {
+        // (segment length, segments that fit, encoded bytes at that count):
+        // one header byte per option, plus one extension byte from 13 bytes.
+        for (length, fitting, encoded) in [(1, 574, 1_152), (12, 88, 1_148), (13, 76, 1_144)] {
+            let mut request = CoapRequest::new(
+                CoapMessageType::Confirmable,
+                CoapMethod::Get,
+                1,
+                Vec::<u8>::new(),
+            )
+            .expect("empty token");
+            for _ in 0..fitting {
+                request = request
+                    .path_segment("a".repeat(length))
+                    .expect("segment fits the datagram ceiling");
+            }
+            assert_eq!(request.encode().map(|datagram| datagram.len()), Ok(encoded));
+            assert_eq!(
+                request.path_segment("a".repeat(length)),
+                Err(CoapCodecError::DatagramTooLarge)
             );
         }
     }

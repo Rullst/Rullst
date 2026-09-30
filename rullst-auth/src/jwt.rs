@@ -163,7 +163,8 @@ impl ApplicationJwtPolicy {
         if !valid_identity(&audience) {
             return Err(JwtError::InvalidConfiguration("audience"));
         }
-        if max_ttl.is_zero() || max_ttl > MAX_TOKEN_TTL {
+        // Claims carry whole seconds, so a sub-second bound admits no token.
+        if max_ttl.as_secs() == 0 || max_ttl > MAX_TOKEN_TTL {
             return Err(JwtError::InvalidConfiguration("max_ttl"));
         }
         let active_kid = active_key.kid.clone();
@@ -231,7 +232,8 @@ impl ApplicationJwtPolicy {
         if !valid_identity(&subject) || session_version == 0 {
             return Err(JwtError::InvalidConfiguration("subject"));
         }
-        if ttl.is_zero() || ttl > self.max_ttl {
+        // A sub-second TTL would truncate to `exp == iat`, which never verifies.
+        if ttl.as_secs() == 0 || ttl > self.max_ttl {
             return Err(JwtError::InvalidTimeToLive);
         }
         let scopes = normalized_scopes(scopes)?;

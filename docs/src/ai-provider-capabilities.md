@@ -171,4 +171,8 @@ paths, must override `capabilities()`.
 
 `FallbackProvider` reports the union of its configured providers. The union
 means that at least one provider claims a path; it does not guarantee which
-provider will satisfy a particular model-specific request.
+provider will satisfy a particular model-specific request. Text, chat, vision
+and JSON requests try the next provider after any failure. Embeddings do not:
+vectors from different models are not comparable, so `embed` uses the first
+provider that supports embeddings and returns its error, skipping only
+providers that report `UnsupportedCapability`.

@@ -44,9 +44,10 @@ differently: the report does not observe that process.
 
 ## Checks and output
 
-Core's configuration validator checks browser-policy syntax and exact CORS
-origins/signed-webhook paths. A zero TOML port is reported. Custom CSP, explicit
-browser-policy exceptions and CSRF webhook exemptions are flagged for application
+Core's configuration validator checks browser-policy syntax, exact CORS
+origins/signed-webhook paths and `[security]` trusted-proxy networks. A zero TOML
+port is reported. Custom CSP, explicit browser-policy exceptions, CSRF webhook
+exemptions and configured trusted-proxy networks are flagged for application
 review; a syntactically valid CSP may still be weak. Unknown Core configuration
 fields receive a typo/application-specific-setting review note.
 

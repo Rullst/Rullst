@@ -29,9 +29,9 @@ pub fn render_migration_manager_html(schema_tables_html: &str) -> String {
   <div class="bg-slate-800/80 p-6 rounded-2xl border border-slate-700/60 shadow-xl backdrop-blur-md space-y-4">
     <h2 class="text-2xl font-bold text-slate-100">Database schema tools</h2>
     <p class="text-sm text-slate-300">
-      This Studio instance can inspect the configured schema, but no application
-      migration or seeder registry was supplied to it. Run the explicit CLI
-      commands from the project root and review their terminal output:
+      No application migration or seeder registry was supplied to this Studio
+      instance. Run the explicit CLI commands from the project root and review
+      their terminal output:
     </p>
     <pre class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200"><code>cargo rullst db:migrate
 cargo rullst db:rollback

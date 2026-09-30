@@ -26,6 +26,38 @@ async fn unprotected_data_browser_cannot_execute_mutations() {
     assert_eq!(response.status(), axum::http::StatusCode::FORBIDDEN);
 }
 
+#[tokio::test]
+// The raw browser supports nesting under `/studio`; its row forms always post
+// to `/studio/tables/...`, so the nested router must route them to the
+// handlers (which then require the verified marker) instead of returning 404.
+async fn nested_data_browser_routes_row_mutations_to_their_handlers() {
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    let app = axum::Router::new().nest("/studio", super::router());
+    for action in ["update", "delete"] {
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/studio/tables/users/rows/{action}"))
+            .header(
+                axum::http::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            )
+            .body(Body::from("confirm=DELETE+users&pk_id=1"))
+            .expect("valid bounded mutation request");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("nested data-browser response");
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::FORBIDDEN,
+            "{action}"
+        );
+    }
+}
+
 #[test]
 fn test_escape_html_attr() {
     let input = r#"<script>alert("XSS & Hack")</script> 'test'"#;
@@ -250,6 +282,20 @@ fn test_mutable_column_type_boundary() {
         StudioColumnKind::from_database_type("numeric"),
         StudioColumnKind::Unsupported
     );
+    for unsigned in [
+        "int(10) unsigned",
+        "bigint(20) unsigned",
+        "int unsigned",
+        "tinyint(1) unsigned",
+        "int(10) unsigned zerofill",
+        "double unsigned",
+    ] {
+        assert_eq!(
+            StudioColumnKind::from_database_type(unsigned),
+            StudioColumnKind::Unsupported,
+            "{unsigned}"
+        );
+    }
     assert_eq!(
         StudioColumnKind::from_database_type("jsonb"),
         StudioColumnKind::Unsupported
@@ -348,4 +394,82 @@ async fn test_studio_layout_and_telemetry_handlers() {
 
     let _ = handle_dashboard(htmx_headers).await;
     let _ = handle_dashboard(plain_headers).await;
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// The record count and the page must search the same (capped) columns, so
+// the view never reports matches that no page can show.
+async fn record_counts_use_the_page_search_predicate() {
+    use axum::{
+        extract::{Path, Query},
+        response::IntoResponse,
+    };
+
+    let pool = super::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_wide_search_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    let columns = (1..300)
+        .map(|index| format!("c{index} TEXT"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+        "CREATE TABLE studio_wide_search_probe (id INTEGER PRIMARY KEY, {columns})"
+    ))
+    .build()
+    .execute(pool)
+    .await
+    .unwrap();
+    // Column 280 lies beyond the 256 columns that Studio inspects and shows.
+    sqlx::query("INSERT INTO studio_wide_search_probe (id, c279) VALUES (1, 'needle-marker')")
+        .execute(pool)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        count_table_rows("studio_wide_search_probe", Some("needle-marker"))
+            .await
+            .unwrap(),
+        0
+    );
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert("hx-request", "true".parse().unwrap());
+    let response = super::handlers::handle_table(
+        Path("studio_wide_search_probe".to_string()),
+        Query(TableQuery {
+            page: Some(1),
+            search: Some("needle-marker".to_string()),
+        }),
+        headers,
+    )
+    .await
+    .into_response();
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), 2 * 1024 * 1024)
+        .await
+        .unwrap();
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body.contains("of <strong>0</strong> records"));
+    assert!(!body.contains("to <strong>0</strong> of <strong>1</strong>"));
+}
+
+#[test]
+fn engine_labels_name_each_supported_driver() {
+    assert_eq!(driver_display_name(Some("postgres")), "POSTGRESQL");
+    assert_eq!(driver_display_name(Some("mysql")), "MYSQL / MARIADB");
+    assert_eq!(driver_display_name(Some("sqlite")), "SQLITE");
+    assert_eq!(driver_display_name(None), "NOT CONNECTED");
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// The label describes the pool Studio queries, whatever `DATABASE_URL` the
+// process environment names (for example another project's PostgreSQL URL).
+async fn engine_label_describes_the_active_pool() {
+    super::pool::test_sqlite_pool().await;
+    assert_eq!(resolve_driver_display_name(), "SQLITE");
 }

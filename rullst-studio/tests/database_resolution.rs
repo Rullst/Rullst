@@ -80,7 +80,20 @@ async fn studio_views_use_the_shared_resolver_and_never_invent_sqlite() {
     assert!(dashboard.contains("No database is configured for Rullst Studio"));
     let (status, _) = get(&app, "/studio/tables/users").await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    let (status, tools) = get(&app, "/studio/migrations").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(tools.contains("Database unavailable:"));
+    assert!(tools.contains("No database is configured for Rullst Studio"));
+    for uri in ["/studio/features", "/studio/er"] {
+        let (status, page) = get(&app, uri).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            page.contains("No database is configured for Rullst Studio"),
+            "{uri}"
+        );
+    }
     assert!(rullst_core::db::safe_pool().is_none());
+    assert!(!project.join("db.sqlite").exists());
 
     // `.env` selects the same database that Server and Artisan would use.
     std::fs::write(
@@ -88,6 +101,15 @@ async fn studio_views_use_the_shared_resolver_and_never_invent_sqlite() {
         "DATABASE_URL=sqlite://studio-dotenv.db\n",
     )
     .expect("write project .env");
+    // Feature flags, like every database view, initialize the pool themselves.
+    let (status, flags) = get(&app, "/studio/features").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(!flags.contains("No database is configured"));
+    assert!(flags.contains("CREATE TABLE rullst_feature_flags"));
+    assert_eq!(rullst_core::db::safe_driver(), Some("sqlite"));
+    let (status, diagram) = get(&app, "/studio/er").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(!diagram.contains("Schema unavailable"));
     let (status, dashboard) = get(&app, "/studio").await;
     assert_eq!(status, StatusCode::OK);
     assert!(dashboard.contains("Rullst Studio Control Center"));

@@ -245,13 +245,19 @@ impl ToolRegistry {
             None
         };
 
-        audit.record(audit_event(
+        if let Err(error) = audit.record(audit_event(
             context,
             name,
             Some(risk),
             approval.as_ref(),
             ToolAuditOutcome::Authorized,
-        ))?;
+        )) {
+            // The tool did not run, so a retry may still use the approval.
+            if let Some(approval) = approval {
+                context.approve(approval);
+            }
+            return Err(error);
+        }
         context.remaining_calls -= 1;
 
         // From here on the tool has run, so an audit failure must not look
@@ -349,6 +355,8 @@ fn deny(
     }
 }
 
+#[cfg(test)]
+mod approval_tests;
 #[cfg(test)]
 mod tests;
 

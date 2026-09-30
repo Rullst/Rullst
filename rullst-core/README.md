@@ -30,6 +30,12 @@
   by dropping refilled buckets and evicting the least recently used ones.
   `Server`'s limiter and Traffic Shield exempt exact `GET`/`HEAD /health` and
   `/ready` probes.
+- **Trusted-Proxy Client Resolution (v13):** `Server::trusted_proxies`
+  (or `[security] trusted_proxies`) reads `X-Forwarded-For` or RFC 7239
+  `Forwarded` only from socket peers inside the listed networks, walks the
+  chain right to left and replaces `ConnectInfo` with the client address, so
+  rate limits and lockouts work behind reverse proxies. Malformed chains keep
+  the proxy address; list only your real proxy networks.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).

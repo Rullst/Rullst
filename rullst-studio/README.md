@@ -161,18 +161,25 @@ The cache inspector uses the same verified local request marker as database
 mutations for individual invalidation. Its HTML contains neither cache values
 nor exact logical keys.
 
-Table views load at most 25 rows. The database cuts each cell's text to 256
+Table views load at most 25 rows per page, ordered by the complete primary key
+(otherwise by every selected column). The database cuts each cell's text to 256
 characters before Studio renders it; key columns keep up to 16 KiB for row
 actions, and a longer key makes its row read-only. Search terms are limited to
-256 bytes.
+256 bytes and match the displayed columns (at most 256); the record count uses
+the same predicate.
 
 Data-browser mutation forms use database-inspected tables, columns and complete
-primary keys. SQL values are parameterized; only text, signed integer, finite
-float and Boolean codecs are writable. Primary keys and backend-specific types
+primary keys; on PostgreSQL they cover the `public` schema, which every data
+statement names explicitly. SQL values are parameterized; only text, signed integer, finite
+float and Boolean codecs are writable, so MySQL/MariaDB unsigned or zero-filled
+integers stay read-only. Primary keys and backend-specific types
 remain read-only, request bodies are limited to 64 KiB, and deletion requires
-typing `DELETE <table>`. A table stays read-only when any primary-key column is
-outside Studio's ASCII identifier boundary or beyond its 256-column cap, and a
-row whose key value is `NULL` offers no actions. Each write runs in a database
+typing `DELETE <table>`. A row offers only the actions whose form (for Edit,
+with a maximum-size value) fits that limit; an empty text key is addressable. A table stays read-only when any primary-key column is
+outside Studio's ASCII identifier boundary or beyond its 256-column cap, or
+uses a floating-point type whose rendered text is rounded. A row whose key value
+is `NULL`, is not decodable as text or contains a line break or NUL (which
+browsers rewrite in form values) offers no actions. Each write runs in a database
 transaction that commits only when exactly one row changed; otherwise it is
 rolled back and reported as `404` (no row) or `409` (several rows). Storage
 engines without transactions, such as MySQL MyISAM, cannot provide that

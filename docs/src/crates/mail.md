@@ -47,14 +47,14 @@ publication. Existing applications must adopt the new store/worker explicitly.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
-- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
+- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
-- **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
+- **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
@@ -129,6 +129,11 @@ worker_handle.shutdown().await?;
 Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
 exactly-once provider delivery, or provider acceptance.
+
+Queued jobs store attachment bytes as one base64 string per attachment. Workers
+still accept jobs written with the earlier integer-array encoding, but an older
+worker cannot read the base64 form, so upgrade workers before producers during
+a rolling deployment.
 
 ---
 
@@ -243,8 +248,9 @@ and reject unsafe links; tax provenance, billing state, scheduling, and policy
 remain application-owned.
 
 For native payment-bound PDF delivery, enable `rullst-mail/capital-invoice` (or
-umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`. It
-rejects non-final/mock evidence and recipient/amount/currency substitution.
+umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`, then
+set the verified sender with `.from(sender)?` (13.0), which re-runs pre-flight.
+It rejects non-final/mock evidence and recipient/amount/currency substitution.
 Applications still reconcile webhooks and atomically claim the stable delivery
 key; provider acceptance and exactly-once delivery are not promised.
 
@@ -543,9 +549,10 @@ extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
 similar), SVG by type, extension or content, active PDF content wherever a
 `%PDF-` header appears in the first KiB, and a declared type that disagrees
 with a known extension or signature. `strict()` also rejects HTML extensions,
-HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions and
-opaque formats; `allowing_opaque()` still accepts HTML and other opaque
-content. PDF names written with `#xx` escapes or inside compressed streams are
+HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions, any
+declared type it does not inspect other than `application/octet-stream` (so a
+`text/html` attachment named `invoice.txt` is rejected), and opaque formats;
+`allowing_opaque()` still accepts HTML and other opaque content. PDF names written with `#xx` escapes or inside compressed streams are
 not decoded.
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in

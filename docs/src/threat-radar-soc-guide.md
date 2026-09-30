@@ -38,8 +38,9 @@ Typical sources include:
 - secure-header applications and timing-guard executions.
 
 Client identity comes from the trusted peer by default. Forwarded headers are
-usable only when the application has explicitly configured and authenticated a
-trusted proxy boundary.
+usable only when the application has explicitly configured a trusted proxy
+boundary, such as Core's `Server::trusted_proxies` listing only the proxy
+networks.
 
 ## Audit-chain status
 

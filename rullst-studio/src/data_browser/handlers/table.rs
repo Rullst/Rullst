@@ -6,6 +6,7 @@ use super::super::limits::{
     MAX_CELL_BYTES, MAX_DISPLAY_CHARS, MAX_SEARCH_BYTES, bounded_text_expression,
 };
 use super::super::portable::build_for_driver;
+use super::super::search::{count_matching_rows, push_page_order, push_search_predicate};
 use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
@@ -87,27 +88,19 @@ pub async fn handle_table(
     let per_page = 25;
     let offset = (page - 1).saturating_mul(per_page);
 
-    let total_records = match count_table_rows(
-        &clean_table,
-        if search_str.is_empty() {
-            None
-        } else {
-            Some(search_str)
-        },
-    )
-    .await
-    {
-        Ok(total) => total,
-        Err(error) => {
-            return table_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &format!("Could not count table records: {error}"),
-                is_htmx,
-                Some(&clean_table),
-                &tables,
-            );
-        }
-    };
+    let total_records =
+        match count_matching_rows(pool, driver, &clean_table, &schema.columns, search_str).await {
+            Ok(total) => total,
+            Err(error) => {
+                return table_error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Could not count table records: {error}"),
+                    is_htmx,
+                    Some(&clean_table),
+                    &tables,
+                );
+            }
+        };
     let total_pages = total_records.div_ceil(per_page);
 
     if schema.columns.is_empty() {
@@ -130,10 +123,10 @@ pub async fn handle_table(
     let mutation_notice = if supports_mutations {
         "Inspect rows; primitive values may be changed only through the verified local Studio boundary"
     } else {
-        "Read-only: row changes need a complete primary key whose columns use primitive types and Studio's ASCII identifier boundary"
+        "Read-only: row changes need a complete primary key whose columns use text, integer or Boolean types and Studio's ASCII identifier boundary"
     };
 
-    let quoted_table = quote_table_name(driver, &clean_table);
+    let quoted_table = qualified_table_name(driver, &clean_table);
     // Key columns keep up to one character more than a mutation accepts, so a
     // longer key is detected and its row stays read-only; other cells need
     // only one character more than the display bound to show truncation.
@@ -153,14 +146,8 @@ pub async fn handle_table(
     let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
         QueryBuilder::new(format!("SELECT {selected_columns} FROM {quoted_table}"));
 
-    if !search_str.is_empty() && !col_names.is_empty() {
-        qb.push(" WHERE ");
-        let mut separated = qb.separated(" OR ");
-        for col in &col_names {
-            separated.push(build_search_clause(driver, col));
-            separated.push_bind_unseparated(format!("%{}%", search_str));
-        }
-    }
+    push_search_predicate(&mut qb, driver, &schema.columns, search_str);
+    push_page_order(&mut qb, driver, &clean_table, &schema);
 
     qb.push(" LIMIT ");
     qb.push_bind(per_page as i64);

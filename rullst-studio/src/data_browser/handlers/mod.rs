@@ -13,7 +13,7 @@ mod telemetry;
 pub use ai::handle_studio_tools_ai;
 pub use dashboard::handle_dashboard;
 pub use migrations::handle_studio_tools_migrations;
-pub(crate) use mutations::{handle_table_delete, handle_table_update};
+pub(crate) use mutations::{MUTATION_BODY_LIMIT, handle_table_delete, handle_table_update};
 pub use security::handle_studio_tools_security;
 pub use table::handle_table;
 pub use telemetry::{

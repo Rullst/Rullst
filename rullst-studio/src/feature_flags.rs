@@ -45,6 +45,57 @@ fn feature_flag_notice(message: &str, ddl: Option<&str>) -> String {
 
 const FEATURE_FLAGS_QUERY: &str = "SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC";
 
+/// Whether a query failed because the table does not exist: SQLite reports
+/// `no such table`, PostgreSQL SQLSTATE `42P01` and MySQL/MariaDB `42S02`.
+fn is_missing_table_error(error: &sqlx::Error) -> bool {
+    match error {
+        sqlx::Error::Database(database) => {
+            matches!(database.code().as_deref(), Some("42P01" | "42S02"))
+                || database
+                    .message()
+                    .to_ascii_lowercase()
+                    .contains("no such table")
+        }
+        _ => false,
+    }
+}
+
+/// Renders the flag query result. Migration guidance is shown only for a
+/// missing table; connection, permission and column errors are reported as
+/// such, with at most the database's error code.
+fn flag_query_html(
+    result: Result<Vec<<rullst_orm::RullstDatabase as sqlx::Database>::Row>, sqlx::Error>,
+    driver: &str,
+) -> String {
+    match result {
+        Ok(rows) if rows.is_empty() => feature_flag_notice(
+            "No feature flags found. (Table <code>rullst_feature_flags</code> is empty)",
+            None,
+        ),
+        Ok(rows) => render_flag_rows(&rows),
+        Err(error) if is_missing_table_error(&error) => feature_flag_notice(
+            "The <code>rullst_feature_flags</code> table is unavailable. Studio does not create it; add it with a migration:",
+            Some(feature_flag_table_ddl(driver)),
+        ),
+        Err(error) => {
+            let code = match &error {
+                sqlx::Error::Database(database) => {
+                    database.code().map_or_else(String::new, |code| {
+                        format!(" (database code {})", rullst_core::html::escape_str(&code))
+                    })
+                }
+                _ => String::new(),
+            };
+            feature_flag_notice(
+                &format!(
+                    "Feature flags are unavailable: the <code>rullst_feature_flags</code> query failed{code}. Check the connection, permissions and column types; Studio does not change the schema."
+                ),
+                None,
+            )
+        }
+    }
+}
+
 fn render_flag_rows(rows: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row]) -> String {
     use sqlx::Row;
     let mut rows_html = String::new();
@@ -91,27 +142,22 @@ fn render_flag_rows(rows: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row]
 }
 
 async fn render_feature_flags() -> Html<String> {
-    let rows_html = match rullst_core::db::safe_pool() {
-        None => feature_flag_notice(
-            "No database is configured; feature flags are unavailable.",
+    // Like the data browser, the first database view initializes the pool
+    // with the shared resolver; its errors never echo configuration content.
+    let rows_html = match crate::data_browser::ensure_pool_initialized().await {
+        Err(error) => feature_flag_notice(
+            &format!(
+                "Feature flags are unavailable: {}",
+                rullst_core::html::escape_str(&error.to_string())
+            ),
             None,
         ),
-        Some(pool) => match rullst_orm::_sqlx::query(FEATURE_FLAGS_QUERY)
-            .fetch_all(pool)
-            .await
-        {
-            Ok(rows) if rows.is_empty() => feature_flag_notice(
-                "No feature flags found. (Table <code>rullst_feature_flags</code> is empty)",
-                None,
-            ),
-            Ok(rows) => render_flag_rows(&rows),
-            Err(_) => feature_flag_notice(
-                "The <code>rullst_feature_flags</code> table is unavailable. Studio does not create it; add it with a migration:",
-                Some(feature_flag_table_ddl(
-                    rullst_core::db::safe_driver().unwrap_or("sqlite"),
-                )),
-            ),
-        },
+        Ok(pool) => flag_query_html(
+            rullst_orm::_sqlx::query(FEATURE_FLAGS_QUERY)
+                .fetch_all(pool)
+                .await,
+            rullst_core::db::safe_driver().unwrap_or("sqlite"),
+        ),
     };
 
     Html(format!(
@@ -161,8 +207,9 @@ async fn toggle_feature_flag(
     if verified.is_none() {
         return verified_local_access_required();
     }
+    let pool = crate::data_browser::ensure_pool_initialized().await.ok();
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    toggle_feature_flag_with_pool(&name, rullst_core::db::safe_pool(), driver).await
+    toggle_feature_flag_with_pool(&name, pool, driver).await
 }
 
 async fn toggle_feature_flag_with_pool(
@@ -236,6 +283,41 @@ mod tests {
         // 3. Directly check render_feature_flags HTML
         let html = render_feature_flags().await.0;
         assert!(html.contains("Feature Flags Manager"));
+    }
+
+    #[test]
+    fn only_a_missing_table_shows_migration_guidance() {
+        let unavailable = flag_query_html(Err(sqlx::Error::PoolTimedOut), "postgres");
+        assert!(unavailable.contains("query failed"));
+        assert!(!unavailable.contains("CREATE TABLE"));
+        assert!(!is_missing_table_error(&sqlx::Error::RowNotFound));
+    }
+
+    #[tokio::test]
+    #[cfg(not(miri))]
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+    async fn sqlite_missing_tables_differ_from_other_query_errors() {
+        let pool = crate::data_browser::pool::test_sqlite_pool().await;
+        let missing = rullst_orm::_sqlx::query("SELECT name FROM studio_absent_flags_probe")
+            .fetch_all(pool)
+            .await;
+        let missing = missing.err().expect("the probe table is absent");
+        assert!(is_missing_table_error(&missing));
+        assert!(flag_query_html(Err(missing), "sqlite").contains("CREATE TABLE"));
+
+        rullst_orm::_sqlx::query(
+            "CREATE TABLE IF NOT EXISTS studio_flags_shape_probe (name TEXT PRIMARY KEY)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        let wrong_shape = rullst_orm::_sqlx::query("SELECT enabled FROM studio_flags_shape_probe")
+            .fetch_all(pool)
+            .await
+            .err()
+            .expect("the probe table has no enabled column");
+        assert!(!is_missing_table_error(&wrong_shape));
+        assert!(!flag_query_html(Err(wrong_shape), "sqlite").contains("CREATE TABLE"));
     }
 
     fn toggle_request(name: &str, verified: bool) -> Request<Body> {
