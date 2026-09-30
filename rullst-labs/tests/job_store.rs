@@ -346,3 +346,47 @@ async fn authorized_tenants_and_courses_keep_identical_job_ids_independent() {
     drop(db);
     f.store.close().await;
 }
+
+#[tokio::test]
+async fn submissions_that_could_never_be_claimed_are_refused() {
+    let f = Fixture::new(2).await;
+    // The fixture exercise has a 10-second wall limit: a job needs over 15 s.
+    let short = |ttl| {
+        Submission::new(
+            id("short"),
+            ExerciseRef::new("sum", "v1").unwrap(),
+            RustSource::new(SOURCE).unwrap(),
+            ttl,
+        )
+        .unwrap()
+    };
+    assert_eq!(
+        f.store
+            .submit(&f.policy, &id("alice"), &scope(), short(15))
+            .await
+            .unwrap_err(),
+        LabError::InvalidInput
+    );
+    // A per-request Submit grant shorter than that would expire every job.
+    f.policy.0.store(NOW + 15, Ordering::SeqCst);
+    assert_eq!(
+        f.store
+            .submit(&f.policy, &id("alice"), &scope(), submission("one"))
+            .await
+            .unwrap_err(),
+        LabError::Expired
+    );
+    f.policy.0.store(NOW + 16, Ordering::SeqCst);
+    let queued = f
+        .store
+        .submit(&f.policy, &id("alice"), &scope(), short(16))
+        .await
+        .unwrap();
+    assert_eq!(queued.expires_at, NOW + 16);
+    let mut db = f.database().await;
+    let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs")
+        .fetch_one(&mut db)
+        .await
+        .unwrap();
+    assert_eq!(rows, 1);
+}

@@ -11,6 +11,12 @@ use crate::{
 impl<C: Clock> SqliteLabs<C> {
     /// Durable idempotent submission. Only a registered, enabled instructor
     /// revision can supply the grader; scope/learner come from host authorization.
+    ///
+    /// The job expires at the earlier of `ttl_seconds` and the Submit
+    /// permission's expiry. A job must outlive the exercise's wall limit plus
+    /// 5 seconds to be claimed, so a shorter `ttl_seconds` is `InvalidInput` and
+    /// a shorter-lived Submit permission is `Expired`; queueing time still
+    /// counts against that lifetime.
     pub async fn submit<A: Authorization>(
         &self,
         auth: &A,
@@ -37,7 +43,12 @@ impl<C: Clock> SqliteLabs<C> {
             }
             let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs").fetch_one(&mut *tx.tx).await.map_err(storage)?;
             if count>=i64::from(self.config.max_jobs) { return Err(Error::Capacity); }
+            // claim_next expires a job whose remaining lifetime does not exceed
+            // the wall limit plus 5 s, so never queue one that could not run.
+            let needed=i64::from(exercise.limits().wall_seconds())+5;
+            if i64::from(submission.ttl_seconds)<=needed { return Err(Error::InvalidInput); }
             let expires_at=tx.now.checked_add(i64::from(submission.ttl_seconds)).ok_or(Error::Clock)?.min(permission.expires_at());
+            if expires_at.saturating_sub(tx.now)<=needed { return Err(Error::Expired); }
             let record=Record {
                 view:JobView { id:submission.id,scope:scope.clone(),learner:actor.clone(),exercise:submission.exercise,source_digest,exercise_digest,state:JobState::Queued,revision:1,created_at:tx.now,updated_at:tx.now,expires_at,cleanup_pending:false,result:None },
                 request_digest,profile_digest,lease:None,attempts:0,

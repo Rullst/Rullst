@@ -40,6 +40,11 @@ The application registers an `Exercise`, submits a `Submission` through
 `SqliteLabs::submit`, reads `get_job` and records `cancel`. The dedicated controller
 uses `claim_next`, monitors `lease_status`, performs isolated execution and submits
 a `SignedReceipt` to `complete`. Cancellation and expiry fence late results.
+A job expires at the earlier of its `ttl_seconds` and the Submit permission's
+expiry, and is claimed only while more than the exercise's wall limit plus 5
+seconds remain. Grant Submit for longer than expected queueing plus that time;
+`submit` refuses a job that could never run (`InvalidInput` for a too-short
+TTL, `Expired` for a too-short permission).
 
 A lost worker first requires a fenced attempt and confirmed whole-group teardown.
 `cleanup_candidates`/`abandon_attempt` and `reconcile_cleanup` provide that durable
