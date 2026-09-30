@@ -160,6 +160,10 @@ pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// Cache keys identify the annotated function by `module_path!()`, its name and
 /// the attribute's `file!()`/`line!()`/`column!()`, so same-named functions in
 /// different modules, crates or `impl` blocks never share cached results.
+///
+/// Results live in the bounded process-wide `rullst::cache::memory` store
+/// (4,096 entries, 32 MiB, one hour each; oldest evicted first). A call whose
+/// key plus serialized result exceeds 256 KiB runs uncached.
 #[proc_macro_attribute]
 pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as syn::ItemFn);
