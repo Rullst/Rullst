@@ -196,6 +196,65 @@ async fn bearer_proxy_sends_the_complete_ses_payload_and_maps_provider_failures(
 }
 
 #[tokio::test]
+async fn bearer_proxy_carries_attachments_and_inline_cid_assets() {
+    use base64::prelude::*;
+    let (endpoint, capture) = spawn_response(200, &[], "{}");
+    let driver = AwsSesDriver::try_new("us-east-1", "proxy-secret")
+        .unwrap()
+        .try_with_endpoint(endpoint)
+        .unwrap();
+    let message = message()
+        .html("<p>Invoice</p><img src=\"cid:brand_logo\">")
+        .attach_bytes(
+            "invoice.pdf",
+            b"%PDF-1.7 fixture".to_vec(),
+            "application/pdf",
+        )
+        .attach_cid("brand_logo", "logo.png", vec![0_u8, 255, 1], "image/png");
+    driver.send(&message).await.unwrap();
+    let request = String::from_utf8(capture.join().unwrap()).unwrap();
+    let body: serde_json::Value =
+        serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+    let attachments = body["Content"]["Simple"]["Attachments"].as_array().unwrap();
+    assert_eq!(attachments.len(), 2);
+    assert_eq!(attachments[0]["FileName"], "invoice.pdf");
+    assert_eq!(attachments[0]["ContentType"], "application/pdf");
+    assert_eq!(attachments[0]["ContentDisposition"], "ATTACHMENT");
+    assert!(attachments[0].get("ContentId").is_none());
+    assert_eq!(
+        BASE64_STANDARD
+            .decode(attachments[0]["RawContent"].as_str().unwrap())
+            .unwrap(),
+        b"%PDF-1.7 fixture"
+    );
+    assert_eq!(attachments[1]["ContentDisposition"], "INLINE");
+    assert_eq!(attachments[1]["ContentId"], "brand_logo");
+    assert_eq!(
+        BASE64_STANDARD
+            .decode(attachments[1]["RawContent"].as_str().unwrap())
+            .unwrap(),
+        [0_u8, 255, 1]
+    );
+}
+
+#[tokio::test]
+async fn bearer_proxy_rejects_attachments_beyond_ses_limits_before_network() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let endpoint = format!("http://{}/send", listener.local_addr().unwrap());
+    drop(listener);
+    let driver = AwsSesDriver::try_new("us-east-1", "proxy-secret")
+        .unwrap()
+        .try_with_endpoint(endpoint)
+        .unwrap();
+    // Valid for the shared pipeline, but longer than the SES 78-byte field.
+    let message = message().attach_bytes("data.bin", vec![1_u8], format!("x/{}", "y".repeat(77)));
+    assert!(matches!(
+        driver.send(&message).await,
+        Err(MailError::ValidationError(_))
+    ));
+}
+
+#[tokio::test]
 async fn bearer_proxy_rejects_transport_schedule_and_deprecated_invalid_configuration() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let endpoint = format!("http://{}/send", listener.local_addr().unwrap());

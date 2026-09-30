@@ -52,8 +52,11 @@ secure headers, WAF and ingress limits.
 observation time. Identical replay is idempotent; conflicting reuse is rejected
 without changing state. Reason precedence only increases: manual suppression,
 hard bounce, then spam complaint. Earlier events can strengthen a reason but
-cannot undo a complaint. Recipient normalization preserves the local part and
-lowercases the domain, matching the existing stores; it does not infer aliases.
+cannot undo a complaint. Recipient normalization uses the delivery pipeline's
+recipient parser: `Name <address>` and `<address>` reduce to the bare address,
+and lists, groups, comments, padding or other unparsable forms are rejected so
+the guard fails closed. It then preserves the local part and lowercases the
+domain, matching the existing stores; it does not infer aliases.
 
 The database stores HMAC-derived recipient/event identifiers and fingerprints,
 the authoritative bounded provider/reason and first/last observation times.
@@ -91,6 +94,13 @@ ingestion and retention. Quotas, clock observations and both event/recipient
 writes commit together. Cancellation before commit rolls back; an uncertain
 commit requires reconciliation. Storage/configuration failures make the guard
 return `SuppressionUnavailable` without invoking its transport.
+
+Every operation advances a per-namespace clock high-water mark monotonically in
+whole seconds. A host whose clock is at most 300 seconds behind that mark,
+such as synchronized hosts crossing a second boundary at slightly different
+instants, adopts the recorded time instead of failing. A larger backwards step
+fails closed with `InvalidConfiguration("server clock")`, which the guard
+reports as `SuppressionUnavailable`.
 
 The host owns clock synchronization, database availability, encryption at rest,
 replication fencing, a bounded number of namespaces and capacity planning. A

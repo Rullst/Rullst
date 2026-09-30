@@ -131,6 +131,27 @@ A prepared version section does not establish that its tag or crates exist.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
 
+### Storage, uploads and macro hardening
+
+- `Storage::url` and `LocalDriver::url` percent-encode key segments, and the
+  Local `Storage::url` returns `/storage/<key>` instead of the filesystem base
+  path; serve the base directory at `/storage` to use it.
+- PlainText upload admission denies any leading markup after whitespace,
+  byte-order marks or zero-width characters, closing BOM, XML-prolog and
+  comment bypasses of the active-text gate. Plain text that starts with a tag
+  is now rejected too.
+- The global `#[memoize]` store is bounded (4,096 entries, 32 MiB, 256 KiB per
+  entry) with oldest-first eviction, and `#[memoize]` runs uncached while
+  `#[island]` renders empty `data-props` instead of panicking when arguments
+  cannot be serialized to JSON.
+- `#[live_component]` dispatches only from the explicit `rullst_event`,
+  `action` or `event` field; other payload keys and values no longer trigger
+  handlers.
+- `html!` renders `#` for dynamic URL attributes whose value is a `javascript:`
+  or `vbscript:` URL, or a `data:` URL outside media elements.
+- **Breaking:** `html!` rejects dynamic `on*` and `hx-on*` attribute values at
+  compile time; attach data-driven handlers from a nonce'd script instead.
+
 ### Security crate review fixes
 
 - `LoginGuard` keeps jailing when its failure or jail map is full: it evicts the
@@ -355,6 +376,26 @@ A prepared version section does not establish that its tag or crates exist.
   generated (use `where_eq`/`order_by`).
 - `#[derive(Nexus)]` accepts models that use any `#[derive(Orm)]` option, reads
   `table_name` and omits relation fields.
+
+### Mail review fixes
+
+- The pre-flight pipeline rejects subjects over 2 KiB and HTML or text bodies
+  over 2 MiB, and its DLP and URL scans run in linear time.
+- Recipients are parsed to one bare address shared by the pipeline, the
+  disposable check, feedback and suppression stores, so display-name
+  recipients (`Name <a@b>`) can no longer bypass suppression. The public
+  address validators are stricter.
+- The AWS SES bearer-proxy transport sends attachments and inline CID assets
+  instead of silently dropping them, and applies the native size limits.
+- The local attachment inspector no longer trusts the declared MIME type: it
+  combines extension and content sniffing to reject active PDF, SVG, HTML and
+  script payloads.
+- The PostgreSQL suppression store tolerates up to 300 seconds of cross-host
+  clock skew instead of intermittently failing closed.
+- A real SMTP host without credentials is a real relay, partial SMTP
+  credentials are rejected, and the offline mock is used only for empty or
+  `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
+  587 and 25 configurations deliver.
 
 ### Nexus review fixes
 

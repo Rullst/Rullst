@@ -146,6 +146,10 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+#[path = "html_macro_tests.rs"]
+mod macro_tests;
+
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {

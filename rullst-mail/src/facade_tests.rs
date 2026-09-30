@@ -122,13 +122,32 @@ async fn resolves_every_offline_provider_and_rejects_unknown_drivers() {
     environment.clear("MAILJET_API_KEY");
 
     environment.set("MAIL_DRIVER", "smtp");
-    environment.set("MAIL_HOST", "127.0.0.1");
+    environment.set("MAIL_HOST", "mock_smtp");
     environment.set("MAIL_PORT", "2525");
     let smtp = Mail::resolve_driver().await.unwrap();
     #[cfg(feature = "mail-smtp")]
     smtp.send(&message).await.unwrap();
     #[cfg(not(feature = "mail-smtp"))]
     assert!(smtp.send(&message).await.is_err());
+
+    // A real host without credentials is a real relay: an unreachable one
+    // fails instead of reporting an offline success.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let closed_port = listener.local_addr().unwrap().port().to_string();
+    drop(listener);
+    environment.set("MAIL_HOST", "127.0.0.1");
+    environment.set("MAIL_PORT", &closed_port);
+    let smtp = Mail::resolve_driver().await.unwrap();
+    assert!(smtp.send(&message).await.is_err());
+    #[cfg(feature = "mail-smtp")]
+    {
+        environment.set("MAIL_USERNAME", "relay-user");
+        assert!(matches!(
+            Mail::resolve_driver().await,
+            Err(MailError::ConfigError(_))
+        ));
+        environment.clear("MAIL_USERNAME");
+    }
 
     environment.set("MAIL_DRIVER", "unknown-provider");
     assert!(matches!(

@@ -1,7 +1,8 @@
 //! Provider-neutral recipient suppression with bounded replay evidence.
 
 use crate::drivers::MailDriver;
-use crate::{DeliveryPipeline, MailError, Message, validate_email_syntax};
+use crate::validator::recipient_address;
+use crate::{DeliveryPipeline, MailError, Message};
 use async_trait::async_trait;
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -369,17 +370,20 @@ where
     }
 }
 
+/// Reduces a recipient to the bare-address key with the same parser as the
+/// delivery pipeline, so `Name <a@b>` and `a@b` share one suppression entry.
+/// Padding and anything that parser rejects fail closed instead of missing
+/// the lookup.
 pub(crate) fn normalize_recipient(recipient: &str) -> Result<String, SuppressionError> {
-    if recipient.trim() != recipient
-        || recipient.is_empty()
-        || recipient.len() > MAX_EMAIL_BYTES
-        || !recipient.is_ascii()
-        || recipient.chars().any(char::is_control)
-        || validate_email_syntax(recipient).is_err()
-    {
+    if recipient.trim() != recipient {
         return Err(SuppressionError::InvalidEvent("recipient"));
     }
-    let (local, domain) = recipient
+    let address =
+        recipient_address(recipient).map_err(|_| SuppressionError::InvalidEvent("recipient"))?;
+    if address.is_empty() || address.len() > MAX_EMAIL_BYTES || !address.is_ascii() {
+        return Err(SuppressionError::InvalidEvent("recipient"));
+    }
+    let (local, domain) = address
         .rsplit_once('@')
         .ok_or(SuppressionError::InvalidEvent("recipient"))?;
     Ok(format!("{local}@{}", domain.to_ascii_lowercase()))
