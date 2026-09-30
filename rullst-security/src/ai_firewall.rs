@@ -5,7 +5,12 @@
 //! 2. System Prompt & Context Leaking ("Repeat your initial instructions")
 //! 3. Delimiter & Role Collisions (`<|im_start|>`, `[INST]`, `<<SYS>>`)
 //! 4. Markdown Exfiltration Beacons & Script Injections
-//! 5. Invisible Zero-Width Unicode Character Poisoning
+//! 5. Invisible Zero-Width Unicode Character Poisoning (zero-width and bidi
+//!    controls, word joiners, fillers and Unicode tag characters)
+//!
+//! Phrase checks run on lowercased text after removing soft hyphens, bidi
+//! marks and variation selectors and collapsing whitespace runs. These are
+//! heuristics: a rephrased instruction still passes.
 
 use crate::telemetry::SecurityStore;
 use axum::{
@@ -15,6 +20,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+
+mod unicode;
 
 /// Categorization of detected prompt injection attack vectors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +131,7 @@ impl LlmFirewall {
             };
         }
 
-        let normalized = raw_prompt.to_lowercase();
+        let normalized = unicode::normalize_for_patterns(raw_prompt);
 
         // 2. Direct Jailbreaks
         for pattern in Self::JAILBREAK_PATTERNS {
@@ -192,30 +199,17 @@ impl LlmFirewall {
         Self::inspect_prompt(prompt).is_safe
     }
 
-    /// Strips zero-width and invisible control characters from the prompt.
+    /// Strips zero-width, bidi, tag and other invisible control characters
+    /// from the prompt.
     pub fn sanitize_unicode(input: &str) -> String {
         input
             .chars()
-            .filter(|&c| {
-                !matches!(
-                    c,
-                    '\u{200B}' // zero-width space
-                    | '\u{200C}' // zero-width non-joiner
-                    | '\u{200D}' // zero-width joiner
-                    | '\u{FEFF}' // zero-width no-break space (BOM)
-                    | '\u{202A}'..='\u{202E}' // bi-directional overrides
-                )
-            })
+            .filter(|&c| !unicode::is_invisible_control(c))
             .collect()
     }
 
     fn contains_invisible_unicode(input: &str) -> bool {
-        input.chars().any(|c| {
-            matches!(
-                c,
-                '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}' | '\u{202A}'..='\u{202E}'
-            )
-        })
+        input.chars().any(unicode::is_invisible_control)
     }
 }
 
