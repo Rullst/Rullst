@@ -4,6 +4,9 @@ use axum::extract::ws::WebSocketUpgrade;
 use axum::response::IntoResponse;
 use serde_json::Value;
 
+#[cfg(test)]
+mod macro_dispatch_tests;
+
 /// Rullst Live Component (Server-Driven UI)
 /// Inspired by Phoenix LiveView and Laravel Livewire, allowing you to write
 /// interactive components entirely in Rust, updated in real-time via WebSockets.

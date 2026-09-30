@@ -155,6 +155,10 @@ pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Proc macro attribute to define a Live Component.
 /// Automatically implements the `LiveComponent` trait and wires `#[live_event]` methods.
+///
+/// Only the first present `rullst_event`, `action` or `event` string field
+/// selects a handler, and at most one runs per message; other payload keys
+/// and values, such as form inputs, never dispatch.
 #[proc_macro_attribute]
 pub fn live_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = item.into();

@@ -22,7 +22,11 @@ generated paths and matching runtime features stay aligned.
   server HTML renders without hydration instead of panicking.
 - `#[live_component]` and `#[live_event]` generate the bounded process-local
   Live component bridge. Authentication, reconnect, ordering, backpressure,
-  and browser interoperability belong to the host contract.
+  and browser interoperability belong to the host contract. Dispatch reads the
+  event name only from the first present `rullst_event`, `action` or `event`
+  string field (for example `<button name="rullst_event" value="save">`) and
+  runs at most one handler per message; other payload keys and values, such as
+  form inputs, never select a handler.
 - `#[memoize]` uses Rullst's process-local memory cache. Keys combine the
   function's `module_path!()`, name and attribute location (`file!()`,
   `line!()`, `column!()`) with the JSON-serialized arguments, so same-named
