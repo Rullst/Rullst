@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790801394365,
+  "lastUpdate": 1790810756896,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22935,6 +22935,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2254,
             "range": "± 47",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "357ece88edcfdb0665de8bfe06c1f6527a68ee1e",
+          "message": "Merge pull request #360 from Rullst/fix/v13-orm-low-fixes\n\nfix(orm): low-severity migration, pool, outbox, enum, Turso and SurrealDB review fixes",
+          "timestamp": "2026-09-30T20:20:53-03:00",
+          "tree_id": "606672ba8b6554c896df8b23319f71e82d90d570",
+          "url": "https://github.com/Rullst/Rullst/commit/357ece88edcfdb0665de8bfe06c1f6527a68ee1e"
+        },
+        "date": 1790810755161,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 571,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 752,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 482,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1781,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
