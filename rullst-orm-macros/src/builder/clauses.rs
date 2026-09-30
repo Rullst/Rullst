@@ -194,6 +194,9 @@ pub fn generate_builder_struct(
                 self
             }
 
+            /// Appends a value for the next unbound `?` of a WHERE fragment
+            /// such as `where_raw`. Raw CTE/select fragments take their values
+            /// through their `_bindings` variants instead.
             pub fn bind<T: Into<rullst_orm::RullstValue>>(mut self, value: T) -> Self {
                 self.bindings.push(value.into());
                 self
@@ -210,7 +213,10 @@ pub fn generate_builder_struct(
 
             #subquery_methods
 
+            /// Sets a caller-owned raw select list without bind markers; use
+            /// [`Self::select_raw_bindings`] for a parameterized one.
             pub fn select_raw(mut self, query: &str) -> Self {
+                self.__rullst_reject_raw_markers("select_raw", query);
                 self.selects = Some(query.to_string());
                 self
             }

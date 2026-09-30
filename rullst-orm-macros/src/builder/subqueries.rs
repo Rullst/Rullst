@@ -47,18 +47,23 @@ pub fn generate_subquery_methods() -> TokenStream {
                 self
             }
 
+            /// Adds a caller-owned raw CTE without bind markers; use
+            /// [`Self::with_raw_bindings`] for a parameterized fragment.
             pub fn with_raw(mut self, cte_name: &str, query: &str) -> Self {
                 if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
                     self.errors.push(rullst_orm::Error::Validation(format!("with_raw() — invalid CTE identifier: {}", e)));
                 }
+                self.__rullst_reject_raw_markers("with_raw", query);
                 self.ctes.push(format!("{} AS ({})", cte_name, query));
                 self
             }
 
+            /// Recursive variant of [`Self::with_raw`].
             pub fn with_recursive_raw(mut self, cte_name: &str, query: &str) -> Self {
                 if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
                     self.errors.push(rullst_orm::Error::Validation(format!("with_recursive_raw() — invalid CTE identifier: {}", e)));
                 }
+                self.__rullst_reject_raw_markers("with_recursive_raw", query);
                 self.ctes.push(format!("{} AS ({})", cte_name, query));
                 self.has_recursive_cte = true;
                 self
@@ -76,6 +81,19 @@ pub fn generate_subquery_methods() -> TokenStream {
                 self.__rullst_push_raw_cte("with_recursive_raw_bindings", cte_name, query, bindings.into_iter().map(Into::into).collect());
                 self.has_recursive_cte = true;
                 self
+            }
+
+            /// A raw fragment rendered before FROM cannot take `bind()` values:
+            /// those are WHERE bindings, so the scope binding would move into
+            /// the fragment's marker. Its values need the `_bindings` variant.
+            fn __rullst_reject_raw_markers(&mut self, method: &str, query: &str) {
+                if rullst_orm::raw_fragment(query, Vec::new()).is_err() {
+                    self.errors.push(rullst_orm::Error::Validation(format!(
+                        "{}() SQL contains bind markers, but bind() values belong to WHERE fragments; pass the fragment's values to {}_bindings(...)",
+                        method,
+                        method,
+                    )));
+                }
             }
 
             fn __rullst_push_raw_cte(

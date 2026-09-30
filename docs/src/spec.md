@@ -1609,7 +1609,10 @@ while portability and semantic review remain the model author's responsibility.
   through `with_raw_bindings`, `with_recursive_raw_bindings` and
   `select_raw_bindings` (v13); a marker/binding count mismatch fails closed,
   and `$n` markers are rewritten like typed subqueries. Pluck and count replace
-  the select list and therefore omit its values.
+  the select list and therefore omit its values. `with_raw`,
+  `with_recursive_raw` and `select_raw` fail with `Validation` when their SQL
+  contains a bind marker, because `bind()` appends WHERE values and a marker
+  before FROM would take the tenant or model-wide scope binding.
 * Generated builders start with the global row cap from
   `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
   clamps to it and `unsafe_unlimited()` removes it for one query.

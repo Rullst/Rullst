@@ -205,6 +205,10 @@ Caller-owned raw CTEs and select lists pass their values with
 `with_raw_bindings`, `with_recursive_raw_bindings` or `select_raw_bindings`;
 those values are bound at the fragment's own position (before JOIN, scope and
 WHERE values) and a marker/binding count mismatch fails with `Validation`.
+`with_raw`, `with_recursive_raw` and `select_raw` accept only fragments without
+bind markers: `bind()` supplies WHERE values, so a marker before FROM would
+otherwise receive the tenant or scope binding while the mandatory predicate
+received the caller's value.
 Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
 issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
 receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.

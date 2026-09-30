@@ -89,6 +89,35 @@ async fn scoped_assertions() {
     assert_eq!(bound().pluck_i32("id").await.expect("pluck"), [1, 3]);
     assert_eq!(bound().count().await.expect("count"), 2);
 
+    // Before FROM, `bind()` values used to take the tenant binding's place:
+    // the CTE received "acme" and `organization_id = ?` the caller's value.
+    let displaced = RawOrder::query()
+        .with_raw("hits", "SELECT order_id FROM raw_notes WHERE body = ?")
+        .bind("globex")
+        .where_raw("id IN (SELECT order_id FROM hits)", no_bindings())
+        .get()
+        .await;
+    assert!(matches!(
+        displaced,
+        Err(Error::Validation(message)) if message.contains("with_raw_bindings")
+    ));
+    for rejected in [
+        RawOrder::query().with_recursive_raw("ids", "SELECT ? AS n"),
+        RawOrder::query().select_raw("id, organization_id, total + $1 AS total"),
+    ] {
+        assert!(matches!(
+            rejected.get().await,
+            Err(Error::Validation(message)) if message.contains("bind markers")
+        ));
+    }
+    let literal = RawOrder::query()
+        .with_raw("hits", "SELECT order_id FROM raw_notes WHERE body = 'hit?'")
+        .where_raw("id IN (SELECT order_id FROM hits)", no_bindings())
+        .get()
+        .await
+        .expect("a quoted question mark is not a bind marker");
+    assert!(literal.is_empty());
+
     for mismatched in [
         RawOrder::query().select_raw_bindings("total + ?", no_bindings()),
         RawOrder::query().with_raw_bindings("hits", "SELECT 1", vec![1]),
