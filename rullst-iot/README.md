@@ -122,12 +122,16 @@ Ok(receipt)
 ```
 
 `RollbackCounterStore::compare_and_set` must make no change on an expected-value
-conflict, reject non-increasing values, and return success only after persistence
-survives reset. Advancing the counter before a later bootloader failure is
-security-safe but can require platform recovery and a newer signed counter; the
-framework cannot make counter storage and boot selection one hardware-atomic
-operation. `commit_verified_update` remains available for process-local state,
-but it does not provide persistent anti-rollback protection.
+conflict, reject non-increasing values, and return success only after
+persistence survives reset. Another error may leave the outcome unknown, such as
+a completed write whose acknowledgement was lost. A retry of
+`commit_verified_update_with_store` then completes the commit when the store
+reports, and a fresh `load` confirms, exactly this manifest's counter. Advancing
+the counter before a later bootloader failure is security-safe but can require
+platform recovery and a newer signed counter; the framework cannot make counter
+storage and boot selection one hardware-atomic operation.
+`commit_verified_update` remains available for process-local state, but it does
+not provide persistent anti-rollback protection.
 
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,

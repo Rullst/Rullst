@@ -347,11 +347,16 @@ impl OtaManager {
     /// Atomically advances a platform rollback counter before committing the
     /// verified manifest to this manager's in-memory state.
     ///
-    /// A store failure leaves the manifest verified and available for a safe
-    /// retry. A conflict means this manager is stale and should be reconstructed
-    /// from the store before another update is verified. Platform code should
-    /// flash and validate [`Self::verified_target_partition`] before calling
-    /// this method, then coordinate the returned receipt with its bootloader.
+    /// A store failure leaves the manifest verified and available for retry.
+    /// A store may report a failure after it durably committed the counter, for
+    /// example when an acknowledgement is lost. When a retry's compare-and-set
+    /// then reports that the store already holds exactly this manifest's
+    /// counter, and a fresh [`RollbackCounterStore::load`] confirms it, the
+    /// earlier commit is completed and the receipt is returned. Any other
+    /// conflict means this manager is stale and should be reconstructed from
+    /// the store before another update is verified. Platform code should flash
+    /// and validate [`Self::verified_target_partition`] before calling this
+    /// method, then coordinate the returned receipt with its bootloader.
     pub fn commit_verified_update_with_store<S: RollbackCounterStore>(
         &mut self,
         counter_store: &mut S,
@@ -365,6 +370,11 @@ impl OtaManager {
         if let Err(error) =
             counter_store.compare_and_set(self.rollback_counter, manifest.rollback_counter)
         {
+            if reports_committed_counter(error, manifest.rollback_counter)
+                && counter_store.load() == Ok(manifest.rollback_counter)
+            {
+                return Ok(self.apply_verified_manifest(manifest));
+            }
             self.status = OtaStatus::Verified;
             return Err(error.into());
         }
@@ -407,6 +417,17 @@ impl OtaManager {
         Err(OtaError::LegacyApiUnsupported {
             replacement: "OtaManager::commit_verified_update",
         })
+    }
+}
+
+/// Reports whether a rejected compare-and-set says the store already holds
+/// `counter`, whichever of the expected-value or monotonicity checks the
+/// adapter applied first.
+fn reports_committed_counter(error: RollbackCounterError, counter: u64) -> bool {
+    match error {
+        RollbackCounterError::Conflict { actual, .. } => actual == counter,
+        RollbackCounterError::NonMonotonic { current, .. } => current == counter,
+        _ => false,
     }
 }
 

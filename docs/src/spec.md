@@ -2670,7 +2670,7 @@ sending.
 
 ### 8.1. Ed25519 OTA Firmware Gate
 * **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`.
-* **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
+* **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly the verified manifest's counter. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
 * **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank for platform flash/read-back before commit. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
 
 ### 8.2. Embedded Sensor Frames (`#![no_std]`)
