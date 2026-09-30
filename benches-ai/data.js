@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790799345927,
+  "lastUpdate": 1790802472599,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11456,6 +11456,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 316,
+            "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2cb905357413b59ba51b2e313363fabb4d6886fe",
+          "message": "Merge pull request #357 from Rullst/fix/v13-mail-low-fixes\n\nfix(mail,core,cli): low-severity mail fixes, configured default sender and .env-aware mail settings",
+          "timestamp": "2026-09-30T17:43:37-03:00",
+          "tree_id": "ec96ac21ff087031101482c599339f927d005c1e",
+          "url": "https://github.com/Rullst/Rullst/commit/2cb905357413b59ba51b2e313363fabb4d6886fe"
+        },
+        "date": 1790802471970,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1688,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 378,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 357,
             "range": "± 7",
             "unit": "ns/iter"
           }
