@@ -2025,6 +2025,13 @@ while portability and semantic review remain the model author's responsibility.
   `mock_*` credentials select the mock; keyless live constructors accept only
   loopback HTTP, while remote/custom origins require HTTPS without URL
   credentials, redirects, paths, queries or fragments.
+* A provider answers one shared per-table index and returns at most
+  `scout::MAX_SEARCH_HITS` (1,000) IDs before tenant, model-wide and
+  soft-delete scopes filter them. For a model with any of those scopes, an
+  answer of that size is treated as truncated: `search()` answers from the SQL
+  fallback instead, so one tenant's hits can never push another tenant's
+  matches out of the result. Below the cap the scoped provider IDs are used;
+  engine-side tenant filtering and relevance order are not provided.
 * Index names, positive IDs, object payloads, queries, response bytes and hit
   counts are bounded. Meilisearch/Algolia tasks use bounded polling;
   Elasticsearch requests use `refresh=wait_for`. Provider response bodies and

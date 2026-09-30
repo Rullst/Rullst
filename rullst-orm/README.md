@@ -227,7 +227,12 @@ matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
 queries over 1,024 bytes or with control characters. Missing tenant context
 fails before contacting Scout, and an empty provider result remains an empty
 match even when a database contains an explicitly inserted ID of zero. Search
-index access controls still belong to the application/operator.
+index access controls still belong to the application/operator. Providers
+return at most `scout::MAX_SEARCH_HITS` (1,000) IDs for the whole shared index,
+before tenant, model-wide and soft-delete scopes apply; for a model with any of
+those scopes an answer of that size is treated as truncated and `search()`
+uses the SQL fallback instead, so another tenant's hits cannot hide a tenant's
+matches (the fallback's substring semantics then apply).
 
 Generated builders start with a global row cap (`Orm::set_max_query_limit`,
 1,000 by default; `0` disables it). `limit()` clamps to that cap and
