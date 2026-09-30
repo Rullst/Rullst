@@ -648,3 +648,24 @@ async fn guard_outages_do_not_fail_over_to_an_unguarded_provider() {
         assert!(fallback_store.lock().unwrap().is_empty());
     }
 }
+
+#[tokio::test]
+async fn sendgrid_rejects_schedules_beyond_its_window_before_network() {
+    let message = Message::new()
+        .to("user@example.com")
+        .from("sender@example.com")
+        .subject("Later")
+        .text("body")
+        .send_in(std::time::Duration::from_secs(5 * 86_400));
+    let outcome = SendGridDriver::try_new("SG.live_fixture")
+        .unwrap()
+        .send(&message)
+        .await;
+    assert!(matches!(outcome, Err(MailError::ConfigError(_))));
+    // The offline fixture keeps longer schedules for assertions.
+    SendGridDriver::try_new("mock_sendgrid")
+        .unwrap()
+        .send(&message)
+        .await
+        .unwrap();
+}

@@ -8,6 +8,9 @@ use crate::message::Message;
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
+/// Furthest ahead SendGrid v3 accepts `send_at`; later schedules need a queue.
+const MAX_PROVIDER_SCHEDULE: chrono::TimeDelta = chrono::TimeDelta::hours(72);
+
 /// A SendGrid HTTP REST API driver
 pub struct SendGridDriver {
     /// SendGrid API token.
@@ -46,6 +49,16 @@ impl MailDriver for SendGridDriver {
         let message = prepared.message();
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("sendgrid", message);
+        }
+        if message
+            .send_at
+            .as_ref()
+            .is_some_and(|send_at| *send_at > chrono::Utc::now() + MAX_PROVIDER_SCHEDULE)
+        {
+            return Err(MailError::ConfigError(
+                "SendGrid schedules delivery at most 72 hours ahead; initialize a durable Rullst queue for later delivery"
+                    .to_string(),
+            ));
         }
 
         let client = super::http::client()?;
