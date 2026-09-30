@@ -2232,7 +2232,9 @@ public error. Rullst deliberately does not retry billing mutations: callers may
 retry a transient or rate-limited result only when that exact operation has a
 persisted provider-forwarded idempotency key and a reconciliation policy.
 Returned checkout locations are accepted only as bounded, absolute,
-credential-free HTTPS URLs. Stripe's documented opaque hosted-URL fragment is
+credential-free HTTPS URLs. Offline legacy checkout and portal fixtures use
+reserved `mock.<provider>.invalid` hosts and omit the customer email and
+return URL. Stripe's documented opaque hosted-URL fragment is
 preserved; other adapters reject fragments. Provider/account sandbox acceptance
 remains external evidence.
 

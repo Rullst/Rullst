@@ -1,5 +1,5 @@
 use super::{
-    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode,
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
@@ -71,7 +71,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
         &self,
         customer_email: &str,
         plan_id: &str,
-        redirect_url: &str,
+        _redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
             return Err(CapitalError::ConfigurationError(
@@ -85,12 +85,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://commerce.coinbase.com/checkout/mock_session?email={}&plan={}&redirect={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         Err(CapitalError::UnsupportedOperation(
@@ -172,10 +167,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
 
         super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://commerce.coinbase.com/portal?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -269,7 +261,8 @@ mod tests {
             .create_checkout_session("crypto@user.com", "crypto_plan", "https://app.com/success")
             .await
             .unwrap();
-        assert!(url.contains("commerce.coinbase.com/checkout"));
+        assert!(url.starts_with("https://mock.coinbase.invalid/checkout/mock_session?plan="));
+        assert!(!url.contains("%40") && !url.contains("callback") && !url.contains("app.com"));
         assert!(url.contains("crypto_plan"));
 
         // 2. Checkout validation
@@ -291,7 +284,7 @@ mod tests {
             .create_customer_portal("crypto@user.com", "https://app.com")
             .await
             .unwrap();
-        assert!(portal.contains("commerce.coinbase.com/portal"));
+        assert_eq!(portal, "https://mock.coinbase.invalid/portal/mock_portal");
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // 4. Cancel

@@ -1,6 +1,6 @@
 use super::{
-    BillingProvider, WebhookEvent, WebhookVerificationMode, url_encode,
-    verify_explicit_mock_signature, webhook_mode_from_secret,
+    BillingProvider, WebhookEvent, WebhookVerificationMode, verify_explicit_mock_signature,
+    webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
@@ -90,12 +90,7 @@ impl BillingProvider for LemonSqueezyProvider {
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://checkout.lemonsqueezy.com/checkout/mock_session?email={}&variant={}&redirect={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         let store_id = self.store_id.as_deref().ok_or_else(|| {
@@ -151,10 +146,7 @@ impl BillingProvider for LemonSqueezyProvider {
 
         super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://app.lemonsqueezy.com/my-orders?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -256,7 +248,8 @@ mod tests {
             .create_checkout_session("user@lemon.com", "variant_123", "https://app.com/success")
             .await
             .unwrap();
-        assert!(url.contains("lemonsqueezy.com/checkout"));
+        assert!(url.starts_with("https://mock.lemonsqueezy.invalid/checkout/mock_session?plan="));
+        assert!(!url.contains("%40") && !url.contains("callback") && !url.contains("app.com"));
         assert!(url.contains("variant_123"));
 
         // 2. Checkout validation
@@ -278,7 +271,10 @@ mod tests {
             .create_customer_portal("user@lemon.com", "https://app.com")
             .await
             .unwrap();
-        assert!(portal.contains("lemonsqueezy.com/my-orders"));
+        assert_eq!(
+            portal,
+            "https://mock.lemonsqueezy.invalid/portal/mock_portal"
+        );
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // 4. Subscription actions

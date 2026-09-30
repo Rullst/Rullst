@@ -7,6 +7,7 @@ use tokio::sync::OnceCell;
 
 pub mod alipay;
 pub mod coinbase;
+mod fixture;
 mod http;
 pub mod infinitepay;
 pub mod lemonsqueezy;

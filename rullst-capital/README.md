@@ -66,7 +66,11 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
 live credentials. Their deterministic empty/`mock_*` examples are offline
-fixtures, not authenticated portal sessions. Live usage reporting through the
+fixtures, not authenticated portal sessions.
+Legacy checkout and portal fixtures use reserved `https://mock.<provider>.invalid/`
+hosts and carry only the plan ID, never the customer email or return URL, so a
+deployment started without credentials cannot send a browser or personal data
+to a real provider domain. Live usage reporting through the
 legacy uniform method is also unsupported for Paddle, Polar, Mercado Pago and
 Razorpay; use the separate reviewed Stripe/Lemon Squeezy metered contracts when
 applicable. InfinitePay, PicPay and Coinbase cancellation, plus Polar pause,
