@@ -136,8 +136,9 @@ repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
 Paddle and Polar expose typed adapter contracts; the host supplies durable
 orchestration, atomic event processing and reconciliation for those integrations.
-Razorpay's legacy plan checkout creates a fixed 12-cycle subscription;
-`subscription.completed` reports the end of billing as `Canceled`.
+Razorpay's live plan checkout requires an explicit billing-cycle count
+(`with_subscription_total_count`, v13 candidate) instead of the earlier fixed
+12 cycles; `subscription.completed` reports the end of billing as `Canceled`.
 Paddle's legacy normalized path accepts only documented `subscription.*`
 lifecycle events whose status matches the event; signed transaction,
 adjustment and customer events are rejected rather than treated as a

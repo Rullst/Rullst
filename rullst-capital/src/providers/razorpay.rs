@@ -14,6 +14,7 @@ pub struct RazorpayProvider {
     key_id: String,
     key_secret: String,
     webhook_secret: String,
+    subscription_total_count: Option<u32>,
 }
 
 impl RazorpayProvider {
@@ -27,7 +28,26 @@ impl RazorpayProvider {
             key_id: key_id.into(),
             key_secret: key_secret.into(),
             webhook_secret: webhook_secret.into(),
+            subscription_total_count: None,
         }
+    }
+
+    /// Sets the number of billing cycles (`total_count`) for subscriptions
+    /// created by live `create_checkout_session` calls.
+    ///
+    /// There is no default: Razorpay stops charging after this many cycles and
+    /// emits `subscription.completed`, so the term must match the plan period
+    /// (for example 52 weekly cycles for one year). Live checkout without it
+    /// returns `ConfigurationError` before any HTTP request. Razorpay enforces
+    /// its own per-period maximum; zero is rejected here.
+    pub fn with_subscription_total_count(mut self, total_count: u32) -> Result<Self, CapitalError> {
+        if total_count == 0 {
+            return Err(CapitalError::ConfigurationError(
+                "Razorpay subscription total_count must be positive".into(),
+            ));
+        }
+        self.subscription_total_count = Some(total_count);
+        Ok(self)
     }
 
     /// Verifies the `X-Razorpay-Signature` header HMAC-SHA256 signature.
@@ -58,6 +78,25 @@ impl RazorpayProvider {
 
         Ok(())
     }
+}
+
+// The redirect URL is kept as note metadata only; it is not a callback.
+fn subscription_request(
+    plan_id: &str,
+    total_count: u32,
+    customer_email: &str,
+    redirect_url: &str,
+) -> Value {
+    serde_json::json!({
+        "plan_id": plan_id,
+        "total_count": total_count,
+        "quantity": 1,
+        "customer_notify": 1,
+        "notes": {
+            "customer_email": customer_email,
+            "redirect_url": redirect_url
+        }
+    })
 }
 
 #[async_trait]
@@ -97,17 +136,14 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
 
+        let total_count = self.subscription_total_count.ok_or_else(|| {
+            CapitalError::ConfigurationError(
+                "Razorpay subscription checkout requires an explicit with_subscription_total_count"
+                    .into(),
+            )
+        })?;
         let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "plan_id": plan_id,
-            "total_count": 12,
-            "quantity": 1,
-            "customer_notify": 1,
-            "notes": {
-                "customer_email": customer_email,
-                "redirect_url": redirect_url
-            }
-        });
+        let payload = subscription_request(plan_id, total_count, customer_email, redirect_url);
 
         let body: Value = crate::providers::send_http_json(
             client
@@ -371,5 +407,49 @@ mod tests {
         let empty_headers = HashMap::new();
         assert!(provider.handle_webhook(payload, &empty_headers).is_err());
         assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
+    }
+
+    #[tokio::test]
+    async fn live_checkout_requires_an_explicit_billing_cycle_count() {
+        // The newline keeps any accidental request from leaving the process.
+        let live = RazorpayProvider::new("rzp_fixture\ninvalid", "fixture", "fixture");
+        assert!(matches!(
+            live.create_checkout_session(
+                "user@example.invalid",
+                "plan_weekly",
+                "https://app.example"
+            )
+            .await,
+            Err(CapitalError::ConfigurationError(_))
+        ));
+        assert!(matches!(
+            RazorpayProvider::new("rzp_fixture", "fixture", "fixture")
+                .with_subscription_total_count(0),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+        let configured = RazorpayProvider::new("rzp_fixture", "fixture", "fixture")
+            .with_subscription_total_count(52)
+            .unwrap();
+        assert_eq!(configured.subscription_total_count, Some(52));
+        let request = subscription_request(
+            "plan_weekly",
+            52,
+            "user@example.invalid",
+            "https://app.example",
+        );
+        assert_eq!(request["total_count"], 52);
+        assert_eq!(request["plan_id"], "plan_weekly");
+        assert_eq!(request["notes"]["redirect_url"], "https://app.example");
+        // Offline fixtures keep working without a live billing term.
+        assert!(
+            RazorpayProvider::new("mock_key", "fixture", "fixture")
+                .create_checkout_session(
+                    "user@example.invalid",
+                    "plan_weekly",
+                    "https://app.example"
+                )
+                .await
+                .is_ok()
+        );
     }
 }

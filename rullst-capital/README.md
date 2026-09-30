@@ -56,7 +56,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
 | **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
-| **Razorpay** | Billing | Plan checkout adapter for a fixed 12-cycle subscription and signed-webhook foundation; completion is reported as `Canceled`. |
+| **Razorpay** | Billing | Plan checkout adapter with an explicit `with_subscription_total_count` billing term (v13) and signed-webhook foundation; completion is reported as `Canceled`. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
@@ -538,12 +538,15 @@ state, not proof that a particular invoice was paid. See Razorpay's
 [subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
 and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
 
-The legacy Razorpay `create_checkout_session` creates a subscription with a
-fixed `total_count` of 12 billing cycles for every plan period, so a weekly
-plan ends after 12 weeks and a yearly plan after 12 years. Handle
+Live Razorpay `create_checkout_session` calls use the billing-cycle count set
+with `RazorpayProvider::with_subscription_total_count` (v13 candidate); there
+is no default, and without it live checkout returns `ConfigurationError` before
+any HTTP request. Choose a count that matches the plan period, for example 52
+weekly cycles for one year; Razorpay enforces its own maximum. Earlier releases
+sent a fixed `total_count` of 12 for every plan period. Handle
 `subscription.completed` to learn when billing ends. The `redirect_url`
 argument is recorded in the subscription `notes` only; the adapter does not
-send it as a callback or return URL.
+send it as a callback or return URL. Offline fixtures need no count.
 
 ---
 

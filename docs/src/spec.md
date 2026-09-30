@@ -2368,9 +2368,11 @@ sending.
   reconciliation remain application responsibilities. Lifecycle activation is
   not a receipt proving settlement of an invoice. `subscription.completed`
   with entity status `completed` is the terminal event after the last billing
-  cycle and maps to the non-entitled `Canceled` status. The legacy plan
-  checkout requests a fixed `total_count` of 12 cycles regardless of the plan
-  period, and its `redirect_url` is recorded in `notes` only.
+  cycle and maps to the non-entitled `Canceled` status. Live plan checkout
+  sends the positive `total_count` configured with the v13
+  `with_subscription_total_count`; without it the call returns
+  `ConfigurationError` before dispatch instead of inventing a term (earlier
+  releases sent a fixed 12). Its `redirect_url` is recorded in `notes` only.
 * Paddle's legacy `handle_webhook`, which the canonical middleware calls,
   normalizes only documented `subscription.*` lifecycle events (created,
   updated, imported, activated, resumed, trialing, past_due, paused and
