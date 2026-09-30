@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790741192474,
+  "lastUpdate": 1790745091290,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22071,6 +22071,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1202,
             "range": "± 78",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40c8d769858294623ea7cf328c1aadeba0f04a1a",
+          "message": "Merge pull request #341 from Rullst/fix/v13-mail-review-fixes\n\nfix(mail): linear scans, suppression parsing, SES attachments, content sniffing, SMTP TLS",
+          "timestamp": "2026-09-30T01:59:52-03:00",
+          "tree_id": "cababc91077f79da07765d16f96dcd58cab7b4c6",
+          "url": "https://github.com/Rullst/Rullst/commit/40c8d769858294623ea7cf328c1aadeba0f04a1a"
+        },
+        "date": 1790745089391,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 735,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 980,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 638,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2254,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
