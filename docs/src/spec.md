@@ -1909,6 +1909,11 @@ while portability and semantic review remain the model author's responsibility.
   savepoint rolls back instead of releasing, a managed transaction rolls back
   and returns an error instead of committing, and the ORM pool closes a
   connection returned while SQLx still reports an open transaction.
+* A generated `stream()` running on a managed or task-scoped transaction keeps
+  that transaction locked between rows until it is consumed or dropped. While
+  it is open, every other generated ORM call, `Orm::transaction` and
+  `Outbox::enqueue` on that transaction fails with `Validation` instead of
+  waiting for the lock (the query timeout does not cover that wait).
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no

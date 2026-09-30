@@ -288,7 +288,10 @@ a transaction instead of reusing it.
 
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
-on that transaction. Transactional streams reject `after_fetch` hooks to avoid
+on that transaction: while a `stream()` opened inside `Orm::transaction` (or
+`#[rullst_orm::test]`) is alive, other generated ORM calls on that transaction,
+including those of a `tokio::join!` sibling, fail with `Validation` instead of
+waiting for its lock. Transactional streams reject `after_fetch` hooks to avoid
 reentrant queries while retaining that access; use `get()` inside
 `Orm::transaction` for those models. Streaming does not eagerly load relations.
 
