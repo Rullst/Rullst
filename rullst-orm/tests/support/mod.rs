@@ -178,3 +178,47 @@ async fn exercise_outbox_snapshot_reuse() {
     assert_eq!(reused.id, committed.id);
     late.commit().await.expect("commit the late transaction");
 }
+
+/// Audit payloads larger than MySQL/MariaDB's 64 KiB `TEXT` are stored
+/// intact, both as values and as a revision's restore patch.
+#[allow(dead_code)]
+pub async fn exercise_large_audit_payload() {
+    use rullst_orm::Orm;
+    use rullst_orm::audit::{
+        AuditContext, create_audit_table, log_audit, log_audit_diff, with_audit_context,
+    };
+    use serde_json::json;
+
+    create_audit_table()
+        .await
+        .expect("audit table should be created or upgraded");
+    let created = json!({"body": "a".repeat(70_000)}).to_string();
+    let before = json!({"body": "b".repeat(40_000)}).to_string();
+    let after = json!({"body": "c".repeat(40_000)}).to_string();
+    let context = AuditContext::system("large-audit-matrix").expect("valid audit context");
+    with_audit_context(context, async {
+        log_audit("large_payloads", 1, "created", None, Some(created)).await?;
+        log_audit_diff("large_payloads", 1, "updated", &before, &after).await
+    })
+    .await
+    .expect("large audit payloads should be stored");
+
+    let sql = if Orm::driver().expect("driver") == "postgres" {
+        "SELECT new_values, restore_patch FROM rullst_audits WHERE model_type = $1 ORDER BY id"
+    } else {
+        "SELECT new_values, restore_patch FROM rullst_audits WHERE model_type = ? ORDER BY id"
+    };
+    let rows: Vec<(Option<String>, Option<String>)> = sqlx::query_as(sql)
+        .bind("large_payloads")
+        .fetch_all(Orm::pool().expect("pool"))
+        .await
+        .expect("read large audit rows");
+    assert_eq!(rows.len(), 2);
+    let created: serde_json::Value =
+        serde_json::from_str(rows[0].0.as_deref().expect("created values"))
+            .expect("created values stay valid JSON");
+    assert_eq!(created["body"].as_str().map(str::len), Some(70_000));
+    let patch = rows[1].1.as_deref().expect("update restore patch");
+    assert!(patch.len() > 80_000, "restore patch length {}", patch.len());
+    serde_json::from_str::<serde_json::Value>(patch).expect("restore patch stays valid JSON");
+}

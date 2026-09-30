@@ -145,6 +145,7 @@ async fn test_matrix_postgres_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    support::exercise_large_audit_payload().await;
     exercise_tenant_subqueries().await;
 
     #[cfg(feature = "strict-postgres")]
