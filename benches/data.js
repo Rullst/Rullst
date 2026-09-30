@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790737547113,
+  "lastUpdate": 1790741192474,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22017,6 +22017,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1140,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b",
+          "message": "Merge pull request #340 from Rullst/fix/v13-capital-review-fixes\n\nfix(capital): fail closed on unsigned Wise webhooks, tighten Paddle and Razorpay handling",
+          "timestamp": "2026-09-30T00:44:35-03:00",
+          "tree_id": "3de7ba1079519b769c5aae74121b00a73b21643e",
+          "url": "https://github.com/Rullst/Rullst/commit/dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b"
+        },
+        "date": 1790741189353,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 497,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 634,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 430,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1202,
+            "range": "± 78",
             "unit": "ns/iter"
           }
         ]
