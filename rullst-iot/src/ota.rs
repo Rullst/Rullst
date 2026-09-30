@@ -176,6 +176,12 @@ impl OtaCommit {
 /// Fail-closed verifier and boot-selection state machine for signed firmware.
 #[non_exhaustive]
 pub struct OtaManager {
+    /// Bank the device is running from. Constructors assume
+    /// [`BootPartition::PartitionA`]; platform code must set the bank reported
+    /// by its bootloader before verifying an update, for example after the
+    /// device rebooted into [`BootPartition::PartitionB`]. A commit does not
+    /// change it: the receipt names the bank selected for the next boot, which
+    /// runs only after the platform reboots into it.
     pub current_partition: BootPartition,
     pub status: OtaStatus,
     pub firmware_version: String,
@@ -258,7 +264,9 @@ impl OtaManager {
     }
 
     /// Returns the inactive bank selected for a cryptographically verified
-    /// update, without changing any state.
+    /// update, without changing any state. This is always the bank opposite
+    /// [`Self::current_partition`], never the running one, including for a
+    /// further update verified before the platform reboots.
     ///
     /// Platform code can flash and read back this bank before committing the
     /// durable rollback counter.
@@ -383,8 +391,10 @@ impl OtaManager {
     }
 
     fn apply_verified_manifest(&mut self, manifest: OtaManifest) -> OtaCommit {
+        // The device keeps running from `current_partition` until the platform
+        // reboots into the selected bank, so a later update in this process
+        // must still target the inactive bank.
         let target_partition = self.current_partition.opposite();
-        self.current_partition = target_partition;
         self.firmware_version.clone_from(&manifest.version);
         self.rollback_counter = manifest.rollback_counter;
         self.pending_manifest = None;

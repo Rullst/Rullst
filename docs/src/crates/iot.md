@@ -52,7 +52,7 @@ The `OtaManager` enforces a **fail-closed eligibility gate**: its state machine 
 
 ```rust
 use rullst_iot::{
-    OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
+    BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
 };
 
 fn process_incoming_ota<S: RollbackCounterStore>(
@@ -60,6 +60,7 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     signature_bytes: &[u8],
     provisioned_public_key: [u8; 32],
     counter_store: &mut S,
+    running_partition: BootPartition,
 ) -> Result<OtaCommit, OtaError> {
     // 1. Construct the expected manifest from the payload
     let manifest = OtaManifest::from_firmware(
@@ -76,6 +77,8 @@ fn process_incoming_ota<S: RollbackCounterStore>(
         provisioned_public_key,
         counter_store,
     )?;
+    // Report the bank the bootloader started; construction assumes PartitionA.
+    manager.current_partition = running_partition;
 
     // 3. Cryptographically verify signature, target, and anti-rollback state
     manager.verify_update(&manifest, firmware_bytes, signature_bytes)?;
@@ -90,6 +93,12 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     Ok(receipt)
 }
 ```
+
+`verified_target_partition` and the receipt always name the bank opposite
+`current_partition`. A new manager assumes `PartitionA`, so platform code must
+report the bank its bootloader started before verifying an update. Committing
+does not change `current_partition`; until the platform reboots, a further
+update verified in the same process targets the same inactive bank.
 
 The store contract requires power-loss-safe persistence before returning
 success. If a store reports a failure after committing, for example because an

@@ -289,7 +289,7 @@ version, boot state and telemetry.
 | `IOT-01` forged/tampered manifest | Verify Ed25519 over canonical bounded bytes with the provisioned key. | Signature/tamper tests. |
 | `IOT-02` rollback | Require version above a persisted monotonic counter before boot. | In-process anti-rollback exists; persistent integration remains open. |
 | `IOT-03` wrong target/image | Verify target, declared length and cryptographic hash before flashing. | Manifest checks exist; downloader/flasher is roadmap. |
-| `IOT-04` power loss/partial flash | Use a recoverable A/B boot flow and commit counter only after verified boot. | Hardware/bootloader integration remains open. |
+| `IOT-04` power loss/partial flash | Use a recoverable A/B boot flow and commit counter only after verified boot. | The target bank is always opposite the running bank that platform code reports; a commit does not move the running bank, and a regression proves a second update before reboot never targets it. Hardware/bootloader integration remains open. |
 | `IOT-05` signing-key compromise | Use offline protected signing plus rotation/revocation. | Operational/HSM program remains open; simulators are not HSMs. |
 | `IOT-06` telemetry spoof/replay | Authenticate channel/device and bind identity plus sequence/time. | Transport identity/MQTT remains open. |
 

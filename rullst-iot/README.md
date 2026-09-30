@@ -91,7 +91,7 @@ channel as the firmware.
 
 ```rust
 use rullst_iot::{
-    OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
+    BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
 };
 
 fn verify_download<S: RollbackCounterStore>(
@@ -99,6 +99,7 @@ fn verify_download<S: RollbackCounterStore>(
     signature: &[u8],
     trusted_public_key: [u8; 32],
     counter_store: &mut S,
+    running_partition: BootPartition,
 ) -> Result<OtaCommit, OtaError> {
 let manifest = OtaManifest::from_firmware(
     "board-revision-a",
@@ -112,6 +113,8 @@ let mut ota = OtaManager::new_with_counter_store(
     trusted_public_key,
     counter_store,
 )?;
+// Report the bank the bootloader started; construction assumes PartitionA.
+ota.current_partition = running_partition;
 
 ota.verify_update(&manifest, firmware, signature)?;
 let target = ota.verified_target_partition()?;
@@ -136,6 +139,14 @@ platform recovery and a newer signed counter; the framework cannot make counter
 storage and boot selection one hardware-atomic operation.
 `commit_verified_update` remains available for process-local state, but it does
 not provide persistent anti-rollback protection.
+
+`verified_target_partition` and the receipt always name the bank opposite
+`current_partition`. A new manager assumes the device runs from `PartitionA`,
+so after the device has rebooted into `PartitionB` the platform must set
+`current_partition` from its bootloader before verifying the next update.
+Committing does not change `current_partition`: the device keeps running the
+old bank until the platform reboots, so a further update verified in the same
+process targets the same inactive bank, never the running one.
 
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,
