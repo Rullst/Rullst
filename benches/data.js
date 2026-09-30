@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790794892494,
+  "lastUpdate": 1790796087940,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22773,6 +22773,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2293,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21154a65f98aa479f30ea05ad24c9e67d3de35a7",
+          "message": "Merge pull request #355 from Rullst/fix/v13-auth-ai-iot-low-fixes\n\nfix(auth,ai,iot): low-severity review fixes for stores, cookies, fallbacks and CoAP/OTA edges",
+          "timestamp": "2026-09-30T16:14:48-03:00",
+          "tree_id": "1a2c1c91c3287e0792f9619522d82e38d33c82c2",
+          "url": "https://github.com/Rullst/Rullst/commit/21154a65f98aa479f30ea05ad24c9e67d3de35a7"
+        },
+        "date": 1790796085477,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 743,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1018,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 655,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2428,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
