@@ -222,10 +222,13 @@ impl Outbox {
                             .to_string(),
                     )
                 })?;
-        if stored_kind != event_kind || stored_payload != payload_json {
-            return Err(Error::Validation(format!(
-                "outbox idempotency key '{event_key}' already exists in stream '{stream}' with different content"
-            )));
+        if stored_kind != event_kind || !same_payload(&stored_payload, &payload_json) {
+            // The stream and key stay out of the message, as in the redacted
+            // `ClaimedOutboxEvent` debug output.
+            return Err(Error::Validation(
+                "outbox idempotency key already exists in this stream with different content"
+                    .to_string(),
+            ));
         }
         let inserted = stored_insert_token == insert_token;
         Ok(EnqueuedOutboxEvent { id, inserted })
@@ -407,6 +410,21 @@ impl Outbox {
     }
 }
 
+/// Compares a stored payload with a replayed one as JSON values, so object
+/// key order is not content: with serde_json's `preserve_order` feature
+/// (enabled by feature unification, for example through `mongodb`) a replay
+/// built from a `HashMap` can serialize the same object in another order.
+fn same_payload(stored: &str, replayed: &str) -> bool {
+    stored == replayed
+        || matches!(
+            (
+                serde_json::from_str::<Value>(stored),
+                serde_json::from_str::<Value>(replayed),
+            ),
+            (Ok(stored), Ok(replayed)) if stored == replayed
+        )
+}
+
 fn validate_key(field: &str, value: &str) -> Result<(), Error> {
     if value.is_empty()
         || value.len() > MAX_KEY_LEN
@@ -434,4 +452,21 @@ fn missing_transaction_error() -> Error {
         "Outbox::enqueue must run inside Orm::transaction; use enqueue_with_tx for a caller-owned transaction"
             .to_string(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::same_payload;
+
+    #[test]
+    fn replayed_payloads_compare_as_json_values() {
+        assert!(same_payload(r#"{"b":2,"a":1}"#, r#"{"a":1,"b":2}"#));
+        assert!(same_payload(
+            r#"{"outer":{"y":[1,2],"x":null}}"#,
+            r#"{"outer":{"x":null,"y":[1,2]}}"#
+        ));
+        assert!(!same_payload(r#"{"a":1,"b":2}"#, r#"{"a":1,"b":3}"#));
+        assert!(!same_payload(r#"{"list":[1,2]}"#, r#"{"list":[2,1]}"#));
+        assert!(!same_payload("not json", r#"{"a":1}"#));
+    }
 }

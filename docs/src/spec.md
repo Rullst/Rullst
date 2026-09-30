@@ -1958,11 +1958,13 @@ while portability and semantic review remain the model author's responsibility.
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
 * `(stream, event_key)` is the database uniqueness boundary. Replaying the same
-  key and exact event kind/payload returns the existing `i64` identifier,
+  key, exact event kind and JSON-equal payload (object key order is not
+  content) returns the existing `i64` identifier,
   including a key committed by a concurrent enqueue after the caller's read
   snapshot (MySQL/MariaDB read it back with a locking `FOR UPDATE` read, as
   InnoDB's default `REPEATABLE READ` would hide it from a plain `SELECT`);
-  reusing the key with different content fails closed. `stream`, event key,
+  reusing the key with different content fails closed with an error that
+  does not echo the stream or key. `stream`, event key,
   event kind and worker identifiers use a bounded ASCII grammar, and serialized
   payloads are limited to one MiB. Streams, event keys and claim tokens compare
   case-sensitively on every backend; MySQL/MariaDB declare those columns
