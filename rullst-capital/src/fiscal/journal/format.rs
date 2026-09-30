@@ -131,7 +131,13 @@ pub(super) fn append(
     frame.extend_from_slice(&payload);
     frame.push(b'\n');
     let previous_bytes = state.bytes;
-    if let Err(error) = state.file.write_all(&frame) {
+    // Unix appends through O_APPEND; elsewhere the explicit offset places the
+    // frame at the authenticated end, including after a recovery truncation.
+    if let Err(error) = state
+        .file
+        .seek(SeekFrom::Start(previous_bytes))
+        .and_then(|_| state.file.write_all(&frame))
+    {
         return recover_partial_write(state, previous_bytes, &error);
     }
     state.bytes = final_bytes;
@@ -283,11 +289,16 @@ fn decode_tag(bytes: &[u8], record: usize) -> Result<[u8; 32], FiscalJournalErro
 
 fn open_file(path: &Path) -> Result<File, FiscalJournalError> {
     let mut options = OpenOptions::new();
-    options.read(true).append(true).create(true);
+    // Full write access, not an append-only handle: Windows withholds
+    // FILE_WRITE_DATA from append handles, and partial-write recovery needs it
+    // to truncate the file. Unix keeps append semantics through O_APPEND.
+    options.read(true).write(true).create(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt as _;
-        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+        options
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_APPEND);
     }
     options
         .open(path)
@@ -356,9 +367,10 @@ fn io_failure(operation: &'static str, error: &io::Error) -> FiscalJournalError 
 }
 
 #[cfg(test)]
-mod directory_tests {
-    use super::parent_directory;
-    use std::path::Path;
+mod file_tests {
+    use super::super::{JournalEnvironment, JournalOutcome};
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     #[test]
     fn a_bare_file_name_syncs_the_working_directory() {
@@ -370,5 +382,51 @@ mod directory_tests {
             parent_directory(Path::new("/var/lib/app/fiscal.journal")),
             Path::new("/var/lib/app")
         );
+    }
+
+    #[test]
+    fn partial_write_recovery_truncates_and_later_appends_stay_valid() {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let path = std::env::temp_dir().join(format!(
+            "rullst-capital-nfse-recovery-{}-{}.journal",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let key = FiscalJournalKey::try_new("recovery", [3_u8; 32]).expect("key");
+        let (mut state, _) = open(&path, 4_096, &key).expect("new journal");
+        let previous = state.bytes;
+        state
+            .file
+            .write_all(b"torn-frame")
+            .expect("simulate a torn write");
+        let error = io::Error::other("disk full");
+        assert!(matches!(
+            recover_partial_write(&mut state, previous, &error),
+            Err(FiscalJournalError::Io {
+                operation: "append",
+                ..
+            })
+        ));
+        assert!(state.healthy, "recovery must truncate on every platform");
+        assert_eq!(std::fs::metadata(&path).expect("metadata").len(), previous);
+
+        let event = JournalEvent {
+            schema_version: super::super::SCHEMA_VERSION,
+            sequence: 1,
+            command_id: "invoice:recovered".to_string(),
+            environment: JournalEnvironment::Homologation,
+            request_digest: "a".repeat(64),
+            observed_at_unix_ms: 1,
+            outcome: JournalOutcome::Prepared,
+        };
+        append(&mut state, 4_096, &key, &event).expect("append after recovery");
+        assert_eq!(
+            verify_and_read(&mut state, 4_096, &key)
+                .expect("read")
+                .len(),
+            1
+        );
+        drop(state);
+        let _cleanup = std::fs::remove_file(&path);
     }
 }
