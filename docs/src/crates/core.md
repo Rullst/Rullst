@@ -103,6 +103,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   It gives every toolchain, platform and replica the same assignment.
   Earlier releases used `std`'s unspecified `DefaultHasher`, so upgrading
   reassigns users to buckets once; percentages and variant weights are kept.
+  `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
+  so concurrent evaluations never see a flag as unset mid-reload, and a
+  `[features] # comment` header is recognized.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk
