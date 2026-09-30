@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790760866298,
+  "lastUpdate": 1790776184962,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9711,6 +9711,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/90d882121b083bde1dcfb0700d56759f6da1016d"
         },
         "date": 1790760865687,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40ac10fd72b9bc22cafdd25e00c6a1764924a7d0",
+          "message": "Merge pull request #346 from Rullst/fix/v13-nexus-logo\n\nfeat(nexus): serve the Rullst logo and favicon same-origin",
+          "timestamp": "2026-09-30T10:24:12-03:00",
+          "tree_id": "3dad3cf45dd71fd3cbdab665e5c483b836525989",
+          "url": "https://github.com/Rullst/Rullst/commit/40ac10fd72b9bc22cafdd25e00c6a1764924a7d0"
+        },
+        "date": 1790776184349,
         "tool": "cargo",
         "benches": [
           {
