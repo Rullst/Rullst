@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790728060571,
+  "lastUpdate": 1790730358133,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12236,6 +12236,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 29,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3597ec1993110cc059af6df3e369e0ee9eaa7aaf",
+          "message": "Merge pull request #329 from Rullst/fix/v13-orm-correctness-fixes\n\nfix(orm): savepoint nesting, PostgreSQL trash operations and truncation-safe queries",
+          "timestamp": "2026-09-29T21:30:19-03:00",
+          "tree_id": "2c926334ea3eb71778e56789a78f81c2d68c94b6",
+          "url": "https://github.com/Rullst/Rullst/commit/3597ec1993110cc059af6df3e369e0ee9eaa7aaf"
+        },
+        "date": 1790730357497,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5559,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 670,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
             "range": "± 1",
             "unit": "ns/iter"
           },
