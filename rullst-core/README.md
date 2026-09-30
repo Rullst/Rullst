@@ -55,6 +55,9 @@
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
   Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
   `purge_failed_jobs`.
+- **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send
+  HTMX requests their error fragment with `200 OK` plus
+  `X-Rullst-Validation-Status: 400|422`; other clients keep `400`/`422` JSON.
 - **POSIX Cron in UTC:** `Scheduler::task` evaluates five-field POSIX
   expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and names, and a day
   matching either restricted day field runs the task.
