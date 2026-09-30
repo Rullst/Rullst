@@ -193,6 +193,34 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Connect and core second-pass review fixes
+
+- Connect keeps a rotated refresh token when a refresh response is rejected or
+  its profile or ID-token step fails; the new `ConnectError::RefreshIncomplete`
+  carries the issued tokens.
+- Connect requests JSON from the token endpoint on refresh, so GitHub refresh
+  works, and X and basic-only OIDC providers authenticate token requests with
+  HTTP Basic.
+- `GoogleProvider::try_with_authorized_presenters` accepts native Android and
+  iOS presenters in `verify_id_token`; `aud` must still be the server client ID.
+- `/health` and `/ready` are exempt from the Server rate limiter and Traffic
+  Shield, so a database incident no longer fails liveness probes.
+- `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) and the
+  day-of-month OR day-of-week rule, evaluated in UTC. Numeric weekdays in
+  existing schedules change meaning; messaging's durable schedules keep their
+  documented numbering.
+- Request-path console output no longer panics when stdout or stderr is
+  closed.
+- `DbFeatureDriver` caches missing and failed lookups for the TTL and serves the
+  last known value on error.
+- HTMX validation fragments are sent with 200 and
+  `X-Rullst-Validation-Status`, so htmx swaps them; other clients keep 400/422.
+- Queue workers record their own stalled-lease threshold with each claim
+  (`QueueDriver::pop_with_lease`), and a job whose lease stalls 5 times fails
+  instead of being requeued forever (`try_with_max_stalled_leases`).
+- The Server logs scheduler task failures and no longer turns a past task
+  failure into a failed shutdown.
+
 ### Core runtime hardening
 
 - `ValidatedForm` and `ValidatedJson` no longer echo deserializer errors:

@@ -12,6 +12,7 @@ struct CountingProvider {
     rotate: AtomicBool,
     wrong_user: AtomicBool,
     omit_expiry: AtomicBool,
+    profile_fails: AtomicBool,
 }
 
 #[async_trait]
@@ -42,6 +43,16 @@ impl Provider for CountingProvider {
             .rotate
             .load(Ordering::SeqCst)
             .then(|| SecretString::from(format!("refresh-{generation}")));
+        if self.profile_fails.load(Ordering::SeqCst) {
+            return Err(ConnectError::RefreshIncomplete {
+                tokens: Box::new(crate::error::IssuedTokens::new(
+                    format!("access-{generation}"),
+                    rotated.map(|token| token.expose_secret().to_string()),
+                    Some(3_600),
+                )),
+                source: Box::new(ConnectError::Provider("profile unavailable".to_string())),
+            });
+        }
         let mut refreshed = user(
             &format!("access-{generation}"),
             rotated,
@@ -239,4 +250,83 @@ fn user(
         refresh_token,
         expires_in,
     }
+}
+
+#[tokio::test]
+async fn a_rejected_response_keeps_the_rotated_refresh_token() {
+    let provider = CountingProvider::default();
+    provider.rotate.store(true, Ordering::SeqCst);
+    provider.omit_expiry.store(true, Ordering::SeqCst);
+    let session = AutoRefreshingSession::from_user_at(
+        &provider,
+        &user(
+            "access-0",
+            Some(SecretString::from("refresh-0".to_string())),
+            Some(10),
+        ),
+        1_000,
+    )
+    .expect("session")
+    .with_refresh_leeway(0)
+    .expect("leeway");
+
+    // The provider rotated refresh-0 to refresh-1 but omitted the lifetime.
+    assert!(session.access_token_at(1_010).await.is_err());
+    let state = session.state_snapshot().await;
+    assert_eq!(state.access_token().expose_secret(), "access-0");
+    assert!(
+        state.refresh_token().expose_secret() == "refresh-1",
+        "the consumed refresh token must be replaced by its rotation"
+    );
+    assert_eq!(state.generation(), 1);
+
+    // The next call retries with the rotation instead of the consumed token.
+    provider.omit_expiry.store(false, Ordering::SeqCst);
+    let lease = session
+        .access_token_at(1_010)
+        .await
+        .expect("retried refresh");
+    assert!(lease.was_refreshed());
+    assert_eq!(lease.access_token().expose_secret(), "access-2");
+    assert_eq!(lease.generation(), 2);
+}
+
+#[tokio::test]
+async fn an_incomplete_refresh_keeps_the_issued_rotation_and_returns_its_cause() {
+    let provider = CountingProvider::default();
+    provider.rotate.store(true, Ordering::SeqCst);
+    provider.profile_fails.store(true, Ordering::SeqCst);
+    let session = AutoRefreshingSession::from_user_at(
+        &provider,
+        &user(
+            "access-0",
+            Some(SecretString::from("refresh-0".to_string())),
+            Some(10),
+        ),
+        1_000,
+    )
+    .expect("session")
+    .with_refresh_leeway(0)
+    .expect("leeway");
+
+    let error = session
+        .access_token_at(1_010)
+        .await
+        .expect_err("profile failure");
+    assert!(matches!(error, ConnectError::Provider(_)), "{error}");
+    let state = session.state_snapshot().await;
+    assert_eq!(state.access_token().expose_secret(), "access-0");
+    assert!(
+        state.refresh_token().expose_secret() == "refresh-1",
+        "the issued rotation must replace the consumed refresh token"
+    );
+    assert_eq!(state.generation(), 1);
+
+    provider.profile_fails.store(false, Ordering::SeqCst);
+    let lease = session
+        .access_token_at(1_010)
+        .await
+        .expect("retried refresh");
+    assert_eq!(lease.access_token().expose_secret(), "access-2");
+    assert_eq!(lease.generation(), 2);
 }

@@ -52,6 +52,7 @@ pub mod redis_driver {
         dead_letter_key: String,
         failed_retention: usize,
         dead_letter_retention: usize,
+        max_stalled_leases: u32,
     }
 
     impl RedisDriver {
@@ -119,6 +120,21 @@ pub mod redis_driver {
             Ok(self)
         }
 
+        /// Sets how many times a job's lease may stall before recovery fails
+        /// the job instead of requeuing it (default
+        /// [`super::super::DEFAULT_MAX_STALLED_LEASES`]; `1` fails on the
+        /// first stall). The failure uses the configured failed-job retention.
+        ///
+        /// Unpublished v13 API.
+        ///
+        /// # Errors
+        /// Returns [`QueueError::InvalidConfiguration`] outside
+        /// `1..=`[`super::super::MAX_STALLED_LEASES_LIMIT`].
+        pub fn try_with_max_stalled_leases(mut self, leases: u32) -> Result<Self, QueueError> {
+            self.max_stalled_leases = super::super::validate_max_stalled_leases(leases)?;
+            Ok(self)
+        }
+
         fn from_client(client: redis::Client, queue_key: String) -> Self {
             Self {
                 processing_key: format!("{queue_key}:processing"),
@@ -131,6 +147,7 @@ pub mod redis_driver {
                 shared: SharedRedisConnection::new(client),
                 failed_retention: DEFAULT_FAILURE_RETENTION,
                 dead_letter_retention: DEFAULT_FAILURE_RETENTION,
+                max_stalled_leases: super::super::DEFAULT_MAX_STALLED_LEASES,
             }
         }
 
@@ -151,6 +168,46 @@ pub mod redis_driver {
                     QueueError::Driver(format!("Failed to reject Redis job: {error}"))
                 })?;
             Ok(())
+        }
+
+        /// Claims the oldest due job; a positive `lease_ms` is recorded with
+        /// the claim so recovery waits for that lease.
+        async fn claim(&self, lease_ms: u64) -> Result<Option<QueuedJob>, QueueError> {
+            let mut connection = self.connection().await?;
+            let raw: Option<String> = redis::cmd("EVAL")
+                .arg(CLAIM_SCRIPT)
+                .arg(5)
+                .arg(&self.queue_key)
+                .arg(&self.processing_key)
+                .arg(&self.processing_index_key)
+                .arg(&self.dead_letter_key)
+                .arg(&self.scheduled_key)
+                .arg(self.dead_letter_retention)
+                .arg(lease_ms)
+                .query_async(&mut connection)
+                .await
+                .map_err(|error| {
+                    QueueError::Driver(format!("Failed to claim Redis job: {error}"))
+                })?;
+            let Some(raw) = raw else {
+                return Ok(None);
+            };
+
+            let job = match parse_claimed_job(&raw) {
+                Ok(job) => job,
+                Err(error) => {
+                    self.reject_claimed(&raw, &error.to_string())
+                        .await
+                        .map_err(|transition| QueueError::StateTransition {
+                            job_id: "unknown-redis-job".to_string(),
+                            operation: "reject_invalid_payload",
+                            message: format!("{error}; {transition}"),
+                        })?;
+                    return Err(error);
+                }
+            };
+
+            Ok(Some(job))
         }
 
         async fn connection(&self) -> Result<RedisConnection<'_>, QueueError> {
@@ -208,40 +265,14 @@ pub mod redis_driver {
         }
 
         async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
-            let mut connection = self.connection().await?;
-            let raw: Option<String> = redis::cmd("EVAL")
-                .arg(CLAIM_SCRIPT)
-                .arg(5)
-                .arg(&self.queue_key)
-                .arg(&self.processing_key)
-                .arg(&self.processing_index_key)
-                .arg(&self.dead_letter_key)
-                .arg(&self.scheduled_key)
-                .arg(self.dead_letter_retention)
-                .query_async(&mut connection)
-                .await
-                .map_err(|error| {
-                    QueueError::Driver(format!("Failed to claim Redis job: {error}"))
-                })?;
-            let Some(raw) = raw else {
-                return Ok(None);
-            };
+            self.claim(0).await
+        }
 
-            let job = match parse_claimed_job(&raw) {
-                Ok(job) => job,
-                Err(error) => {
-                    self.reject_claimed(&raw, &error.to_string())
-                        .await
-                        .map_err(|transition| QueueError::StateTransition {
-                            job_id: "unknown-redis-job".to_string(),
-                            operation: "reject_invalid_payload",
-                            message: format!("{error}; {transition}"),
-                        })?;
-                    return Err(error);
-                }
-            };
-
-            Ok(Some(job))
+        async fn pop_with_lease(&self, lease: Duration) -> Result<Option<QueuedJob>, QueueError> {
+            // Lua numbers are doubles: keep the recorded deadline finite.
+            let lease = lease.min(super::super::MAX_SCHEDULE_DELAY);
+            let lease_ms = u64::try_from(lease.as_millis()).unwrap_or(u64::MAX).max(1);
+            self.claim(lease_ms).await
         }
 
         async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
@@ -318,13 +349,21 @@ pub mod redis_driver {
             let mut connection = self.connection().await?;
             redis::cmd("EVAL")
                 .arg(RECOVER_SCRIPT)
-                .arg(4)
+                .arg(6)
                 .arg(&self.processing_key)
                 .arg(&self.processing_index_key)
                 .arg(&self.queue_key)
                 .arg(&self.dead_letter_key)
+                .arg(&self.failed_key)
+                .arg(&self.failed_index_key)
                 .arg(cutoff.to_string())
                 .arg(self.dead_letter_retention)
+                .arg(self.max_stalled_leases)
+                .arg(format!(
+                    "lease stalled {} times without finishing; failed instead of requeued",
+                    self.max_stalled_leases
+                ))
+                .arg(self.failed_retention)
                 .query_async::<u64>(&mut connection)
                 .await
                 .map_err(|error| {

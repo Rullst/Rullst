@@ -9,6 +9,9 @@ use std::time::{Duration, SystemTime};
 
 const MAX_COMPLETED_HISTORY: usize = 100_000;
 
+mod recovery;
+mod schema;
+
 /// Queue driver backed by a SQLite database.
 ///
 /// Uses an auto-created `rullst_jobs` table. Perfect for local development
@@ -16,6 +19,7 @@ const MAX_COMPLETED_HISTORY: usize = 100_000;
 pub struct SqliteDriver {
     pub(crate) pool: sqlx::SqlitePool,
     completed_history_limit: usize,
+    max_stalled_leases: u32,
 }
 
 impl SqliteDriver {
@@ -26,65 +30,12 @@ impl SqliteDriver {
         let pool = sqlx::SqlitePool::connect(&database_url)
             .await
             .map_err(|e| QueueError::Driver(format!("Failed to connect to SQLite: {}", e)))?;
-
-        // Auto-create the jobs table
-        sqlx::query(
-            r#"CREATE TABLE IF NOT EXISTS rullst_jobs (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                payload TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending',
-                error TEXT,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                available_at_ms INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"#,
-        )
-        .execute(&pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs table: {}", e)))?;
-
-        let scheduled_column: Option<String> = sqlx::query_scalar(
-            "SELECT name FROM pragma_table_info('rullst_jobs') WHERE name = 'available_at_ms'",
-        )
-        .fetch_optional(&pool)
-        .await
-        .map_err(|error| {
-            QueueError::Driver(format!("Failed to inspect rullst_jobs columns: {error}"))
-        })?;
-        if scheduled_column.is_none() {
-            sqlx::query(
-                "ALTER TABLE rullst_jobs ADD COLUMN available_at_ms INTEGER NOT NULL DEFAULT 0",
-            )
-            .execute(&pool)
-            .await
-            .map_err(|error| {
-                QueueError::Driver(format!(
-                    "Failed to add rullst_jobs scheduling column: {error}"
-                ))
-            })?;
-        }
-
-        // Add index for fast polling of pending jobs
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_status_created ON rullst_jobs(status, created_at)"
-        )
-        .execute(&pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs indexes: {}", e)))?;
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_ready ON rullst_jobs(status, available_at_ms, created_at)",
-        )
-        .execute(&pool)
-        .await
-        .map_err(|error| {
-            QueueError::Driver(format!("Failed to create scheduled-job index: {error}"))
-        })?;
+        schema::prepare(&pool).await?;
 
         Ok(Self {
             pool,
             completed_history_limit: 0,
+            max_stalled_leases: super::DEFAULT_MAX_STALLED_LEASES,
         })
     }
 
@@ -102,6 +53,20 @@ impl SqliteDriver {
             )));
         }
         self.completed_history_limit = retained_jobs;
+        Ok(self)
+    }
+
+    /// Sets how many times a job's lease may stall before recovery fails the
+    /// job instead of requeuing it (default
+    /// [`super::DEFAULT_MAX_STALLED_LEASES`]; `1` fails on the first stall).
+    ///
+    /// Unpublished v13 API.
+    ///
+    /// # Errors
+    /// Returns [`QueueError::InvalidConfiguration`] outside
+    /// `1..=`[`super::MAX_STALLED_LEASES_LIMIT`].
+    pub fn try_with_max_stalled_leases(mut self, leases: u32) -> Result<Self, QueueError> {
+        self.max_stalled_leases = super::validate_max_stalled_leases(leases)?;
         Ok(self)
     }
 
@@ -149,7 +114,7 @@ impl SqliteDriver {
 
     /// Retries a failed job by resetting its status to 'pending' and clearing error details.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, stalled_recoveries = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
             .execute(&self.pool)
             .await
@@ -176,6 +141,78 @@ impl SqliteDriver {
                 QueueError::Driver(format!("Failed to purge completed job history: {error}"))
             })?;
         Ok(())
+    }
+
+    /// Claims the oldest due job. With `lease`, the claim stalls only after
+    /// that lease; without one, after the recovering worker's age.
+    async fn claim(&self, lease: Option<Duration>) -> Result<Option<QueuedJob>, QueueError> {
+        let now_ms =
+            i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
+                QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
+            })?;
+        let lease_expires_at_ms = lease.map_or(0, |lease| {
+            let lease_ms = i64::try_from(lease.as_millis()).unwrap_or(i64::MAX).max(1);
+            now_ms.saturating_add(lease_ms)
+        });
+        // Atomically select and mark the oldest pending job as 'processing'
+        let row: Option<(String, String, String, i32)> = sqlx::query_as(
+            r#"UPDATE rullst_jobs
+               SET status = 'processing', attempts = attempts + 1,
+                   lease_expires_at_ms = ?, updated_at = datetime('now')
+               WHERE id = (
+                   SELECT id FROM rullst_jobs
+                   WHERE status = 'pending' AND available_at_ms <= ?
+                   ORDER BY available_at_ms ASC, created_at ASC LIMIT 1
+               )
+               RETURNING id, name, payload, attempts"#,
+        )
+        .bind(lease_expires_at_ms)
+        .bind(now_ms)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
+
+        let Some((id, name, payload_str, attempts)) = row else {
+            return Ok(None);
+        };
+
+        let payload = match serde_json::from_str(&payload_str) {
+            Ok(payload) => payload,
+            Err(error) => {
+                let message = format!("invalid JSON payload: {error}");
+                self.mark_failed(&id, &message)
+                    .await
+                    .map_err(|transition| QueueError::StateTransition {
+                        job_id: id.clone(),
+                        operation: "reject_invalid_payload",
+                        message: format!("{message}; {transition}"),
+                    })?;
+                return Err(QueueError::Serialization(format!(
+                    "job '{id}' contains invalid JSON: {error}"
+                )));
+            }
+        };
+        let attempts = match u32::try_from(attempts) {
+            Ok(attempts) => attempts,
+            Err(_) => {
+                let message = "job attempts counter is negative";
+                self.mark_failed(&id, message).await.map_err(|transition| {
+                    QueueError::StateTransition {
+                        job_id: id.clone(),
+                        operation: "reject_invalid_attempts",
+                        message: transition.to_string(),
+                    }
+                })?;
+                return Err(QueueError::Driver(format!("job '{id}' has {message}")));
+            }
+        };
+
+        Ok(Some(QueuedJob {
+            id,
+            name,
+            payload,
+            attempts,
+        }))
     }
 
     /// Completes a processing job. With `attempt`, only the claim with that
@@ -316,67 +353,11 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
-        let now_ms =
-            i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
-                QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
-            })?;
-        // Atomically select and mark the oldest pending job as 'processing'
-        let row: Option<(String, String, String, i32)> = sqlx::query_as(
-            r#"UPDATE rullst_jobs
-               SET status = 'processing', attempts = attempts + 1, updated_at = datetime('now')
-               WHERE id = (
-                   SELECT id FROM rullst_jobs
-                   WHERE status = 'pending' AND available_at_ms <= ?
-                   ORDER BY available_at_ms ASC, created_at ASC LIMIT 1
-               )
-               RETURNING id, name, payload, attempts"#,
-        )
-        .bind(now_ms)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
+        self.claim(None).await
+    }
 
-        let Some((id, name, payload_str, attempts)) = row else {
-            return Ok(None);
-        };
-
-        let payload = match serde_json::from_str(&payload_str) {
-            Ok(payload) => payload,
-            Err(error) => {
-                let message = format!("invalid JSON payload: {error}");
-                self.mark_failed(&id, &message)
-                    .await
-                    .map_err(|transition| QueueError::StateTransition {
-                        job_id: id.clone(),
-                        operation: "reject_invalid_payload",
-                        message: format!("{message}; {transition}"),
-                    })?;
-                return Err(QueueError::Serialization(format!(
-                    "job '{id}' contains invalid JSON: {error}"
-                )));
-            }
-        };
-        let attempts = match u32::try_from(attempts) {
-            Ok(attempts) => attempts,
-            Err(_) => {
-                let message = "job attempts counter is negative";
-                self.mark_failed(&id, message).await.map_err(|transition| {
-                    QueueError::StateTransition {
-                        job_id: id.clone(),
-                        operation: "reject_invalid_attempts",
-                        message: transition.to_string(),
-                    }
-                })?;
-                return Err(QueueError::Driver(format!("job '{id}' has {message}")));
-            }
-        };
-
-        Ok(Some(QueuedJob {
-            id,
-            name,
-            payload,
-            attempts,
-        }))
+    async fn pop_with_lease(&self, lease: Duration) -> Result<Option<QueuedJob>, QueueError> {
+        self.claim(Some(lease)).await
     }
 
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
@@ -433,16 +414,7 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
-        let stale_seconds = stale_after.as_secs().max(1);
-        let modifier = format!("-{stale_seconds} seconds");
-        let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'pending', error = 'recovered after worker interruption', available_at_ms = 0, updated_at = datetime('now') WHERE status = 'processing' AND updated_at <= datetime('now', ?)",
-        )
-        .bind(modifier)
-        .execute(&self.pool)
-        .await
-        .map_err(|error| QueueError::Driver(format!("Failed to recover stalled jobs: {error}")))?;
-        Ok(result.rows_affected())
+        recovery::recover_stalled(&self.pool, stale_after, self.max_stalled_leases).await
     }
 
     async fn pending_count(&self) -> Result<u64, QueueError> {

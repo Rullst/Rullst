@@ -151,3 +151,88 @@ async fn verify_id_token_mock_credentials_stay_offline() {
         "mock-user"
     );
 }
+
+fn google_with_presenters(client: Arc<SignedClient>) -> GoogleProvider {
+    GoogleProvider::try_new(
+        "client-id",
+        "test-secret".into(),
+        "https://app.example/callback",
+    )
+    .unwrap()
+    .try_with_authorized_presenters(["android-client-id", "ios-client-id"])
+    .unwrap()
+    .with_http_client(client)
+}
+
+#[tokio::test]
+#[cfg_attr(miri, ignore)]
+async fn google_native_presenters_must_be_configured_explicitly() {
+    // Android/iOS Google Sign-In for this server client: aud = server client,
+    // azp = native client.
+    let mut native = claims("google");
+    native["azp"] = json!("android-client-id");
+    let token = sign(&native);
+    assert!(
+        verify("google", &token, "challenge-nonce").await.is_err(),
+        "an unconfigured native presenter stays rejected"
+    );
+
+    let client = signed_client(issuer("google"));
+    let google = google_with_presenters(client.clone());
+    let user = google
+        .verify_id_token(&token, "challenge-nonce")
+        .await
+        .unwrap();
+    assert_eq!(user.id, "subject-1");
+    assert_eq!(client.userinfo_calls.load(Ordering::SeqCst), 0);
+
+    for (claim, value) in [
+        ("azp", json!("unlisted-client")),
+        ("aud", json!("android-client-id")),
+        ("aud", json!(["client-id", "android-client-id"])),
+    ] {
+        let mut payload = native.clone();
+        payload[claim] = value;
+        assert!(
+            google
+                .verify_id_token(&sign(&payload), "challenge-nonce")
+                .await
+                .is_err(),
+            "accepted {claim}"
+        );
+    }
+    assert!(
+        google.verify_id_token(&token, "other-nonce").await.is_err(),
+        "the nonce is still required"
+    );
+}
+
+#[test]
+fn google_authorized_presenters_are_bounded_and_validated() {
+    let google = || {
+        GoogleProvider::try_new(
+            "client-id",
+            "test-secret".into(),
+            "https://app.example/callback",
+        )
+        .unwrap()
+    };
+    let too_many: Vec<String> = (0..17).map(|index| format!("client-{index}")).collect();
+    for invalid in [
+        vec![String::new()],
+        vec!["with space".to_string()],
+        vec!["tab\tclient".to_string()],
+        vec!["x".repeat(256)],
+        too_many,
+    ] {
+        assert!(matches!(
+            google().try_with_authorized_presenters(invalid),
+            Err(ConnectError::InvalidConfiguration {
+                field: "authorized_presenters",
+                ..
+            })
+        ));
+    }
+    let duplicates = vec!["same-client".to_string(); 20];
+    assert!(google().try_with_authorized_presenters(duplicates).is_ok());
+}
