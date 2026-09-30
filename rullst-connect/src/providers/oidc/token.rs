@@ -226,6 +226,12 @@ impl Provider for OidcProvider {
 
     #[tracing::instrument(skip(self, access_token))]
     async fn get_user_from_token(&self, access_token: &str) -> Result<ConnectUser, ConnectError> {
+        if self.userinfo_endpoint.is_empty() {
+            return Err(ConnectError::InvalidConfiguration {
+                field: "userinfo_endpoint",
+                reason: "the OIDC provider does not publish a userinfo endpoint".to_owned(),
+            });
+        }
         let user_res = self
             .http_client
             .get(&self.userinfo_endpoint)
