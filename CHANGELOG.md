@@ -477,6 +477,22 @@ A prepared version section does not establish that its tag or crates exist.
   established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
   for the demonstrated defect, application actions and admission boundaries.
 
+### Studio, AI and IoT second-pass review fixes
+
+- Studio serves `Referrer-Policy: same-origin` and accepts `Origin: null` only
+  with `Sec-Fetch-Site: same-origin`, so browser form writes (row edit and
+  delete, cache invalidation, queue retry and purge, feature-flag toggles) no
+  longer fail with 403.
+- Studio's table view, search, row edits and deletes and the ER diagram work on
+  PostgreSQL with the default `sqlx::Any` build.
+- MySQL/MariaDB `SqlChatMemory` compares tenant and conversation IDs
+  case-sensitively; existing tables fail closed for IDs that differ only by
+  case until the documented migration is applied.
+- `OtaManager` keeps `current_partition` on commit, so an update verified
+  before reboot never targets the running bank. The new
+  `OtaManager::new_with_running_partition` states the bank the device booted
+  from.
+
 ### Studio review fixes
 
 - Data-browser row updates and deletes require the table's complete primary

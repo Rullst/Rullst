@@ -127,7 +127,12 @@ With the opt-in umbrella `ai-sql-memory` feature, `SqlChatMemory` supplies a
 dedicated SQLx Any pool and fixed schema for SQLite, PostgreSQL, MySQL, and
 MariaDB. Its revision compare-and-swap rejects stale cross-process writers. It
 does not retry the provider call, because doing so could duplicate cost or side
-effects. The [AI integration tutorial](../6-ai-integration-tutorial.md#8-durable-chat-memory)
+effects. Tenant and conversation IDs compare case-sensitively on every backend:
+new MySQL/MariaDB tables use `ascii_bin` key columns, and every tenant-scoped
+MySQL/MariaDB statement also compares the key byte-exactly, so an older
+case-insensitive table fails closed until the migration in the
+[crate README](https://github.com/Rullst/Rullst/tree/main/rullst-ai#upgrading-mysqlmariadb-chat-memory-tables)
+is applied. The [AI integration tutorial](../6-ai-integration-tutorial.md#8-durable-chat-memory)
 shows the complete setup and application-owned security/retention boundary.
 
 ## Tenant-aware RAG pipeline

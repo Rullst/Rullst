@@ -1,5 +1,6 @@
 //! Live, read-only ER diagram generated from the configured relational schema.
 
+use crate::data_browser::portable::build_for_driver;
 use axum::{Router, response::Html, routing::get};
 use sqlx::{QueryBuilder, Row};
 
@@ -127,10 +128,13 @@ async fn get_sqlite_schema() -> Result<String, sqlx::Error> {
     Ok(diagram)
 }
 
+/// PostgreSQL 12+ reports information-schema identifiers as the `name` type,
+/// which the default `sqlx::Any` driver cannot decode, so every text column is
+/// cast to `VARCHAR`. Bind markers are renumbered for the same build.
 async fn get_postgres_schema() -> Result<String, sqlx::Error> {
     let pool = configured_pool()?;
     let tables = rullst_orm::_sqlx::query(
-        "SELECT table_name AS name FROM information_schema.tables \
+        "SELECT CAST(table_name AS VARCHAR) AS name FROM information_schema.tables \
          WHERE table_schema = 'public' AND table_name != '_sqlx_migrations' \
          ORDER BY table_name",
     )
@@ -141,7 +145,8 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
     for table_row in tables {
         let table = table_row.try_get::<String, _>("name")?;
         let mut columns_query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
-            "SELECT c.column_name AS name, c.data_type AS kind, \
+            "SELECT CAST(c.column_name AS VARCHAR) AS name, \
+                    CAST(c.data_type AS VARCHAR) AS kind, \
              CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END AS pk \
              FROM information_schema.columns c \
              LEFT JOIN information_schema.key_column_usage kcu \
@@ -156,12 +161,15 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
         columns_query
             .push_bind(&table)
             .push(" ORDER BY c.ordinal_position");
-        let columns = columns_query.build().fetch_all(pool).await?;
+        let columns = build_for_driver(&mut columns_query, "postgres")?
+            .fetch_all(pool)
+            .await?;
         append_entity(&mut diagram, &table, &columns);
 
         let mut relations_query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
-            "SELECT kcu.column_name AS from_column, ccu.table_name AS to_table, \
-                    ccu.column_name AS to_column \
+            "SELECT CAST(kcu.column_name AS VARCHAR) AS from_column, \
+                    CAST(ccu.table_name AS VARCHAR) AS to_table, \
+                    CAST(ccu.column_name AS VARCHAR) AS to_column \
              FROM information_schema.table_constraints tc \
              JOIN information_schema.key_column_usage kcu \
                ON tc.constraint_name = kcu.constraint_name \
@@ -173,7 +181,10 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
                AND tc.table_schema = 'public' AND tc.table_name = ",
         );
         relations_query.push_bind(&table);
-        for relation in relations_query.build().fetch_all(pool).await? {
+        for relation in build_for_driver(&mut relations_query, "postgres")?
+            .fetch_all(pool)
+            .await?
+        {
             append_relation(&mut diagram, &table, &relation);
         }
     }

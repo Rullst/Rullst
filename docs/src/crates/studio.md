@@ -16,7 +16,8 @@ views from the sources explicitly supplied by the application.
   a column outside the ASCII identifier boundary stay read-only, and each write
   commits only when exactly one row changed. Views show 25 rows, cut cell text
   to 256 characters in the database and accept search terms up to 256 bytes. SQLite, PostgreSQL, MySQL and
-  MariaDB run executable mutation contracts.
+  MariaDB run executable mutation contracts; PostgreSQL runs under both the
+  default `sqlx::Any` build and `strict-postgres`.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
@@ -57,6 +58,11 @@ and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
 capability also rejects DNS-rebinding-style non-local `Host` values,
 cross-origin requests, and unsafe requests without an `Origin` header.
+Responses use `Referrer-Policy: same-origin`, so browsers send the real origin
+on Studio's own form posts. `Origin: null` passes only together with
+`Sec-Fetch-Site: same-origin`, as browsers send it when a host layer imposes
+`no-referrer`; a bare `null` origin or a same-site document on another local
+port is rejected.
 Database, queue, cache and feature-flag writes also require a crate-private
 marker that only this capability installs, so raw subrouters mounted elsewhere
 return `403` for them.

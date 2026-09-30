@@ -93,7 +93,9 @@ fn test_ota_partition_manager() {
     ota.verify_update(&manifest, firmware, &signature.to_bytes())
         .unwrap();
     let commit = ota.commit_verified_update().unwrap();
-    assert_eq!(ota.current_partition, BootPartition::PartitionB);
+    assert_eq!(commit.target_partition(), BootPartition::PartitionB);
+    // The device keeps running A until the platform reboots into B.
+    assert_eq!(ota.current_partition, BootPartition::PartitionA);
     assert_eq!(commit.version(), "12.1.0");
     assert_eq!(ota.rollback_counter(), 121);
     assert_eq!(

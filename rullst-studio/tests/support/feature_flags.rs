@@ -1,6 +1,6 @@
 //! Feature-flag page and toggle checks shared by the Studio mutation matrix.
 
-use super::response_text;
+use super::{fixture, response_text};
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -57,8 +57,7 @@ pub(super) async fn exercise_feature_flags(
         .push(", ")
         .push_bind("<script>unsafe</script>")
         .push(")");
-    insert_flag
-        .build()
+    fixture(&mut insert_flag, driver)
         .execute(pool)
         .await
         .expect("insert Studio matrix feature flag");
