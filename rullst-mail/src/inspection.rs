@@ -4,6 +4,9 @@ use crate::drivers::MailDriver;
 use crate::security::{redact_email_secrets, scan_content_security};
 use crate::{Attachment, DeliveryPipeline, MailError, Message};
 use async_trait::async_trait;
+use sniff::{Kind, Markup, contains_ascii_case_insensitive};
+
+mod sniff;
 
 /// Typed inspection failures which omit filenames and attachment bytes.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -47,8 +50,18 @@ pub enum OpaqueAttachmentPolicy {
 
 /// Bounded local type/signature, active-content, URL and secret heuristic.
 ///
+/// Checks are chosen from the case-insensitive declared type, the filename
+/// extension and the content signature together, never from the declared type
+/// alone. Every policy rejects executable magic and executable or script-host
+/// extensions, SVG, active PDF content wherever a `%PDF-` header appears, and a
+/// declared type that disagrees with a known extension or signature. The strict
+/// policy also rejects HTML extensions, HTML/script markup or script URIs,
+/// unknown extensions and opaque formats.
+///
 /// This is not antivirus, sandbox execution, recursive archive inspection or a
 /// substitute for an independently operated content-disarm/scanning service.
+/// PDF names written with `#xx` escapes or hidden in compressed streams are
+/// not decoded.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LocalAttachmentInspector {
     opaque_policy: OpaqueAttachmentPolicy,
@@ -70,32 +83,60 @@ impl LocalAttachmentInspector {
     }
 
     fn inspect_local(&self, attachment: &Attachment) -> Result<(), AttachmentInspectionError> {
-        if executable_magic(&attachment.content) {
+        let content = attachment.content.as_slice();
+        let strict = self.opaque_policy == OpaqueAttachmentPolicy::Reject;
+        if executable_magic(content) {
             return Err(AttachmentInspectionError::Rejected("executable_content"));
         }
-        match attachment.mime_type.as_str() {
-            "text/plain" | "text/csv" | "application/json" | "application/xml" => {
-                inspect_text(&attachment.content)
-            }
-            "application/pdf" => inspect_pdf(&attachment.content),
-            "image/png" => require_prefix(&attachment.content, b"\x89PNG\r\n\x1a\n"),
-            "image/jpeg" => require_prefix(&attachment.content, b"\xff\xd8\xff"),
-            "image/gif" => {
-                if attachment.content.starts_with(b"GIF87a")
-                    || attachment.content.starts_with(b"GIF89a")
-                {
-                    Ok(())
-                } else {
-                    Err(AttachmentInspectionError::Rejected("type_mismatch"))
+        // Recipients open files by extension, so the name is inspected too.
+        let extension = sniff::extension(&attachment.filename);
+        let extension = extension.as_deref();
+        if extension.is_some_and(sniff::is_executable_extension) {
+            return Err(AttachmentInspectionError::Rejected("executable_content"));
+        }
+        let declared = Kind::from_mime(&attachment.mime_type);
+        let named = extension.and_then(Kind::from_extension);
+        if declared
+            .zip(named)
+            .is_some_and(|(left, right)| left != right)
+        {
+            return Err(AttachmentInspectionError::Rejected("type_mismatch"));
+        }
+        let kind = declared.or(named);
+        match kind {
+            Some(Kind::Text) => inspect_text(content)?,
+            Some(Kind::Pdf) => inspect_pdf(content)?,
+            Some(Kind::Png) => require_prefix(content, b"\x89PNG\r\n\x1a\n")?,
+            Some(Kind::Jpeg) => require_prefix(content, b"\xff\xd8\xff")?,
+            Some(Kind::Gif) => {
+                if !content.starts_with(b"GIF87a") && !content.starts_with(b"GIF89a") {
+                    return Err(AttachmentInspectionError::Rejected("type_mismatch"));
                 }
             }
-            "image/svg+xml" => Err(AttachmentInspectionError::Rejected("active_svg_content")),
-            "application/zip" => {
-                require_zip_signature(&attachment.content)?;
-                self.opaque_result()
+            Some(Kind::Svg) => {
+                return Err(AttachmentInspectionError::Rejected("active_svg_content"));
             }
-            "application/octet-stream" => self.opaque_result(),
-            _ => self.opaque_result(),
+            Some(Kind::Zip) => require_zip_signature(content)?,
+            None => {}
+        }
+        // Content is inspected by what it is, whatever it claims to be.
+        if sniff::looks_like_pdf(content) {
+            reject_active_pdf(content)?;
+        }
+        let markup = sniff::markup(content);
+        if markup == Some(Markup::Svg) {
+            return Err(AttachmentInspectionError::Rejected("active_svg_content"));
+        }
+        if strict
+            && (markup == Some(Markup::Active) || extension.is_some_and(sniff::is_html_extension))
+        {
+            return Err(AttachmentInspectionError::Rejected("active_markup_content"));
+        }
+        match kind {
+            // The strict policy cannot vouch for an extension it does not know.
+            Some(_) if strict && extension.is_some() && named.is_none() => self.opaque_result(),
+            Some(Kind::Zip) | None => self.opaque_result(),
+            Some(_) => Ok(()),
         }
     }
 
@@ -207,6 +248,10 @@ fn inspect_text(content: &[u8]) -> Result<(), AttachmentInspectionError> {
 
 fn inspect_pdf(content: &[u8]) -> Result<(), AttachmentInspectionError> {
     require_prefix(content, b"%PDF-")?;
+    reject_active_pdf(content)
+}
+
+fn reject_active_pdf(content: &[u8]) -> Result<(), AttachmentInspectionError> {
     for token in [
         b"/JavaScript".as_slice(),
         b"/JS",
@@ -246,15 +291,6 @@ fn executable_magic(content: &[u8]) -> bool {
         || content.starts_with(&[0xce, 0xfa, 0xed, 0xfe])
         || content.starts_with(&[0xfe, 0xed, 0xfa, 0xcf])
         || content.starts_with(&[0xcf, 0xfa, 0xed, 0xfe])
-}
-
-fn contains_ascii_case_insensitive(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack.windows(needle.len()).any(|window| {
-        window
-            .iter()
-            .zip(needle)
-            .all(|(left, right)| left.eq_ignore_ascii_case(right))
-    })
 }
 
 #[cfg(test)]
