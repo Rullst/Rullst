@@ -140,6 +140,51 @@ async fn wise_email_transfer_cannot_fabricate_recipient_quote_or_funding() {
 }
 
 #[tokio::test]
+async fn wise_offline_mock_never_reports_real_transfers_as_sent() {
+    for key in ["", "mock_key"] {
+        let provider = WiseProvider::new(key, "profile-123");
+        // A transfer created in the Wise dashboard must not appear sent offline.
+        assert!(matches!(
+            provider.get_transfer_status("50123456").await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        let transfer_id = provider
+            .create_transfer("person@example.invalid", 100, "BRL")
+            .await
+            .unwrap();
+        assert!(!transfer_id.contains("person"));
+        assert!(!transfer_id.contains("example"));
+        assert_eq!(
+            provider.get_transfer_status(&transfer_id).await.unwrap(),
+            PayoutStatus::OutgoingPaymentSent
+        );
+    }
+}
+
+#[test]
+fn unauthenticated_wise_webhook_parser_is_limited_to_explicit_mock_fixtures() {
+    // A forged body must never become a payout event outside an offline fixture.
+    let forged = br#"{"data":{"resource":{"id":987654321},"current_state":"funds_refunded"}}"#;
+    for key in ["live-fixture-key", "fixture\ninvalid-header"] {
+        assert!(matches!(
+            WiseProvider::new(key, "profile-123").parse_webhook_payload(forged),
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+    }
+    for key in ["", "   "] {
+        assert!(matches!(
+            WiseProvider::new(key, "profile-123").parse_webhook_payload(forged),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+    }
+    assert!(
+        WiseProvider::new("mock_key", "profile-123")
+            .parse_webhook_payload(b"not json")
+            .is_err()
+    );
+}
+
+#[tokio::test]
 async fn placeholder_credentials_do_not_silently_enable_mock_checkout() {
     let providers: Vec<Box<dyn BillingProvider>> = vec![
         Box::new(InfinitePayProvider::new("handle_fixture", "secret")),

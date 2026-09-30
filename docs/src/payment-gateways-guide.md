@@ -136,6 +136,13 @@ repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
 Paddle and Polar expose typed adapter contracts; the host supplies durable
 orchestration, atomic event processing and reconciliation for those integrations.
+Razorpay's live plan checkout requires an explicit billing-cycle count
+(`with_subscription_total_count`, v13 candidate) instead of the earlier fixed
+12 cycles; `subscription.completed` reports the end of billing as `Canceled`.
+Paddle's legacy normalized path accepts only documented `subscription.*`
+lifecycle events whose status matches the event; signed transaction,
+adjustment and customer events are rejected rather than treated as a
+subscription snapshot.
 
 Rullst also supplies canonical Axum/Actix webhook middleware for supported
 normalized events. The production entry points reject empty/`mock_*` secrets.
@@ -269,7 +276,29 @@ email-based operation remains an offline fixture and returns
 `UnsupportedOperation` with real credentials before network dispatch. A usable
 transfer needs a real recipient account, authenticated quote UUID and durable
 UUID idempotency identity; funding is a separate operation. The existing
-status/webhook foundation does not provide that missing transfer workflow.
+transfer-status read does not provide that missing transfer workflow. With an
+empty or `mock_*` token, the offline mock issues hashed `wise_tr_mock_` IDs
+without the recipient email and reports status only for those IDs; a real
+transfer ID returns `UnsupportedOperation`, so an unset token cannot mark
+dashboard-created transfers as sent.
+
+`parse_webhook_payload` performs no signature verification. It is an offline
+fixture limited to an explicit `mock_*` API token; an empty token is a
+configuration error and a live token returns `UnsupportedOperation` before the
+body is read. A forged `funds_refunded` or `outgoing_payment_sent` body must
+never trigger a payout, refund or release. The fixture requires every field it
+reports and scales exact decimal amounts to ISO 4217 minor units without
+floating point.
+
+The v13 candidate adds `WiseProvider::with_webhook_public_key_pem` and
+`verify_transfer_state_change`. The verifier checks the Base64
+`X-Signature-SHA256` RSA-SHA256 signature over the exact body against the
+configured Wise key for that environment before parsing, and returns a typed
+`WiseTransferStateChange` with the transfer ID, optional profile ID, documented
+current/previous states and occurrence time. Unsigned, tampered or
+wrong-environment deliveries fail as `InvalidSignature`. Wise signs no
+timestamp, so process transitions idempotently and read the transfer before
+acting on money.
 
 ---
 

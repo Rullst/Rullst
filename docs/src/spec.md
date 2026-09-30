@@ -2027,8 +2027,12 @@ remains external evidence.
 
 ### 6.1. Multi-Gateway Payment Architecture
 Billing adapters implement `BillingProvider`; the Wise payout adapter implements
-the separate `PayoutProvider` contract. Individual billing operations may still
-return `Unsupported` when a provider adapter has no reviewed implementation:
+the separate `PayoutProvider` contract. Its empty/`mock_*` offline mock issues
+hashed `wise_tr_mock_` transfer IDs that do not embed the recipient email and
+reports status only for those IDs; other transfer IDs fail with
+`UnsupportedOperation` rather than a fabricated `OutgoingPaymentSent`.
+Individual billing operations may still return `Unsupported` when a provider
+adapter has no reviewed implementation:
 ```rust,no_run
 use rullst_capital::providers::stripe::StripeProvider;
 use rullst_capital::providers::BillingProvider;
@@ -2366,7 +2370,22 @@ sending.
   and standalone payment/order events cannot establish an active subscription.
   Email is optional contact data; durable owner binding, event ordering and
   reconciliation remain application responsibilities. Lifecycle activation is
-  not a receipt proving settlement of an invoice.
+  not a receipt proving settlement of an invoice. `subscription.completed`
+  with entity status `completed` is the terminal event after the last billing
+  cycle and maps to the non-entitled `Canceled` status. Live plan checkout
+  sends the positive `total_count` configured with the v13
+  `with_subscription_total_count`; without it the call returns
+  `ConfigurationError` before dispatch instead of inventing a term (earlier
+  releases sent a fixed 12). Its `redirect_url` is recorded in `notes` only.
+* Paddle's legacy `handle_webhook`, which the canonical middleware calls,
+  normalizes only documented `subscription.*` lifecycle events (created,
+  updated, imported, activated, resumed, trialing, past_due, paused and
+  canceled). Transaction, adjustment, customer, price, address and other signed
+  events return `PayloadParseError`. It requires Paddle `sub_`, `ctm_` and
+  `pri_` identities, maps only Paddle's subscription statuses, rejects
+  event/status disagreement and validates a present billing-period end.
+  `plan_id` remains the first item's price. This event carries no owner or
+  attempt binding; `verify_checkout_subscription` provides that contract.
 * Lemon Squeezy normalization accepts only explicit subscription lifecycle
   events containing a `subscriptions` object, positive numeric identities and
   a valid provider state. It binds the store when `with_store_id` is configured
@@ -2377,10 +2396,33 @@ sending.
   as subscription snapshots. This legacy event does not retain account/mode or
   causal identity, so durable owner/scope binding and reconciliation remain
   application responsibilities.
+* Wise's legacy `parse_webhook_payload` performs no signature verification and
+  is not a `BillingProvider` webhook. It accepts only an explicit `mock_*` API
+  token as an offline fixture; an empty token returns `ConfigurationError` and a
+  live token returns `UnsupportedOperation` before reading the body. Its result
+  must never drive a payout, refund or release decision. The fixture requires
+  a positive transfer ID, recipient, ISO 4217 currency, amount and documented
+  transfer state instead of inventing defaults, and scales exact decimal
+  amounts to the currency's minor units without floating point.
+* The additive v13 `WiseProvider::verify_transfer_state_change` verifies the
+  Base64 `X-Signature-SHA256` RSA-SHA256 (PKCS#1 v1.5) signature over the exact
+  body (at most 64 KiB) against up to four caller-configured SubjectPublicKeyInfo
+  PEM keys of 2048-8192 bits before parsing. Rullst bundles neither Wise's
+  sandbox nor its production key. Only `transfers#state-change` events for a
+  `transfer` resource with a positive numeric ID, a documented current state and
+  a valid `occurred_at` are accepted; unrecognized states, including `unknown`,
+  are rejected and nothing missing is defaulted. `WiseTransferStateChange`
+  carries no amount, currency or recipient because Wise does not send them, and
+  `payout_status()` returns `None` for charge-backs and bounce-backs. The
+  signature covers no timestamp or delivery identity, so an exact replay
+  verifies again: hosts bind transfer and profile to their own records, apply
+  transitions idempotently and read the transfer before moving money. The
+  billing middleware does not mount this payout verifier.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
-  verifier before dispatch. Built-in provider adapters use provider-appropriate
-  cryptographic verification; equality checks for derived signatures are
-  constant-time where applicable.
+  verifier before dispatch. Built-in provider adapters that accept live
+  deliveries use provider-appropriate cryptographic verification; legacy
+  parsers without a reviewed live contract fail closed. Equality checks for
+  derived signatures are constant-time where applicable.
 * Timestamped protocols enforce a bounded freshness window. The default replay
   store is bounded and process-local and fails closed instead of evicting an
   unexpired proof when full.

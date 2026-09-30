@@ -126,7 +126,7 @@ pub fn all_gateways() -> Vec<GatewayInfo> {
             flag: "🇮🇳",
             current_boundary: "Plan-based checkout adapter and signed-webhook foundation; unsupported event kinds fail closed. Validate required live account behavior.",
             env_example: "RAZORPAY_KEY_ID=\"rzp_live_...\"\nRAZORPAY_KEY_SECRET=\"sec_rzp_...\"\nRAZORPAY_WEBHOOK_SECRET=\"whsec_...\"",
-            rust_init_code: "use rullst_capital::{init_provider, RazorpayProvider};\n\ninit_provider(Box::new(RazorpayProvider::new(\n    std::env::var(\"RAZORPAY_KEY_ID\")?,\n    std::env::var(\"RAZORPAY_KEY_SECRET\")?,\n    std::env::var(\"RAZORPAY_WEBHOOK_SECRET\")?,\n)));",
+            rust_init_code: "use rullst_capital::{init_provider, RazorpayProvider};\n\n// Billing cycles must match the plan period (12 monthly cycles = one year).\ninit_provider(Box::new(RazorpayProvider::new(\n    std::env::var(\"RAZORPAY_KEY_ID\")?,\n    std::env::var(\"RAZORPAY_KEY_SECRET\")?,\n    std::env::var(\"RAZORPAY_WEBHOOK_SECRET\")?,\n)\n.with_subscription_total_count(12)?));",
         },
         GatewayInfo {
             id: "coinbase",
