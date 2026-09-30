@@ -77,6 +77,10 @@ delay keeps the claiming worker out of a hot loop, and it still reports
 stays pending and is re-offered every five seconds instead of being failed.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
+`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`/`422`
+JSON) for other clients, but an HTMX request receives its escaped HTML
+fragment with `200 OK` and an `X-Rullst-Validation-Status: 400|422` header,
+because htmx swaps only successful responses by default.
 `Scheduler::task` takes a five-field expression (`minute hour day-of-month
 month day-of-week`) evaluated in UTC and passed unchanged to the `cron` crate.
 Unlike POSIX crontab, day-of-week numbers run from 1 (Sunday) to 7 (Saturday)

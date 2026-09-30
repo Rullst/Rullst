@@ -43,6 +43,9 @@
 - **Bounded Redis Failure State:** Failed jobs and dead letters are each
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
+- **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send
+  HTMX requests their error fragment with `200 OK` plus
+  `X-Rullst-Validation-Status: 400|422`; other clients keep `400`/`422` JSON.
 - **Cron Semantics:** `Scheduler::task` evaluates five-field expressions in
   UTC with the `cron` crate's rules: weekdays 1 (Sunday) to 7 (Saturday), 0
   rejected, and restricted day fields must both match. Prefer weekday names.
