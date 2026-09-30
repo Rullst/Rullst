@@ -120,6 +120,14 @@ exact scope to list/search/edit/create/update/delete and batch routes; missing
 context denies a scoped model. A model without the attribute remains global by
 design.
 
+`#[derive(Nexus)]` reads only `table` (or its ORM alias `table_name`) and
+`tenant` from a shared `#[orm(...)]` attribute. Other ORM options, such as
+`tenant_column`, `policy`, `soft_delete(...)` or a relation's `foreign_key`, are
+skipped. ORM tenant isolation (`tenant_column`) and the Nexus admin scope
+(`tenant`) are separate options; declare both when both are wanted. Fields that
+declare an ORM relation (`has_many`, `belongs_to`, ...) are not table columns
+and do not appear in Nexus.
+
 ## Require transaction-coupled audit
 
 Install the fixed audit schema as an explicit deployment step, then enable the
