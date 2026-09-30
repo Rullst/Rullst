@@ -395,7 +395,12 @@ durable provisioning and attempts, signed Checkout/subscription event handling,
 atomic completion and revision-fenced reconciliation. Hosts calling the low-level
 adapter directly must supply those same application boundaries. Do not retry an old key indefinitely: Stripe may discard idempotency
 records after its retention period. An unknown outcome requires reconciliation,
-not a newly generated attempt key. See Stripe's
+not a newly generated attempt key. The recovery reads (`verify_account`,
+`retrieve_bound_customer`, `find_bound_customer`, `retrieve_checkout` and
+`find_checkout`) return `ConfigurationError` for malformed local IDs or a
+live/test mode that differs from the key, and `UnsupportedOperation` for empty
+or `mock_*` keys, which have no offline recovery fixture. Only a provider
+response that fails its bindings is a contract mismatch. See Stripe's
 [checkout contract](https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-03-31.basil)
 and [idempotency semantics](https://docs.stripe.com/api/idempotent_requests).
 The legacy email-based trait method remains available for source compatibility;
