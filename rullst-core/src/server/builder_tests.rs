@@ -376,3 +376,20 @@ fn dotenv_errors_never_echo_file_content() {
     let values = super::parse_dotenv("A=1\nB=two\n").expect("valid dotenv");
     assert_eq!(values.get("B").map(String::as_str), Some("two"));
 }
+
+#[test]
+fn development_console_requires_a_debug_build_and_development() {
+    assert!(development_console_enabled(true, Environment::Development));
+    assert!(!development_console_enabled(
+        false,
+        Environment::Development
+    ));
+    for environment in [
+        Environment::Test,
+        Environment::Staging,
+        Environment::Production,
+    ] {
+        assert!(!development_console_enabled(true, environment));
+        assert!(!development_console_enabled(false, environment));
+    }
+}
