@@ -140,11 +140,20 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
     let token = generate_csrf_token();
     req.extensions_mut().insert(CsrfToken(token.clone()));
     {
+        // Like the webhook exemption, fall back to the process-global
+        // configuration when no per-application `SecurityConfig` is installed.
         let same_site = req
             .extensions()
             .get::<crate::config::SecurityConfig>()
-            .map(|cfg| cfg.csrf_same_site.clone())
-            .unwrap_or_else(|| "Lax".to_string());
+            .map_or_else(
+                || {
+                    crate::config::RullstConfig::global()
+                        .security
+                        .csrf_same_site
+                        .clone()
+                },
+                |cfg| cfg.csrf_same_site.clone(),
+            );
         let secure_cookie = req
             .extensions()
             .get::<crate::config::Environment>()
