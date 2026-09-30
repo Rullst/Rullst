@@ -877,6 +877,12 @@ while portability and semantic review remain the model author's responsibility.
 
 ### ORM Driver Selection
 
+* `Orm::driver()` reports the SQL dialect from the connected DSN scheme,
+  case-insensitively: `postgres`/`postgresql` select PostgreSQL and
+  `mysql`/`mariadb` select MySQL/MariaDB, so dialect-gated SQL such as
+  `FOR UPDATE` row locks, quoting and outbox/migration DDL follows the server.
+  Any other scheme keeps the SQLite dialect (an unknown scheme fails to
+  connect under SQLx `Any`).
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
   `drivers-all` convenience feature. A standalone consumer can disable defaults
   and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables

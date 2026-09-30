@@ -93,10 +93,18 @@ impl Orm {
             .acquire_slow_threshold(POOL_SLOW_ACQUIRE_THRESHOLD)
     }
 
+    /// Classifies the connected backend by the DSN scheme, case-insensitively
+    /// as URL schemes are. `postgresql` is an alias of `postgres`, and SQLx
+    /// registers `mariadb` as an alias of its MySQL driver. Any other scheme
+    /// (or a bare SQLite path under `strict-sqlite`) keeps the SQLite dialect;
+    /// under SQLx `Any` an unknown scheme already fails to connect.
     fn driver_for_url(database_url: &str) -> &'static str {
-        if database_url.starts_with("postgres") {
+        let scheme = database_url
+            .split_once(':')
+            .map_or("", |(scheme, _)| scheme);
+        if scheme.eq_ignore_ascii_case("postgres") || scheme.eq_ignore_ascii_case("postgresql") {
             "postgres"
-        } else if database_url.starts_with("mysql") {
+        } else if scheme.eq_ignore_ascii_case("mysql") || scheme.eq_ignore_ascii_case("mariadb") {
             "mysql"
         } else {
             "sqlite"
@@ -464,6 +472,23 @@ mod tests {
         Orm::validate_dsn(&dsn);
 
         assert!(!database_path.exists());
+    }
+
+    #[test]
+    fn driver_follows_the_dsn_scheme_and_its_aliases() {
+        for (dsn, driver) in [
+            ("postgres://app:pw@db/app", "postgres"),
+            ("postgresql://app:pw@db/app", "postgres"),
+            ("POSTGRES://app:pw@db/app", "postgres"),
+            ("mysql://app:pw@db/app", "mysql"),
+            ("mariadb://app:pw@db/app", "mysql"),
+            ("MariaDB://app:pw@db/app", "mysql"),
+            ("sqlite::memory:", "sqlite"),
+            ("sqlite://data/app.db", "sqlite"),
+            ("data/app.db", "sqlite"),
+        ] {
+            assert_eq!(Orm::driver_for_url(dsn), driver, "{dsn}");
+        }
     }
 
     #[test]
