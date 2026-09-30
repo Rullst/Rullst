@@ -7,6 +7,7 @@ mod baseline;
 mod csrf;
 mod headers;
 mod machine;
+mod media_type;
 mod pii;
 mod tenant_guard;
 mod waf;

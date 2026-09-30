@@ -150,12 +150,10 @@ pub fn inspect_json_payload(
     Ok(())
 }
 
+/// Accepts every JSON media type axum's `Json` extractor accepts, in any
+/// ASCII case, so a body the handler parses cannot skip these checks.
 fn is_json_content_type(value: &str) -> bool {
-    let media_type = value.split(';').next().map(str::trim).unwrap_or_default();
-    media_type.eq_ignore_ascii_case("application/json")
-        || media_type
-            .strip_suffix("+json")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
+    crate::media_type::is_json(crate::media_type::essence(value))
 }
 
 /// Middleware that inspects application/json request payloads for JSON bombs and depth limits.
@@ -330,6 +328,37 @@ mod tests {
         assert!(is_json_content_type("application/problem+json"));
         assert!(!is_json_content_type("text/application/json"));
         assert!(!is_json_content_type("application/json-malicious"));
+    }
+
+    #[test]
+    fn content_type_matching_accepts_every_json_form_axum_parses() {
+        for content_type in [
+            "APPLICATION/JSON",
+            "application/vnd.api+JSON",
+            "Application/problem+json; charset=utf-8",
+            "application/json+patch",
+        ] {
+            assert!(is_json_content_type(content_type), "{content_type}");
+        }
+        for content_type in ["application/xml", "text/json", "application/jsonp"] {
+            assert!(!is_json_content_type(content_type), "{content_type}");
+        }
+    }
+
+    #[tokio::test]
+    async fn case_and_suffix_variants_cannot_skip_duplicate_key_checks() {
+        for content_type in ["application/vnd.api+JSON", "Application/problem+json"] {
+            let response = guarded_app()
+                .oneshot(
+                    Request::post("/")
+                        .header(axum::http::header::CONTENT_TYPE, content_type)
+                        .body(Body::from(r#"{"role":"user","role":"admin"}"#))
+                        .expect("request should be valid"),
+                )
+                .await
+                .expect("middleware request should complete");
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{content_type}");
+        }
     }
 
     fn guarded_app() -> Router {

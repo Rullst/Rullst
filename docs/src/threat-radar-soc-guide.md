@@ -58,7 +58,7 @@ key compromise, or loss of the entire log.
 | --- | --- | --- |
 | RASP/WAF inspection | Bounded heuristics for common malicious request patterns. | It is not a complete parser or substitute for parameterization and domain validation. |
 | Secure headers | A strict nonce-based CSP/header baseline. | The deployed page, proxy, browser, and policy determine scanner results; no A+ grade is guaranteed. |
-| Honeypots | Exact synthetic trap paths and temporary bans. | They do not identify every scanner or replace edge rate limiting. |
+| Honeypots | Exact synthetic trap paths and temporary bans of direct requests. A load a page initiated (fetch metadata other than `Sec-Fetch-Site: none`, or `Origin`/`Referer` without it) is refused and recorded without a ban. | They do not identify every scanner or replace edge rate limiting. A scanner can avoid the ban by sending those headers, and a browser that sends neither fetch metadata nor a referrer cannot be told apart from a scanner. |
 | Login guard | Shared failure tracking, delay, cleanup, and jail policy. | Account and recovery policy remain application responsibilities. |
 | DLP and PII filters | Supported textual-response masking with content-type and size safeguards. | Binary, encoded, streaming, and unsupported responses must follow explicit fail-open/fail-closed policy. |
 | AI guardrails | Prompt checks and masking in the high-level AI client. | Heuristics cannot guarantee that every adversarial prompt or sensitive value is detected. |

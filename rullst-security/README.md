@@ -11,6 +11,7 @@
 - **Synthetic Honeypot Traps:** Intercepts reconnaissance bots attempting to scan paths like `/.env`, `/admin.php`, `/wp-login.php`, `/.git/config`.
 - **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit. A request checks only its own peer; expired bans are pruned in expiry order when bans are added or counted, and a full list evicts the ban that expires soonest.
 - **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
+- **Lure-Resistant Bans:** Every trap hit is refused, but only a direct request bans its peer. A load that a page initiated (`Sec-Fetch-Site` of `same-origin`, `same-site` or `cross-site`, or `Origin`/`Referer` from a browser without fetch metadata) is recorded without a ban, so an `<img src="/.env">` on another site or in user content cannot ban visitors or a shared NAT address. These headers are client-controlled: a scanner can avoid the ban, not the refusal, by sending them.
 
 ### 🧹 2. Rullst Sanitizer (`rullst::security::sanitizer`)
 *XSS Prevention & Dynamic CSP Nonces*
@@ -61,6 +62,9 @@
   `RateLimiter` per policy. The legacy global `is_rate_limited` helper keeps a
   separate budget per `(key, max_requests, window)`, so policies on the same
   key neither share a count nor reset each other, but they share its capacity.
+  `rate_limit_middleware` keys the verified socket peer per IPv4 address and
+  per IPv6 /64 (IPv4-mapped IPv6 counts as IPv4), so rotating addresses inside
+  one delegated prefix shares a budget instead of filling the identity table.
 
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 
@@ -70,8 +74,9 @@
   component into route-scoped middleware. References stay local, pattern
   matching uses the linear-time regex engine, and schema construction performs
   no filesystem or network retrieval.
-- **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask PEM
-  private keys, AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`
+- **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask
+  complete PEM private-key blocks (PKCS#8 plain or encrypted, RSA, EC, DSA,
+  OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`
   URL passwords in bounded textual responses (at most 2 MiB). Every pass is
   linear in the body length. A URL password is recognized only inside the URL
   authority: credentials must be percent-encoded, and the authority ends at
@@ -79,7 +84,15 @@
   character, or after 2,048 bytes.
 - **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
   AWS, and database patterns, including escaped quoted values, in time linear
-  in the record length. Records over
+  in the record length. An assignment key (`password`, `passwd`, `secret`,
+  `api_key`, `token`, `authorization`, `cookie`, `session`) also matches as
+  the final component of a compound name joined by `_`, `-` or `.`
+  (`DB_PASSWORD`, `access_token`, `client-secret`, `app.db.password`) or when
+  a final `key`/`id` component follows it (`SECRET_KEY`, `session_id`).
+  An unquoted `Authorization`/`Proxy-Authorization` or `Cookie`/`Set-Cookie`
+  value is redacted to the end of its line, so later cookies and credentials
+  containing spaces are covered; only a recognized authentication scheme such
+  as `Bearer`, `Basic`, `Digest` or `Token` is kept. Records over
   64 KiB are replaced wholesale by an oversized-record marker. The host must
   invoke it before emitting untrusted log fields; pattern matching is not a
   guarantee that arbitrary sensitive content can be recognized.
