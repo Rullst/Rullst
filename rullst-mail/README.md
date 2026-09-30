@@ -588,7 +588,9 @@ case-insensitively), the filename extension and the content signature
 together. Both policies reject executable magic, executable or script-host
 extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk`,
 `.msc`, `.appref-ms`, `.settingcontent-ms`, `.jnlp`, `.vhd` and the other
-executable/script types on Outlook's Level 1 blocked list), SVG by type, extension or content, active PDF content wherever a
+executable/script types on Outlook's Level 1 blocked list), SVG by type,
+extension or content, active PDF content (JavaScript, launch, embedded-file,
+XFA form, rich-media, embedded go-to and data-import names) wherever a
 `%PDF-` header appears in the first KiB, and a declared type that disagrees
 with a known extension or signature. `strict()` also rejects HTML extensions,
 HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions, any

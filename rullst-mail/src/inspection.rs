@@ -260,12 +260,19 @@ fn inspect_pdf(content: &[u8]) -> Result<(), AttachmentInspectionError> {
     reject_active_pdf(content)
 }
 
+/// Rejects PDF names that run code or carry active content: JavaScript and
+/// launch actions, embedded files, XFA forms (whose XML carries JavaScript or
+/// FormCalc scripts), rich media, embedded go-to and data-import actions.
 fn reject_active_pdf(content: &[u8]) -> Result<(), AttachmentInspectionError> {
     for token in [
         b"/JavaScript".as_slice(),
         b"/JS",
         b"/Launch",
         b"/EmbeddedFile",
+        b"/XFA",
+        b"/RichMedia",
+        b"/GoToE",
+        b"/ImportData",
     ] {
         if contains_ascii_case_insensitive(content, token) {
             return Err(AttachmentInspectionError::Rejected("active_pdf_content"));

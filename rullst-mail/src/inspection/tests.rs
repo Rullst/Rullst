@@ -359,3 +359,27 @@ async fn windows_launchable_extensions_are_rejected_under_every_policy() {
         }
     }
 }
+
+#[tokio::test]
+// TM-MAIL-01: XFA forms and other active PDF actions fail under both policies.
+async fn xfa_forms_and_other_active_pdf_actions_are_rejected() {
+    for inspector in [
+        LocalAttachmentInspector::strict(),
+        LocalAttachmentInspector::allowing_opaque(),
+    ] {
+        for active in [
+            "/AcroForm << /XFA 5 0 R >>",
+            "/Annots [<< /Subtype /RichMedia >>]",
+            "/OpenAction << /S /GoToE /T << /R /C /N (x) >> >>",
+            "/OpenAction << /S /ImportData /F (data.fdf) >>",
+        ] {
+            let pdf = format!("%PDF-1.7\n1 0 obj << {active} >>\nendobj\n%%EOF");
+            let attachment = Attachment::new("form.pdf", pdf.into_bytes(), "application/pdf");
+            assert_eq!(
+                inspector.inspect(&attachment).await,
+                Err(AttachmentInspectionError::Rejected("active_pdf_content")),
+                "{active}"
+            );
+        }
+    }
+}
