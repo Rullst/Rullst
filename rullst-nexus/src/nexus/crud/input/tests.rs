@@ -167,6 +167,33 @@ fn rejects_invalid_email_url_number_date_and_datetime_values() {
 }
 
 #[test]
+fn empty_password_input_keeps_the_stored_value() {
+    let entry = semantic_entry();
+    for mode in [FormMode::Create, FormMode::Update] {
+        let values = validate_form_values(
+            &entry,
+            vec![
+                ("name".to_owned(), "Ada".to_owned()),
+                ("password".to_owned(), String::new()),
+            ],
+            mode,
+        )
+        .expect("valid form");
+        assert_eq!(values.len(), 1);
+        assert_eq!(values[0].field.name, "name");
+    }
+
+    let replaced = validate_form_values(
+        &entry,
+        vec![("password".to_owned(), "new value".to_owned())],
+        FormMode::Update,
+    )
+    .expect("valid replacement");
+    assert_eq!(replaced.len(), 1);
+    assert_eq!(replaced[0].value, "new value");
+}
+
+#[test]
 fn boolean_normalization_accepts_html_forms_and_rejects_ambiguous_duplicates() {
     let field = FieldMeta::new("active", "Active", FieldKind::Boolean);
     for (raw, expected) in [

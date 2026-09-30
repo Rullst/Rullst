@@ -1,8 +1,12 @@
-//! Stored values pass through the real SQLite query and Nexus cell renderer.
+//! Stored values pass through the real SQLite query and Nexus renderers.
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
-use rullst_nexus::{FieldKind, FieldMeta, RegistryEntry, crud::views::render_table_rows};
-use rullst_orm::{_sqlx as sqlx, Orm};
+use rullst_nexus::{
+    FieldKind, FieldMeta, NexusAuditPolicy, NexusState, RegistryEntry,
+    crud::views::{render_record_form, render_table_rows},
+};
+use rullst_orm::{_sqlx as sqlx, Orm, RullstPool};
+use std::sync::Arc;
 
 #[tokio::test]
 async fn stored_cells_remain_text_including_entity_prefixes() {
@@ -51,7 +55,6 @@ async fn stored_cells_remain_text_including_entity_prefixes() {
         FieldKind::Url,
         FieldKind::Date,
         FieldKind::DateTime,
-        FieldKind::Password,
         FieldKind::Json,
         FieldKind::Enum {
             options: vec!["pending"],
@@ -110,6 +113,58 @@ async fn stored_cells_remain_text_including_entity_prefixes() {
         }
     }
     check_browser(&browser_cases);
+    password_values_are_never_rendered(pool).await;
+}
+
+fn fixture_entry(value_kind: FieldKind) -> RegistryEntry {
+    RegistryEntry {
+        table: "nexus_cell_fixture",
+        label: "Cell fixture",
+        icon: "",
+        pk: "id",
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("value", "Value", value_kind),
+            FieldMeta::new("enabled", "Enabled", FieldKind::Boolean),
+            FieldMeta::new("quantity", "Quantity", FieldKind::Number),
+        ],
+    }
+}
+
+/// A Password column shows a fixed mask in the list and an empty input in the
+/// edit form: the stored value never reaches the HTML.
+async fn password_values_are_never_rendered(pool: &RullstPool) {
+    let stored = "stored-credential-sample";
+    sqlx::query("DELETE FROM nexus_cell_fixture")
+        .execute(pool)
+        .await
+        .expect("reset synthetic row");
+    sqlx::query(
+        "INSERT INTO nexus_cell_fixture (id, value, enabled, quantity) VALUES (1, ?, 1, 42)",
+    )
+    .bind(stored)
+    .execute(pool)
+    .await
+    .expect("insert stored value");
+    let entry = fixture_entry(FieldKind::Password);
+
+    let list = render_table_rows(&entry, "", 1, None, None, None).await;
+    assert!(list.contains("data-nexus-row-id=\"1\""));
+    let mask = format!("<td class=\"nexus-td\">{}</td>", "\u{2022}".repeat(8));
+    assert!(list.contains(&mask));
+    assert!(!list.contains(stored));
+
+    let state = NexusState {
+        registry: Arc::new(vec![entry.clone()]),
+        brand: Arc::new("Nexus".to_owned()),
+        audit_policy: NexusAuditPolicy::Disabled,
+    };
+    let form = render_record_form(&state, &entry, Some("1"), None).await;
+    // The quantity proves that the edit form really read the stored row.
+    assert!(form.contains("name=\"quantity\" value=\"42\""));
+    assert!(form.contains("type=\"password\" name=\"value\" value=\"\""));
+    assert!(!form.contains(stored));
 }
 
 fn check_browser(cases: &[serde_json::Value]) {

@@ -19,7 +19,14 @@ pub enum FieldKind {
     Date,
     /// Date + time picker (YYYY-MM-DDTHH:MM).
     DateTime,
-    /// A password field that hides its value.
+    /// A password or secret field that hides its value.
+    ///
+    /// The list shows a fixed mask, the column is neither selected for the
+    /// list nor sortable, and the edit form renders an empty input. Leaving
+    /// it empty keeps the stored value. A non-empty submission is written
+    /// **verbatim**: Nexus does not hash it. For credential hashes, mark the
+    /// column `readonly` (or `hidden`) and change it through an application
+    /// flow that hashes, or enforce hashing in the database.
     Password,
     /// A JSON object displayed as textarea.
     Json,

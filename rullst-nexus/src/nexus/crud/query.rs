@@ -107,8 +107,10 @@ pub fn build_table_query(
     let page = page.max(1);
     let offset = page.saturating_sub(1).saturating_mul(limit);
 
+    // Password values are never rendered, so they are never read either.
     let mut select_cols: Vec<String> = visible_fields
         .iter()
+        .filter(|f| !matches!(f.kind, FieldKind::Password))
         .map(|f| sanitize_identifier(f.name))
         .collect();
 
@@ -188,9 +190,13 @@ pub fn build_table_query(
         sql.push_str(&predicates.join(" AND "));
     }
 
+    // Ordering by a Password column would reveal the order of stored secrets.
     let sort_col = sort_by
         .filter(|candidate| {
-            *candidate == entry.pk || entry.fields.iter().any(|field| field.name == *candidate)
+            *candidate == entry.pk
+                || entry.fields.iter().any(|field| {
+                    field.name == *candidate && !matches!(field.kind, FieldKind::Password)
+                })
         })
         .unwrap_or(entry.pk);
     let sort_dir = order
@@ -247,6 +253,36 @@ mod tests {
         assert!(sql.contains("(title LIKE ?)") || sql.contains("(title LIKE $1)"));
         assert!(sql.contains("tenant_id = ?") || sql.contains("tenant_id = $2"));
         assert_eq!(binds, ["%needle%", "tenant-a"]);
+    }
+
+    #[test]
+    fn password_columns_are_neither_selected_nor_sortable() {
+        let entry = RegistryEntry {
+            table: "accounts",
+            label: "Accounts",
+            icon: "A",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+                FieldMeta::new("name", "Name", FieldKind::Text),
+                FieldMeta::new("api_key", "API key", FieldKind::Password),
+            ],
+        };
+        let visible = entry.fields.iter().collect::<Vec<_>>();
+        let (sql, _) = build_table_query(
+            &entry,
+            &visible,
+            "needle",
+            1,
+            Some("api_key"),
+            Some("asc"),
+            None,
+        );
+
+        assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
+        assert!(!sql.contains("api_key"), "{sql}");
+        assert!(sql.contains("ORDER BY id asc"), "{sql}");
     }
 
     #[test]

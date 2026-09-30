@@ -5,6 +5,9 @@ use crate::nexus::crud::query::{build_table_query, sanitize_identifier};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use std::fmt::Write as _;
 
+/// Fixed placeholder shown instead of a stored `Password` value.
+const PASSWORD_MASK: &str = "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}";
+
 /// Renders a fallback HTML row for empty database tables or empty search results.
 pub fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
     if q.is_empty() {
@@ -109,6 +112,8 @@ pub async fn render_table_rows(
                             "0".to_string()
                         }
                     }
+                    // Password columns are not selected; never render them.
+                    FieldKind::Password => PASSWORD_MASK.to_string(),
                     _ => row
                         .try_get::<String, _>(f.name)
                         .unwrap_or_else(|_| "-".to_string()),
@@ -158,6 +163,11 @@ pub async fn render_table_view(
     let th_cells = visible_fields.iter().fold(String::new(), |mut acc, f| {
         let col = f.name;
         let label = rullst_core::html::escape_str(f.label);
+        if matches!(f.kind, FieldKind::Password) {
+            // Sorting would reveal the order of stored secrets.
+            let _ = write!(acc, "<th class=\"nexus-th\">{label}</th>");
+            return acc;
+        }
         let is_sorted = sort_by == Some(col);
         let next_order = if is_sorted && order == Some("asc") { "desc" } else { "asc" };
         let arrow = if is_sorted {
@@ -331,104 +341,57 @@ pub async fn render_record_form(
         None
     };
 
-    let fields_html = entry
-        .fields
-        .iter()
-        .filter(|field| !field.hidden)
-        .fold(String::new(), |mut acc, f| {
-        let fname = f.name;
-        let flabel = f.label;
-        let safe_fname = rullst_core::html::escape_str(fname);
-        let safe_flabel = rullst_core::html::escape_str(flabel);
+    let fields_html =
+        entry
+            .fields
+            .iter()
+            .filter(|field| !field.hidden)
+            .fold(String::new(), |mut acc, f| {
+                let fname = f.name;
+                let flabel = f.label;
+                let safe_flabel = rullst_core::html::escape_str(flabel);
 
-        let cur_val: String = if let Some(ref r) = row_data {
-            match &f.kind {
-                FieldKind::Boolean => {
-                    let b = r.try_get::<bool, _>(fname)
-                        .or_else(|_| r.try_get::<i64, _>(fname).map(|v| v != 0))
-                        .unwrap_or(false);
-                    if b { "1".to_string() } else { "0".to_string() }
-                }
-                FieldKind::Number | FieldKind::ForeignKey { .. } => {
-                    if let Ok(v) = r.try_get::<i32, _>(fname) {
-                        v.to_string()
-                    } else if let Ok(v) = r.try_get::<i64, _>(fname) {
-                        v.to_string()
-                    } else if let Ok(v) = r.try_get::<f64, _>(fname) {
-                        v.to_string()
-                    } else if let Ok(v) = r.try_get::<String, _>(fname) {
-                        v
-                    } else {
-                        "".to_string()
+                let cur_val: String = if let Some(ref r) = row_data {
+                    match &f.kind {
+                        FieldKind::Boolean => {
+                            let b = r
+                                .try_get::<bool, _>(fname)
+                                .or_else(|_| r.try_get::<i64, _>(fname).map(|v| v != 0))
+                                .unwrap_or(false);
+                            if b { "1".to_string() } else { "0".to_string() }
+                        }
+                        FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                            if let Ok(v) = r.try_get::<i32, _>(fname) {
+                                v.to_string()
+                            } else if let Ok(v) = r.try_get::<i64, _>(fname) {
+                                v.to_string()
+                            } else if let Ok(v) = r.try_get::<f64, _>(fname) {
+                                v.to_string()
+                            } else if let Ok(v) = r.try_get::<String, _>(fname) {
+                                v
+                            } else {
+                                "".to_string()
+                            }
+                        }
+                        // The stored secret or hash never reaches the browser.
+                        FieldKind::Password => String::new(),
+                        _ => r.try_get::<String, _>(fname).unwrap_or_default(),
                     }
-                }
-                _ => r.try_get::<String, _>(fname).unwrap_or_default(),
-            }
-        } else {
-            "".to_string()
-        };
-
-        let is_readonly = f.readonly || (is_edit && fname == pk);
-        let readonly_attr = if is_readonly {
-            " readonly"
-        } else {
-            ""
-        };
-        let name_attr = if is_readonly {
-            String::new()
-        } else {
-            format!(" name=\"{safe_fname}\"")
-        };
-
-        let input_widget = match &f.kind {
-            FieldKind::Textarea | FieldKind::Json => {
-                format!(
-                    "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}>{}</textarea>",
-                    rullst_core::html::escape_str(&cur_val)
-                )
-            }
-            FieldKind::Boolean => {
-                let checked = if cur_val == "1" || cur_val == "true" { " checked" } else { "" };
-                format!(
-                    "<input type=\"hidden\"{name_attr} value=\"0\" />\
-                     <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} class=\"nexus-checkbox\" />"
-                )
-            }
-            FieldKind::Enum { options } => {
-                let opts = options.iter().fold(String::new(), |mut acc, &opt| {
-                    let sel = if opt == cur_val { " selected" } else { "" };
-                    let safe_opt = rullst_core::html::escape_str(opt);
-                    let _ = write!(acc, "<option value=\"{safe_opt}\"{sel}>{safe_opt}</option>");
-                    acc
-                });
-                format!("<select{name_attr} class=\"nexus-input\"{readonly_attr}>{opts}</select>")
-            }
-            _ => {
-                let input_type = match f.kind {
-                    FieldKind::Email => "email",
-                    FieldKind::Url => "url",
-                    FieldKind::Number => "number",
-                    FieldKind::Password => "password",
-                    FieldKind::Date => "date",
-                    FieldKind::DateTime => "datetime-local",
-                    _ => "text",
+                } else {
+                    "".to_string()
                 };
-                format!(
-                    "<input type=\"{input_type}\"{name_attr} value=\"{}\" class=\"nexus-input\"{readonly_attr} />",
-                    rullst_core::html::escape_str(&cur_val)
-                )
-            }
-        };
 
-        let _ = write!(
-            acc,
-            "<div class=\"nexus-form-group\">\
+                let input_widget = render_field_widget(f, &cur_val, is_edit, pk);
+
+                let _ = write!(
+                    acc,
+                    "<div class=\"nexus-form-group\">\
              <label class=\"nexus-label\">{safe_flabel}</label>\
              {input_widget}\
              </div>"
-        );
-        acc
-    });
+                );
+                acc
+            });
 
     let table_path = urlencoding::encode(t);
     let action_url = if let Some(id) = record_id {
@@ -448,6 +411,73 @@ pub async fn render_record_form(
          <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" data-nexus-save=\"true\">Save Record</button>\
          </div></form>"
     )
+}
+
+/// Renders the input widget for one registered field. `cur_val` is ignored for
+/// `Password` fields, whose stored value is never rendered.
+fn render_field_widget(f: &FieldMeta, cur_val: &str, is_edit: bool, pk: &str) -> String {
+    let safe_fname = rullst_core::html::escape_str(f.name);
+    let is_readonly = f.readonly || (is_edit && f.name == pk);
+    let readonly_attr = if is_readonly { " readonly" } else { "" };
+    let name_attr = if is_readonly {
+        String::new()
+    } else {
+        format!(" name=\"{safe_fname}\"")
+    };
+
+    match &f.kind {
+        FieldKind::Textarea | FieldKind::Json => {
+            format!(
+                "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}>{}</textarea>",
+                rullst_core::html::escape_str(cur_val)
+            )
+        }
+        FieldKind::Boolean => {
+            let checked = if cur_val == "1" || cur_val == "true" {
+                " checked"
+            } else {
+                ""
+            };
+            format!(
+                "<input type=\"hidden\"{name_attr} value=\"0\" />\
+                 <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} class=\"nexus-checkbox\" />"
+            )
+        }
+        FieldKind::Password => {
+            // Never pre-filled; an empty submission keeps the stored value.
+            let hint = if is_edit {
+                " placeholder=\"Leave blank to keep the current value\""
+            } else {
+                ""
+            };
+            format!(
+                "<input type=\"password\"{name_attr} value=\"\" autocomplete=\"new-password\" class=\"nexus-input\"{readonly_attr}{hint} />"
+            )
+        }
+        FieldKind::Enum { options } => {
+            let opts = options.iter().fold(String::new(), |mut acc, &opt| {
+                let sel = if opt == cur_val { " selected" } else { "" };
+                let safe_opt = rullst_core::html::escape_str(opt);
+                let _ = write!(acc, "<option value=\"{safe_opt}\"{sel}>{safe_opt}</option>");
+                acc
+            });
+            format!("<select{name_attr} class=\"nexus-input\"{readonly_attr}>{opts}</select>")
+        }
+        _ => {
+            let input_type = match f.kind {
+                FieldKind::Email => "email",
+                FieldKind::Url => "url",
+                FieldKind::Number => "number",
+                FieldKind::Date => "date",
+                FieldKind::DateTime => "datetime-local",
+                _ => "text",
+            };
+            format!(
+                "<input type=\"{input_type}\"{name_attr} value=\"{}\" class=\"nexus-input\"{readonly_attr} />",
+                rullst_core::html::escape_str(cur_val)
+            )
+        }
+    }
 }
 
 #[cfg(test)]

@@ -46,3 +46,35 @@ async fn table_view_escapes_metadata_and_only_offers_supported_batch_actions() {
     let html = render_table_view(&state(), &without_active, 1, "", None, None, None).await;
     assert!(!html.contains("value=\"deactivate\""));
 }
+
+#[test]
+fn password_widgets_are_never_prefilled() {
+    let field = FieldMeta::new("api_key", "API key", FieldKind::Password);
+    for is_edit in [false, true] {
+        let html = render_field_widget(&field, "stored-sample-value", is_edit, "id");
+        assert!(html.contains("type=\"password\""));
+        assert!(html.contains("value=\"\""));
+        assert!(html.contains("autocomplete=\"new-password\""));
+        assert!(!html.contains("stored-sample-value"));
+        assert_eq!(html.contains("Leave blank"), is_edit);
+    }
+}
+
+#[tokio::test]
+async fn password_columns_have_no_sort_link() {
+    let entry = RegistryEntry {
+        table: "accounts",
+        label: "Accounts",
+        icon: "A",
+        pk: "id",
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("name", "Name", FieldKind::Text),
+            FieldMeta::new("api_key", "API key", FieldKind::Password),
+        ],
+    };
+    let html = render_table_view(&state(), &entry, 1, "", None, None, None).await;
+    assert!(html.contains("sort_by=name"));
+    assert!(!html.contains("sort_by=api_key"));
+    assert!(html.contains("<th class=\"nexus-th\">API key</th>"));
+}
