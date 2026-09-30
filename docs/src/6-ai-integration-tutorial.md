@@ -285,5 +285,10 @@ The table stores raw message text. Production code must authenticate
 conversation ownership inside the selected tenant, decide encryption and key
 management, implement retention/erasure and backup policy, audit provider use
 without logging secrets, and manage schema changes through its release process.
+Tenant and conversation IDs are case-sensitive on every backend. MySQL/MariaDB
+tables created by an earlier release keep their case-insensitive default
+collation, because `prepare_schema` never alters an existing table; they fail
+closed for IDs that differ only by case until you apply the
+[documented migration](https://github.com/Rullst/Rullst/tree/main/rullst-ai#upgrading-mysqlmariadb-chat-memory-tables).
 Use `cargo rullst make:chat-session` instead when you need application-owned
 models/migrations or the Turso-primary profile.

@@ -2765,7 +2765,13 @@ sending.
   messages in the same transaction. A compare-and-swap predicate rejects stale
   cross-process writers; Rullst deliberately does not retry the provider call.
   History reads bind the tenant/conversation and never include rows newer than
-  the revision observed by that read.
+  the revision observed by that read. Tenant and conversation IDs compare
+  case-sensitively on every backend: MySQL/MariaDB tables declare the key
+  columns `CHARACTER SET ascii COLLATE ascii_bin`, and each tenant-scoped
+  MySQL/MariaDB statement also compares the key byte-exactly. `prepare_schema`
+  never alters an existing table; a legacy case-insensitive table fails closed
+  for IDs that differ only by case (`InvalidConfiguration` on
+  `ensure_conversation`) until the operator applies the documented migration.
 * Message text is not encrypted by this adapter. Authenticated conversation
   ownership within a tenant, retention/erasure, provider audit, backups,
   migration governance, and user-facing conflict retry remain host policy. The
