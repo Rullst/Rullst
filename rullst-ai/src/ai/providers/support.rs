@@ -1,4 +1,4 @@
-use crate::ai::AiError;
+use crate::ai::{AiError, Message};
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -48,6 +48,21 @@ pub(super) async fn read_json(
     }
     serde_json::from_slice(&bytes)
         .map_err(|_| AiError::ApiError(format!("{provider} returned invalid JSON")))
+}
+
+/// Joins every system message in conversation order, separated by a blank
+/// line, for transports that accept a single system instruction.
+///
+/// A system message placed after other turns is still sent, but it is hoisted
+/// into that single instruction.
+pub(super) fn joined_system_text(messages: &[Message]) -> Option<String> {
+    let mut parts = messages
+        .iter()
+        .filter(|message| message.role == "system")
+        .map(|message| message.content.as_str())
+        .peekable();
+    parts.peek()?;
+    Some(parts.collect::<Vec<_>>().join("\n\n"))
 }
 
 pub(super) fn endpoint(base_url: &str, path: &str) -> String {
