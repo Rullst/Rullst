@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790724503621,
+  "lastUpdate": 1790727112334,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21801,6 +21801,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1621,
             "range": "± 72",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2918d6c117aae0103e8650bd6afde5cca2efc073",
+          "message": "Merge pull request #331 from Rullst/fix/v13-core-runtime-fixes\n\nfix(core): artisan database resolution, atomic local puts, memoize keys, S3 path signing",
+          "timestamp": "2026-09-29T21:04:49-03:00",
+          "tree_id": "122ec91f08c8b95dd1082417bcea1104cb8469eb",
+          "url": "https://github.com/Rullst/Rullst/commit/2918d6c117aae0103e8650bd6afde5cca2efc073"
+        },
+        "date": 1790727110455,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 769,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 990,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 668,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2179,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
