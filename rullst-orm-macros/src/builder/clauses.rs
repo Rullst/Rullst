@@ -55,6 +55,7 @@ pub fn generate_builder_struct(
             pub with_trashed: bool,
             pub only_trashed: bool,
             select_raw_bound: Option<(String, Vec<rullst_orm::RullstValue>)>,
+            limit_explicit: bool,
             #redis_cfg
             pub remember_ttl: Option<usize>,
             #(#relation_flags)*
@@ -165,6 +166,7 @@ pub fn generate_builder_struct(
                     with_trashed: false,
                     only_trashed: false,
                     select_raw_bound: None,
+                    limit_explicit: false,
                     #redis_cfg
                     remember_ttl: None,
                     #(#relation_inits)*
@@ -457,6 +459,7 @@ pub fn generate_builder_struct(
             }
 
             pub fn limit(mut self, value: usize) -> Self {
+                self.limit_explicit = true;
                 if let Some(max_limit) = rullst_orm::schema::get_max_query_limit() {
                     self.limit = Some(value.min(max_limit));
                 } else {
@@ -467,6 +470,7 @@ pub fn generate_builder_struct(
 
             pub fn unsafe_unlimited(mut self) -> Self {
                 self.limit = None;
+                self.limit_explicit = false;
                 self
             }
 

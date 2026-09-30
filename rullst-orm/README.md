@@ -193,7 +193,11 @@ encrypted string projections use the original field name when decrypting.
 `where_in` and `or_where_in` with an empty vector emit a false predicate, so an
 empty selected-ID list cannot become an unrestricted read or delete. An empty
 `where_not_in` remains true. Unfiltered `delete_all` on models without policies
-is still deliberately a bulk operation. Model-wide, tenant, and soft-delete
+is still deliberately a bulk operation. Its statement renders only the WHERE
+and soft-delete predicates, so an explicit `limit()`, `offset()`, `order_by()`,
+a join, `group_by()` or a CTE makes it fail with `Validation` instead of
+deleting every matching row; select the IDs first and delete them with
+`where_in("id", ids)`. Model-wide, tenant, and soft-delete
 scopes constrain every user `OR` branch, and keyset traversal applies its cursor
 to the entire original filter. Nested generated subqueries propagate validation
 errors, including a missing tenant context, into their containing query.

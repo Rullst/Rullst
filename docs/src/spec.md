@@ -1625,6 +1625,10 @@ while portability and semantic review remain the model author's responsibility.
   model-wide scope binding can never shift onto a nested or caller value. A
   custom subquery whose `$n` markers are mixed with `?`, reference a missing
   binding or leave a binding unused fails closed with a `Validation` error.
+* `delete_all()` renders only the WHERE and soft-delete predicates. A builder
+  with an explicit `limit()` (the implicit global cap does not count),
+  `offset()`, `order_by()`, joins, `group_by()`/HAVING or CTEs fails with
+  `Validation` instead of silently deleting every matching row.
 * Only PostgreSQL statements are renumbered. `delete_all()`, including the
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live

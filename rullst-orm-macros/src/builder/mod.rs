@@ -3,6 +3,7 @@
 use crate::parser::{ParsedModel, SoftDeleteConfig};
 use proc_macro2::TokenStream;
 
+mod bulk_delete;
 pub mod chunking;
 pub mod clauses;
 pub mod execution;
