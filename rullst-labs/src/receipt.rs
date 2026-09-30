@@ -4,11 +4,26 @@ use serde::{Deserialize, Serialize};
 /// Statement by the trusted controller AFTER verified execution and teardown.
 /// A signature authenticates that authority; it does not independently prove
 /// sandbox safety. No signing secret may enter the application or worker.
+///
+/// The same signed type serves two purposes. `SqliteLabs::complete` grades an
+/// execution result. `SqliteLabs::reconcile_cleanup` accepts only a cleanup
+/// attestation, which must report `Rejected(WorkerLost)` with confirmed
+/// teardown for any abandoned attempt, even one that had run normally before
+/// it was cancelled; that attestation is never graded. Report a lost worker
+/// through `abandon_attempt` and `reconcile_cleanup`, which may retry once:
+/// sent to `complete`, a `WorkerLost` output becomes a terminal `Failed` job.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExecutionReceipt {
     pub output: WorkerOutput,
+    /// Trusted Unix seconds on a clock synchronized with the job store's. For
+    /// `complete`, it must not precede the claim: sample it after `claim_next`
+    /// returns, as the store records the claim at its own current time.
     pub started_at: i64,
+    /// At most 90 seconds after `started_at`. For `complete`, it must not be
+    /// later than the store's time on receipt and must be earlier than the
+    /// lease expiry (`LeasedJob::expires_at`); otherwise `complete` returns
+    /// `LabError::Protocol`.
     pub finished_at: i64,
     /// Digest of actual per-job namespace/resource/filesystem/network probes.
     pub observation_digest: ContentHash,

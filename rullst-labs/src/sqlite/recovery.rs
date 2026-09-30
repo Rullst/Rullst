@@ -81,6 +81,8 @@ impl<C: Clock> SqliteLabs<C> {
     /// Only a controller-signed worker-loss receipt with confirmed teardown may
     /// reconcile a real abandoned attempt. It never awards a grade. Retrying a
     /// pure function is explicit, capped at two attempts and requires a new nonce.
+    /// The receipt is a cleanup attestation: sign `Rejected(WorkerLost)` for the
+    /// abandoned attempt's binding whatever the attempt did before teardown.
     pub async fn reconcile_cleanup(
         &self,
         scope: &Scope,

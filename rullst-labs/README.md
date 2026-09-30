@@ -55,6 +55,12 @@ A lost worker first requires a fenced attempt and confirmed whole-group teardown
 `cleanup_candidates`/`abandon_attempt` and `reconcile_cleanup` provide that durable
 boundary. Only then may a controller deliberately request one bounded retry.
 The supplied first controller cancels abandoned work after cleanup by default.
+Cleanup is attested with the same `SignedReceipt` type, reporting
+`Rejected(WorkerLost)`; sent to `complete`, that outcome is a terminal `Failed`
+job without the retry. `complete` accepts a receipt only when `started_at` is
+not before the claim (sample it after `claim_next`, on a clock synchronized
+with the store), `finished_at` is not after the store's time and precedes the
+lease expiry; otherwise it returns `Protocol`.
 
 Schedule `expire_queued` with current course-management authorization to clear
 expired queued source even if the runner is unavailable. It never clears a
