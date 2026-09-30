@@ -526,6 +526,11 @@ while portability and semantic review remain the model author's responsibility.
   distances; they do not interpolate those runtime values. Methods explicitly
   suffixed/named `raw` remain caller-owned escape hatches rather than an
   injection-safety claim.
+* Schema DDL cannot bind values. `ColumnDefault::Text` and `Blueprint::enum_col`
+  variants are emitted as single-quoted literals with doubled single quotes,
+  and building the schema rejects such text when it contains a backslash
+  (an escape character in MySQL/MariaDB's default SQL mode) or a control
+  character.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
