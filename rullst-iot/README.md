@@ -133,11 +133,13 @@ Ok(receipt)
 conflict, reject non-increasing values, and return success only after
 persistence survives reset. Another error may leave the outcome unknown, such as
 a completed write whose acknowledgement was lost. A retry of
-`commit_verified_update_with_store` then completes the commit when the store
-reports, and a fresh `load` confirms, exactly this manifest's counter. Advancing
-the counter before a later bootloader failure is security-safe but can require
-platform recovery and a newer signed counter; the framework cannot make counter
-storage and boot selection one hardware-atomic operation.
+`commit_verified_update_with_store` for that same manifest then completes the
+commit when the store reports, and a fresh `load` confirms, exactly its
+counter. An equal stored counter reached any other way remains a conflict:
+a stale manager or a different image carrying the same counter is refused.
+Advancing the counter before a later bootloader failure is security-safe but
+can require platform recovery and a newer signed counter; the framework cannot
+make counter storage and boot selection one hardware-atomic operation.
 `commit_verified_update` remains available for process-local state, but it does
 not provide persistent anti-rollback protection.
 
