@@ -19,7 +19,7 @@ pub use audit::{
     ToolAuditOutcome, ToolAuditSink,
 };
 pub use policy::{HumanApproval, ToolExecutionContext, ToolExecutionPolicy};
-use validation::{serialized_size, validate_payload, validate_tool};
+use validation::{audited_tool_name, serialized_size, validate_payload, validate_tool};
 
 /// Representation of a parameter in an AI tool's bounded JSON schema.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -64,6 +64,8 @@ pub enum ToolExecutionError {
     InvalidPolicy(String),
     #[error("tool '{0}' is already registered")]
     DuplicateTool(String),
+    /// Carries the requested name, or an `invalid-tool-<digest>` placeholder
+    /// when the requested name is not a valid tool identifier.
     #[error("tool '{0}' is not registered")]
     ToolNotFound(String),
     #[error("principal is not authorized to execute tool '{tool}'")]
@@ -161,12 +163,13 @@ impl ToolRegistry {
         let tool = match self.tools.get(name) {
             Some(tool) => tool,
             None => {
+                let recorded = audited_tool_name(name);
                 return Err(deny(
                     audit,
                     context,
-                    name,
+                    &recorded,
                     None,
-                    ToolExecutionError::ToolNotFound(name.to_string()),
+                    ToolExecutionError::ToolNotFound(recorded.clone()),
                 ));
             }
         };
