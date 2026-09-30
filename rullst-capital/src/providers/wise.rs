@@ -3,6 +3,27 @@ use crate::error::CapitalError;
 use async_trait::async_trait;
 use serde_json::Value;
 
+const MOCK_TRANSFER_PREFIX: &str = "wise_tr_mock_";
+
+// Deterministic offline transfer ID that does not embed the recipient's email.
+fn mock_transfer_id(recipient_email: &str, amount_cents: u64, currency: &str) -> String {
+    let mut digest = ring::digest::Context::new(&ring::digest::SHA256);
+    for field in [
+        b"rullst-wise-mock-transfer-v1".as_slice(),
+        recipient_email.as_bytes(),
+        &amount_cents.to_be_bytes(),
+        currency.as_bytes(),
+    ] {
+        digest.update(&(field.len() as u64).to_be_bytes());
+        digest.update(field);
+    }
+    let digest = digest.finish();
+    format!(
+        "{MOCK_TRANSFER_PREFIX}{}",
+        hex::encode(&digest.as_ref()[..8])
+    )
+}
+
 /// Payout provider implementation for Wise (Global Multi-Currency B2B Payouts & Disbursements).
 pub struct WiseProvider {
     api_token: String,
@@ -81,10 +102,7 @@ impl PayoutProvider for WiseProvider {
         }
 
         if self.api_token.is_empty() || self.api_token.starts_with("mock_") {
-            return Ok(format!(
-                "wise_tr_mock_{}",
-                recipient_email.replace('@', "_")
-            ));
+            return Ok(mock_transfer_id(recipient_email, amount_cents, currency));
         }
 
         Err(CapitalError::UnsupportedOperation(
@@ -100,7 +118,15 @@ impl PayoutProvider for WiseProvider {
         }
 
         if self.api_token.is_empty() || self.api_token.starts_with("mock_") {
-            return Ok(PayoutStatus::OutgoingPaymentSent);
+            // The offline mock reports only on transfers it issued itself; it
+            // never claims that a real Wise transfer was sent.
+            if transfer_id.starts_with(MOCK_TRANSFER_PREFIX) {
+                return Ok(PayoutStatus::OutgoingPaymentSent);
+            }
+            return Err(CapitalError::UnsupportedOperation(
+                "the offline Wise mock cannot report the status of a transfer it did not issue"
+                    .into(),
+            ));
         }
 
         crate::subscription::validate_provider_subscription_id(transfer_id)?;
@@ -286,7 +312,7 @@ mod tests {
         );
 
         // 3. Status
-        let status = provider.get_payout_status("tr_123").await.unwrap();
+        let status = provider.get_payout_status(&transfer_id).await.unwrap();
         assert_eq!(status, PayoutStatus::OutgoingPaymentSent);
         assert!(provider.get_payout_status("").await.is_err());
 

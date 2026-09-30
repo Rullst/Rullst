@@ -2023,8 +2023,12 @@ remains external evidence.
 
 ### 6.1. Multi-Gateway Payment Architecture
 Billing adapters implement `BillingProvider`; the Wise payout adapter implements
-the separate `PayoutProvider` contract. Individual billing operations may still
-return `Unsupported` when a provider adapter has no reviewed implementation:
+the separate `PayoutProvider` contract. Its empty/`mock_*` offline mock issues
+hashed `wise_tr_mock_` transfer IDs that do not embed the recipient email and
+reports status only for those IDs; other transfer IDs fail with
+`UnsupportedOperation` rather than a fabricated `OutgoingPaymentSent`.
+Individual billing operations may still return `Unsupported` when a provider
+adapter has no reviewed implementation:
 ```rust,no_run
 use rullst_capital::providers::stripe::StripeProvider;
 use rullst_capital::providers::BillingProvider;

@@ -109,6 +109,12 @@ available. Polar and Paddle supply the explicit typed replacements below.
 Wise still requires a dedicated recipient/quote/transfer/funding contract.
 Provider-account sandbox acceptance remains separate from protocol tests.
 
+Wise's empty/`mock_*` transfer mock returns a `wise_tr_mock_` ID derived from a
+hash instead of the recipient email, and its status read reports only those
+mock-issued IDs. Any other transfer ID returns `UnsupportedOperation` instead
+of a fabricated `OutgoingPaymentSent`, so an unset token cannot mark real
+transfers as sent.
+
 `WiseProvider::parse_webhook_payload` performs no signature verification and
 cannot distinguish a Wise delivery from a forged request. It is an offline
 fixture restricted to an explicit `mock_*` API token: an empty token returns

@@ -269,7 +269,11 @@ email-based operation remains an offline fixture and returns
 `UnsupportedOperation` with real credentials before network dispatch. A usable
 transfer needs a real recipient account, authenticated quote UUID and durable
 UUID idempotency identity; funding is a separate operation. The existing
-transfer-status read does not provide that missing transfer workflow.
+transfer-status read does not provide that missing transfer workflow. With an
+empty or `mock_*` token, the offline mock issues hashed `wise_tr_mock_` IDs
+without the recipient email and reports status only for those IDs; a real
+transfer ID returns `UnsupportedOperation`, so an unset token cannot mark
+dashboard-created transfers as sent.
 
 `parse_webhook_payload` performs no signature verification. It is an offline
 fixture limited to an explicit `mock_*` API token; an empty token is a
