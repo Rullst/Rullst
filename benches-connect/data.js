@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790794183310,
+  "lastUpdate": 1790795598296,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8385,6 +8385,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 543,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4653f9a9873b2347d37353ae16954dc352281e19",
+          "message": "Merge pull request #354 from Rullst/fix/v13-studio-low-fixes\n\nfix(studio): stable paging, exact search counts, safe row actions and honest labels",
+          "timestamp": "2026-09-30T15:55:02-03:00",
+          "tree_id": "b6bdee57860e41446a27ffa186dd154b1ccaadac",
+          "url": "https://github.com/Rullst/Rullst/commit/4653f9a9873b2347d37353ae16954dc352281e19"
+        },
+        "date": 1790795597463,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 483,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
