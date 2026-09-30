@@ -117,7 +117,8 @@ metadata has bounded retention after its maximum lifetime. Grants and managed
 learners have separate hard capacities; active management is never evicted.
 Capacities are store-wide. An ended session keeps its slot until its retention
 (start, policy lifetime and event retention) ends, so one learner (tenant and
-subject) may retain at most 64 sessions, or the store-wide limit when lower.
+subject) may retain at most 64 sessions, or the store-wide limit when lower;
+`Limits::subject_sessions` selects another bound that every opener must share.
 When a store-wide session or event limit is reached, admission first removes a
 bounded batch of rows already past retention in any tenant, so logically
 deleted state never blocks new work. Hosts should still rate-limit starts.

@@ -50,6 +50,22 @@ impl Limits {
         self.event_interval = minimum_interval_seconds.into();
         Ok(self)
     }
+
+    /// Sessions one learner (tenant and subject) may retain at once, from 1
+    /// to the store-wide `sessions` limit (v13). The default is 64, or
+    /// `sessions` when lower. Every opener must supply the same value.
+    pub fn subject_sessions(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || i64::from(maximum) > self.sessions {
+            return Err(Error::InvalidInput);
+        }
+        self.subject_sessions = maximum.into();
+        Ok(self)
+    }
+
+    /// Whether the per-learner quota is the default derived from `sessions`.
+    pub(crate) fn default_subject_sessions(&self) -> bool {
+        self.subject_sessions == SUBJECT_SESSIONS.min(self.sessions)
+    }
 }
 
 /// Immutable initialization configuration; every opener must supply the same

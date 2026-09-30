@@ -131,7 +131,7 @@ impl<C: Clock> SqliteSupervision<C> {
 
     fn config_key(&self) -> String {
         let c = &self.config;
-        format!(
+        let mut key = format!(
             "v2|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             c.epoch.as_str(),
             c.limits.grants,
@@ -142,7 +142,13 @@ impl<C: Clock> SqliteSupervision<C> {
             c.limits.event_interval,
             c.event_retention,
             c.session_lifetime
-        )
+        );
+        // Only an explicit per-learner quota extends the key, so stores that
+        // were initialized before it existed keep opening unchanged.
+        if !c.limits.default_subject_sessions() {
+            key.push_str(&format!("|subject-sessions={}", c.limits.subject_sessions));
+        }
+        key
     }
 
     async fn validate_schema(&self) -> Result<(), Error> {

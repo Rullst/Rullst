@@ -201,3 +201,57 @@ async fn expired_events_never_block_new_observations() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn an_explicit_learner_quota_is_enforced_and_bound_into_the_configuration() {
+    let limits = Limits::new(16, 16, 128, 16)
+        .unwrap()
+        .subject_sessions(2)
+        .unwrap();
+    let (temp, store, clock) = bounded(limits.clone()).await;
+    let actor = context("learner-a");
+    let mut previous = None;
+    for _ in 0..2 {
+        let started = store
+            .start_exam(&actor, &scope(), &policy(), &acknowledgement(), previous)
+            .await
+            .unwrap();
+        let ended = store
+            .end_exam(&actor, &scope(), started.id(), started.revision())
+            .await
+            .unwrap();
+        previous = Some(ended.revision());
+    }
+    assert!(matches!(
+        store
+            .start_exam(&actor, &scope(), &policy(), &acknowledgement(), previous)
+            .await,
+        Err(Error::Capacity)
+    ));
+    store.close().await;
+    let path = temp.path().join("bounded.sqlite");
+    let default = StoreConfig::new("epoch", Limits::new(16, 16, 128, 16).unwrap(), 3600, 600);
+    assert!(matches!(
+        SqliteSupervision::open(&path, default.unwrap(), clock.clone()).await,
+        Err(Error::Configuration)
+    ));
+    let explicit = StoreConfig::new("epoch", limits, 3600, 600).unwrap();
+    SqliteSupervision::open(&path, explicit, clock.clone())
+        .await
+        .unwrap();
+
+    // Naming the default explicitly keeps the key of existing stores.
+    let (temp, store, _) = fixture().await;
+    store.close().await;
+    let same = Limits::new(16, 16, 128, 16)
+        .unwrap()
+        .subject_sessions(16)
+        .unwrap();
+    SqliteSupervision::open(
+        temp.path().join("supervision.sqlite"),
+        StoreConfig::new("deployment-v1", same, 3600, 600).unwrap(),
+        clock,
+    )
+    .await
+    .unwrap();
+}
