@@ -43,6 +43,14 @@ pub struct TenantConfig {
     /// `Parameter` strategies ignore it: without their input they use the
     /// membership's default tenant.
     pub domain_fallback: Option<String>,
+    /// Domain the `Subdomain` strategy strips from the host, such as
+    /// `escola.com.br` or `example.co.uk`. When set, the tenant is the label
+    /// immediately to its left (`acme.escola.com.br` and
+    /// `www.acme.escola.com.br` both select `acme`), while the domain itself,
+    /// `www.` plus the domain and hosts outside it have no tenant subdomain.
+    /// When unset, the first label of a host with at least three labels is
+    /// the tenant. Unpublished v13 API.
+    pub base_domain: Option<String>,
 }
 
 impl TenantConfig {
@@ -50,12 +58,14 @@ impl TenantConfig {
     /// - Header Name: X-Tenant-ID
     /// - Parameter Name: tenant_id
     /// - Domain Fallback: None
+    /// - Base Domain: None
     pub fn new(strategy: TenantStrategy) -> Self {
         Self {
             strategy,
             header_name: "X-Tenant-ID".to_string(),
             parameter_name: "tenant_id".to_string(),
             domain_fallback: None,
+            base_domain: None,
         }
     }
 
@@ -75,6 +85,15 @@ impl TenantConfig {
     /// tenant subdomain. Other strategies ignore it.
     pub fn with_domain_fallback<S: Into<String>>(mut self, fallback: S) -> Self {
         self.domain_fallback = Some(fallback.into());
+        self
+    }
+
+    /// Set the domain the `Subdomain` strategy strips from the host (see
+    /// [`TenantConfig::base_domain`]). Required when the application's apex
+    /// is under a multi-label public suffix such as `.com.br`. Unpublished v13
+    /// API.
+    pub fn with_base_domain<S: Into<String>>(mut self, domain: S) -> Self {
+        self.base_domain = Some(domain.into());
         self
     }
 }
@@ -110,20 +129,42 @@ fn request_host<B>(req: &axum::http::Request<B>) -> Option<&str> {
 
 /// Extracts the tenant subdomain from a request host.
 ///
-/// The first label of a host with at least three labels is the tenant
-/// (`tenant1.example.com` -> `tenant1`). IP addresses, shorter hosts and a
-/// `www` label have no tenant subdomain, so `domain_fallback` applies.
-fn extract_subdomain(host: &str) -> Option<String> {
+/// Without a base domain, the first label of a host with at least three
+/// labels is the tenant (`tenant1.example.com` -> `tenant1`). With one, the
+/// tenant is the label immediately to the left of it. IP addresses, shorter
+/// hosts, hosts outside the base domain and a `www` label have no tenant
+/// subdomain, so `domain_fallback` applies.
+fn extract_subdomain(host: &str, base_domain: Option<&str>) -> Option<String> {
     let host_only = host.split(':').next()?;
     if host_only.parse::<std::net::IpAddr>().is_ok() {
         return None;
     }
-    let parts: Vec<&str> = host_only.split('.').collect();
-    if parts.len() >= 3 && !parts[0].eq_ignore_ascii_case("www") {
-        Some(parts[0].to_string())
-    } else {
-        None
+    let label = match base_domain {
+        Some(base_domain) => {
+            let host_only = host_only.strip_suffix('.').unwrap_or(host_only);
+            let base_domain = base_domain.trim_matches('.');
+            let prefix_len = host_only.len().checked_sub(base_domain.len() + 1)?;
+            let suffix = host_only.get(prefix_len..)?;
+            if base_domain.is_empty()
+                || !suffix.starts_with('.')
+                || !suffix[1..].eq_ignore_ascii_case(base_domain)
+            {
+                return None;
+            }
+            host_only.get(..prefix_len)?.rsplit('.').next()?
+        }
+        None => {
+            let parts: Vec<&str> = host_only.split('.').collect();
+            if parts.len() < 3 {
+                return None;
+            }
+            parts[0]
+        }
+    };
+    if label.is_empty() || label.eq_ignore_ascii_case("www") {
+        return None;
     }
+    Some(label.to_string())
 }
 
 /// The declarative custom Tower Layer for tenant identification
@@ -198,7 +239,7 @@ where
                     .and_then(|v| v.to_str().ok())
                     .map(|s| s.to_string()),
                 TenantStrategy::Subdomain => request_host(&req)
-                    .and_then(extract_subdomain)
+                    .and_then(|host| extract_subdomain(host, config.base_domain.as_deref()))
                     .or_else(|| config.domain_fallback.clone()),
                 TenantStrategy::Parameter => {
                     let query = req.uri().query().unwrap_or("");

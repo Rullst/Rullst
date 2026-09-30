@@ -3,17 +3,77 @@ use super::*;
 #[test]
 fn test_extract_subdomain() {
     assert_eq!(
-        extract_subdomain("tenant1.example.com"),
+        extract_subdomain("tenant1.example.com", None),
         Some("tenant1".to_string())
     );
     assert_eq!(
-        extract_subdomain("tenant-a.app.co.uk"),
+        extract_subdomain("tenant-a.app.co.uk", None),
         Some("tenant-a".to_string())
     );
-    assert_eq!(extract_subdomain("localhost:3000"), None);
-    assert_eq!(extract_subdomain("127.0.0.1"), None);
-    assert_eq!(extract_subdomain("www.example.com"), None);
-    assert_eq!(extract_subdomain("WWW.example.com:443"), None);
+    assert_eq!(extract_subdomain("localhost:3000", None), None);
+    assert_eq!(extract_subdomain("127.0.0.1", None), None);
+    assert_eq!(extract_subdomain("www.example.com", None), None);
+    assert_eq!(extract_subdomain("WWW.example.com:443", None), None);
+}
+
+#[test]
+fn a_base_domain_selects_the_label_to_its_left() {
+    let base = Some("escola.com.br");
+    for (host, expected) in [
+        ("acme.escola.com.br", Some("acme")),
+        ("ACME.Escola.COM.br:8443", Some("ACME")),
+        ("www.acme.escola.com.br", Some("acme")),
+        ("acme.escola.com.br.", Some("acme")),
+        ("escola.com.br", None),
+        ("www.escola.com.br", None),
+        ("acme.other.com.br", None),
+        ("xescola.com.br", None),
+        ("127.0.0.1", None),
+    ] {
+        assert_eq!(extract_subdomain(host, base).as_deref(), expected, "{host}");
+    }
+    assert_eq!(
+        extract_subdomain("acme.example.co.uk", Some(".example.co.uk.")).as_deref(),
+        Some("acme")
+    );
+}
+
+#[tokio::test]
+async fn an_apex_under_a_multi_label_suffix_uses_the_domain_fallback() {
+    use axum::http::{Request, StatusCode};
+
+    let membership = || crate::security::TenantMembership::try_new(["main", "lab"]).unwrap();
+    let request = |host: &str| {
+        Request::builder()
+            .uri("/test")
+            .header("host", host)
+            .body(axum::body::Body::empty())
+            .unwrap()
+    };
+    let config = || {
+        TenantConfig::new(TenantStrategy::Subdomain)
+            .with_base_domain("minhaescola.com.br")
+            .with_domain_fallback("main")
+    };
+    assert_eq!(
+        subdomain_tenant(config(), membership(), request("minhaescola.com.br")).await,
+        (StatusCode::OK, "main".to_string())
+    );
+    assert_eq!(
+        subdomain_tenant(config(), membership(), request("lab.minhaescola.com.br")).await,
+        (StatusCode::OK, "lab".to_string())
+    );
+    // Without the base domain the apex requests the tenant "minhaescola".
+    assert_eq!(
+        subdomain_tenant(
+            TenantConfig::new(TenantStrategy::Subdomain).with_domain_fallback("main"),
+            membership(),
+            request("minhaescola.com.br")
+        )
+        .await
+        .0,
+        StatusCode::FORBIDDEN
+    );
 }
 
 #[tokio::test]
@@ -48,6 +108,14 @@ fn test_tenant_config_builder() {
     assert_eq!(config.header_name, "X-Custom-Tenant");
     assert_eq!(config.parameter_name, "t_id");
     assert_eq!(config.domain_fallback, Some("default".to_string()));
+    assert_eq!(config.base_domain, None);
+    assert_eq!(
+        config
+            .with_base_domain("example.com")
+            .base_domain
+            .as_deref(),
+        Some("example.com")
+    );
 }
 
 #[tokio::test]
