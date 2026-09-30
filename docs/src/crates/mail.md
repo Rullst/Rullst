@@ -44,7 +44,7 @@ publication. Existing applications must adopt the new store/worker explicitly.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus offline fixture and an explicit legacy proxy boundary.
-  - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
+  - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
@@ -482,6 +482,12 @@ credentials is an unauthenticated relay and receives real delivery, so
 `MAIL_DRIVER=smtp` without `MAIL_HOST` sends to `127.0.0.1:25`. A username
 without a password, or the reverse (blank values count as missing), returns
 `MailError::ConfigError` instead of falling back to the mock.
+
+Port 465 uses implicit TLS (SMTPS); every other port, including the facade's
+default 25 and the usual submission port 587, requires STARTTLS. Plaintext is
+never used: a server that does not offer STARTTLS, or presents a certificate
+that is not valid for `MAIL_HOST`, fails with a typed transport error, so a
+local relay needs a certificate valid for the configured host name.
 
 ---
 

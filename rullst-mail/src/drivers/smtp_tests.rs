@@ -163,6 +163,86 @@ async fn unauthenticated_or_partial_real_hosts_never_report_offline_success() {
 }
 
 #[test]
+fn port_465_uses_implicit_tls_and_every_other_port_starttls() {
+    assert_eq!(smtp_tls_for_port(465), SmtpTls::Implicit);
+    for port in [25, 587, 2525, 1025] {
+        assert_eq!(smtp_tls_for_port(port), SmtpTls::StartTls);
+    }
+}
+
+/// Plaintext SMTP fixture: greets, advertises STARTTLS, records the client's
+/// first two commands and refuses the upgrade.
+fn spawn_starttls_refusing_server() -> (u16, std::thread::JoinHandle<Vec<String>>) {
+    use std::io::{BufRead, BufReader, Write};
+    use std::time::{Duration, Instant};
+
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let handle = std::thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let stream = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    assert!(Instant::now() < deadline, "fixture accept timed out");
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(error) => panic!("fixture accept failed: {error}"),
+            }
+        };
+        stream.set_nonblocking(false).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut writer = stream.try_clone().unwrap();
+        let mut reader = BufReader::new(stream);
+        let mut commands = Vec::new();
+        writer.write_all(b"220 fixture ESMTP\r\n").unwrap();
+        for reply in [
+            b"250-fixture\r\n250 STARTTLS\r\n".as_slice(),
+            b"454 4.7.0 TLS not available\r\n",
+        ] {
+            let mut line = Vec::new();
+            if reader.read_until(b'\n', &mut line).is_err() || line.is_empty() {
+                break;
+            }
+            commands.push(String::from_utf8_lossy(&line).trim_end().to_string());
+            if writer.write_all(reply).is_err() {
+                break;
+            }
+        }
+        commands
+    });
+    (port, handle)
+}
+
+#[tokio::test]
+async fn submission_ports_negotiate_starttls_instead_of_implicit_tls() {
+    let (port, server) = spawn_starttls_refusing_server();
+    let driver = SmtpDriver::try_new(
+        "127.0.0.1",
+        port,
+        Some("user".to_string()),
+        Some("fixture-password".to_string()),
+    )
+    .unwrap();
+    let outcome = driver.send(&base_message().text("body")).await;
+    let commands = server.join().unwrap();
+    assert_eq!(commands.len(), 2, "unexpected SMTP dialogue: {commands:?}");
+    assert!(commands[0].starts_with("EHLO "));
+    assert_eq!(commands[1], "STARTTLS");
+    // The refused upgrade never falls back to plaintext AUTH or DATA.
+    assert!(matches!(
+        outcome,
+        Err(MailError::TransportError {
+            provider: "smtp",
+            ..
+        })
+    ));
+}
+
+#[test]
 fn message_builder_covers_text_html_unsubscribe_and_attachment_shapes() {
     let text = formatted(
         &Message::new()

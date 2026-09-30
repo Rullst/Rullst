@@ -16,7 +16,8 @@ use async_trait::async_trait;
 pub struct SmtpDriver {
     /// SMTP server hostname or IP.
     pub host: String,
-    /// SMTP port (e.g. 587, 465, 25).
+    /// SMTP port. Port 465 uses implicit TLS (SMTPS); every other port, such
+    /// as 587 or 25, uses mandatory STARTTLS.
     pub port: u16,
     /// Optional username for authentication.
     pub username: Option<String>,
@@ -116,7 +117,11 @@ impl MailDriver for SmtpDriver {
 
         let email = build_smtp_message(message)?;
 
-        let mut builder = AsyncSmtpTransport::<Tokio1Executor>::relay(&self.host)
+        let relay = match smtp_tls_for_port(self.port) {
+            SmtpTls::Implicit => AsyncSmtpTransport::<Tokio1Executor>::relay(&self.host),
+            SmtpTls::StartTls => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&self.host),
+        };
+        let mut builder = relay
             .map_err(|_| MailError::ConfigError("SMTP relay configuration is invalid".to_string()))?
             .port(self.port);
 
@@ -130,6 +135,26 @@ impl MailDriver for SmtpDriver {
         let transport = builder.build();
         transport.send(email).await.map_err(classify_smtp_error)?;
         Ok(())
+    }
+}
+
+/// How the SMTP client obtains TLS. Plaintext delivery is never used.
+#[cfg(feature = "mail-smtp")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SmtpTls {
+    /// TLS from the first byte (SMTPS), used on port 465.
+    Implicit,
+    /// A plaintext greeting upgraded with mandatory STARTTLS, used on every
+    /// other port (25, 587, 2525 and so on).
+    StartTls,
+}
+
+#[cfg(feature = "mail-smtp")]
+const fn smtp_tls_for_port(port: u16) -> SmtpTls {
+    if port == 465 {
+        SmtpTls::Implicit
+    } else {
+        SmtpTls::StartTls
     }
 }
 
