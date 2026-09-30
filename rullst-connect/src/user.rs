@@ -24,7 +24,15 @@ pub struct ConnectUser {
     pub raw_data: Value,
 
     /// The access token retrieved during the OAuth2 flow.
-    #[serde(skip_serializing, deserialize_with = "secret_serde::deserialize")]
+    ///
+    /// Serialization omits it, so a `ConnectUser` restored from its own
+    /// serialized form (for example from a session) carries an empty access
+    /// token and no refresh token: it is a profile, not a usable credential.
+    #[serde(
+        skip_serializing,
+        default,
+        deserialize_with = "secret_serde::deserialize"
+    )]
     pub access_token: secrecy::SecretString,
 
     /// The refresh token retrieved during the OAuth2 flow (if provided).
@@ -183,6 +191,14 @@ mod tests {
         assert_eq!(public_json["email"], "test@example.com");
         assert!(public_json.get("raw_data").is_none());
         assert!(public_json.get("expires_in").is_none());
+
+        // Its own serialized form restores the profile without credentials.
+        let restored: ConnectUser = serde_json::from_value(serialized).unwrap();
+        assert_eq!(restored.id, "123");
+        assert_eq!(restored.email.as_deref(), Some("test@example.com"));
+        assert!(secrecy::ExposeSecret::expose_secret(&restored.access_token).is_empty());
+        assert!(restored.refresh_token.is_none());
+        assert_eq!(restored.expires_in, Some(3600));
     }
 
     #[test]
