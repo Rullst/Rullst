@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790746976774,
+  "lastUpdate": 1790755841919,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12507,6 +12507,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5c43890fbd711638bd354a84f42a912b7f8eda9",
+          "message": "Merge pull request #342 from Rullst/fix/v13-nexus-review-fixes\n\nfix(nexus): proxy-safe lockout, same-origin assets under CSP, hidden passwords, edit-only-changed",
+          "timestamp": "2026-09-30T04:48:15-03:00",
+          "tree_id": "5e5d75fe28a1aaf8795c403f8ba571dbcd6e17aa",
+          "url": "https://github.com/Rullst/Rullst/commit/c5c43890fbd711638bd354a84f42a912b7f8eda9"
+        },
+        "date": 1790755841116,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5553,
+            "range": "± 104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 692,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
