@@ -1486,6 +1486,9 @@ default permissions, so permissions or hard links of the previous file are not
 carried over. The directory is not fsynced, so a power loss can roll a
 completed put back to the previous version. On Windows a replacement fails
 while another process holds the object open without delete sharing.
+Like the cloud backends, local `exists`, `get`, `metadata` and `delete` treat
+a key that names a directory, or that continues below a regular file, as a
+missing object rather than an I/O failure.
 
 ### Public object URLs
 

@@ -7,6 +7,10 @@ mod tenant;
 pub use tenant::TenantStorage;
 #[cfg(feature = "storage-s3")]
 pub mod cloud;
+#[cfg(test)]
+mod local_object_tests;
+mod local_paths;
+use local_paths::{missing_object, reject_symlink_components};
 mod operations;
 pub use operations::ObjectMetadata;
 mod public_url;
@@ -235,6 +239,8 @@ impl LocalDriver {
             .map_err(StorageError::from)
     }
 
+    /// Resolves an existing object. Like the cloud backends, a key naming a
+    /// directory, or passing through a regular file, is `NotFound`.
     async fn resolve_existing_path(&self, relative_path: &str) -> Result<PathBuf, StorageError> {
         let validated_path = validate_relative_path(relative_path)?;
         let lexical_path = self.base_dir.join(&validated_path);
@@ -242,10 +248,17 @@ impl LocalDriver {
         reject_symlink_components(&canonical_base, &validated_path).await?;
         let canonical_path = tokio::fs::canonicalize(&lexical_path)
             .await
-            .map_err(StorageError::from)?;
+            .map_err(missing_object)?;
 
         if !canonical_path.starts_with(&canonical_base) {
             return Err(StorageError::PathTraversal(relative_path.to_string()));
+        }
+        if !tokio::fs::metadata(&canonical_path)
+            .await
+            .map_err(missing_object)?
+            .is_file()
+        {
+            return Err(StorageError::NotFound("key names a directory".to_string()));
         }
 
         Ok(canonical_path)
@@ -361,32 +374,6 @@ fn normalized_object_key(relative_path: &str) -> Result<String, StorageError> {
         key.push_str(segment);
     }
     Ok(key)
-}
-
-async fn reject_symlink_components(
-    canonical_base: &Path,
-    relative_path: &Path,
-) -> Result<(), StorageError> {
-    let mut candidate = canonical_base.to_path_buf();
-    for component in relative_path.components() {
-        let Component::Normal(segment) = component else {
-            return Err(StorageError::PathTraversal(
-                relative_path.to_string_lossy().into_owned(),
-            ));
-        };
-        candidate.push(segment);
-        match tokio::fs::symlink_metadata(&candidate).await {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
-                return Err(StorageError::PathTraversal(
-                    relative_path.to_string_lossy().into_owned(),
-                ));
-            }
-            Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
-            Err(error) => return Err(StorageError::from(error)),
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
