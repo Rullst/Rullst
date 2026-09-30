@@ -628,3 +628,23 @@ async fn real_transports_require_an_explicit_sender_before_network() {
         ));
     }
 }
+
+#[tokio::test]
+async fn guard_outages_do_not_fail_over_to_an_unguarded_provider() {
+    let message = Message::new()
+        .to("user@example.com")
+        .subject("Guard outage");
+    for error in [
+        MailError::SuppressionUnavailable,
+        MailError::AttachmentInspectionUnavailable,
+    ] {
+        let (fallback, fallback_store) = MemoryDriver::isolated();
+        let failover = FailoverDriver::new(ClassifiedFailDriver {
+            error: error.clone(),
+        })
+        .with_fallback(fallback);
+        let outcome = failover.send(&message).await;
+        assert_eq!(outcome, Err(error));
+        assert!(fallback_store.lock().unwrap().is_empty());
+    }
+}
