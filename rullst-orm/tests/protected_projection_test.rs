@@ -38,7 +38,8 @@ fn patient() -> Patient {
 
 fn assert_no_plaintext(payload: &str) {
     for secret in [DIAGNOSIS, RECOVERY_NOTE, CPF, INTERNAL_CODE] {
-        assert!(!payload.contains(secret), "{secret} leaked into {payload}");
+        // Never format the values: they stand in for protected data.
+        assert!(!payload.contains(secret), "a protected test value leaked");
     }
 }
 

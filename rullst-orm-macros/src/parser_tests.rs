@@ -418,14 +418,14 @@ mod tests {
 
     #[test]
     fn secret_string_fields_are_redacted_but_other_types_are_not() {
-        for secret in [
+        for type_name in [
             "SecretString",
             "rullst_orm::SecretString",
             "Option<SecretString>",
             "Option<rullst_orm::privacy::SecretString>",
         ] {
-            let ty: syn::Type = syn::parse_str(secret).expect("secret type");
-            assert!(is_secret_string_type(&ty), "{secret}");
+            let ty: syn::Type = syn::parse_str(type_name).expect("SecretString type");
+            assert!(is_secret_string_type(&ty), "{type_name}");
         }
         for plain in [
             "String",
