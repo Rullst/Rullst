@@ -1767,6 +1767,17 @@ while portability and semantic review remain the model author's responsibility.
   The returned future is `Send` for `Send` results and errors, so it can be
   nested in a transaction closure or spawned. Holding the shared handle's lock
   across a nested call deadlocks, as it does for generated model methods.
+* Savepoints on one connection close in LIFO order. Sibling nested
+  transactions started concurrently on one task take turns: each holds its
+  level's turn from `SAVEPOINT` until its release or rollback, while a
+  transaction nested inside it uses its own level and never waits for it.
+  Plain statements from a sibling future are not serialized and run inside
+  whichever savepoint is open. A savepoint left open (a deeper level still
+  open at release, a failed release/rollback, or a nested future cancelled
+  while the connection was busy) never commits partial work: the enclosing
+  savepoint rolls back instead of releasing, a managed transaction rolls back
+  and returns an error instead of committing, and the ORM pool closes a
+  connection returned while SQLx still reports an open transaction.
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no

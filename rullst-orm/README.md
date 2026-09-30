@@ -241,6 +241,18 @@ helper that wraps `Outbox::enqueue` or model saves in its own
 `Send`, so it can also run in a spawned task. Do not hold the shared handle's
 lock across a nested call.
 
+Sibling nested transactions started concurrently on one task (for example with
+`tokio::join!`) take turns on the shared connection: each opens its savepoint
+only after the previous sibling's savepoint was released or rolled back, so a
+failure rolls back only that sibling's work. Plain model statements issued by
+a sibling future while another sibling's savepoint is open still run inside
+that savepoint; wrap each concurrent branch in its own `Orm::transaction` when
+they must be isolated. A savepoint that cannot be settled (for example a nested
+future cancelled while another operation holds the connection) makes the
+enclosing transaction fail closed: it rolls back and returns an error instead
+of committing, and the pool closes any connection returned while still inside
+a transaction instead of reusing it.
+
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
 on that transaction. Transactional streams reject `after_fetch` hooks to avoid

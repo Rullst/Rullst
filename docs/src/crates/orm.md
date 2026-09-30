@@ -129,7 +129,9 @@ generated API.
   idempotent; generated observers are not silently converted into events.
   A nested `Orm::transaction` joins the active transaction through a
   savepoint, so a helper that enqueues inside its own transaction stays atomic
-  with its caller. See
+  with its caller. Concurrent sibling nested transactions take turns on the
+  shared connection, and a savepoint left open makes the enclosing transaction
+  roll back instead of committing. See
   the [transactional outbox tutorial](../tutorials/38-transactional-outbox.md).
 - **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
   PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes
