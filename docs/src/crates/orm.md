@@ -139,7 +139,8 @@ generated API.
   model definitions and emits a migration for review.
 - **Cascading soft deletes:** Opt-in relationship metadata can cascade through
   generated delete methods; transaction-aware variants use the supplied
-  transaction.
+  transaction. The related model must also use soft deletes; a cascade into a
+  model without them fails to compile instead of hard-deleting its rows.
 - **Transactional partial updates (v13 candidate):** `.update_partial()` merges
   selected values into a fresh row and performs its full save lifecycle, with
   explicit transaction support. See [the contract and migration](../transactional-partial-updates.md).

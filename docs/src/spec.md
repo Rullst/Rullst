@@ -1602,7 +1602,14 @@ while portability and semantic review remain the model author's responsibility.
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
-  traversal remains a separate contract.
+  traversal remains a separate contract. The related model must itself use
+  soft deletes (a `deleted_at` field or `#[orm(soft_delete)]`): a cascade into
+  a model without them fails to compile (no method
+  `__rullst_cascade_soft_delete_with_tx`, reported at the relation field)
+  instead of permanently deleting the children of a restorable parent. A
+  policy-protected child cannot be authorized in bulk, so its cascade fails
+  closed with `Error::Validation` and rolls the parent delete back; delete
+  such children individually first.
 * Generated `#[orm(auditable)]` instance `save()`/`delete()` operations (and
   `restore()`/`force_delete()`, recorded as `restored`/`force_deleted`) write
   their bounded audit entry through the same explicit, implicit, or task-scoped

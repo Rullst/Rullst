@@ -30,7 +30,9 @@ Rust column-enum variant receives a compile error instead of a macro panic.
 
 Exactly one relation declaration is accepted per relation field. Orphan
 relation options are rejected, `belongs_to_many` requires a pivot table,
-`cascade_soft_delete` is limited to has-one/has-many, and polymorphic metadata
+`cascade_soft_delete` is limited to has-one/has-many whose related model also
+uses soft deletes (otherwise the generated cascade fails to compile at the
+relation field rather than hard-deleting the children), and polymorphic metadata
 is limited to morph relations. The generated many-to-many foreign/related keys
 default to the owner and related model names when omitted.
 

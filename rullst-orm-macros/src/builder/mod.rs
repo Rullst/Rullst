@@ -84,6 +84,7 @@ pub fn generate(
     );
     let mut execution_methods = generate_execution_methods(parsed, &builder_name, eager_loads);
     execution_methods.extend(generate_chunk_methods(parsed));
+    execution_methods.push(generate_cascade_soft_delete_target(parsed));
     let magic_methods = generate_magic_methods(parsed);
 
     generate_builder_struct(
@@ -99,9 +100,57 @@ pub fn generate(
     )
 }
 
+/// Soft-deletes the rows matched by a parent's `cascade_soft_delete`
+/// relation. It exists only on soft-delete models, so a cascade into a model
+/// without soft deletes fails to compile instead of issuing a hard `DELETE`.
+fn generate_cascade_soft_delete_target(parsed: &ParsedModel) -> TokenStream {
+    if !parsed.has_soft_deletes {
+        return TokenStream::new();
+    }
+    quote::quote! {
+        #[doc(hidden)]
+        pub async fn __rullst_cascade_soft_delete_with_tx(
+            &self,
+            tx: &mut rullst_orm::db::Transaction<'_>,
+        ) -> Result<u64, rullst_orm::Error> {
+            self.delete_all_with_tx(tx).await
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_soft_delete_models_accept_a_cascading_soft_delete() {
+        let soft: syn::DeriveInput = syn::parse_quote! {
+            struct Comment { id: i32, post_id: i32, deleted_at: Option<String> }
+        };
+        let hard: syn::DeriveInput = syn::parse_quote! {
+            struct LineItem { id: i32, order_id: i32 }
+        };
+        let generated = |input: &syn::DeriveInput| {
+            let parsed = crate::parser::parse(input).expect("test model should parse");
+            generate_cascade_soft_delete_target(&parsed).to_string()
+        };
+        assert!(generated(&soft).contains("fn __rullst_cascade_soft_delete_with_tx"));
+        assert!(generated(&hard).is_empty());
+
+        let parent: syn::DeriveInput = syn::parse_quote! {
+            struct Order {
+                id: i32,
+                #[sqlx(default, skip)]
+                #[orm(has_many = "LineItem", cascade_soft_delete)]
+                items: Option<Vec<LineItem>>,
+                deleted_at: Option<String>,
+            }
+        };
+        let parsed = crate::parser::parse(&parent).expect("parent model should parse");
+        let delete = crate::models::generate_delete_methods(&parsed).to_string();
+        assert!(delete.contains("__rullst_cascade_soft_delete_with_tx (tx)"));
+        assert!(!delete.contains("delete_all_with_tx (tx)"));
+    }
 
     #[test]
     fn test_soft_delete_where_clause() {
