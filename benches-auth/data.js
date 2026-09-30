@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790786056583,
+  "lastUpdate": 1790790009381,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13425,6 +13425,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4479,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "402ce4191277735e3d1f8d5080550156e9b92fd1",
+          "message": "Merge pull request #347 from Rullst/fix/v13-orm-tail-fixes\n\nfix(orm): serialize nested savepoints, typed DDL, transactional enum DDL and indexed cache invalidation",
+          "timestamp": "2026-09-30T14:23:13-03:00",
+          "tree_id": "60a648cd9250c117ce3d247caf4f8b93b260f662",
+          "url": "https://github.com/Rullst/Rullst/commit/402ce4191277735e3d1f8d5080550156e9b92fd1"
+        },
+        "date": 1790790007974,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 720,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 593,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1320,
+            "range": "± 51",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1937,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
