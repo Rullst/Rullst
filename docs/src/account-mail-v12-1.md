@@ -95,7 +95,10 @@ arbitrary database delays or establish indistinguishability under outages.
   encryption. The recovery credential remains digest-only; the delivery copy is
   decryptable using the application encryption key until expiry/terminal cleanup.
   Retention is bounded at 10,000 records, with six attempts, 60-second leases and
-  exponential retry delay. Old workers cannot acknowledge a newer lease.
+  exponential retry delay. When the outbox is full, the oldest delivered or
+  failed (ciphertext-free) records are evicted first, so only pending and leased
+  notices can block registration or silently drop a reset request. Old workers
+  cannot acknowledge a newer lease.
 - Reset emails render an absolute UTC expiry, keeping the body identical across
   retries. Stable delivery IDs reach Resend through observation, inspection,
   suppression, resolver and failover wrappers. Other transports remain

@@ -3,6 +3,9 @@ use super::{
 };
 use sqlx::{Any, Row, Transaction};
 
+/// Retained notices, including delivered and failed tombstones.
+const OUTBOX_CAPACITY: i64 = 10_000;
+
 /// Redacted delivery outcome. Provider payloads must never be persisted here.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
@@ -64,8 +67,20 @@ impl SqlRecoveryStore {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_recovery_outbox")
             .fetch_one(&mut **tx)
             .await?;
-        if count >= 10000 {
-            return Err(RecoveryError::Limited);
+        if count >= OUTBOX_CAPACITY {
+            // Delivered and failed rows are ciphertext-free tombstones kept only
+            // for the snapshot; evict the oldest so they never block new mail.
+            // Only pending and leased notices can exhaust the capacity.
+            sqlx::query("DELETE FROM rullst_recovery_outbox WHERE id IN (SELECT id FROM rullst_recovery_outbox WHERE status IN ('delivered', 'failed') ORDER BY expires_at, id LIMIT $1)")
+                .bind(count - OUTBOX_CAPACITY + 1)
+                .execute(&mut **tx)
+                .await?;
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_recovery_outbox")
+                .fetch_one(&mut **tx)
+                .await?;
+            if count >= OUTBOX_CAPACITY {
+                return Err(RecoveryError::Limited);
+            }
         }
         let id = SecretToken::generate()?.expose().to_owned();
         let ciphertext = notice.seal(&self.keys, &id)?;

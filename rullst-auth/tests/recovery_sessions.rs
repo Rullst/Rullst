@@ -313,3 +313,46 @@ async fn password_reset_revokes_only_the_selected_accounts_sessions_and_handles(
     assert!(store.claim_notice(1012).await.unwrap().is_none());
     store.close().await;
 }
+
+#[tokio::test]
+async fn delivered_tombstones_never_block_registration_or_reset() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("outbox.db");
+    let encoded: String =
+        url::form_urlencoded::byte_serialize(path.to_str().unwrap().as_bytes()).collect();
+    let url = format!("sqlite:{}?mode=rwc", encoded.replace('+', "%20"));
+    let store = SqlRecoveryStore::connect(&url, RecoverySecrets::new([3; 32], [9; 32]).unwrap())
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    // A day of delivered and failed notices fills the 10,000-row outbox.
+    let pool = sqlx::SqlitePool::connect(&url).await.unwrap();
+    sqlx::query("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 10000) INSERT INTO rullst_recovery_outbox (id, subject, kind, ciphertext, expires_at, status, attempts, due_at, lease, lease_until) SELECT 'tombstone-' || i, 'earlier', 'welcome', '', 90000, CASE WHEN i % 2 = 0 THEN 'delivered' ELSE 'failed' END, 1, 1000, '', 0 FROM n")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let password = fixture_password();
+    store
+        .register_account("member", EMAIL, password.as_str(), 1000)
+        .await
+        .unwrap();
+    store.request_password_reset(EMAIL, 1001).await.unwrap();
+    let snapshot = store.outbox_snapshot().await.unwrap();
+    assert_eq!(snapshot.pending, 2);
+    assert_eq!(snapshot.delivered + snapshot.failed, 9_998);
+
+    // Pending work still exhausts the bounded capacity.
+    sqlx::query("UPDATE rullst_recovery_outbox SET status = 'pending' WHERE status IN ('delivered', 'failed')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .register_account("second", "second@example.com", password.as_str(), 1002)
+            .await,
+        Err(RecoveryError::Limited)
+    );
+    pool.close().await;
+    store.close().await;
+}
