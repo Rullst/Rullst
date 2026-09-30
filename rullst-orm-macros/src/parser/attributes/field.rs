@@ -199,6 +199,27 @@ impl FieldAttributes {
                 "relationship options require exactly one relation declaration",
             ));
         }
+        // A belongs_to/morph_to key on the related model is `related_key`;
+        // the other relations match the related table's key to `local_key`.
+        if seen.contains("local_key")
+            && matches!(self.relation_type.as_str(), "belongs_to" | "morph_to")
+        {
+            return Err(syn::Error::new(
+                span,
+                "local_key does not apply to belongs_to or morph_to relations; name the related model's key with related_key",
+            ));
+        }
+        if seen.contains("related_key")
+            && !matches!(
+                self.relation_type.as_str(),
+                "belongs_to" | "belongs_to_many" | "morph_to"
+            )
+        {
+            return Err(syn::Error::new(
+                span,
+                "related_key is supported only on belongs_to, belongs_to_many or morph_to relations",
+            ));
+        }
         if self.cascade_soft_delete
             && !matches!(self.relation_type.as_str(), "has_many" | "has_one")
         {

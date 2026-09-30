@@ -83,7 +83,7 @@ mod tests {
                 #[orm(belongs_to = "M3")] m3: M3,
                 #[orm(belongs_to_many = "M4", pivot_table = "piv_m4")] m4: Vec<M4>,
                 #[orm(morph_many = "M5", name = "m5_able", local_key = "custom_id")] m5: Vec<M5>,
-                #[orm(morph_one = "M6", name = "m6_able", foreign_key = "f_id", related_key = "r_id")] m6: M6,
+                #[orm(morph_one = "M6", name = "m6_able", foreign_key = "f_id")] m6: M6,
                 m7_able_id: i32,
                 m7_able_type: String,
                 #[orm(morph_to = "M7", morph_name = "m7_able")] m7: Option<M7>,
@@ -125,12 +125,71 @@ mod tests {
         assert_eq!(r[5].rel_type, "morph_one");
         assert_eq!(r[5].morph_name, "m6_able");
         assert_eq!(r[5].foreign_key, "f_id");
-        assert_eq!(r[5].related_key, "r_id");
         assert_eq!(r[6].rel_type, "morph_to");
         assert_eq!(r[6].morph_name, "m7_able");
 
         assert!(parsed.skipped_fields.iter().any(|i| i == "skipped"));
         assert!(parsed.hidden_fields.iter().any(|i| i == "hidden"));
+    }
+
+    #[test]
+    fn relation_keys_that_a_relation_ignores_fail_compilation() {
+        use syn::parse_quote;
+
+        let inputs: [DeriveInput; 4] = [
+            parse_quote! {
+                struct Post {
+                    id: i32,
+                    author_ref: i32,
+                    #[orm(belongs_to = "User", foreign_key = "author_ref", local_key = "legacy_id")]
+                    author: Option<User>,
+                }
+            },
+            parse_quote! {
+                struct Comment {
+                    id: i32,
+                    commentable_id: i32,
+                    commentable_type: String,
+                    #[orm(morph_to = "Post", morph_name = "commentable", local_key = "id")]
+                    post: Option<Post>,
+                }
+            },
+            parse_quote! {
+                struct User {
+                    id: i32,
+                    #[orm(has_many = "Post", related_key = "author_ref")]
+                    posts: Option<Vec<Post>>,
+                }
+            },
+            parse_quote! {
+                struct Post {
+                    id: i32,
+                    #[orm(morph_one = "Image", morph_name = "imageable", related_key = "r_id")]
+                    image: Option<Image>,
+                }
+            },
+        ];
+        for input in inputs {
+            let error = match parse(&input) {
+                Ok(_) => panic!("an ignored relation key must fail for `{}`", input.ident),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("_key"), "{error}");
+        }
+
+        let applicable: DeriveInput = parse_quote! {
+            struct Post {
+                id: i32,
+                user_ref: i32,
+                #[orm(belongs_to = "User", foreign_key = "user_ref", related_key = "legacy_id")]
+                user: Option<User>,
+                #[orm(has_many = "Comment", foreign_key = "post_ref", local_key = "id")]
+                comments: Option<Vec<Comment>>,
+                #[orm(belongs_to_many = "Tag", pivot_table = "post_tags", local_key = "id", related_key = "tag_id")]
+                tags: Option<Vec<Tag>>,
+            }
+        };
+        assert!(parse(&applicable).is_ok());
     }
 
     #[test]

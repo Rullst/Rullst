@@ -29,7 +29,9 @@ are rejected before SQL generation. A field that cannot form its generated
 Rust column-enum variant receives a compile error instead of a macro panic.
 
 Exactly one relation declaration is accepted per relation field. Orphan
-relation options are rejected, `belongs_to_many` requires a pivot table,
+relation options are rejected, `local_key` is rejected on `belongs_to`/`morph_to`
+and `related_key` on has-one/has-many/morph-one/morph-many relations (which
+would ignore them), `belongs_to_many` requires a pivot table,
 `cascade_soft_delete` is limited to has-one/has-many whose related model also
 uses soft deletes (otherwise the generated cascade fails to compile at the
 relation field rather than hard-deleting the children), and polymorphic metadata
@@ -83,7 +85,7 @@ for the explicit raw-transaction and streaming limitations.
 ## Verification
 
 The unit suite inspects generated SQL/bind ordering and zero-panic production
-tokens. Twenty-four `trybuild` compile-fail cases exercise the actual parser
+tokens. Twenty-six `trybuild` compile-fail cases exercise the actual parser
 diagnostics, including duplicate/unknown options and cross-field invariants,
 rather than an unresolved import:
 

@@ -237,7 +237,7 @@ mod tests {
                 comments: Option<Vec<Comment>>,
                 #[orm(has_one = "Author", foreign_key = "post_id", local_key = "id")]
                 author: Option<Author>,
-                #[orm(belongs_to = "User", foreign_key = "user_id", local_key = "id")]
+                #[orm(belongs_to = "User", foreign_key = "user_id")]
                 user: Option<User>,
                 #[orm(belongs_to_many = "Tag", pivot_table = "post_tags", foreign_key = "post_id", related_key = "tag_id")]
                 tags: Option<Vec<Tag>>,

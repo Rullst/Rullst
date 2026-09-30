@@ -1778,6 +1778,11 @@ while portability and semantic review remain the model author's responsibility.
   for `belongs_to = "Post"`), while `has_one`/`has_many` and the owner side of
   `belongs_to_many` match `<declaring model>_id` on the other table. Models
   whose names are not single words usually need an explicit `foreign_key`.
+  `local_key` (this model's matched key, default `id`) applies to `has_one`,
+  `has_many`, `morph_one`, `morph_many` and `belongs_to_many`; `related_key`
+  (the related model's key) applies to `belongs_to`, `belongs_to_many` and
+  `morph_to`. Either option on another relation fails compilation instead of
+  being ignored.
 * SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
   typed `morph_to` targets. A polymorphic relation requires
   `morph_name = "..."` (`name` remains a legacy alias).
