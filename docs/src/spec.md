@@ -1215,7 +1215,9 @@ validates an ID token's audience there, but checks no nonce. In the unpublished
 v13 source, `GoogleProvider::verify_id_token` and
 `OidcProvider::verify_id_token` are that audience-bound entry point: they
 require a non-empty expected nonce, reuse the code-exchange ID-token validation
-(JWKS signature, exact issuer, `aud`/`azp` equal to the client ID, `exp`/`iat`,
+(JWKS signature, exact issuer, `aud`/`azp` equal to the client ID, except that
+Google's `verify_id_token` also accepts an `azp` from its explicit bounded
+native-presenter list while `aud` stays exact, `exp`/`iat`,
 nonce) and never call userinfo.
 
 ### Shared-local facade composition invariant

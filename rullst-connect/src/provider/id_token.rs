@@ -21,9 +21,60 @@ pub(crate) fn validation(algorithm: Algorithm, client_id: &str, issuers: &[&str]
     validation
 }
 
+/// Most native presenters accepted by one provider instance.
+pub(crate) const MAX_AUTHORIZED_PRESENTERS: usize = 16;
+/// Longest accepted presenter client ID.
+const MAX_PRESENTER_BYTES: usize = 255;
+
+/// Validates an explicit list of additional `azp` client IDs.
+pub(crate) fn validate_authorized_presenters<I, S>(
+    presenters: I,
+) -> Result<Vec<String>, ConnectError>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let invalid = |reason: &str| ConnectError::InvalidConfiguration {
+        field: "authorized_presenters",
+        reason: reason.to_string(),
+    };
+    let mut accepted: Vec<String> = Vec::new();
+    for presenter in presenters {
+        let presenter = presenter.into();
+        if presenter.is_empty()
+            || presenter.len() > MAX_PRESENTER_BYTES
+            || !presenter.bytes().all(|byte| byte.is_ascii_graphic())
+        {
+            return Err(invalid(
+                "each presenter must be a 1-255 byte client ID of visible ASCII characters",
+            ));
+        }
+        if !accepted.contains(&presenter) {
+            if accepted.len() == MAX_AUTHORIZED_PRESENTERS {
+                return Err(invalid("at most 16 authorized presenters are supported"));
+            }
+            accepted.push(presenter);
+        }
+    }
+    Ok(accepted)
+}
+
 pub(crate) fn validate_claims(
     claims: &Value,
     client_id: &str,
+    expected_nonce: Option<&str>,
+) -> Result<(), ConnectError> {
+    validate_claims_with_presenters(claims, client_id, &[], expected_nonce)
+}
+
+/// Like [`validate_claims`], but also trusts `azp` values in `presenters`.
+///
+/// `aud` must still name only `client_id`: a presenter is the native client
+/// that obtained a token *for* this server, never an additional audience.
+pub(crate) fn validate_claims_with_presenters(
+    claims: &Value,
+    client_id: &str,
+    presenters: &[String],
     expected_nonce: Option<&str>,
 ) -> Result<(), ConnectError> {
     let invalid = || {
@@ -56,11 +107,12 @@ pub(crate) fn validate_claims(
         }
         _ => false,
     };
-    if !trusted_audience
-        || claims
-            .get("azp")
-            .is_some_and(|azp| azp.as_str() != Some(client_id))
-    {
+    let trusted_presenter = |azp: &Value| {
+        azp.as_str().is_some_and(|azp| {
+            azp == client_id || presenters.iter().any(|presenter| presenter == azp)
+        })
+    };
+    if !trusted_audience || claims.get("azp").is_some_and(|azp| !trusted_presenter(azp)) {
         return Err(invalid());
     }
     if let Some(expected_nonce) = expected_nonce {

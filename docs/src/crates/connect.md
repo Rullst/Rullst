@@ -123,7 +123,8 @@ can be replayed until it expires.
 The unpublished v13 development source adds that audience-bound entry point for
 Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
 the signature through the provider's rotating JWKS and requires the exact
-issuer, `aud` equal to your `client_id` (and a matching `azp` when present),
+issuer, `aud` equal to your `client_id` (and, when present, an `azp` equal to
+it or, for Google, to a configured native presenter),
 valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
 never calls userinfo. The returned `ConnectUser` carries the verified ID token
 in `access_token`; there is no provider access or refresh token in this flow.
@@ -144,6 +145,15 @@ async fn sign_in_native_google_user(
 
 Generate the nonce on your server, give it to the client for the provider
 sign-in request, and consume it once, just like an OAuth `state`.
+
+Android Credential Manager and iOS Google Sign-In request the ID token for your
+server (web) client ID, so `aud` is that ID and `azp` is the Android or iOS
+client ID. Configure the server client ID on `GoogleProvider` and list the
+native client IDs with
+`try_with_authorized_presenters(["ANDROID_CLIENT_ID", "IOS_CLIENT_ID"])` (at
+most 16). `aud` must still equal the server client ID; any other `azp` is
+rejected, and the authorization-code flow keeps requiring `azp` to equal the
+server client ID.
 
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
