@@ -299,6 +299,14 @@ and `saved` observers, writes a `restored` audit entry and registers the update
 effects of `save()`, including a Scout re-index. Their `can_force_delete` and
 `can_restore` policies run before the transaction, as before.
 
+Only `delete()`, `restore()` and `force_delete()` change the soft-delete marker
+of an existing row. `save()` leaves that column out of its `UPDATE` (an
+`INSERT` still writes it), so saving a handle loaded before `delete()` edits
+the trashed row instead of silently undeleting it without `can_restore`, the
+`restored` audit or restore observers. An auditable save copies the stored
+marker into the handle so its audit entry records no false change, and
+`update_partial()` rejects a soft-delete value with `Validation`.
+
 Full `save`/`delete` policies and their lifecycle callbacks run while their
 executor is borrowed.
 Ordinary ORM calls made recursively from those callbacks on the same task fail

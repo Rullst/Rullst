@@ -1845,6 +1845,13 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Only `delete()`, `restore()` and `force_delete()` change the soft-delete
+  marker of an existing row. Generated `save()` leaves that column out of its
+  `UPDATE` (an `INSERT` still writes it), so a handle loaded before `delete()`
+  cannot undelete the row and bypass `can_restore`, the `restored` audit and
+  the restore observers. An auditable save copies the stored marker into the
+  handle before recording its diff, and `update_partial()` rejects a
+  soft-delete value with `Validation`.
 * `force_delete()` and `restore()` check the tenant and their policy
   (`can_force_delete`/`can_restore`) before the transaction, then run in a
   savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
