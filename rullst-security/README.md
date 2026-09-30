@@ -73,8 +73,9 @@
   component into route-scoped middleware. References stay local, pattern
   matching uses the linear-time regex engine, and schema construction performs
   no filesystem or network retrieval.
-- **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask PEM
-  private keys, AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`
+- **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask
+  complete PEM private-key blocks (PKCS#8 plain or encrypted, RSA, EC, DSA,
+  OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`
   URL passwords in bounded textual responses (at most 2 MiB). Every pass is
   linear in the body length. A URL password is recognized only inside the URL
   authority: credentials must be percent-encoded, and the authority ends at
