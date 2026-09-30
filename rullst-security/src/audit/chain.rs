@@ -31,17 +31,26 @@ pub trait AuditLogger: Send + Sync {
     fn log(&self, record: &AuditRecord) -> Result<(), SecurityError>;
 }
 
+/// Writes one line per record to standard output.
+///
+/// `actor`, `action` and `resource` are printed as quoted, escaped strings, so
+/// a value containing a line break, quote or `key=` text cannot forge another
+/// audit line or field. The payload is not printed.
 #[derive(Default)]
 pub struct StdoutAuditLogger;
 
 impl AuditLogger for StdoutAuditLogger {
     fn log(&self, record: &AuditRecord) -> Result<(), SecurityError> {
-        println!(
-            "[AUDIT LOG #{}] actor={} action={} resource={} hash={}",
-            record.sequence_id, record.actor, record.action, record.resource, record.hash
-        );
+        println!("{}", stdout_audit_line(record));
         Ok(())
     }
+}
+
+fn stdout_audit_line(record: &AuditRecord) -> String {
+    format!(
+        "[AUDIT LOG #{}] actor={:?} action={:?} resource={:?} hash={}",
+        record.sequence_id, record.actor, record.action, record.resource, record.hash
+    )
 }
 
 struct AuditState {
@@ -276,6 +285,26 @@ mod tests {
             canonical_record_material(1, 2, "a", "b:c", "r", "p", "h").expect("canonical material");
 
         assert_ne!(left, right);
+    }
+
+    #[test]
+    fn stdout_lines_escape_user_controlled_fields() {
+        let record = AuditRecord {
+            sequence_id: 7,
+            timestamp: 1,
+            actor: "bob\n[AUDIT LOG #1] actor=admin action=grant_role".to_string(),
+            action: "rename\r\"x\"".to_string(),
+            resource: "user:42 hash=00".to_string(),
+            payload: "{}".to_string(),
+            previous_hash: GENESIS_HASH.to_string(),
+            hash: "abc".to_string(),
+        };
+        let line = stdout_audit_line(&record);
+        assert!(!line.contains('\n') && !line.contains('\r'));
+        assert_eq!(
+            line,
+            r#"[AUDIT LOG #7] actor="bob\n[AUDIT LOG #1] actor=admin action=grant_role" action="rename\r\"x\"" resource="user:42 hash=00" hash=abc"#
+        );
     }
 
     #[test]
