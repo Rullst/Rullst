@@ -197,35 +197,7 @@ impl Orm {
             return;
         }
 
-        if database_url.starts_with("sqlite") {
-            let uses_named_memory = database_url.split_once('?').is_some_and(|(_, query)| {
-                query
-                    .split('&')
-                    .any(|parameter| parameter.eq_ignore_ascii_case("mode=memory"))
-            });
-            let mut path_part = database_url
-                .trim_start_matches("sqlite:")
-                .trim_start_matches("//")
-                .trim_start_matches("file:");
-            if let Some(idx) = path_part.find('?') {
-                path_part = &path_part[..idx];
-            }
-            if !path_part.is_empty() && path_part != ":memory:" && !uses_named_memory {
-                let path = std::path::Path::new(path_part);
-                // Ensure the parent directory exists
-                if let Some(parent) = path.parent()
-                    && !parent.as_os_str().is_empty()
-                {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                // Touch-create the SQLite file if it doesn't exist so that
-                // drivers without implicit `mode=rwc` support (or without the
-                // query-parameter) never hit SQLITE_CANTOPEN (error code 14).
-                if !path.exists() {
-                    let _ = std::fs::File::create(path);
-                }
-            }
-        }
+        dsn::prepare_sqlite_file(database_url);
 
         if database_url.contains("sslmode=disable")
             && !database_url.contains("localhost")
@@ -498,12 +470,28 @@ mod tests {
 
     #[test]
     fn disk_dsn_still_prepares_the_backing_file() {
-        let database_path = unique_database_path("disk");
-        let dsn = format!("sqlite:{}", database_path.display());
+        for query in ["", "?mode=rwc", "?cache=shared&MODE=RWC"] {
+            let database_path = unique_database_path("disk");
+            let dsn = format!("sqlite:{}{query}", database_path.display());
 
-        Orm::validate_dsn(&dsn);
+            Orm::validate_dsn(&dsn);
 
-        assert!(database_path.is_file());
-        std::fs::remove_file(database_path).expect("temporary SQLite file should be removable");
+            assert!(database_path.is_file(), "{query}");
+            std::fs::remove_file(database_path).expect("temporary SQLite file should be removable");
+        }
+    }
+
+    #[test]
+    fn read_only_and_read_write_dsns_never_create_a_missing_database() {
+        for mode in ["ro", "rw", "RW"] {
+            let directory = unique_database_path("missing-directory");
+            let database_path = directory.join("app.db");
+            let dsn = format!("sqlite://{}?mode={mode}", database_path.display());
+
+            Orm::validate_dsn(&dsn);
+
+            assert!(!directory.exists(), "mode={mode} created the directory");
+            assert!(!database_path.exists(), "mode={mode} created the database");
+        }
     }
 }

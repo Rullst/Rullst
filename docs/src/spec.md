@@ -2174,6 +2174,10 @@ while portability and semantic review remain the model author's responsibility.
   `Error::Internal` before connecting. A bracketed IPv6 literal host
   (`postgres://app@[2001:db8::10]:5432/app`, optionally with a `%25` zone
   identifier) is not a placeholder and is accepted by every entrypoint.
+* A SQLite file DSN without a `mode` parameter, or with `mode=rwc`, has its
+  missing database file (and directory) created before connecting. An explicit
+  `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails
+  to open instead of becoming a new empty database.
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
   `drivers-all` convenience feature. A standalone consumer can disable defaults
   and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables
