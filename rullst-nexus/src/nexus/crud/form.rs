@@ -175,6 +175,9 @@ pub(super) fn render_field_widget(
     let safe_fname = escape_str(f.name);
     let is_readonly = f.readonly || (is_edit && f.name == pk);
     let readonly_attr = if is_readonly { " readonly" } else { "" };
+    // `readonly` does not apply to checkboxes or selects: they would stay
+    // interactive while their unnamed value is never submitted.
+    let locked_attr = if is_readonly { " disabled" } else { "" };
     let name_attr = if is_readonly {
         String::new()
     } else {
@@ -205,7 +208,7 @@ pub(super) fn render_field_widget(
             };
             format!(
                 "<input type=\"hidden\"{name_attr} value=\"0\" />\
-                 <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} class=\"nexus-checkbox\" />"
+                 <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{locked_attr} class=\"nexus-checkbox\" />"
             )
         }
         FieldKind::Password => {
@@ -245,7 +248,7 @@ pub(super) fn render_field_widget(
                     "<option value=\"{option}\"{selected}>{option}</option>"
                 );
             }
-            format!("<select{name_attr} class=\"nexus-input\"{readonly_attr}>{opts}</select>")
+            format!("<select{name_attr} class=\"nexus-input\"{locked_attr}>{opts}</select>")
         }
         kind => {
             let (input_type, value) = typed_input(kind, text);

@@ -124,3 +124,25 @@ async fn forms_declare_their_mode_for_change_only_submission() {
     assert!(edit.contains("data-nexus-mode=\"edit\""));
     assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/7\""));
 }
+
+#[test]
+fn readonly_checkboxes_and_selects_are_disabled_rather_than_interactive() {
+    let enum_kind = FieldKind::Enum {
+        options: vec!["draft", "published"],
+    };
+    for (kind, stored) in [(FieldKind::Boolean, "1"), (enum_kind, "draft")] {
+        let field = FieldMeta::new("locked", "Locked", kind.clone()).readonly();
+        let html = render_field_widget(&field, &value(stored), true, "id");
+        assert!(!html.contains("name=\"locked\""), "{kind:?}");
+        assert!(html.contains(" disabled"), "{kind:?}");
+        assert!(!html.contains(" readonly"), "{kind:?}");
+
+        let editable = FieldMeta::new("open", "Open", kind.clone());
+        let html = render_field_widget(&editable, &value(stored), true, "id");
+        assert!(html.contains("name=\"open\""), "{kind:?}");
+        assert!(!html.contains("disabled"), "{kind:?}");
+    }
+    let text = FieldMeta::new("title", "Title", FieldKind::Text).readonly();
+    let html = render_field_widget(&text, &value("kept"), true, "id");
+    assert!(html.contains(" readonly") && !html.contains("disabled"));
+}
