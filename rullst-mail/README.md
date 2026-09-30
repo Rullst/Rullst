@@ -132,6 +132,13 @@ scheduled jobs by its server clock, so the worker accepts a claimed job whose
 timestamp is at most 300 seconds ahead of the worker's own clock and fails a
 claim that is earlier than that.
 
+The queue has no handler-requested retry: any delivery error, including a
+`Transient` or `RateLimited` provider failure and its `Retry-After`, marks the
+mail job failed with the error text. Nothing is lost silently, but the job is
+sent again only after `Queue::retry_failed_job`. Automate that for transient
+failures, or deliver through an outbox with its own retry policy (as account
+mail does), when provider blips must be retried without an operator.
+
 Queued jobs store attachment bytes as one base64 string per attachment. Workers
 still accept jobs written with the earlier integer-array encoding, but an older
 worker cannot read the base64 form, so upgrade workers before producers during

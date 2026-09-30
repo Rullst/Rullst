@@ -15,6 +15,10 @@ enum MailJobPayload {
 /// Registers the background mail worker.
 /// When the system polls a "rullst_mail_send" job, it will parse the JSON payload
 /// into a versioned envelope and dispatch it synchronously through the same safe pipeline.
+///
+/// Every delivery error fails the job, including transient and rate-limited
+/// provider failures: the queue has no handler-requested retry, so failed mail
+/// jobs are sent again only through `Queue::retry_failed_job`.
 pub fn register_mail_handler(worker: &mut Worker) {
     worker.register("rullst_mail_send", |payload: Value| async move {
         let payload: MailJobPayload = serde_json::from_value(payload)?;
