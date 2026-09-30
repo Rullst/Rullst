@@ -267,6 +267,24 @@ A prepared version section does not establish that its tag or crates exist.
   the same stored challenge from a bounded form POST, and tutorial 42 explains
   the `SameSite=None; Secure` challenge cookie it needs.
 
+### Capital review fixes
+
+- `WiseProvider::parse_webhook_payload` performs no signature check and now
+  works only with an explicit `mock_*` token; an empty token is a configuration
+  error and a live token is unsupported. New `with_webhook_public_key_pem` and
+  `verify_transfer_state_change` verify Wise's `X-Signature-SHA256`
+  RSA-SHA256 signature before returning a typed `WiseTransferStateChange`.
+- The Wise webhook fixture scales exact decimal amounts to ISO 4217 minor units
+  without floats and rejects missing fields instead of inventing values, and
+  the Wise offline mock issues hashed `wise_tr_mock_` IDs and no longer reports
+  other transfer IDs as sent.
+- Paddle's legacy `handle_webhook` accepts only documented `subscription.*`
+  events with a matching status and `sub_`/`ctm_`/`pri_` IDs; transaction,
+  adjustment and other signed events are rejected.
+- Razorpay `subscription.completed` maps to the non-entitled `Canceled` status,
+  and live Razorpay checkout requires `with_subscription_total_count` instead of
+  a fixed 12 billing cycles.
+
 ### HTML macro caller bindings
 
 - Keep generated `html!` buffers hygienically separate from caller variables.
