@@ -43,3 +43,35 @@ fn an_explicitly_replaced_column_type_is_kept() {
         );
     }
 }
+
+#[test]
+fn boolean_columns_are_native_booleans_on_postgres() {
+    let mut blueprint = Blueprint::new();
+    blueprint
+        .boolean("active")
+        .not_null()
+        .default(ColumnDefault::Integer(1));
+    blueprint
+        .boolean("archived")
+        .default(ColumnDefault::Integer(0));
+
+    let postgres = ddl(&blueprint, "postgres");
+    assert!(
+        postgres.contains("active BOOLEAN NOT NULL DEFAULT TRUE"),
+        "{postgres}"
+    );
+    assert!(
+        postgres.contains("archived BOOLEAN DEFAULT FALSE"),
+        "{postgres}"
+    );
+    for driver in ["mysql", "sqlite"] {
+        let sql = ddl(&blueprint, driver);
+        assert!(sql.contains("active INTEGER NOT NULL DEFAULT 1"), "{sql}");
+        assert!(sql.contains("archived INTEGER DEFAULT 0"), "{sql}");
+    }
+
+    let mut invalid = Blueprint::new();
+    invalid.boolean("flag").default(ColumnDefault::Integer(2));
+    assert!(invalid.build_for_driver("postgres").is_err());
+    assert!(invalid.build_for_driver("sqlite").is_ok());
+}

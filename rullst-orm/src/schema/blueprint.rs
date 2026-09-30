@@ -18,6 +18,8 @@ pub struct Blueprint {
 enum DriverType {
     /// An `f64` column: `REAL` is only single precision on PostgreSQL.
     Double,
+    /// A `bool` column: PostgreSQL has no implicit integer/boolean casts.
+    Boolean,
 }
 
 impl DriverType {
@@ -25,6 +27,7 @@ impl DriverType {
     fn portable(self) -> &'static str {
         match self {
             Self::Double => "REAL",
+            Self::Boolean => "INTEGER",
         }
     }
 
@@ -33,6 +36,25 @@ impl DriverType {
             (Self::Double, "postgres") => "DOUBLE PRECISION",
             (Self::Double, "mysql") => "DOUBLE",
             (Self::Double, _) => "REAL",
+            (Self::Boolean, "postgres") => "BOOLEAN",
+            (Self::Boolean, _) => "INTEGER",
+        }
+    }
+
+    /// Renders a column default, spelling `0`/`1` as a PostgreSQL boolean.
+    fn default_sql(
+        self,
+        driver: &str,
+        default: &ColumnDefault,
+        column: &str,
+    ) -> Result<String, Error> {
+        match (self, driver, default) {
+            (Self::Boolean, "postgres", ColumnDefault::Integer(0)) => Ok("FALSE".to_string()),
+            (Self::Boolean, "postgres", ColumnDefault::Integer(1)) => Ok("TRUE".to_string()),
+            (Self::Boolean, "postgres", ColumnDefault::Integer(_)) => Err(Error::Validation(
+                format!("DEFAULT of boolean column `{column}` must be 0 or 1"),
+            )),
+            _ => Ok(default.to_sql()),
         }
     }
 }
@@ -110,8 +132,15 @@ impl Blueprint {
         self.add_driver_typed_column(name, DriverType::Double)
     }
 
+    /// Adds a `bool` column: `BOOLEAN` on PostgreSQL and an `INTEGER` 0/1
+    /// flag on MySQL/MariaDB and SQLite.
+    ///
+    /// On PostgreSQL `ColumnDefault::Integer(0)`/`(1)` render as
+    /// `FALSE`/`TRUE`; any other integer default fails the build.
+    /// [`Column::col_type`] reads `INTEGER` until the schema is built;
+    /// replacing it keeps the replacement on every driver.
     pub fn boolean(&mut self, name: &str) -> &mut Column {
-        self.add_column(name, "INTEGER")
+        self.add_driver_typed_column(name, DriverType::Boolean)
     }
 
     pub fn vector(&mut self, name: &str, dimensions: usize) -> &mut Column {
@@ -201,6 +230,7 @@ impl Blueprint {
             // identifiers regardless of how the Column was constructed.
             validate_identifier(&col.name)?;
 
+            let driver_type = self.driver_type(col);
             let mut col_type_str = if let Some((_, definition)) = self
                 .native_enum_columns
                 .iter()
@@ -218,7 +248,7 @@ impl Blueprint {
                     "mysql" => format!("ENUM({labels})"),
                     _ => format!("TEXT CHECK({} IN ({labels}))", col.name),
                 }
-            } else if let Some(kind) = self.driver_type(col) {
+            } else if let Some(kind) = driver_type {
                 kind.for_driver(driver).to_string()
             } else {
                 col.col_type.clone()
@@ -250,13 +280,17 @@ impl Blueprint {
                 if let ColumnDefault::Text(text) = default {
                     validate_text_literal(text, &format!("DEFAULT of column `{}`", col.name))?;
                 }
+                let default_sql = match driver_type {
+                    Some(kind) => kind.default_sql(driver, default, &col.name)?,
+                    None => default.to_sql(),
+                };
                 if driver == "mysql"
                     && *default != ColumnDefault::Null
                     && mysql_requires_expression_default(&col_type_str)
                 {
-                    let _ = write!(def, " DEFAULT ({})", default.to_sql());
+                    let _ = write!(def, " DEFAULT ({default_sql})");
                 } else {
-                    let _ = write!(def, " DEFAULT {}", default.to_sql());
+                    let _ = write!(def, " DEFAULT {default_sql}");
                 }
             }
             defs.push(def);

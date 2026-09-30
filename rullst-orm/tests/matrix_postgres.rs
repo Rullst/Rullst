@@ -36,6 +36,13 @@ struct TenantComment {
     pub status: String,
 }
 
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "pg_flags")]
+struct Flag {
+    pub id: i32,
+    pub active: bool,
+}
+
 #[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
 #[rullst_enum(type_name = "pg_account_status", rename_all = "snake_case")]
 enum AccountStatus {
@@ -157,12 +164,57 @@ async fn test_matrix_postgres_crud() {
     support::exercise_large_audit_payload().await;
     partial_update_contract::exercise().await;
     exercise_tenant_subqueries().await;
+    exercise_boolean_columns().await;
 
     #[cfg(feature = "strict-postgres")]
     exercise_native_enum().await;
     #[cfg(not(feature = "strict-postgres"))]
     exercise_dynamic_pool_enum_refusal().await;
     driver_contract::exercise().await;
+}
+
+/// `Blueprint::boolean` creates a native PostgreSQL boolean, so `bool` model
+/// fields insert, decode, filter and take their default.
+async fn exercise_boolean_columns() {
+    Schema::create("pg_flags", |table: &mut Blueprint| {
+        table.id();
+        table
+            .boolean("active")
+            .not_null()
+            .default(rullst_orm::schema::ColumnDefault::Integer(0));
+    })
+    .await
+    .expect("create PostgreSQL boolean table");
+
+    let mut flag = Flag {
+        id: 0,
+        active: true,
+    };
+    flag.save().await.expect("PostgreSQL bool insert");
+    let stored = Flag::find(flag.id)
+        .await
+        .expect("PostgreSQL bool decode")
+        .expect("stored flag");
+    assert!(stored.active);
+    sqlx::query("INSERT INTO pg_flags DEFAULT VALUES")
+        .execute(Orm::pool().expect("PostgreSQL pool"))
+        .await
+        .expect("insert the boolean default");
+    let active = Flag::query()
+        .where_eq("active", true)
+        .count()
+        .await
+        .expect("PostgreSQL bool filter");
+    let inactive = Flag::query()
+        .where_eq("active", false)
+        .count()
+        .await
+        .expect("PostgreSQL bool default filter");
+    assert_eq!((active, inactive), (1, 1));
+
+    Schema::drop_if_exists("pg_flags")
+        .await
+        .expect("drop PostgreSQL boolean table");
 }
 
 /// Tenant scope, typed CTEs and EXISTS subqueries must share one `$n` sequence.

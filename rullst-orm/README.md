@@ -427,6 +427,15 @@ builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
 defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
 SQLite and PostgreSQL DDL is unchanged.
 
+`table.float(...)` and `table.boolean(...)` map to `f64` and `bool` model
+fields. PostgreSQL receives `DOUBLE PRECISION` and `BOOLEAN` (an integer
+`ColumnDefault` of `0`/`1` becomes `FALSE`/`TRUE`); MySQL/MariaDB receive
+`DOUBLE` and an `INTEGER` 0/1 flag; SQLite keeps `REAL` and `INTEGER`. This
+applies to newly built DDL only: PostgreSQL columns created by earlier versions
+remain `REAL`/`INTEGER` until a reviewed migration alters them, and a model that
+paired `boolean()` with an integer field on PostgreSQL must switch to `bool`
+(or use `integer()`) for new tables.
+
 ### Optional Redis query cache
 
 Enable the `redis` feature and give each application sharing a Redis database a

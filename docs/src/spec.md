@@ -1278,6 +1278,16 @@ still reads `REAL` before the schema is built; an explicitly replaced
 created by earlier versions keep their type until a reviewed migration alters
 them (for example `ALTER TABLE t ALTER COLUMN c TYPE DOUBLE PRECISION`).
 
+`Blueprint::boolean` is a `bool` column: `BOOLEAN` on PostgreSQL, which has
+no implicit integer/boolean casts for bound parameters or decoding, and an
+`INTEGER` 0/1 flag on MySQL/MariaDB and SQLite. On PostgreSQL an integer
+`ColumnDefault` of `0`/`1` renders as `FALSE`/`TRUE` and any other integer
+default fails the build. `Column::col_type` still reads `INTEGER` before the
+schema is built. Only newly built DDL changes: an existing PostgreSQL column
+stays `INTEGER` until migrated (`ALTER COLUMN c TYPE BOOLEAN USING c <> 0`),
+and a model that paired `boolean()` with an integer field on PostgreSQL must
+use `bool` for new tables.
+
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
 `Billable::quota_request` derives the limit from the subscription owner, and
