@@ -69,6 +69,8 @@ mounted push-only ingestion router.
   store. Audit-chain integrity displays `Unavailable` until a verifier is
   connected.
 - `/studio/capital`: the in-process revenue view; it is not an accounting ledger.
+  Its table lists the 20 most recent webhook events and its badge counts every
+  event the process-local manager retains (at most 100).
 - `/studio/traces`: local spans plus authenticated attribute-free distributed
   records and explicit slow/repeated SQL-label heuristics.
 - `/studio/cache`: metadata-only view of an explicitly supplied Memory/Redis

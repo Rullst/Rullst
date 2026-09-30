@@ -17,11 +17,20 @@ pub fn get_revenue_manager() -> Arc<RevenueDashboardManager> {
         .clone()
 }
 
+/// Webhook events listed on the page; the manager may retain more.
+const DISPLAYED_EVENTS: usize = 20;
+
 /// Renders the glassmorphic Rullst Capital Revenue Dashboard HTML interface fragment.
 pub fn render_revenue_dashboard_page() -> String {
-    let mgr = get_revenue_manager();
+    render_revenue_dashboard_for(&get_revenue_manager())
+}
+
+fn render_revenue_dashboard_for(mgr: &RevenueDashboardManager) -> String {
     let metrics = mgr.get_metrics();
-    let events = mgr.get_recent_events(20);
+    // The manager caps its own retention, so reading every retained event is
+    // bounded; the badge counts them all while the table lists the newest.
+    let retained = mgr.get_recent_events(usize::MAX);
+    let events = &retained[..retained.len().min(DISPLAYED_EVENTS)];
 
     let mrr_fmt = format!("${:.2}", metrics.mrr_cents as f64 / 100.0);
     let arr_fmt = format!("${:.2}", metrics.arr_cents as f64 / 100.0);
@@ -37,7 +46,7 @@ pub fn render_revenue_dashboard_page() -> String {
             </tr>"#,
         );
     } else {
-        for evt in &events {
+        for evt in events {
             let badge_class = if evt.status == "processed" {
                 "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
             } else {
@@ -112,7 +121,7 @@ pub fn render_revenue_dashboard_page() -> String {
                         <span>Process-local Webhook Event Inspector</span>
                     </h2>
                     <span class="text-xs font-semibold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-                        {events_count} Webhook Events Recorded
+                        Showing {events_count} most recent of {retained_count} retained webhook events
                     </span>
                 </div>
                 <div class="overflow-x-auto rounded-lg border border-slate-800">
@@ -138,6 +147,7 @@ pub fn render_revenue_dashboard_page() -> String {
         subs = metrics.active_subscriptions,
         churn = metrics.churn_rate_percent,
         events_count = events.len(),
+        retained_count = retained.len(),
         rows = event_rows
     )
 }
@@ -164,6 +174,26 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
+
+    #[test]
+    fn event_badge_distinguishes_shown_from_retained_events() {
+        let manager = RevenueDashboardManager::new();
+        for index in 0..25 {
+            manager.record_event(rullst_capital::WebhookEventRecord {
+                id: format!("evt_{index}"),
+                provider: "stripe".to_string(),
+                event_type: "invoice.paid".to_string(),
+                status: "processed".to_string(),
+                payload_snippet: "{}".to_string(),
+                timestamp: 1_700_000_000 + index,
+            });
+        }
+        let html = render_revenue_dashboard_for(&manager);
+        assert!(html.contains("Showing 20 most recent of 25 retained webhook events"));
+        assert!(html.contains("evt_24"));
+        assert!(!html.contains("evt_4<"));
+        assert_eq!(html.matches("PROCESSED").count(), 20);
+    }
 
     #[tokio::test]
     async fn test_revenue_dashboard_endpoint() {
