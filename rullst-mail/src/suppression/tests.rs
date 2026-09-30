@@ -184,6 +184,70 @@ async fn guard_blocks_suppressed_recipients_and_store_failure_before_transport()
     assert!(deliveries.lock().expect("deliveries").is_empty());
 }
 
+#[tokio::test]
+async fn display_name_recipients_share_the_bare_suppression_key() {
+    let now = unix_time().expect("clock");
+    let store = InMemorySuppressionStore::new(4, 4).expect("bounded store");
+    store
+        .record(event(
+            "resend",
+            "complaint-1",
+            "alice@example.com",
+            SuppressionReason::SpamComplaint,
+            now,
+        ))
+        .await
+        .expect("bare suppression");
+    for recipient in ["Alice <alice@example.com>", "<alice@EXAMPLE.com>"] {
+        let found = store.lookup(recipient).await.expect("parseable recipient");
+        assert_eq!(
+            found.map(|record| record.reason()),
+            Some(SuppressionReason::SpamComplaint)
+        );
+    }
+    for unparsable in ["Alice <alice@example.com", "a@example.com, b@example.com"] {
+        assert_eq!(
+            store.lookup(unparsable).await,
+            Err(SuppressionError::InvalidEvent("recipient"))
+        );
+    }
+
+    let (driver, deliveries) = MemoryDriver::isolated();
+    let guard = SuppressionGuard::new(driver, store);
+    for recipient in [
+        "Alice <alice@example.com>",
+        "\"Doe, Alice\" <alice@example.com>",
+        "<alice@example.com>",
+    ] {
+        let message = Message::new()
+            .to(recipient)
+            .subject("must not leave")
+            .text("blocked");
+        assert_eq!(
+            guard.send(&message).await,
+            Err(MailError::SuppressedRecipient {
+                reason: "spam_complaint"
+            })
+        );
+        assert_eq!(
+            guard.send_for_tenant("acme", &message).await,
+            Err(MailError::SuppressedRecipient {
+                reason: "spam_complaint"
+            })
+        );
+    }
+    assert!(deliveries.lock().expect("deliveries").is_empty());
+
+    let named = event(
+        "resend",
+        "complaint-2",
+        "Bob <bob@example.com>",
+        SuppressionReason::HardBounce,
+        now,
+    );
+    assert_eq!(named.recipient(), "bob@example.com");
+}
+
 #[test]
 fn suppression_contract_exposes_stable_labels_bounds_and_minimized_errors() {
     assert_eq!(SuppressionReason::Manual.as_str(), "manual");

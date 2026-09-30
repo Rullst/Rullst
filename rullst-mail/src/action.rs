@@ -78,12 +78,7 @@ fn safe_url(value: &str) -> Option<reqwest::Url> {
 pub(crate) fn redact_body_secrets(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
     let mut remaining = input;
-    while let Some(start) = remaining
-        .find("https://")
-        .into_iter()
-        .chain(remaining.find("http://"))
-        .min()
-    {
+    while let Some(start) = next_http_url(remaining) {
         let tail = &remaining[start..];
         let end = tail
             .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '<' | '>'))
@@ -108,6 +103,21 @@ pub(crate) fn redact_body_secrets(input: &str) -> String {
     }
     output.push_str(&redact_email_secrets(remaining));
     output
+}
+
+/// Finds the first `http://` or `https://` in one forward scan. Searching for
+/// both schemes separately rescans the whole tail on every link.
+fn next_http_url(text: &str) -> Option<usize> {
+    let mut offset = 0usize;
+    while let Some(relative) = text.get(offset..).and_then(|tail| tail.find("http")) {
+        let start = offset + relative;
+        let scheme = text.get(start + 4..).unwrap_or_default();
+        if scheme.starts_with("://") || scheme.starts_with("s://") {
+            return Some(start);
+        }
+        offset = start + 4;
+    }
+    None
 }
 
 fn redact_url(url: &str) -> String {
@@ -143,4 +153,32 @@ fn redact_url(url: &str) -> String {
         result.push_str(&redact_email_secrets(fragment));
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn single_scan_url_search_matches_the_two_scheme_search() {
+        let alphabet = [
+            "http", "https://", "http://", "httpx", "s://", "://", "x", "h", " ",
+        ];
+        let mut seed = 0x0123_4567_89ab_cdef_u64;
+        for round in 0..20_000 {
+            let mut input = String::new();
+            for _ in 0..round % 10 {
+                seed ^= seed << 13;
+                seed ^= seed >> 7;
+                seed ^= seed << 17;
+                input.push_str(alphabet[(seed % alphabet.len() as u64) as usize]);
+            }
+            let previous = input
+                .find("https://")
+                .into_iter()
+                .chain(input.find("http://"))
+                .min();
+            assert_eq!(next_http_url(&input), previous, "{input:?}");
+        }
+    }
 }

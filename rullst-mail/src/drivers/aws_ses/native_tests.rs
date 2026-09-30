@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use super::super::limits::{MAX_SES_V2_MESSAGE_BYTES, add_size, message_size_error};
 use super::*;
 use crate::attachment::Attachment;
 

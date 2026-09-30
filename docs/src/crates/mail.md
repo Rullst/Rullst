@@ -44,13 +44,13 @@ publication. Existing applications must adopt the new store/worker explicitly.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus offline fixture and an explicit legacy proxy boundary.
-  - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
+  - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
-- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
-- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
+- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
+- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
@@ -407,7 +407,13 @@ aws-config = "1.11"
 `AWS_SECRET_ACCESS_KEY` exist. `AWS_SESSION_TOKEN` is accepted for temporary
 credentials. Without those variables, the existing empty/`mock_*` token rule
 selects the offline fixture; a real `AWS_SES_BEARER_TOKEN` is usable only with
-an explicit trusted proxy URL.
+an explicit trusted proxy URL. The proxy receives the SES v2 `SendEmail` JSON
+shape, including every attachment and inline CID asset as
+`Content.Simple.Attachments` (Base64 `RawContent`, `FileName`, `ContentType`,
+`ContentDisposition` and `ContentId`). It is checked against the same SES field
+limits and 40 MiB encoded estimate as native mode before any request, and
+failures return `MailError::ValidationError`. The proxy must forward
+attachments or reject the request; Rullst never drops them.
 
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
@@ -465,10 +471,23 @@ Environment variables:
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, the SES fixture/proxy, and authenticated SMTP,
+For Resend, SendGrid, Postmark and the SES fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests.
+
+SMTP selects the offline fallback only explicitly: an empty or `mock_*`
+`MAIL_HOST`, or a `mock_*` username or password. A real host without
+credentials is an unauthenticated relay and receives real delivery, so
+`MAIL_DRIVER=smtp` without `MAIL_HOST` sends to `127.0.0.1:25`. A username
+without a password, or the reverse (blank values count as missing), returns
+`MailError::ConfigError` instead of falling back to the mock.
+
+Port 465 uses implicit TLS (SMTPS); every other port, including the facade's
+default 25 and the usual submission port 587, requires STARTTLS. Plaintext is
+never used: a server that does not offer STARTTLS, or presents a certificate
+that is not valid for `MAIL_HOST`, fails with a typed transport error, so a
+local relay needs a certificate valid for the configured host name.
 
 ---
 
@@ -501,6 +520,33 @@ Choose a delivery provider and operational policy based on measured volume,
 region, data processing terms, bounce/complaint handling, retention, cost, and
 failover tests. Rullst publishes no universal latency, price, or feature
 comparison against commercial platforms.
+
+Recipients are parsed once by the pre-flight pipeline. It accepts one bare
+address, `<address>` or `Name <address>` (the name may be quoted), and hands the
+bare address to suppression, the disposable-domain check and every transport,
+so a display name is not delivered. Lists, groups, comments, quoted local parts,
+domain literals and malformed brackets are rejected with
+`MailError::ValidationError`. Suppression events and lookups use the same
+parser; anything it rejects fails closed.
+
+The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
+body over 2 MiB each, with `MailError::ValidationError` before any content scan.
+Oversized content is rejected, never truncated. The link, homograph and
+secret-redaction scans are single forward passes, so their cost grows linearly
+with the bounded body. They still run on the calling task; bound user-supplied
+text at the request edge as well.
+
+The local inspector chooses its checks from the declared MIME type (compared
+case-insensitively), the filename extension and the content signature
+together. Both policies reject executable magic, executable or script-host
+extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
+similar), SVG by type, extension or content, active PDF content wherever a
+`%PDF-` header appears in the first KiB, and a declared type that disagrees
+with a known extension or signature. `strict()` also rejects HTML extensions,
+HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions and
+opaque formats; `allowing_opaque()` still accepts HTML and other opaque
+content. PDF names written with `#xx` escapes or inside compressed streams are
+not decoded.
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
 aggregate before transport encoding. Provider/account limits can be lower. The
