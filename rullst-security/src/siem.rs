@@ -23,7 +23,13 @@ pub struct SiemAlertPayload {
 }
 
 /// Formats a LiveSecurityEvent into Common Event Format (CEF) string.
+///
+/// The event is normalized first, exactly as the framework's own sinks do, so
+/// an event built or deserialized outside that path cannot place `|`, `\` or
+/// a line break in the CEF header: an event type that is not an uppercase
+/// ASCII identifier of at most 64 bytes is exported as `SECURITY_EVENT`.
 pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
+    let event = event.clone().normalized();
     let severity = match event.event_type.as_str() {
         "HONEYPOT_TRAP_TRIGGERED" => "8",
         "AI_PROMPT_INJECTION_SHIELDED" => "9",
@@ -101,5 +107,28 @@ mod tests {
         assert!(cef.contains(r"msg=first\=value\\second\nnext\=field\r"));
         assert!(!cef.contains('\n'));
         assert!(!cef.contains('\r'));
+    }
+
+    #[test]
+    fn unnormalized_event_types_cannot_forge_cef_header_fields() {
+        let event = LiveSecurityEvent {
+            schema_version: 1,
+            event_type:
+                "LOGIN_OK|LOGIN_OK|0|src=10.0.0.1 msg=ok\nCEF:0|RullstSecurity|Framework|1|X|X|10|"
+                    .to_string(),
+            details: "ok".to_string(),
+            client_ip: "10.0.0.1".to_string(),
+            timestamp_str: "2026-09-30T00:00:00Z".to_string(),
+            verified_hmac: false,
+        };
+        let cef = format_cef_event(&event);
+        assert!(!cef.contains('\n') && !cef.contains('\r'));
+        assert_eq!(
+            cef,
+            format!(
+                "CEF:0|RullstSecurity|Framework|{}|SECURITY_EVENT|SECURITY_EVENT|5|src=10.0.0.1 msg=ok",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
     }
 }
