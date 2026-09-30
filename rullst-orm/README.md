@@ -57,7 +57,9 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Eager Loading**: Batch supported `has_many`, `belongs_to`, `morph_many`,
   `morph_one`, and typed `morph_to` targets. Inverse polymorphic fields use an
   explicit target per relation and a persisted `<morph_name>_id` plus
-  `<morph_name>_type` discriminator.
+  `<morph_name>_type` discriminator. A batch whose related rows exceed the
+  global query cap fails with a `Validation` error instead of silently
+  returning partial relations.
 - **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
   `with_tenant`, inject the tenant predicate into generated queries, protect
   instance mutations, and reserve explicit `unscoped()` for reviewed global
@@ -73,7 +75,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   [audit revision guide](https://rullst.github.io/Rullst/book/tutorials/50-auditable-revisions.html).
 - **Bounded Post-Commit Effects**: `after_commit` and the generated observer
   `committed` callback run only after `Orm::transaction` or a direct generated
-  save/delete commits. Rollback discards them, and post-commit failures use a
+  save/delete/restore/force_delete commits. Rollback discards them, and post-commit failures use a
   distinct error that says the database is already durable. These callbacks
   remain process-local; caller-owned raw SQLx transactions cannot expose their
   eventual commit decision to generated hooks.
@@ -143,8 +145,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   versioned SHA-256 key bound to the application namespace, active tenant,
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
-  Generated model saves/deletes invalidate keys for the active tenant and table
-  only after commit, using a bounded non-blocking scan; cluster/failover
+  Generated model saves/deletes/restores/force-deletes invalidate keys for the
+  active tenant and table only after commit, using a bounded non-blocking scan; cluster/failover
   evidence remains outside the current contract.
 - **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
   instance mutations. Policy-protected models reject `delete_all()` because
@@ -190,6 +192,9 @@ Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
 `with_recursive` are embedded with portable `?` markers; on PostgreSQL the
 final statement is numbered once, in textual order, so nested scopes, CTEs and
 joins keep every tenant and caller binding at its own `$n` position.
+Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
+issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
+receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.
 Generated `Model::search()` uses those same model-wide and tenant scopes for
 both its SQL fallback and external Scout result IDs. The SQL fallback never
 matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
@@ -199,6 +204,20 @@ fails before contacting Scout, and an empty provider result remains an empty
 match even when a database contains an explicitly inserted ID of zero. Search
 index access controls still belong to the application/operator.
 
+Generated builders start with a global row cap (`Orm::set_max_query_limit`,
+1,000 by default; `0` disables it). `limit()` clamps to that cap and
+`unsafe_unlimited()` removes it for one explicit query. `paginate(page,
+per_page)` clamps `per_page` to the same cap, because the value often comes
+from request input; `PaginationResult::per_page` and `last_page` report the
+effective page size.
+
+Eager loading runs one related-model query for all parents of a batch and
+never assigns relations from a result truncated by that cap: when the related
+rows exceed it, `get()` fails with a `Validation` error naming the relation.
+Load fewer parents per query, raise the cap, or choose explicitly with
+`with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
+to the whole batch, and `unsafe_unlimited()` loads every related row.
+
 Prefer `Orm::transaction` with ordinary model/query methods when combining
 eager relationships or `after_fetch` hooks with transactional reads. Fetches
 release the managed transaction lock before invoking hooks and loading related
@@ -207,11 +226,29 @@ SQLx transactions still support plain `get_with_tx` reads, but eager-loading or
 `after_fetch` configurations fail with an actionable error because their
 secondary queries require the managed executor context.
 
+A nested `Orm::transaction` joins the active transaction through a savepoint
+instead of opening a second pooled transaction. An error inside it rolls back
+only the nested work; a success commits (or rolls back) with the outer
+transaction, and its `after_commit` callbacks run after the outer commit. A
+helper that wraps `Outbox::enqueue` or model saves in its own
+`Orm::transaction` is therefore atomic with its caller. The returned future is
+`Send`, so it can also run in a spawned task. Do not hold the shared handle's
+lock across a nested call.
+
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
 on that transaction. Transactional streams reject `after_fetch` hooks to avoid
 reentrant queries while retaining that access; use `get()` inside
 `Orm::transaction` for those models. Streaming does not eagerly load relations.
+
+`force_delete()` and `restore()` run in a savepoint like `delete()`.
+`force_delete()` runs the delete hooks and observers, writes a `force_deleted`
+audit entry on auditable models (so it needs an `AuditContext` there) and
+registers the same post-commit cache, Redis, `committed` and Scout removal
+effects; it does not cascade. `restore()` re-reads the row, calls the `updated`
+and `saved` observers, writes a `restored` audit entry and registers the update
+effects of `save()`, including a Scout re-index. Their `can_force_delete` and
+`can_restore` policies run before the transaction, as before.
 
 Full `save`/`delete` policies and their lifecycle callbacks run while their
 executor is borrowed.
@@ -351,6 +388,13 @@ labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
 PostgreSQL; the method is a validated no-op on the other backends.
+
+`table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
+that default to the current timestamp. MySQL/MariaDB reject a literal default
+on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
+builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
+defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
+SQLite and PostgreSQL DDL is unchanged.
 
 ### Optional Redis query cache
 

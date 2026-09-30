@@ -7077,6 +7077,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "sqlx",
+ "sqlx-core",
  "syn 3.0.6",
  "testcontainers",
  "testcontainers-modules",

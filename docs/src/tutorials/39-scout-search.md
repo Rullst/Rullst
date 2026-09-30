@@ -86,8 +86,8 @@ Without a configured engine, `Article::search(...)` falls back to a SQL
 `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString` fields. `%` and `_`
 in the query match literally rather than as wildcards.
 
-Generated save/update/delete operations project only after the relational
-commit. The indexed document omits `#[orm(hidden)]`, `#[orm(encrypted)]` and
+Generated save/update/delete operations, `restore()` (re-index) and
+`force_delete()` (removal) project only after the relational commit. The indexed document omits `#[orm(hidden)]`, `#[orm(encrypted)]` and
 `#[orm(masked)]` fields, so the provider never receives their values; documents
 indexed by earlier versions should be reindexed. Rollback produces no search write. Provider or search errors remain
 typed errors; they are not silently converted into an empty result.

@@ -45,6 +45,12 @@ impl Migration for MigrationImpl {
 Keep the generated timestamp/name in `name()`; the runner uses that stable value
 to record migration state.
 
+`table.timestamps()` creates nullable `created_at`/`updated_at` text columns
+that default to the current timestamp. On MySQL/MariaDB the builder emits the
+expression form `DEFAULT (CURRENT_TIMESTAMP)`, which those servers require for
+text columns (MySQL 8.0.13+, MariaDB 10.2.1+); SQLite and PostgreSQL use the
+plain `DEFAULT CURRENT_TIMESTAMP`.
+
 ---
 
 ## Step 2: Run, inspect, and roll back migrations

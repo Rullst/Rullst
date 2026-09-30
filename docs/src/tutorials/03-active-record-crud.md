@@ -127,6 +127,23 @@ pub struct SoftUser {
 `query()` applies the model's configured scopes. `unscoped()` is an explicit
 administrative escape hatch and should not be used directly from request data.
 
+`restore()` clears the soft-delete marker and `force_delete()` removes the row
+permanently. Both check the tenant and the policy (`can_restore` /
+`can_force_delete`) first and then run in a savepoint of the task-scoped
+`Orm::transaction`, or in their own transaction, like `delete()`:
+
+- `force_delete()` runs the `before_delete`/`after_delete` hooks and the
+  `deleting`/`deleted` observers, writes a `force_deleted` audit entry on
+  auditable models, and after commit invalidates the query cache, publishes the
+  Redis `deleted` event, calls `committed(Deleted)` and removes the Scout
+  document. It does not cascade to `cascade_soft_delete` relations.
+- `restore()` re-reads the restored row, calls the `updated` and `saved`
+  observers with it, writes a `restored` audit entry, and after commit
+  invalidates the cache, publishes the Redis `updated`/`saved` events, calls
+  `committed(Updated)` and re-indexes the Scout document. The save hooks and
+  the `saving`/`updating` observers are not called, because restore writes
+  only the soft-delete column. Restoring a missing row is a no-op.
+
 ---
 
 ## Key takeaways

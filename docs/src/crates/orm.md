@@ -56,7 +56,9 @@ generated API.
 
 **Key Features:**
 - **Generated CRUD:** Insert, update, delete, restore, and find operations for
-  supported model shapes.
+  supported model shapes. `restore()` and `force_delete()` use the same
+  savepoint, hook/observer, audit and post-commit cache/event/Scout pipeline as
+  `delete()`/`save()`; see [Active Record CRUD](../tutorials/03-active-record-crud.md).
 - **Fluent Query Builder:** Chain methods such as `.where_eq()`, `.limit()`, and
   `.order_by()`; values are bound and structural identifiers are validated.
 - **Relationships and eager loading:** `has_many`, `has_one`, `belongs_to`, and
@@ -67,8 +69,8 @@ generated API.
 - **Actor-bound audit revisions:** `#[orm(auditable)]` requires a validated
   user/service/system `AuditContext`; the active tenant and optional correlation
   ID are recorded with recursively redacted bounded changes. Generated
-  instance saves/deletes and their audit entry share a savepoint and fail
-  together. Eligible v2 updates expose guarded revision restoration, which
+  instance saves/deletes/restores/force-deletes and their audit entry share a
+  savepoint and fail together. Eligible v2 updates expose guarded revision restoration, which
   rejects stale, cross-tenant, redacted, malformed, legacy, create/delete, and
   oversized revisions and records a compensating audit entry. The host still
   derives authenticated principal/tenant authority, while bulk per-row history
@@ -123,7 +125,10 @@ generated API.
   idempotent event with relational domain state. Exact lease tokens, bounded
   retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.
   Delivery is at least once, so the application dispatcher and consumer remain
-  idempotent; generated observers are not silently converted into events. See
+  idempotent; generated observers are not silently converted into events.
+  A nested `Orm::transaction` joins the active transaction through a
+  savepoint, so a helper that enqueues inside its own transaction stays atomic
+  with its caller. See
   the [transactional outbox tutorial](../tutorials/38-transactional-outbox.md).
 - **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
   PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes
@@ -201,6 +206,22 @@ async fn main() -> Result<(), rullst_orm::Error> {
 }
 ```
 
+### Query row cap
+
+Generated builders start with a global row cap (`Orm::set_max_query_limit`,
+1,000 by default; `0` disables it). `limit()` clamps to that cap and
+`unsafe_unlimited()` removes it for one explicit query. `paginate(page,
+per_page)` clamps `per_page` to the same cap, because the value often comes
+from request input; `PaginationResult::per_page` and `last_page` report the
+effective page size.
+
+Eager loading runs one related-model query for all parents of a batch and
+never assigns relations from a result truncated by that cap: when the related
+rows exceed it, `get()` fails with a `Validation` error naming the relation.
+Load fewer parents per query, raise the cap, or choose explicitly with
+`with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
+to the whole batch, and `unsafe_unlimited()` loads every related row.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL
@@ -241,6 +262,13 @@ labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
 PostgreSQL; the method is a validated no-op on the other backends.
+
+`table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
+that default to the current timestamp. MySQL/MariaDB reject a literal default
+on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
+builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
+defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
+SQLite and PostgreSQL DDL is unchanged.
 
 ---
 

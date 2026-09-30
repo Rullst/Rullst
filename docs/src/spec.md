@@ -1249,6 +1249,14 @@ deployment order, dependent-object removal and rollback remain explicit,
 reviewed migration work. The schema helper does not auto-migrate an existing
 type or infer application compatibility.
 
+`Blueprint::timestamps()` adds nullable `created_at`/`updated_at` `TEXT`
+columns that default to the current timestamp on every SQLx driver. SQLite and
+PostgreSQL receive `DEFAULT CURRENT_TIMESTAMP`. MySQL/MariaDB accept a default
+on `TEXT`, `BLOB`, `JSON` or `GEOMETRY` columns only as an expression, so the
+builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
+non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
+The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
+
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
 `Billable::quota_request` derives the limit from the subscription owner, and
@@ -1518,6 +1526,11 @@ while portability and semantic review remain the model author's responsibility.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
+* Generated builders start with the global row cap from
+  `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
+  clamps to it and `unsafe_unlimited()` removes it for one query.
+  `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
+  effective value in `PaginationResult::per_page` and `last_page`.
 * `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
   subquery with portable `?` markers, even when its own `to_sql()` rendered
   PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
@@ -1525,6 +1538,13 @@ while portability and semantic review remain the model author's responsibility.
   model-wide scope binding can never shift onto a nested or caller value. A
   custom subquery whose `$n` markers are mixed with `?`, reference a missing
   binding or leave a binding unused fails closed with a `Validation` error.
+* Only PostgreSQL statements are renumbered. `delete_all()`, including the
+  soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
+  `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
+  PostgreSQL, MySQL and MariaDB matrices execute filtered, tenant-scoped and
+  cascading bulk deletes. Instance `restore()` and `force_delete()` statements,
+  including their tenant predicate, are numbered the same way and run in those
+  matrices too.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,
@@ -1570,6 +1590,14 @@ while portability and semantic review remain the model author's responsibility.
   `None` for a different target; eager loading batches each declared target and
   never guesses an undeclared runtime type. Target models used in eager inverse
   loading must implement `Clone`.
+* Each eager load (`has_many`, `has_one`, `belongs_to`, `morph_many`,
+  `morph_one`, `morph_to` and the related query of `belongs_to_many`) issues
+  one query for the whole parent batch. When that query still carries the
+  global row cap, it fetches one row beyond the cap and fails with a
+  `Validation` error if the cap would truncate it, so no parent silently
+  receives an empty or partial relation. A constrained eager load that sets an
+  explicit smaller `limit(n)` (applied to the whole batch) or
+  `unsafe_unlimited()` is honored as written.
 
 ### 5.4. Tenant Scope Contract
 
@@ -1592,7 +1620,8 @@ while portability and semantic review remain the model author's responsibility.
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
   traversal remains a separate contract.
-* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations write
+* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations (and
+  `restore()`/`force_delete()`, recorded as `restored`/`force_deleted`) write
   their bounded audit entry through the same explicit, implicit, or task-scoped
   transaction as the model mutation. Audit write errors fail the mutation and
   roll its savepoint back; direct `log_audit` calls also honor a task-scoped
@@ -1649,8 +1678,19 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.5. Process-Local Post-Commit Contract
 
-* `Orm::transaction` and direct generated model `save()`/`delete()` operations
-  own a post-commit callback scope. `after_commit` callbacks registered within
+* A nested `Orm::transaction` (called while another managed or task-scoped
+  transaction is active on the same task) does not open a second pooled
+  transaction. It opens a SQLx-tracked savepoint on the active transaction and
+  passes the same shared handle to its closure. An `Err` rolls back only to
+  that savepoint and returns `DatabaseError`; a success releases it, so the
+  nested work commits or rolls back with the outer transaction. Its
+  `after_commit` callbacks are promoted to the outer commit boundary only on
+  success. Dropping an unfinished nested future rolls its savepoint back.
+  The returned future is `Send` for `Send` results and errors, so it can be
+  nested in a transaction closure or spawned. Holding the shared handle's lock
+  across a nested call deadlocks, as it does for generated model methods.
+* `Orm::transaction` and direct generated model `save()`/`delete()`/
+  `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
   managed transaction is active, `after_commit` executes immediately for an
   already committed/autocommit operation.
@@ -1660,6 +1700,17 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* `force_delete()` and `restore()` check the tenant and their policy
+  (`can_force_delete`/`can_restore`) before the transaction, then run in a
+  savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
+  the `deleting`/`deleted` observers and the same post-commit cache
+  invalidation, Redis `deleted` event, `committed(Deleted)` and Scout removal
+  as `delete()`; it does not cascade to `cascade_soft_delete` relations.
+  `restore()` re-reads the restored row, runs the `updated`/`saved` observers
+  with it and registers the update effects of `save()` (cache invalidation,
+  Redis `updated`/`saved` events, `committed(Updated)`, Scout re-index). It
+  runs no save hooks or `saving`/`updating` observers because it writes only
+  the soft-delete column, and restoring a missing row is a no-op.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed
@@ -1678,7 +1729,8 @@ while portability and semantic review remain the model author's responsibility.
 ### 5.6. Durable Transactional Outbox Contract
 
 * `Outbox::enqueue` accepts only a currently managed `Orm::transaction` and
-  writes `rullst_outbox` through that same transaction. A domain rollback also
+  writes `rullst_outbox` through that same transaction (for a nested call,
+  through the outer transaction's savepoint). A domain rollback also
   removes the event. `enqueue_with_tx` provides the equivalent explicit path
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
