@@ -10,6 +10,13 @@ pub use validator::Validate;
 /// Error type returned by [`ValidatedForm`] and [`ValidatedJson`] extractors.
 /// Automatically renders HTMX-friendly HTML error components for HTMX requests,
 /// or standard JSON `422`/`400` responses for REST clients.
+///
+/// Every message, field name and validator message is HTML-escaped before it is
+/// placed in the HTMX fragment. The built-in extractors never copy the
+/// deserializer's error text (which can echo request input) into
+/// [`ValidationError::ExtractionError`]; they use a fixed message chosen from the
+/// rejection's status and log the detail server-side at `debug` level on the
+/// `rullst::validation` target.
 #[derive(Debug)]
 pub enum ValidationError {
     /// A deserialization error occurred before validation could run (e.g. malformed JSON body).
@@ -44,6 +51,32 @@ impl std::fmt::Display for ValidationError {
 
 impl std::error::Error for ValidationError {}
 
+/// Fixed client-facing text for an extraction failure.
+///
+/// Rejection details from `serde` echo request input (for example
+/// ``unknown variant `<payload>` ``), so they are logged server-side and never
+/// returned to the client.
+fn extraction_failure_message(status: StatusCode) -> &'static str {
+    match status {
+        StatusCode::UNSUPPORTED_MEDIA_TYPE => "Unsupported request content type.",
+        StatusCode::PAYLOAD_TOO_LARGE => "Request body is too large.",
+        _ => "The submitted data could not be read or has an invalid format.",
+    }
+}
+
+fn extraction_error(status: StatusCode, detail: String, is_htmx: bool) -> ValidationError {
+    tracing::debug!(
+        target: "rullst::validation",
+        status = status.as_u16(),
+        detail = %detail,
+        "request extraction failed"
+    );
+    ValidationError::ExtractionError {
+        message: extraction_failure_message(status).to_string(),
+        is_htmx,
+    }
+}
+
 fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
     let mut map = HashMap::new();
     for (field, field_errors) in errors.field_errors() {
@@ -70,7 +103,7 @@ impl IntoResponse for ValidationError {
                         r#"<div class="p-4 mb-4 rounded-lg bg-red-950/50 border border-red-500/30 text-red-200 text-sm">
                             <span class="font-semibold text-red-400">Request Error:</span> {}
                         </div>"#,
-                        message
+                        crate::html::escape_str(&message)
                     );
                     (StatusCode::BAD_REQUEST, Html(html_error)).into_response()
                 } else {
@@ -90,7 +123,8 @@ impl IntoResponse for ValidationError {
                                 &mut list_items,
                                 format_args!(
                                     r#"<li><span class="font-semibold text-red-300 capitalize">{}</span>: {}</li>"#,
-                                    field, msg
+                                    crate::html::escape_str(field),
+                                    crate::html::escape_str(msg)
                                 ),
                             );
                         }
@@ -141,12 +175,9 @@ where
             .map(|v| v == "true")
             .unwrap_or(false);
 
-        let Form(value) = Form::<T>::from_request(req, state).await.map_err(|e| {
-            ValidationError::ExtractionError {
-                message: e.to_string(),
-                is_htmx,
-            }
-        })?;
+        let Form(value) = Form::<T>::from_request(req, state)
+            .await
+            .map_err(|e| extraction_error(e.status(), e.body_text(), is_htmx))?;
 
         value
             .validate()
@@ -176,12 +207,9 @@ where
             .map(|v| v == "true")
             .unwrap_or(false);
 
-        let Json(value) = Json::<T>::from_request(req, state).await.map_err(|e| {
-            ValidationError::ExtractionError {
-                message: e.to_string(),
-                is_htmx,
-            }
-        })?;
+        let Json(value) = Json::<T>::from_request(req, state)
+            .await
+            .map_err(|e| extraction_error(e.status(), e.body_text(), is_htmx))?;
 
         value
             .validate()
@@ -317,5 +345,91 @@ mod tests {
         };
         let resp_json = err_json.into_response();
         assert_eq!(resp_json.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
+    struct RolePayload {
+        #[allow(dead_code)]
+        role: Role,
+    }
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    enum Role {
+        Admin,
+    }
+
+    async fn body_string(response: Response) -> String {
+        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn htmx_extraction_error_does_not_echo_request_input() {
+        let payload = "%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E";
+        let req = Request::builder()
+            .method("POST")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .header("HX-Request", "true")
+            .body(axum::body::Body::from(format!("role={payload}")))
+            .unwrap();
+        let err = ValidatedForm::<RolePayload>::from_request(req, &())
+            .await
+            .unwrap_err();
+        let body = body_string(err.into_response()).await;
+        assert!(!body.contains("<img"), "{body}");
+        assert!(!body.contains("onerror"), "{body}");
+        assert!(body.contains("could not be read"), "{body}");
+
+        let req = Request::builder()
+            .header("content-type", "application/json")
+            .header("HX-Request", "true")
+            .body(axum::body::Body::from(r#"{"role":"<div hx-get=\"/x\">"}"#))
+            .unwrap();
+        let err = ValidatedJson::<RolePayload>::from_request(req, &())
+            .await
+            .unwrap_err();
+        let body = body_string(err.into_response()).await;
+        assert!(!body.contains("hx-get"), "{body}");
+
+        let req = Request::builder()
+            .header("content-type", "text/plain")
+            .body(axum::body::Body::from("{}"))
+            .unwrap();
+        let err = ValidatedJson::<RolePayload>::from_request(req, &())
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Extraction error: Unsupported request content type."
+        );
+    }
+
+    #[tokio::test]
+    async fn htmx_fragments_escape_messages_and_fields() {
+        let err = ValidationError::ExtractionError {
+            message: "<script>alert(1)</script>".to_string(),
+            is_htmx: true,
+        };
+        let body = body_string(err.into_response()).await;
+        assert!(!body.contains("<script>"), "{body}");
+        assert!(body.contains("&lt;script&gt;"), "{body}");
+
+        let mut errors = validator::ValidationErrors::new();
+        let mut field_error = validator::ValidationError::new("custom");
+        field_error.message = Some("<b onmouseover=x>bad</b>".into());
+        errors.add("name", field_error);
+        let body = body_string(
+            ValidationError::ValidationError {
+                errors,
+                is_htmx: true,
+            }
+            .into_response(),
+        )
+        .await;
+        assert!(!body.contains("<b onmouseover"), "{body}");
+        assert!(body.contains("&lt;b onmouseover=x&gt;"), "{body}");
     }
 }
