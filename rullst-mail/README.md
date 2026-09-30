@@ -503,6 +503,13 @@ mixed-script domains and recognized secret patterns. They do not parse every
 valid/hostile HTML or MIME document and cannot guarantee delivery, absence of
 phishing, absence of data leakage or legal compliance.
 
+The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
+body over 2 MiB each, with `MailError::ValidationError` before any content scan.
+Oversized content is rejected, never truncated. The link, homograph and
+secret-redaction scans are single forward passes, so their cost grows linearly
+with the bounded body. They still run on the calling task; bound user-supplied
+text at the request edge as well.
+
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
 aggregate before transport encoding. Provider/account limits can be lower. The
 base pipeline validates metadata but treats bytes as opaque. The opt-in local

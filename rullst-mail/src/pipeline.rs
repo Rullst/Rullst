@@ -8,6 +8,11 @@ use crate::validator::{validate_email_deliverability, validate_email_syntax};
 
 const MAX_TENANT_ID_LEN: usize = 128;
 const MAX_SCHEDULE_DAYS: i64 = 366;
+/// Largest subject accepted before any content scan runs.
+const MAX_SUBJECT_BYTES: usize = 2 * 1024;
+/// Largest HTML body and, separately, largest plain-text body accepted before
+/// any content scan runs. Oversized content is rejected, never truncated.
+const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
 
 /// Validated tenant metadata associated with a delivery.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +107,7 @@ impl DeliveryPipeline {
         message: &Message,
         context: DeliveryContext,
     ) -> Result<PreparedMessage, MailError> {
+        validate_content_size(message)?;
         validate_header("To", &message.to)?;
         validate_header("Subject", &message.subject)?;
         validate_email_deliverability(&message.to)
@@ -161,6 +167,27 @@ pub fn validate_action_url(value: impl Into<String>) -> Result<(), MailError> {
         return Err(MailError::ValidationError(
             "Action URL must not contain embedded credentials".to_string(),
         ));
+    }
+    Ok(())
+}
+
+/// Bounds the scanned text before the security and DLP passes, which run on
+/// every official send and may repeat in wrappers and drivers.
+fn validate_content_size(message: &Message) -> Result<(), MailError> {
+    if message.subject.len() > MAX_SUBJECT_BYTES {
+        return Err(MailError::ValidationError(format!(
+            "Subject must not exceed {MAX_SUBJECT_BYTES} bytes"
+        )));
+    }
+    for (name, body) in [
+        ("HTML body", message.body_html.as_deref()),
+        ("Text body", message.body_text.as_deref()),
+    ] {
+        if body.is_some_and(|body| body.len() > MAX_BODY_BYTES) {
+            return Err(MailError::ValidationError(format!(
+                "{name} must not exceed {MAX_BODY_BYTES} bytes"
+            )));
+        }
     }
     Ok(())
 }
@@ -274,6 +301,58 @@ mod tests {
             DeliveryPipeline::prepare(&message),
             Err(MailError::ValidationError(_))
         ));
+    }
+
+    #[test]
+    fn rejects_oversized_subject_and_bodies_before_scanning() {
+        let at_limit = Message::new()
+            .to("bounded@example.com")
+            .subject("s".repeat(MAX_SUBJECT_BYTES))
+            .text("t".repeat(MAX_BODY_BYTES));
+        assert!(DeliveryPipeline::prepare(&at_limit).is_ok());
+
+        let subject = Message::new()
+            .to("bounded@example.com")
+            .subject("s".repeat(MAX_SUBJECT_BYTES + 1))
+            .text("safe");
+        let mut html = Message::new()
+            .to("bounded@example.com")
+            .html("h".repeat(MAX_BODY_BYTES + 1));
+        html.body_text = Some("safe".to_string());
+        let text = Message::new()
+            .to("bounded@example.com")
+            .text("t".repeat(MAX_BODY_BYTES + 1));
+        for oversized in [subject, html, text] {
+            assert!(matches!(
+                DeliveryPipeline::prepare(&oversized),
+                Err(MailError::ValidationError(_))
+            ));
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)]
+    fn adversarial_bodies_scan_in_linear_time() {
+        // Marker, link and PEM repetitions used to cost O(matches * length).
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let limit = MAX_BODY_BYTES;
+            let bodies = [
+                "key=a ".repeat(limit / 6),
+                "http://a ".repeat(limit / 9),
+                "-----BEGIN PRIVATE KEY-----x-----END PRIVATE KEY-----".repeat(limit / 53),
+            ];
+            let outcome = bodies.into_iter().all(|body| {
+                let mut message = Message::new().to("bounded@example.com").html(body.clone());
+                message.body_text = Some(body);
+                DeliveryPipeline::prepare(&message).is_ok()
+            });
+            let _ = sender.send(outcome);
+        });
+        let outcome = receiver
+            .recv_timeout(std::time::Duration::from_secs(60))
+            .expect("pipeline scans must finish in linear time");
+        assert!(outcome);
     }
 
     #[test]
