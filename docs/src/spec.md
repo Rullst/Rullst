@@ -951,7 +951,9 @@ could be accepted after its lease expired while waiting, and a new claim could
 already be expired on acquisition. Publication, claim, ACK, retry and dead-letter
 operations must sample trusted time after acquiring their write transaction.
 Retry availability and new lease duration start from that admitted instant.
-Expired workers fail with `LeaseExpired`; their work remains recoverable. This
+Expired workers fail with `LeaseExpired`; their work remains recoverable. The
+process-local `InMemoryBroker` (also the Redis mock backend) likewise samples
+time after acquiring its state lock. This
 correction preserves public API/schema and does not add persistent clock
 anti-rollback or change at-least-once delivery semantics.
 
