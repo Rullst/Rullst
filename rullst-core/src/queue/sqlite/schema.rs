@@ -14,6 +14,7 @@ pub(super) async fn prepare(pool: &sqlx::SqlitePool) -> Result<(), QueueError> {
             attempts INTEGER NOT NULL DEFAULT 0,
             available_at_ms INTEGER NOT NULL DEFAULT 0,
             stalled_recoveries INTEGER NOT NULL DEFAULT 0,
+            lease_expires_at_ms INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         )"#,
@@ -34,6 +35,13 @@ pub(super) async fn prepare(pool: &sqlx::SqlitePool) -> Result<(), QueueError> {
         "stalled_recoveries",
         "ALTER TABLE rullst_jobs ADD COLUMN stalled_recoveries INTEGER NOT NULL DEFAULT 0",
         "stalled-lease counter",
+    )
+    .await?;
+    add_missing_column(
+        pool,
+        "lease_expires_at_ms",
+        "ALTER TABLE rullst_jobs ADD COLUMN lease_expires_at_ms INTEGER NOT NULL DEFAULT 0",
+        "claim lease",
     )
     .await?;
 

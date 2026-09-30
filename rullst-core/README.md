@@ -48,9 +48,11 @@
   job only under the attempt number `pop` returned, so a stale worker whose
   lease was recovered and claimed again cannot finish the newer claim.
 - **Queue-wide Stalled-lease Recovery:** each worker periodically requeues
-  every processing lease older than its `stalled_after`, including other
-  workers' leases, so every worker sharing a queue needs a `stalled_after`
-  longer than the longest `job_timeout` among them. SQLite and Redis fail a
+  stalled processing leases, including other workers' leases. Workers record
+  their own `stalled_after` with each SQLite/Redis claim (v13
+  `QueueDriver::pop_with_lease`), and recovery honours it; for claims without
+  a lease every worker sharing a queue needs a `stalled_after` longer than the
+  longest `job_timeout` among them. SQLite and Redis fail a
   job whose fifth lease stalls (for example because it keeps crashing its
   worker) instead of requeuing it forever.
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's

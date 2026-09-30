@@ -143,6 +143,78 @@ impl SqliteDriver {
         Ok(())
     }
 
+    /// Claims the oldest due job. With `lease`, the claim stalls only after
+    /// that lease; without one, after the recovering worker's age.
+    async fn claim(&self, lease: Option<Duration>) -> Result<Option<QueuedJob>, QueueError> {
+        let now_ms =
+            i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
+                QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
+            })?;
+        let lease_expires_at_ms = lease.map_or(0, |lease| {
+            let lease_ms = i64::try_from(lease.as_millis()).unwrap_or(i64::MAX).max(1);
+            now_ms.saturating_add(lease_ms)
+        });
+        // Atomically select and mark the oldest pending job as 'processing'
+        let row: Option<(String, String, String, i32)> = sqlx::query_as(
+            r#"UPDATE rullst_jobs
+               SET status = 'processing', attempts = attempts + 1,
+                   lease_expires_at_ms = ?, updated_at = datetime('now')
+               WHERE id = (
+                   SELECT id FROM rullst_jobs
+                   WHERE status = 'pending' AND available_at_ms <= ?
+                   ORDER BY available_at_ms ASC, created_at ASC LIMIT 1
+               )
+               RETURNING id, name, payload, attempts"#,
+        )
+        .bind(lease_expires_at_ms)
+        .bind(now_ms)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
+
+        let Some((id, name, payload_str, attempts)) = row else {
+            return Ok(None);
+        };
+
+        let payload = match serde_json::from_str(&payload_str) {
+            Ok(payload) => payload,
+            Err(error) => {
+                let message = format!("invalid JSON payload: {error}");
+                self.mark_failed(&id, &message)
+                    .await
+                    .map_err(|transition| QueueError::StateTransition {
+                        job_id: id.clone(),
+                        operation: "reject_invalid_payload",
+                        message: format!("{message}; {transition}"),
+                    })?;
+                return Err(QueueError::Serialization(format!(
+                    "job '{id}' contains invalid JSON: {error}"
+                )));
+            }
+        };
+        let attempts = match u32::try_from(attempts) {
+            Ok(attempts) => attempts,
+            Err(_) => {
+                let message = "job attempts counter is negative";
+                self.mark_failed(&id, message).await.map_err(|transition| {
+                    QueueError::StateTransition {
+                        job_id: id.clone(),
+                        operation: "reject_invalid_attempts",
+                        message: transition.to_string(),
+                    }
+                })?;
+                return Err(QueueError::Driver(format!("job '{id}' has {message}")));
+            }
+        };
+
+        Ok(Some(QueuedJob {
+            id,
+            name,
+            payload,
+            attempts,
+        }))
+    }
+
     /// Completes a processing job. With `attempt`, only the claim with that
     /// attempt number matches, so a recovered and re-claimed lease is fenced.
     async fn complete_claim(&self, job_id: &str, attempt: Option<u32>) -> Result<(), QueueError> {
@@ -281,67 +353,11 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
-        let now_ms =
-            i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
-                QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
-            })?;
-        // Atomically select and mark the oldest pending job as 'processing'
-        let row: Option<(String, String, String, i32)> = sqlx::query_as(
-            r#"UPDATE rullst_jobs
-               SET status = 'processing', attempts = attempts + 1, updated_at = datetime('now')
-               WHERE id = (
-                   SELECT id FROM rullst_jobs
-                   WHERE status = 'pending' AND available_at_ms <= ?
-                   ORDER BY available_at_ms ASC, created_at ASC LIMIT 1
-               )
-               RETURNING id, name, payload, attempts"#,
-        )
-        .bind(now_ms)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
+        self.claim(None).await
+    }
 
-        let Some((id, name, payload_str, attempts)) = row else {
-            return Ok(None);
-        };
-
-        let payload = match serde_json::from_str(&payload_str) {
-            Ok(payload) => payload,
-            Err(error) => {
-                let message = format!("invalid JSON payload: {error}");
-                self.mark_failed(&id, &message)
-                    .await
-                    .map_err(|transition| QueueError::StateTransition {
-                        job_id: id.clone(),
-                        operation: "reject_invalid_payload",
-                        message: format!("{message}; {transition}"),
-                    })?;
-                return Err(QueueError::Serialization(format!(
-                    "job '{id}' contains invalid JSON: {error}"
-                )));
-            }
-        };
-        let attempts = match u32::try_from(attempts) {
-            Ok(attempts) => attempts,
-            Err(_) => {
-                let message = "job attempts counter is negative";
-                self.mark_failed(&id, message).await.map_err(|transition| {
-                    QueueError::StateTransition {
-                        job_id: id.clone(),
-                        operation: "reject_invalid_attempts",
-                        message: transition.to_string(),
-                    }
-                })?;
-                return Err(QueueError::Driver(format!("job '{id}' has {message}")));
-            }
-        };
-
-        Ok(Some(QueuedJob {
-            id,
-            name,
-            payload,
-            attempts,
-        }))
+    async fn pop_with_lease(&self, lease: Duration) -> Result<Option<QueuedJob>, QueueError> {
+        self.claim(Some(lease)).await
     }
 
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {

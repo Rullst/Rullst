@@ -66,10 +66,15 @@ never reported as a timeout or run again.
 Stalled-lease recovery runs when a worker starts and then every
 `min(stalled_after, 60 s)`, and it is queue-wide: it returns every processing
 lease in the shared SQLite table or Redis namespace that is older than the
-recovering worker's `stalled_after`, including leases of other workers. Every
-worker that shares a queue must therefore use a `stalled_after` longer than the
-longest `job_timeout` of any of them; otherwise a worker with a short
-`stalled_after` requeues a slower pool's running job and it runs concurrently.
+recovering worker's `stalled_after`, including leases of other workers. In the
+unpublished v13 source, workers claim through `QueueDriver::pop_with_lease`
+with their own `stalled_after`; SQLite and Redis store that lease with the
+claim and recovery honours it whatever age the recovering worker uses, so a
+pool with a short `stalled_after` no longer requeues a slower pool's running
+job. Claims without a lease (older workers, custom drivers or direct `pop`
+calls) still stall after the recovering worker's age: while any exist, every
+worker that shares a queue must use a `stalled_after` longer than the longest
+`job_timeout` of any of them.
 A job that crashes, aborts or hangs its worker would otherwise be recovered and
 claimed forever, so the SQLite and Redis drivers count stalled leases per job
 and fail the job, instead of requeuing it, when its fifth lease stalls. The

@@ -1,7 +1,17 @@
 //! Stalled-lease recovery with a per-job ceiling.
 
-use crate::queue::QueueError;
-use std::time::Duration;
+use crate::queue::{QueueError, unix_timestamp_millis_floor};
+use std::time::{Duration, SystemTime};
+
+/// A processing lease is stalled once its recorded claim lease has passed,
+/// or, for a claim without one, once it is older than the caller's age.
+/// Binds: current Unix milliseconds, then the `datetime` age modifier.
+macro_rules! stalled {
+    () => {
+        "status = 'processing' AND CASE WHEN lease_expires_at_ms > 0 \
+         THEN lease_expires_at_ms <= ? ELSE updated_at <= datetime('now', ?) END"
+    };
+}
 
 /// Returns stalled processing leases to pending, or fails a job whose lease
 /// has now stalled `max_stalled_leases` times, and reports how many leases
@@ -22,23 +32,30 @@ pub(super) async fn recover_stalled(
         "lease stalled {max_stalled_leases} times without finishing; failed instead of requeued"
     );
 
+    let now_ms = i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
+        QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
+    })?;
+
     let mut transaction = pool.begin().await.map_err(driver_error)?;
-    let failed = sqlx::query(
-        "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') \
-         WHERE status = 'processing' AND updated_at <= datetime('now', ?) \
-         AND stalled_recoveries + 1 >= ?",
-    )
+    let failed = sqlx::query(concat!(
+        "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE ",
+        stalled!(),
+        " AND stalled_recoveries + 1 >= ?"
+    ))
     .bind(&reason)
+    .bind(now_ms)
     .bind(&modifier)
     .bind(i64::from(max_stalled_leases))
     .execute(&mut *transaction)
     .await
     .map_err(driver_error)?;
-    let requeued = sqlx::query(
+    let requeued = sqlx::query(concat!(
         "UPDATE rullst_jobs SET status = 'pending', error = 'recovered after worker interruption', \
-         available_at_ms = 0, stalled_recoveries = stalled_recoveries + 1, updated_at = datetime('now') \
-         WHERE status = 'processing' AND updated_at <= datetime('now', ?)",
-    )
+         available_at_ms = 0, stalled_recoveries = stalled_recoveries + 1, \
+         lease_expires_at_ms = 0, updated_at = datetime('now') WHERE ",
+        stalled!()
+    ))
+    .bind(now_ms)
     .bind(&modifier)
     .execute(&mut *transaction)
     .await

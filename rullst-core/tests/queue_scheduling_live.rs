@@ -483,6 +483,60 @@ async fn redis_stalled_lease_ceiling_is_configurable() {
 }
 
 #[tokio::test]
+async fn redis_claim_leases_decide_when_a_claim_stalls() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("leases"))
+        .expect("isolated queue namespace");
+
+    // A long claim lease survives a recovery with a zero age.
+    driver
+        .push("report", "generate_report", "{}")
+        .await
+        .expect("push");
+    let report = driver
+        .pop_with_lease(Duration::from_secs(3_600))
+        .await
+        .expect("claim")
+        .expect("job");
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 0);
+
+    // An expired short lease is recovered even with a long recovery age.
+    driver
+        .push("email", "send_email", "{}")
+        .await
+        .expect("push");
+    let email = driver
+        .pop_with_lease(Duration::from_millis(1))
+        .await
+        .expect("claim")
+        .expect("job");
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert_eq!(
+        driver
+            .recover_stalled(Duration::from_secs(3_600))
+            .await
+            .unwrap(),
+        1
+    );
+    let reclaimed = driver.pop().await.expect("claim").expect("recovered job");
+    assert_eq!(reclaimed.id, email.id);
+    assert_eq!(reclaimed.attempts, 2);
+
+    driver
+        .mark_complete_attempt(&report.id, report.attempts)
+        .await
+        .expect("the long lease is still current");
+    driver
+        .mark_complete_attempt(&reclaimed.id, reclaimed.attempts)
+        .await
+        .expect("complete the reclaimed job");
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")
