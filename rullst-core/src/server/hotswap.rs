@@ -73,9 +73,16 @@ impl HotSwapService {
         }
     }
 
+    /// Renders a panic that escaped the application router. Details are shown
+    /// only when `render_details` (the request passed the console peer check);
+    /// any other client receives an empty `500`.
     pub(crate) async fn handle_panic_error(
         join_err: tokio::task::JoinError,
+        render_details: bool,
     ) -> Result<axum::response::Response, std::convert::Infallible> {
+        if !render_details {
+            return Self::handle_oneshot_error();
+        }
         let message = if join_err.is_panic() {
             let panic_payload = join_err.into_panic();
             if let Some(s) = panic_payload.downcast_ref::<&str>() {
@@ -226,6 +233,7 @@ impl Service<axum::extract::Request> for HotSwapService {
         if let Some(ref layer) = self.trusted_proxy {
             router = router.layer(layer.clone());
         }
+        let render_details = crate::error_console::console_details_allowed(req.extensions());
         let method = req.method().to_string();
         let path = req.uri().path().to_string();
         let start = std::time::Instant::now();
@@ -244,7 +252,7 @@ impl Service<axum::extract::Request> for HotSwapService {
                     Ok(res)
                 }
                 Ok(Err(_)) => Self::handle_oneshot_error(),
-                Err(join_err) => Self::handle_panic_error(join_err).await,
+                Err(join_err) => Self::handle_panic_error(join_err, render_details).await,
             }
         })
     }

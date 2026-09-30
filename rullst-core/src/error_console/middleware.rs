@@ -19,17 +19,7 @@ use std::net::SocketAddr;
 /// builds running in Development.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response {
-    // Same lookup order as the `ConnectInfo` extractor used by `/_rullst/*`.
-    let extensions = req.extensions();
-    let peer = extensions
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|ConnectInfo(peer)| *peer)
-        .or_else(|| {
-            extensions
-                .get::<MockConnectInfo<SocketAddr>>()
-                .map(|MockConnectInfo(peer)| *peer)
-        });
-    let render_details = peer.is_none_or(|peer| peer.ip().to_canonical().is_loopback());
+    let render_details = console_details_allowed(req.extensions());
     let handle = tokio::spawn(async move { next.run(req).await });
 
     match handle.await {
@@ -61,4 +51,19 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
             }
         }
     }
+}
+
+/// Whether panic details may be shown for a request: its peer is loopback, or
+/// no peer metadata exists (in-process dispatch such as `TestApp`).
+pub(crate) fn console_details_allowed(extensions: &axum::http::Extensions) -> bool {
+    // Same lookup order as the `ConnectInfo` extractor used by `/_rullst/*`.
+    let peer = extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(peer)| *peer)
+        .or_else(|| {
+            extensions
+                .get::<MockConnectInfo<SocketAddr>>()
+                .map(|MockConnectInfo(peer)| *peer)
+        });
+    peer.is_none_or(|peer| peer.ip().to_canonical().is_loopback())
 }
