@@ -166,12 +166,13 @@ fn render_dashboard_layout(
     )
 }
 
+/// Cuts a value to `maximum_chars` characters without reading past them, so a
+/// large payload is never scanned in full just to render its preview.
 fn bounded_preview(value: &str, maximum_chars: usize) -> String {
-    let mut preview = value.chars().take(maximum_chars).collect::<String>();
-    if value.chars().count() > maximum_chars {
-        preview.push('…');
+    match value.char_indices().nth(maximum_chars) {
+        Some((cut, _)) => format!("{}…", &value[..cut]),
+        None => value.to_string(),
     }
-    preview
 }
 
 fn render_table_rows(jobs: &[QueuedJobDetail]) -> String {
@@ -374,6 +375,15 @@ mod tests {
         let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
         let html = String::from_utf8(body.to_vec()).unwrap();
         assert!(!html.contains("<code>complete…</code>"));
+    }
+
+    #[test]
+    fn previews_are_cut_on_character_boundaries() {
+        assert_eq!(bounded_preview("abc", 3), "abc");
+        assert_eq!(bounded_preview("abcd", 3), "abc…");
+        assert_eq!(bounded_preview("ééé", 2), "éé…");
+        assert_eq!(bounded_preview("", 0), "");
+        assert_eq!(bounded_preview("a", 0), "…");
     }
 
     #[test]
