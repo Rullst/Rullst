@@ -2872,6 +2872,9 @@ sending.
   credentials. A successful Studio database-flag mutation invalidates warm
   `DbFeatureDriver` caches in the same process; direct writers and other
   processes remain subject to TTL unless the host distributes invalidation.
+  The driver also caches missing flags and failed or two-second-timed-out
+  lookups for its TTL, serves the last value read after a failed refresh and
+  bounds its cache to 4,096 flag names.
   SQLite removes completed jobs by default. An explicit 1–100,000-row history
   policy retains and atomically prunes real completion records for Studio, with
   a separate purge; retained payload access and lifecycle belong to the host.

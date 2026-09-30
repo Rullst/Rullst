@@ -170,6 +170,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
   and `/ready` probes through, so load shedding or an exhausted bucket cannot
   fail a liveness probe.
+- **Bounded database flag cache:** `DbFeatureDriver` caches a found flag, a
+  flag without a row and a failed or timed-out lookup (missing table,
+  unavailable database) for its TTL, so an undefined flag does not query the
+  database on every evaluation. A failed refresh keeps serving the last value
+  read; one lookup waits at most two seconds and each driver caches at most
+  4,096 flag names.
 - **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
   TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
   SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.
