@@ -156,6 +156,8 @@ impl FieldAttributes {
                 self.is_skipped = true;
             }
             "default" => mark_once(seen, "sqlx_default", &meta)?,
+            // Decoding only: generated writes bind the field's own type, which
+            // must therefore encode as JSON itself (see spec §5.1).
             "json" => {
                 mark_once(seen, "json", &meta)?;
                 if meta.input.peek(syn::token::Paren) {

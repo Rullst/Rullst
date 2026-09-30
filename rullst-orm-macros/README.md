@@ -44,7 +44,10 @@ The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
 `#[sqlx(json(nullable))]`. `#[orm(skip)]` only removes a field from generated
 SQL; the application's `FromRow` still reads it, so a field without a table
 column also needs `#[sqlx(skip)]` (the two may be combined) or
-`#[sqlx(default)]`. SQLx mappings such as `rename`, `try_from`, and
+`#[sqlx(default)]`. `#[sqlx(json)]` affects only that decoding: generated
+writes bind the field's own type, so it must itself encode as JSON on the
+selected SQLx driver (for example `serde_json::Value` under a strict driver
+feature); a Serde-only type fails to compile at the generated bind. SQLx mappings such as `rename`, `try_from`, and
 `flatten` fail compilation because the generated persistence SQL cannot honor
 them safely. The parser also rejects unsupported model shapes, unknown
 backends, missing or unbindable tenant columns, invalid encrypted field types,
