@@ -249,6 +249,53 @@ async fn quotas_duplicates_and_configuration_drift_fail_closed() {
     remove_database(&path);
 }
 
+#[tokio::test]
+async fn usage_and_revocation_survive_a_clock_stepped_back_below_creation() {
+    let path = temporary_database("clock-step");
+    let url = database_url(&path);
+    let auth = auth();
+    let fixture = registration_fixture(&auth, "localhost", RegistrationOptions::default());
+    let passkey = auth
+        .finish_register(&fixture.credential, &fixture.challenge)
+        .expect("finish registration");
+    let store = SqlitePasskeyStore::connect(&url, 32, 8)
+        .await
+        .expect("connect store");
+    store
+        .register("user-7", "Laptop", passkey.clone())
+        .await
+        .expect("register credential");
+    // Registered while the clock ran two hours fast, then NTP stepped it back.
+    let created_at = i64::try_from(unix_time().expect("clock")).expect("time") + 7_200;
+    sqlx::query("UPDATE rullst_auth_passkey_devices SET created_at = ?")
+        .bind(created_at)
+        .execute(&store.pool)
+        .await
+        .expect("move creation time forward");
+
+    let mut updated = passkey.clone();
+    updated.sign_count = 2;
+    store
+        .advance_counter("user-7", &passkey, &updated)
+        .await
+        .expect("counter advances after the clock step");
+    store
+        .revoke("user-7", &passkey.credential_id)
+        .await
+        .expect("revocation succeeds after the clock step");
+    let device = &store.devices("user-7").await.expect("list device")[0];
+    assert_eq!(device.sign_count(), 2);
+    assert!(device.is_revoked());
+    let times: (i64, i64) =
+        sqlx::query_as("SELECT last_used_at, revoked_at FROM rullst_auth_passkey_devices")
+            .fetch_one(&store.pool)
+            .await
+            .expect("stored times");
+    assert_eq!(times, (created_at, created_at));
+    store.close().await;
+    remove_database(&path);
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn memory_and_existing_symlink_targets_are_rejected() {

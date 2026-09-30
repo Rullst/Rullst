@@ -103,7 +103,9 @@ then atomically advances the stored counter; a concurrent stale update fails.
 Multi-statement SQLite mutations use cancellation-safe transactions: dropping
 an unfinished registration rolls it back before the pooled connection is reused.
 Revoked entries remain visible in device inventory and continue to count toward
-the configured quota so revocation history is not silently recycled.
+the configured quota so revocation history is not silently recycled. If the
+wall clock is stepped back below a credential's creation time, its last use and
+revocation are recorded at that creation time instead of failing.
 
 WebAuthn challenge state remains bounded and process-local inside `PasskeyAuth`.
 The optional v13 `passkey-postgres` path adds
