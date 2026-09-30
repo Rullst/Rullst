@@ -271,6 +271,31 @@ A prepared version section does not establish that its tag or crates exist.
 - `Debug` for `DatabaseConfig`, `RullstConfig` and `db::ReplicationConfig`
   redacts database URLs and auth tokens.
 
+### Security low-severity review fixes
+
+- `AuditChain::try_resume` lets a restarted writer continue its persisted audit
+  trail, and `StdoutAuditLogger` lines can no longer be forged through CR/LF
+  in field values.
+- RASP and the Core WAF inspect obs-text header values and the decoded request
+  path (traversal only), and the WAF inspects cookies pair by pair, ending the
+  lockout caused by cookies named `ls*`.
+- CSWSH matches the HTTP/2 `:authority` and, when known, the request scheme;
+  session fingerprints bind IPv4-mapped peers per /24.
+- The AI firewall catches word joiners, bidi isolates and tag characters and
+  attributes blocks to the peer; CEF export normalizes events and gives
+  `XSS_SANITIZED` severity 7; DLP and log redaction cover `rediss://`,
+  `apiKey` and JSON embedded in a string.
+- Global rate-limit entries expire per policy, the Redis offline mock is
+  bounded, sub-millisecond Redis windows are rejected and
+  `generate_totp_at_counter` never returns `000000` for short secrets.
+- Core CSRF accepts `_token` in multipart forms and honours the global
+  `csrf_same_site`; machine bearer tokens need 8 distinct bytes.
+- Subdomain tenant selection works over HTTP/2, ignores `www` and gains
+  `TenantConfig::with_base_domain`; local `TenantStorage` refuses case-variant
+  or trailing-dot aliases.
+- PII masking keeps JSON numbers valid and leaves versioned CDN URLs and `@2x`
+  asset names alone.
+
 ### Security second-pass review fixes
 
 - `rate_limit_middleware` keys IPv6 peers per /64 (IPv4 per address,
