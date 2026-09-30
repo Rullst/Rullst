@@ -96,3 +96,23 @@ async fn offline_mock_status_reports_only_mock_issued_transfers() {
         Err(CapitalError::UnsupportedOperation(_))
     ));
 }
+
+#[tokio::test]
+async fn typed_state_read_and_sandbox_api_are_explicit() {
+    let provider = WiseProvider::new("mock_wise_token", "profile");
+    assert_eq!(provider.api_base, "https://api.wise.com");
+    let transfer_id = provider
+        .send_payout("payee@example.com", 1_000, "EUR", "Invoice 1")
+        .await
+        .expect("mock transfer");
+    assert_eq!(
+        provider.get_transfer_state(&transfer_id).await.unwrap(),
+        WiseTransferState::OutgoingPaymentSent
+    );
+    assert!(provider.get_transfer_state("").await.is_err());
+    assert!(provider.get_transfer_state("123456").await.is_err());
+
+    let sandbox = WiseProvider::new("sandbox_token", "profile").with_sandbox_api();
+    assert_eq!(sandbox.api_base, "https://api.sandbox.transferwise.tech");
+    assert!(sandbox.get_transfer_state("not-a-number").await.is_err());
+}

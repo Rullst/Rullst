@@ -61,7 +61,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Transfer-status read and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
+| **Wise** | Payout | Transfer-status read bound to the requested transfer, typed state read, sandbox API option and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -118,7 +118,10 @@ decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
 or undocumented state fails the provider response contract, and a
 `bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
 because `PayoutStatus` cannot express a returned or reversed payout; it is
-never reported as `Processing`.
+never reported as `Processing`. The additive v13 `get_transfer_state` returns
+the typed `WiseTransferState` from the same bound read, and
+`with_sandbox_api()` sends reads to `https://api.sandbox.transferwise.tech`
+for sandbox tokens.
 
 `WiseProvider::parse_webhook_payload` performs no signature verification and
 cannot distinguish a Wise delivery from a forged request. It is an offline

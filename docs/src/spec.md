@@ -2081,7 +2081,10 @@ reports status only for those IDs; other transfer IDs fail with
 status read requires a positive decimal transfer ID, binds the response `id` to
 it and parses only documented transfer states: a missing, `unknown` or other
 undocumented state is a provider contract failure, and `bounced_back` or
-`charged_back` returns `UnsupportedOperation` instead of `Processing`.
+`charged_back` returns `UnsupportedOperation` instead of `Processing`. The
+additive v13 `WiseProvider::get_transfer_state` returns the typed
+`WiseTransferState` from that bound read, and `with_sandbox_api()` targets
+`https://api.sandbox.transferwise.tech` instead of `https://api.wise.com`.
 Individual billing operations may still return `Unsupported` when a provider
 adapter has no reviewed implementation:
 ```rust,no_run

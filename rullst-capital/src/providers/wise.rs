@@ -5,6 +5,7 @@ use serde_json::Value;
 
 const MOCK_TRANSFER_PREFIX: &str = "wise_tr_mock_";
 const WISE_API_BASE: &str = "https://api.wise.com";
+const WISE_SANDBOX_API_BASE: &str = "https://api.sandbox.transferwise.tech";
 
 // Deterministic offline transfer ID that does not embed the recipient's email.
 fn mock_transfer_id(recipient_email: &str, amount_cents: u64, currency: &str) -> String {
@@ -29,6 +30,7 @@ fn mock_transfer_id(recipient_email: &str, amount_cents: u64, currency: &str) ->
 pub struct WiseProvider {
     api_token: String,
     _profile_id: String,
+    api_base: &'static str,
     // RSAPublicKey DER values accepted for signed webhooks.
     pub(super) webhook_keys: Vec<Vec<u8>>,
 }
@@ -39,8 +41,28 @@ impl WiseProvider {
         Self {
             api_token: api_token.into(),
             _profile_id: profile_id.into(),
+            api_base: WISE_API_BASE,
             webhook_keys: Vec::new(),
         }
+    }
+
+    /// Sends authenticated reads to Wise's sandbox API
+    /// (`https://api.sandbox.transferwise.tech`) instead of production. Use it
+    /// with a sandbox API token and the sandbox webhook key. New in 13.0.
+    pub fn with_sandbox_api(mut self) -> Self {
+        self.api_base = WISE_SANDBOX_API_BASE;
+        self
+    }
+
+    /// Reads the typed Wise transfer state, including `bounced_back` and
+    /// `charged_back`, which [`PayoutStatus`] cannot represent. The response
+    /// must name the requested positive decimal transfer ID. The offline mock
+    /// reports `OutgoingPaymentSent` only for transfers it issued. New in 13.0.
+    pub async fn get_transfer_state(
+        &self,
+        transfer_id: &str,
+    ) -> Result<WiseTransferState, CapitalError> {
+        self.transfer_state(transfer_id).await
     }
 
     /// Sends a payout to an international recipient.
@@ -139,7 +161,7 @@ impl WiseProvider {
             ));
         }
 
-        transfer_state_at(&self.api_token, WISE_API_BASE, transfer_id).await
+        transfer_state_at(&self.api_token, self.api_base, transfer_id).await
     }
 }
 
@@ -194,7 +216,7 @@ fn bind_transfer_state(transfer_id: u64, body: &Value) -> Result<WiseTransferSta
 fn legacy_payout_status(state: WiseTransferState) -> Result<PayoutStatus, CapitalError> {
     state.payout_status().ok_or_else(|| {
         CapitalError::UnsupportedOperation(format!(
-            "Wise transfer is {}; PayoutStatus cannot represent it and it is not in flight",
+            "Wise transfer is {}; PayoutStatus cannot represent it and it is not in flight (use WiseProvider::get_transfer_state)",
             state.as_str()
         ))
     })
