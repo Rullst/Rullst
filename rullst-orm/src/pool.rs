@@ -7,6 +7,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::{RullstPool, RullstPoolOptions};
 
 const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::from_millis(500);
+/// Upper bound of `Orm::init_with_options`'s acquire timeout. SQLx adds the
+/// timeout to `Instant::now()` unchecked, so an unbounded value would panic.
+const MAX_ACQUIRE_TIMEOUT_SECS: u64 = 86_400;
 
 mod dsn;
 mod placeholders;
@@ -142,13 +145,21 @@ impl Orm {
         ))
     }
 
-    /// Initialize the global database connection pool with specific pool options
+    /// Initialize the global database connection pool with specific pool options.
+    ///
+    /// `max_connections` must be at least 1 and `acquire_timeout_secs` within
+    /// 1–86,400 seconds; other values return `Error::Validation`.
     pub async fn init_with_options(
         database_url: &str,
         max_connections: u32,
         acquire_timeout_secs: u64,
     ) -> Result<(), crate::Error> {
         Self::ensure_uninitialized()?;
+        if max_connections == 0 || !(1..=MAX_ACQUIRE_TIMEOUT_SECS).contains(&acquire_timeout_secs) {
+            return Err(crate::Error::Validation(format!(
+                "pool max_connections must be at least 1 and acquire_timeout_secs 1-{MAX_ACQUIRE_TIMEOUT_SECS}"
+            )));
+        }
         dsn::ensure_configured_dsn(database_url)?;
         Self::validate_dsn(database_url);
 
@@ -470,6 +481,18 @@ mod tests {
             Orm::init_with_replicas("sqlite::memory:", vec![placeholder]).await,
             Err(crate::Error::Internal(_))
         ));
+        assert!(matches!(Orm::try_pool(), Err(crate::Error::NotInitialized)));
+    }
+
+    #[tokio::test]
+    async fn pool_options_outside_their_bounds_fail_without_panicking() {
+        for (max_connections, acquire_timeout_secs) in [(5, u64::MAX), (5, 0), (0, 5)] {
+            assert!(matches!(
+                Orm::init_with_options("sqlite::memory:", max_connections, acquire_timeout_secs)
+                    .await,
+                Err(crate::Error::Validation(_))
+            ));
+        }
         assert!(matches!(Orm::try_pool(), Err(crate::Error::NotInitialized)));
     }
 
