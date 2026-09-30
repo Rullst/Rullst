@@ -22,6 +22,18 @@ protected, duplicate or semantically invalid values before executing bound SQL.
 Boolean inference is automatic; enum variants and multiline intent stay
 explicit because a struct derive cannot inspect unrelated application types.
 
+An update writes only the submitted fields, and the edit form submits only the
+fields the administrator changed. Values a widget cannot show unchanged are never
+rewritten by an unrelated edit: SQL NULL renders as an empty input marked `NULL`,
+an unregistered enum value stays selected but disabled, a date-time with an offset
+or more than millisecond precision (and any value a number, date, e-mail or URL
+input would alter) is shown in a text input, and an undecodable value renders
+empty with a note. An emptied number, relation, date, date-time, enum or JSON
+field is stored as NULL, never `''` (a new record omits it so the column default
+applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
+a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
+change.
+
 ## Tenant-scoped CRUD and mutation audit
 
 Models whose rows belong to one tenant may opt into an exact text-column scope.
@@ -78,7 +90,17 @@ failed-attempt telemetry and external immutable delivery.
 
 Nexus is fail-closed: `try_build()` returns an error until an explicit access policy is selected.
 The built-in Basic Auth policy rejects weak/example credentials, compares both credential fields in
-constant time, limits failures by verified socket peer, and locks peers after repeated failures.
+constant time, and counts failed credentials per client bucket: one IPv4 address or one IPv6 /64
+taken from the verified socket peer. Five failures within five minutes lock the bucket for fifteen
+minutes. A request without a Basic `Authorization` header only receives the `401` challenge and is
+never counted.
+
+While a bucket is locked, credentials from an unknown client are not evaluated (`429`), so the
+lockout cannot be used to test passwords. After a successful login Nexus sets an `HttpOnly`,
+`Secure` cookie (`rullst_nexus_known_client`, random per process). A browser that presents it keeps
+having its credentials checked during a lockout, so an attacker sharing its address cannot lock that
+administrator out. The value changes on restart, and a first login during an active lockout still
+waits for the lockout to expire.
 
 Basic credentials are only encoding, not encryption. The middleware therefore accepts them only on
 an HTTPS request or when trusted deployment middleware inserts `NexusVerifiedTls`. This marker is a
@@ -117,6 +139,13 @@ guard requires so a forged forwarding header cannot choose the rate-limit identi
 The Basic Auth guard also requires `NexusVerifiedTls` from trusted transport
 integration; an `https` request URI or a forwarding header alone never proves TLS.
 
+Behind a reverse proxy, the socket peer is the proxy, so every client shares one failure bucket:
+anyone can lock it, and only browsers holding the known-client cookie keep access. To give each
+client its own bucket, the same trusted middleware that inserts `NexusVerifiedTls` may replace
+`ConnectInfo<SocketAddr>` with the client address it took from the proxy's forwarding header, and
+only when the socket peer is that proxy. Never derive it from a header an arbitrary client can
+set.
+
 For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
 loopback socket peer, an unambiguous local `Host` authority, and a matching
@@ -130,6 +159,42 @@ Generated applications use
 that loopback-only policy, while release builds require the validated
 environment credentials above. Applications can always select either policy
 explicitly when testing a production topology.
+
+## Password fields
+
+A field of kind `password` (`#[nexus(kind = "password")]` or
+`FieldKind::Password`) is never shown: the list renders a fixed mask and does not
+select or sort by the column, and the edit form renders an empty password input.
+Leaving that input empty keeps the stored value. A non-empty value is written
+exactly as typed. Nexus does not hash it and bypasses ORM model hooks, so a
+column holding Argon2 or other credential hashes must be `readonly` (or
+`hidden`) in Nexus and changed through an application flow that hashes, for
+example with `rullst_auth::hash_password_async`, or by a database trigger.
+The derive already hides a field named `password_hash`.
+
+## Browser assets and Content Security Policy
+
+The panel loads only same-origin files served by the Nexus router under
+`/nexus/assets/`: `nexus.css`, `nexus.js` and a vendored htmx. Pages contain no
+inline `<script>`/`<style>` blocks, no `on*`/`hx-on` handler attributes and no
+`style` attributes, and they do not contact a CDN, Google Fonts or GitHub. The
+default production CSP (`script-src 'self' 'nonce-…'; style-src 'self' 'nonce-…'`)
+therefore runs Nexus unchanged; do not add `'unsafe-inline'`, `'unsafe-eval'` or a
+CDN to `security.csp` for Nexus. A custom policy must keep `'self'` in
+`script-src`, `style-src` and `connect-src`, and `data:` in `img-src`. htmx runs
+with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled.
+The asset routes sit behind the same authentication policy as the panel.
+
+`assets/htmx-2.0.4.min.js` is the unmodified upstream
+[`dist/htmx.min.js`](https://github.com/bigskysoftware/htmx/blob/b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f/dist/htmx.min.js)
+of htmx 2.0.4 (tag `v2.0.4`, commit `b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f`),
+the same bytes previously loaded from `unpkg.com/htmx.org@2.0.4`. Its
+[Zero-Clause BSD license](https://github.com/bigskysoftware/htmx/blob/b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f/LICENSE)
+is kept as `assets/HTMX-LICENSE`. SHA-256
+`e209dda5c8235479f3166defc7750e1dbcd5a5c1808b7792fc2e6733768fb447`; SRI
+`sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+`.
+The file is outside Cargo dependency scanning: an update needs upstream
+provenance, a license and digest review, and the Nexus CSP browser check.
 
 ## Security boundaries
 

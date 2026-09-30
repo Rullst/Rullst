@@ -397,6 +397,25 @@ A prepared version section does not establish that its tag or crates exist.
   `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
   587 and 25 configurations deliver.
 
+### Nexus review fixes
+
+- Nexus Basic Auth no longer counts credential-less 401 challenges, buckets
+  failures per IPv4 address or IPv6 /64, and keeps previously authenticated
+  browsers (a per-process known-client cookie) working during a shared-proxy
+  lockout, so one client behind a TLS proxy can no longer lock out every
+  administrator. Pruning is amortised.
+- Nexus serves its stylesheet, script and a vendored htmx 2.0.4 (0BSD)
+  same-origin under `/nexus/assets` and emits no inline code, handlers or style
+  attributes, so the panel works under the default production nonce CSP. The
+  external logo, favicon and fonts are removed.
+- Nexus never renders stored Password-kind values: list cells are masked and
+  not selected or sortable, the edit input is empty, and an empty submission
+  keeps the stored value. Nexus does not hash values; the docs describe the
+  supported flow.
+- Nexus edits submit only changed fields and no longer overwrite NULL,
+  unregistered enum values or date-times with offsets; emptied typed fields
+  become NULL instead of `''`, and date-times accept RFC 3339 offsets.
+
 ### Nexus stored-value escaping maintenance
 
 - Forward-port unconditional escaping of stored Nexus table values, including

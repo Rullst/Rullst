@@ -64,6 +64,20 @@ pub struct User {
 }
 ```
 
+The edit form sends only the fields you change, so an edit never rewrites a
+value its widget cannot show: NULL (shown as an empty `NULL` input), an enum
+value that is not a registered option (kept selected but disabled), a date-time
+with an offset (shown as text) or a value that cannot be decoded. Emptying a
+number, relation, date, date-time, enum or JSON field stores NULL; emptying a
+text, textarea, e-mail or URL field stores an empty string. A database
+`NOT NULL` constraint therefore rejects clearing a required typed column.
+
+A `password` field is never displayed: the list shows a fixed mask and the
+edit form an empty input, and leaving it empty keeps the stored value. Nexus
+writes a new value exactly as typed and does **not** hash it. Keep hash columns
+`readonly` (or `hidden`) in Nexus and change them through an application flow
+that hashes; a field named `password_hash` is hidden by the derive.
+
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
 `#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
@@ -93,6 +107,25 @@ The helper is intentionally asymmetric: debug builds allow only requests whose
 is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-free access on in a release
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
+
+### Basic Auth failures and reverse proxies
+
+Nexus counts failed Basic credentials per client bucket: one IPv4 address or
+one IPv6 /64 of the `ConnectInfo` peer. Five failures in five minutes lock the
+bucket for fifteen minutes. The unauthenticated `401` challenge that every
+browser receives first is not a failure.
+
+A locked bucket gets `429` without any credential check, so the lockout cannot
+confirm a guessed password. The exception is a browser that already logged in
+during this process: it received the `HttpOnly`, `Secure`
+`rullst_nexus_known_client` cookie and keeps having its credentials checked.
+
+Behind a TLS-terminating reverse proxy every client shares the proxy's address,
+so one attacker can lock the bucket for everyone who has no known-client cookie
+(new browsers, or all browsers after a restart). To isolate clients, have the
+trusted middleware that inserts `NexusVerifiedTls` also replace
+`ConnectInfo<SocketAddr>` with the client address from the proxy's forwarding
+header, only for connections whose socket peer is that proxy.
 
 ## Tenant-scoped administration
 
@@ -199,6 +232,17 @@ code change or redeployment; cache policy remains application-owned.
 Batch deletion is available for every registered model. Batch deactivation is
 shown only when the model declares a writable Boolean `is_active` or `active`
 field; Nexus never guesses which arbitrary status value means inactive.
+
+## Content Security Policy
+
+Nexus pages load only same-origin assets from `/nexus/assets/` (`nexus.css`,
+`nexus.js` and a vendored htmx 2.0.4) and contain no inline scripts, styles,
+event-handler attributes or `hx-on` attributes. The default production CSP
+applies to the panel unchanged, so there is no reason to add `'unsafe-inline'`,
+`'unsafe-eval'` or a CDN to the application-wide `security.csp`. A custom
+policy must keep `'self'` for scripts, styles and `connect-src`, and `data:`
+for images. The logo, favicon and web fonts that previously came from GitHub,
+unpkg and Google Fonts are no longer requested.
 
 ## Benefits of Nexus
 

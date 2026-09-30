@@ -68,8 +68,8 @@ fn validates_and_normalizes_semantic_widgets() {
     .expect("valid registered form");
 
     assert_eq!(values.len(), 4);
-    assert_eq!(values[1].value, "1");
-    assert_eq!(values[2].value, "published");
+    assert_eq!(values[1].value.as_deref(), Some("1"));
+    assert_eq!(values[2].value.as_deref(), Some("published"));
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn validates_all_registered_semantic_field_kinds() {
     .expect("all registered semantic values");
     assert_eq!(values.len(), 8);
     assert_eq!(values[0].field.name, "name");
-    assert_eq!(values[2].value, "https://rullst.dev/ada");
+    assert_eq!(values[2].value.as_deref(), Some("https://rullst.dev/ada"));
 
     let empty = validate_form_values(
         &entry,
@@ -128,7 +128,7 @@ fn validates_all_registered_semantic_field_kinds() {
         FormMode::Create,
     )
     .expect("optional empty value");
-    assert_eq!(empty[0].value, "");
+    assert_eq!(empty[0].value.as_deref(), Some(""));
 }
 
 #[test]
@@ -153,6 +153,9 @@ fn rejects_invalid_email_url_number_date_and_datetime_values() {
         ("meeting", "2026-09-01T12:30:60"),
         ("meeting", "2026-09-01T12:30:01."),
         ("meeting", "2026-09-01T12:30:01.1234567890"),
+        ("meeting", "2026-09-01T12:30:00+24:00"),
+        ("meeting", "2026-09-01T12:30:00+0000"),
+        ("meeting", "2026-09-01T12:30:00+"),
     ] {
         assert!(
             validate_form_values(
@@ -164,6 +167,33 @@ fn rejects_invalid_email_url_number_date_and_datetime_values() {
             "{field} accepted {value}"
         );
     }
+}
+
+#[test]
+fn empty_password_input_keeps_the_stored_value() {
+    let entry = semantic_entry();
+    for mode in [FormMode::Create, FormMode::Update] {
+        let values = validate_form_values(
+            &entry,
+            vec![
+                ("name".to_owned(), "Ada".to_owned()),
+                ("password".to_owned(), String::new()),
+            ],
+            mode,
+        )
+        .expect("valid form");
+        assert_eq!(values.len(), 1);
+        assert_eq!(values[0].field.name, "name");
+    }
+
+    let replaced = validate_form_values(
+        &entry,
+        vec![("password".to_owned(), "new value".to_owned())],
+        FormMode::Update,
+    )
+    .expect("valid replacement");
+    assert_eq!(replaced.len(), 1);
+    assert_eq!(replaced[0].value.as_deref(), Some("new value"));
 }
 
 #[test]
@@ -179,13 +209,14 @@ fn boolean_normalization_accepts_html_forms_and_rejects_ambiguous_duplicates() {
         ("0", "0"),
     ] {
         let normalized = normalize_values(&field, vec![raw.to_owned()]).unwrap();
-        assert_eq!(normalized.value, expected);
+        assert_eq!(normalized.value.as_deref(), Some(expected));
     }
     assert_eq!(
         normalize_values(&field, vec!["false".to_owned(), "true".to_owned()])
             .unwrap()
-            .value,
-        "1"
+            .value
+            .as_deref(),
+        Some("1")
     );
     assert!(normalize_values(&field, vec!["true".to_owned(), "false".to_owned()]).is_err());
     assert!(normalize_values(&field, Vec::new()).is_err());
@@ -221,7 +252,12 @@ fn bounds_controls_and_protected_metadata_fail_closed() {
         FormMode::Create,
     )
     .expect("safe multiline controls");
-    assert!(multiline[0].value.contains("line two"));
+    assert!(
+        multiline[0]
+            .value
+            .as_deref()
+            .is_some_and(|value| value.contains("line two"))
+    );
 }
 
 #[test]
@@ -249,4 +285,111 @@ fn leap_year_rules_and_error_messages_are_stable() {
     for error in errors {
         assert!(!error.to_string().is_empty());
     }
+}
+
+#[test]
+fn emptied_typed_fields_become_null_never_an_empty_string() {
+    let profile = semantic_entry();
+    let emptied = || {
+        ["score", "birthday", "meeting", "team_id"]
+            .into_iter()
+            .map(|name| (name.to_owned(), String::new()))
+            .chain([("name".to_owned(), String::new())])
+            .collect::<Vec<_>>()
+    };
+
+    let update = validate_form_values(&profile, emptied(), FormMode::Update).expect("valid");
+    let written = update
+        .iter()
+        .map(|value| (value.field.name, value.value.as_deref()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        written,
+        [
+            ("name", Some("")),
+            ("score", None),
+            ("birthday", None),
+            ("meeting", None),
+            ("team_id", None),
+        ]
+    );
+
+    // A new record leaves emptied typed columns to their database default.
+    let create = validate_form_values(&profile, emptied(), FormMode::Create).expect("valid");
+    assert_eq!(create.len(), 1);
+    assert_eq!(create[0].field.name, "name");
+
+    let article = entry();
+    let update = validate_form_values(
+        &article,
+        vec![
+            ("status".to_owned(), String::new()),
+            ("metadata".to_owned(), String::new()),
+        ],
+        FormMode::Update,
+    )
+    .expect("valid");
+    assert!(update.iter().all(|value| value.value.is_none()));
+
+    // The semantic validator itself never accepts '' for a typed kind.
+    for field in &article.fields[3..] {
+        assert!(
+            validate_semantic_value(field, "").is_err(),
+            "{}",
+            field.name
+        );
+    }
+    for name in ["score", "birthday", "meeting"] {
+        let field = profile
+            .fields
+            .iter()
+            .find(|field| field.name == name)
+            .unwrap();
+        assert!(validate_semantic_value(field, "").is_err(), "{name}");
+    }
+}
+
+#[test]
+fn datetime_offsets_validate_and_only_local_values_fill_a_datetime_input() {
+    let entry = semantic_entry();
+    for value in [
+        "2026-01-01T10:00:00+00:00",
+        "2026-01-01T10:00:00Z",
+        "2026-01-01T10:00-03:30",
+        "2026-01-01T10:00:00.123456+05:45",
+    ] {
+        assert!(
+            validate_form_values(
+                &entry,
+                vec![("meeting".to_owned(), value.to_owned())],
+                FormMode::Update,
+            )
+            .is_ok(),
+            "{value}"
+        );
+    }
+
+    assert_eq!(
+        datetime_local_value("2026-01-01 10:00:00").as_deref(),
+        Some("2026-01-01T10:00:00")
+    );
+    assert_eq!(
+        datetime_local_value("2026-01-01T10:00:00.123").as_deref(),
+        Some("2026-01-01T10:00:00.123")
+    );
+    for unrepresentable in [
+        "2026-01-01T10:00:00+00:00",
+        "2026-01-01T10:00:00Z",
+        "2026-01-01T10:00:00.123456",
+        "2026-02-30T10:00",
+        "legacy",
+    ] {
+        assert_eq!(
+            datetime_local_value(unrepresentable),
+            None,
+            "{unrepresentable}"
+        );
+    }
+    assert!(is_local_date("2024-02-29"));
+    assert!(!is_local_date("2024-02-29T00:00"));
 }

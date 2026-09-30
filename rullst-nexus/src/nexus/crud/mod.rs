@@ -1,6 +1,7 @@
 //! Auto-generated CRUD admin panel routes, HTML views, and query builders.
 
 pub mod batch;
+mod form;
 pub mod handlers;
 mod input;
 mod mutation;

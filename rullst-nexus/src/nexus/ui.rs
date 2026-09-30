@@ -1,3 +1,4 @@
+use crate::nexus::assets::{HTMX_PATH, SCRIPT_PATH, STYLESHEET_PATH};
 use crate::nexus::types::NexusState;
 
 pub(crate) fn safe_icon_html(icon: &str) -> String {
@@ -85,106 +86,26 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
         format_args!("<title>{brand} &mdash; Nexus Panel</title>\n"),
     );
     out.push_str("<meta name=\"description\" content=\"Rullst Nexus: Auto-Generated CMS &amp; AI Admin Panel\" />\n");
-    out.push_str("<link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\n");
-    out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\"></script>\n");
-    out.push_str("<script>\n");
-    out.push_str("document.addEventListener('htmx:configRequest', function(evt) {\n");
-    out.push_str("    let match = document.cookie.match(/(^| )rullst_csrf=([^;]+)/);\n");
-    out.push_str("    if (match) {\n");
-    out.push_str("        evt.detail.headers['X-CSRF-Token'] = match[2];\n");
-    out.push_str("    }\n");
-    out.push_str("});\n");
-    out.push_str("function getCsrf() {\n");
-    out.push_str("    let m = document.cookie.match(/(^| )rullst_csrf=([^;]+)/);\n");
-    out.push_str("    return m ? m[2] : '';\n");
-    out.push_str("}\n");
-    out.push_str("function nexusToast(msg, kind) {\n");
-    out.push_str("    let el = document.getElementById('nexus-toast');\n");
-    out.push_str("    if (!el) return;\n");
-    out.push_str("    let icon = kind === 'success' ? '✅' : kind === 'warning' ? '⚠️' : '❌';\n");
-    out.push_str("    let toast = document.createElement('div');\n");
-    out.push_str(
-        "    let safeKind = ['success', 'warning', 'danger'].includes(kind) ? kind : 'success';\n",
+    // Same-origin assets only: the production CSP (`script-src 'self'`,
+    // `style-src 'self'`, `img-src 'self' data:`) must not need relaxing.
+    // htmx must not evaluate code or inject a style element under that policy.
+    out.push_str("<meta name=\"htmx-config\" content='{\"allowEval\":false,\"allowScriptTags\":false,\"includeIndicatorStyles\":false}' />\n");
+    out.push_str("<link rel=\"icon\" href=\"data:,\" />\n");
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<link rel=\"stylesheet\" href=\"{STYLESHEET_PATH}\" />\n\
+             <script src=\"{HTMX_PATH}\" defer></script>\n\
+             <script src=\"{SCRIPT_PATH}\" defer></script>\n"
+        ),
     );
-    out.push_str("    toast.className = 'nexus-toast nexus-toast-' + safeKind;\n");
-    out.push_str("    toast.textContent = icon + ' ' + String(msg);\n");
-    out.push_str("    el.replaceChildren(toast);\n");
-    out.push_str("    setTimeout(function() { el.replaceChildren(); }, 3500);\n");
-    out.push_str("}\n");
-    out.push_str("function nexusDelete(button) {\n");
-    out.push_str("    let table = button.dataset.nexusTable || '';\n");
-    out.push_str("    let id = button.dataset.nexusRecord || '';\n");
-    out.push_str(
-        "    if (!confirm('Are you sure you want to delete record #' + id + '?')) return;\n",
-    );
-    out.push_str(
-        "    fetch('/nexus/table/' + encodeURIComponent(table) + '/' + encodeURIComponent(id), {\n",
-    );
-    out.push_str("        method: 'DELETE',\n");
-    out.push_str("        credentials: 'same-origin',\n");
-    out.push_str("        headers: { 'X-CSRF-Token': getCsrf() }\n");
-    out.push_str("    }).then(function(res) {\n");
-    out.push_str("        if (res.ok) {\n");
-    out.push_str("            let row = button.closest('tr');\n");
-    out.push_str("            if (row) row.remove();\n");
-    out.push_str("            nexusToast('Record #' + id + ' deleted.', 'success');\n");
-    out.push_str("        } else {\n");
-    out.push_str("            res.text().then(function(txt) { nexusToast('Delete failed: ' + txt, 'danger'); });\n");
-    out.push_str("        }\n");
-    out.push_str("    }).catch(function(err) {\n");
-    out.push_str("        nexusToast('Network error: ' + err, 'danger');\n");
-    out.push_str("    });\n");
-    out.push_str("}\n");
-    out.push_str("function nexusSave(btn) {\n");
-    out.push_str("    let form = btn.closest('form');\n");
-    out.push_str("    if (!form) return;\n");
-    out.push_str("    let actionUrl = form.dataset.nexusAction || '';\n");
-    out.push_str("    let body = new URLSearchParams(new FormData(form)).toString();\n");
-    out.push_str("    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }\n");
-    out.push_str("    fetch(actionUrl, {\n");
-    out.push_str("        method: 'POST',\n");
-    out.push_str("        credentials: 'same-origin',\n");
-    out.push_str("        headers: {\n");
-    out.push_str("            'Content-Type': 'application/x-www-form-urlencoded',\n");
-    out.push_str("            'X-CSRF-Token': getCsrf()\n");
-    out.push_str("        },\n");
-    out.push_str("        body: body\n");
-    out.push_str("    }).then(function(res) {\n");
-    out.push_str("        if (btn) { btn.disabled = false; btn.textContent = 'Save Record'; }\n");
-    out.push_str("        if (res.ok) {\n");
-    out.push_str("            let modal = document.getElementById('nexus-modal');\n");
-    out.push_str("            if (modal) modal.close();\n");
-    out.push_str("            nexusToast('Saved successfully!', 'success');\n");
-    out.push_str("            htmx.ajax('GET', window.location.pathname, { target: '#nexus-content', swap: 'innerHTML' });\n");
-    out.push_str("        } else {\n");
-    out.push_str("            res.text().then(function(txt) { nexusToast('Save failed: ' + txt, 'danger'); });\n");
-    out.push_str("        }\n");
-    out.push_str("    }).catch(function(err) {\n");
-    out.push_str("        if (btn) { btn.disabled = false; btn.textContent = 'Save Record'; }\n");
-    out.push_str("        nexusToast('Network error: ' + err, 'danger');\n");
-    out.push_str("    });\n");
-    out.push_str("}\n");
-    out.push_str("document.addEventListener('click', function(event) {\n");
-    out.push_str("    let deleteButton = event.target.closest('[data-nexus-delete]');\n");
-    out.push_str("    if (deleteButton) { nexusDelete(deleteButton); return; }\n");
-    out.push_str("    let saveButton = event.target.closest('[data-nexus-save]');\n");
-    out.push_str("    if (saveButton) nexusSave(saveButton);\n");
-    out.push_str("});\n");
-    out.push_str("</script>\n");
-    out.push_str("<script>\n");
-    out.push_str(include_str!("sidebar.js"));
-    out.push_str("\n</script>\n");
-    out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
-    out.push_str("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap\" rel=\"stylesheet\">\n");
-    out.push_str("<style>\n");
-    out.push_str(NEXUS_CSS);
-    out.push_str("\n</style>\n</head>\n<body class=\"nexus-body\">\n");
+    out.push_str("</head>\n<body class=\"nexus-body\">\n");
 
     out.push_str(
         "<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\" aria-label=\"Nexus navigation\">",
     );
     out.push_str("<div class=\"nexus-brand\">");
-    out.push_str("<img src=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" class=\"nexus-brand-logo\" alt=\"Rullst\" style=\"width: 24px; height: 24px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 8px;\" />");
+    out.push_str("<span class=\"nexus-brand-mark\" aria-hidden=\"true\">R</span>");
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!("<span class=\"nexus-brand-name\">{brand}</span>"),
@@ -220,205 +141,8 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     out
 }
 
-pub const NEXUS_CSS: &str = "
-/* == Reset & Base ===================================================== */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-    --bg-900:  #0b0d14;
-    --bg-800:  #111520;
-    --bg-700:  #171c2e;
-    --bg-600:  #1e253d;
-    --bg-500:  #262f4a;
-    --border:  rgba(99,116,183,0.18);
-    --accent:  #6366f1;
-    --accent-h: #818cf8;
-    --accent-glow: rgba(99,102,241,0.35);
-    --text-100: #f1f5f9;
-    --text-300: #94a3b8;
-    --text-500: #475569;
-    --green:   #10b981;
-    --red:     #ef4444;
-    --yellow:  #f59e0b;
-    --radius:  12px;
-    --radius-sm: 8px;
-    --shadow:  0 8px 32px rgba(0,0,0,0.45);
-    --sidebar-w: 240px;
-    --topbar-h: 56px;
-    --font-sans: 'Inter', -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-    --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
-}
-html, body { height: 100%; }
-.nexus-body { font-family: var(--font-sans); background: var(--bg-900); color: var(--text-100); display: flex; height: 100vh; overflow: hidden; }
-
-/* == Sidebar =========================================================== */
-.nexus-sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh; background: var(--bg-800); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; z-index: 100; transition: transform var(--transition); padding-bottom: 16px; }
-.nexus-brand { display: flex; align-items: center; gap: 10px; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px; flex-shrink: 0; }
-.nexus-brand-icon { font-size: 22px; }
-.nexus-brand-name { font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.nexus-brand-name { min-width: 0; overflow-wrap: anywhere; }
-.nexus-sidebar-close { display: none; flex-shrink: 0; margin-left: auto; width: 40px; height: 40px; background: var(--bg-700); border: 1px solid var(--border); border-radius: 6px; color: var(--text-100); font-size: 24px; cursor: pointer; }
-.nexus-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 95; touch-action: manipulation; }
-.nexus-sidebar-close:focus-visible, .nexus-topbar-toggle:focus-visible, .nexus-nav-link:focus-visible { outline: 2px solid var(--accent-h); outline-offset: -2px; }
-.nexus-nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--text-500); padding: 0 20px 8px; text-transform: uppercase; }
-.nexus-nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: var(--text-300); text-decoration: none; font-size: 13.5px; font-weight: 500; border-left: 3px solid transparent; transition: background var(--transition), color var(--transition); cursor: pointer; }
-.nexus-nav-link:hover { background: var(--bg-700); color: var(--text-100); }
-.nexus-nav-active { background: linear-gradient(90deg, rgba(99,102,241,0.15), transparent); color: var(--accent-h) !important; border-left-color: var(--accent) !important; }
-.nexus-nav-ai { color: #c084fc !important; }
-.nexus-nav-ai:hover { background: rgba(192,132,252,0.08) !important; }
-.nexus-nav-icon { font-size: 16px; width: 20px; text-align: center; }
-.nexus-nav-divider { height: 1px; background: var(--border); margin: 12px 16px; }
-.nexus-sidebar-footer { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
-.nexus-version { font-size: 10px; color: var(--text-500); text-align: center; padding: 8px; }
-
-/* == Main Layout ======================================================= */
-.nexus-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-.nexus-topbar { height: var(--topbar-h); background: var(--bg-800); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; padding: 0 24px; flex-shrink: 0; }
-.nexus-topbar-toggle { background: none; border: none; color: var(--text-300); font-size: 18px; cursor: pointer; display: none; padding: 4px 8px; border-radius: 6px; }
-.nexus-topbar-toggle:hover { background: var(--bg-700); color: var(--text-100); }
-.nexus-topbar-breadcrumb { font-size: 13px; color: var(--text-300); flex: 1; }
-.nexus-topbar-actions { display: flex; align-items: center; gap: 12px; }
-.nexus-htmx-indicator { display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--accent-h); }
-.htmx-request .nexus-htmx-indicator { display: flex; }
-.nexus-spinner { width: 14px; height: 14px; border: 2px solid rgba(99,102,241,0.3); border-top-color: var(--accent); border-radius: 50%; animation: nexus-spin 0.6s linear infinite; }
-@keyframes nexus-spin { to { transform: rotate(360deg); } }
-.nexus-content { flex: 1; overflow-y: auto; padding: 28px 32px; background: var(--bg-900); }
-
-/* == Page Header ======================================================= */
-.nexus-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
-.nexus-page-title { font-size: 24px; font-weight: 700; color: var(--text-100); line-height: 1.2; }
-.nexus-page-subtitle { font-size: 13.5px; color: var(--text-300); margin-top: 4px; }
-.nexus-page-subtitle code { font-family: var(--font-mono); background: var(--bg-600); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
-
-/* == Dashboard Cards =================================================== */
-.nexus-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
-.nexus-stat-card { background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 20px; text-decoration: none; color: var(--text-100); cursor: pointer; transition: all var(--transition); display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
-.nexus-stat-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--accent-glow), transparent); opacity: 0; transition: opacity var(--transition); }
-.nexus-stat-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px var(--accent-glow); }
-.nexus-stat-card:hover::before { opacity: 1; }
-.nexus-stat-icon { font-size: 32px; }
-.nexus-stat-label { font-weight: 600; font-size: 15px; }
-.nexus-stat-hint { font-size: 12px; color: var(--text-300); }
-.nexus-welcome-box { background: linear-gradient(135deg, var(--bg-700), var(--bg-600)); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.nexus-welcome-icon { font-size: 40px; }
-.nexus-welcome-box h2 { font-size: 18px; font-weight: 600; }
-.nexus-welcome-box p { color: var(--text-300); max-width: 480px; font-size: 14px; }
-
-/* == Toolbar =========================================================== */
-.nexus-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.nexus-search-wrap { position: relative; flex: 1; max-width: 360px; }
-.nexus-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
-.nexus-search-input { width: 100%; background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-100); font-family: var(--font-sans); font-size: 13.5px; padding: 9px 12px 9px 36px; outline: none; transition: border-color var(--transition), box-shadow var(--transition); }
-.nexus-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-.nexus-page-badge { font-size: 12px; color: var(--text-300); background: var(--bg-700); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
-
-/* == Table ============================================================= */
-.nexus-table-wrap { background: var(--bg-800); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
-.nexus-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.nexus-thead-row { background: var(--bg-700); border-bottom: 1px solid var(--border); }
-.nexus-th { text-align: left; padding: 12px 16px; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; color: var(--text-300); text-transform: uppercase; white-space: nowrap; }
-.nexus-th-actions { text-align: right; }
-.nexus-tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
-.nexus-tr:last-child { border-bottom: none; }
-.nexus-tr:hover { background: var(--bg-700); }
-.nexus-td { padding: 13px 16px; color: var(--text-100); vertical-align: middle; }
-.nexus-td-actions { text-align: right; white-space: nowrap; }
-.nexus-empty-row { padding: 32px; text-align: center; color: var(--text-500); }
-.nexus-row-deleted { opacity: 0.4; }
-
-/* == Action Buttons ==================================================== */
-.nexus-action-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 13px; color: var(--text-300); transition: all var(--transition); margin-left: 4px; }
-.nexus-action-edit:hover { border-color: var(--accent); color: var(--accent-h); background: var(--accent-glow); }
-.nexus-action-delete:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.1); }
-
-/* == Pagination ======================================================== */
-.nexus-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
-.nexus-page-indicator { font-size: 13px; color: var(--text-300); }
-
-/* == Buttons =========================================================== */
-.nexus-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: var(--radius-sm); font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid transparent; transition: all var(--transition); white-space: nowrap; }
-.nexus-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.nexus-btn-primary:hover { background: var(--accent-h); box-shadow: 0 4px 16px var(--accent-glow); transform: translateY(-1px); }
-.nexus-btn-ghost { background: transparent; color: var(--text-300); border-color: var(--border); }
-.nexus-btn-ghost:hover { background: var(--bg-700); color: var(--text-100); border-color: var(--accent); }
-.nexus-btn-ai { background: linear-gradient(135deg, #7c3aed, #c026d3); color: #fff; border: none; }
-.nexus-btn-ai:hover { filter: brightness(1.15); box-shadow: 0 4px 20px rgba(192,38,211,0.4); transform: translateY(-1px); }
-
-/* == Toast ============================================================= */
-.nexus-toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 500; z-index: 1000; box-shadow: var(--shadow); }
-.nexus-toast-success { background: rgba(16,185,129,0.15); border: 1px solid var(--green); color: var(--green); animation: nexus-toast-in 0.3s ease; }
-.nexus-toast-warning { background: rgba(245,158,11,0.15); border: 1px solid var(--yellow); color: var(--yellow); animation: nexus-toast-in 0.3s ease; }
-.nexus-toast-danger { background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #ef4444; animation: nexus-toast-in 0.3s ease; }
-@keyframes nexus-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-/* == Modal ============================================================= */
-.nexus-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-    background: var(--bg-800);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 0;
-    color: var(--text-100);
-    max-width: 500px;
-    width: 90vw;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-}
-.nexus-modal::backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-.nexus-modal-inner { padding: 28px; }
-.nexus-modal-close { position: absolute; top: 16px; right: 16px; background: var(--bg-700); border: 1px solid var(--border); color: var(--text-300); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
-.nexus-modal-close:hover { background: var(--red); border-color: var(--red); color: #fff; }
-.nexus-modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
-
-/* == Form ============================================================== */
-.nexus-fields-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
-.nexus-form-group { display: flex; flex-direction: column; gap: 6px; }
-.nexus-label { font-size: 12px; font-weight: 600; color: var(--text-300); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px; }
-.nexus-input { background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-100); font-family: var(--font-sans); font-size: 13.5px; padding: 10px 12px; width: 100%; outline: none; }
-.nexus-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-.nexus-badge { background: var(--bg-500); border: 1px solid var(--border); color: var(--text-500); border-radius: 4px; font-size: 10px; padding: 1px 5px; }
-.nexus-form-actions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 20px; }
-
-/* == Chat ============================================================== */
-.nexus-chat-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: calc(100vh - var(--topbar-h) - 160px); }
-.nexus-chat-schema { background: var(--bg-800); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; overflow-y: auto; }
-.nexus-schema-title { font-size: 12px; font-weight: 700; color: var(--text-500); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
-.nexus-schema-pre { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-300); white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
-.nexus-chat-panel { background: var(--bg-800); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
-.nexus-chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-.nexus-chat-bubble { display: flex; gap: 12px; align-items: flex-start; animation: nexus-bubble-in 0.25s ease; }
-@keyframes nexus-bubble-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.nexus-chat-user { flex-direction: row-reverse; }
-.nexus-chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-600); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.nexus-chat-text { background: var(--bg-700); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 13.5px; line-height: 1.6; max-width: 80%; }
-.nexus-chat-user .nexus-chat-text { background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(99,102,241,0.1)); border-color: rgba(99,102,241,0.4); }
-.nexus-chat-form { display: flex; gap: 10px; padding: 16px; border-top: 1px solid var(--border); background: var(--bg-900); }
-.nexus-chat-input { flex: 1; background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-100); font-family: var(--font-sans); font-size: 13.5px; padding: 10px 14px; outline: none; transition: border-color var(--transition); }
-.nexus-chat-input:focus { border-color: var(--accent); }
-.nexus-code { font-family: var(--font-mono); background: var(--bg-900); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; display: block; font-size: 12px; color: #a5f3fc; white-space: pre-wrap; margin: 8px 0; }
-
-/* == Responsive ======================================================== */
-@media (max-width: 900px) {
-    .nexus-body { flex-direction: column; height: auto; min-height: 100vh; overflow: auto; }
-    .nexus-sidebar { position: static; width: 100%; min-width: 0; height: auto; }
-    .nexus-drawer-ready .nexus-body { flex-direction: row; height: 100dvh; overflow: hidden; }
-    .nexus-drawer-ready .nexus-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: min(var(--sidebar-w), calc(100vw - 48px)); height: 100dvh; transform: translateX(-100%); visibility: hidden; overscroll-behavior: contain; }
-    .nexus-drawer-ready .nexus-sidebar-open { transform: translateX(0); visibility: visible; }
-    .nexus-drawer-ready .nexus-topbar-toggle, .nexus-drawer-ready .nexus-sidebar-close { display: flex; align-items: center; justify-content: center; }
-    .nexus-drawer-ready .nexus-sidebar-backdrop:not([hidden]) { display: block; }
-    .nexus-content { padding: 20px 16px; }
-    .nexus-chat-layout { grid-template-columns: 1fr; }
-    .nexus-chat-schema { max-height: 160px; }
-    .nexus-fields-grid { grid-template-columns: 1fr; }
-}
-@media (prefers-reduced-motion: reduce) {
-    .nexus-sidebar { transition: none; }
-}
-";
+/// The Nexus stylesheet, served same-origin at `/nexus/assets/nexus.css`.
+pub const NEXUS_CSS: &str = include_str!("../../assets/nexus.css");
 
 #[cfg(test)]
 mod icon_tests {
