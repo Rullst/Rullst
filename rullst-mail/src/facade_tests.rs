@@ -346,3 +346,39 @@ async fn synchronous_tenant_facade_uses_custom_and_resolved_offline_drivers() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn unconfigured_driver_logs_only_outside_staging_and_production() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.clear("MAIL_DRIVER");
+    environment.clear("APP_ENV");
+    for production in ["production", "staging"] {
+        environment.set("RULLST_ENV", production);
+        assert!(matches!(
+            Mail::resolve_driver().await,
+            Err(MailError::ConfigError(_))
+        ));
+    }
+    environment.set("RULLST_ENV", "not-an-environment");
+    assert!(matches!(
+        Mail::resolve_driver().await,
+        Err(MailError::ConfigError(_))
+    ));
+    for local in ["development", "test"] {
+        environment.set("RULLST_ENV", local);
+        assert!(Mail::resolve_driver().await.is_ok());
+    }
+    environment.clear("RULLST_ENV");
+    assert!(Mail::resolve_driver().await.is_ok());
+    assert!(matches!(
+        default_driver_name(Some("production")),
+        Err(MailError::ConfigError(_))
+    ));
+
+    // An explicit `log` selection is honoured everywhere.
+    environment.set("RULLST_ENV", "production");
+    environment.set("MAIL_DRIVER", "log");
+    assert!(Mail::resolve_driver().await.is_ok());
+}

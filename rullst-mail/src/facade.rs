@@ -187,29 +187,37 @@ impl Mail {
     async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
         // Resolve the driver either from env or Rullst.toml
         let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();
+        let mut configured_env = None;
 
         if driver_name_opt.is_none()
             && let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await
         {
             let mut in_mail = false;
+            let mut in_app = false;
             for line in toml_content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with('[') {
                     in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
+                    in_app = trimmed == "[app]";
                     continue;
                 }
-                if in_mail
-                    && trimmed.starts_with("driver")
-                    && let Some(val) = trimmed.split('=').nth(1)
-                {
-                    let clean_val = val.split('#').next().unwrap_or(val).trim();
-                    driver_name_opt =
-                        Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
+                let Some((key, val)) = trimmed.split_once('=') else {
+                    continue;
+                };
+                let clean_val = val.split('#').next().unwrap_or(val).trim();
+                let clean_val = clean_val.trim_matches('"').trim_matches('\'').to_string();
+                if in_mail && trimmed.starts_with("driver") {
+                    driver_name_opt = Some(clean_val);
+                } else if in_app && key.trim() == "env" {
+                    configured_env = Some(clean_val);
                 }
             }
         }
 
-        let driver_name = driver_name_opt.unwrap_or_else(|| "log".to_string());
+        let driver_name = match driver_name_opt {
+            Some(driver_name) => driver_name,
+            None => default_driver_name(configured_env.as_deref())?.to_string(),
+        };
 
         match driver_name.as_str() {
             "log" => Ok(Box::new(LogDriver)),
@@ -350,6 +358,24 @@ impl Mail {
             ))),
         }
     }
+}
+
+/// The driver used when neither `MAIL_DRIVER` nor `[mail] driver` is set.
+///
+/// Logging is only a development/test default. In staging or production an
+/// unconfigured facade would report success for mail it never sends, so it
+/// fails closed unless `log` is selected explicitly.
+fn default_driver_name(configured_env: Option<&str>) -> Result<&'static str, MailError> {
+    let environment = rullst_core::config::Environment::detect(configured_env).map_err(|_| {
+        MailError::ConfigError("RULLST_ENV, APP_ENV or [app].env is invalid".to_string())
+    })?;
+    if environment.requires_secure_defaults() {
+        return Err(MailError::ConfigError(format!(
+            "no mail driver is configured for the {environment} environment; set MAIL_DRIVER \
+             or [mail] driver (MAIL_DRIVER=log only logs metadata and delivers nothing)"
+        )));
+    }
+    Ok("log")
 }
 
 fn datetime_to_system_time(

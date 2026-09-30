@@ -490,7 +490,11 @@ driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid" | "postmar
 
 Environment variables:
 - `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`, `azure-acs`, `sendpulse`, `mailjet`, `mailjet-sandbox`,
-  `mailtrap`, `mailtrap-sandbox`).
+  `mailtrap`, `mailtrap-sandbox`). When neither it nor `[mail] driver` is set,
+  development and test fall back to `log`, while staging and production
+  (`RULLST_ENV`, `APP_ENV` or `[app] env`) return `MailError::ConfigError`
+  instead of logging mail that is never delivered. Select `log` explicitly to
+  keep metadata-only logging there.
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
