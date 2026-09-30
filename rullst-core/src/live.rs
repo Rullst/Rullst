@@ -6,6 +6,9 @@ use serde_json::Value;
 
 pub mod recovery;
 
+#[cfg(test)]
+mod macro_dispatch_tests;
+
 /// Rullst Live Component (Server-Driven UI)
 /// Inspired by Phoenix LiveView and Laravel Livewire, allowing you to write
 /// interactive components entirely in Rust, updated in real-time via WebSockets.

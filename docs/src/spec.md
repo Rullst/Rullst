@@ -1132,7 +1132,10 @@ replication and proxy configuration remain explicit application responsibilities
 No automatic durability or upgrade of legacy `LiveComponent` code is implied.
 The legacy `live_ws_handler` bounds incoming WebSocket frames and messages to
 64 KiB before JSON parsing; its origin, admission and idle policy stay with the
-application route.
+application route. A `#[live_component]` dispatches only on the first present
+`rullst_event`, `action` or `event` string field and runs at most one
+`#[live_event]` handler per message; other payload keys and values, including
+form inputs, never select a handler.
 The implementation and its local protocol/Chromium acceptance are recorded in
 [the recovery guide](live-recovery.md). Hosted workspace/platform/package
 admission passed in PR #236; final release admission remains separate.

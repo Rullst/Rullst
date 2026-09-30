@@ -82,6 +82,10 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                     #mount_tokens
 
                     async fn handle_event(&mut self, payload: serde_json::Value) {
+                        // Only the first present explicit event field selects a
+                        // handler, and at most one handler runs per message.
+                        // Other payload keys and values (for example form
+                        // inputs typed by the user) never dispatch events.
                         let event_name_opt = payload.get("rullst_event")
                             .or_else(|| payload.get("action"))
                             .or_else(|| payload.get("event"))
@@ -91,19 +95,6 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                             match event_name {
                                 #(#handlers)*
                                 _ => {}
-                            }
-                        } else if let Some(obj) = payload.as_object() {
-                            for (key, val) in obj {
-                                match key.as_str() {
-                                    #(#handlers)*
-                                    _ => {}
-                                }
-                                if let Some(v_str) = val.as_str() {
-                                    match v_str {
-                                        #(#handlers)*
-                                        _ => {}
-                                    }
-                                }
                             }
                         }
                     }
