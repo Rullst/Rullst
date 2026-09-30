@@ -2,11 +2,12 @@
 //!
 //! Declarative cron jobs with bounded, observable execution lifecycles.
 
+use crate::error_buffer::{ERROR_BUFFER_CAPACITY, ErrorBuffer, ErrorReporter, error_buffer};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
 /// Strongly-typed error domain for scheduler operations.
@@ -148,7 +149,7 @@ impl Scheduler {
         let runtime = tokio::runtime::Handle::try_current()
             .map_err(|_| SchedulerError::RuntimeUnavailable)?;
         let (shutdown, _) = watch::channel(false);
-        let (errors_tx, errors) = mpsc::unbounded_channel();
+        let (errors_tx, errors) = error_buffer(ERROR_BUFFER_CAPACITY, "scheduler");
         let mut loops = Vec::with_capacity(self.tasks.len());
 
         for task in self.tasks {
@@ -178,22 +179,31 @@ impl Default for Scheduler {
 }
 
 /// Owns running scheduler loops and exposes their typed failures.
+///
+/// The handle buffers at most 256 undrained errors. When the buffer is full,
+/// newer errors are dropped, counted by [`Self::dropped_errors`] and emitted as
+/// `tracing` warnings. Drain [`Self::next_error`] to observe every failure.
 #[must_use = "dropping the scheduler handle immediately stops all scheduled tasks"]
 pub struct SchedulerHandle {
     shutdown: watch::Sender<bool>,
     loops: Vec<(String, tokio::task::JoinHandle<()>)>,
-    errors: mpsc::UnboundedReceiver<SchedulerError>,
+    errors: ErrorBuffer<SchedulerError>,
 }
 
 impl SchedulerHandle {
     /// Waits for the next timeout, panic, or runtime failure reported by a task.
     pub async fn next_error(&mut self) -> Option<SchedulerError> {
-        self.errors.recv().await
+        self.errors.next().await
     }
 
     /// Returns a pending scheduler failure without waiting.
     pub fn try_next_error(&mut self) -> Option<SchedulerError> {
-        self.errors.try_recv().ok()
+        self.errors.try_next()
+    }
+
+    /// Returns how many failures were dropped because the buffer was full.
+    pub fn dropped_errors(&self) -> u64 {
+        self.errors.dropped()
     }
 
     /// Gracefully stops task loops, aborting any current handler execution.
@@ -244,7 +254,7 @@ async fn run_task_loop(
     timeout: Duration,
     policy: SchedulerFailurePolicy,
     mut shutdown: watch::Receiver<bool>,
-    errors: mpsc::UnboundedSender<SchedulerError>,
+    errors: ErrorReporter<SchedulerError>,
 ) {
     loop {
         if shutdown_requested(&shutdown) {
@@ -253,7 +263,7 @@ async fn run_task_loop(
 
         let now = chrono::Utc::now();
         let Some(next) = task.schedule.upcoming(chrono::Utc).next() else {
-            let _ = errors.send(SchedulerError::ScheduleExhausted {
+            errors.report(SchedulerError::ScheduleExhausted {
                 label: task.label.clone(),
             });
             break;
@@ -269,7 +279,7 @@ async fn run_task_loop(
             Ok(ExecutionStatus::Completed) => {}
             Ok(ExecutionStatus::ShutDown) => break,
             Err(error) => {
-                let _ = errors.send(error);
+                errors.report(error);
                 if policy == SchedulerFailurePolicy::StopTask {
                     break;
                 }
@@ -451,7 +461,7 @@ mod tests {
             handler,
         };
         let (shutdown_tx, shutdown) = watch::channel(false);
-        let (errors_tx, mut errors) = mpsc::unbounded_channel();
+        let (errors_tx, mut errors) = error_buffer(ERROR_BUFFER_CAPACITY, "test");
         let task_loop = tokio::spawn(run_task_loop(
             task,
             Duration::from_secs(5),
@@ -466,7 +476,7 @@ mod tests {
 
         assert!(executions.load(Ordering::SeqCst) >= 1);
         assert_eq!(maximum.load(Ordering::SeqCst), 1);
-        assert!(errors.try_recv().is_err());
+        assert!(errors.try_next().is_none());
     }
 
     #[tokio::test]

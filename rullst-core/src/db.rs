@@ -5,8 +5,10 @@
 //! closed instead of simulating a successful sync.
 
 /// Configuration for distributed SQLite replica database sync.
+///
+/// `Debug` redacts `auth_token` and prints only the scheme of `sync_url`.
 #[non_exhaustive]
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ReplicationConfig {
     /// Local SQLite file path representing the local database replica.
     pub replica_path: String,
@@ -45,6 +47,23 @@ impl ReplicationConfig {
     pub fn with_sync_interval(mut self, secs: u64) -> Self {
         self.sync_interval_secs = secs;
         self
+    }
+}
+
+impl std::fmt::Debug for ReplicationConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReplicationConfig")
+            .field("replica_path", &self.replica_path)
+            .field(
+                "sync_url",
+                &self.sync_url.as_deref().map(crate::config::redacted_url),
+            )
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "<redacted>"),
+            )
+            .field("sync_interval_secs", &self.sync_interval_secs)
+            .finish()
     }
 }
 
@@ -104,6 +123,23 @@ pub fn safe_driver() -> Option<&'static str> {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn replication_debug_output_redacts_credentials() {
+        let config = ReplicationConfig::new("replica.db")
+            .with_sync_url("libsql://db-org.turso.io?authToken=url-secret")
+            .with_auth_token("bearer-secret");
+        let debug = format!("{config:?}");
+        assert!(!debug.contains("bearer-secret"), "{debug}");
+        assert!(!debug.contains("url-secret"), "{debug}");
+        assert!(debug.contains("replica.db"), "{debug}");
+        assert!(debug.contains("libsql://<redacted>"), "{debug}");
+        assert!(
+            debug.contains("auth_token: Some(\"<redacted>\")"),
+            "{debug}"
+        );
+    }
+
     #[tokio::test]
     async fn test_db_get_pool() {
         let config = ReplicationConfig::new("test.db")

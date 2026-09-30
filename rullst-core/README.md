@@ -35,9 +35,27 @@
   same way: process `DATABASE_URL`, then `./.env` (never overriding the
   process), then `[database].url`. Database commands without a configured
   database fail instead of creating a SQLite file.
+- **Local Edge Emulator:** `edge::EdgeServer::run` binds `127.0.0.1` unless
+  `HOST`/`RULLST_HOST` is set, serves every path including `/`, and rejects a
+  body over 2 MiB with `413` (or an unreadable one with `400`) instead of
+  passing the handler an empty body. It applies no security baseline.
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.
+- **Fenced Queue Leases:** SQLite and Redis complete, fail or requeue a claimed
+  job only under the attempt number `pop` returned, so a stale worker whose
+  lease was recovered and claimed again cannot finish the newer claim.
+- **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
+  name hands the claim back with a five-second delay (SQLite and Redis) instead
+  of failing it, so a worker that registered that name can run it.
+- **Bounded Redis Failure State:** Failed jobs and dead letters are each
+  retained up to 10,000 entries (configurable with
+  `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
+  Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
+  `purge_failed_jobs`.
+- **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
+  most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
+  and logged as a `tracing` warning. Drain `next_error` to observe every failure.
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.
@@ -112,6 +130,8 @@ endpoint. The limit must be 1–200. `CacheEntryMetadata` deliberately redacts
 the logical key from `Debug` and never carries the cached value, but
 `logical_key()` still returns application data to an authorized caller. Rullst
 Studio converts it into a process-bound opaque token before rendering it.
+`Cache::memory()` stores a TTL too large for the monotonic clock (such as
+`u64::MAX`) as non-expiring instead of panicking.
 
 For orchestrated deployments, construct `ApplicationLifecycle`, mount
 `health_router_with_lifecycle(lifecycle.clone())`, then pass the same value to

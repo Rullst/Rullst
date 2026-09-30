@@ -94,6 +94,14 @@ Do not place provider bodies, database errors, PII, tokens or debug text in a
 failure code. Log sensitive diagnostics only through an approved server-side
 telemetry policy.
 
+When the server rejects an envelope that still carries a valid `request_id`
+(an unsupported version such as a cached older Wasm client, or a payload of the
+wrong shape), the failure echoes that identifier. The caller therefore receives
+`rpc.version_unsupported` or `rpc.request_invalid` rather than
+`rpc.correlation_mismatch`. Content-type and body-size rejections happen before
+the body is parsed and still use a server-generated identifier; the generated
+client applies the same limits before sending.
+
 ## Exact v12 limits
 
 - zero to 16 simple identifier parameters;

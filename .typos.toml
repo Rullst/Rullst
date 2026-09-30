@@ -39,5 +39,7 @@ erros = "erros"
 Curso = "Curso"
 
 [type.rust.extend-words]
+# ISO 4217 code of the Jordanian dinar, used by the minor-unit table.
+JOD = "JOD"
 # Portuguese imperative used by the localized account templates.
 Confirme = "Confirme"

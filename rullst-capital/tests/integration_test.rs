@@ -281,9 +281,10 @@ async fn test_all_12_payment_and_payout_providers() {
     let payout_res = wise
         .create_transfer("transfer@wise.com", 10000, "USD")
         .await;
-    assert!(payout_res.is_ok());
-    let status = wise.get_transfer_status("transfer_123").await;
+    let transfer_id = payout_res.unwrap();
+    let status = wise.get_transfer_status(&transfer_id).await;
     assert!(status.is_ok());
+    assert!(wise.get_transfer_status("transfer_123").await.is_err());
     let wise_payload = br#"{"data":{"resource":{"id":12345,"recipient_email":"transfer@wise.com","amount":100.0,"currency":"USD"},"current_state":"outgoing_payment_sent"}}"#;
     let _ = wise.parse_webhook_payload(wise_payload);
 }
