@@ -68,6 +68,16 @@ enum TransactionalAccountStatus {
     Settled,
 }
 
+/// A mixed-case type name is created quoted (case-preserving) and must be
+/// resolved by the codec under that exact name.
+#[cfg(feature = "strict-postgres")]
+#[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "PgMixedCaseStatus", rename_all = "snake_case")]
+enum MixedCaseStatus {
+    Open,
+    Closed,
+}
+
 #[cfg(feature = "strict-postgres")]
 struct ConflictingAccountStatus;
 
@@ -317,6 +327,7 @@ async fn exercise_native_enum() {
     .expect("PostgreSQL enum should decode");
     assert_eq!(stored, AccountStatus::AwaitingReview);
     exercise_native_enum_filters().await;
+    exercise_mixed_case_enum().await;
 
     let drift = Schema::create("pg_native_enum_conflict", |table: &mut Blueprint| {
         table.id();
@@ -368,6 +379,38 @@ async fn exercise_native_enum() {
     .expect("dropping the enum after its table in one transaction must not hang");
     dropped.expect("PostgreSQL enum table and type should be dropped together");
     assert_eq!(postgres_type_count("pg_account_status").await, 0);
+}
+
+/// Binds, filters and decodes an enum whose type name is mixed-case.
+#[cfg(feature = "strict-postgres")]
+async fn exercise_mixed_case_enum() {
+    Schema::create("pg_mixed_case_enum_accounts", |table: &mut Blueprint| {
+        table.id();
+        table.native_enum::<MixedCaseStatus>("status").not_null();
+    })
+    .await
+    .expect("a mixed-case PostgreSQL enum schema should be created");
+    let pool = Orm::pool().expect("PostgreSQL pool");
+    sqlx::query("INSERT INTO pg_mixed_case_enum_accounts (status) VALUES ($1), ($2)")
+        .bind(MixedCaseStatus::Closed)
+        .bind(MixedCaseStatus::Open)
+        .execute(pool)
+        .await
+        .expect("a mixed-case PostgreSQL enum should encode");
+    let closed = sqlx::query_scalar::<_, MixedCaseStatus>(
+        "SELECT status FROM pg_mixed_case_enum_accounts WHERE status = ANY($1)",
+    )
+    .bind(vec![MixedCaseStatus::Closed])
+    .fetch_one(pool)
+    .await
+    .expect("a mixed-case PostgreSQL enum and its array should encode and decode");
+    assert_eq!(closed, MixedCaseStatus::Closed);
+    Schema::drop_if_exists("pg_mixed_case_enum_accounts")
+        .await
+        .expect("drop the mixed-case enum table");
+    Schema::drop_native_enum::<MixedCaseStatus>()
+        .await
+        .expect("drop the mixed-case enum type");
 }
 
 /// Builder filters bind enum values as text; PostgreSQL has no `enum = text`

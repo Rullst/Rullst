@@ -1277,6 +1277,11 @@ use the documented bounded ASCII allowlists. `Blueprint::native_enum` emits:
 - an inline `ENUM` for MySQL/MariaDB; and
 - a `TEXT CHECK` constraint for SQLite.
 
+The PostgreSQL type is created as a quoted, case-preserving identifier, and the
+generated SQLx codec names it quoted as well, so a mixed-case `type_name`
+resolves to exactly that type. A manual `sqlx::Type` implementation for a
+mixed-case `DatabaseEnum::TYPE_NAME` must quote the name the same way.
+
 PostgreSQL enum creation, its label drift check and
 `Schema::drop_native_enum` run through the task-scoped transaction when one is
 active, exactly like the table DDL: they roll back with it, and dropping the
