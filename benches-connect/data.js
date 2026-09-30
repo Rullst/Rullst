@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790775849155,
+  "lastUpdate": 1790786130408,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8294,6 +8294,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 534,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd639f3d488732b423743a0652c319f44b3cabfc",
+          "message": "Merge pull request #348 from Rullst/fix/v13-studio-ai-iot-tail-fixes\n\nfix(studio,ai,iot): Studio form origins, Studio on PostgreSQL, case-exact MySQL chat memory and OTA bank selection",
+          "timestamp": "2026-09-30T13:15:41-03:00",
+          "tree_id": "5d38b619a63e463761ac2c24573241fdc66711c6",
+          "url": "https://github.com/Rullst/Rullst/commit/bd639f3d488732b423743a0652c319f44b3cabfc"
+        },
+        "date": 1790786129387,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 535,
             "range": "± 2",
             "unit": "ns/iter"
           }
