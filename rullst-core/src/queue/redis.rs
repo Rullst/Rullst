@@ -52,6 +52,7 @@ pub mod redis_driver {
         dead_letter_key: String,
         failed_retention: usize,
         dead_letter_retention: usize,
+        max_stalled_leases: u32,
     }
 
     impl RedisDriver {
@@ -131,6 +132,7 @@ pub mod redis_driver {
                 shared: SharedRedisConnection::new(client),
                 failed_retention: DEFAULT_FAILURE_RETENTION,
                 dead_letter_retention: DEFAULT_FAILURE_RETENTION,
+                max_stalled_leases: super::super::DEFAULT_MAX_STALLED_LEASES,
             }
         }
 
@@ -318,13 +320,21 @@ pub mod redis_driver {
             let mut connection = self.connection().await?;
             redis::cmd("EVAL")
                 .arg(RECOVER_SCRIPT)
-                .arg(4)
+                .arg(6)
                 .arg(&self.processing_key)
                 .arg(&self.processing_index_key)
                 .arg(&self.queue_key)
                 .arg(&self.dead_letter_key)
+                .arg(&self.failed_key)
+                .arg(&self.failed_index_key)
                 .arg(cutoff.to_string())
                 .arg(self.dead_letter_retention)
+                .arg(self.max_stalled_leases)
+                .arg(format!(
+                    "lease stalled {} times without finishing; failed instead of requeued",
+                    self.max_stalled_leases
+                ))
+                .arg(self.failed_retention)
                 .query_async::<u64>(&mut connection)
                 .await
                 .map_err(|error| {

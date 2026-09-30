@@ -50,7 +50,9 @@
 - **Queue-wide Stalled-lease Recovery:** each worker periodically requeues
   every processing lease older than its `stalled_after`, including other
   workers' leases, so every worker sharing a queue needs a `stalled_after`
-  longer than the longest `job_timeout` among them.
+  longer than the longest `job_timeout` among them. SQLite and Redis fail a
+  job whose fifth lease stalls (for example because it keeps crashing its
+  worker) instead of requeuing it forever.
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
   name hands the claim back with a five-second delay (SQLite and Redis) instead
   of failing it, so a worker that registered that name can run it.

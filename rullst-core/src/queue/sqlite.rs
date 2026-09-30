@@ -9,6 +9,9 @@ use std::time::{Duration, SystemTime};
 
 const MAX_COMPLETED_HISTORY: usize = 100_000;
 
+mod recovery;
+mod schema;
+
 /// Queue driver backed by a SQLite database.
 ///
 /// Uses an auto-created `rullst_jobs` table. Perfect for local development
@@ -16,6 +19,7 @@ const MAX_COMPLETED_HISTORY: usize = 100_000;
 pub struct SqliteDriver {
     pub(crate) pool: sqlx::SqlitePool,
     completed_history_limit: usize,
+    max_stalled_leases: u32,
 }
 
 impl SqliteDriver {
@@ -26,65 +30,12 @@ impl SqliteDriver {
         let pool = sqlx::SqlitePool::connect(&database_url)
             .await
             .map_err(|e| QueueError::Driver(format!("Failed to connect to SQLite: {}", e)))?;
-
-        // Auto-create the jobs table
-        sqlx::query(
-            r#"CREATE TABLE IF NOT EXISTS rullst_jobs (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                payload TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending',
-                error TEXT,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                available_at_ms INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"#,
-        )
-        .execute(&pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs table: {}", e)))?;
-
-        let scheduled_column: Option<String> = sqlx::query_scalar(
-            "SELECT name FROM pragma_table_info('rullst_jobs') WHERE name = 'available_at_ms'",
-        )
-        .fetch_optional(&pool)
-        .await
-        .map_err(|error| {
-            QueueError::Driver(format!("Failed to inspect rullst_jobs columns: {error}"))
-        })?;
-        if scheduled_column.is_none() {
-            sqlx::query(
-                "ALTER TABLE rullst_jobs ADD COLUMN available_at_ms INTEGER NOT NULL DEFAULT 0",
-            )
-            .execute(&pool)
-            .await
-            .map_err(|error| {
-                QueueError::Driver(format!(
-                    "Failed to add rullst_jobs scheduling column: {error}"
-                ))
-            })?;
-        }
-
-        // Add index for fast polling of pending jobs
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_status_created ON rullst_jobs(status, created_at)"
-        )
-        .execute(&pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs indexes: {}", e)))?;
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_ready ON rullst_jobs(status, available_at_ms, created_at)",
-        )
-        .execute(&pool)
-        .await
-        .map_err(|error| {
-            QueueError::Driver(format!("Failed to create scheduled-job index: {error}"))
-        })?;
+        schema::prepare(&pool).await?;
 
         Ok(Self {
             pool,
             completed_history_limit: 0,
+            max_stalled_leases: super::DEFAULT_MAX_STALLED_LEASES,
         })
     }
 
@@ -149,7 +100,7 @@ impl SqliteDriver {
 
     /// Retries a failed job by resetting its status to 'pending' and clearing error details.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, stalled_recoveries = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
             .execute(&self.pool)
             .await
@@ -433,16 +384,7 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
-        let stale_seconds = stale_after.as_secs().max(1);
-        let modifier = format!("-{stale_seconds} seconds");
-        let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'pending', error = 'recovered after worker interruption', available_at_ms = 0, updated_at = datetime('now') WHERE status = 'processing' AND updated_at <= datetime('now', ?)",
-        )
-        .bind(modifier)
-        .execute(&self.pool)
-        .await
-        .map_err(|error| QueueError::Driver(format!("Failed to recover stalled jobs: {error}")))?;
-        Ok(result.rows_affected())
+        recovery::recover_stalled(&self.pool, stale_after, self.max_stalled_leases).await
     }
 
     async fn pending_count(&self) -> Result<u64, QueueError> {

@@ -70,6 +70,11 @@ recovering worker's `stalled_after`, including leases of other workers. Every
 worker that shares a queue must therefore use a `stalled_after` longer than the
 longest `job_timeout` of any of them; otherwise a worker with a short
 `stalled_after` requeues a slower pool's running job and it runs concurrently.
+A job that crashes, aborts or hangs its worker would otherwise be recovered and
+claimed forever, so the SQLite and Redis drivers count stalled leases per job
+and fail the job, instead of requeuing it, when its fifth lease stalls. The
+failure is listed and retryable like any other failed job, and
+`retry_failed_job` restarts the count.
 Worker transitions are fenced by the claim's attempt number. The SQLite and
 Redis drivers complete, fail or requeue a job only while it is still processing
 under the attempt that `pop` returned, so a worker whose lease was recovered and

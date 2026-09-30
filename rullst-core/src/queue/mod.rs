@@ -36,6 +36,8 @@ pub mod worker;
 
 #[cfg(test)]
 mod lease_tests;
+#[cfg(all(test, feature = "queue-sqlite", not(miri)))]
+mod recovery_tests;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
 #[cfg(test)]
@@ -54,6 +56,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const MAX_SCHEDULE_DELAY: Duration = Duration::from_secs(366 * 24 * 60 * 60);
+
+/// Stalled leases after which the built-in drivers fail a job instead of
+/// requeuing it, so a job that keeps killing its worker cannot loop forever.
+#[cfg_attr(
+    not(any(feature = "queue-sqlite", feature = "queue-redis")),
+    allow(dead_code)
+)]
+pub(crate) const DEFAULT_MAX_STALLED_LEASES: u32 = 5;
 
 // ─── Error Types ────────────────────────────────────────────────────────────
 
@@ -253,6 +263,10 @@ pub trait QueueDriver: Send + Sync {
         ))
     }
     /// Recover processing leases left behind by a crashed worker.
+    ///
+    /// The built-in SQLite and Redis drivers fail a job, instead of returning
+    /// it to pending, when its lease has stalled five times, and report both
+    /// requeued and failed leases in the returned count.
     async fn recover_stalled(&self, _stale_after: std::time::Duration) -> Result<u64, QueueError> {
         Err(QueueError::Unsupported(
             "this driver cannot recover stalled jobs".to_string(),
