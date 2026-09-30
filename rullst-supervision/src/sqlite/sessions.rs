@@ -248,9 +248,12 @@ impl<C: Clock> Operation<'_, C> {
             .await
     }
 
+    /// Latest session still inside its retention. Sessions may use different
+    /// policy lifetimes, so a newer session can leave retention before an older
+    /// one; only retained rows compete for "latest".
     async fn latest_session(&mut self, scope: &Scope) -> Result<Option<Session>, Error> {
-        let id: Option<String> = sqlx::query_scalar("SELECT substr(id,1,129) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND resource=? ORDER BY revision DESC LIMIT 1")
-            .bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str())
+        let id: Option<String> = sqlx::query_scalar("SELECT substr(id,1,129) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND resource=? AND retain_until>? ORDER BY revision DESC LIMIT 1")
+            .bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str()).bind(self.now)
             .fetch_optional(&mut *self.tx).await.map_err(storage)?;
         let Some(id) = id else {
             return Ok(None);
