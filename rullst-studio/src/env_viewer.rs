@@ -46,6 +46,51 @@ fn may_display_environment_value(key: &str) -> bool {
         || normalized.starts_with("LC_")
 }
 
+/// Names that mark the value after `=` or `:` as a credential, as in a query
+/// string (`?access_token=...`) or a DSN (`password=...`).
+const SECRET_ASSIGNMENT_NAMES: [&str; 12] = [
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "key",
+    "apikey",
+    "auth",
+    "credential",
+    "credentials",
+    "signature",
+    "sig",
+];
+
+/// Whether an allowlisted value still looks like it carries a credential: URL
+/// user information (`scheme://user:secret@host`), a bearer token or a
+/// secret-named assignment. Key names alone cannot classify such values.
+fn value_may_hold_credentials(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    if lower.contains("bearer ") {
+        return true;
+    }
+    let mut rest = lower.as_str();
+    while let Some(start) = rest.find("://") {
+        let authority = &rest[start + 3..];
+        let end = authority.find(['/', '?', '#']).unwrap_or(authority.len());
+        if authority[..end].contains('@') {
+            return true;
+        }
+        rest = &authority[end..];
+    }
+    let bytes = lower.as_bytes();
+    SECRET_ASSIGNMENT_NAMES.iter().any(|name| {
+        lower.match_indices(name).any(|(start, _)| {
+            let end = start + name.len();
+            let whole_word = start == 0 || !bytes[start - 1].is_ascii_alphanumeric();
+            let separator = lower[end..].trim_start().chars().next();
+            whole_word && matches!(separator, Some('=' | ':'))
+        })
+    })
+}
+
 /// Renders one table row per variable. `std::env::vars` panics on a key or
 /// value that is not valid Unicode, so the OS strings are rendered lossily.
 fn render_environment_rows(vars: impl IntoIterator<Item = (OsString, OsString)>) -> String {
@@ -57,11 +102,11 @@ fn render_environment_rows(vars: impl IntoIterator<Item = (OsString, OsString)>)
 
     let mut rows = String::new();
     for (key, val) in vars {
-        let display_val = if may_display_environment_value(&key) {
-            val.to_string_lossy().into_owned()
-        } else {
-            "[REDACTED]".to_string()
-        };
+        let display_val = Some(key.as_str())
+            .filter(|key| may_display_environment_value(key))
+            .map(|_| val.to_string_lossy().into_owned())
+            .filter(|value| !value_may_hold_credentials(value))
+            .unwrap_or_else(|| "[REDACTED]".to_string());
 
         let val_html = rullst_core::html::escape_str(&display_val);
 
@@ -254,6 +299,42 @@ mod tests {
         assert!(rows.contains("LEGACY_\u{fffd}PATH"));
         assert!(rows.contains("pt_BR.\u{fffd}"));
         assert!(!rows.contains("hidden"));
+    }
+
+    #[test]
+    fn allowlisted_values_with_credentials_are_redacted() {
+        let rows = render_environment_rows(
+            [
+                (
+                    "PUBLIC_REPLICA_URL",
+                    "postgres://reporter:hidden-one@db.internal/app",
+                ),
+                ("NEXT_PUBLIC_API_URL", "https://svc:hidden-two@api.internal"),
+                (
+                    "PUBLIC_CALLBACK_URL",
+                    "https://example.test/cb?access_token=hidden-three",
+                ),
+                ("PUBLIC_HEADER", "Bearer hidden-four"),
+                ("PUBLIC_DB_PARTS", "host=db password = hidden-five"),
+                ("PUBLIC_SITE_URL", "https://example.test/docs?page=2"),
+                ("PUBLIC_PRIMATE_NAME", "monkey=george"),
+                ("LANG", "pt_BR.UTF-8"),
+            ]
+            .map(|(key, value)| (OsString::from(key), OsString::from(value))),
+        );
+        for hidden in [
+            "hidden-one",
+            "hidden-two",
+            "hidden-three",
+            "hidden-four",
+            "hidden-five",
+        ] {
+            assert!(!rows.contains(hidden), "{hidden}");
+        }
+        assert_eq!(rows.matches("[REDACTED]").count(), 5);
+        assert!(rows.contains("https://example.test/docs?page=2"));
+        assert!(rows.contains("monkey=george"));
+        assert!(rows.contains("pt_BR.UTF-8"));
     }
 
     #[test]

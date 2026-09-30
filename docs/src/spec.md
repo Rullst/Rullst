@@ -3010,7 +3010,9 @@ sending.
   foreign-key columns by key position. Swagger requires an application-supplied
   `OpenApi`.
 * Request SSE records method, URI, status, and latency without bodies or headers.
-  Environment values are redacted by default and the typed config projection
+  Environment values are redacted by default; an allowlisted value is also
+  redacted when it carries URL user information, a bearer token or a
+  secret-named assignment. The typed config projection
   never renders connection URLs, filesystem paths, cookies, tokens, or
   credentials. A successful Studio database-flag mutation invalidates warm
   `DbFeatureDriver` caches in the same process; direct writers and other

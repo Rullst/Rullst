@@ -141,7 +141,9 @@ overhead.
   A successful toggle invalidates already-warm drivers in the same process;
   other processes and direct writers converge by TTL unless the host distributes
   an invalidation signal.
-- The environment page redacts values by default and adds only a safe projection
+- The environment page redacts values by default, also redacts an allowlisted
+  value that carries URL user information, a bearer token or a secret-named
+  assignment (such as `?access_token=`), and adds only a safe projection
   of process-global `RullstConfig`; URLs, filesystem paths, secrets, cookies and
   credentials are omitted.
 - Cache inspection returns at most 100 UI rows containing an opaque keyed

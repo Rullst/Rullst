@@ -120,7 +120,7 @@ controls, prompts and source-error tooling.
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
 | `STUDIO-01` remote exposure | Compile/mount shortcuts only in debug development and bind loopback. `Server` mounts the panic console and `/_rullst/explain`/`/_rullst/autofix` only when the build has debug assertions and the environment is Development, so a release binary with an unset environment does not expose them; the panic console renders details only to loopback peers. Production exposure needs application-owned auth and TLS. | Generated startup and Studio boundary tests/docs; builder console-gate and panic-console peer tests. |
-| `STUDIO-02` secret leakage | Mask environment/log fields by key and value patterns; never render raw credentials. | Environment viewer/redactor tests; novel formats remain residual risk. |
+| `STUDIO-02` secret leakage | Mask environment/log fields by key and value patterns; never render raw credentials. | Environment viewer/redactor tests cover key markers plus URL user information, bearer tokens and secret-named assignments in allowlisted values; novel formats remain residual risk. |
 | `STUDIO-03` SQL/table injection | Parameterize values and strictly validate dynamic identifiers. | Data-browser identifier/query-builder tests. |
 | `STUDIO-04` arbitrary source file access | Require debug loopback, canonical allowlisted paths/extensions and bounded files. | Traversal, sensitive-file, non-loopback and extension tests. |
 | `STUDIO-05` forged telemetry | Label local/unverified events accurately; never invent source IP, HMAC verification or provider status. | Telemetry integrity tests. |
