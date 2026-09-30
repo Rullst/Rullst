@@ -710,7 +710,10 @@ while portability and semantic review remain the model author's responsibility.
   key and exact event kind/payload returns the existing `i64` identifier;
   reusing the key with different content fails closed. `stream`, event key,
   event kind and worker identifiers use a bounded ASCII grammar, and serialized
-  payloads are limited to one MiB.
+  payloads are limited to one MiB. Streams, event keys and claim tokens compare
+  case-sensitively on every backend; MySQL/MariaDB declare those columns
+  `CHARACTER SET ascii COLLATE ascii_bin`, and `Outbox::install` converts an
+  existing MySQL/MariaDB table whose key columns use another collation.
 * PostgreSQL, MySQL/MariaDB and SQLite share the outbox state machine. A claim
   increments attempts and receives a random token plus a bounded lease. Only
   that token may acknowledge or fail the event; expiration permits another

@@ -464,7 +464,10 @@ if let Some(event) = Outbox::claim_next("tenant-42", "mail-worker-1", 30, 8).awa
 
 `Outbox::install()` is only an explicit setup/test helper. Register
 `OutboxMigration` through the application's normal migration runner in
-production. Generated observers are not silently persisted, and an ACK lost
+production. Streams and event keys are case-sensitive on every backend; on
+MySQL/MariaDB, run `Outbox::install()` once (for example from a new migration)
+to convert a table created by an earlier version, whose key columns used the
+server's case-insensitive default collation. Generated observers are not silently persisted, and an ACK lost
 after the external effect can cause redelivery; see the
 [transactional outbox tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/38-transactional-outbox.md).
 
