@@ -100,3 +100,76 @@ async fn managed_identity_uses_local_header_and_scoped_resource() {
         assert!(AzureManagedIdentity::new(endpoint, "fixture_identity_header", None).is_err());
     }
 }
+
+#[test]
+fn acs_send_url_keeps_the_resource_origin() {
+    let endpoint = reqwest::Url::parse("https://fixture.communication.azure.com/").unwrap();
+    assert_eq!(
+        send_url(&endpoint).as_str(),
+        "https://fixture.communication.azure.com/emails:send?api-version=2023-03-31"
+    );
+}
+
+async fn read_fixture_request(socket: &mut tokio::net::TcpStream) -> String {
+    let mut bytes = Vec::new();
+    let mut chunk = [0; 4096];
+    loop {
+        let read = socket.read(&mut chunk).await.unwrap();
+        assert!(read > 0);
+        bytes.extend_from_slice(&chunk[..read]);
+        let text = String::from_utf8_lossy(&bytes).to_string();
+        if let Some(end) = text.find("\r\n\r\n") {
+            let length = text[..end]
+                .lines()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().ok())?
+                })
+                .unwrap_or(0);
+            if bytes.len() >= end + 4 + length {
+                return text;
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn acs_send_posts_to_the_resource_and_polls_its_operation() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let origin = format!("http://{}", listener.local_addr().unwrap());
+    let id = "11111111-2222-3333-4444-555555555555";
+    let operation = format!("{origin}/emails/operations/{id}?api-version=2023-03-31");
+    let server = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let request = read_fixture_request(&mut socket).await;
+        assert!(request.starts_with("POST /emails:send?api-version=2023-03-31 HTTP/1.1\r\n"));
+        assert!(request.contains("\"senderAddress\":\"accounts@example.com\""));
+        let body = format!(r#"{{"id":"{id}","status":"Running"}}"#);
+        socket.write_all(format!("HTTP/1.1 202 Accepted\r\nOperation-Location: {operation}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes()).await.unwrap();
+        drop(socket);
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let request = read_fixture_request(&mut socket).await;
+        assert!(request.starts_with(&format!(
+            "GET /emails/operations/{id}?api-version=2023-03-31 HTTP/1.1\r\n"
+        )));
+        let body = format!(r#"{{"id":"{id}","status":"Succeeded"}}"#);
+        socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes()).await.unwrap();
+    });
+    // Production endpoints must be HTTPS ACS hosts; the fixture injects a
+    // loopback origin directly so the built request path is observable.
+    let driver = AzureCommunicationDriver {
+        endpoint: Some(reqwest::Url::parse(&format!("{origin}/")).unwrap()),
+        credential: StaticAzureMailCredential::new("fixture_acs_token", u64::MAX).unwrap(),
+    };
+    let message = Message::new()
+        .to("member@example.com")
+        .from("accounts@example.com")
+        .subject("Welcome")
+        .text("hello");
+    let outcome = tokio::time::timeout(std::time::Duration::from_secs(10), driver.send(&message))
+        .await
+        .unwrap();
+    assert!(outcome.is_ok());
+    server.await.unwrap();
+}
