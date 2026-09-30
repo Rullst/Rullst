@@ -129,6 +129,11 @@ Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
 exactly-once provider delivery, or provider acceptance.
 
+Queued jobs store attachment bytes as one base64 string per attachment. Workers
+still accept jobs written with the earlier integer-array encoding, but an older
+worker cannot read the base64 form, so upgrade workers before producers during
+a rolling deployment.
+
 ---
 
 ### 2. Resilient Multi-Driver Failover (Circuit Breaker)
