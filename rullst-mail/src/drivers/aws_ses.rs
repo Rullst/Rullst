@@ -9,6 +9,7 @@ use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 
+mod limits;
 #[cfg(feature = "aws-ses")]
 mod native;
 
@@ -236,6 +237,8 @@ impl AwsSesDriver {
             )
         })?;
 
+        // The proxy receives the same SES v2 shape, so it gets the same bounds.
+        limits::validate_message_limits(message)?;
         let client = super::http::client()?;
         let payload = proxy_payload(message);
         let response = client
@@ -286,6 +289,31 @@ fn proxy_payload(message: &Message) -> serde_json::Value {
     });
     if !headers.is_empty() {
         simple["Headers"] = serde_json::json!(headers);
+    }
+    // SES v2 `Simple.Attachments`: every file and inline CID asset is sent,
+    // never silently dropped.
+    let attachments: Vec<serde_json::Value> = message
+        .attachments
+        .iter()
+        .map(|attachment| {
+            let mut entry = serde_json::Map::new();
+            entry.insert("RawContent".into(), attachment.to_base64().into());
+            entry.insert("FileName".into(), attachment.filename.clone().into());
+            entry.insert("ContentType".into(), attachment.mime_type.clone().into());
+            let disposition = if attachment.is_inline() {
+                "INLINE"
+            } else {
+                "ATTACHMENT"
+            };
+            entry.insert("ContentDisposition".into(), disposition.into());
+            if let Some(cid) = &attachment.cid {
+                entry.insert("ContentId".into(), cid.clone().into());
+            }
+            serde_json::Value::Object(entry)
+        })
+        .collect();
+    if !attachments.is_empty() {
+        simple["Attachments"] = serde_json::Value::Array(attachments);
     }
     serde_json::json!({
         "FromEmailAddress": message.from.as_deref().unwrap_or("noreply@rullst.dev"),
