@@ -1654,6 +1654,15 @@ field accepts exactly one relation declaration; options that do not apply to
 that relation fail compilation. `belongs_to_many` requires `pivot_table` and
 defaults omitted owner/related pivot keys from the two model names.
 
+Generated SQL emits table and column identifiers unquoted, so the grammar
+check does not make a name portable: a word the target database reserves
+(for example `order`, `group`, `desc` or `user` on PostgreSQL, or `groups` and
+`rows` on MySQL 8, including a derived default such as `groups` for a `Group`
+struct) passes compilation and fails, or on PostgreSQL may even resolve to a
+built-in such as `current_user`, at runtime. The derive does not check
+reserved words; rename such a column or choose a non-reserved
+`#[orm(table = "...")]`.
+
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
 are compatible with generated ORM persistence in v12. `#[orm(skip)]` removes
 a field from generated SQL (writes, filters and projections) but not from the

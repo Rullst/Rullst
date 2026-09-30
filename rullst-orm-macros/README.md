@@ -27,6 +27,11 @@ valid Rust identifiers. Persisted Rust field names follow that same portable
 SQL grammar: raw identifiers, non-ASCII names, and names longer than 64 bytes
 are rejected before SQL generation. A field that cannot form its generated
 Rust column-enum variant receives a compile error instead of a macro panic.
+Generated SQL emits these identifiers unquoted and the derive does not check
+reserved words, so a table or column named like a keyword of the target
+database (`order`, `desc`, `user` on PostgreSQL, `groups` on MySQL 8, a
+default `groups` table for a `Group` struct) compiles but fails at runtime;
+rename it or set `#[orm(table = "...")]`.
 
 Exactly one relation declaration is accepted per relation field. Orphan
 relation options are rejected, `local_key` is rejected on `belongs_to`/`morph_to`
