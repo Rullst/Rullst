@@ -72,7 +72,8 @@ impl PaddleCheckoutRequest {
         {
             return Err(invalid());
         }
-        crate::providers::validate_checkout_url("paddle", &request.payment_link)?;
+        crate::providers::validate_checkout_url("paddle", &request.payment_link)
+            .map_err(|_| invalid())?;
         let url = reqwest::Url::parse(&request.payment_link).map_err(|_| invalid())?;
         if url.query().is_some() {
             return Err(invalid());

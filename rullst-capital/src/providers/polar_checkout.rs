@@ -209,6 +209,9 @@ mod tests {
         assert!(
             PolarCheckoutRequest::new(PRODUCT, "email@example.com", "https://app.example").is_err()
         );
-        assert!(PolarCheckoutRequest::new(PRODUCT, "owner", "http://app.example").is_err());
+        assert!(matches!(
+            PolarCheckoutRequest::new(PRODUCT, "owner", "http://app.example"),
+            Err(CapitalError::ConfigurationError(_))
+        ));
     }
 }

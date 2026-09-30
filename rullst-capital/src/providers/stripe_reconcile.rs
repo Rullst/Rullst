@@ -48,7 +48,11 @@ impl super::StripeProvider {
         if !stripe_contract::valid_reference(customer, "cus_", 200) {
             return Err(mismatch());
         }
-        super::validate_checkout_url("portal-return", return_url)?;
+        super::validate_checkout_url("portal-return", return_url).map_err(|_| {
+            CapitalError::ConfigurationError(
+                "Stripe portal return URL must be a bounded credential-free HTTPS URL without a fragment".into(),
+            )
+        })?;
         if self.usage_api_key().is_empty() || self.usage_api_key().starts_with("mock_") {
             return Ok(format!("https://mock.stripe.invalid/portal/{customer}"));
         }
@@ -361,12 +365,12 @@ mod tests {
                 .await
                 .is_err()
         );
-        assert!(
+        assert!(matches!(
             provider
                 .create_bound_customer_portal("cus_owner", "http://app.example")
-                .await
-                .is_err()
-        );
+                .await,
+            Err(CapitalError::ConfigurationError(_))
+        ));
         let customer = StripeCustomerRequest::new("owner", "intent").unwrap();
         assert!(
             provider
