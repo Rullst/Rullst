@@ -355,7 +355,9 @@ pub async fn count_table_rows(
         }
     }
 
-    let row = qb.build().fetch_one(pool).await?;
+    let row = super::portable::build_for_driver(&mut qb, driver)?
+        .fetch_one(pool)
+        .await?;
     let count: i64 = row.try_get(0).unwrap_or(0);
     Ok(count as usize)
 }

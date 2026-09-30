@@ -6,8 +6,14 @@ use super::{
 };
 use async_trait::async_trait;
 use rullst_core::security::TenantContext;
-use sqlx::{AnyPool, Row, any::AnyPoolOptions};
+use sqlx::{
+    Any, AnyPool, Row,
+    any::{AnyArguments, AnyPoolOptions},
+    query::Query,
+};
 use std::time::Duration;
+
+mod mysql;
 
 /// SQL dialect used by a [`SqlChatMemory`] pool.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -112,9 +118,7 @@ impl ChatMemory for SqlChatMemory {
             SqlChatBackend::Postgres => {
                 "INSERT INTO rullst_ai_chat_sessions (tenant_id, conversation_id, conversation_revision, created_at_epoch) VALUES ($1, $2, 0, $3) ON CONFLICT (tenant_id, conversation_id) DO NOTHING"
             }
-            SqlChatBackend::Mysql => {
-                "INSERT IGNORE INTO rullst_ai_chat_sessions (tenant_id, conversation_id, conversation_revision, created_at_epoch) VALUES (?, ?, 0, ?)"
-            }
+            SqlChatBackend::Mysql => mysql::ENSURE,
             SqlChatBackend::Sqlite => {
                 "INSERT INTO rullst_ai_chat_sessions (tenant_id, conversation_id, conversation_revision, created_at_epoch) VALUES (?, ?, 0, ?) ON CONFLICT (tenant_id, conversation_id) DO NOTHING"
             }
@@ -126,6 +130,21 @@ impl ChatMemory for SqlChatMemory {
             .execute(&self.pool)
             .await
             .map_err(|_| ChatMemoryError::StorageUnavailable)?;
+        if self.backend == SqlChatBackend::Mysql {
+            let exact = sqlx::query_scalar::<_, i64>(mysql::EXACT_SESSION)
+                .bind(&tenant.tenant_id)
+                .bind(conversation.as_str())
+                .bind(&tenant.tenant_id)
+                .bind(conversation.as_str())
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|_| ChatMemoryError::StorageUnavailable)?;
+            if exact != 1 {
+                return Err(ChatMemoryError::InvalidConfiguration(
+                    mysql::LEGACY_COLLATION.to_string(),
+                ));
+            }
+        }
         Ok(())
     }
 
@@ -138,32 +157,37 @@ impl ChatMemory for SqlChatMemory {
             SqlChatBackend::Postgres => {
                 "SELECT conversation_revision FROM rullst_ai_chat_sessions WHERE tenant_id = $1 AND conversation_id = $2"
             }
-            _ => {
+            SqlChatBackend::Mysql => mysql::REVISION,
+            SqlChatBackend::Sqlite => {
                 "SELECT conversation_revision FROM rullst_ai_chat_sessions WHERE tenant_id = ? AND conversation_id = ?"
             }
         };
-        let revision = sqlx::query_scalar::<_, i64>(revision_sql)
-            .bind(&tenant.tenant_id)
-            .bind(conversation.as_str())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|_| ChatMemoryError::StorageUnavailable)?
-            .ok_or(ChatMemoryError::ConversationNotFound)?;
+        let revision = bind_key(
+            sqlx::query(revision_sql),
+            self.backend,
+            tenant,
+            conversation,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|_| ChatMemoryError::StorageUnavailable)?
+        .ok_or(ChatMemoryError::ConversationNotFound)?
+        .try_get::<i64, _>(0)
+        .map_err(|_| ChatMemoryError::StorageUnavailable)?;
 
         let history_sql = match self.backend {
             SqlChatBackend::Postgres => {
                 "SELECT turn_sequence, role, content, created_at_epoch FROM rullst_ai_chat_messages WHERE tenant_id = $1 AND conversation_id = $2 AND turn_sequence <= $3 ORDER BY turn_sequence DESC LIMIT $4"
             }
-            _ => {
+            SqlChatBackend::Mysql => mysql::HISTORY,
+            SqlChatBackend::Sqlite => {
                 "SELECT turn_sequence, role, content, created_at_epoch FROM rullst_ai_chat_messages WHERE tenant_id = ? AND conversation_id = ? AND turn_sequence <= ? ORDER BY turn_sequence DESC LIMIT ?"
             }
         };
         let limit = i64::try_from(self.config.history_messages()).map_err(|_| {
             ChatMemoryError::InvalidConfiguration("history limit overflow".to_string())
         })?;
-        let rows = sqlx::query(history_sql)
-            .bind(&tenant.tenant_id)
-            .bind(conversation.as_str())
+        let rows = bind_key(sqlx::query(history_sql), self.backend, tenant, conversation)
             .bind(revision)
             .bind(limit)
             .fetch_all(&self.pool)
@@ -210,18 +234,21 @@ impl ChatMemory for SqlChatMemory {
             SqlChatBackend::Postgres => {
                 "UPDATE rullst_ai_chat_sessions SET conversation_revision = $1 WHERE tenant_id = $2 AND conversation_id = $3 AND conversation_revision = $4"
             }
-            _ => {
+            SqlChatBackend::Mysql => mysql::ADVANCE,
+            SqlChatBackend::Sqlite => {
                 "UPDATE rullst_ai_chat_sessions SET conversation_revision = ? WHERE tenant_id = ? AND conversation_id = ? AND conversation_revision = ?"
             }
         };
-        let updated = sqlx::query(update_sql)
-            .bind(revision)
-            .bind(&tenant.tenant_id)
-            .bind(conversation.as_str())
-            .bind(expected_revision)
-            .execute(&mut *tx)
-            .await
-            .map_err(|_| ChatMemoryError::StorageUnavailable)?;
+        let updated = bind_key(
+            sqlx::query(update_sql).bind(revision),
+            self.backend,
+            tenant,
+            conversation,
+        )
+        .bind(expected_revision)
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| ChatMemoryError::StorageUnavailable)?;
         if updated.rows_affected() != 1 {
             tx.rollback()
                 .await
@@ -269,7 +296,8 @@ impl ChatMemory for SqlChatMemory {
                 "DELETE FROM rullst_ai_chat_messages WHERE tenant_id = $1 AND conversation_id = $2",
                 "DELETE FROM rullst_ai_chat_sessions WHERE tenant_id = $1 AND conversation_id = $2",
             ),
-            _ => (
+            SqlChatBackend::Mysql => (mysql::DELETE_MESSAGES, mysql::DELETE_SESSION),
+            SqlChatBackend::Sqlite => (
                 "DELETE FROM rullst_ai_chat_messages WHERE tenant_id = ? AND conversation_id = ?",
                 "DELETE FROM rullst_ai_chat_sessions WHERE tenant_id = ? AND conversation_id = ?",
             ),
@@ -279,15 +307,16 @@ impl ChatMemory for SqlChatMemory {
             .begin()
             .await
             .map_err(|_| ChatMemoryError::StorageUnavailable)?;
-        sqlx::query(messages_sql)
-            .bind(&tenant.tenant_id)
-            .bind(conversation.as_str())
-            .execute(&mut *tx)
-            .await
-            .map_err(|_| ChatMemoryError::StorageUnavailable)?;
-        let deleted = sqlx::query(session_sql)
-            .bind(&tenant.tenant_id)
-            .bind(conversation.as_str())
+        bind_key(
+            sqlx::query(messages_sql),
+            self.backend,
+            tenant,
+            conversation,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| ChatMemoryError::StorageUnavailable)?;
+        let deleted = bind_key(sqlx::query(session_sql), self.backend, tenant, conversation)
             .execute(&mut *tx)
             .await
             .map_err(|_| ChatMemoryError::StorageUnavailable)?;
@@ -295,6 +324,26 @@ impl ChatMemory for SqlChatMemory {
             .await
             .map_err(|_| ChatMemoryError::StorageUnavailable)?;
         Ok(deleted.rows_affected() == 1)
+    }
+}
+
+/// Binds the tenant and conversation key, twice for MySQL/MariaDB statements
+/// built with `mysql_exact_key!`.
+fn bind_key<'q>(
+    query: Query<'q, Any, AnyArguments>,
+    backend: SqlChatBackend,
+    tenant: &TenantContext,
+    conversation: &ConversationId,
+) -> Query<'q, Any, AnyArguments> {
+    let query = query
+        .bind(tenant.tenant_id.as_str())
+        .bind(conversation.as_str());
+    if backend == SqlChatBackend::Mysql {
+        query
+            .bind(tenant.tenant_id.as_str())
+            .bind(conversation.as_str())
+    } else {
+        query
     }
 }
 
@@ -318,10 +367,7 @@ fn schema_sql(backend: SqlChatBackend) -> (&'static str, &'static str) {
             "CREATE TABLE IF NOT EXISTS rullst_ai_chat_sessions (tenant_id VARCHAR(128) NOT NULL, conversation_id VARCHAR(128) NOT NULL, conversation_revision BIGINT NOT NULL DEFAULT 0, created_at_epoch BIGINT NOT NULL, PRIMARY KEY (tenant_id, conversation_id), CHECK (conversation_revision >= 0 AND MOD(conversation_revision, 2) = 0))",
             "CREATE TABLE IF NOT EXISTS rullst_ai_chat_messages (tenant_id VARCHAR(128) NOT NULL, conversation_id VARCHAR(128) NOT NULL, turn_sequence BIGINT NOT NULL, role VARCHAR(16) NOT NULL CHECK (role IN ('user', 'assistant')), content TEXT NOT NULL, created_at_epoch BIGINT NOT NULL, PRIMARY KEY (tenant_id, conversation_id, turn_sequence), FOREIGN KEY (tenant_id, conversation_id) REFERENCES rullst_ai_chat_sessions (tenant_id, conversation_id) ON DELETE CASCADE)",
         ),
-        SqlChatBackend::Mysql => (
-            "CREATE TABLE IF NOT EXISTS rullst_ai_chat_sessions (tenant_id VARCHAR(128) NOT NULL, conversation_id VARCHAR(128) NOT NULL, conversation_revision BIGINT NOT NULL DEFAULT 0, created_at_epoch BIGINT NOT NULL, PRIMARY KEY (tenant_id, conversation_id), CHECK (conversation_revision >= 0 AND MOD(conversation_revision, 2) = 0)) ENGINE=InnoDB",
-            "CREATE TABLE IF NOT EXISTS rullst_ai_chat_messages (tenant_id VARCHAR(128) NOT NULL, conversation_id VARCHAR(128) NOT NULL, turn_sequence BIGINT NOT NULL, role VARCHAR(16) NOT NULL CHECK (role IN ('user', 'assistant')), content MEDIUMTEXT NOT NULL, created_at_epoch BIGINT NOT NULL, PRIMARY KEY (tenant_id, conversation_id, turn_sequence), FOREIGN KEY (tenant_id, conversation_id) REFERENCES rullst_ai_chat_sessions (tenant_id, conversation_id) ON DELETE CASCADE) ENGINE=InnoDB",
-        ),
+        SqlChatBackend::Mysql => (mysql::SESSIONS_TABLE, mysql::MESSAGES_TABLE),
         SqlChatBackend::Sqlite => (
             "CREATE TABLE IF NOT EXISTS rullst_ai_chat_sessions (tenant_id TEXT NOT NULL, conversation_id TEXT NOT NULL, conversation_revision INTEGER NOT NULL DEFAULT 0 CHECK (conversation_revision >= 0 AND conversation_revision % 2 = 0), created_at_epoch INTEGER NOT NULL, PRIMARY KEY (tenant_id, conversation_id))",
             "CREATE TABLE IF NOT EXISTS rullst_ai_chat_messages (tenant_id TEXT NOT NULL, conversation_id TEXT NOT NULL, turn_sequence INTEGER NOT NULL, role TEXT NOT NULL CHECK (role IN ('user', 'assistant')), content TEXT NOT NULL, created_at_epoch INTEGER NOT NULL, PRIMARY KEY (tenant_id, conversation_id, turn_sequence), FOREIGN KEY (tenant_id, conversation_id) REFERENCES rullst_ai_chat_sessions (tenant_id, conversation_id) ON DELETE CASCADE)",

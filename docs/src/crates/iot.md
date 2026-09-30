@@ -52,7 +52,7 @@ The `OtaManager` enforces a **fail-closed eligibility gate**: its state machine 
 
 ```rust
 use rullst_iot::{
-    OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
+    BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
 };
 
 fn process_incoming_ota<S: RollbackCounterStore>(
@@ -60,6 +60,7 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     signature_bytes: &[u8],
     provisioned_public_key: [u8; 32],
     counter_store: &mut S,
+    running_partition: BootPartition,
 ) -> Result<OtaCommit, OtaError> {
     // 1. Construct the expected manifest from the payload
     let manifest = OtaManifest::from_firmware(
@@ -70,9 +71,11 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     )?;
 
     // 2. Load the last committed counter from the platform adapter
-    let mut manager = OtaManager::new_with_counter_store(
+    //    and the bank the platform bootloader started
+    let mut manager = OtaManager::new_with_running_partition(
         "esp32-sensor-node",
         "1.9.0",
+        running_partition,
         provisioned_public_key,
         counter_store,
     )?;
@@ -90,6 +93,14 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     Ok(receipt)
 }
 ```
+
+`verified_target_partition` and the receipt always name the bank opposite
+`current_partition`. The v13 `new_with_running_partition` constructor takes the
+bank the bootloader started; `new_with_counter_store` and
+`new_with_trusted_key` assume `PartitionA`, so with them platform code must set
+`current_partition` before verifying an update. Committing
+does not change `current_partition`; until the platform reboots, a further
+update verified in the same process targets the same inactive bank.
 
 The store contract requires power-loss-safe persistence before returning
 success. If a store reports a failure after committing, for example because an

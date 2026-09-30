@@ -44,7 +44,14 @@ should do so before Studio serves requests.
 
 `Studio::new().into_router(LocalStudioAccess::loopback_only())` builds the same
 debug-only router for explicit composition. The serving stack must preserve
-Axum `ConnectInfo<SocketAddr>` or requests fail closed. Optional OpenAPI and
+Axum `ConnectInfo<SocketAddr>` or requests fail closed. Unsafe methods need a
+same-origin `Origin` header. Studio responses carry
+`Referrer-Policy: same-origin`, so browsers send the page's real origin on
+Studio's own form posts and no referrer to other origins. If a host layer
+replaces that policy with `no-referrer`, browsers send `Origin: null`; Studio
+then accepts the request only with `Sec-Fetch-Site: same-origin`, which page
+scripts cannot set. A bare `Origin: null`, or one from a `same-site` document
+such as another local port, is rejected. Optional OpenAPI and
 queue views are enabled with `with_openapi` and `with_horizon`.
 `with_cache` opts a supported cache into metadata-only local inspection, while
 `with_distributed_traces` supplies the bounded store shared with a separately
@@ -89,7 +96,11 @@ overhead.
   runs in a transaction that commits only when exactly one row changed; any
   other count is rolled back and fails (non-transactional engines such as
   MySQL MyISAM cannot roll back). SQLite, PostgreSQL, MySQL, and MariaDB run
-  separate executable contracts. This does not supply application tenant/RBAC,
+  separate executable contracts. With the default `sqlx::Any` build, Studio
+  renumbers bind markers to `$n` for PostgreSQL and reads information-schema
+  identifiers as `VARCHAR`, so the table view, search, row actions and ER
+  diagram also work there; the PostgreSQL contract runs under that build and
+  under `strict-postgres`. This does not supply application tenant/RBAC,
   audit history, undo, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
