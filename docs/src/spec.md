@@ -2560,6 +2560,13 @@ sending.
   explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
   not evidence that the provider signs that protocol. Enabling live processing
   requires order/merchant/amount binding and provider reconciliation first.
+* PicPay's legacy `handle_webhook` checks the static `x-seller-token` in
+  constant time, but that token does not authenticate the body and PicPay's
+  callback carries only reference and authorization IDs. A live delivery with
+  the correct token returns `UnsupportedOperation` instead of trusting a body
+  `status`; enabling it requires an authoritative payment-status lookup bound to
+  the stored order, amount and currency. The explicit `mock_*` fixture never
+  uses the buyer's CPF as `customer_id`.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,

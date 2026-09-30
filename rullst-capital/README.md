@@ -59,7 +59,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **Razorpay** | Billing | Plan checkout adapter with an explicit `with_subscription_total_count` billing term (v13) and signed-webhook foundation; completion is reported as `Canceled`. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
-| **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
+| **PicPay** | Billing | Offline checkout and callback fixtures; live plan-only checkout and seller-token-only callbacks are unsupported without authoritative pricing and status lookup. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
 | **Wise** | Payout | Transfer-status read bound to the requested transfer, typed state read, sandbox API option and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
