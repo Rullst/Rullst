@@ -29,6 +29,9 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
             tx.commit().await?;
             return Ok(None);
         };
+        if record.asset.failure.is_some() {
+            return Err(Error::Conflict);
+        }
         if expected_kind.is_some_and(|kind| pending.kind != kind) {
             return Err(Error::Busy);
         }

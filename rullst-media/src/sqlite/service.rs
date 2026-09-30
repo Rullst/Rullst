@@ -79,7 +79,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
                     let mut record = Record {
                         asset: Asset { id: id.clone(), scope: scope.clone(), owner: actor.clone(), metadata, video: None,
                             lifecycle: Lifecycle::Creating, processing: Processing::AwaitingUpload, published: false, pending: true,
-                            revision: 1, updated_at: tx.now, length_seconds: 0, mp4_720p: false },
+                            revision: 1, updated_at: tx.now, length_seconds: 0, mp4_720p: false, failure: None },
                         marker: format!("rullst-video-{}", random_hex()?), create_digest: digest, pending: None,
                         notifications: Vec::new(), last_notification: 0,
                     };
@@ -198,7 +198,12 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
             return Err(Error::Conflict);
         }
         if record.pending.is_some() {
-            return Err(Error::Busy);
+            // A stopped intent needs a deliberate retry or discard, not backoff.
+            return Err(if record.asset.failure.is_some() {
+                Error::Conflict
+            } else {
+                Error::Busy
+            });
         }
         if record.asset.lifecycle != Lifecycle::Active {
             return Err(Error::Conflict);

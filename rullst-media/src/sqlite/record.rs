@@ -27,6 +27,30 @@ pub struct Asset {
     pub updated_at: i64,
     pub length_seconds: u32,
     pub mp4_720p: bool,
+    /// Set when a pending create or metadata update stopped for a
+    /// non-transient reason. It is never retried automatically: call
+    /// `MediaService::retry_failed` or `MediaService::discard_failed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure: Option<OperationFailure>,
+}
+
+/// Bounded, non-secret reason a pending intent stopped. It never carries
+/// provider bodies, identifiers, URLs or credentials.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum OperationFailure {
+    /// The provider definitively refused the request. A refused creation
+    /// created no remote video, so an explicit retry sends a new request.
+    Rejected,
+    /// After an ambiguous creation, the persisted marker search did not find
+    /// exactly one remote video. An explicit retry only searches again.
+    CreationUnconfirmed,
+    /// The bound remote video no longer exists at the provider.
+    RemoteMissing,
+    /// The provider's meta tag list has no room for the description.
+    TagCapacity,
+    /// The authoritative read after an update did not show the written metadata.
+    VerificationMismatch,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,7 +98,8 @@ impl Record {
                 .bytes()
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
             || a.pending != self.pending.is_some()
-            || (a.lifecycle == Lifecycle::Creating) != a.video.is_none()
+            || (a.lifecycle == Lifecycle::Creating && a.video.is_some())
+            || (matches!(a.lifecycle, Lifecycle::Active | Lifecycle::Deleting) && a.video.is_none())
             || (matches!(a.lifecycle, Lifecycle::Creating | Lifecycle::Deleting)
                 && self.pending.is_none())
             || (a.lifecycle == Lifecycle::Deleted
@@ -99,6 +124,26 @@ impl Record {
                 || (p.kind == Kind::Delete) != (a.lifecycle == Lifecycle::Deleting))
         {
             return Err(Error::Configuration);
+        }
+        if let Some(failure) = a.failure {
+            let stopped = self.pending.as_ref().is_some_and(|p| {
+                p.nonce.is_none()
+                    && match (p.kind, failure) {
+                        (Kind::Create, OperationFailure::Rejected) => !p.dispatched,
+                        (Kind::Create, OperationFailure::CreationUnconfirmed) => p.dispatched,
+                        (
+                            Kind::Update,
+                            OperationFailure::Rejected
+                            | OperationFailure::RemoteMissing
+                            | OperationFailure::TagCapacity
+                            | OperationFailure::VerificationMismatch,
+                        ) => true,
+                        _ => false,
+                    }
+            });
+            if !stopped {
+                return Err(Error::Configuration);
+            }
         }
         Ok(())
     }
