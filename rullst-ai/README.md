@@ -210,7 +210,10 @@ let turn = chat.send(&tenant, &conversation, "What changed?").await?;
 The SQL adapter stores message text as supplied by the application. Encryption,
 retention, erasure policy, authenticated conversation ownership inside a
 tenant, provider-call audit, backups, and conflict retry UX remain host
-responsibilities. The generated `make:chat-session` scaffold remains useful
+responsibilities. A retention job may delete the oldest message rows by
+`created_at_epoch`, including all of them: the conversation keeps its revision
+and continues with an empty history window. Use `delete_conversation` to erase a
+conversation. The generated `make:chat-session` scaffold remains useful
 when the application wants to own or customize its models, migrations, or the
 Turso-primary implementation.
 

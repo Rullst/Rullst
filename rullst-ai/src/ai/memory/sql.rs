@@ -447,6 +447,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn conversation_continues_after_retention_removed_every_message() {
+        let memory = SqlChatMemory::connect("sqlite::memory:", ChatMemoryConfig::default())
+            .await
+            .expect("SQLite memory");
+        memory.prepare_schema().await.expect("chat schema");
+        let tenant = TenantContext::try_new("tenant-retention").expect("tenant");
+        let conversation = ConversationId::try_new("chat-expired").expect("conversation");
+        memory
+            .ensure_conversation(&tenant, &conversation)
+            .await
+            .expect("conversation");
+        memory
+            .append_exchange(&tenant, &conversation, 0, "hello", "one")
+            .await
+            .expect("first exchange");
+        sqlx::query("DELETE FROM rullst_ai_chat_messages WHERE created_at_epoch >= 0")
+            .execute(memory.pool())
+            .await
+            .expect("host retention job");
+
+        let history = memory
+            .history(&tenant, &conversation)
+            .await
+            .expect("an expired window is not corruption");
+        assert_eq!(history.revision(), 2);
+        assert!(history.entries().is_empty());
+        assert_eq!(
+            memory
+                .append_exchange(&tenant, &conversation, 2, "again", "two")
+                .await,
+            Ok(4)
+        );
+        let history = memory
+            .history(&tenant, &conversation)
+            .await
+            .expect("history");
+        assert_eq!(history.entries().len(), 2);
+        assert_eq!(history.entries()[0].sequence(), 3);
+    }
+
+    #[tokio::test]
     async fn unsupported_database_urls_fail_before_network_io() {
         assert!(matches!(
             SqlChatMemory::connect("https://database.invalid", ChatMemoryConfig::default()).await,

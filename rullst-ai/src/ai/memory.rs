@@ -144,7 +144,8 @@ impl ChatMemoryEntry {
     }
 }
 
-/// Consistent recent history plus the revision used for compare-and-swap.
+/// Consistent recent history plus the revision used for compare-and-swap. The
+/// window is empty once host retention removed every message of a conversation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChatHistory {
     revision: i64,
@@ -160,7 +161,7 @@ impl ChatHistory {
             || revision & 1 != 0
             || entries.len() > MAX_HISTORY_MESSAGES
             || entries.len() & 1 != 0
-            || (revision == 0) != entries.is_empty()
+            || (revision == 0 && !entries.is_empty())
         {
             return Err(ChatMemoryError::CorruptHistory);
         }

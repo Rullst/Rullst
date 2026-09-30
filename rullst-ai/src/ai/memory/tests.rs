@@ -228,7 +228,11 @@ fn histories_fail_closed_on_gaps_partial_exchanges_and_role_inversion() {
         Err(ChatMemoryError::CorruptHistory)
     );
     assert_eq!(
-        ChatHistory::try_new(2, Vec::new()),
+        ChatHistory::try_new(0, vec![entry(1, "user"), entry(2, "assistant")]),
         Err(ChatMemoryError::CorruptHistory)
     );
+    // Retention may remove every message while the conversation revision stays.
+    let expired = ChatHistory::try_new(2, Vec::new()).expect("expired window");
+    assert_eq!(expired.revision(), 2);
+    assert!(expired.entries().is_empty());
 }
