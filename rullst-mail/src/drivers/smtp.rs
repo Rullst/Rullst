@@ -44,18 +44,22 @@ impl SmtpDriver {
     }
 
     /// Returns whether SMTP or the deterministic offline fallback will be used.
+    ///
+    /// The offline fallback is selected only explicitly: by an empty or
+    /// `mock_*` host, or a `mock_*` username or password. A real host without
+    /// credentials is an unauthenticated relay and receives real delivery.
     pub fn delivery_mode(&self) -> DeliveryMode {
         if self.host.trim().is_empty() || credential_mode(&self.host) == DeliveryMode::OfflineMock {
             return DeliveryMode::OfflineMock;
         }
-        match (self.username.as_deref(), self.password.as_deref()) {
-            (Some(user), Some(password))
-                if credential_mode(user) == DeliveryMode::Real
-                    && credential_mode(password) == DeliveryMode::Real =>
-            {
-                DeliveryMode::Real
-            }
-            _ => DeliveryMode::OfflineMock,
+        let explicit_mock = [self.username.as_deref(), self.password.as_deref()]
+            .into_iter()
+            .flatten()
+            .any(|value| value.trim().to_ascii_lowercase().starts_with("mock_"));
+        if explicit_mock {
+            DeliveryMode::OfflineMock
+        } else {
+            DeliveryMode::Real
         }
     }
 
@@ -72,8 +76,24 @@ impl SmtpDriver {
         if let Some(password) = self.password.as_deref() {
             validate_credential("SMTP password", password)?;
         }
+        // A lone username or password is a misconfiguration (for example an
+        // unmounted secret), never a reason to fall back to the offline mock.
+        let username = present_credential(self.username.as_deref());
+        let password = present_credential(self.password.as_deref());
+        if self.delivery_mode() == DeliveryMode::Real && username.is_some() != password.is_some() {
+            return Err(MailError::ConfigError(
+                "SMTP username and password must both be set for authenticated delivery, or both be absent for an unauthenticated relay"
+                    .to_string(),
+            ));
+        }
         Ok(())
     }
+}
+
+/// Treats an empty or blank credential as absent.
+#[cfg(feature = "mail-smtp")]
+fn present_credential(value: Option<&str>) -> Option<&str> {
+    value.filter(|value| !value.trim().is_empty())
 }
 
 #[cfg(feature = "mail-smtp")]
@@ -100,8 +120,11 @@ impl MailDriver for SmtpDriver {
             .map_err(|_| MailError::ConfigError("SMTP relay configuration is invalid".to_string()))?
             .port(self.port);
 
-        if let (Some(user), Some(pass)) = (&self.username, &self.password) {
-            builder = builder.credentials(Credentials::new(user.clone(), pass.clone()));
+        if let (Some(user), Some(pass)) = (
+            present_credential(self.username.as_deref()),
+            present_credential(self.password.as_deref()),
+        ) {
+            builder = builder.credentials(Credentials::new(user.to_owned(), pass.to_owned()));
         }
 
         let transport = builder.build();

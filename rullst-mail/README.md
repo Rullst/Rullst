@@ -490,11 +490,18 @@ Environment variables:
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS, the SES
-fixture/proxy, and authenticated SMTP,
+For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the SES
+fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests.
+
+SMTP selects the offline fallback only explicitly: an empty or `mock_*`
+`MAIL_HOST`, or a `mock_*` username or password. A real host without
+credentials is an unauthenticated relay and receives real delivery, so
+`MAIL_DRIVER=smtp` without `MAIL_HOST` sends to `127.0.0.1:25`. A username
+without a password, or the reverse (blank values count as missing), returns
+`MailError::ConfigError` instead of falling back to the mock.
 
 ---
 

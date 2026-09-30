@@ -21,11 +21,42 @@ fn configuration_selects_real_or_offline_delivery_and_rejects_unsafe_values() {
     assert_eq!(empty_host.delivery_mode(), DeliveryMode::OfflineMock);
     let mock_host = SmtpDriver::try_new("mock_smtp", 25, None, None).unwrap();
     assert_eq!(mock_host.delivery_mode(), DeliveryMode::OfflineMock);
+    // A real host without credentials is an unauthenticated relay, never a mock.
     let anonymous = SmtpDriver::try_new("smtp.example.com", 587, None, None).unwrap();
-    assert_eq!(anonymous.delivery_mode(), DeliveryMode::OfflineMock);
-    let partial =
-        SmtpDriver::try_new("smtp.example.com", 587, Some("user".to_string()), None).unwrap();
-    assert_eq!(partial.delivery_mode(), DeliveryMode::OfflineMock);
+    assert_eq!(anonymous.delivery_mode(), DeliveryMode::Real);
+    let blank = SmtpDriver::try_new(
+        "smtp.example.com",
+        587,
+        Some(String::new()),
+        Some(" ".to_string()),
+    )
+    .unwrap();
+    assert_eq!(blank.delivery_mode(), DeliveryMode::Real);
+    // Partial credentials are rejected instead of silently selecting the mock.
+    for (username, password) in [
+        (Some("user"), None),
+        (None, Some("fixture-password")),
+        (Some("user"), Some("")),
+    ] {
+        assert!(matches!(
+            SmtpDriver::try_new(
+                "smtp.example.com",
+                587,
+                username.map(str::to_string),
+                password.map(str::to_string),
+            ),
+            Err(MailError::ConfigError(_))
+        ));
+    }
+    let explicit_mock_user =
+        SmtpDriver::try_new("smtp.example.com", 587, Some("mock_user".to_string()), None).unwrap();
+    assert_eq!(
+        explicit_mock_user.delivery_mode(),
+        DeliveryMode::OfflineMock
+    );
+    let mock_host_partial =
+        SmtpDriver::try_new("mock_smtp", 587, Some("user".to_string()), None).unwrap();
+    assert_eq!(mock_host_partial.delivery_mode(), DeliveryMode::OfflineMock);
     let mock_password = SmtpDriver::try_new(
         "smtp.example.com",
         587,
@@ -91,6 +122,44 @@ async fn offline_send_records_sanitized_delivery_and_real_transport_fails_typed(
             ..
         })
     ));
+}
+
+#[tokio::test]
+async fn unauthenticated_or_partial_real_hosts_never_report_offline_success() {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let subject = "SMTP anonymous relay contract";
+    let anonymous = SmtpDriver::try_new("127.0.0.1", port, None, None).unwrap();
+    assert!(matches!(
+        anonymous
+            .send(&base_message().subject(subject).text("body"))
+            .await,
+        Err(MailError::TransportError {
+            provider: "smtp",
+            ..
+        })
+    ));
+
+    // Drivers built without try_new are checked again before sending.
+    let partial = SmtpDriver {
+        host: "127.0.0.1".to_string(),
+        port,
+        username: Some("user".to_string()),
+        password: None,
+    };
+    assert!(matches!(
+        partial
+            .send(&base_message().subject(subject).text("body"))
+            .await,
+        Err(MailError::ConfigError(_))
+    ));
+    assert!(
+        !OfflineMailMock::deliveries()
+            .unwrap()
+            .iter()
+            .any(|delivery| delivery.message.subject == subject)
+    );
 }
 
 #[test]
