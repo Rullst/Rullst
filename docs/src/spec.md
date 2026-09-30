@@ -1277,6 +1277,11 @@ use the documented bounded ASCII allowlists. `Blueprint::native_enum` emits:
 - an inline `ENUM` for MySQL/MariaDB; and
 - a `TEXT CHECK` constraint for SQLite.
 
+The PostgreSQL type is created as a quoted, case-preserving identifier, and the
+generated SQLx codec names it quoted as well, so a mixed-case `type_name`
+resolves to exactly that type. A manual `sqlx::Type` implementation for a
+mixed-case `DatabaseEnum::TYPE_NAME` must quote the name the same way.
+
 PostgreSQL enum creation, its label drift check and
 `Schema::drop_native_enum` run through the task-scoped transaction when one is
 active, exactly like the table DDL: they roll back with it, and dropping the
@@ -1826,8 +1831,10 @@ while portability and semantic review remain the model author's responsibility.
   bounded and recursively mask sensitive names for create, update, and delete.
   The reverse patch records only the presence of a sensitive key, including a
   nested JSON key that an update adds or removes, and such an operation is not
-  restorable. Audit/debug output does not expose principal, tenant,
-  correlation, reason, or payload values.
+  restorable. A reverse patch that would exceed its depth (64), operation
+  (4,096) or 5 MiB size bound is omitted: the update and its audit diff are
+  still recorded, and that revision cannot be restored. Audit/debug output does
+  not expose principal, tenant, correlation, reason, or payload values.
 * An auditable model exposes `restore_revision(audit_id, reason)` and its
   caller-owned transaction variant. Only a bounded v2 update patch for the
   exact model, ID, and active tenant is eligible. The current row must still
@@ -1956,11 +1963,13 @@ while portability and semantic review remain the model author's responsibility.
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
 * `(stream, event_key)` is the database uniqueness boundary. Replaying the same
-  key and exact event kind/payload returns the existing `i64` identifier,
+  key, exact event kind and JSON-equal payload (object key order is not
+  content) returns the existing `i64` identifier,
   including a key committed by a concurrent enqueue after the caller's read
   snapshot (MySQL/MariaDB read it back with a locking `FOR UPDATE` read, as
   InnoDB's default `REPEATABLE READ` would hide it from a plain `SELECT`);
-  reusing the key with different content fails closed. `stream`, event key,
+  reusing the key with different content fails closed with an error that
+  does not echo the stream or key. `stream`, event key,
   event kind and worker identifiers use a bounded ASCII grammar, and serialized
   payloads are limited to one MiB. Streams, event keys and claim tokens compare
   case-sensitively on every backend; MySQL/MariaDB declare those columns
@@ -1971,7 +1980,11 @@ while portability and semantic review remain the model author's responsibility.
   that token may acknowledge or fail the event; expiration permits another
   worker to reclaim it. Failure schedules a bounded retry or moves the event to
   `dead_letter` at the configured attempt limit, including a worker that dies
-  while holding its final lease.
+  while holding its final lease. `claim_next`, `acknowledge` and `fail` are
+  independent lease operations that commit on their own connection; inside an
+  active `Orm::transaction` they return `Validation` instead of committing
+  before, and regardless of, the handler's work. Acknowledge after that work
+  has committed.
 * Delivery is **at least once**, not exactly once. A worker may perform its
   external effect and crash before acknowledgement, so consumers must use the
   stable stream/event key as their own idempotency key. Ordering across retries
@@ -2003,8 +2016,10 @@ while portability and semantic review remain the model author's responsibility.
   generated cache write also records its key in a per-namespace/tenant/table
   Redis set in the same `EVAL` script, extending that set's TTL to the longest
   entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the active tenant/table only after commit by popping
-  that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  operations invalidate the tenant/table active at the write only after
+  commit (the tenant is captured when the callback is registered, so a
+  `with_tenant` scope that ended inside the transaction closure still has its
+  keys removed) by popping that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
   write); they never `SCAN` the Redis keyspace, so their cost does not grow
   with unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the
@@ -2067,8 +2082,9 @@ while portability and semantic review remain the model author's responsibility.
   one-connection SQLite fallback that exercises real SQL without pretending to
   be a remote replica. HTTPS/`libsql://` is required outside explicitly enabled
   loopback development.
-* `SurrealDbStore<T>` uses the documented `/key`, `/sql`, and `/gql` HTTP
-  endpoints with namespace/database headers, no redirects, bounded streaming
+* `SurrealDbStore<T>` uses the documented `/key`, `/sql`, `/rpc` and `/gql`
+  HTTP endpoints with namespace/database headers (`replace` is a non-creating
+  `UPDATE` through `/rpc`, and document IDs are always string keys), no redirects, bounded streaming
   responses, HTTPS by default, and redacted authentication configuration.
   `GraphQuery::read_only` accepts one `MATCH` query, rejects mutation tokens
   and caller-supplied limits, then appends a bounded limit.
@@ -2165,11 +2181,19 @@ while portability and semantic review remain the model author's responsibility.
   Any other scheme keeps the SQLite dialect (an unknown scheme fails to
   connect under SQLx `Any`).
 * A DSN that still contains a bracketed template placeholder such as
-  `[your-database-id]` or `[YOUR-PASSWORD]` fails `Orm::init` with
-  `Error::Internal`; `init_with_options` and `init_with_replicas` print a
-  warning instead. A bracketed IPv6 literal host
+  `[your-database-id]` or `[YOUR-PASSWORD]` fails `Orm::init`,
+  `init_with_options` and `init_with_replicas` (primary or any replica) with
+  `Error::Internal` before connecting. A bracketed IPv6 literal host
   (`postgres://app@[2001:db8::10]:5432/app`, optionally with a `%25` zone
   identifier) is not a placeholder and is accepted by every entrypoint.
+* An in-memory SQLite DSN (`sqlite::memory:` or `mode=memory`) exists only
+  while one of its connections is open, so its pool keeps one connection and
+  never closes it for idleness or age (the Turso offline in-memory fallback
+  does the same).
+* A SQLite file DSN without a `mode` parameter, or with `mode=rwc`, has its
+  missing database file (and directory) created before connecting. An explicit
+  `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails
+  to open instead of becoming a new empty database.
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
   `drivers-all` convenience feature. A standalone consumer can disable defaults
   and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables

@@ -85,6 +85,7 @@ pub(super) fn instance_hook(parsed: &ParsedModel, method: &str) -> TokenStream {
 pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
     let table_name = &parsed.table_name;
     let redis_cfg = crate::feature_gates::redis();
+    let invalidate = tenant_scoped_invalidation();
     let scout_delete = if parsed.searchable {
         quote! {
             let event = rullst_orm::ModelCommittedEvent::new(
@@ -112,10 +113,11 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
                 rullst_orm::ModelOperation::Deleted,
                 self.to_json(),
             );
+            let cache_tenant = rullst_orm::get_tenant_id();
             rullst_orm::after_commit(move || async move {
                 use rullst_orm::_redis::AsyncCommands;
                 // A failed invalidation must not suppress the event.
-                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
+                #invalidate
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:deleted", event.table);
                     let _: usize = connection.publish(&topic, &event.payload).await?;
@@ -144,6 +146,7 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
 pub(super) fn saved_redis_effects(parsed: &ParsedModel) -> TokenStream {
     let table_name = &parsed.table_name;
     let redis_cfg = crate::feature_gates::redis();
+    let invalidate = tenant_scoped_invalidation();
     quote! {
         #redis_cfg
         {
@@ -153,10 +156,11 @@ pub(super) fn saved_redis_effects(parsed: &ParsedModel) -> TokenStream {
                 operation,
                 self.to_json(),
             );
+            let cache_tenant = rullst_orm::get_tenant_id();
             rullst_orm::after_commit(move || async move {
                 use rullst_orm::_redis::AsyncCommands;
                 // A failed invalidation must not suppress the events.
-                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
+                #invalidate
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!(
                         "orm:events:{}:{}",
@@ -185,6 +189,21 @@ pub(super) fn execute_mutation() -> TokenStream {
                 .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
         } else {
             exec.execute(&mut **tx).await?
+        };
+    }
+}
+
+/// Invalidates the query cache of the tenant that was active when the write
+/// registered its post-commit callback. The callback runs when the managed
+/// transaction commits, which may be after a `with_tenant` scope entered
+/// inside the transaction closure has ended. Expects `event` and
+/// `cache_tenant` bindings in scope and binds `invalidated`.
+pub(super) fn tenant_scoped_invalidation() -> TokenStream {
+    quote! {
+        let invalidation = rullst_orm::query_cache::invalidate_table(event.table);
+        let invalidated = match cache_tenant {
+            Some(tenant) => rullst_orm::with_tenant(tenant, invalidation).await,
+            None => invalidation.await,
         };
     }
 }

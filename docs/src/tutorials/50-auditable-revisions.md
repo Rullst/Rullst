@@ -129,6 +129,11 @@ Restoration fails for:
   `#[orm(masked)]` or `#[orm(encrypted)]` field;
 - malformed, empty, too deep, too large, or excessively wide patches.
 
+A change whose reverse patch would be too deep, too large or too wide (for
+example two multi-megabyte values or thousands of changed JSON keys) is still
+saved and audited; the revision is simply recorded without a restore patch and
+refused on restoration.
+
 Those refusals prevent audit history from becoming an unsafe generic backup
 mechanism. Use reviewed database backups and restore drills for disaster
 recovery. Bulk update/delete builders do not invent per-row audit history, and

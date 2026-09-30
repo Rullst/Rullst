@@ -219,7 +219,7 @@ pub async fn log_audit_diff(
     new_json: &str,
 ) -> Result<(), crate::Error> {
     if let Some((old_values, new_values)) = diff_payloads(old_json, new_json, &[]) {
-        let restore_patch = restore_patch_for(old_json, new_json, &[])?;
+        let restore_patch = restore_patch_for(old_json, new_json, &[]);
         let entry = prepare_audit(
             model_type,
             model_id,
@@ -264,7 +264,7 @@ pub async fn log_audit_diff_redacted_with_tx(
     redacted_changes: &[&str],
 ) -> Result<(), crate::Error> {
     if let Some((old_values, new_values)) = diff_payloads(old_json, new_json, redacted_changes) {
-        let restore_patch = restore_patch_for(old_json, new_json, redacted_changes)?;
+        let restore_patch = restore_patch_for(old_json, new_json, redacted_changes);
         let entry = prepare_audit(
             model_type,
             model_id,
@@ -278,15 +278,17 @@ pub async fn log_audit_diff_redacted_with_tx(
     Ok(())
 }
 
-fn restore_patch_for(
-    old_json: &str,
-    new_json: &str,
-    redacted_changes: &[&str],
-) -> Result<Option<String>, crate::Error> {
+/// Builds the revision's reverse patch, or `None` when the revision cannot be
+/// restored. A patch that exceeds its depth, operation or size bound (or whose
+/// input cannot be parsed) only makes the revision non-restorable: the audit
+/// diff is still recorded and the audited write is not rejected.
+fn restore_patch_for(old_json: &str, new_json: &str, redacted_changes: &[&str]) -> Option<String> {
     if old_json.len() > MAX_PAYLOAD_LEN || new_json.len() > MAX_PAYLOAD_LEN {
-        return Ok(None);
+        return None;
     }
     build_reverse_patch_with_redacted(old_json, new_json, redacted_changes)
+        .ok()
+        .flatten()
 }
 
 #[cfg(test)]
@@ -318,5 +320,30 @@ mod tests {
             Some(r#"{"error":"payload_too_large"}"#)
         );
         assert_eq!(entry.new_values, entry.old_values);
+    }
+
+    #[test]
+    fn unbounded_restore_patches_make_the_revision_non_restorable() {
+        // Each side is under the payload bound, but the patch holds both.
+        let old_json = serde_json::json!({ "body": "a".repeat(3 * 1024 * 1024) }).to_string();
+        let new_json = serde_json::json!({ "body": "b".repeat(3 * 1024 * 1024) }).to_string();
+        assert!(diff_payloads(&old_json, &new_json, &[]).is_some());
+        assert_eq!(restore_patch_for(&old_json, &new_json, &[]), None);
+
+        let flood: serde_json::Map<String, serde_json::Value> = (0..4_097)
+            .map(|index| (format!("key-{index}"), serde_json::Value::from(index)))
+            .collect();
+        let flood = serde_json::json!({ "settings": flood }).to_string();
+        assert_eq!(restore_patch_for(r#"{"settings":{}}"#, &flood, &[]), None);
+
+        let (mut deep_old, mut deep_new) = (serde_json::json!(1), serde_json::json!(2));
+        for _ in 0..70 {
+            deep_old = serde_json::json!({ "nested": deep_old });
+            deep_new = serde_json::json!({ "nested": deep_new });
+        }
+        let (deep_old, deep_new) = (deep_old.to_string(), deep_new.to_string());
+        assert_eq!(restore_patch_for(&deep_old, &deep_new, &[]), None);
+
+        assert!(restore_patch_for(r#"{"name":"a"}"#, r#"{"name":"b"}"#, &[]).is_some());
     }
 }

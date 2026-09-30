@@ -12,6 +12,14 @@ struct User {
     score: Option<f64>,
 }
 
+#[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
+#[orm(table = "members", backend = "turso")]
+struct Member {
+    id: i64,
+    #[orm(encrypted)]
+    email: String,
+}
+
 #[tokio::test]
 async fn primary_model_contract_covers_crud_filters_order_and_counts() {
     assert!(TursoOrm::store().is_err());
@@ -42,6 +50,21 @@ async fn primary_model_contract_covers_crud_filters_order_and_counts() {
         .await
         .unwrap();
     let repository = TursoOrm::repository::<User>().unwrap();
+    // Encrypted columns hold randomized ciphertext: filtering or ordering on
+    // them fails instead of silently matching nothing.
+    assert!(
+        Member::query()
+            .unwrap()
+            .where_eq("email", &"ada@example.test".to_owned())
+            .is_err()
+    );
+    assert!(
+        Member::query()
+            .unwrap()
+            .order_by("email", TursoOrder::Asc)
+            .is_err()
+    );
+    assert!(Member::query().unwrap().where_eq("id", &1_i64).is_ok());
     let mut ada = User {
         id: 0,
         name: "Ada".to_owned(),
@@ -87,6 +110,25 @@ async fn primary_model_contract_covers_crud_filters_order_and_counts() {
     };
     grace.create().await.unwrap();
     assert_eq!(User::find(99).await.unwrap(), Some(grace.clone()));
+    // `None` filters with `IS NULL`; the following marker is renumbered.
+    let unscored = User::query()
+        .unwrap()
+        .where_eq("score", &Option::<f64>::None)
+        .unwrap()
+        .where_eq("active", &true)
+        .unwrap()
+        .get()
+        .await
+        .unwrap();
+    assert_eq!(unscored, vec![grace.clone()]);
+    let unscored_count = User::query()
+        .unwrap()
+        .where_eq("score", &Option::<f64>::None)
+        .unwrap()
+        .count()
+        .await
+        .unwrap();
+    assert_eq!(unscored_count, 1);
 
     ada.delete().await.unwrap();
     grace.delete().await.unwrap();

@@ -19,6 +19,17 @@ pub fn generate(parsed: &ParsedModel, input: &DeriveInput) -> Result<TokenStream
     let id_field = &fields[id_index];
     let id_type = &types[id_index];
 
+    let opaque_columns = fields
+        .iter()
+        .filter(|field| {
+            parsed
+                .encrypted_fields
+                .iter()
+                .any(|encrypted| encrypted.name == **field)
+        })
+        .map(database_field_name)
+        .collect::<Vec<_>>();
+
     let encoders = fields.iter().map(|field| {
         let field_name = database_field_name(field);
         match parsed
@@ -112,6 +123,10 @@ pub fn generate(parsed: &ParsedModel, input: &DeriveInput) -> Result<TokenStream
 
             fn primary_key_column() -> &'static str {
                 "id"
+            }
+
+            fn opaque_columns() -> &'static [&'static str] {
+                &[#(#opaque_columns),*]
             }
 
             fn encode_turso(

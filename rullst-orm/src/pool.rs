@@ -7,6 +7,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::{RullstPool, RullstPoolOptions};
 
 const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::from_millis(500);
+/// Upper bound of `Orm::init_with_options`'s acquire timeout. SQLx adds the
+/// timeout to `Instant::now()` unchecked, so an unbounded value would panic.
+const MAX_ACQUIRE_TIMEOUT_SECS: u64 = 86_400;
 
 mod dsn;
 mod placeholders;
@@ -96,6 +99,20 @@ impl Orm {
             .after_release(savepoint::release_outside_transaction)
     }
 
+    /// An in-memory SQLite database exists only while one of its connections
+    /// is open, so its pool keeps one connection and never reaps it for being
+    /// idle or old. Other DSNs keep `options` unchanged.
+    fn retain_memory_database(options: RullstPoolOptions, database_url: &str) -> RullstPoolOptions {
+        if dsn::is_sqlite_memory(database_url) {
+            options
+                .min_connections(1)
+                .idle_timeout(None)
+                .max_lifetime(None)
+        } else {
+            options
+        }
+    }
+
     fn ensure_uninitialized() -> Result<(), crate::Error> {
         if ORM_STATE.get().is_some() {
             Err(crate::Error::AlreadyInitialized)
@@ -128,10 +145,11 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = Self::pool_options()
+        let options = Self::pool_options()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
+        let pool = Self::retain_memory_database(options, database_url)
             .connect(database_url)
             .await?;
 
@@ -142,13 +160,22 @@ impl Orm {
         ))
     }
 
-    /// Initialize the global database connection pool with specific pool options
+    /// Initialize the global database connection pool with specific pool options.
+    ///
+    /// `max_connections` must be at least 1 and `acquire_timeout_secs` within
+    /// 1–86,400 seconds; other values return `Error::Validation`.
     pub async fn init_with_options(
         database_url: &str,
         max_connections: u32,
         acquire_timeout_secs: u64,
     ) -> Result<(), crate::Error> {
         Self::ensure_uninitialized()?;
+        if max_connections == 0 || !(1..=MAX_ACQUIRE_TIMEOUT_SECS).contains(&acquire_timeout_secs) {
+            return Err(crate::Error::Validation(format!(
+                "pool max_connections must be at least 1 and acquire_timeout_secs 1-{MAX_ACQUIRE_TIMEOUT_SECS}"
+            )));
+        }
+        dsn::ensure_configured_dsn(database_url)?;
         Self::validate_dsn(database_url);
 
         #[cfg(not(any(
@@ -158,11 +185,12 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = Self::pool_options()
+        let options = Self::pool_options()
             .max_connections(max_connections)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
+        let pool = Self::retain_memory_database(options, database_url)
             .connect(database_url)
             .await?;
 
@@ -185,35 +213,7 @@ impl Orm {
             return;
         }
 
-        if database_url.starts_with("sqlite") {
-            let uses_named_memory = database_url.split_once('?').is_some_and(|(_, query)| {
-                query
-                    .split('&')
-                    .any(|parameter| parameter.eq_ignore_ascii_case("mode=memory"))
-            });
-            let mut path_part = database_url
-                .trim_start_matches("sqlite:")
-                .trim_start_matches("//")
-                .trim_start_matches("file:");
-            if let Some(idx) = path_part.find('?') {
-                path_part = &path_part[..idx];
-            }
-            if !path_part.is_empty() && path_part != ":memory:" && !uses_named_memory {
-                let path = std::path::Path::new(path_part);
-                // Ensure the parent directory exists
-                if let Some(parent) = path.parent()
-                    && !parent.as_os_str().is_empty()
-                {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                // Touch-create the SQLite file if it doesn't exist so that
-                // drivers without implicit `mode=rwc` support (or without the
-                // query-parameter) never hit SQLITE_CANTOPEN (error code 14).
-                if !path.exists() {
-                    let _ = std::fs::File::create(path);
-                }
-            }
-        }
+        dsn::prepare_sqlite_file(database_url);
 
         if database_url.contains("sslmode=disable")
             && !database_url.contains("localhost")
@@ -231,6 +231,10 @@ impl Orm {
         replica_urls: Vec<&str>,
     ) -> Result<(), crate::Error> {
         Self::ensure_uninitialized()?;
+        dsn::ensure_configured_dsn(primary_url)?;
+        for replica_url in &replica_urls {
+            dsn::ensure_configured_dsn(replica_url)?;
+        }
         Self::validate_dsn(primary_url);
         for replica_url in &replica_urls {
             Self::validate_dsn(replica_url);
@@ -242,10 +246,11 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = Self::pool_options()
+        let options = Self::pool_options()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
+        let pool = Self::retain_memory_database(options, primary_url)
             .connect(primary_url)
             .await?;
 
@@ -254,7 +259,9 @@ impl Orm {
         // dropped locally and initialization remains retryable.
         let replica_futures: Vec<_> = replica_urls
             .into_iter()
-            .map(|replica_url| Self::pool_options().connect(replica_url))
+            .map(|replica_url| {
+                Self::retain_memory_database(Self::pool_options(), replica_url).connect(replica_url)
+            })
             .collect();
         let replicas = futures::future::try_join_all(replica_futures).await?;
 
@@ -426,38 +433,4 @@ pub struct PaginationResult<T> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::Orm;
-
-    fn unique_database_path(label: &str) -> std::path::PathBuf {
-        std::env::temp_dir().join(format!(
-            "rullst-orm-{label}-{}-{}",
-            std::process::id(),
-            rand::random::<u64>()
-        ))
-    }
-
-    #[test]
-    fn named_memory_dsn_does_not_touch_a_backing_file() {
-        let database_path = unique_database_path("named-memory");
-        let dsn = format!(
-            "sqlite:file:{}?mode=memory&cache=shared",
-            database_path.display()
-        );
-
-        Orm::validate_dsn(&dsn);
-
-        assert!(!database_path.exists());
-    }
-
-    #[test]
-    fn disk_dsn_still_prepares_the_backing_file() {
-        let database_path = unique_database_path("disk");
-        let dsn = format!("sqlite:{}", database_path.display());
-
-        Orm::validate_dsn(&dsn);
-
-        assert!(database_path.is_file());
-        std::fs::remove_file(database_path).expect("temporary SQLite file should be removable");
-    }
-}
+mod tests;

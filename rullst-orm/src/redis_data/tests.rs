@@ -149,3 +149,17 @@ async fn rejects_cleartext_remote_and_unauthenticated_remote_endpoints() {
         .is_err()
     );
 }
+
+#[test]
+fn bracketed_ipv6_loopback_is_a_local_endpoint() {
+    assert!(
+        RedisDataConfig::unauthenticated_local("redis://[::1]:6379", "application")
+            .validate()
+            .is_ok()
+    );
+    assert!(
+        RedisDataConfig::unauthenticated_local("redis://[2001:db8::1]:6379", "application")
+            .validate()
+            .is_err()
+    );
+}
