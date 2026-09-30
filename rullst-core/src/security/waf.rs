@@ -202,12 +202,22 @@ pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
         }
     }
 
-    for header_name in [header::REFERER, header::COOKIE] {
-        if let Some(payload) = req
-            .headers()
-            .get(header_name)
-            .map(|value| String::from_utf8_lossy(value.as_bytes()))
-            && contains_malicious_pattern(&payload)
+    if let Some(referer) = req
+        .headers()
+        .get(header::REFERER)
+        .map(|value| String::from_utf8_lossy(value.as_bytes()))
+        && contains_malicious_pattern(&referer)
+    {
+        return forbidden_response();
+    }
+
+    // Each cookie pair is inspected on its own: the `; ` pair separator is
+    // header syntax, so the `; ls` command pattern must not match a later
+    // cookie whose name starts with `ls`.
+    for cookies in req.headers().get_all(header::COOKIE) {
+        if String::from_utf8_lossy(cookies.as_bytes())
+            .split(';')
+            .any(|pair| contains_malicious_pattern(pair.trim()))
         {
             return forbidden_response();
         }
@@ -229,6 +239,41 @@ mod tests {
     use super::*;
     use axum::{Router, body::Bytes, http::Request, routing::post};
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn cookie_pair_separators_are_not_command_injection() {
+        let app = Router::new()
+            .route("/items", post(|body: Bytes| async move { body }))
+            .route_layer(axum::middleware::from_fn(waf_middleware));
+        for (case, (cookie, expected)) in [
+            ("rullst_csrf=abc; lsid=1", StatusCode::OK),
+            ("a=1;ls_session=2; LSKEY=3", StatusCode::OK),
+            ("a=1; b=../../etc/passwd", StatusCode::FORBIDDEN),
+            ("theme=dark; q=%3Cscript%3E", StatusCode::FORBIDDEN),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let request = Request::post("/items")
+                .header(header::COOKIE, cookie)
+                .body(Body::empty())
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                expected,
+                "case {case}"
+            );
+        }
+        let split_header = Request::post("/items")
+            .header(header::COOKIE, "a=1")
+            .header(header::COOKIE, "b=<script>")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            app.oneshot(split_header).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+    }
 
     #[tokio::test]
     async fn obs_text_bytes_cannot_hide_inspected_header_values() {
