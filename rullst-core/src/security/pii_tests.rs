@@ -136,6 +136,28 @@ fn over_long_digit_runs_are_masked_in_linear_time() {
 }
 
 #[test]
+fn versioned_urls_and_asset_names_are_not_email_addresses() {
+    for unchanged in [
+        r#"<script src="https://unpkg.com/htmx.org@2.0.4"></script>"#,
+        "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.67.0",
+        r#"<img src="/static/logo@2x.png" srcset="icon@3x.webp 3x">"#,
+        "import x from 'pkg@1.2.3/dist/index.js'",
+    ] {
+        assert_eq!(mask_pii(unchanged), unchanged);
+    }
+    for (address, masked) in [
+        (
+            "contact ana.silva@example.com.br today",
+            "contact a********@example.com.br today",
+        ),
+        ("mail user@163.com.", "mail u***@163.com."),
+        ("to: jo@xn--80ak6aa92e.com", "to: j*@xn--80ak6aa92e.com"),
+    ] {
+        assert_eq!(mask_pii(address), masked);
+    }
+}
+
+#[test]
 fn textual_responses_are_recognized_in_any_ascii_case() {
     use axum::http::{HeaderMap, HeaderValue, header};
     for media_type in [

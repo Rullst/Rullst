@@ -195,7 +195,36 @@ fn mask_card_numbers(chars: &mut [char]) {
     }
 }
 
+/// Static-asset extensions that follow `@` in versioned or density-suffixed
+/// file names (`logo@2x.png`) but are not top-level domains.
+const ASSET_EXTENSIONS: [&str; 22] = [
+    "avif", "bmp", "cjs", "css", "eot", "gif", "htm", "html", "ico", "jpeg", "jpg", "js", "json",
+    "map", "mjs", "otf", "png", "svg", "ttf", "wasm", "webp", "woff",
+];
+
+/// Whether the text after `@` ends in an e-mail top-level domain: at least two
+/// letters (or a `xn--` IDN label) that are not a static-asset extension.
+/// Package versions (`htmx.org@2.0.4`) and asset names (`logo@2x.png`)
+/// therefore do not look like addresses.
+fn has_email_domain(domain: &[char]) -> bool {
+    let trimmed_len = domain.len() - domain.iter().rev().take_while(|c| **c == '.').count();
+    let domain = &domain[..trimmed_len];
+    let Some(dot) = domain.iter().rposition(|c| *c == '.') else {
+        return false;
+    };
+    let tld: String = domain[dot + 1..]
+        .iter()
+        .map(char::to_ascii_lowercase)
+        .collect();
+    let alphabetic = tld.chars().count() >= 2 && tld.chars().all(char::is_alphabetic);
+    (alphabetic || tld.starts_with("xn--")) && !ASSET_EXTENSIONS.contains(&tld.as_str())
+}
+
 /// Helper function to perform lightweight regex-free PII masking for emails and credit card numbers.
+///
+/// An e-mail needs a local part of at least two characters and a dotted domain
+/// ending in an alphabetic top-level domain that is not a static-asset
+/// extension, so `htmx.org@2.0.4` and `logo@2x.png` are left unchanged.
 ///
 /// Card masking treats ASCII digits separated by at most two consecutive
 /// spaces or hyphens as one run. A run of 13 to 19 digits keeps only its last
@@ -235,7 +264,11 @@ pub fn mask_pii(text: &str) -> String {
 
             let username_len = idx - start;
             let domain_len = end - (idx + 1);
-            if username_len > 1 && domain_len > 3 && dot_seen {
+            if username_len > 1
+                && domain_len > 3
+                && dot_seen
+                && has_email_domain(&chars[idx + 1..end])
+            {
                 for item in chars.iter_mut().take(idx).skip(start + 1) {
                     *item = '*';
                 }
