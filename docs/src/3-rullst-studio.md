@@ -137,7 +137,8 @@ overhead.
   Toggles require the verified local marker; the raw `feature_flags::router`
   returns `403` for them. Viewing the page never changes the schema: a missing
   `rullst_feature_flags` table is reported with the schema to add in an
-  application migration.
+  application migration, while connection, permission or column errors are
+  reported as query failures without that guidance.
   A successful toggle invalidates already-warm drivers in the same process;
   other processes and direct writers converge by TTL unless the host distributes
   an invalidation signal.

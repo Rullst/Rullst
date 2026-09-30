@@ -32,6 +32,30 @@ pub(super) async fn exercise_feature_flags(
     assert!(feature_flags.contains("table is unavailable"));
     assert!(feature_flags.contains("CREATE TABLE rullst_feature_flags"));
 
+    // A table that exists with another shape is not reported as missing.
+    rullst_orm::_sqlx::query("CREATE TABLE rullst_feature_flags (name VARCHAR(255) PRIMARY KEY)")
+        .execute(pool)
+        .await
+        .expect("create a wrongly shaped feature-flag table");
+    let wrong_shape = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/studio/features")
+                .body(Body::empty())
+                .expect("valid wrongly shaped feature-flags request"),
+        )
+        .await
+        .expect("Studio wrongly shaped feature-flags response");
+    assert_eq!(wrong_shape.status(), StatusCode::OK);
+    let wrong_shape = response_text(wrong_shape).await;
+    assert!(wrong_shape.contains("query failed"));
+    assert!(!wrong_shape.contains("CREATE TABLE rullst_feature_flags"));
+    rullst_orm::_sqlx::query("DROP TABLE rullst_feature_flags")
+        .execute(pool)
+        .await
+        .expect("drop the wrongly shaped feature-flag table");
+
     let flag_schema = if driver == "sqlite" {
         "CREATE TABLE rullst_feature_flags (name TEXT PRIMARY KEY, \
          enabled INTEGER NOT NULL DEFAULT 0, rollout_percentage INTEGER, variants TEXT)"
