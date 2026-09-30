@@ -336,6 +336,9 @@ rullst-orm = { version = "12.1.0", default-features = false, features = ["strict
 
 `strict-mysql` and `strict-sqlite` select their respective backends. The default
 `drivers-all` feature preserves the existing three-driver convenience profile.
+`Orm::driver()` reads the SQL dialect from the DSN scheme, ignoring case:
+`postgres://` and `postgresql://` are PostgreSQL, and `mysql://` and
+`mariadb://` are MySQL/MariaDB.
 If an application previously disabled defaults without choosing a backend,
 enable `drivers-all` explicitly or select a strict backend when upgrading.
 
