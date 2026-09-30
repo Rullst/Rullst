@@ -34,13 +34,16 @@ async fn ownership_idempotency_restart_and_cancel_preserve_one_submission() {
             .unwrap_err(),
         LabError::Conflict
     );
-    assert_eq!(
-        restored
-            .get_job(&f.policy, &id("bob"), &scope(), &id("one"))
-            .await
-            .unwrap_err(),
-        LabError::Denied
-    );
+    // Another learner's job is indistinguishable from an unused ID.
+    for job in ["one", "unused"] {
+        assert_eq!(
+            restored
+                .get_job(&f.policy, &id("bob"), &scope(), &id(job))
+                .await
+                .unwrap_err(),
+            LabError::NotFound
+        );
+    }
     assert_eq!(
         restored
             .get_job(
@@ -81,13 +84,15 @@ async fn ownership_idempotency_restart_and_cancel_preserve_one_submission() {
             .unwrap_err(),
         LabError::Conflict
     );
-    assert_eq!(
-        restored
-            .cancel(&f.policy, &id("bob"), &scope(), &id("one"), 1)
-            .await
-            .unwrap_err(),
-        LabError::Denied
-    );
+    for job in ["one", "unused"] {
+        assert_eq!(
+            restored
+                .cancel(&f.policy, &id("bob"), &scope(), &id(job), 1)
+                .await
+                .unwrap_err(),
+            LabError::NotFound
+        );
+    }
     assert_eq!(
         restored
             .cancel(&f.policy, &id("alice"), &scope(), &id("one"), 2)

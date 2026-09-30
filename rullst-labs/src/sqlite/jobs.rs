@@ -5,7 +5,8 @@ use super::{
     transaction::Operation,
 };
 use crate::{
-    Action, Authorization, Clock, ContentHash, LabError as Error, Reference, Scope, Submission,
+    Action, Authorization, Clock, ContentHash, LabError as Error, Permission, Reference, Scope,
+    Submission,
 };
 
 impl<C: Clock> SqliteLabs<C> {
@@ -80,12 +81,8 @@ impl<C: Clock> SqliteLabs<C> {
             let mut tx = Operation::begin(self, Some(permission.expires_at())).await?;
             let (record, _) = self.load_job(&mut tx, scope, id).await?;
             tx.commit().await?;
-            let action = if record.view.learner == *actor {
-                Action::ReadOwn
-            } else {
-                Action::ManageJobs
-            };
-            self.permit(auth, actor, scope, action).await?;
+            self.permit_job(auth, actor, scope, &record, Action::ReadOwn)
+                .await?;
             Ok(record.view)
         })
         .await
@@ -106,13 +103,10 @@ impl<C: Clock> SqliteLabs<C> {
                 .await?;
             let mut tx = Operation::begin(self, Some(permission.expires_at())).await?;
             let (mut record, mut content) = self.load_job(&mut tx, scope, id).await?;
-            let action = if record.view.learner == *actor {
-                Action::CancelOwn
-            } else {
-                Action::ManageJobs
-            };
             tx.commit().await?;
-            let permission = self.permit(auth, actor, scope, action).await?;
+            let permission = self
+                .permit_job(auth, actor, scope, &record, Action::CancelOwn)
+                .await?;
             if revision <= 0 || record.view.revision != revision {
                 return Err(Error::Conflict);
             }
@@ -131,6 +125,25 @@ impl<C: Clock> SqliteLabs<C> {
             Ok(record.view)
         })
         .await
+    }
+    /// Own jobs need `own`; any other learner's job needs `ManageJobs`. Job IDs
+    /// are course-scoped, so a denied request for someone else's job reports
+    /// `NotFound`, exactly like an unused ID, rather than revealing it exists.
+    async fn permit_job<A: Authorization>(
+        &self,
+        auth: &A,
+        actor: &Reference,
+        scope: &Scope,
+        record: &Record,
+        own: Action,
+    ) -> Result<Permission, Error> {
+        if record.view.learner == *actor {
+            return self.permit(auth, actor, scope, own).await;
+        }
+        match self.permit(auth, actor, scope, Action::ManageJobs).await {
+            Err(Error::Denied) => Err(Error::NotFound),
+            result => result,
+        }
     }
     pub(super) async fn load_job(
         &self,

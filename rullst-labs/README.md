@@ -37,7 +37,10 @@ The application must never spawn learner code or expose a container control sock
 ## Application and controller boundary
 
 The application registers an `Exercise`, submits a `Submission` through
-`SqliteLabs::submit`, reads `get_job` and records `cancel`. The dedicated controller
+`SqliteLabs::submit`, reads `get_job` and records `cancel`. Submission IDs are
+idempotency keys shared by the course, so generate unpredictable random IDs;
+another learner's ID is a `Conflict` on submit and `NotFound` from `get_job`
+and `cancel` unless the caller may manage jobs. The dedicated controller
 uses `claim_next`, monitors `lease_status`, performs isolated execution and submits
 a `SignedReceipt` to `complete`. Cancellation and expiry fence late results.
 A job expires at the earlier of its `ttl_seconds` and the Submit permission's
