@@ -1354,6 +1354,10 @@ the same server-authoritative controls.
   function's `module_path!()`, name and attribute location plus the serialized
   arguments, so same-named functions in different modules, crates or `impl`
   blocks never share results. It remains tenant- and invalidation-unaware.
+  The process-wide store is bounded: at most 4,096 entries and 32 MiB of key
+  plus value bytes, each entry at most 256 KiB and one hour old. Oversized
+  entries run uncached; otherwise expired and then the oldest entries are
+  evicted.
 * **Example:**
   ```rust
   use rullst::html;

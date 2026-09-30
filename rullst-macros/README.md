@@ -25,6 +25,9 @@ generated paths and matching runtime features stay aligned.
   function's `module_path!()`, name and attribute location (`file!()`,
   `line!()`, `column!()`) with the JSON-serialized arguments, so same-named
   functions in different modules, crates or `impl` blocks never share entries.
+  The store is bounded to 4,096 entries and 32 MiB of key plus value bytes;
+  an entry larger than 256 KiB is not cached, and the oldest entries are
+  evicted first. Entries expire after one hour.
   It is not tenant-aware, distributed, invalidation-aware, or suitable for
   secrets/authorization decisions.
 

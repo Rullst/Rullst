@@ -202,6 +202,21 @@ fn test_memory_cache() {
     assert_eq!(memory::get("non_existent_mem_key"), None);
 }
 
+#[test]
+fn global_memoize_cache_skips_oversized_entries() {
+    let key = "oversized_memo_key";
+    memory::set(key, "small");
+    assert_eq!(memory::get(key).as_deref(), Some("small"));
+
+    // An oversized value is not stored and does not leave the stale one behind.
+    memory::set(key, &"x".repeat(1024 * 1024));
+    assert!(memory::get(key).is_none(), "oversized value was cached");
+    // An oversized key is not stored either.
+    let huge_key = "k".repeat(1024 * 1024);
+    memory::set(&huge_key, "value");
+    assert!(memory::get(&huge_key).is_none(), "oversized key was cached");
+}
+
 #[tokio::test]
 async fn global_memoize_cache_is_safe_inside_a_tokio_runtime() {
     memory::set("runtime_mem_key", "runtime_mem_val");
