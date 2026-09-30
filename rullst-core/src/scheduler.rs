@@ -267,24 +267,35 @@ async fn run_task_loop(
     mut shutdown: watch::Receiver<bool>,
     errors: ErrorReporter<SchedulerError>,
 ) {
+    let mut last_fired = None;
     loop {
         if shutdown_requested(&shutdown) {
             break;
         }
 
-        let now = chrono::Utc::now();
-        let Some(next) = task.schedule.next_after(&now) else {
+        let Some(next) = next_occurrence(&task.schedule, chrono::Utc::now(), last_fired) else {
             errors.report(SchedulerError::ScheduleExhausted {
                 label: task.label.clone(),
             });
             break;
         };
-        let wait = (next - now).to_std().unwrap_or(Duration::ZERO);
 
-        tokio::select! {
-            _ = tokio::time::sleep(wait) => {}
-            _ = wait_for_shutdown(&mut shutdown) => break,
+        // The sleep is monotonic, but the schedule is wall-clock time: if the
+        // wall clock was stepped back during the sleep, wait again until it
+        // actually reaches `next` instead of firing early.
+        loop {
+            let wait = (next - chrono::Utc::now())
+                .to_std()
+                .unwrap_or(Duration::ZERO);
+            if wait.is_zero() {
+                break;
+            }
+            tokio::select! {
+                _ = tokio::time::sleep(wait) => {}
+                _ = wait_for_shutdown(&mut shutdown) => return,
+            }
         }
+        last_fired = Some(next);
 
         match execute_handler(&task, timeout, &mut shutdown).await {
             Ok(ExecutionStatus::Completed) => {}
@@ -297,6 +308,18 @@ async fn run_task_loop(
             }
         }
     }
+}
+
+/// The first occurrence strictly after both `now` and the occurrence that
+/// last fired, so one cron instant never runs twice even when the wall clock
+/// lags the monotonic timer.
+fn next_occurrence(
+    schedule: &CronSchedule,
+    now: chrono::DateTime<chrono::Utc>,
+    last_fired: Option<chrono::DateTime<chrono::Utc>>,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    let after = last_fired.map_or(now, |fired| fired.max(now));
+    schedule.next_after(&after)
 }
 
 enum ExecutionStatus {

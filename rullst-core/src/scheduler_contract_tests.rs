@@ -197,3 +197,36 @@ fn registered_tasks_use_posix_weekday_numbering() {
     let monday = task.schedule.next_after(&friday).expect("next run");
     assert_eq!(monday.weekday(), chrono::Weekday::Mon);
 }
+
+#[test]
+fn an_occurrence_never_fires_twice_when_the_wall_clock_lags() {
+    use chrono::TimeZone;
+
+    let task = Scheduler::new()
+        .task("0 0 * * *", || async {})
+        .expect("daily schedule")
+        .tasks
+        .remove(0);
+    let midnight = chrono::Utc
+        .with_ymd_and_hms(2026, 10, 2, 0, 0, 0)
+        .single()
+        .expect("valid instant");
+    // The handler for midnight ran, but the wall clock was stepped back and
+    // still reads just before midnight.
+    let lagging_now = midnight - chrono::Duration::milliseconds(300);
+
+    assert_eq!(
+        next_occurrence(&task.schedule, lagging_now, None),
+        Some(midnight)
+    );
+    assert_eq!(
+        next_occurrence(&task.schedule, lagging_now, Some(midnight)),
+        Some(midnight + chrono::Duration::days(1))
+    );
+    // A clock that has moved past the last run is used as is.
+    let later = midnight + chrono::Duration::days(3);
+    assert_eq!(
+        next_occurrence(&task.schedule, later, Some(midnight)),
+        Some(midnight + chrono::Duration::days(4))
+    );
+}
