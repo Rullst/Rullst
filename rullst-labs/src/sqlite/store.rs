@@ -201,7 +201,9 @@ impl<C: Clock> SqliteLabs<C> {
         })
     }
     async fn validate(&self) -> Result<(), Error> {
-        let rows:Vec<(String,String)>=sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,4097) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 6").fetch_all(&self.pool).await.map_err(storage)?;
+        // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
+        // also skip user objects such as a trigger named `sqliteXhook`.
+        let rows:Vec<(String,String)>=sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,4097) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 6").fetch_all(&self.pool).await.map_err(storage)?;
         if rows.len() != SCHEMA.len()
             || SCHEMA
                 .iter()

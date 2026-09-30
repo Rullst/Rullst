@@ -251,3 +251,31 @@ async fn wrong_key_ciphertext_tampering_and_clock_rollback_fail_closed() {
     ));
     db.close().await.unwrap();
 }
+
+#[tokio::test]
+async fn user_objects_with_a_sqlite_like_name_fail_the_exact_schema_check() {
+    for object in [
+        "CREATE TRIGGER sqliteXhook AFTER UPDATE ON labs_jobs BEGIN SELECT 1; END",
+        "CREATE VIEW sqlite1jobs AS SELECT id FROM labs_jobs",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jobs.sqlite");
+        let clock = TestClock(Arc::new(AtomicI64::new(NOW)));
+        let key = || ContentKey::new([7; 32]).unwrap();
+        SqliteLabs::initialize(&path, config(), key(), clock.clone())
+            .await
+            .unwrap()
+            .close()
+            .await;
+        let mut db = SqliteConnection::connect_with(&SqliteConnectOptions::new().filename(&path))
+            .await
+            .unwrap();
+        sqlx::query(object).execute(&mut db).await.unwrap();
+        db.close().await.unwrap();
+        // `_` is a LIKE wildcard: only the literal `sqlite_` prefix is exempt.
+        assert!(matches!(
+            SqliteLabs::open(&path, config(), key(), clock).await,
+            Err(LabError::Configuration)
+        ));
+    }
+}
