@@ -161,6 +161,13 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .expect("read repaired cache entry");
     assert!(repaired.contains("second"));
 
+    // Invalidation follows the table index instead of scanning the keyspace:
+    // a key that merely matches the table's key pattern is left to its TTL.
+    let unindexed_key = format!("{}:{}", index_key.trim_end_matches(":keys"), "0".repeat(64));
+    let _: () = redis
+        .set_ex(&unindexed_key, "unindexed", 30)
+        .await
+        .expect("install unindexed key");
     let mut updated = recovered;
     updated.name = "third".to_string();
     updated
@@ -172,6 +179,23 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .await
         .expect("inspect invalidated cache key");
     assert!(!exists_after_commit);
+    assert!(
+        !redis
+            .exists::<_, bool>(&index_key)
+            .await
+            .expect("inspect emptied index")
+    );
+    assert!(
+        redis
+            .exists::<_, bool>(&unindexed_key)
+            .await
+            .expect("inspect unindexed key"),
+        "a committed write must not scan for keys outside the table index"
+    );
+    let _: usize = redis
+        .del(&unindexed_key)
+        .await
+        .expect("remove unindexed key");
 
     let repopulated = QueryCacheLiveRecord::query()
         .where_id(1)

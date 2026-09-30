@@ -20,6 +20,17 @@ end
 return 1
 ";
 
+/// Removes one batch of indexed entries together with their index members.
+/// Keys added concurrently either leave in this batch or stay indexed.
+const INVALIDATE_SCRIPT: &str = r"
+local keys = redis.call('SPOP', KEYS[1], ARGV[1])
+if #keys > 0 then
+  redis.call('UNLINK', unpack(keys))
+end
+return #keys
+";
+const INVALIDATION_BATCH: usize = 500;
+
 pub(crate) fn validate_namespace(namespace: &str) -> Result<(), Error> {
     if namespace.is_empty()
         || namespace.len() > MAX_NAMESPACE_LEN
@@ -125,11 +136,14 @@ pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Re
     Ok(())
 }
 
-/// Deletes every generated query-cache entry for a table.
+/// Deletes every indexed query-cache entry for a table.
 ///
 /// An unconfigured Redis adapter is a no-op because model writes do not require
-/// caching. Once Redis is configured, transport errors fail visibly. The scan
-/// is bounded to prevent an accidental unbounded post-commit operation.
+/// caching. Once Redis is configured, transport errors fail visibly. The work
+/// follows the table's own index, never the rest of the Redis keyspace, and is
+/// capped at `MAX_INVALIDATION_KEYS` entries per call; entries beyond the cap
+/// stay indexed for the next write and otherwise expire through their TTL, as
+/// do entries written by earlier versions that were never indexed.
 pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
     use crate::_redis::AsyncCommands;
 
@@ -137,31 +151,37 @@ pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
         return Ok(0);
     };
     let tenant = crate::tenant::get_tenant_id();
-    let pattern = invalidation_pattern(namespace, tenant.as_ref(), table)?;
-    let mut scanner = Orm::redis_manager()?;
-    let mut deleter = scanner.clone();
-    let mut keys = scanner.scan_match::<_, String>(pattern).await?;
+    let index = index_key(namespace, tenant.as_ref(), table)?;
+    let mut connection = Orm::redis_manager()?;
     let mut deleted = 0_usize;
-
-    while let Some(key) = keys.next_item().await {
-        if deleted >= MAX_INVALIDATION_KEYS {
-            return Err(Error::CacheError(format!(
-                "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys"
-            )));
+    while deleted < MAX_INVALIDATION_KEYS {
+        let removed: usize = crate::_redis::cmd("EVAL")
+            .arg(INVALIDATE_SCRIPT)
+            .arg(1)
+            .arg(&index)
+            .arg(INVALIDATION_BATCH)
+            .query_async(&mut connection)
+            .await?;
+        deleted += removed;
+        if removed < INVALIDATION_BATCH {
+            return Ok(deleted);
         }
-        let _: usize = deleter.unlink(key?).await?;
-        deleted += 1;
     }
-
+    let remaining: usize = connection.scard(&index).await?;
+    if remaining > 0 {
+        return Err(Error::CacheError(format!(
+            "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys; the rest expire by TTL"
+        )));
+    }
     Ok(deleted)
 }
 
-fn invalidation_pattern(
-    namespace: &str,
-    tenant: Option<&RullstValue>,
-    table: &str,
-) -> Result<String, Error> {
-    Ok(format!("{}:*", table_prefix(namespace, tenant, table)?))
+/// The set indexing one namespace, tenant scope and table's cache entries.
+fn index_key(namespace: &str, tenant: Option<&RullstValue>, table: &str) -> Result<String, Error> {
+    Ok(format!(
+        "{}:{INDEX_SUFFIX}",
+        table_prefix(namespace, tenant, table)?
+    ))
 }
 
 fn scope_segment(tenant: Option<&RullstValue>) -> String {
@@ -214,7 +234,7 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{INDEX_SUFFIX, build_key, entry_index_key, invalidation_pattern, table_prefix};
+    use super::{build_key, entry_index_key, index_key};
     use crate::RullstValue;
 
     #[test]
@@ -222,10 +242,7 @@ mod tests {
         let tenant = RullstValue::Int(7);
         let entry =
             build_key("academy", Some(&tenant), "users", "SELECT *", &[]).expect("entry key");
-        let index = format!(
-            "{}:{INDEX_SUFFIX}",
-            table_prefix("academy", Some(&tenant), "users").expect("table prefix")
-        );
+        let index = index_key("academy", Some(&tenant), "users").expect("index key");
         assert_eq!(entry_index_key(&entry).expect("entry index"), index);
         assert_ne!(index, entry);
         for foreign in [
@@ -303,14 +320,17 @@ mod tests {
     #[test]
     fn invalidation_is_limited_to_the_active_opaque_tenant_scope() {
         let tenant = RullstValue::String("private-school-name".to_string());
-        let tenant_pattern = invalidation_pattern("academy", Some(&tenant), "users")
-            .expect("tenant invalidation pattern");
-        let global_pattern =
-            invalidation_pattern("academy", None, "users").expect("global invalidation pattern");
+        let tenant_index =
+            index_key("academy", Some(&tenant), "users").expect("tenant invalidation index");
+        let global_index = index_key("academy", None, "users").expect("global invalidation index");
 
-        assert_ne!(tenant_pattern, global_pattern);
-        assert!(tenant_pattern.contains(":tenant-"));
-        assert!(global_pattern.contains(":global:"));
-        assert!(!tenant_pattern.contains("private-school-name"));
+        assert_ne!(tenant_index, global_index);
+        assert!(tenant_index.contains(":tenant-"));
+        assert!(global_index.contains(":global:"));
+        assert!(!tenant_index.contains("private-school-name"));
+        assert!(
+            !tenant_index.contains('*'),
+            "invalidation never uses a key pattern"
+        );
     }
 }

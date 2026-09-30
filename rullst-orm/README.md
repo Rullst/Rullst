@@ -149,8 +149,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
   Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  active tenant and table only after commit, using a bounded non-blocking scan; cluster/failover
-  evidence remains outside the current contract.
+  active tenant and table only after commit through a per-table key index,
+  never a keyspace `SCAN`, so write latency does not grow with unrelated keys
+  in a shared Redis database; cluster/failover evidence remains outside the
+  current contract.
 - **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
   instance mutations. Policy-protected models reject `delete_all()` because
   bulk SQL cannot invoke per-row authorization; load the intended rows and call
@@ -448,7 +450,9 @@ An explicitly remembered query outside a transaction requires Redis
 initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and
 task-scoped transactions always bypass the cache. Generated model saves and
-deletes invalidate that table's generated cache keys after commit. Raw SQL,
+deletes invalidate that table's generated cache keys after commit, using the
+index each cache write maintains for its table (at most 10,000 keys per write;
+entries cached by earlier versions are not indexed and expire by TTL). Raw SQL,
 bulk builders and writes outside generated model methods cannot be inferred, so
 keep a defensive TTL and do not cache authorization or other reads whose
 freshness requires a stronger distributed consistency contract.

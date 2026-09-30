@@ -1893,9 +1893,19 @@ while portability and semantic review remain the model author's responsibility.
 * Cache writes occur only after a successful database read and retain encrypted
   model fields as ciphertext; `SecretString` fields are cached as serde
   envelopes and decrypted on a cache hit, and a result that cannot be
-  serialized (for example without an encryption key) is not cached. Generated model `save()`/`delete()` operations
-  invalidate the active tenant/table's versioned keys only after commit through
-  a bounded Redis `SCAN` plus asynchronous `UNLINK`; rollback preserves existing entries.
+  serialized (for example without an encryption key) is not cached. Each
+  generated cache write also records its key in a per-namespace/tenant/table
+  Redis set in the same `EVAL` script, extending that set's TTL to the longest
+  entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
+  operations invalidate the active tenant/table only after commit by popping
+  that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  write); they never `SCAN` the Redis keyspace, so their cost does not grow
+  with unrelated keys in a shared database. Beyond the cap the write reports
+  `PostCommit`, the remaining keys stay indexed for the next write, and the
+  generated `orm:events:*` publication still happens. Entries written by
+  earlier versions are not indexed and expire through their TTL; rollback
+  preserves existing entries. The scripts address keys they were not passed
+  and are therefore outside Redis Cluster, like the rest of this contract.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
   processes cannot be inferred. Callers must retain a defensive TTL and treat
   Redis cluster/failover and durable invalidation delivery as separate

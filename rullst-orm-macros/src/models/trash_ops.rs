@@ -379,13 +379,15 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
             );
             rullst_orm::after_commit(move || async move {
                 use rullst_orm::_redis::AsyncCommands;
-                rullst_orm::query_cache::invalidate_table(event.table).await?;
+                // A failed invalidation must not suppress the events.
+                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:updated", event.table);
                     let _: usize = connection.publish(&topic, &event.payload).await?;
                     let topic = format!("orm:events:{}:saved", event.table);
                     let _: usize = connection.publish(&topic, &event.payload).await?;
                 }
+                invalidated?;
                 Ok(())
             }).await?;
         }
