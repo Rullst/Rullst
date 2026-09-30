@@ -344,6 +344,30 @@ A prepared version section does not establish that its tag or crates exist.
   the same stored challenge from a bounded form POST, and tutorial 42 explains
   the `SameSite=None; Secure` challenge cookie it needs.
 
+### Mail, capital and messaging second-pass review fixes
+
+- Azure Communication Services sends work again: the driver no longer builds
+  `emails:send` as a URL scheme, which made every real delivery fail. The
+  `http://localhost:<port>` managed-identity endpoint that Azure Container Apps
+  injects is accepted and pinned to loopback addresses.
+- The homograph check compares scripts per host label and ignores the query,
+  so single-script Greek or Cyrillic IDN links and non-Latin query text no
+  longer block delivery, while Latin-lookalike labels are still rejected.
+- `PaidInvoiceDelivery::from` sets a verified sender.
+- Queued attachment bytes are stored as base64 (legacy integer arrays are still
+  accepted), cutting enqueue and worker memory from about 32x to about 1.3x the
+  attachment size. Upgrade workers before producers.
+- Strict attachment inspection again rejects unrecognized declared types such
+  as `text/html` behind a benign extension.
+- `FailoverDriver` forwards tenant context to its primary and fallbacks.
+- Wise status reads no longer report bounced, charged-back, unknown or
+  mismatched transfers as Processing; `get_transfer_state` returns the typed
+  state and `with_sandbox_api()` targets the sandbox.
+- MySQL/MariaDB webhook replay claims inside a caller transaction reject an
+  event claimed concurrently after the transaction's snapshot.
+- Recurring publication instances tolerate up to 5 s of cross-host clock skew
+  instead of failing with `Clock`.
+
 ### Capital review fixes
 
 - `WiseProvider::parse_webhook_payload` performs no signature check and now

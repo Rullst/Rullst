@@ -1,6 +1,23 @@
 use super::*;
 use sqlx::Row;
 
+/// Largest step, in milliseconds, by which this instance's clock may trail
+/// the namespace's recorded time and still count as cross-host skew. Instances
+/// on different hosts share `last_now`, and even NTP-synchronized clocks differ
+/// by some milliseconds, so a trailing instance must not fail every operation.
+const MAX_CLOCK_SKEW_MS: i64 = 5_000;
+
+/// Advances the shared namespace time monotonically. An instance within the
+/// skew tolerance adopts the recorded time, so shared time never moves
+/// backwards and no lease or deadline is judged earlier; a larger regression
+/// still fails closed with `RecurringError::Clock`.
+fn advance_clock(local: i64, floor: i64) -> Result<i64> {
+    if floor < 0 || local.saturating_add(MAX_CLOCK_SKEW_MS) < floor {
+        return Err(RecurringError::Clock);
+    }
+    Ok(local.max(floor))
+}
+
 impl<C: Clock> PostgresRecurringStore<C> {
     /// Explicit deployment bootstrap; do not call per request.
     pub async fn initialize(
@@ -140,10 +157,10 @@ impl<C: Clock> PostgresRecurringStore<C> {
         {
             return Err(RecurringError::Configuration);
         }
-        let now = current(&self.clock)?;
-        if now < minimum || now < last || last < 0 {
+        if last < 0 {
             return Err(RecurringError::Clock);
         }
+        let now = advance_clock(current(&self.clock)?, last.max(minimum))?;
         sqlx::query("UPDATE rullst_recurring_control SET last_now=$1 WHERE namespace=$2")
             .bind(now)
             .bind(self.config.namespace())
@@ -163,13 +180,30 @@ impl<C: Clock> PostgresRecurringStore<C> {
             return Err(RecurringError::InvalidLease);
         }
         tx.commit().await.map_err(|_| RecurringError::Storage)?;
-        let observed = current(&self.clock)?;
-        if observed < finished {
-            return Err(RecurringError::Clock);
-        }
+        let observed = advance_clock(current(&self.clock)?, finished)?;
         if deadline.is_some_and(|end| observed >= end) {
             return Err(RecurringError::InvalidLease);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_clock_tolerates_bounded_skew_and_stays_monotonic() {
+        // Instances a few milliseconds or seconds behind the recorded time
+        // adopt it; an instance ahead records its own later time.
+        assert_eq!(advance_clock(1_000_000, 1_000_000), Ok(1_000_000));
+        assert_eq!(advance_clock(999_980, 1_000_000), Ok(1_000_000));
+        assert_eq!(advance_clock(995_000, 1_000_000), Ok(1_000_000));
+        assert_eq!(advance_clock(1_000_020, 1_000_000), Ok(1_000_020));
+        assert_eq!(
+            advance_clock(994_999, 1_000_000),
+            Err(RecurringError::Clock)
+        );
+        assert_eq!(advance_clock(0, -1), Err(RecurringError::Clock));
     }
 }
