@@ -810,6 +810,9 @@ deadlines. Serialize event application, lookup and retention through the
 namespace control row. Atomically record replay evidence and recipient state;
 cancellation, conflicting events or quota failures must not leave partial state.
 Recheck persisted server time and storage durability before reporting outcomes.
+The persisted time is a monotonic high-water mark: a host clock at most 300
+seconds behind it is cross-host skew and adopts the recorded time; a larger
+regression fails closed.
 
 Retention may prune replay identifiers after the host-selected provider replay
 window, but never remove recipient suppression as a side effect. Lookup/storage

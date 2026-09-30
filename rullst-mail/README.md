@@ -30,6 +30,8 @@ Install the correctly scoped guard in every sending process and worker; it is
 not enabled automatically. See the [shared suppression contract](https://github.com/Rullst/Rullst/blob/main/docs/src/shared-mail-suppression.md)
 for setup, retention, provider-authentication boundaries, restart/worker evidence
 and pending hosted/package admission. The facade feature is `mail-postgres`.
+Hosts sharing a namespace may differ by up to 300 seconds of clock skew; a
+larger backwards clock step fails closed as `SuppressionUnavailable`.
 
 ## ✨ Features
 

@@ -142,6 +142,25 @@ pub async fn run(url: &str) {
         ))
         .await
         .unwrap();
+    // Another host whose clock leads by a few seconds is ordinary skew: the
+    // lagging host proceeds and the shared clock never moves backwards.
+    let ahead = (now() + 5) as i64;
+    sqlx::query("UPDATE rullst_mail_pg_suppression_control SET last_now = $1 WHERE namespace = $2")
+        .bind(ahead)
+        .bind(&namespace)
+        .execute(&raw)
+        .await
+        .unwrap();
+    assert!(store.lookup("unknown@example.com").await.unwrap().is_none());
+    let recorded: i64 = sqlx::query_scalar(
+        "SELECT last_now FROM rullst_mail_pg_suppression_control WHERE namespace = $1",
+    )
+    .bind(&namespace)
+    .fetch_one(&raw)
+    .await
+    .unwrap();
+    assert!(recorded >= ahead);
+    // A regression beyond the bounded tolerance still fails closed.
     sqlx::query("UPDATE rullst_mail_pg_suppression_control SET last_now = $1 WHERE namespace = $2")
         .bind((now() + 3600) as i64)
         .bind(&namespace)

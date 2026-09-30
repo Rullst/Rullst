@@ -95,6 +95,13 @@ writes commit together. Cancellation before commit rolls back; an uncertain
 commit requires reconciliation. Storage/configuration failures make the guard
 return `SuppressionUnavailable` without invoking its transport.
 
+Every operation advances a per-namespace clock high-water mark monotonically in
+whole seconds. A host whose clock is at most 300 seconds behind that mark,
+such as synchronized hosts crossing a second boundary at slightly different
+instants, adopts the recorded time instead of failing. A larger backwards step
+fails closed with `InvalidConfiguration("server clock")`, which the guard
+reports as `SuppressionUnavailable`.
+
 The host owns clock synchronization, database availability, encryption at rest,
 replication fencing, a bounded number of namespaces and capacity planning. A
 stale database restore can lose newer complaints or replay evidence; quiesce
