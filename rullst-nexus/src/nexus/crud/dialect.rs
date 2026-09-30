@@ -1,6 +1,68 @@
 //! SQL dialect details shared by the Nexus CRUD queries.
 
+use std::borrow::Cow;
+
 use super::query::sanitize_identifier;
+use crate::nexus::types::{FieldKind, RegistryEntry};
+
+/// A query built from the ORM pool's database driver.
+pub(crate) type NexusQuery<'q> = rullst_orm::_sqlx::query::Query<
+    'q,
+    rullst_orm::RullstDatabase,
+    <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Arguments,
+>;
+
+/// A record key from a URL or batch form, typed by the registered primary key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RecordKey<'a> {
+    /// A `number` or relation key: bound as a 64-bit integer.
+    Integer(i64),
+    /// Any other key kind: compared as text, so a text key such as `1001`
+    /// is never bound as an integer.
+    Text(&'a str),
+}
+
+impl<'a> RecordKey<'a> {
+    /// Parses `id` as the model's primary-key kind requires.
+    ///
+    /// A numeric key must be a canonical integer. `+1`, `01` or `1e3` would
+    /// otherwise reach a record whose stored key is spelled differently (Rust
+    /// integer parsing and SQLite numeric affinity both accept them), and the
+    /// audit would name a key that differs from the changed record. `None`
+    /// means `id` cannot name a record of this model.
+    pub(crate) fn parse(entry: &RegistryEntry, id: &'a str) -> Option<Self> {
+        let canonical = id
+            .parse::<i64>()
+            .ok()
+            .filter(|value| value.to_string() == id);
+        let integer_key = entry
+            .fields
+            .iter()
+            .find(|field| field.name == entry.pk)
+            .map(|field| matches!(field.kind, FieldKind::Number | FieldKind::ForeignKey { .. }));
+        match (integer_key, canonical) {
+            (Some(true) | None, Some(value)) => Some(Self::Integer(value)),
+            (Some(true), None) => None,
+            (Some(false) | None, None) | (Some(false), Some(_)) => Some(Self::Text(id)),
+        }
+    }
+
+    /// The canonical key text, as recorded by the audit.
+    pub(crate) fn text(self) -> Cow<'a, str> {
+        match self {
+            Self::Integer(value) => Cow::Owned(value.to_string()),
+            Self::Text(value) => Cow::Borrowed(value),
+        }
+    }
+
+    /// Binds the key as its registered kind.
+    pub(crate) fn bind<'q>(self, query: NexusQuery<'q>) -> NexusQuery<'q> {
+        match self {
+            Self::Integer(value) => query.bind(value),
+            Self::Text(value) => query.bind(value.to_owned()),
+        }
+    }
+}
 
 /// The exact tenant scope `column = placeholder`.
 ///
@@ -51,6 +113,61 @@ pub(crate) fn search_predicate(column: &str, placeholder: &str, driver: &str) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn entry(pk_kind: FieldKind) -> RegistryEntry {
+        RegistryEntry {
+            table: "records",
+            label: "Records",
+            icon: "R",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![crate::nexus::FieldMeta::new("id", "ID", pk_kind)],
+        }
+    }
+
+    #[test]
+    fn numeric_keys_must_be_canonical_integers() {
+        let numeric = entry(FieldKind::Number);
+        assert_eq!(
+            RecordKey::parse(&numeric, "1000"),
+            Some(RecordKey::Integer(1000))
+        );
+        assert_eq!(
+            RecordKey::parse(&numeric, "-7"),
+            Some(RecordKey::Integer(-7))
+        );
+        for spelling in ["+1000", "01000", "1e3", "1000.0", " 1000", "abc", ""] {
+            assert_eq!(RecordKey::parse(&numeric, spelling), None, "{spelling:?}");
+        }
+        assert_eq!(
+            RecordKey::parse(&numeric, "1000")
+                .map(RecordKey::text)
+                .as_deref(),
+            Some("1000")
+        );
+    }
+
+    #[test]
+    fn text_keys_are_never_bound_as_integers() {
+        let text = entry(FieldKind::Text);
+        assert_eq!(
+            RecordKey::parse(&text, "1001"),
+            Some(RecordKey::Text("1001"))
+        );
+        assert_eq!(RecordKey::parse(&text, "new"), Some(RecordKey::Text("new")));
+
+        // An entry whose key is not registered keeps the integer fallback.
+        let mut unregistered = entry(FieldKind::Text);
+        unregistered.pk = "uuid";
+        assert_eq!(
+            RecordKey::parse(&unregistered, "12"),
+            Some(RecordKey::Integer(12))
+        );
+        assert_eq!(
+            RecordKey::parse(&unregistered, "012"),
+            Some(RecordKey::Text("012"))
+        );
+    }
 
     #[test]
     fn tenant_scope_is_byte_exact_on_mysql() {

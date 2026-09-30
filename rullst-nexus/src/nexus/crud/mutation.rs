@@ -5,7 +5,7 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
-use super::dialect::tenant_predicate;
+use super::dialect::{RecordKey, tenant_predicate};
 use super::handlers::tenant_for_entry;
 use super::input::{FormInputError, FormMode, validate_form_values};
 use super::query::sanitize_identifier;
@@ -129,6 +129,9 @@ pub(super) async fn update_record(
         Ok(value) => value,
         Err(error) => return error.into_response(),
     };
+    let Some(key) = RecordKey::parse(entry, id) else {
+        return record_not_found();
+    };
     let data = match validate_form_values(entry, data_vec, FormMode::Update) {
         Ok(data) => data,
         Err(error) => return invalid_form_response(entry, error),
@@ -180,11 +183,7 @@ pub(super) async fn update_record(
     for value in &data {
         query = query.bind(value.value.as_deref());
     }
-    if let Ok(numeric_id) = id.parse::<i64>() {
-        query = query.bind(numeric_id);
-    } else {
-        query = query.bind(id);
-    }
+    query = key.bind(query);
     if let Some(tenant_id) = tenant_id {
         query = query.bind(tenant_id);
     }
@@ -192,13 +191,14 @@ pub(super) async fn update_record(
         Ok(result) if result.rows_affected() > 0 => result,
         Ok(_) => {
             let _ = transaction.rollback().await;
-            return (StatusCode::NOT_FOUND, "Record not found.").into_response();
+            return record_not_found();
         }
         Err(_) => {
             let _ = transaction.rollback().await;
             return database_failure("update", entry.table);
         }
     };
+    let record_key = key.text();
     if state.audit_policy == NexusAuditPolicy::Required
         && append_mutation(
             &mut transaction,
@@ -207,7 +207,7 @@ pub(super) async fn update_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "update",
-                record_key: Some(id),
+                record_key: Some(&record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -226,7 +226,7 @@ pub(super) async fn update_record(
         "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
          &#9989; {} #{} updated successfully!</div>",
         rullst_core::html::escape_str(entry.label),
-        rullst_core::html::escape_str(id)
+        rullst_core::html::escape_str(&record_key)
     ))
     .into_response()
 }
@@ -242,6 +242,9 @@ pub(super) async fn delete_record(
     let tenant_id = match tenant_for_entry(entry, tenant) {
         Ok(value) => value,
         Err(error) => return error.into_response(),
+    };
+    let Some(key) = RecordKey::parse(entry, id) else {
+        return record_not_found();
     };
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let tenant_predicate = tenant_id.map(|_| {
@@ -269,11 +272,7 @@ pub(super) async fn delete_record(
         Err(_) => return database_failure("delete", entry.table),
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    if let Ok(numeric_id) = id.parse::<i64>() {
-        query = query.bind(numeric_id);
-    } else {
-        query = query.bind(id);
-    }
+    query = key.bind(query);
     if let Some(tenant_id) = tenant_id {
         query = query.bind(tenant_id);
     }
@@ -281,13 +280,14 @@ pub(super) async fn delete_record(
         Ok(result) if result.rows_affected() > 0 => result,
         Ok(_) => {
             let _ = transaction.rollback().await;
-            return (StatusCode::NOT_FOUND, "Record not found.").into_response();
+            return record_not_found();
         }
         Err(_) => {
             let _ = transaction.rollback().await;
             return database_failure("delete", entry.table);
         }
     };
+    let record_key = key.text();
     if state.audit_policy == NexusAuditPolicy::Required
         && append_mutation(
             &mut transaction,
@@ -296,7 +296,7 @@ pub(super) async fn delete_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "delete",
-                record_key: Some(id),
+                record_key: Some(&record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -325,6 +325,10 @@ fn placeholder(position: usize, driver: &str) -> String {
     } else {
         "?".to_string()
     }
+}
+
+fn record_not_found() -> Response {
+    (StatusCode::NOT_FOUND, "Record not found.").into_response()
 }
 
 fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {

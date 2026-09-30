@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::nexus::NexusPrincipal;
 use crate::nexus::audit::{MutationAudit, append_mutation, correlation_id};
-use crate::nexus::crud::dialect::tenant_predicate;
+use crate::nexus::crud::dialect::{RecordKey, tenant_predicate};
 use crate::nexus::crud::handlers::tenant_for_entry;
 use crate::nexus::crud::query::{BatchActionForm, find_entry, sanitize_identifier};
 use crate::nexus::types::{FieldKind, NexusAuditPolicy, NexusState, RegistryEntry};
@@ -170,6 +170,21 @@ pub async fn nexus_batch_action(
             .into_response();
     }
 
+    // Every key must be valid for the primary-key kind; a numeric key is a
+    // canonical integer, never a spelling that selects a different record.
+    let Some(keys) = form
+        .selected_ids
+        .iter()
+        .map(|id| RecordKey::parse(entry, id))
+        .collect::<Option<Vec<_>>>()
+    else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Batch record IDs must match the primary-key type",
+        )
+            .into_response();
+    };
+
     let Some(pool) = rullst_core::db::safe_pool() else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Database not configured").into_response();
     };
@@ -189,27 +204,14 @@ pub async fn nexus_batch_action(
         Ok(transaction) => transaction,
         Err(_) => return batch_failure(entry.table),
     };
-    let result = if form.selected_ids.iter().all(|id| id.parse::<i64>().is_ok()) {
-        let mut query = query;
-        for id in &form.selected_ids {
-            if let Ok(id) = id.parse::<i64>() {
-                query = query.bind(id);
-            }
-        }
-        if let Some(tenant_id) = tenant_id {
-            query = query.bind(tenant_id);
-        }
-        query.execute(&mut *transaction).await
-    } else {
-        let mut query = query;
-        for id in &form.selected_ids {
-            query = query.bind(id);
-        }
-        if let Some(tenant_id) = tenant_id {
-            query = query.bind(tenant_id);
-        }
-        query.execute(&mut *transaction).await
-    };
+    let mut query = query;
+    for key in keys {
+        query = key.bind(query);
+    }
+    if let Some(tenant_id) = tenant_id {
+        query = query.bind(tenant_id);
+    }
+    let result = query.execute(&mut *transaction).await;
 
     let result = match result {
         Ok(result) if result.rows_affected() > 0 => result,

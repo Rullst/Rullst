@@ -72,6 +72,10 @@ number, relation, date, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
 `NOT NULL` constraint therefore rejects clearing a required typed column.
 
+Record keys follow the registered primary-key kind: a `number` (or relation)
+key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+other kind is compared as text, even when it looks numeric.
+
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
 visible text, textarea, e-mail and URL columns. It is case-insensitive on
 PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column

@@ -4,7 +4,9 @@
 mod support;
 
 use axum::{body::Body, http::StatusCode};
-use rullst_nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
+use rullst_nexus::{
+    FieldKind, FieldMeta, Nexus, NexusModel, create_nexus_audit_table, recent_nexus_audits,
+};
 use rullst_orm::{_sqlx as sqlx, Orm, RullstPool};
 use support::{authenticated_test_router, local_request};
 use tower::ServiceExt;
@@ -33,6 +35,28 @@ impl NexusModel for Page {
     }
 }
 
+/// An integer-keyed model.
+struct Counter;
+
+impl NexusModel for Counter {
+    fn nexus_table() -> &'static str {
+        "nexus_counters"
+    }
+
+    fn nexus_label() -> &'static str {
+        "Counters"
+    }
+
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("label", "Label", FieldKind::Text),
+        ]
+    }
+}
+
+const CSRF: &str = "crud_contract_csrf_fixture";
+
 async fn body_text(response: axum::response::Response) -> String {
     let bytes = axum::body::to_bytes(response.into_body(), 512 * 1024)
         .await
@@ -54,19 +78,99 @@ async fn get(app: &axum::Router, uri: &str) -> (StatusCode, String) {
     (response.status(), body_text(response).await)
 }
 
+async fn mutate(app: &axum::Router, method: &str, uri: &str, body: &str) -> StatusCode {
+    app.clone()
+        .oneshot(
+            local_request()
+                .method(method)
+                .uri(uri)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .header("cookie", format!("rullst_csrf={CSRF}"))
+                .header("x-csrf-token", CSRF)
+                .body(Body::from(body.to_owned()))
+                .expect("valid mutation request"),
+        )
+        .await
+        .expect("mutation response")
+        .status()
+}
+
+async fn audited_keys(action: &str) -> Vec<Option<String>> {
+    recent_nexus_audits(100, None)
+        .await
+        .expect("load audit records")
+        .into_iter()
+        .filter(|audit| audit.action == action)
+        .map(|audit| audit.record_key)
+        .collect()
+}
+
 #[tokio::test]
 async fn crud_contracts_hold_on_sqlite() {
     Orm::init_with_options("sqlite::memory:", 1, 10)
         .await
         .expect("isolated single-connection database");
     let pool = Orm::try_pool().expect("initialized test pool");
-    sqlx::query("CREATE TABLE nexus_pages (slug TEXT PRIMARY KEY, title TEXT NOT NULL)")
-        .execute(pool)
+    for ddl in [
+        "CREATE TABLE nexus_pages (slug TEXT PRIMARY KEY, title TEXT NOT NULL)",
+        "CREATE TABLE nexus_counters (id INTEGER PRIMARY KEY, label TEXT NOT NULL)",
+    ] {
+        sqlx::query(ddl)
+            .execute(pool)
+            .await
+            .expect("create fixture table");
+    }
+    create_nexus_audit_table()
         .await
-        .expect("create page table");
-    let app = authenticated_test_router(Nexus::new().register::<Page>());
+        .expect("install Nexus audit schema");
+    let app = authenticated_test_router(
+        Nexus::new()
+            .register::<Page>()
+            .register::<Counter>()
+            .with_required_audit(),
+    );
 
     search_matches_wildcards_literally(&app, pool).await;
+    numeric_keys_are_canonical_in_sql_and_audit(&app, pool).await;
+}
+
+/// A numeric key spelled `+1`, `01` or `1e3` must not change record 1 or
+/// 1000, and the audit names the canonical key (NEXUS-09).
+async fn numeric_keys_are_canonical_in_sql_and_audit(app: &axum::Router, pool: &RullstPool) {
+    sqlx::query("INSERT INTO nexus_counters (id, label) VALUES (1, 'one'), (1000, 'thousand')")
+        .execute(pool)
+        .await
+        .expect("insert counters");
+
+    for spelling in ["+1", "01"] {
+        let uri = format!("/table/nexus_counters/{spelling}");
+        assert_eq!(
+            mutate(app, "PUT", &uri, "label=renamed").await,
+            StatusCode::NOT_FOUND
+        );
+    }
+    assert_eq!(
+        mutate(app, "DELETE", "/table/nexus_counters/1e3", "").await,
+        StatusCode::NOT_FOUND
+    );
+    let (labels,): (String,) = sqlx::query_as(
+        "SELECT group_concat(label, ',') FROM (SELECT label FROM nexus_counters ORDER BY id)",
+    )
+    .fetch_one(pool)
+    .await
+    .expect("read counters");
+    assert_eq!(labels, "one,thousand");
+
+    assert_eq!(
+        mutate(app, "PUT", "/table/nexus_counters/1", "label=first").await,
+        StatusCode::OK
+    );
+    assert_eq!(
+        mutate(app, "DELETE", "/table/nexus_counters/1000", "").await,
+        StatusCode::OK
+    );
+    assert_eq!(audited_keys("update").await, [Some("1".to_owned())]);
+    assert_eq!(audited_keys("delete").await, [Some("1000".to_owned())]);
 }
 
 /// `%` and `_` typed into the search box are literal characters (NX2-11).

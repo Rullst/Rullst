@@ -6,7 +6,7 @@
 //! `data-nexus-mode="edit"` so `nexus.js` submits only the controls the
 //! administrator changed.
 
-use crate::nexus::crud::dialect::tenant_predicate;
+use crate::nexus::crud::dialect::{RecordKey, tenant_predicate};
 use crate::nexus::crud::input::{datetime_local_value, is_local_date};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -64,11 +64,11 @@ pub async fn render_record_form(
                 clean_table, clean_pk, pk_placeholder, tenant_predicate
             );
             let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-            if let Ok(num_id) = id.parse::<i64>() {
-                q = q.bind(num_id);
-            } else {
-                q = q.bind(id);
-            }
+            // A key that cannot name a record of this model matches nothing.
+            q = match RecordKey::parse(entry, id) {
+                Some(key) => key.bind(q),
+                None => q.bind(Option::<String>::None),
+            };
             if entry.tenant_column.is_some()
                 && let Some(tenant_id) = tenant_id
             {

@@ -35,6 +35,10 @@ applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
 change.
 
+Record keys follow the registered primary-key kind: a `number` (or relation)
+key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+other kind is compared as text, even when it looks numeric.
+
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
 visible text, textarea, e-mail and URL columns. It is case-insensitive on
 PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
