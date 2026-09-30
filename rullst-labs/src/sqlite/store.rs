@@ -63,15 +63,41 @@ impl StoreConfig {
             learner_jobs: LEARNER_JOBS.min(max_jobs),
         })
     }
+    /// Jobs one learner may retain in one course, from 1 to `max_jobs`
+    /// (v13). The default is 100, or `max_jobs` when lower. Every opener
+    /// must supply the same value.
+    pub fn learner_jobs(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || maximum > self.max_jobs {
+            return Err(Error::Configuration);
+        }
+        self.learner_jobs = maximum;
+        Ok(self)
+    }
     pub(super) fn binding(&self, key: &ContentKey) -> Result<String, Error> {
-        serde_json::to_string(&(
+        let base = (
             crate::PROTOCOL_VERSION,
             &self.namespace,
             self.max_jobs,
             self.max_exercises,
             &self.profile,
             key.binding(),
-        ))
+        );
+        // Only an explicit learner quota extends the binding, so stores that
+        // were initialized before it existed keep opening unchanged.
+        if self.learner_jobs == LEARNER_JOBS.min(self.max_jobs) {
+            serde_json::to_string(&base)
+        } else {
+            let (protocol, namespace, jobs, exercises, profile, key) = base;
+            serde_json::to_string(&(
+                protocol,
+                namespace,
+                jobs,
+                exercises,
+                profile,
+                key,
+                self.learner_jobs,
+            ))
+        }
         .map_err(|_| Error::Configuration)
     }
 }

@@ -65,7 +65,8 @@ all referencing jobs have been purged; do not reuse removed revision IDs.
 `max_jobs` (at most 1,000) is shared by every tenant using the store and counts
 terminal jobs until `purge_terminal`, which requires at least 24 hours, so it
 bounds submissions per rolling day. One learner may retain at most 100 jobs per
-course, or `max_jobs` when lower. Rate-limit submissions in
+course, or `max_jobs` when lower; `StoreConfig::learner_jobs` selects another
+bound that every opener must share. Rate-limit submissions in
 `Authorization::check` for `Submit`, and consider one store per tenant.
 
 Use a dedicated random content key and a separate controller signing seed. The

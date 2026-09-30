@@ -465,3 +465,64 @@ async fn one_learner_cannot_fill_the_store_wide_job_budget() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn an_explicit_learner_quota_is_enforced_and_bound_into_the_configuration() {
+    assert!(config(4).learner_jobs(0).is_err());
+    assert!(config(4).learner_jobs(5).is_err());
+    let f = Fixture::new(4).await;
+    let key = || ContentKey::new([9; 32]).unwrap();
+    let path = f.dir.path().join("quota.sqlite");
+    let store = SqliteLabs::initialize(
+        &path,
+        config(4).learner_jobs(1).unwrap(),
+        key(),
+        f.clock.clone(),
+    )
+    .await
+    .unwrap();
+    store
+        .register_exercise(&f.policy, &id("teacher"), &exercise())
+        .await
+        .unwrap();
+    store
+        .submit(&f.policy, &id("alice"), &scope(), submission("one"))
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .submit(&f.policy, &id("alice"), &scope(), submission("two"))
+            .await
+            .unwrap_err(),
+        LabError::Capacity
+    );
+    store
+        .submit(&f.policy, &id("bob"), &scope(), submission("three"))
+        .await
+        .unwrap();
+    store.close().await;
+    assert!(matches!(
+        SqliteLabs::open(&path, config(4), key(), f.clock.clone()).await,
+        Err(LabError::Configuration)
+    ));
+    SqliteLabs::open(
+        &path,
+        config(4).learner_jobs(1).unwrap(),
+        key(),
+        f.clock.clone(),
+    )
+    .await
+    .unwrap()
+    .close()
+    .await;
+    // Naming the default quota keeps the binding of existing stores.
+    f.store.close().await;
+    SqliteLabs::open(
+        f.dir.path().join("jobs.sqlite"),
+        config(4).learner_jobs(4).unwrap(),
+        key(),
+        f.clock.clone(),
+    )
+    .await
+    .unwrap();
+}
