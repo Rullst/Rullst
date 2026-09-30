@@ -75,7 +75,7 @@ pub(super) fn validate_form_values<'a>(
         grouped.entry(name).or_default().push(value);
     }
 
-    entry
+    let mut values = entry
         .fields
         .iter()
         .filter_map(|field| {
@@ -83,7 +83,13 @@ pub(super) fn validate_form_values<'a>(
                 .remove(field.name)
                 .map(|values| normalize_values(field, values))
         })
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+    // The form never receives a stored Password value, so an empty Password
+    // input means "keep the current value", not "store an empty string".
+    values.retain(|value| {
+        !(matches!(value.field.kind, FieldKind::Password) && value.value.is_empty())
+    });
+    Ok(values)
 }
 
 fn normalize_values<'a>(

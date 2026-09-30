@@ -148,6 +148,18 @@ that loopback-only policy, while release builds require the validated
 environment credentials above. Applications can always select either policy
 explicitly when testing a production topology.
 
+## Password fields
+
+A field of kind `password` (`#[nexus(kind = "password")]` or
+`FieldKind::Password`) is never shown: the list renders a fixed mask and does not
+select or sort by the column, and the edit form renders an empty password input.
+Leaving that input empty keeps the stored value. A non-empty value is written
+exactly as typed. Nexus does not hash it and bypasses ORM model hooks, so a
+column holding Argon2 or other credential hashes must be `readonly` (or
+`hidden`) in Nexus and changed through an application flow that hashes, for
+example with `rullst_auth::hash_password_async`, or by a database trigger.
+The derive already hides a field named `password_hash`.
+
 ## Browser assets and Content Security Policy
 
 The panel loads only same-origin files served by the Nexus router under

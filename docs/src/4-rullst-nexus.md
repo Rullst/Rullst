@@ -64,6 +64,12 @@ pub struct User {
 }
 ```
 
+A `password` field is never displayed: the list shows a fixed mask and the
+edit form an empty input, and leaving it empty keeps the stored value. Nexus
+writes a new value exactly as typed and does **not** hash it. Keep hash columns
+`readonly` (or `hidden`) in Nexus and change them through an application flow
+that hashes; a field named `password_hash` is hidden by the derive.
+
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
 `#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
