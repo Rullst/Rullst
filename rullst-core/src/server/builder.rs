@@ -570,9 +570,13 @@ impl Server {
     }
 }
 
-pub(crate) fn read_optional_environment_variable(
-    name: &str,
-) -> Result<Option<String>, ServerError> {
+/// Reads an optional process environment variable for database URL resolution.
+///
+/// An absent variable is `None`; a non-Unicode value is a configuration error
+/// that names the variable but never contains its value. Hidden support API for
+/// first-party tools such as Rullst Studio, not a stable extension point.
+#[doc(hidden)]
+pub fn read_optional_environment_variable(name: &str) -> Result<Option<String>, ServerError> {
     match std::env::var(name) {
         Ok(value) => Ok(Some(value)),
         Err(std::env::VarError::NotPresent) => Ok(None),

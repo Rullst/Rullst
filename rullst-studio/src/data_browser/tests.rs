@@ -70,9 +70,7 @@ fn test_build_headers_html() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_db_operations() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
 
     let _ = sqlx::query("DROP TABLE IF EXISTS test_users")
         .execute(pool)
@@ -109,20 +107,94 @@ async fn test_db_operations() {
     let schema = fetch_table_schema(pool, "sqlite", "test_users")
         .await
         .unwrap();
-    assert_eq!(schema.len(), 2);
-    assert!(schema[0].primary_key);
-    assert_eq!(schema[0].kind, StudioColumnKind::Integer);
-    assert!(!schema[0].nullable);
-    assert_eq!(schema[1].kind, StudioColumnKind::Text);
+    assert_eq!(schema.columns.len(), 2);
+    assert!(schema.primary_key_complete);
+    assert!(schema.supports_mutations());
+    assert!(schema.columns[0].primary_key);
+    assert_eq!(schema.columns[0].kind, StudioColumnKind::Integer);
+    assert!(!schema.columns[0].nullable);
+    assert_eq!(schema.columns[1].kind, StudioColumnKind::Text);
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// TM-STUDIO-06: a key column outside the identifier boundary or the column cap
+// makes the table read-only instead of reducing the key to a prefix.
+async fn primary_keys_outside_the_identifier_boundary_disable_mutations() {
+    let pool = super::pool::test_sqlite_pool().await;
+    for table in [
+        "studio_skipped_key",
+        "studio_capped_key",
+        "studio_complete_key",
+    ] {
+        sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+            "DROP TABLE IF EXISTS {table}"
+        ))
+        .build()
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    sqlx::query(
+        "CREATE TABLE studio_skipped_key (branch INTEGER NOT NULL, \"c\u{f3}digo\" TEXT NOT NULL, \
+         qty INTEGER, PRIMARY KEY (branch, \"c\u{f3}digo\"))",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    let skipped = fetch_table_schema(pool, "sqlite", "studio_skipped_key")
+        .await
+        .unwrap();
+    let names = skipped
+        .columns
+        .iter()
+        .map(|column| column.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(names, ["branch", "qty"]);
+    assert!(!skipped.primary_key_complete);
+    assert!(!skipped.supports_mutations());
+
+    let filler = (0..256)
+        .map(|index| format!("c{index} INTEGER"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+        "CREATE TABLE studio_capped_key ({filler}, trailing_id INTEGER PRIMARY KEY)"
+    ))
+    .build()
+    .execute(pool)
+    .await
+    .unwrap();
+    let capped = fetch_table_schema(pool, "sqlite", "studio_capped_key")
+        .await
+        .unwrap();
+    assert_eq!(capped.columns.len(), 256);
+    assert!(!capped.primary_key_complete);
+    assert!(!capped.supports_mutations());
+
+    sqlx::query(
+        "CREATE TABLE studio_complete_key (tenant TEXT NOT NULL, id INTEGER NOT NULL, \
+         \"t\u{ed}tulo\" TEXT, PRIMARY KEY (tenant, id))",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    let complete = fetch_table_schema(pool, "sqlite", "studio_complete_key")
+        .await
+        .unwrap();
+    assert_eq!(complete.columns.len(), 2);
+    assert!(complete.primary_key_complete);
+    assert!(complete.supports_mutations());
+    assert_eq!(complete.primary_key_indices(), [0, 1]);
 }
 
 #[tokio::test]
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_get_any_value_as_string() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
 
     let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
         .fetch_one(pool)
@@ -216,9 +288,7 @@ fn test_query_builders() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_build_rows_html() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
 
     let row = sqlx::query("SELECT 'hello' as s, NULL as n")
         .fetch_one(pool)

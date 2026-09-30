@@ -34,8 +34,12 @@ pub(crate) fn resolve_database_url(
 
 /// Loads `.env` and `Rullst.toml` from `project_dir` and resolves the
 /// database URL exactly as `Server` does for the same directory.
+///
+/// Re-exported as hidden support API so that first-party tools such as Rullst
+/// Studio select the same database as `Server` and Artisan. It is not a stable
+/// extension point.
 #[cfg(feature = "orm")]
-pub(crate) async fn resolve_project_database_url(
+pub async fn resolve_project_database_url(
     project_dir: &Path,
     explicit: Option<&str>,
     environment: impl Fn(&str) -> Result<Option<String>, ServerError>,

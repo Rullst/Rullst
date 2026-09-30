@@ -4,6 +4,9 @@ use serde::Deserialize;
 use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
+use super::limits::{MAX_SEARCH_BYTES, display_cell};
+pub use super::pool::{ensure_pool_initialized, resolve_db_url};
+
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
 pub struct TableQuery {
@@ -84,6 +87,38 @@ pub(crate) struct StudioColumn {
     pub(crate) nullable: bool,
 }
 
+/// Maximum number of inspected columns Studio renders or binds for one table.
+const MAX_STUDIO_COLUMNS: usize = 256;
+
+/// Ordered, database-inspected metadata for one table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StudioTableSchema {
+    pub(crate) columns: Vec<StudioColumn>,
+    /// False when a primary-key column was left out because its name is
+    /// outside the identifier boundary or beyond the column cap. The retained
+    /// key columns are then only a prefix that can match several rows.
+    pub(crate) primary_key_complete: bool,
+}
+
+impl StudioTableSchema {
+    /// Row mutations need the complete primary key, and every key column must
+    /// use a primitive codec that Studio can bind back unchanged.
+    pub(crate) fn supports_mutations(&self) -> bool {
+        let mut key_columns = self.columns.iter().filter(|column| column.primary_key);
+        self.primary_key_complete
+            && key_columns.clone().next().is_some()
+            && key_columns.all(|column| column.kind.is_editable())
+    }
+
+    pub(crate) fn primary_key_indices(&self) -> Vec<usize> {
+        self.columns
+            .iter()
+            .enumerate()
+            .filter_map(|(index, column)| column.primary_key.then_some(index))
+            .collect()
+    }
+}
+
 /// Helper function to escape standard strings manually when building raw strings
 pub fn escape_html_attr(s: &str) -> String {
     s.replace('&', "&amp;")
@@ -136,49 +171,6 @@ pub fn build_fetch_tables_query(driver: &str) -> &'static str {
     }
 }
 
-pub fn resolve_db_url(provided: &str) -> String {
-    if !provided.trim().is_empty() {
-        return provided.trim().to_string();
-    }
-    if let Ok(env_url) = std::env::var("DATABASE_URL")
-        && !env_url.trim().is_empty()
-    {
-        return env_url.trim().to_string();
-    }
-    if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
-        for line in toml_content.lines() {
-            let trimmed = line.trim();
-            if (trimmed.starts_with("url =") || trimmed.starts_with("url="))
-                && let Some(val) = trimmed.split('=').nth(1)
-            {
-                let clean = val.trim().trim_matches('"').trim_matches('\'');
-                if !clean.is_empty() {
-                    return clean.to_string();
-                }
-            }
-        }
-    }
-    if std::path::Path::new("db.sqlite").exists() {
-        return "sqlite://db.sqlite".to_string();
-    }
-    if std::path::Path::new("rullst.db").exists() {
-        return "sqlite://rullst.db".to_string();
-    }
-    "sqlite://db.sqlite".to_string()
-}
-
-pub async fn ensure_pool_initialized() -> Result<&'static rullst_core::db::RullstPool, sqlx::Error>
-{
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        Ok(pool)
-    } else {
-        let db_url = resolve_db_url("");
-        let _ = rullst_orm::Orm::init(&db_url).await;
-        rullst_core::db::safe_pool()
-            .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))
-    }
-}
-
 pub async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
     let pool = ensure_pool_initialized().await?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
@@ -200,11 +192,14 @@ pub async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 
 /// Loads ordered column metadata for a validated table. Only metadata from the
 /// active database is trusted; request-provided column names never enter SQL.
+/// Columns outside the identifier boundary or the column cap are omitted; if
+/// any of them belongs to the primary key, the schema reports the key as
+/// incomplete so that rows are never selected by a key prefix.
 pub(crate) async fn fetch_table_schema(
     pool: &rullst_orm::RullstPool,
     driver: &str,
     table: &str,
-) -> Result<Vec<StudioColumn>, sqlx::Error> {
+) -> Result<StudioTableSchema, sqlx::Error> {
     if !is_safe_identifier(table) {
         return Err(sqlx::Error::Configuration(
             "Studio received an unsupported SQL identifier".into(),
@@ -246,10 +241,13 @@ pub(crate) async fn fetch_table_schema(
         .build()
         .fetch_all(pool)
         .await?;
-    let mut columns = Vec::with_capacity(rows.len().min(256));
-    for row in rows.into_iter().take(256) {
+    let mut columns = Vec::with_capacity(rows.len().min(MAX_STUDIO_COLUMNS));
+    let mut primary_key_complete = true;
+    for row in rows {
+        let primary_key = row_flag(&row, "pk");
         let name = row.try_get::<String, _>("name").unwrap_or_default();
-        if !is_safe_identifier(&name) {
+        if !is_safe_identifier(&name) || columns.len() == MAX_STUDIO_COLUMNS {
+            primary_key_complete &= !primary_key;
             continue;
         }
         let database_type = if driver == "sqlite" {
@@ -257,7 +255,6 @@ pub(crate) async fn fetch_table_schema(
         } else {
             row.try_get::<String, _>("type_name").unwrap_or_default()
         };
-        let primary_key = row_flag(&row, "pk");
         let nullable = if driver == "sqlite" {
             !row_flag(&row, "notnull") && !primary_key
         } else {
@@ -270,7 +267,10 @@ pub(crate) async fn fetch_table_schema(
             nullable,
         });
     }
-    Ok(columns)
+    Ok(StudioTableSchema {
+        columns,
+        primary_key_complete,
+    })
 }
 
 fn row_flag(row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row, column: &str) -> bool {
@@ -302,11 +302,17 @@ pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
     }
 }
 
-/// Dynamic SQLite table row counter
+/// Counts a table's rows, optionally filtered by a search term of at most
+/// 256 bytes that is bound once per inspected column.
 pub async fn count_table_rows(
     table: &str,
     search_query: Option<&str>,
 ) -> Result<usize, sqlx::Error> {
+    if search_query.is_some_and(|search| search.len() > MAX_SEARCH_BYTES) {
+        return Err(sqlx::Error::Configuration(
+            "Studio search terms are limited to 256 bytes".into(),
+        ));
+    }
     let pool = ensure_pool_initialized().await?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
@@ -405,7 +411,7 @@ pub fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> Strin
     )
 }
 
-/// Helper to build table rows HTML
+/// Helper to build table rows HTML. Cell text is cut to 256 characters.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn build_rows_html(
     records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row],
@@ -435,7 +441,7 @@ pub fn build_rows_html(
                     rows_html,
                     "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
                     text_class,
-                    escape_html_attr(&cell_val)
+                    escape_html_attr(&display_cell(&cell_val))
                 );
             }
             rows_html.push_str("</tr>");

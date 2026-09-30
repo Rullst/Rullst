@@ -2,6 +2,9 @@
 
 use super::super::db::*;
 use super::super::layout::*;
+use super::super::limits::{
+    MAX_CELL_BYTES, MAX_DISPLAY_CHARS, MAX_SEARCH_BYTES, bounded_text_expression,
+};
 use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
@@ -55,8 +58,8 @@ pub async fn handle_table(
         );
     }
 
-    let columns = match fetch_table_schema(pool, driver, &clean_table).await {
-        Ok(columns) => columns,
+    let schema = match fetch_table_schema(pool, driver, &clean_table).await {
+        Ok(schema) => schema,
         Err(err) => {
             return table_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -69,6 +72,15 @@ pub async fn handle_table(
     };
 
     let search_str = query.search.as_deref().unwrap_or("").trim();
+    if search_str.len() > MAX_SEARCH_BYTES {
+        return table_error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Search terms are limited to 256 bytes.",
+            is_htmx,
+            Some(&clean_table),
+            &tables,
+        );
+    }
     const MAX_PAGE: usize = 1_000_000;
     let page = query.page.unwrap_or(1).clamp(1, MAX_PAGE);
     let per_page = 25;
@@ -97,7 +109,7 @@ pub async fn handle_table(
     };
     let total_pages = total_records.div_ceil(per_page);
 
-    if columns.is_empty() {
+    if schema.columns.is_empty() {
         return table_error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "This table has no columns inside Studio's supported identifier boundary.",
@@ -107,30 +119,33 @@ pub async fn handle_table(
         );
     }
 
-    let col_names = columns
+    let col_names = schema
+        .columns
         .iter()
         .map(|column| column.name.clone())
         .collect::<Vec<_>>();
-    let primary_keys = columns
-        .iter()
-        .enumerate()
-        .filter_map(|(index, column)| column.primary_key.then_some(index))
-        .collect::<Vec<_>>();
-    let supports_mutations = !primary_keys.is_empty()
-        && primary_keys
-            .iter()
-            .all(|index| columns[*index].kind.is_editable());
+    let primary_keys = schema.primary_key_indices();
+    let supports_mutations = schema.supports_mutations();
+    let mutation_notice = if supports_mutations {
+        "Inspect rows; primitive values may be changed only through the verified local Studio boundary"
+    } else {
+        "Read-only: row changes need a complete primary key whose columns use primitive types and Studio's ASCII identifier boundary"
+    };
 
     let quoted_table = quote_table_name(driver, &clean_table);
-    let selected_columns = col_names
+    // Key columns keep up to one character more than a mutation accepts, so a
+    // longer key is detected and its row stays read-only; other cells need
+    // only one character more than the display bound to show truncation.
+    let selected_columns = schema
+        .columns
         .iter()
         .map(|column| {
-            let quoted = quote_table_name(driver, column);
-            if driver == "mysql" {
-                format!("CAST({quoted} AS CHAR) AS {quoted}")
+            let limit = if supports_mutations && column.primary_key {
+                MAX_CELL_BYTES + 1
             } else {
-                format!("CAST({quoted} AS TEXT) AS {quoted}")
-            }
+                MAX_DISPLAY_CHARS + 1
+            };
+            bounded_text_expression(driver, &column.name, limit)
         })
         .collect::<Vec<_>>()
         .join(", ");
@@ -170,7 +185,7 @@ pub async fn handle_table(
             "<th scope=\"col\" class=\"px-6 py-3.5 text-left text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800/80\">Actions</th>",
         );
     }
-    let rows_html = build_mutable_rows_html(&records, &columns, &clean_table);
+    let rows_html = build_mutable_rows_html(&records, &schema, &clean_table);
 
     let content_html = format!(
         r##"<div class="w-full p-4 sm:p-6 lg:p-8 font-mono space-y-6 max-w-7xl mx-auto">
@@ -180,11 +195,12 @@ pub async fn handle_table(
                         <span>{}</span>
                         <span class="text-xs px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 uppercase font-mono">Table View</span>
                     </h1>
-                    <p class="text-slate-400 text-xs mt-1">Inspect rows; primitive values may be changed only through the verified local Studio boundary</p>
+                    <p class="text-slate-400 text-xs mt-1">{}</p>
                 </div>
                 <form method="get" action="/studio/tables/{}" class="flex w-full md:w-auto items-center gap-3">
                     <input type="text"
                            name="search"
+                           maxlength="256"
                            value="{}"
                            placeholder="Search records..."
                            class="bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition w-full md:w-64" />
@@ -215,6 +231,7 @@ pub async fn handle_table(
             </div>
         </div>"##,
         escape_html_attr(&clean_table),
+        mutation_notice,
         urlencoding::encode(&clean_table),
         escape_html_attr(search_str),
         headers_html,

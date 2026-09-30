@@ -1,10 +1,16 @@
+use crate::access::{VerifiedLocalStudioAccess, verified_local_access_required};
 use axum::{
     Router,
-    extract::Path,
+    extract::{Extension, Path},
     response::{Html, IntoResponse},
     routing::{get, post},
 };
 
+/// Raw feature-flag routes, without an access boundary.
+///
+/// [`crate::Studio::into_router`] mounts them behind the verified local
+/// boundary. Toggling additionally requires the crate-private marker installed
+/// by that boundary, so mounting this router elsewhere returns `403` for it.
 pub fn router() -> Router {
     Router::new()
         .route("/", get(render_feature_flags))
@@ -12,80 +18,101 @@ pub fn router() -> Router {
         .route("/toggle/{name}", post(toggle_feature_flag))
 }
 
-async fn ensure_table_exists() {
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-        let sql = match driver {
-            "postgres" => {
-                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                    name VARCHAR(255) PRIMARY KEY,
-                    enabled BOOLEAN NOT NULL DEFAULT false,
-                    rollout_percentage INTEGER,
-                    variants TEXT
-                )"
-            }
-            "mysql" | "mariadb" => {
-                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                    name VARCHAR(255) PRIMARY KEY,
-                    enabled BOOLEAN NOT NULL DEFAULT false,
-                    rollout_percentage INTEGER,
-                    variants TEXT
-                )"
-            }
-            _ => {
-                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                    name TEXT PRIMARY KEY,
-                    enabled INTEGER NOT NULL DEFAULT 0,
-                    rollout_percentage INTEGER,
-                    variants TEXT
-                )"
-            }
-        };
-        let _ = rullst_orm::_sqlx::query(sql).execute(pool).await;
+/// Schema that `DbFeatureDriver` reads, shown as migration guidance. Studio
+/// never runs it: a safe `GET` must not change the database schema.
+fn feature_flag_table_ddl(driver: &str) -> &'static str {
+    match driver {
+        "postgres" | "mysql" | "mariadb" => {
+            "CREATE TABLE rullst_feature_flags (\n    name VARCHAR(255) PRIMARY KEY,\n    enabled BOOLEAN NOT NULL DEFAULT false,\n    rollout_percentage INTEGER,\n    variants TEXT\n);"
+        }
+        _ => {
+            "CREATE TABLE rullst_feature_flags (\n    name TEXT PRIMARY KEY,\n    enabled INTEGER NOT NULL DEFAULT 0,\n    rollout_percentage INTEGER,\n    variants TEXT\n);"
+        }
     }
 }
 
-async fn render_feature_flags() -> Html<String> {
-    ensure_table_exists().await;
+fn feature_flag_notice(message: &str, ddl: Option<&str>) -> String {
+    let ddl = ddl.map_or_else(String::new, |ddl| {
+        format!(
+            "<pre class=\"mt-3 mx-auto max-w-xl text-left text-xs text-slate-400 bg-slate-950 border border-slate-800 rounded p-3 overflow-x-auto\">{}</pre>",
+            rullst_core::html::escape_str(ddl)
+        )
+    });
+    format!(
+        "<tr><td colspan=\"4\" class=\"py-8 text-center text-slate-500\">{message}{ddl}</td></tr>"
+    )
+}
 
+const FEATURE_FLAGS_QUERY: &str = "SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC";
+
+fn render_flag_rows(rows: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row]) -> String {
+    use sqlx::Row;
     let mut rows_html = String::new();
+    for row in rows {
+        let name = row.try_get::<String, _>("name").unwrap_or_default();
+        let enabled = row
+            .try_get::<i32, _>("enabled")
+            .map(|v| v != 0)
+            .or_else(|_| row.try_get::<bool, _>("enabled"))
+            .unwrap_or(false);
+        let rollout = row
+            .try_get::<i32, _>("rollout_percentage")
+            .map(|v| v.to_string())
+            .unwrap_or_else(|_| "-".to_string());
+        let variants = row
+            .try_get::<String, _>("variants")
+            .unwrap_or_else(|_| "-".to_string());
+        let encoded_name = urlencoding::encode(&name);
 
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let _driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-        if let Ok(rows) = rullst_orm::_sqlx::query("SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC").fetch_all(pool).await {
-            use sqlx::Row;
-            for row in rows {
-                let name = row.try_get::<String, _>("name").unwrap_or_default();
-                let enabled = row.try_get::<i32, _>("enabled").map(|v| v != 0).or_else(|_| row.try_get::<bool, _>("enabled")).unwrap_or(false);
-                let rollout = row.try_get::<i32, _>("rollout_percentage").map(|v| v.to_string()).unwrap_or_else(|_| "-".to_string());
-                let variants = row.try_get::<String, _>("variants").unwrap_or_else(|_| "-".to_string());
-                let encoded_name = urlencoding::encode(&name);
+        let toggle_btn = if enabled {
+            format!(
+                "<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button></form>"
+            )
+        } else {
+            format!(
+                "<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button></form>"
+            )
+        };
 
-                let toggle_btn = if enabled {
-                    format!("<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button></form>")
-                } else {
-                    format!("<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button></form>")
-                };
-
-                rows_html.push_str(&format!(
-                    "<tr class=\"border-b border-slate-800 hover:bg-slate-800/50 transition-colors\">\
-                     <td class=\"py-4 px-4 font-semibold text-slate-200\">{}</td>\
-                     <td class=\"py-4 px-4\">{}</td>\
-                     <td class=\"py-4 px-4 text-slate-400\">{}</td>\
-                     <td class=\"py-4 px-4 text-slate-400\">{}</td>\
-                     </tr>",
-                    rullst_core::html::escape_str(&name),
-                    toggle_btn,
-                    rollout,
-                    rullst_core::html::escape_str(&variants)
-                ));
-            }
-        }
+        rows_html.push_str(&format!(
+            "<tr class=\"border-b border-slate-800 hover:bg-slate-800/50 transition-colors\">\
+             <td class=\"py-4 px-4 font-semibold text-slate-200\">{}</td>\
+             <td class=\"py-4 px-4\">{}</td>\
+             <td class=\"py-4 px-4 text-slate-400\">{}</td>\
+             <td class=\"py-4 px-4 text-slate-400\">{}</td>\
+             </tr>",
+            rullst_core::html::escape_str(&name),
+            toggle_btn,
+            rollout,
+            rullst_core::html::escape_str(&variants)
+        ));
     }
+    rows_html
+}
 
-    if rows_html.is_empty() {
-        rows_html = "<tr><td colspan=\"4\" class=\"py-8 text-center text-slate-500\">No feature flags found. (Table <code>rullst_feature_flags</code> is empty)</td></tr>".to_string();
-    }
+async fn render_feature_flags() -> Html<String> {
+    let rows_html = match rullst_core::db::safe_pool() {
+        None => feature_flag_notice(
+            "No database is configured; feature flags are unavailable.",
+            None,
+        ),
+        Some(pool) => match rullst_orm::_sqlx::query(FEATURE_FLAGS_QUERY)
+            .fetch_all(pool)
+            .await
+        {
+            Ok(rows) if rows.is_empty() => feature_flag_notice(
+                "No feature flags found. (Table <code>rullst_feature_flags</code> is empty)",
+                None,
+            ),
+            Ok(rows) => render_flag_rows(&rows),
+            Err(_) => feature_flag_notice(
+                "The <code>rullst_feature_flags</code> table is unavailable. Studio does not create it; add it with a migration:",
+                Some(feature_flag_table_ddl(
+                    rullst_core::db::safe_driver().unwrap_or("sqlite"),
+                )),
+            ),
+        },
+    };
 
     Html(format!(
         r#"<!DOCTYPE html>
@@ -127,7 +154,13 @@ async fn render_feature_flags() -> Html<String> {
     ))
 }
 
-async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Response {
+async fn toggle_feature_flag(
+    Path(name): Path<String>,
+    verified: Option<Extension<VerifiedLocalStudioAccess>>,
+) -> axum::response::Response {
+    if verified.is_none() {
+        return verified_local_access_required();
+    }
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     toggle_feature_flag_with_pool(&name, rullst_core::db::safe_pool(), driver).await
 }
@@ -203,5 +236,72 @@ mod tests {
         // 3. Directly check render_feature_flags HTML
         let html = render_feature_flags().await.0;
         assert!(html.contains("Feature Flags Manager"));
+    }
+
+    fn toggle_request(name: &str, verified: bool) -> Request<Body> {
+        let mut request = Request::builder()
+            .method("POST")
+            .uri(format!("/toggle/{name}"))
+            .body(Body::empty())
+            .unwrap();
+        if verified {
+            request
+                .extensions_mut()
+                .insert(crate::access::VerifiedLocalStudioAccess);
+        }
+        request
+    }
+
+    #[tokio::test]
+    // TM-STUDIO-06: the raw router cannot toggle flags without the marker that
+    // only the verified local Studio boundary installs.
+    async fn raw_router_denies_toggles_without_verified_local_access() {
+        let response = router()
+            .oneshot(toggle_request("any_flag", false))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    #[cfg(not(miri))]
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+    async fn denied_toggles_leave_the_stored_flag_unchanged() {
+        let pool = crate::data_browser::pool::test_sqlite_pool().await;
+        rullst_orm::_sqlx::query(
+            "CREATE TABLE IF NOT EXISTS rullst_feature_flags (name TEXT PRIMARY KEY, \
+             enabled INTEGER NOT NULL DEFAULT 0, rollout_percentage INTEGER, variants TEXT)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        rullst_orm::_sqlx::query(
+            "INSERT OR REPLACE INTO rullst_feature_flags (name, enabled) VALUES ('raw_router_probe', 0)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        let enabled = || async {
+            rullst_orm::_sqlx::query_scalar::<_, i64>(
+                "SELECT enabled FROM rullst_feature_flags WHERE name = 'raw_router_probe'",
+            )
+            .fetch_one(pool)
+            .await
+            .unwrap()
+        };
+
+        let denied = router()
+            .oneshot(toggle_request("raw_router_probe", false))
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+        assert_eq!(enabled().await, 0);
+
+        let allowed = router()
+            .oneshot(toggle_request("raw_router_probe", true))
+            .await
+            .unwrap();
+        assert!(allowed.status().is_redirection());
+        assert_eq!(enabled().await, 1);
     }
 }

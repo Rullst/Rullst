@@ -232,6 +232,14 @@ async fn test_studio_table_browser_and_schema_inspection() {
     assert_eq!(res.status(), StatusCode::OK);
 
     let pool = rullst_core::db::safe_pool().expect("Studio SQLite pool");
+    // Studio never creates this table; the application's migration does.
+    rullst_orm::_sqlx::query(
+        "CREATE TABLE IF NOT EXISTS rullst_feature_flags (name TEXT PRIMARY KEY, \
+         enabled INTEGER NOT NULL DEFAULT 0, rollout_percentage INTEGER, variants TEXT)",
+    )
+    .execute(pool)
+    .await
+    .expect("create feature flag table fixture");
     rullst_orm::_sqlx::query(
         "INSERT OR REPLACE INTO rullst_feature_flags \
          (name, enabled, rollout_percentage, variants) VALUES (?, ?, ?, ?)",

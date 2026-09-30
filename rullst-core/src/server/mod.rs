@@ -18,7 +18,12 @@ pub(crate) static TEST_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::co
 mod tests;
 
 pub use crate::Router;
+#[doc(hidden)]
+pub use builder::read_optional_environment_variable;
 pub use builder::{Server, ServerError};
+#[cfg(feature = "orm")]
+#[doc(hidden)]
+pub use database_url::resolve_project_database_url;
 pub use hotswap::HotSwapService;
 pub use server_middleware::{inject_hmr_script, zstd_static_middleware};
 

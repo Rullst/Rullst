@@ -12,8 +12,11 @@ views from the sources explicitly supplied by the application.
 
 - **Database inspector:** Read and filter configured SQLx tables, edit bounded
   primitive non-key values, delete one complete-primary-key-selected row with
-  exact confirmation, and inspect a live ER diagram. SQLite, PostgreSQL, MySQL
-  and MariaDB run executable mutation contracts.
+  exact confirmation, and inspect a live ER diagram. Tables whose key includes
+  a column outside the ASCII identifier boundary stay read-only, and each write
+  commits only when exactly one row changed. Views show 25 rows, cut cell text
+  to 256 characters in the database and accept search terms up to 256 bytes. SQLite, PostgreSQL, MySQL and
+  MariaDB run executable mutation contracts.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
@@ -23,7 +26,9 @@ views from the sources explicitly supplied by the application.
 - **Safe configuration view:** Environment values are deny-by-default redacted;
   typed runtime configuration is projected without URLs, paths, or secrets.
 - **Feature flags manager:** Toggle database-backed flags and immediately
-  invalidate already-warm `DbFeatureDriver` caches in the same process.
+  invalidate already-warm `DbFeatureDriver` caches in the same process. Studio
+  never creates the `rullst_feature_flags` table; a missing table is reported
+  with the schema to add in a migration.
 - **Distributed diagnostics:** Visualize in-process sources plus bounded,
   attribute-free v1 spans from a separately mounted HMAC-authenticated push
   endpoint. Slow-query and repeated-label findings are heuristics; no SQL text,
@@ -52,6 +57,15 @@ and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
 capability also rejects DNS-rebinding-style non-local `Host` values,
 cross-origin requests, and unsafe requests without an `Origin` header.
+Database, queue, cache and feature-flag writes also require a crate-private
+marker that only this capability installs, so raw subrouters mounted elsewhere
+return `403` for them.
+
+Studio uses the ORM pool that the application initialized. When none exists,
+its first database view initializes one from the resolver shared by `Server`
+and Artisan (process `DATABASE_URL`, then `./.env`, then `[database].url` in
+`Rullst.toml`). Without a configured database it reports the database tools as
+unavailable and creates nothing; there is no SQLite fallback.
 
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
