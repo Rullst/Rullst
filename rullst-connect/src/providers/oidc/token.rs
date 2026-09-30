@@ -24,16 +24,34 @@ impl OidcProvider {
         form_data: &(impl serde::Serialize + Sync),
         expected_nonce: Option<&str>,
     ) -> Result<ConnectUser, ConnectError> {
-        let token_res = self
-            .http_client
-            .post(self.token_url())
+        let token_res = self.post_token_form(form_data).await?;
+        self.user_from_token_response(&token_res, expected_nonce)
+            .await
+    }
+
+    async fn post_token_form(
+        &self,
+        form_data: &(impl serde::Serialize + Sync),
+    ) -> Result<Value, ConnectError> {
+        self.client_authentication
+            .authorize(
+                self.http_client.post(self.token_url()),
+                &self.client_id,
+                secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            )
             .form(form_data)
             .send()
             .await?
             .error_for_status()?
             .json::<Value>()
-            .await?;
+            .await
+    }
 
+    async fn user_from_token_response(
+        &self,
+        token_res: &Value,
+        expected_nonce: Option<&str>,
+    ) -> Result<ConnectUser, ConnectError> {
         let access_token = token_res["access_token"]
             .as_str()
             .ok_or_else(|| ConnectError::Token("Failed to get access_token".to_string()))?;
@@ -56,7 +74,7 @@ impl OidcProvider {
         user.refresh_token = token_res["refresh_token"]
             .as_str()
             .map(|s| secrecy::SecretString::from(s.to_string()));
-        user.expires_in = crate::provider::token_lifetime(&token_res)?;
+        user.expires_in = crate::provider::token_lifetime(token_res)?;
 
         Ok(user)
     }
@@ -194,7 +212,9 @@ impl Provider for OidcProvider {
     ) -> Result<ConnectUser, ConnectError> {
         let form_data = crate::provider::TokenExchangeForm {
             client_id: self.client_id.as_str(),
-            client_secret: Some(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
+            client_secret: self
+                .client_authentication
+                .body_secret(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
             code: params.auth_code,
             grant_type: Some("authorization_code"),
             redirect_uri: self.redirect_url.as_str(),
@@ -238,15 +258,18 @@ impl Provider for OidcProvider {
     }
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<ConnectUser, ConnectError> {
-        let form_data = [
-            ("client_id", self.client_id.as_str()),
-            (
-                "client_secret",
-                secrecy::ExposeSecret::expose_secret(&self.client_secret),
-            ),
-            ("refresh_token", refresh_token),
-            ("grant_type", "refresh_token"),
-        ];
-        self.get_user_from_form(&form_data, None).await
+        let mut form_data = vec![("client_id", self.client_id.as_str())];
+        if let Some(secret) = self
+            .client_authentication
+            .body_secret(secrecy::ExposeSecret::expose_secret(&self.client_secret))
+        {
+            form_data.push(("client_secret", secret));
+        }
+        form_data.push(("refresh_token", refresh_token));
+        form_data.push(("grant_type", "refresh_token"));
+        let token_res = self.post_token_form(&form_data).await?;
+        self.user_from_token_response(&token_res, None)
+            .await
+            .map_err(|source| crate::error::refresh_incomplete(&token_res, source))
     }
 }

@@ -32,7 +32,8 @@ impl Server {
 
     /// Builds the static application. Outer-to-inner request order:
     /// trusted proxy → security baseline → lifecycle → Traffic Shield → rate
-    /// limit → development/static/logging layers → application routes.
+    /// limit (both skipped for exact health probes) → development/static/access
+    /// log layers → application routes.
     pub(super) fn into_static_app(
         self,
         security: SecurityConfig,
@@ -44,21 +45,7 @@ impl Server {
         app = super::dev_reload::mount(app, is_dev, std::env::var("RULLST_DEV_GENERATION").ok());
 
         app = app.layer(axum::middleware::from_fn(
-            |req: axum::extract::Request, next: axum::middleware::Next| async move {
-                let method = req.method().to_string();
-                let path = req.uri().path().to_string();
-                let start = std::time::Instant::now();
-                let res = next.run(req).await;
-                let status = res.status().as_u16();
-                let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-                if !path.starts_with("/_rullst_hmr") {
-                    println!(
-                        "[HTTP] {} {} -> {} ({:.2} ms)",
-                        method, path, status, elapsed
-                    );
-                }
-                res
-            },
+            super::console::access_log_middleware,
         ));
 
         if std::path::Path::new("static").exists() {
@@ -85,17 +72,8 @@ impl Server {
                 ));
         }
 
-        if let Some(limiter) = self.limiter {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
-            }));
-        }
-
-        if let Some(shield) = self.shield {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::backpressure_middleware(shield.clone(), req, next)
-            }));
-        }
+        // Exact GET/HEAD `/health` and `/ready` probes bypass both controls.
+        app = super::traffic::apply_traffic_controls(app, self.limiter, self.shield);
 
         if let Some(lifecycle) = self.lifecycle {
             app = apply_lifecycle(app, lifecycle);

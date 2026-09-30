@@ -3,7 +3,7 @@
 use super::*;
 use crate::Router;
 use crate::lifecycle::ApplicationLifecycle;
-use crate::resilience::{RateLimitConfig, RateLimiter};
+use crate::resilience::{RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig};
 use crate::security::ClientAddr;
 use axum::body::{Body, to_bytes};
 use axum::extract::{ConnectInfo, Extension};
@@ -13,21 +13,27 @@ use tower::ServiceExt;
 
 const PROXY: &str = "10.0.0.1:443";
 
+async fn echo(
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    Extension(client): Extension<ClientAddr>,
+) -> String {
+    format!("{peer}|{}", client.via_trusted_proxy())
+}
+
 fn application() -> Router {
-    Router::new().route(
-        "/",
-        axum::routing::get(
-            |ConnectInfo(peer): ConnectInfo<SocketAddr>,
-             Extension(client): Extension<ClientAddr>| async move {
-                format!("{peer}|{}", client.via_trusted_proxy())
-            },
-        ),
-    )
+    Router::new()
+        .route("/", axum::routing::get(echo))
+        .route("/health", axum::routing::get(echo))
+        .route("/ready", axum::routing::get(echo))
 }
 
 async fn send(app: &axum::Router, peer: &str, client: &str) -> (StatusCode, String) {
+    send_to(app, "/", peer, client).await
+}
+
+async fn send_to(app: &axum::Router, path: &str, peer: &str, client: &str) -> (StatusCode, String) {
     let mut request = Request::builder()
-        .uri("/")
+        .uri(path)
         .header("x-forwarded-for", client)
         .body(Body::empty())
         .unwrap();
@@ -70,6 +76,51 @@ async fn trusted_proxy_is_the_outermost_server_layer() {
         send(&app, "203.0.113.30:1001", "198.51.100.2").await.0,
         StatusCode::TOO_MANY_REQUESTS
     );
+
+    // Exact health probes still bypass the exhausted bucket, and they observe
+    // the client resolved by the outer trusted-proxy layer.
+    for path in ["/health", "/ready", "/health", "/ready"] {
+        assert_eq!(
+            send_to(&app, path, PROXY, "203.0.113.10").await,
+            (StatusCode::OK, "203.0.113.10:0|true".to_string()),
+            "{path}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn health_probes_bypass_a_critical_shield_behind_a_trusted_proxy() {
+    // Zero admitted requests keeps the shield permanently critical.
+    let shield = TrafficShield::new(
+        TrafficShieldConfig::new()
+            .with_db_probe(false)
+            .with_max_active_requests(0),
+    );
+    let app = Server::new(application())
+        .shield(shield.clone())
+        .rate_limit(RateLimiter::new(RateLimitConfig::new(1.0, 0.001)))
+        .trusted_proxies(TrustedProxyConfig::new(["10.0.0.0/8"]).unwrap())
+        .into_static_app(SecurityConfig::default(), Environment::Test)
+        .unwrap();
+
+    assert_eq!(
+        send(&app, PROXY, "203.0.113.10").await.0,
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+    for path in ["/health", "/ready", "/health"] {
+        assert_eq!(
+            send_to(&app, path, PROXY, "203.0.113.10").await,
+            (StatusCode::OK, "203.0.113.10:0|true".to_string()),
+            "{path}"
+        );
+    }
+    assert_eq!(
+        send_to(&app, "/health/details", PROXY, "203.0.113.10")
+            .await
+            .0,
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+    shield.shutdown();
 }
 
 #[test]
@@ -149,4 +200,12 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
         StatusCode::TOO_MANY_REQUESTS
     );
     assert_eq!(status("203.0.113.20").await.0, StatusCode::OK);
+
+    let health = Request::builder()
+        .uri("/health")
+        .header("x-forwarded-for", "203.0.113.10")
+        .body(Body::empty())
+        .unwrap();
+    let response = connection.call(health).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 }

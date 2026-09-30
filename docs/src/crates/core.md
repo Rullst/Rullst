@@ -63,6 +63,26 @@ When a handler finishes while its timeout or a graceful shutdown is being
 processed, the worker records the handler's own result: only a handler that
 was actually cancelled is failed as timed out or requeued, so a success is
 never reported as a timeout or run again.
+Stalled-lease recovery runs when a worker starts and then every
+`min(stalled_after, 60 s)`, and it is queue-wide: it returns every processing
+lease in the shared SQLite table or Redis namespace that is older than the
+recovering worker's `stalled_after`, including leases of other workers. In the
+unpublished v13 source, workers claim through `QueueDriver::pop_with_lease`
+with their own `stalled_after`; SQLite and Redis store that lease with the
+claim and recovery honours it whatever age the recovering worker uses, so a
+pool with a short `stalled_after` no longer requeues a slower pool's running
+job. Claims without a lease (older workers, custom drivers or direct `pop`
+calls) still stall after the recovering worker's age: while any exist, every
+worker that shares a queue must use a `stalled_after` longer than the longest
+`job_timeout` of any of them.
+A job that crashes, aborts or hangs its worker would otherwise be recovered and
+claimed forever, so the SQLite and Redis drivers count stalled leases per job
+and fail the job, instead of requeuing it, when its fifth lease stalls. The
+failure is listed and retryable like any other failed job, and
+`retry_failed_job` restarts the count. In the unpublished v13 source,
+`SqliteDriver::try_with_max_stalled_leases` and
+`RedisDriver::try_with_max_stalled_leases` change the ceiling (1–1,000, default
+`DEFAULT_MAX_STALLED_LEASES` = 5).
 Worker transitions are fenced by the claim's attempt number. The SQLite and
 Redis drivers complete, fail or requeue a job only while it is still processing
 under the attempt that `pop` returned, so a worker whose lease was recovered and
@@ -83,11 +103,27 @@ delay keeps the claiming worker out of a hot loop, and it still reports
 stays pending and is re-offered every five seconds instead of being failed.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
+`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`/`422`
+JSON) for other clients, but an HTMX request receives its escaped HTML
+fragment with `200 OK` and an `X-Rullst-Validation-Status: 400|422` header,
+because htmx swaps only successful responses by default.
+`Scheduler::task` takes a POSIX five-field expression (`minute hour
+day-of-month month day-of-week`) evaluated in UTC. Day-of-week accepts 0-7
+(0 and 7 are Sunday, 1 is Monday) and names, so `0 9 * * 1-5` runs Monday to
+Friday. When both day fields are restricted, a day matching either one runs
+the task (`0 0 1 * 1` is the 1st plus every Monday); a field starting with `*`
+keeps the intersection. Earlier releases passed the fields to the `cron`
+crate unchanged, where 1 was Sunday and 0 was rejected. Messaging's durable
+recurring publications keep their documented `cron`-crate projection.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained
 does not grow memory. Drain `next_error` (for example from a supervising task)
-to observe every failure.
+to observe every failure. A scheduler attached with `Server::schedule` is
+drained by the server: each task failure is logged as a `tracing` error on the
+`rullst::scheduler` target when reported, and a past task failure no longer
+turns a clean shutdown into `Err(ServerError::Scheduler)`; only a failed
+scheduler loop does.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
@@ -150,13 +186,22 @@ exercises this boundary through a real proxy; full hosted admission remains pend
 - **Bounded token-bucket rate limiter:** `RateLimiter` keys IPv4 peers per
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
-  that cap; state is process-local, not a distributed limit.
+  that cap; state is process-local, not a distributed limit. When attached to
+  `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
+  and `/ready` probes through, so load shedding or an exhausted bucket cannot
+  fail a liveness probe.
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.
   Only a socket peer inside the listed networks may report the client through
   `X-Forwarded-For` or RFC 7239 `Forwarded`; the resolved address replaces
   `ConnectInfo`, so existing rate limiters and lockouts use it unchanged. See
   [Running behind a reverse proxy](#running-behind-a-reverse-proxy).
+- **Bounded database flag cache:** `DbFeatureDriver` caches a found flag, a
+  flag without a row and a failed or timed-out lookup (missing table,
+  unavailable database) for its TTL, so an undefined flag does not query the
+  database on every evaluation. A failed refresh keeps serving the last value
+  read; one lookup waits at most two seconds and each driver caches at most
+  4,096 flag names.
 - **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
   TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
   SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.

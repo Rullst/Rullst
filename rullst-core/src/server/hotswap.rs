@@ -214,19 +214,11 @@ impl Service<axum::extract::Request> for HotSwapService {
             Err(poisoned) => poisoned.into_inner().clone(),
         };
 
-        if let Some(ref limiter) = self.limiter {
-            let lim = limiter.clone();
-            router = router.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::rate_limit_middleware(lim.clone(), req, next)
-            }));
-        }
-
-        if let Some(ref shield) = self.shield {
-            let sh = shield.clone();
-            router = router.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::backpressure_middleware(sh.clone(), req, next)
-            }));
-        }
+        router = super::traffic::apply_traffic_controls(
+            router,
+            self.limiter.clone(),
+            self.shield.clone(),
+        );
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
         }
@@ -243,14 +235,12 @@ impl Service<axum::extract::Request> for HotSwapService {
             let handle = tokio::spawn(async move { fut.await });
             match handle.await {
                 Ok(Ok(res)) => {
-                    let status = res.status().as_u16();
-                    let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-                    if !path.starts_with("/_rullst_hmr") {
-                        println!(
-                            "[HTTP] {} {} -> {} ({:.2} ms)",
-                            method, path, status, elapsed
-                        );
-                    }
+                    super::console::log_request(
+                        &method,
+                        &path,
+                        res.status().as_u16(),
+                        start.elapsed().as_secs_f64() * 1000.0,
+                    );
                     Ok(res)
                 }
                 Ok(Err(_)) => Self::handle_oneshot_error(),

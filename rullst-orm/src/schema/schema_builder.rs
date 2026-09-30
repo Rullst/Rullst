@@ -76,15 +76,18 @@ impl Schema {
     /// Drops a named PostgreSQL enum after all dependent tables have been
     /// removed. MySQL/MariaDB and SQLite have no standalone enum object, so
     /// this operation is a validated no-op for those drivers.
+    ///
+    /// Like the table DDL, it runs in the task-scoped transaction when one is
+    /// active, so it can follow `drop_if_exists` in the same transaction and
+    /// rolls back with it.
     pub async fn drop_native_enum<E: DatabaseEnum>() -> Result<(), Error> {
         let definition = validated_definition::<E>()?;
         if crate::Orm::driver()? != "postgres" {
             return Ok(());
         }
         let sql = format!("DROP TYPE IF EXISTS \"{}\";", definition.type_name);
-        sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
-            .execute(crate::Orm::try_pool()?)
-            .await?;
+        let query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
+        crate::execute_query!(query, execute, pool)?;
         Ok(())
     }
 }
@@ -102,20 +105,19 @@ async fn ensure_postgres_enum(definition: &NativeEnumDefinition) -> Result<(), E
         "DO $rullst$ BEGIN CREATE TYPE \"{}\" AS ENUM ({}); EXCEPTION WHEN duplicate_object THEN NULL; END $rullst$;",
         definition.type_name, labels
     );
-    let pool = crate::Orm::try_pool()?;
-    sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
-        .execute(pool)
-        .await?;
+    // The type, its drift check and the table that uses it share the
+    // task-scoped transaction when one is active.
+    let create = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
+    crate::execute_query!(create, execute, pool)?;
 
-    let actual = sqlx::query_as::<_, (String,)>(
+    let labels = sqlx::query_as::<_, (String,)>(
         "SELECT e.enumlabel::TEXT FROM pg_type AS t JOIN pg_enum AS e ON e.enumtypid = t.oid WHERE t.typname = $1 AND pg_type_is_visible(t.oid) ORDER BY e.enumsortorder",
     )
-    .bind(definition.type_name)
-    .fetch_all(pool)
-    .await?
-    .into_iter()
-    .map(|(label,)| label)
-    .collect::<Vec<_>>();
+    .bind(definition.type_name);
+    let actual = crate::execute_query!(labels, fetch_all, pool)?
+        .into_iter()
+        .map(|(label,)| label)
+        .collect::<Vec<_>>();
     if actual != definition.variants {
         return Err(Error::Validation(format!(
             "PostgreSQL enum `{}` differs from the declared Rust enum",

@@ -19,6 +19,25 @@ where
         .remove(0)
 }
 
+/// A scheduler with one task that fires every second, for lifecycle tests
+/// that cannot wait for a whole cron minute.
+pub(crate) fn every_second<F, Fut>(timeout: Duration, handler: F) -> Scheduler
+where
+    F: Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
+{
+    let handler: ScheduledHandler = Arc::new(Box::new(move || Box::pin(handler())));
+    Scheduler {
+        tasks: vec![ScheduledTask {
+            label: "every second".to_string(),
+            schedule: CronSchedule::every_second(),
+            handler,
+        }],
+        task_timeout: timeout,
+        failure_policy: SchedulerFailurePolicy::Continue,
+    }
+}
+
 fn handle_with(
     loops: Vec<(String, JoinHandle<()>)>,
     errors: ErrorBuffer<SchedulerError>,
@@ -156,4 +175,25 @@ fn scheduler_defaults_and_duration_saturation_are_explicit() {
     assert_eq!(scheduler.task_timeout, Duration::from_secs(300));
     assert_eq!(scheduler.failure_policy, SchedulerFailurePolicy::Continue);
     assert_eq!(duration_millis_u64(Duration::MAX), u64::MAX);
+}
+
+#[test]
+fn registered_tasks_use_posix_weekday_numbering() {
+    use chrono::{Datelike, TimeZone};
+
+    assert!(Scheduler::new().task("0 3 * * 0", || async {}).is_ok());
+    let task = Scheduler::new()
+        .task("0 9 * * 1-5", || async {})
+        .expect("weekday schedule")
+        .tasks
+        .remove(0);
+    // Thursday 2026-10-01 09:00 UTC is followed by Friday, then Monday.
+    let thursday = chrono::Utc
+        .with_ymd_and_hms(2026, 10, 1, 9, 0, 0)
+        .single()
+        .expect("valid instant");
+    let friday = task.schedule.next_after(&thursday).expect("next run");
+    assert_eq!(friday.weekday(), chrono::Weekday::Fri);
+    let monday = task.schedule.next_after(&friday).expect("next run");
+    assert_eq!(monday.weekday(), chrono::Weekday::Mon);
 }

@@ -36,6 +36,8 @@ pub mod worker;
 
 #[cfg(test)]
 mod lease_tests;
+#[cfg(all(test, feature = "queue-sqlite", not(miri)))]
+mod recovery_tests;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
 #[cfg(test)]
@@ -54,6 +56,30 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const MAX_SCHEDULE_DELAY: Duration = Duration::from_secs(366 * 24 * 60 * 60);
+
+/// Stalled leases after which the built-in drivers fail a job instead of
+/// requeuing it, so a job that keeps killing its worker cannot loop forever.
+///
+/// Configure it with `SqliteDriver::try_with_max_stalled_leases` or
+/// `RedisDriver::try_with_max_stalled_leases`. Unpublished v13 API.
+pub const DEFAULT_MAX_STALLED_LEASES: u32 = 5;
+/// Largest value accepted by the drivers' `try_with_max_stalled_leases`.
+/// Unpublished v13 API.
+pub const MAX_STALLED_LEASES_LIMIT: u32 = 1_000;
+
+#[cfg_attr(
+    not(any(feature = "queue-sqlite", feature = "queue-redis")),
+    allow(dead_code)
+)]
+fn validate_max_stalled_leases(leases: u32) -> Result<u32, QueueError> {
+    if (1..=MAX_STALLED_LEASES_LIMIT).contains(&leases) {
+        Ok(leases)
+    } else {
+        Err(QueueError::InvalidConfiguration(format!(
+            "the stalled-lease ceiling must be between 1 and {MAX_STALLED_LEASES_LIMIT}"
+        )))
+    }
+}
 
 // ─── Error Types ────────────────────────────────────────────────────────────
 
@@ -184,6 +210,22 @@ pub trait QueueDriver: Send + Sync {
     /// return. Graceful worker shutdown waits for that call, so it should not
     /// block indefinitely.
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError>;
+    /// Claims like [`Self::pop`] and records that this claim counts as
+    /// stalled only once `lease` has passed.
+    ///
+    /// Stalled-lease recovery is queue-wide, so without a recorded lease a
+    /// worker with a short `stalled_after` would requeue another worker's
+    /// longer-running job. The SQLite and Redis drivers store the deadline
+    /// with the claim and [`Self::recover_stalled`] honours it whatever age
+    /// the recovering worker passes. The default ignores `lease` and calls
+    /// `pop`. Unpublished v13 API.
+    async fn pop_with_lease(
+        &self,
+        lease: std::time::Duration,
+    ) -> Result<Option<QueuedJob>, QueueError> {
+        let _ = lease;
+        self.pop().await
+    }
     /// Mark a job as successfully completed.
     ///
     /// Drivers may remove it immediately or retain a bounded history under an explicit policy.
@@ -253,6 +295,14 @@ pub trait QueueDriver: Send + Sync {
         ))
     }
     /// Recover processing leases left behind by a crashed worker.
+    ///
+    /// A claim made with [`Self::pop_with_lease`] is stalled once its own
+    /// lease has passed; any other claim once it is older than `stale_after`.
+    ///
+    /// The built-in SQLite and Redis drivers fail a job, instead of returning
+    /// it to pending, when its lease has stalled [`DEFAULT_MAX_STALLED_LEASES`]
+    /// times (configurable per driver), and report both requeued and failed
+    /// leases in the returned count.
     async fn recover_stalled(&self, _stale_after: std::time::Duration) -> Result<u64, QueueError> {
         Err(QueueError::Unsupported(
             "this driver cannot recover stalled jobs".to_string(),

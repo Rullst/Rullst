@@ -299,7 +299,7 @@ impl<'a> Drop for ActiveRequestGuard<'a> {
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: Next) -> Response {
     if let Err(error) = shield.start() {
-        eprintln!("Traffic Shield is unavailable: {error}");
+        crate::server::console::stderr_line(format_args!("Traffic Shield is unavailable: {error}"));
         let mut response = Response::new(axum::body::Body::from(
             "Traffic Shield monitoring is unavailable.",
         ));
@@ -316,10 +316,10 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
     let pressure = classify_traffic_pressure(&shield.config, lag, db_lat, active);
 
     if pressure == TrafficPressure::Critical {
-        eprintln!(
+        crate::server::console::stderr_line(format_args!(
             "⚠️ [Rullst Backpressure] Load shedding active! CPU lag: {:?}, DB latency: {:?}, Active requests: {}",
             lag, db_lat, active
-        );
+        ));
 
         match Response::builder()
             .status(StatusCode::SERVICE_UNAVAILABLE)

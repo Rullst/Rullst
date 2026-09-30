@@ -409,6 +409,134 @@ async fn redis_failed_jobs_can_be_listed_retried_and_purged() {
 }
 
 #[tokio::test]
+async fn redis_fails_a_job_whose_lease_keeps_stalling() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("poison"))
+        .expect("isolated queue namespace");
+    driver
+        .push("poison", "resize_image", "{}")
+        .await
+        .expect("push crashing job");
+
+    for stall in 1..=4 {
+        let claim = driver.pop().await.expect("claim").expect("job");
+        assert_eq!(claim.attempts, stall);
+        assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    }
+    let fifth = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(fifth.attempts, 5);
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    assert!(
+        driver.pop().await.expect("empty queue").is_none(),
+        "the fifth stalled lease must fail the job instead of requeuing it"
+    );
+    let jobs = driver.list_all_jobs(10).await.expect("list jobs");
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[0].status, "failed");
+    assert!(
+        jobs[0]
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("stalled 5 times")
+    );
+
+    // A manual retry restarts the stalled-lease count.
+    driver.retry_failed_job("poison").await.expect("retry");
+    driver.pop().await.expect("claim").expect("job");
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    let requeued = driver.pop().await.expect("claim").expect("requeued job");
+    assert_eq!(requeued.id, "poison");
+    driver
+        .mark_complete_attempt(&requeued.id, requeued.attempts)
+        .await
+        .expect("complete the requeued claim");
+}
+
+#[tokio::test]
+async fn redis_stalled_lease_ceiling_is_configurable() {
+    assert!(
+        RedisDriver::new("redis://127.0.0.1:1")
+            .unwrap()
+            .try_with_max_stalled_leases(0)
+            .is_err()
+    );
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("fragile"))
+        .expect("isolated queue namespace")
+        .try_with_max_stalled_leases(1)
+        .expect("valid ceiling");
+    driver.push("fragile", "job", "{}").await.expect("push");
+    driver.pop().await.expect("claim").expect("job");
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    assert!(driver.pop().await.expect("empty queue").is_none());
+    let jobs = driver.list_all_jobs(10).await.expect("list jobs");
+    assert_eq!(jobs[0].status, "failed");
+}
+
+#[tokio::test]
+async fn redis_claim_leases_decide_when_a_claim_stalls() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("leases"))
+        .expect("isolated queue namespace");
+
+    // A long claim lease survives a recovery with a zero age.
+    driver
+        .push("report", "generate_report", "{}")
+        .await
+        .expect("push");
+    let report = driver
+        .pop_with_lease(Duration::from_secs(3_600))
+        .await
+        .expect("claim")
+        .expect("job");
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 0);
+
+    // An expired short lease is recovered even with a long recovery age.
+    driver
+        .push("email", "send_email", "{}")
+        .await
+        .expect("push");
+    let email = driver
+        .pop_with_lease(Duration::from_millis(1))
+        .await
+        .expect("claim")
+        .expect("job");
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert_eq!(
+        driver
+            .recover_stalled(Duration::from_secs(3_600))
+            .await
+            .unwrap(),
+        1
+    );
+    let reclaimed = driver.pop().await.expect("claim").expect("recovered job");
+    assert_eq!(reclaimed.id, email.id);
+    assert_eq!(reclaimed.attempts, 2);
+
+    driver
+        .mark_complete_attempt(&report.id, report.attempts)
+        .await
+        .expect("the long lease is still current");
+    driver
+        .mark_complete_attempt(&reclaimed.id, reclaimed.attempts)
+        .await
+        .expect("complete the reclaimed job");
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")

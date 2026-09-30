@@ -187,6 +187,46 @@ async fn scheduler_shield_and_missing_hot_library_have_typed_lifecycles() {
     }
 }
 
+#[tokio::test]
+async fn a_past_scheduled_task_failure_is_logged_and_does_not_fail_shutdown() {
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let environment = EnvironmentGuard::clear(&[
+        "HOST",
+        "RULLST_HOST",
+        "PORT",
+        "RULLST_ENV",
+        "APP_ENV",
+        "DATABASE_URL",
+    ]);
+    environment.set("RULLST_ENV", "test");
+    let logs = super::super::scheduler_supervision::tests::CapturedLogs::default();
+    let _subscriber = tracing::subscriber::set_default(logs.subscriber());
+
+    // Every run exceeds its 5 ms timeout; the server keeps serving meanwhile.
+    let scheduler = crate::scheduler::contract_tests::every_second(
+        std::time::Duration::from_millis(5),
+        || async { tokio::time::sleep(std::time::Duration::from_secs(1)).await },
+    );
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(20),
+        Server::new(Router::new())
+            .schedule(scheduler)
+            .run_with_shutdown(
+                0,
+                tokio::time::sleep(std::time::Duration::from_millis(2_300)),
+            ),
+    )
+    .await
+    .expect("server stopped before its deadline");
+
+    assert!(result.is_ok(), "a clean drain must succeed: {result:?}");
+    assert!(
+        logs.text().contains("exceeded its 5ms timeout"),
+        "the task failure must be logged: {}",
+        logs.text()
+    );
+}
+
 #[test]
 fn server_accepts_a_shared_application_lifecycle() {
     let lifecycle = crate::lifecycle::ApplicationLifecycle::new();

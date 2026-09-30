@@ -28,6 +28,8 @@
 - **Bounded Rate Limiting:** `RateLimiter` keys IPv4 peers per address and
   IPv6 peers per /64, and bounds its process-local bucket map to 100,000 keys
   by dropping refilled buckets and evicting the least recently used ones.
+  `Server`'s limiter and Traffic Shield exempt exact `GET`/`HEAD /health` and
+  `/ready` probes.
 - **Trusted-Proxy Client Resolution (v13):** `Server::trusted_proxies`
   (or `[security] trusted_proxies`) reads `X-Forwarded-For` or RFC 7239
   `Forwarded` only from socket peers inside the listed networks, walks the
@@ -51,6 +53,14 @@
 - **Fenced Queue Leases:** SQLite and Redis complete, fail or requeue a claimed
   job only under the attempt number `pop` returned, so a stale worker whose
   lease was recovered and claimed again cannot finish the newer claim.
+- **Queue-wide Stalled-lease Recovery:** each worker periodically requeues
+  stalled processing leases, including other workers' leases. Workers record
+  their own `stalled_after` with each SQLite/Redis claim (v13
+  `QueueDriver::pop_with_lease`), and recovery honours it; for claims without
+  a lease every worker sharing a queue needs a `stalled_after` longer than the
+  longest `job_timeout` among them. SQLite and Redis fail a
+  job whose fifth lease stalls (for example because it keeps crashing its
+  worker) instead of requeuing it forever.
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
   name hands the claim back with a five-second delay (SQLite and Redis) instead
   of failing it, so a worker that registered that name can run it.
@@ -59,9 +69,17 @@
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
   Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
   `purge_failed_jobs`.
+- **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send
+  HTMX requests their error fragment with `200 OK` plus
+  `X-Rullst-Validation-Status: 400|422`; other clients keep `400`/`422` JSON.
+- **POSIX Cron in UTC:** `Scheduler::task` evaluates five-field POSIX
+  expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and names, and a day
+  matching either restricted day field runs the task.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.
+  `Server::schedule` drains its own handle, logging each task failure; only a
+  failed scheduler loop makes `Server::run` return an error.
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.

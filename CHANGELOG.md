@@ -193,6 +193,34 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Connect and core second-pass review fixes
+
+- Connect keeps a rotated refresh token when a refresh response is rejected or
+  its profile or ID-token step fails; the new `ConnectError::RefreshIncomplete`
+  carries the issued tokens.
+- Connect requests JSON from the token endpoint on refresh, so GitHub refresh
+  works, and X and basic-only OIDC providers authenticate token requests with
+  HTTP Basic.
+- `GoogleProvider::try_with_authorized_presenters` accepts native Android and
+  iOS presenters in `verify_id_token`; `aud` must still be the server client ID.
+- `/health` and `/ready` are exempt from the Server rate limiter and Traffic
+  Shield, so a database incident no longer fails liveness probes.
+- `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) and the
+  day-of-month OR day-of-week rule, evaluated in UTC. Numeric weekdays in
+  existing schedules change meaning; messaging's durable schedules keep their
+  documented numbering.
+- Request-path console output no longer panics when stdout or stderr is
+  closed.
+- `DbFeatureDriver` caches missing and failed lookups for the TTL and serves the
+  last known value on error.
+- HTMX validation fragments are sent with 200 and
+  `X-Rullst-Validation-Status`, so htmx swaps them; other clients keep 400/422.
+- Queue workers record their own stalled-lease threshold with each claim
+  (`QueueDriver::pop_with_lease`), and a job whose lease stalls 5 times fails
+  instead of being requeued forever (`try_with_max_stalled_leases`).
+- The Server logs scheduler task failures and no longer turns a past task
+  failure into a failed shutdown.
+
 ### Core runtime hardening
 
 - `ValidatedForm` and `ValidatedJson` no longer echo deserializer errors:
@@ -344,6 +372,28 @@ A prepared version section does not establish that its tag or crates exist.
 - Add macro/facade regressions and an archive-only consumer compile probe.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
+
+### ORM second-pass review fixes
+
+- Concurrent nested `Orm::transaction` calls take turns on the shared
+  connection, and a savepoint left open rolls the transaction back instead of
+  returning a pooled connection still inside `BEGIN`.
+- `Outbox::enqueue` on MySQL/MariaDB reuses an idempotency key committed by a
+  concurrent transaction instead of failing with `RecordNotFound`.
+- New MySQL/MariaDB `rullst_audits` tables store payloads as `LONGTEXT` (`TEXT`
+  capped them at 64 KiB); existing tables need the documented `ALTER TABLE`
+  migration.
+- `Blueprint::float` emits `DOUBLE PRECISION` on PostgreSQL and `DOUBLE` on
+  MySQL/MariaDB, and `Blueprint::boolean` emits `BOOLEAN` on PostgreSQL with
+  0/1 defaults rendered as `FALSE`/`TRUE` (new migrations only).
+- PostgreSQL enum creation, drift checks and `Schema::drop_native_enum` run in
+  the active transaction, so they roll back with it and no longer deadlock
+  after `drop_if_exists`.
+- Audit restore patches no longer store plaintext values of sensitive keys that
+  an update adds or removes inside JSON fields.
+- Generated query-cache invalidation follows a per-table Redis key index
+  instead of scanning the whole keyspace, and a failed invalidation no longer
+  suppresses `orm:events` publication.
 
 ### ORM review fixes
 

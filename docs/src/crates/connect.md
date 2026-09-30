@@ -94,10 +94,13 @@ Official support for 11 core providers:
 5. **Auth0**
 6. **AWS Cognito**
 7. **Facebook**
-8. **X (Twitter)** (Strict PKCE requirement)
+8. **X (Twitter)** (Strict PKCE requirement; confidential clients authenticate
+   to the token endpoint with HTTP Basic, `client_secret_basic`)
 9. **Discord**
 10. **LinkedIn**
-11. **OIDC (OpenID Connect Custom Provider)**
+11. **OIDC (OpenID Connect Custom Provider)** (sends the client secret in the
+    token request body unless discovery lists `client_secret_basic` without
+    `client_secret_post`, in which case it uses HTTP Basic)
 
 ### Tokens supplied by native or mobile clients
 
@@ -120,7 +123,8 @@ can be replayed until it expires.
 The unpublished v13 development source adds that audience-bound entry point for
 Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
 the signature through the provider's rotating JWKS and requires the exact
-issuer, `aud` equal to your `client_id` (and a matching `azp` when present),
+issuer, `aud` equal to your `client_id` (and, when present, an `azp` equal to
+it or, for Google, to a configured native presenter),
 valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
 never calls userinfo. The returned `ConnectUser` carries the verified ID token
 in `access_token`; there is no provider access or refresh token in this flow.
@@ -141,6 +145,15 @@ async fn sign_in_native_google_user(
 
 Generate the nonce on your server, give it to the client for the provider
 sign-in request, and consume it once, just like an OAuth `state`.
+
+Android Credential Manager and iOS Google Sign-In request the ID token for your
+server (web) client ID, so `aud` is that ID and `azp` is the Android or iOS
+client ID. Configure the server client ID on `GoogleProvider` and list the
+native client IDs with
+`try_with_authorized_presenters(["ANDROID_CLIENT_ID", "IOS_CLIENT_ID"])` (at
+most 16). `aud` must still equal the server client ID; any other `azp` is
+rejected, and the authorization-code flow keeps requiring `azp` to equal the
+server client ID.
 
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
@@ -360,9 +373,18 @@ async fn call_provider_api(
 ```
 
 The default checks 60 seconds before expiration. Refresh calls cannot overlap;
-callers waiting behind a successful refresh reuse its state. A response can
-replace the refresh token only after the lifetime and original provider user ID
-validate. Use `access_token_at` in deterministic workers/tests. Seal
+callers waiting behind a successful refresh reuse its state. A response
+replaces the access token only after the lifetime and original provider user ID
+validate. If a response for the original user is otherwise rejected (for
+example it omits `expires_in`), its rotated refresh token is still kept and the
+generation advances, because the provider has already consumed the prior one;
+the call fails and the next call refreshes with the rotation. The same
+applies when the grant succeeds but the follow-up profile lookup or ID-token
+validation fails: provider adapters then return
+`ConnectError::RefreshIncomplete`, whose `IssuedTokens` carry the new tokens
+to direct `Provider::refresh_token` callers, and the session keeps the
+rotation and returns the underlying error. Persist the snapshot after such a
+failure too. Use `access_token_at` in deterministic workers/tests. Seal
 `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
 dedicated application store:
 

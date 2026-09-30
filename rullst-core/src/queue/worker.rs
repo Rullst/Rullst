@@ -72,7 +72,20 @@ impl Worker {
         self
     }
 
-    /// Sets the age after which a processing lease is recovered at startup.
+    /// Sets the age after which a processing lease counts as stalled.
+    ///
+    /// The worker returns stalled leases to pending when it starts and then
+    /// every `min(age, 60 s)` (at least every second). Recovery is queue-wide:
+    /// it covers every processing lease in the shared SQLite table or Redis
+    /// namespace, including leases held by other workers. `age` must exceed
+    /// this worker's [`Self::job_timeout`].
+    ///
+    /// The worker claims with [`QueueDriver::pop_with_lease`] and this `age`,
+    /// so with the SQLite and Redis drivers its claims stall only after its
+    /// own `age`, whichever worker recovers them. Claims made by older
+    /// versions or with drivers that ignore the lease still stall after the
+    /// recovering worker's `age`; while any remain, keep every worker's `age`
+    /// longer than the longest `job_timeout` sharing the queue.
     pub fn stalled_after(mut self, age: Duration) -> Self {
         self.stalled_after = age;
         self
@@ -249,7 +262,7 @@ async fn run_worker_loop(
             continue;
         }
 
-        let popped = claim_next(&**driver, &mut jobs, &errors).await;
+        let popped = claim_next(&**driver, stalled_after, &mut jobs, &errors).await;
         if shutdown_requested(&shutdown) {
             release_claim_after_shutdown(popped, &**driver, &errors).await;
             break;
@@ -305,10 +318,13 @@ async fn run_worker_loop(
 /// still reported because `JoinSet::join_next` is cancel-safe.
 async fn claim_next(
     driver: &dyn QueueDriver,
+    lease: Duration,
     jobs: &mut JoinSet<Result<(), QueueError>>,
     errors: &ErrorReporter<QueueError>,
 ) -> Result<Option<QueuedJob>, QueueError> {
-    let mut claim = driver.pop();
+    // The claim carries this worker's own stalled_after, so another worker's
+    // shorter recovery age cannot requeue it while it may still be running.
+    let mut claim = driver.pop_with_lease(lease);
     loop {
         tokio::select! {
             popped = &mut claim => return popped,
