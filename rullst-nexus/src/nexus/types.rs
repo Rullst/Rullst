@@ -52,7 +52,7 @@ pub struct FieldMeta {
     pub kind: FieldKind,
     /// If true, hides this field from list/table views, search and the
     /// create/edit forms. Nexus also treats it as protected: a submitted value
-    /// is rejected.
+    /// is rejected and batch deactivation never writes it.
     pub hidden: bool,
     /// If true, the field is displayed but cannot be modified via the edit form.
     pub readonly: bool,

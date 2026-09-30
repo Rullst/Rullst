@@ -61,6 +61,8 @@ fn parse_batch_form(bytes: &[u8]) -> Result<BatchActionForm, &'static str> {
     })
 }
 
+/// The conventional active flag, only when the form policy would also accept
+/// a write to it: hidden and readonly fields are protected.
 fn deactivation_field(entry: &RegistryEntry) -> Option<&'static str> {
     entry
         .fields
@@ -69,6 +71,7 @@ fn deactivation_field(entry: &RegistryEntry) -> Option<&'static str> {
             matches!(field.kind, FieldKind::Boolean)
                 && matches!(field.name, "is_active" | "active")
                 && !field.readonly
+                && !field.hidden
         })
         .map(|field| field.name)
 }
@@ -304,6 +307,15 @@ mod tests {
             build_batch_sql(&active, "deactivate", 1, "mysql", false).as_deref(),
             Some("UPDATE users SET is_active = FALSE WHERE id IN (?)")
         );
+
+        for protected in [
+            FieldMeta::new("is_active", "Active", FieldKind::Boolean).hidden(),
+            FieldMeta::new("active", "Active", FieldKind::Boolean).readonly(),
+        ] {
+            let protected = entry(vec![protected]);
+            assert!(!supports_deactivation(&protected));
+            assert!(build_batch_sql(&protected, "deactivate", 1, "sqlite", false).is_none());
+        }
 
         let absent = entry(vec![FieldMeta::new("status", "Status", FieldKind::Text)]);
         assert!(!supports_deactivation(&absent));

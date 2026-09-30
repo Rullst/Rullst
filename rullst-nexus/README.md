@@ -15,7 +15,8 @@ When used through the `rullst` umbrella with its `orm` and `nexus` features,
 are inferred; semantic fields can use `#[nexus(kind = "textarea")]` or
 `#[nexus(kind = "enum", options = "draft, published")]`. Models may also
 implement `NexusModel` manually. Batch deactivation is exposed only for a
-writable Boolean `is_active` or `active` field; batch deletion is bounded to
+writable (neither `hidden` nor `readonly`) Boolean `is_active` or `active`
+field; batch deletion is bounded to
 1,000 explicitly selected records. `try_build()` rejects ambiguous or unsafe
 registered metadata. Mutation forms are pair/byte bounded and reject unknown,
 protected, duplicate or semantically invalid values before executing bound SQL.

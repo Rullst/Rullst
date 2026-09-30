@@ -259,8 +259,9 @@ that reads those fields on each request can show the persisted values without a
 code change or redeployment; cache policy remains application-owned.
 
 Batch deletion is available for every registered model. Batch deactivation is
-shown only when the model declares a writable Boolean `is_active` or `active`
-field; Nexus never guesses which arbitrary status value means inactive.
+shown only when the model declares a writable (neither `hidden` nor
+`readonly`) Boolean `is_active` or `active` field; Nexus never guesses which
+arbitrary status value means inactive.
 
 ## Content Security Policy
 
