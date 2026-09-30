@@ -343,3 +343,35 @@ async fn pending_or_failed_processing_never_publishes_and_recovery_needs_deliber
     );
     app.close().await;
 }
+
+#[tokio::test]
+async fn metadata_update_verifies_the_same_field_it_writes() {
+    let fixture = Fixture::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let app = service(&fixture, &dir, TestClock::new()).await;
+    let auth = Auth::new();
+    let teacher = reference("teacher");
+    let id = reference("lesson");
+    let scope = scope();
+    fixture.remote.lock().unwrap().generated_description = true;
+    let created = app
+        .create(&auth, &teacher, &scope, &id, metadata())
+        .await
+        .unwrap();
+    assert_eq!(created.lifecycle, Lifecycle::Active);
+    assert!(!created.pending);
+    let changed = app
+        .update(
+            &auth,
+            &teacher,
+            &scope,
+            &id,
+            created.revision,
+            Metadata::new("Revised lesson", "Revised transcript").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(!changed.pending);
+    assert_eq!(changed.metadata.description(), "Revised transcript");
+    app.close().await;
+}

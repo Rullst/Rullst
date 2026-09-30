@@ -193,7 +193,9 @@ idempotency memory ends at that point. Provider backups/cache erasure is separat
 Creation is journaled before remote dispatch. Bunny's documented creation API
 does not supply an idempotency key: ambiguous creation must reconcile a persisted
 random opaque creation marker, never blindly retry or claim exactly-once remote
-creation. Updates/deletion are reconciled against authoritative reads. Webhook
+creation. Updates/deletion are reconciled against authoritative reads; a
+metadata update writes and verifies the same documented `description` meta tag,
+never Bunny's separate top-level Description that Smart Generate may rewrite. Webhook
 v1 authenticates exact body bytes with the read-only library key but has no
 signed timestamp; bounded durable duplicate suppression and serialized provider
 refresh prevent replay/reordering from granting access or publishing assets.

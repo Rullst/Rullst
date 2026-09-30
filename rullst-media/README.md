@@ -71,6 +71,11 @@ listing is limited to the authorized course and 100 items. `Asset.pending`,
 Metadata is plain text, with a 200-byte title and 4096-byte description.
 Updates preserve unrelated provider meta tags from a bounded current read. A
 full list without room for the description fails rather than dropping a tag.
+Bunny's update model has no description property, so the adapter writes the
+description as the `description` meta tag and verifies that same tag in the
+authoritative read. API 1.6.6 documents that this tag also updates the separate
+top-level Description, which Smart Generate may rewrite; that field is never
+compared, so a generated summary cannot leave an update unverifiable.
 The host must coordinate other tools writing the same remote video: Bunny does
 not supply a conditional-update token for atomic conflict detection between them.
 
