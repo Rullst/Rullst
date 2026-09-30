@@ -87,44 +87,88 @@ fn redact_pem_blocks(input: &str, label: &str) -> String {
 }
 
 /// Checks if a link uses a forbidden or dangerous URI scheme (e.g. `javascript:`, `vbscript:`, `data:text/html`).
+///
+/// HTML character references are decoded, and tab/newline characters and
+/// leading whitespace or control characters are ignored, as browsers do when
+/// they resolve an `href`.
 pub fn is_dangerous_scheme(url: &str) -> bool {
-    let trimmed = url.trim().to_lowercase();
-    trimmed.starts_with("javascript:")
-        || trimmed.starts_with("vbscript:")
-        || trimmed.starts_with("data:text/html")
-        || trimmed.starts_with("file:")
+    has_dangerous_scheme(&crate::entities::decode(url))
 }
 
-/// Extracts all URL links (`href="..."` and plain `http://` / `https://` occurrences) from HTML/text.
+/// Scheme check for an already decoded link.
+fn has_dangerous_scheme(url: &str) -> bool {
+    let scheme: String = url
+        .trim_start_matches(|c: char| c <= ' ' || c.is_whitespace())
+        .chars()
+        .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+        .take("data:text/html".len())
+        .flat_map(char::to_lowercase)
+        .collect();
+    scheme.starts_with("javascript:")
+        || scheme.starts_with("vbscript:")
+        || scheme.starts_with("data:text/html")
+        || scheme.starts_with("file:")
+}
+
+/// Returns every `href` attribute value. The name is matched ASCII
+/// case-insensitively, whitespace may surround `=`, and the value may be
+/// double-quoted, single-quoted or unquoted, as HTML allows.
+fn href_values(content: &str) -> Vec<&str> {
+    let bytes = content.as_bytes();
+    let skip_whitespace = |mut index: usize| {
+        while bytes.get(index).is_some_and(u8::is_ascii_whitespace) {
+            index += 1;
+        }
+        index
+    };
+    let mut values = Vec::new();
+    let mut pos = 0;
+    while pos + 4 <= bytes.len() {
+        if !bytes[pos..pos + 4].eq_ignore_ascii_case(b"href") {
+            pos += 1;
+            continue;
+        }
+        let equals = skip_whitespace(pos + 4);
+        if bytes.get(equals) != Some(&b'=') {
+            pos += 4;
+            continue;
+        }
+        let start = skip_whitespace(equals + 1);
+        match bytes.get(start) {
+            Some(&quote @ (b'"' | b'\'')) => {
+                let value_start = start + 1;
+                match bytes[value_start..].iter().position(|byte| *byte == quote) {
+                    Some(length) => {
+                        values.push(&content[value_start..value_start + length]);
+                        pos = value_start + length + 1;
+                    }
+                    // An unterminated value is skipped, as before.
+                    None => pos = value_start,
+                }
+            }
+            Some(_) => {
+                let length = bytes[start..]
+                    .iter()
+                    .position(|byte| byte.is_ascii_whitespace() || *byte == b'>')
+                    .unwrap_or(bytes.len() - start);
+                if length > 0 {
+                    values.push(&content[start..start + length]);
+                }
+                pos = start + length.max(1);
+            }
+            None => break,
+        }
+    }
+    values
+}
+
+/// Extracts all URL links (`href` attribute values and plain `http://` / `https://` occurrences) from HTML/text.
 ///
 /// Plain-text URLs are deduplicated through a hash set, so extraction stays
 /// linear in the content length even when it contains many links.
 pub fn extract_urls(content: &str) -> Vec<String> {
-    let mut urls: Vec<&str> = Vec::new();
-    let bytes = content.as_bytes();
-
-    // 1. Extract href="..." occurrences case-insensitively without full heap clone
-    let mut pos = 0;
-    while pos + 5 <= bytes.len() {
-        if bytes[pos..].starts_with(b"href=")
-            || bytes[pos..].starts_with(b"HREF=")
-            || bytes[pos..].starts_with(b"Href=")
-        {
-            let actual_idx = pos + 5;
-            let rest = &content[actual_idx..];
-            if let Some(quote_char) = rest.chars().next()
-                && (quote_char == '"' || quote_char == '\'')
-                && let Some(end_quote) = rest[1..].find(quote_char)
-            {
-                urls.push(&rest[1..=end_quote]);
-                pos = actual_idx + end_quote + 1;
-                continue;
-            }
-            pos = actual_idx;
-        } else {
-            pos += 1;
-        }
-    }
+    // 1. `href` attribute values, however they are cased, spaced or quoted.
+    let mut urls: Vec<&str> = href_values(content);
 
     // 2. Extract plain https:// and http:// words
     let mut seen: HashSet<&str> = urls.iter().copied().collect();
@@ -181,7 +225,9 @@ pub fn is_crlf_safe(header_value: &str) -> bool {
 pub fn scan_content_security(content: &str) -> Result<(), MailError> {
     let urls = extract_urls(content);
     for url in urls {
-        if is_dangerous_scheme(&url) {
+        // Browsers decode references in attribute values before navigating.
+        let url = crate::entities::decode(&url);
+        if has_dangerous_scheme(&url) {
             return Err(MailError::SendError(
                 "Outbound mail security violation: a link uses a dangerous URI scheme".to_string(),
             ));

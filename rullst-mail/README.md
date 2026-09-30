@@ -529,7 +529,11 @@ The security and deliverability checks are bounded heuristics: they help reject
 known disposable domains, CRLF injection, selected dangerous schemes,
 mixed-script host labels and recognized secret patterns. They do not parse every
 valid/hostile HTML or MIME document and cannot guarantee delivery, absence of
-phishing, absence of data leakage or legal compliance.
+phishing, absence of data leakage or legal compliance. The link checks read
+`href` attributes however they are cased, spaced or quoted, decode HTML
+character references first (so `javascript&colon;` and `&#x430;` hosts are
+seen as a browser sees them) and report only the violated rule, never the link.
+Other attributes such as `src` or `action` are not inspected.
 
 Recipients are parsed once by the pre-flight pipeline. It accepts one bare
 address, `<address>` or `Name <address>` (the name may be quoted), and hands the

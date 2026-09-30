@@ -87,31 +87,13 @@ fn legacy_redact(input: &str) -> String {
     output
 }
 
-/// The previous extractor with linear-search deduplication.
+/// The previous extractor with linear-search deduplication. The `href` pass
+/// is shared, so this oracle checks only the hash-set deduplication.
 fn legacy_extract(content: &str) -> Vec<String> {
-    let mut urls: Vec<String> = Vec::new();
-    let bytes = content.as_bytes();
-    let mut pos = 0;
-    while pos + 5 <= bytes.len() {
-        if bytes[pos..].starts_with(b"href=")
-            || bytes[pos..].starts_with(b"HREF=")
-            || bytes[pos..].starts_with(b"Href=")
-        {
-            let actual_idx = pos + 5;
-            let rest = &content[actual_idx..];
-            if let Some(quote_char) = rest.chars().next()
-                && (quote_char == '"' || quote_char == '\'')
-                && let Some(end_quote) = rest[1..].find(quote_char)
-            {
-                urls.push(rest[1..=end_quote].to_string());
-                pos = actual_idx + end_quote + 1;
-                continue;
-            }
-            pos = actual_idx;
-        } else {
-            pos += 1;
-        }
-    }
+    let mut urls: Vec<String> = href_values(content)
+        .into_iter()
+        .map(str::to_string)
+        .collect();
     for word in content.split_whitespace() {
         let trimmed = word.trim_matches(|c| c == '"' || c == '\'' || c == '<' || c == '(');
         let start_pos = if trimmed.starts_with("https://")
@@ -238,4 +220,33 @@ fn security_errors_omit_the_unredacted_link() {
             assert!(!display.contains(fragment), "error echoes link content");
         }
     }
+}
+
+#[test]
+fn dangerous_hrefs_are_found_however_they_are_written() {
+    for body in [
+        r#"<a href="javascript:alert(1)">x</a>"#,
+        r#"<a hReF="javascript:alert(1)">x</a>"#,
+        r#"<a href = "javascript:alert(1)">x</a>"#,
+        "<a href=\n'javascript:alert(1)'>x</a>",
+        r#"<a href=javascript:alert(1)>x</a>"#,
+        r#"<a href="javascript&colon;alert(1)">x</a>"#,
+        r#"<a href="&#106;avascript:alert(1)">x</a>"#,
+        r#"<a href="java&#x09;script:alert(1)">x</a>"#,
+        r#"<a href=" &#x0A;JaVaScRiPt:alert(1)">x</a>"#,
+        r#"<a href="https://p&#x430;ypal.com/login">x</a>"#,
+    ] {
+        assert!(scan_content_security(body).is_err(), "{body}");
+    }
+    for body in [
+        r#"<a href="https://example.com/?a=1&amp;b=2">x</a>"#,
+        r#"<a href=https://example.com/path>x</a>"#,
+        "the href attribute and href= alone are prose",
+    ] {
+        assert!(scan_content_security(body).is_ok(), "{body}");
+    }
+    assert_eq!(
+        extract_urls(r#"<a HREF = 'https://a.example/x' href=/local>"#),
+        vec!["https://a.example/x", "/local"]
+    );
 }
