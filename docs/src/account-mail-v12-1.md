@@ -41,8 +41,11 @@ umbrella defaults when a backend-exclusive dependency graph is required.
 3. Register new accounts with `register_account_with_locale`. Account creation
    and the encrypted welcome notice commit together. The supported recorded
    locales are English, Brazilian Portuguese and Spanish; the worker supplies a
-   deterministic fallback. Existing accounts require an application migration;
-   there is no automatic import of arbitrary password tables.
+   deterministic fallback. An email or subject that is already registered
+   returns `InvalidAction` (without naming which), not the `Storage` error of a
+   database failure; present it without confirming that the email exists.
+   Existing accounts require an application migration; there is no automatic
+   import of arbitrary password tables.
 4. Use `authenticate`, `create_session` and `verify_session` for this registry.
    Passwords contain at least 12 characters and at most 72 bytes, the Argon2
    input limit. Registration, reset and `authenticate` reject longer input with

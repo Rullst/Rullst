@@ -183,11 +183,18 @@ async fn invalid_registration_cannot_create_accounts_or_welcome_deliveries() {
             .is_none()
     );
     assert_eq!(store.outbox_snapshot().await.unwrap().pending, 1);
-    assert!(
+    // A duplicate email or subject is distinct from a storage outage.
+    assert_eq!(
         store
             .register_account("duplicate", EMAIL, password.as_str(), 1001)
-            .await
-            .is_err()
+            .await,
+        Err(RecoveryError::InvalidAction)
+    );
+    assert_eq!(
+        store
+            .register_account("member", "other@example.com", password.as_str(), 1001)
+            .await,
+        Err(RecoveryError::InvalidAction)
     );
     assert_eq!(store.outbox_snapshot().await.unwrap().pending, 1);
     store.close().await;
