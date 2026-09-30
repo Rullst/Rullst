@@ -2141,7 +2141,10 @@ while portability and semantic review remain the model author's responsibility.
   the query match literally, and the query uses the provider bounds (1,024
   bytes, no control characters).
 * `#[orm(searchable)]` projects generated save/delete operations only after a
-  managed relational commit. The indexed document omits `#[orm(hidden)]`,
+  managed relational commit. The table name is the Scout index, so a
+  searchable model whose (explicit or default) table name does not start with
+  a lowercase ASCII letter followed by lowercase letters, digits or
+  underscores fails compilation instead of failing every projection. The indexed document omits `#[orm(hidden)]`,
   `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed
   query is not silently treated as an empty result, and `PostCommit` means a
   projection failed after the database mutation became durable.
