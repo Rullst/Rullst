@@ -2,6 +2,7 @@
 //! The host owns tenant authorization, MFA policy, CSRF, secure cookies and
 //! no-store/no-referrer responses. GET/HEAD must never invoke redemption.
 
+use super::clock::advance_clock;
 use super::connection;
 mod delivery;
 mod flow;

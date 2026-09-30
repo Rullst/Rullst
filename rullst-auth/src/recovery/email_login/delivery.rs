@@ -149,8 +149,7 @@ impl EmailLoginService {
             sqlx::query("UPDATE rullst_email_login_outbox SET status = 'leased',attempts = attempts + 1,lease = $1,lease_until = $2 WHERE namespace = $3 AND id = $4")
                 .bind(lease.expose()).bind((finished + 60).min(wire.expires_at)).bind(&self.config.namespace).bind(&id).execute(&mut *tx).await?;
             tx.commit().await?;
-            let after = now(clock)?;
-            if after < finished || after >= wire.expires_at { return Err(RecoveryError::InvalidAction); }
+            if advance_clock(now(clock)?, finished)? >= wire.expires_at { return Err(RecoveryError::InvalidAction); }
             Ok(Some(EmailLoginDelivery { id, lease, namespace: self.config.namespace.clone(), landing: self.config.landing.clone(), notice: Notice { recipient: Zeroizing::new(wire.recipient.clone()), token, expires_at: wire.expires_at, locale: wire.locale } }))
         }).await
     }

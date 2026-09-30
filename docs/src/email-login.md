@@ -98,8 +98,11 @@ uses a bounded four-connection pool, verified remote TLS, five-second SQL/lock
 limits, permanent tables, `fsync`/`full_page_writes` and synchronous commit on a
 writable primary. Public methods have a ten-second operation timeout (plus the
 minimum request delay). All state mutations serialize through the account
-registry's write lock and recheck clock observations. A lock wait cannot extend
-a link's expiry. An uncertain commit or cancellation never returns a session.
+registry's write lock and recheck clock observations. The namespace keeps a
+monotonic clock high-water mark: a host whose clock trails it by at most five
+seconds, as synchronized hosts do around each whole-second boundary, adopts the
+recorded time, while a larger backward step fails with `InvalidAction`. A lock
+wait or skew adoption cannot extend a link's expiry. An uncertain commit or cancellation never returns a session.
 
 PostgreSQL bootstrap serializes explicit initializers. Normal startup performs
 no DDL or missing-namespace repair. Runtime needs SELECT/INSERT/UPDATE/DELETE on

@@ -145,28 +145,25 @@ impl ApiTokenService {
         let started = now(clock)?;
         let mut tx = self.store.pool.begin().await?;
         self.store.lock_writes(&mut tx).await?;
-        let current = now(clock)?;
-        if current < started {
-            return Err(RecoveryError::InvalidAction);
-        }
-        self.observe(&mut tx, current).await?;
+        let current = advance_clock(now(clock)?, started)?;
+        let current = self.observe(&mut tx, current).await?;
         Ok((tx, current))
     }
+    /// Records the shared time for this operation and returns it. A host whose
+    /// clock trails the recorded time within the skew tolerance adopts it.
     pub(super) async fn observe(
         &self,
         tx: &mut Transaction<'_, Any>,
         current: i64,
-    ) -> Result<(), RecoveryError> {
+    ) -> Result<i64, RecoveryError> {
         self.durable(tx).await?;
-        if current < self.metadata(tx).await? {
-            return Err(RecoveryError::InvalidAction);
-        }
+        let current = advance_clock(current, self.metadata(tx).await?)?;
         sqlx::query("UPDATE rullst_api_token_control SET last_now = $1 WHERE namespace = $2")
             .bind(current)
             .bind(&self.config.namespace)
             .execute(&mut **tx)
             .await?;
-        Ok(())
+        Ok(current)
     }
     pub(super) async fn finish(
         &self,
@@ -175,11 +172,14 @@ impl ApiTokenService {
         started: i64,
         expiry: i64,
     ) -> Result<i64, RecoveryError> {
-        let current = now(clock)?;
-        if current < started || current >= expiry {
+        let current = advance_clock(now(clock)?, started)?;
+        if current >= expiry {
             return Err(RecoveryError::InvalidAction);
         }
-        self.observe(tx, current).await?;
+        let current = self.observe(tx, current).await?;
+        if current >= expiry {
+            return Err(RecoveryError::InvalidAction);
+        }
         Ok(current)
     }
     pub(super) async fn owner(
