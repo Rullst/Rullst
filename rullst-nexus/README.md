@@ -95,8 +95,10 @@ let nexus = rullst::nexus::Nexus::new()
 
 `rullst_nexus_audits` stores the authenticated Nexus actor, optional tenant,
 table, action, optional known record key, affected-row count, committed outcome,
-bounded correlation ID, timestamp and format version. An unavailable audit
-table rolls the data mutation back and returns a generic error. Use
+bounded correlation ID, timestamp and format version. A record key that does
+not fit 1 to 256 bytes of unpadded text without control characters is recorded
+as absent. An unavailable audit table rolls the data mutation back and returns
+a generic error. Use
 `verify_nexus_audit_table()` as a deployment check and
 `recent_nexus_audits(limit, tenant)` for a bounded, separately authorized
 export.

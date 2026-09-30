@@ -9,7 +9,7 @@ use super::dialect::{RecordKey, ValueSql, placeholder, tenant_predicate, write_v
 use super::handlers::tenant_for_entry;
 use super::input::{FormInputError, FormMode, validate_form_values};
 use super::query::sanitize_identifier;
-use crate::nexus::audit::{MutationAudit, append_mutation, correlation_id};
+use crate::nexus::audit::{MutationAudit, append_mutation, auditable_record_key, correlation_id};
 use crate::nexus::{NexusAuditPolicy, NexusPrincipal, NexusState, RegistryEntry};
 use rullst_core::security::TenantContext;
 
@@ -225,7 +225,7 @@ pub(super) async fn update_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "update",
-                record_key: Some(&record_key),
+                record_key: auditable_record_key(&record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -314,7 +314,7 @@ pub(super) async fn delete_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "delete",
-                record_key: Some(&record_key),
+                record_key: auditable_record_key(&record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },

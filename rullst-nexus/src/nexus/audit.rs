@@ -24,7 +24,9 @@ pub struct NexusAuditRecord {
     pub table_name: String,
     /// Bounded mutation verb (`create`, `update`, `delete`, or batch variant).
     pub action: String,
-    /// Exact primary key when the mutation has one known key.
+    /// Exact primary key when the mutation has one known key that fits the
+    /// bounded audit text (1 to 256 bytes, no surrounding whitespace or
+    /// control characters); `None` otherwise.
     pub record_key: Option<String>,
     /// Number of rows changed in the same transaction.
     pub record_count: i64,
@@ -168,6 +170,18 @@ pub(crate) fn correlation_id(headers: &axum::http::HeaderMap) -> Option<String> 
         .map(str::to_string)
 }
 
+/// The record key as it can be audited.
+///
+/// A real key may be longer than 256 bytes, padded or contain control
+/// characters. Such a key is recorded as absent rather than failing the
+/// audit, which would roll back every change to that record and report the
+/// healthy audit store as unavailable.
+pub(crate) fn auditable_record_key(key: &str) -> Option<&str> {
+    validate_audit_text("record key", key, MAX_RECORD_KEY_BYTES)
+        .is_ok()
+        .then_some(key)
+}
+
 pub(crate) struct MutationAudit<'a> {
     pub principal: &'a NexusPrincipal,
     pub tenant_id: Option<&'a str>,
@@ -291,6 +305,15 @@ mod tests {
         assert!(validate_audit_text("actor", " admin", 16).is_err());
         assert!(validate_audit_text("actor", "a\n", 16).is_err());
         assert!(validate_audit_text("actor", "12345", 4).is_err());
+    }
+
+    #[test]
+    fn unrepresentable_record_keys_are_recorded_as_absent() {
+        assert_eq!(auditable_record_key("ACME-1"), Some("ACME-1"));
+        let long = "k".repeat(MAX_RECORD_KEY_BYTES + 1);
+        for key in ["ACME ", " ACME", "line\nbreak", "", long.as_str()] {
+            assert_eq!(auditable_record_key(key), None, "{key:?}");
+        }
     }
 
     #[test]

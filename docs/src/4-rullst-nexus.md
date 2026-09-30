@@ -228,7 +228,8 @@ Each successful mutation and its minimized `rullst_nexus_audits` row commit in
 one database transaction. Audit failure rolls the mutation back. The record
 contains actor, optional tenant, table/action, optional known key, affected-row
 count, committed outcome, optional bounded request ID, timestamp and format
-version. `verify_nexus_audit_table()` checks deployment readiness and
+version. A key that does not fit 1 to 256 bytes of unpadded text without
+control characters is recorded as absent instead of blocking the change. `verify_nexus_audit_table()` checks deployment readiness and
 `recent_nexus_audits()` reads at most 1,000 newest rows, optionally tenant
 filtered; the application must authorize that export separately.
 

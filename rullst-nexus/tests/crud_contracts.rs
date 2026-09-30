@@ -95,12 +95,12 @@ async fn mutate(app: &axum::Router, method: &str, uri: &str, body: &str) -> Stat
         .status()
 }
 
-async fn audited_keys(action: &str) -> Vec<Option<String>> {
+async fn audited_keys(table: &str, action: &str) -> Vec<Option<String>> {
     recent_nexus_audits(100, None)
         .await
         .expect("load audit records")
         .into_iter()
-        .filter(|audit| audit.action == action)
+        .filter(|audit| audit.table_name == table && audit.action == action)
         .map(|audit| audit.record_key)
         .collect()
 }
@@ -132,6 +132,7 @@ async fn crud_contracts_hold_on_sqlite() {
 
     search_matches_wildcards_literally(&app, pool).await;
     numeric_keys_are_canonical_in_sql_and_audit(&app, pool).await;
+    unrepresentable_keys_do_not_block_required_audit(&app, pool).await;
 }
 
 /// A numeric key spelled `+1`, `01` or `1e3` must not change record 1 or
@@ -169,8 +170,35 @@ async fn numeric_keys_are_canonical_in_sql_and_audit(app: &axum::Router, pool: &
         mutate(app, "DELETE", "/table/nexus_counters/1000", "").await,
         StatusCode::OK
     );
-    assert_eq!(audited_keys("update").await, [Some("1".to_owned())]);
-    assert_eq!(audited_keys("delete").await, [Some("1000".to_owned())]);
+    assert_eq!(
+        audited_keys("nexus_counters", "update").await,
+        [Some("1".to_owned())]
+    );
+    assert_eq!(
+        audited_keys("nexus_counters", "delete").await,
+        [Some("1000".to_owned())]
+    );
+}
+
+/// A real key that the audit text format cannot hold is audited as absent;
+/// the change commits instead of failing as "audit unavailable" (2P-10).
+async fn unrepresentable_keys_do_not_block_required_audit(app: &axum::Router, pool: &RullstPool) {
+    let long = "k".repeat(300);
+    for key in ["ACME ", long.as_str()] {
+        sqlx::query("INSERT INTO nexus_pages (slug, title) VALUES (?, 'before')")
+            .bind(key)
+            .execute(pool)
+            .await
+            .expect("insert unusual key");
+        let uri = format!("/table/nexus_pages/{}", urlencoding::encode(key));
+        assert_eq!(
+            mutate(app, "PUT", &uri, "title=after").await,
+            StatusCode::OK
+        );
+        assert_eq!(mutate(app, "DELETE", &uri, "").await, StatusCode::OK);
+    }
+    assert_eq!(audited_keys("nexus_pages", "update").await, [None, None]);
+    assert_eq!(audited_keys("nexus_pages", "delete").await, [None, None]);
 }
 
 /// `%` and `_` typed into the search box are literal characters (NX2-11).
