@@ -172,7 +172,8 @@ primary keys; on PostgreSQL they cover the `public` schema, which every data
 statement names explicitly. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types
 remain read-only, request bodies are limited to 64 KiB, and deletion requires
-typing `DELETE <table>`. A table stays read-only when any primary-key column is
+typing `DELETE <table>`. A row offers only the actions whose form (for Edit,
+with a maximum-size value) fits that limit; an empty text key is addressable. A table stays read-only when any primary-key column is
 outside Studio's ASCII identifier boundary or beyond its 256-column cap, or
 uses a floating-point type whose rendered text is rounded. A row whose key value
 is `NULL`, is not decodable as text or contains a line break or NUL (which

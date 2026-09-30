@@ -56,11 +56,13 @@ pub(crate) fn router_with_cache(
         // by LocalStudioAccess after its loopback and same-origin checks.
         .route(
             "/studio/tables/{table}/rows/update",
-            axum::routing::post(handle_table_update).layer(DefaultBodyLimit::max(64 * 1024)),
+            axum::routing::post(handle_table_update)
+                .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
         )
         .route(
             "/studio/tables/{table}/rows/delete",
-            axum::routing::post(handle_table_delete).layer(DefaultBodyLimit::max(64 * 1024)),
+            axum::routing::post(handle_table_delete)
+                .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
         )
         // Core Studio Navigation Routes
         .route(

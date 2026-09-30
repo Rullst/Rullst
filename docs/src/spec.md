@@ -2980,7 +2980,8 @@ sending.
   256), and the record count uses the same predicate. Writes require the crate-private proof inserted
   by the verified local middleware, database-inspected table/column/complete-PK
   metadata, a 64 KiB request limit, primitive typed binds and exactly one
-  affected row. A primary-key column outside the identifier boundary or the
+  affected row. A row offers only the actions whose form (for Edit, with a
+  maximum-size value) fits that limit, and an empty text key is addressable. A primary-key column outside the identifier boundary or the
   256-column cap makes the table read-only instead of shortening the key, as
   does a floating-point key column, whose rendered text is rounded. Rows whose
   key is `NULL`, is not decodable as text or contains a line break or NUL

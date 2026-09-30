@@ -91,7 +91,9 @@ overhead.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is
-  required and backend-specific types remain read-only. A table is read-only
+  required and backend-specific types remain read-only. A row offers only the
+  actions whose form (for Edit, with a maximum-size value) fits the 64 KiB
+  request limit, and an empty text key is addressable. A table is read-only
   when a primary-key column falls outside the ASCII identifier boundary or the
   256-column cap or uses a floating-point type (its rendered text is rounded),
   and rows whose key is `NULL`, is not decodable as text or contains a line

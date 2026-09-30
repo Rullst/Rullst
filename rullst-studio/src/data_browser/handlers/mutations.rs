@@ -1,9 +1,8 @@
 //! Fail-closed, primitive-value row mutations for the local Studio browser.
 
 use super::super::db::{
-    StudioColumn, StudioColumnKind, StudioTableSchema, ensure_pool_initialized, escape_html_attr,
-    fetch_table_schema, fetch_tables, get_any_value_as_string, is_safe_identifier,
-    qualified_table_name, quote_table_name,
+    StudioColumn, StudioColumnKind, ensure_pool_initialized, fetch_table_schema, fetch_tables,
+    is_safe_identifier, qualified_table_name, quote_table_name,
 };
 use crate::access::VerifiedLocalStudioAccess;
 use axum::{
@@ -12,14 +11,19 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
-use sqlx::{QueryBuilder, Row};
+use sqlx::QueryBuilder;
 use std::collections::BTreeMap;
-use std::fmt::Write;
 
-use super::super::limits::{MAX_CELL_BYTES, display_cell};
+use super::super::limits::MAX_CELL_BYTES;
 use super::super::portable::build_for_driver;
 
+mod forms;
+pub(crate) use forms::build_mutable_rows_html;
+
 const MAX_FORM_FIELDS: usize = 260;
+
+/// Request-body limit of the row mutation routes.
+pub(crate) const MUTATION_BODY_LIMIT: usize = 64 * 1024;
 
 #[derive(Debug)]
 enum MutationFailure {
@@ -251,8 +255,12 @@ fn take_primary_key(
 ) -> Result<Vec<(String, BoundValue)>, MutationFailure> {
     let mut values = Vec::new();
     for column in columns.iter().filter(|column| column.primary_key) {
-        let form_name = format!("pk_{}", column.name);
-        let raw = take_required(fields, &form_name)?;
+        // A text key may legitimately be empty, so only presence is required.
+        let raw = fields
+            .remove(&format!("pk_{}", column.name))
+            .ok_or(MutationFailure::Invalid(
+                "A required mutation field is missing",
+            ))?;
         values.push((column.name.clone(), parse_bound_value(column.kind, raw)?));
     }
     Ok(values)
@@ -356,136 +364,6 @@ fn mutation_error_response(error: MutationFailure) -> Response {
         )
             .into_response(),
     }
-}
-
-/// Returns the text of each key cell when a form can submit it back to the same
-/// row, or why the row must stay read-only. A NULL or undecodable key has no
-/// exact text (it would render as `NULL`), a key longer than a mutation accepts
-/// could not be submitted, and browsers rewrite line breaks (CR and LF become
-/// CRLF) and NUL in form values, which could address a different row.
-fn submittable_key(
-    row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row,
-    primary_keys: &[usize],
-) -> Result<Vec<String>, &'static str> {
-    let mut values = Vec::with_capacity(primary_keys.len());
-    for index in primary_keys {
-        let value = match row.try_get::<Option<String>, _>(*index) {
-            Ok(Some(value)) => value,
-            Ok(None) => return Err("NULL key"),
-            Err(_) => return Err("key is not decodable as text"),
-        };
-        if value.len() > MAX_CELL_BYTES {
-            return Err("key longer than 16 KiB");
-        }
-        if value.contains(['\r', '\n', '\0']) {
-            return Err("key contains a line break or NUL");
-        }
-        values.push(value);
-    }
-    Ok(values)
-}
-
-pub(crate) fn build_mutable_rows_html(
-    records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row],
-    schema: &StudioTableSchema,
-    table: &str,
-) -> String {
-    let columns = &schema.columns;
-    if !schema.supports_mutations() {
-        let column_names = columns
-            .iter()
-            .map(|column| column.name.clone())
-            .collect::<Vec<_>>();
-        return super::super::db::build_rows_html(records, &column_names);
-    }
-    let primary_keys = schema.primary_key_indices();
-    if records.is_empty() {
-        return format!(
-            "<tr><td colspan=\"{}\" class=\"px-6 py-16 text-center text-sm text-slate-500 font-medium bg-slate-900/20\">No records found inside this table.</td></tr>",
-            columns.len() + 1
-        );
-    }
-
-    let encoded_table = urlencoding::encode(table);
-    let mut html = String::new();
-    for row in records {
-        html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
-        for index in 0..columns.len() {
-            let value = get_any_value_as_string(row, index);
-            let class = if value == "NULL" {
-                "text-slate-600 font-mono italic"
-            } else {
-                "text-slate-300"
-            };
-            let _ = write!(
-                html,
-                "<td class=\"px-6 py-4 text-sm truncate max-w-xs {class}\">{}</td>",
-                escape_html_attr(&display_cell(&value))
-            );
-        }
-
-        let key_values = match submittable_key(row, &primary_keys) {
-            Ok(values) => values,
-            Err(reason) => {
-                let _ = write!(
-                    html,
-                    "<td class=\"px-6 py-4 text-xs text-slate-500\">Read-only: {reason}</td></tr>"
-                );
-                continue;
-            }
-        };
-
-        let mut primary_inputs = String::new();
-        for (index, value) in primary_keys.iter().zip(&key_values) {
-            let column = &columns[*index];
-            let _ = write!(
-                primary_inputs,
-                "<input type=\"hidden\" name=\"pk_{}\" value=\"{}\">",
-                escape_html_attr(&column.name),
-                escape_html_attr(value)
-            );
-        }
-        let mut options = String::from("<option value=\"\">Choose column</option>");
-        let mut editable_columns = 0usize;
-        for column in columns
-            .iter()
-            .filter(|column| !column.primary_key && column.kind.is_editable())
-        {
-            editable_columns += 1;
-            let null_hint = if column.nullable { " (nullable)" } else { "" };
-            let _ = write!(
-                options,
-                "<option value=\"{}\">{}{}</option>",
-                escape_html_attr(&column.name),
-                escape_html_attr(&column.name),
-                null_hint
-            );
-        }
-        let update = if editable_columns > 0 {
-            format!(
-                "<details class=\"mb-2\"><summary class=\"cursor-pointer text-sky-400\">Edit</summary>\
-                 <form method=\"post\" action=\"/studio/tables/{encoded_table}/rows/update\" class=\"mt-2 space-y-2\">\
-                 {primary_inputs}<select name=\"column\" required class=\"w-full bg-slate-950 border border-slate-700 rounded p-1\">{options}</select>\
-                 <input name=\"value\" maxlength=\"16384\" class=\"w-full bg-slate-950 border border-slate-700 rounded p-1\" placeholder=\"replacement value\">\
-                 <label class=\"block text-slate-500\"><input type=\"checkbox\" name=\"set_null\" value=\"true\"> set NULL</label>\
-                 <button class=\"text-sky-300 border border-sky-800 rounded px-2 py-1\" type=\"submit\">Apply</button></form></details>"
-            )
-        } else {
-            String::new()
-        };
-        let confirmation = escape_html_attr(&format!("DELETE {table}"));
-        let delete = format!(
-            "<details><summary class=\"cursor-pointer text-red-400\">Delete</summary>\
-             <form method=\"post\" action=\"/studio/tables/{encoded_table}/rows/delete\" class=\"mt-2 space-y-2\">\
-             {primary_inputs}<input name=\"confirm\" required maxlength=\"80\" class=\"w-full bg-slate-950 border border-red-900 rounded p-1\" placeholder=\"{confirmation}\">\
-             <button class=\"text-red-300 border border-red-900 rounded px-2 py-1\" type=\"submit\">Delete row</button></form></details>"
-        );
-        let _ = write!(
-            html,
-            "<td class=\"px-6 py-4 text-xs min-w-56\">{update}{delete}</td></tr>"
-        );
-    }
-    html
 }
 
 #[cfg(test)]

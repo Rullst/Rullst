@@ -369,3 +369,120 @@ async fn keys_whose_text_does_not_bind_back_stay_read_only() {
     assert_eq!(html.matches("/rows/delete").count(), 1);
     assert!(html.contains("name=\"pk_code\" value=\"plain\""));
 }
+
+#[test]
+fn form_sizes_follow_browser_url_encoding() {
+    assert_eq!(forms::form_encoded_len("a b*-._"), 7);
+    assert_eq!(forms::form_encoded_len("~/"), 6);
+    assert_eq!(forms::form_encoded_len("é"), 6);
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// An empty text key is a real key: its row actions must reach that row.
+async fn an_empty_text_key_addresses_its_row() {
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_empty_key_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("CREATE TABLE studio_empty_key_probe (code TEXT PRIMARY KEY, label TEXT)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO studio_empty_key_probe VALUES ('', 'empty'), ('kept', 'kept')")
+        .execute(pool)
+        .await
+        .unwrap();
+
+    let mut integer_key = BTreeMap::from([("pk_id".to_string(), String::new())]);
+    assert!(
+        take_primary_key(
+            &mut integer_key,
+            &[column("id", StudioColumnKind::Integer, true, false)]
+        )
+        .is_err()
+    );
+
+    let mut request = Request::builder()
+        .method("POST")
+        .uri("/studio/tables/studio_empty_key_probe/rows/delete")
+        .header(
+            axum::http::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .body(Body::from("confirm=DELETE+studio_empty_key_probe&pk_code="))
+        .unwrap();
+    request
+        .extensions_mut()
+        .insert(crate::access::VerifiedLocalStudioAccess);
+    let response = crate::data_browser::router()
+        .oneshot(request)
+        .await
+        .unwrap();
+    assert!(response.status().is_redirection(), "{}", response.status());
+    let remaining =
+        sqlx::query_as::<_, (String,)>("SELECT code FROM studio_empty_key_probe ORDER BY code")
+            .fetch_all(pool)
+            .await
+            .unwrap();
+    assert_eq!(remaining, [("kept".to_string(),)]);
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// A form whose encoded body could exceed the 64 KiB limit would only fail
+// with `413`, so rows offer only the actions whose forms fit.
+async fn row_actions_fit_the_mutation_body_limit() {
+    use crate::data_browser::limits::bounded_text_expression;
+
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_wide_key_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "CREATE TABLE studio_wide_key_probe (a TEXT NOT NULL, b TEXT NOT NULL, \
+         note TEXT, PRIMARY KEY (a, b))",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    // 12,000 slashes are within the 16 KiB key bound but encode to 36,000 bytes.
+    let slashes = "/".repeat(12_000);
+    let mut insert = QueryBuilder::<rullst_orm::RullstDatabase>::new(
+        "INSERT INTO studio_wide_key_probe VALUES (",
+    );
+    insert
+        .push_bind(slashes.clone())
+        .push(", ")
+        .push_bind(slashes.clone())
+        .push(", 'a-both'), (")
+        .push_bind(slashes)
+        .push(", 'x', 'b-one'), ('short', 'x', 'c-none')");
+    insert.build().execute(pool).await.unwrap();
+    let schema = fetch_table_schema(pool, "sqlite", "studio_wide_key_probe")
+        .await
+        .unwrap();
+    let mut select = QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+        "SELECT {}, {}, note FROM studio_wide_key_probe ORDER BY note",
+        bounded_text_expression("sqlite", "a", MAX_CELL_BYTES + 1),
+        bounded_text_expression("sqlite", "b", MAX_CELL_BYTES + 1),
+    ));
+    let rows = select.build().fetch_all(pool).await.unwrap();
+
+    let html = build_mutable_rows_html(&rows, &schema, "studio_wide_key_probe");
+    assert_eq!(
+        html.matches("Read-only: key too large for the 64 KiB form limit")
+            .count(),
+        1
+    );
+    assert_eq!(html.matches("Edit unavailable: key too large").count(), 1);
+    assert_eq!(html.matches("/rows/delete").count(), 2);
+    assert_eq!(html.matches("/rows/update").count(), 1);
+}
