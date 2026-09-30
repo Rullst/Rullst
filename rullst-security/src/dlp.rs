@@ -100,7 +100,9 @@ fn body_collection_failure() -> Response<Body> {
 
 /// Masks sensitive patterns from response payloads. Returns (sanitized_bytes, was_masked).
 ///
-/// Masks complete PEM private-key blocks, 20-character AWS access-key IDs and
+/// Masks complete PEM private-key blocks (`PRIVATE KEY`, `ENCRYPTED PRIVATE
+/// KEY`, `RSA`, `EC`, `DSA` and `OPENSSH PRIVATE KEY`, and `PGP PRIVATE KEY
+/// BLOCK`), 20-character AWS access-key IDs and
 /// the password in `postgres://`, `postgresql://`, `mysql://` and `redis://`
 /// URLs. Each pass is linear in the input length. A URL password is masked
 /// only when it appears inside the URL authority: credentials must be RFC 3986
