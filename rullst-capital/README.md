@@ -948,6 +948,8 @@ synchronously records one `prepared` command and one bound `authorized` or
 `rejected` terminal result, suppresses exact replays, rejects command-key
 conflicts, and recovers unresolved descriptors after restart. A named 256-bit
 HMAC key authenticates the header and a chain of at most 4,096 frames/16 MiB;
+a preparation is refused unless room remains for the terminal result of it and
+of every other pending command;
 an independently retained exact-tip checkpoint detects valid-prefix
 truncation. The file contains only the opaque application command ID,
 request/result digests, environment, state, and bounded timestamps—not XML,

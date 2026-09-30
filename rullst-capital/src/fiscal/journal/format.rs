@@ -143,6 +143,16 @@ pub(super) fn append(
     Ok(())
 }
 
+/// Returns the exact encoded size of one frame for this event.
+pub(super) fn frame_bytes(event: &JournalEvent) -> Result<u64, FiscalJournalError> {
+    let payload = serde_json::to_vec(event).map_err(|_| FiscalJournalError::Encoding)?;
+    FRAME_PREFIX_BYTES
+        .checked_add(payload.len())
+        .and_then(|length| length.checked_add(1))
+        .and_then(|length| u64::try_from(length).ok())
+        .ok_or(FiscalJournalError::RecordTooLarge)
+}
+
 fn decode_file(
     file: &mut File,
     max_bytes: u64,

@@ -74,9 +74,6 @@ impl FiscalCommandJournal {
             }
             return Err(FiscalJournalError::CommandConflict);
         }
-        if state.file.records >= MAX_FISCAL_JOURNAL_RECORDS {
-            return Err(FiscalJournalError::RecordCapacityExceeded);
-        }
         let sequence = next_sequence(state.file.records)?;
         let event = JournalEvent {
             schema_version: SCHEMA_VERSION,
@@ -87,6 +84,7 @@ impl FiscalCommandJournal {
             observed_at_unix_ms,
             outcome: JournalOutcome::Prepared,
         };
+        reserve_terminal_capacity(&state, &event, self.max_bytes)?;
         format::append(&mut state.file, self.max_bytes, &self.key, &event)?;
         state.commands.insert(
             command_id,
@@ -304,4 +302,69 @@ impl FiscalCommandJournal {
         state.commands = build_index(&events)?;
         Ok(state)
     }
+}
+
+// A prepared command is transmitted after this call, so the journal must still
+// be able to record its terminal result and that of every other pending
+// command. Reject the preparation, before anything is sent, when the records or
+// bytes that those terminal events may need are not available.
+fn reserve_terminal_capacity(
+    state: &JournalState,
+    prepared: &JournalEvent,
+    max_bytes: u64,
+) -> Result<(), FiscalJournalError> {
+    let pending = state
+        .commands
+        .iter()
+        .filter(|(_, command)| command.status == FiscalCommandStatus::Prepared);
+    let (pending_count, pending_id_bytes) =
+        pending.fold((0_usize, 0_u64), |(count, bytes), (id, _)| {
+            (
+                count.saturating_add(1),
+                bytes.saturating_add(id.len() as u64),
+            )
+        });
+    // This preparation plus one terminal event for it and for each pending one.
+    if state
+        .file
+        .records
+        .saturating_add(pending_count)
+        .saturating_add(2)
+        > MAX_FISCAL_JOURNAL_RECORDS
+    {
+        return Err(FiscalJournalError::RecordCapacityExceeded);
+    }
+    let terminal_base = terminal_frame_bytes_without_id()?;
+    let terminals = terminal_base
+        .saturating_mul(pending_count.saturating_add(1) as u64)
+        .saturating_add(pending_id_bytes)
+        .saturating_add(prepared.command_id.len() as u64);
+    let required = state
+        .file
+        .bytes
+        .saturating_add(format::frame_bytes(prepared)?)
+        .saturating_add(terminals);
+    if required > max_bytes {
+        return Err(FiscalJournalError::CapacityExceeded);
+    }
+    Ok(())
+}
+
+// Largest terminal frame for an empty command ID. Command IDs never need JSON
+// escaping, so a command's terminal frame is at most this plus its ID length.
+fn terminal_frame_bytes_without_id() -> Result<u64, FiscalJournalError> {
+    let digest = "f".repeat(64);
+    format::frame_bytes(&JournalEvent {
+        schema_version: SCHEMA_VERSION,
+        sequence: u64::MAX,
+        command_id: String::new(),
+        environment: JournalEnvironment::Homologation,
+        request_digest: digest.clone(),
+        observed_at_unix_ms: i64::MAX,
+        outcome: JournalOutcome::Rejected {
+            result_digest: digest,
+            http_status: 500,
+            processed_at_unix_ms: i64::MAX,
+        },
+    })
 }

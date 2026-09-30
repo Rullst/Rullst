@@ -348,29 +348,49 @@ fn authentication_tampering_capacity_and_competing_writers_are_explicit() {
         MIN_FISCAL_JOURNAL_BYTES,
     )
     .expect("bounded journal");
-    bounded
-        .prepare_at(
+    // 512 bytes hold a header and a preparation but not its terminal result,
+    // so the preparation is refused before anything could be transmitted.
+    assert_eq!(
+        bounded.prepare_at(
             "invoice:capacity",
             NfseEnvironment::Homologation,
             request(),
             1,
-        )
-        .expect("first bounded record");
-    assert_eq!(
-        bounded.prepare_at(
-            "invoice:overflow",
-            NfseEnvironment::Homologation,
-            request(),
-            2,
         ),
         Err(FiscalJournalError::CapacityExceeded)
     );
+    assert_eq!(bounded.snapshot().expect("snapshot").records(), 0);
     assert!(FiscalJournalKey::try_new("bad:key", [1_u8; 32]).is_err());
     assert!(FiscalJournalKey::try_new("key", [1_u8; 31]).is_err());
     assert_eq!(
         bounded.status("contains whitespace"),
         Err(FiscalJournalError::InvalidCommandId)
     );
+}
+
+#[test]
+fn preparation_reserves_room_for_every_pending_terminal_result() {
+    let file = TempJournal::new("reservation");
+    let journal = FiscalCommandJournal::try_open_with_max_bytes(file.path(), key(16), 1_024)
+        .expect("bounded journal");
+    journal
+        .prepare_at("invoice:first", NfseEnvironment::Homologation, request(), 1)
+        .expect("first preparation with its terminal reserve");
+    // A second preparation would leave no room for both terminal results.
+    assert_eq!(
+        journal.prepare_at(
+            "invoice:second",
+            NfseEnvironment::Homologation,
+            request(),
+            2
+        ),
+        Err(FiscalJournalError::CapacityExceeded)
+    );
+    let receipt = journal
+        .record_response_at("invoice:first", request(), &authorization(), 3)
+        .expect("reserved terminal result fits");
+    assert_eq!(receipt.status(), FiscalCommandStatus::Authorized);
+    assert!(journal.snapshot().expect("snapshot").bytes() <= 1_024);
 }
 
 #[test]
