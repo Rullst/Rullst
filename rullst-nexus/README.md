@@ -22,6 +22,18 @@ protected, duplicate or semantically invalid values before executing bound SQL.
 Boolean inference is automatic; enum variants and multiline intent stay
 explicit because a struct derive cannot inspect unrelated application types.
 
+An update writes only the submitted fields, and the edit form submits only the
+fields the administrator changed. Values a widget cannot show unchanged are never
+rewritten by an unrelated edit: SQL NULL renders as an empty input marked `NULL`,
+an unregistered enum value stays selected but disabled, a date-time with an offset
+or more than millisecond precision (and any value a number, date, e-mail or URL
+input would alter) is shown in a text input, and an undecodable value renders
+empty with a note. An emptied number, relation, date, date-time, enum or JSON
+field is stored as NULL, never `''` (a new record omits it so the column default
+applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
+a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
+change.
+
 ## Tenant-scoped CRUD and mutation audit
 
 Models whose rows belong to one tenant may opt into an exact text-column scope.

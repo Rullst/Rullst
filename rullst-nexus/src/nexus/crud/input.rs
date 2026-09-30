@@ -19,7 +19,8 @@ pub(super) enum FormMode {
 
 pub(super) struct ValidatedFieldValue<'a> {
     pub(super) field: &'a FieldMeta,
-    pub(super) value: String,
+    /// `None` is SQL NULL: an emptied field whose kind cannot store `''`.
+    pub(super) value: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,12 +85,29 @@ pub(super) fn validate_form_values<'a>(
                 .map(|values| normalize_values(field, values))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    // The form never receives a stored Password value, so an empty Password
-    // input means "keep the current value", not "store an empty string".
-    values.retain(|value| {
-        !(matches!(value.field.kind, FieldKind::Password) && value.value.is_empty())
+    values.retain(|value| match value.value.as_deref() {
+        // The form never receives a stored Password value, so an empty
+        // Password input means "keep the current value".
+        Some("") => !matches!(value.field.kind, FieldKind::Password),
+        // A new record omits an emptied typed field so the column default
+        // applies; an update stores NULL.
+        None => matches!(mode, FormMode::Update),
+        Some(_) => true,
     });
     Ok(values)
+}
+
+/// Kinds whose empty input is an empty string. For every other kind `''` is
+/// not a value (not a number, date, option or JSON document) and means NULL.
+fn stores_empty_text(kind: &FieldKind) -> bool {
+    matches!(
+        kind,
+        FieldKind::Text
+            | FieldKind::Textarea
+            | FieldKind::Email
+            | FieldKind::Url
+            | FieldKind::Password
+    )
 }
 
 fn normalize_values<'a>(
@@ -110,8 +128,14 @@ fn normalize_values<'a>(
                 reason: "has no value",
             })?
     };
+    if value.is_empty() && !stores_empty_text(&field.kind) {
+        return Ok(ValidatedFieldValue { field, value: None });
+    }
     validate_semantic_value(field, &value)?;
-    Ok(ValidatedFieldValue { field, value })
+    Ok(ValidatedFieldValue {
+        field,
+        value: Some(value),
+    })
 }
 
 fn normalize_boolean_values(
@@ -162,7 +186,7 @@ fn validate_semantic_value(field: &FieldMeta, value: &str) -> Result<(), FormInp
     }) {
         return invalid(field, "contains a forbidden control character");
     }
-    if value.is_empty() {
+    if value.is_empty() && stores_empty_text(&field.kind) {
         return Ok(());
     }
 
@@ -259,6 +283,19 @@ fn validate_datetime(field: &FieldMeta, value: &str) -> Result<(), FormInputErro
         return invalid(field, "must use a valid local date-time");
     };
     validate_date(field, date)?;
+    // An RFC 3339 offset (`Z`, `+HH:MM`, `-HH:MM`) is accepted so a stored
+    // offset value shown in a text input can be edited and saved back.
+    let (time, offset_valid) = if let Some(local) = time.strip_suffix(['Z', 'z']) {
+        (local, true)
+    } else if let Some(index) = time.rfind(['+', '-']) {
+        let (local, offset) = time.split_at(index);
+        (local, valid_utc_offset(&offset[1..]))
+    } else {
+        (time, true)
+    };
+    if !offset_valid {
+        return invalid(field, "must use a valid date-time offset");
+    }
     let mut parts = time.split(':');
     let hour = parse_date_part(parts.next(), 2);
     let minute = parse_date_part(parts.next(), 2);
@@ -283,6 +320,33 @@ fn validate_datetime(field: &FieldMeta, value: &str) -> Result<(), FormInputErro
     } else {
         invalid(field, "must use a valid local date-time")
     }
+}
+
+fn valid_utc_offset(offset: &str) -> bool {
+    let mut parts = offset.split(':');
+    matches!(parse_date_part(parts.next(), 2), Some(0..=23))
+        && matches!(parse_date_part(parts.next(), 2), Some(0..=59))
+        && parts.next().is_none()
+}
+
+/// True when `value` is a valid `YYYY-MM-DD` date that a date input shows.
+pub(super) fn is_local_date(value: &str) -> bool {
+    validate_date(&FieldMeta::new("date", "Date", FieldKind::Date), value).is_ok()
+}
+
+/// Returns the `datetime-local` form of `value` when that input can show it
+/// exactly: no offset and at most millisecond precision. A space separator is
+/// normalized to `T`. Other values must be shown as text so the browser does
+/// not silently blank them.
+pub(super) fn datetime_local_value(value: &str) -> Option<String> {
+    let normalized = value.replacen(' ', "T", 1);
+    let (_, time) = normalized.split_once('T')?;
+    let local = !time.contains(['Z', 'z', '+', '-'])
+        && time
+            .split_once('.')
+            .is_none_or(|(_, fraction)| fraction.len() <= 3);
+    let field = FieldMeta::new("datetime", "Date-time", FieldKind::DateTime);
+    (local && validate_datetime(&field, &normalized).is_ok()).then_some(normalized)
 }
 
 fn parse_date_part(value: Option<&str>, width: usize) -> Option<u32> {
