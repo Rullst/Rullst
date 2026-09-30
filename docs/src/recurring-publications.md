@@ -81,10 +81,13 @@ Every materialized occurrence has a fixed delivery window starting at creation,
 including caught-up work. The default is one day, with a seven-day maximum.
 Leases default to 60 seconds, configurable from 1–300 seconds; the delivery
 window must accommodate two configured leases. A claim fences earlier workers
-with a fresh random capability and revision. Automatic publication failures
+with a fresh random capability and revision. A lease near the end of its
+delivery window is shortened to that window; a lease that has already expired
+when the claim commits is not returned (its occurrence expires or is reclaimed
+normally) and no longer fails the rest of the batch. Automatic publication failures
 back off exponentially and stop after ten attempts or delivery-window expiry.
 `retry_failed` starts a new explicit operator attempt budget within the **original**
-window. It cannot revive published, cancelled, expired or purged occurrences.
+window and reports success once that reset is committed. It cannot revive published, cancelled, expired or purged occurrences.
 
 A relay checks the live lease immediately before publication. Repeated attempts
 use exactly the same message and purpose-separated idempotency key. Broker

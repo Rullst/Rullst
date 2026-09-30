@@ -3,6 +3,8 @@
 #[cfg(feature = "sqlite")]
 #[path = "recurring/broker.rs"]
 mod broker;
+#[path = "recurring/claims.rs"]
+mod claims;
 #[path = "recurring/failures.rs"]
 mod failures;
 #[path = "recurring/lifecycle.rs"]
@@ -51,6 +53,7 @@ async fn postgres_recurring_contract() {
     failures::run(&url).await;
     skew::run(&url).await;
     rotation::run(&url).await;
+    claims::run(&url).await;
     #[cfg(feature = "sqlite")]
     broker::run(&url).await;
 }

@@ -186,20 +186,31 @@ impl<C: Clock> PostgresRecurringStore<C> {
     }
     pub(super) async fn commit(
         &self,
-        mut tx: Transaction<'_, Postgres>,
+        tx: Transaction<'_, Postgres>,
         minimum: i64,
         deadline: Option<i64>,
     ) -> Result<()> {
+        let observed = self.commit_observed(tx, minimum, deadline).await?;
+        if deadline.is_some_and(|end| observed >= end) {
+            return Err(RecurringError::InvalidLease);
+        }
+        Ok(())
+    }
+    /// Rolls back when `deadline` has passed before COMMIT; otherwise commits
+    /// and returns the trusted time observed afterwards, leaving it to the
+    /// caller to judge work that was already durably committed.
+    pub(super) async fn commit_observed(
+        &self,
+        mut tx: Transaction<'_, Postgres>,
+        minimum: i64,
+        deadline: Option<i64>,
+    ) -> Result<i64> {
         let finished = self.observe(&mut tx, minimum).await?;
         if deadline.is_some_and(|end| finished >= end) {
             return Err(RecurringError::InvalidLease);
         }
         tx.commit().await.map_err(|_| RecurringError::Storage)?;
-        let observed = advance_clock(current(&self.clock)?, finished)?;
-        if deadline.is_some_and(|end| observed >= end) {
-            return Err(RecurringError::InvalidLease);
-        }
-        Ok(())
+        advance_clock(current(&self.clock)?, finished)
     }
 }
 
