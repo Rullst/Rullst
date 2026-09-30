@@ -118,9 +118,12 @@ impl DeliveryPipeline {
         validate_email_deliverability(&recipient)
             .map_err(|error| MailError::ValidationError(error.to_string()))?;
 
+        // The sender uses the recipient parser too, so a display-name form is
+        // parsed the same way everywhere; transports that take a bare address
+        // split it with `mailbox_parts`.
         if let Some(from) = message.from.as_deref() {
             validate_header("From", from)?;
-            validate_email_syntax(from)
+            recipient_address(from)
                 .map_err(|error| MailError::ValidationError(error.to_string()))?;
         }
 

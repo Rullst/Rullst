@@ -72,7 +72,7 @@ impl MailDriver for SendGridDriver {
 
         let mut body = serde_json::json!({
             "personalizations": personalizations,
-            "from": { "email": from_addr },
+            "from": super::rest::mailbox_json(from_addr, "email", "name")?,
             "subject": message.subject,
             "content": content
         });

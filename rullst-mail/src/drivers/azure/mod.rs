@@ -150,6 +150,9 @@ fn payload(message: &Message) -> Result<Vec<u8>, MailError> {
         .from
         .as_deref()
         .ok_or_else(|| MailError::ConfigError("Azure email requires a verified sender".into()))?;
+    // ACS takes a bare sender address; its display name belongs to the
+    // verified sender configured on the domain.
+    let (from, _) = super::rest::mailbox(from)?;
     if message
         .attachments
         .iter()

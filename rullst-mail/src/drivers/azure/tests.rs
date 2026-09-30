@@ -57,6 +57,9 @@ fn azure_endpoint_and_payload_are_bounded_and_tracking_free() {
             .contains("token=opaque123")
     );
     assert_eq!(value["recipients"]["to"].as_array().unwrap().len(), 1);
+    let display = message.clone().from("Accounts <accounts@example.com>");
+    let value: Value = serde_json::from_slice(&payload(&display).unwrap()).unwrap();
+    assert_eq!(value["senderAddress"], "accounts@example.com");
     assert!(payload(&Message::new().to("member@example.com")).is_err());
     assert!(
         !format!(
