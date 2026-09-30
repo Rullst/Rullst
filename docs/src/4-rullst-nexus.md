@@ -94,6 +94,25 @@ is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-fre
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
 
+### Basic Auth failures and reverse proxies
+
+Nexus counts failed Basic credentials per client bucket: one IPv4 address or
+one IPv6 /64 of the `ConnectInfo` peer. Five failures in five minutes lock the
+bucket for fifteen minutes. The unauthenticated `401` challenge that every
+browser receives first is not a failure.
+
+A locked bucket gets `429` without any credential check, so the lockout cannot
+confirm a guessed password. The exception is a browser that already logged in
+during this process: it received the `HttpOnly`, `Secure`
+`rullst_nexus_known_client` cookie and keeps having its credentials checked.
+
+Behind a TLS-terminating reverse proxy every client shares the proxy's address,
+so one attacker can lock the bucket for everyone who has no known-client cookie
+(new browsers, or all browsers after a restart). To isolate clients, have the
+trusted middleware that inserts `NexusVerifiedTls` also replace
+`ConnectInfo<SocketAddr>` with the client address from the proxy's forwarding
+header, only for connections whose socket peer is that proxy.
+
 ## Tenant-scoped administration
 
 Use an explicit tenant column when a registered model contains tenant-owned
