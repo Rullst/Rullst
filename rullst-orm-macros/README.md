@@ -53,6 +53,14 @@ Database enums accept 1–64 unit variants with unique labels of at most 63 byte
 from the portable ASCII allowlist. PostgreSQL native enums require the
 `strict-postgres` runtime profile; SQLx Any cannot decode its custom types.
 
+Optional generated APIs follow the runtime's features, not the application's:
+`rullst-orm` opts this crate into `runtime-feature-gates` and forwards its
+`redis` and `ai` features, so the Redis cache/hash/event code and
+`save_with_embedding` are emitted or omitted at expansion time. Without that
+opt-in (an older runtime) the output keeps the legacy
+`#[cfg(feature = "redis")]`/`#[cfg(feature = "ai")]` attributes, which the
+invoking crate evaluates.
+
 Randomized encrypted fields cannot be used as ordinary generated filter/order
 columns. Tenant scope and model policies are generated only when explicitly
 declared; the macro does not authenticate a principal or authorize `unscoped`

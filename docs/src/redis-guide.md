@@ -71,6 +71,11 @@ The ORM has a separate opt-in query-cache contract behind its `redis` feature:
 rullst-orm = { version = "12.1.0", features = ["redis"] }
 ```
 
+The generated `.remember(...)`, cache invalidation, `orm:events:*` publications
+and Redis hash helpers follow this ORM feature (or the facade's `redis` /
+`orm-redis`). From 13.0 the application does not declare a `redis` feature of
+its own; earlier macro output checked the application's features instead.
+
 ```rust,no_run
 use rullst_orm::{FromRow, Orm};
 

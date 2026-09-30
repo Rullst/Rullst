@@ -9,6 +9,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
     let normal_fields = &parsed.normal_fields;
     let skipped_fields = &parsed.skipped_fields;
     let column_enum_name = quote::format_ident!("{}Column", name);
+    let redis_cfg = crate::feature_gates::redis();
 
     let mut relation_field_idents = vec![];
     for rel in &parsed.relations {
@@ -97,7 +98,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
 
     quote! {
         /// Serializes each persisted field for a Redis hash.
-        #[cfg(feature = "redis")]
+        #redis_cfg
         fn __rullst_redis_hash_fields(&self) -> Result<Vec<(&'static str, String)>, rullst_orm::Error> {
             Ok(vec![
                 #(#to_hash_fields),*
@@ -105,7 +106,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
         }
 
         /// Rebuilds a model from a Redis hash written by `save_to_redis`.
-        #[cfg(feature = "redis")]
+        #redis_cfg
         fn __rullst_from_redis_hash(
             hash: &std::collections::HashMap<String, String>,
         ) -> Result<Self, rullst_orm::Error>
@@ -118,7 +119,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
             })
         }
 
-        #[cfg(feature = "redis")]
+        #redis_cfg
         pub async fn save_to_redis(&self) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_redis::AsyncCommands;
             let fields = self.__rullst_redis_hash_fields()?;
@@ -132,7 +133,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }
 
-        #[cfg(feature = "redis")]
+        #redis_cfg
         pub async fn get_from_redis(id: impl std::fmt::Display) -> Result<Option<Self>, rullst_orm::Error>
         #redis_get_default_bound
         {
@@ -150,7 +151,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
             Self::__rullst_from_redis_hash(&hash).map(Some)
         }
 
-        #[cfg(feature = "redis")]
+        #redis_cfg
         pub async fn increment_redis_field(id: impl std::fmt::Display, field: #column_enum_name, amount: i64) -> Result<i64, rullst_orm::Error> {
             let mut conn = rullst_orm::Orm::redis_manager()?;
             let redis_key = format!("orm:{}:{}", #table_name, id);

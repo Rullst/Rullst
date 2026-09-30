@@ -450,7 +450,8 @@ paired `boolean()` with an integer field on PostgreSQL must switch to `bool`
 ### Optional Redis query cache
 
 Enable the `redis` feature and give each application sharing a Redis database a
-stable namespace:
+stable namespace. Generated Redis methods and effects follow this ORM feature;
+the application does not need a `redis` feature of its own:
 
 ```rust
 use rullst_orm::Orm;
