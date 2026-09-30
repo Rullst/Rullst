@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790746101404,
+  "lastUpdate": 1790754903017,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22179,6 +22179,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2344,
             "range": "± 46",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5c43890fbd711638bd354a84f42a912b7f8eda9",
+          "message": "Merge pull request #342 from Rullst/fix/v13-nexus-review-fixes\n\nfix(nexus): proxy-safe lockout, same-origin assets under CSP, hidden passwords, edit-only-changed",
+          "timestamp": "2026-09-30T04:48:15-03:00",
+          "tree_id": "5e5d75fe28a1aaf8795c403f8ba571dbcd6e17aa",
+          "url": "https://github.com/Rullst/Rullst/commit/c5c43890fbd711638bd354a84f42a912b7f8eda9"
+        },
+        "date": 1790754900520,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 739,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1005,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 648,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2400,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
