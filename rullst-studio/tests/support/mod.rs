@@ -13,6 +13,7 @@ use tower::ServiceExt;
 mod bounded_view;
 mod feature_flags;
 mod incomplete_key;
+mod paging;
 mod postgres_schema;
 
 // The SQLite matrix binary under the default build compiles this unused.
@@ -442,6 +443,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
 
     incomplete_key::exercise_incomplete_primary_key(&app, pool, driver, table).await;
     bounded_view::exercise_bounded_table_view(&app, pool, driver, table).await;
+    paging::exercise_stable_paging(&app, pool, driver, table).await;
     if driver == "postgres" {
         postgres_schema::exercise_search_path_shadow(&app, pool, table).await;
     }

@@ -6,7 +6,7 @@ use super::super::limits::{
     MAX_CELL_BYTES, MAX_DISPLAY_CHARS, MAX_SEARCH_BYTES, bounded_text_expression,
 };
 use super::super::portable::build_for_driver;
-use super::super::search::{count_matching_rows, push_search_predicate};
+use super::super::search::{count_matching_rows, push_page_order, push_search_predicate};
 use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
@@ -147,6 +147,7 @@ pub async fn handle_table(
         QueryBuilder::new(format!("SELECT {selected_columns} FROM {quoted_table}"));
 
     push_search_predicate(&mut qb, driver, &schema.columns, search_str);
+    push_page_order(&mut qb, driver, &clean_table, &schema);
 
     qb.push(" LIMIT ");
     qb.push_bind(per_page as i64);

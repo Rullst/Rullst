@@ -83,7 +83,8 @@ overhead.
 ## Tooling boundaries
 
 - The data browser reads, searches, and paginates allowlisted SQLx identifiers.
-  A page shows at most 25 rows; the database cuts each cell's text to 256
+  A page shows at most 25 rows, ordered by the complete primary key (otherwise
+  by every selected column); the database cuts each cell's text to 256
   characters before it reaches Studio (key columns keep up to 16 KiB for row
   actions, and a longer key makes its row read-only), and search terms are
   limited to 256 bytes. Search matches the displayed columns (at most 256),

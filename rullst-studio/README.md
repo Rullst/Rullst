@@ -161,7 +161,8 @@ The cache inspector uses the same verified local request marker as database
 mutations for individual invalidation. Its HTML contains neither cache values
 nor exact logical keys.
 
-Table views load at most 25 rows. The database cuts each cell's text to 256
+Table views load at most 25 rows per page, ordered by the complete primary key
+(otherwise by every selected column). The database cuts each cell's text to 256
 characters before Studio renders it; key columns keep up to 16 KiB for row
 actions, and a longer key makes its row read-only. Search terms are limited to
 256 bytes and match the displayed columns (at most 256); the record count uses

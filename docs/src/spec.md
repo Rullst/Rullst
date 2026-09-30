@@ -2973,7 +2973,9 @@ sending.
   is no implicit SQLite fallback; resolution errors never echo configuration
   content.
 * The database browser accepts a deliberately narrow ASCII SQL-identifier
-  boundary. Reads are bounded: a page loads at most 25 rows, the database cuts
+  boundary. Reads are bounded: a page loads at most 25 rows, ordered by the
+  complete primary key (otherwise by every selected column) so that pages
+  neither repeat nor skip rows, the database cuts
   each cell's text to 256 characters (key columns keep up to 16 KiB so that
   rows remain addressable; a longer key makes the row read-only) and search
   terms are limited to 256 bytes. Search matches the displayed columns (at most
