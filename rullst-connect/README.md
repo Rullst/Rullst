@@ -81,10 +81,13 @@ Official support for 11 core providers:
 5. **Auth0**
 6. **AWS Cognito**
 7. **Facebook**
-8. **X (Twitter)** (Strict PKCE requirement)
+8. **X (Twitter)** (Strict PKCE requirement; confidential clients authenticate
+   to the token endpoint with HTTP Basic, `client_secret_basic`)
 9. **Discord**
 10. **LinkedIn**
-11. **OIDC (OpenID Connect Custom Provider)**
+11. **OIDC (OpenID Connect Custom Provider)** (sends the client secret in the
+    token request body unless discovery lists `client_secret_basic` without
+    `client_secret_post`, in which case it uses HTTP Basic)
 
 ID-token verification is implemented by Google, Apple and `OidcProvider`.
 Those paths require signed `iss`, `aud`, `sub`, `exp` and `iat` claims, bind the

@@ -101,3 +101,74 @@ async fn github_refresh_requests_and_parses_a_json_token_response() {
         "the rotated refresh token must be returned"
     );
 }
+
+fn body_has_no_client_secret(request: &wiremock::Request) -> bool {
+    !String::from_utf8_lossy(&request.body)
+        .split('&')
+        .any(|pair| pair.starts_with("client_secret="))
+}
+
+#[tokio::test]
+async fn x_authenticates_confidential_token_requests_with_http_basic() {
+    use base64::Engine as _;
+    use rullst_connect::providers::XProvider;
+
+    let server = MockServer::start().await;
+    let basic = format!(
+        "Basic {}",
+        base64::engine::general_purpose::STANDARD.encode("x-client:x-client-secret")
+    );
+    // X rejects confidential clients that do not send an HTTP Basic header.
+    Mock::given(method("POST"))
+        .and(path("/2/oauth2/token"))
+        .and(header("authorization", basic.as_str()))
+        .and(body_has_no_client_secret)
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "x-access",
+            "refresh_token": "x-refresh",
+            "expires_in": 7200,
+            "token_type": "bearer"
+        })))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/2/oauth2/token"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "error": "unauthorized_client",
+            "error_description": "Missing valid authorization header"
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/2/users/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "data": { "id": "2244994945", "name": "X Dev" }
+        })))
+        .mount(&server)
+        .await;
+
+    let provider = XProvider::try_new(
+        "x-client",
+        SecretString::from("x-client-secret".to_string()),
+        "https://app.example/callback",
+    )
+    .expect("live X configuration")
+    .with_http_client(LoopbackClient::shared(server.uri()));
+
+    let user = provider
+        .get_user(rullst_connect::provider::ExchangeParams {
+            auth_code: "x-code",
+            code_verifier: Some("x-verifier"),
+            ..Default::default()
+        })
+        .await
+        .expect("code exchange uses client_secret_basic");
+    assert_eq!(user.id, "2244994945");
+
+    let refreshed = provider
+        .refresh_token("x-refresh")
+        .await
+        .expect("refresh uses client_secret_basic");
+    assert_eq!(refreshed.id, "2244994945");
+}
