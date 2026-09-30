@@ -254,3 +254,49 @@ async fn rows_with_a_null_key_value_stay_read_only() {
     assert_eq!(html.matches("/rows/delete").count(), 1);
     assert!(html.contains("name=\"pk_code\" value=\"NULL\""));
 }
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// A key longer than a mutation accepts could not be submitted back, so its row
+// offers no actions, and long cells are displayed only up to the bound.
+async fn rows_with_keys_longer_than_a_mutation_accepts_stay_read_only() {
+    use crate::data_browser::limits::{MAX_DISPLAY_CHARS, bounded_text_expression};
+
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_long_key_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("CREATE TABLE studio_long_key_probe (code TEXT PRIMARY KEY, label TEXT)")
+        .execute(pool)
+        .await
+        .unwrap();
+    let mut insert = QueryBuilder::<rullst_orm::RullstDatabase>::new(
+        "INSERT INTO studio_long_key_probe VALUES (",
+    );
+    insert
+        .push_bind("k".repeat(MAX_CELL_BYTES + 1))
+        .push(", 'long'), (")
+        .push_bind("short")
+        .push(", ")
+        .push_bind(format!("{}tail-marker", "x".repeat(MAX_DISPLAY_CHARS)))
+        .push(")");
+    insert.build().execute(pool).await.unwrap();
+    let schema = fetch_table_schema(pool, "sqlite", "studio_long_key_probe")
+        .await
+        .unwrap();
+    let mut select = QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+        "SELECT {}, {} FROM studio_long_key_probe ORDER BY label",
+        bounded_text_expression("sqlite", "code", MAX_CELL_BYTES + 1),
+        bounded_text_expression("sqlite", "label", MAX_DISPLAY_CHARS + 1),
+    ));
+    let rows = select.build().fetch_all(pool).await.unwrap();
+
+    let html = build_mutable_rows_html(&rows, &schema, "studio_long_key_probe");
+    assert_eq!(html.matches("Read-only: key longer than 16 KiB").count(), 1);
+    assert_eq!(html.matches("/rows/delete").count(), 1);
+    assert!(html.contains("name=\"pk_code\" value=\"short\""));
+    assert!(!html.contains("tail-marker"));
+    assert!(html.contains(&format!("{}…", "x".repeat(MAX_DISPLAY_CHARS))));
+}

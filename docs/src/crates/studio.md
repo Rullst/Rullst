@@ -14,7 +14,8 @@ views from the sources explicitly supplied by the application.
   primitive non-key values, delete one complete-primary-key-selected row with
   exact confirmation, and inspect a live ER diagram. Tables whose key includes
   a column outside the ASCII identifier boundary stay read-only, and each write
-  commits only when exactly one row changed. SQLite, PostgreSQL, MySQL and
+  commits only when exactly one row changed. Views show 25 rows, cut cell text
+  to 256 characters in the database and accept search terms up to 256 bytes. SQLite, PostgreSQL, MySQL and
   MariaDB run executable mutation contracts.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum

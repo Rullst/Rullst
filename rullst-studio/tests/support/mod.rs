@@ -9,6 +9,7 @@ use rullst_studio::{LocalStudioAccess, Studio};
 use std::net::SocketAddr;
 use tower::ServiceExt;
 
+mod bounded_view;
 mod feature_flags;
 mod incomplete_key;
 
@@ -425,4 +426,5 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     );
 
     incomplete_key::exercise_incomplete_primary_key(&app, pool, driver, table).await;
+    bounded_view::exercise_bounded_table_view(&app, pool, driver, table).await;
 }

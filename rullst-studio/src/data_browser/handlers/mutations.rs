@@ -16,8 +16,9 @@ use sqlx::{QueryBuilder, Row};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
+use super::super::limits::{MAX_CELL_BYTES, display_cell};
+
 const MAX_FORM_FIELDS: usize = 260;
-const MAX_CELL_BYTES: usize = 16 * 1024;
 
 #[derive(Debug)]
 enum MutationFailure {
@@ -386,31 +387,47 @@ pub(crate) fn build_mutable_rows_html(
             let _ = write!(
                 html,
                 "<td class=\"px-6 py-4 text-sm truncate max-w-xs {class}\">{}</td>",
-                escape_html_attr(&value)
+                escape_html_attr(&display_cell(&value))
             );
         }
 
         // A NULL key cell renders as the text `NULL`, which would bind as a
-        // different text key. Such rows stay read-only.
-        if primary_keys
+        // different text key, and a key longer than a mutation accepts could
+        // not be submitted. Such rows stay read-only.
+        let key_values = primary_keys
             .iter()
-            .any(|index| matches!(row.try_get::<Option<String>, _>(*index), Ok(None)))
+            .map(|index| match row.try_get::<Option<String>, _>(*index) {
+                Ok(None) => None,
+                _ => Some(get_any_value_as_string(row, *index)),
+            })
+            .collect::<Vec<_>>();
+        let read_only = if key_values.iter().any(Option::is_none) {
+            Some("NULL key")
+        } else if key_values
+            .iter()
+            .flatten()
+            .any(|value| value.len() > MAX_CELL_BYTES)
         {
-            html.push_str(
-                "<td class=\"px-6 py-4 text-xs text-slate-500\">Read-only: NULL key</td></tr>",
+            Some("key longer than 16 KiB")
+        } else {
+            None
+        };
+        if let Some(reason) = read_only {
+            let _ = write!(
+                html,
+                "<td class=\"px-6 py-4 text-xs text-slate-500\">Read-only: {reason}</td></tr>"
             );
             continue;
         }
 
         let mut primary_inputs = String::new();
-        for index in &primary_keys {
+        for (index, value) in primary_keys.iter().zip(key_values.iter().flatten()) {
             let column = &columns[*index];
-            let value = get_any_value_as_string(row, *index);
             let _ = write!(
                 primary_inputs,
                 "<input type=\"hidden\" name=\"pk_{}\" value=\"{}\">",
                 escape_html_attr(&column.name),
-                escape_html_attr(&value)
+                escape_html_attr(value)
             );
         }
         let mut options = String::from("<option value=\"\">Choose column</option>");

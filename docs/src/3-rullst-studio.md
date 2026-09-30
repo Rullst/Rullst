@@ -76,6 +76,10 @@ overhead.
 ## Tooling boundaries
 
 - The data browser reads, searches, and paginates allowlisted SQLx identifiers.
+  A page shows at most 25 rows; the database cuts each cell's text to 256
+  characters before it reaches Studio (key columns keep up to 16 KiB for row
+  actions, and a longer key makes its row read-only), and search terms are
+  limited to 256 bytes.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is

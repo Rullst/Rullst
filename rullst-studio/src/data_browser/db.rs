@@ -4,6 +4,7 @@ use serde::Deserialize;
 use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
+use super::limits::{MAX_SEARCH_BYTES, display_cell};
 pub use super::pool::{ensure_pool_initialized, resolve_db_url};
 
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
@@ -301,11 +302,17 @@ pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
     }
 }
 
-/// Dynamic SQLite table row counter
+/// Counts a table's rows, optionally filtered by a search term of at most
+/// 256 bytes that is bound once per inspected column.
 pub async fn count_table_rows(
     table: &str,
     search_query: Option<&str>,
 ) -> Result<usize, sqlx::Error> {
+    if search_query.is_some_and(|search| search.len() > MAX_SEARCH_BYTES) {
+        return Err(sqlx::Error::Configuration(
+            "Studio search terms are limited to 256 bytes".into(),
+        ));
+    }
     let pool = ensure_pool_initialized().await?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
@@ -404,7 +411,7 @@ pub fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> Strin
     )
 }
 
-/// Helper to build table rows HTML
+/// Helper to build table rows HTML. Cell text is cut to 256 characters.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn build_rows_html(
     records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row],
@@ -434,7 +441,7 @@ pub fn build_rows_html(
                     rows_html,
                     "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
                     text_class,
-                    escape_html_attr(&cell_val)
+                    escape_html_attr(&display_cell(&cell_val))
                 );
             }
             rows_html.push_str("</tr>");

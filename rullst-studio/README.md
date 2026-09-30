@@ -156,6 +156,11 @@ The cache inspector uses the same verified local request marker as database
 mutations for individual invalidation. Its HTML contains neither cache values
 nor exact logical keys.
 
+Table views load at most 25 rows. The database cuts each cell's text to 256
+characters before Studio renders it; key columns keep up to 16 KiB for row
+actions, and a longer key makes its row read-only. Search terms are limited to
+256 bytes.
+
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types

@@ -2,6 +2,9 @@
 
 use super::super::db::*;
 use super::super::layout::*;
+use super::super::limits::{
+    MAX_CELL_BYTES, MAX_DISPLAY_CHARS, MAX_SEARCH_BYTES, bounded_text_expression,
+};
 use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
@@ -69,6 +72,15 @@ pub async fn handle_table(
     };
 
     let search_str = query.search.as_deref().unwrap_or("").trim();
+    if search_str.len() > MAX_SEARCH_BYTES {
+        return table_error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Search terms are limited to 256 bytes.",
+            is_htmx,
+            Some(&clean_table),
+            &tables,
+        );
+    }
     const MAX_PAGE: usize = 1_000_000;
     let page = query.page.unwrap_or(1).clamp(1, MAX_PAGE);
     let per_page = 25;
@@ -121,15 +133,19 @@ pub async fn handle_table(
     };
 
     let quoted_table = quote_table_name(driver, &clean_table);
-    let selected_columns = col_names
+    // Key columns keep up to one character more than a mutation accepts, so a
+    // longer key is detected and its row stays read-only; other cells need
+    // only one character more than the display bound to show truncation.
+    let selected_columns = schema
+        .columns
         .iter()
         .map(|column| {
-            let quoted = quote_table_name(driver, column);
-            if driver == "mysql" {
-                format!("CAST({quoted} AS CHAR) AS {quoted}")
+            let limit = if supports_mutations && column.primary_key {
+                MAX_CELL_BYTES + 1
             } else {
-                format!("CAST({quoted} AS TEXT) AS {quoted}")
-            }
+                MAX_DISPLAY_CHARS + 1
+            };
+            bounded_text_expression(driver, &column.name, limit)
         })
         .collect::<Vec<_>>()
         .join(", ");
@@ -184,6 +200,7 @@ pub async fn handle_table(
                 <form method="get" action="/studio/tables/{}" class="flex w-full md:w-auto items-center gap-3">
                     <input type="text"
                            name="search"
+                           maxlength="256"
                            value="{}"
                            placeholder="Search records..."
                            class="bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition w-full md:w-64" />
