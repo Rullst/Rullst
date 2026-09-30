@@ -1323,6 +1323,14 @@ the same server-authoritative controls.
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
   not be confused with an authentication or session cookie.
+* **Database URL Resolution:** `Server` and Artisan (`artisan!`,
+  `check_and_run_artisan`, `db:*`, `studio`) share one resolver: a
+  `Server::with_db` value when `Server::run` intercepts the command, the process
+  `DATABASE_URL`, `DATABASE_URL` in `./.env` (never overriding the process
+  environment), then `[database].url` parsed as TOML. There is no implicit
+  SQLite fallback: a `db:*` command without a configured database, and any
+  configuration or `Orm::init` failure, exits with status 1. Parse errors
+  report positions only, never file content.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
@@ -1334,6 +1342,10 @@ the same server-authoritative controls.
 * **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
   are HTML-escaped by the generated code.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
+* **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
+  function's `module_path!()`, name and attribute location plus the serialized
+  arguments, so same-named functions in different modules, crates or `impl`
+  blocks never share results. It remains tenant- and invalidation-unaware.
 * **Example:**
   ```rust
   use rullst::html;
@@ -1360,6 +1372,19 @@ the same server-authoritative controls.
   retention policy remain host responsibilities. Redis/custom drivers expose
   inspection or history only when their capability implements it.
 
+### Local object replacement
+
+`LocalDriver::put`, and `Storage::local`/`TenantStorage` over it, never
+truncates an existing object. It writes a uniquely named temporary file in the
+validated destination directory (`create_new`), flushes it with `sync_all` and
+renames it over the destination. A failure removes the temporary file and
+leaves the previous version. Readers and concurrent writers observe exactly one
+complete version; the last rename wins. The replacement is a new file with
+default permissions, so permissions or hard links of the previous file are not
+carried over. The directory is not fsynced, so a power loss can roll a
+completed put back to the previous version. On Windows a replacement fails
+while another process holds the object open without delete sharing.
+
 ---
 
 ### 4.4. Private S3-compatible storage (v13, source admitted)
@@ -1375,7 +1400,9 @@ and short-lived signed GET URLs. Use the maintained AWS SigV4 signer, explicit
 provider endpoint/region rules, HTTPS, no redirects or ambient proxies, bounded
 request/body budgets and redacted errors. A separate development configuration
 may target a literal loopback endpoint for disposable protocol acceptance; it
-must not pass a production-configuration check. Empty or `mock_*` credentials
+must not pass a production-configuration check. Request paths are the SigV4
+canonical URI: the bucket and each key segment are `UriEncode`d once, leaving
+only unreserved `A-Z a-z 0-9 - . _ ~` and `/` separators literal. Empty or `mock_*` credentials
 select a deterministic bounded in-memory fallback, also rejected by that check.
 No mock URL may impersonate a signed provider URL.
 

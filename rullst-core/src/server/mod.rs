@@ -2,6 +2,7 @@
 
 /// Fluent server builder and HTTP runner.
 pub mod builder;
+pub(crate) mod database_url;
 mod dev_reload;
 /// Dynamic library router loader for hot-reload mode.
 pub mod dylib_loader;

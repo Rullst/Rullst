@@ -186,6 +186,23 @@ async fn requests_are_signed_and_grant_generation_does_not_contact_the_backend()
 }
 
 #[tokio::test]
+async fn reserved_key_characters_are_sent_in_the_signed_canonical_form() {
+    let mut peer = peer(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
+        Duration::ZERO,
+    )
+    .await;
+    storage(&peer, 64, Duration::from_secs(2))
+        .put("tenants/acme:prod/Report (final)+v=1.pdf", b"payload")
+        .await
+        .unwrap();
+    let request = String::from_utf8((&mut peer.received).await.unwrap()).unwrap();
+    assert!(request.starts_with(
+        "PUT /private-files/tenants/acme%3Aprod/Report%20%28final%29%2Bv%3D1.pdf HTTP/1.1\r\n"
+    ));
+}
+
+#[tokio::test]
 async fn oversize_upload_is_rejected_before_network_io() {
     let mut peer = peer(
         b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
