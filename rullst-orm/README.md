@@ -226,6 +226,13 @@ Load fewer parents per query, raise the cap, or choose explicitly with
 `with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
 to the whole batch, and `unsafe_unlimited()` loads every related row.
 
+Parents that share a related row or group all receive it: every child of one
+`belongs_to` parent, parents whose non-unique `local_key` matches the same
+`has_many`/`has_one` rows, and duplicated parent rows. The shared value is
+cloned for all but the last such parent, so a related model without `Clone`
+loads normally until a row must be shared, and then `get()` fails with a
+`Validation` error instead of leaving a parent without its relation.
+
 Prefer `Orm::transaction` with ordinary model/query methods when combining
 eager relationships or `after_fetch` hooks with transactional reads. Fetches
 release the managed transaction lock before invoking hooks and loading related

@@ -1692,6 +1692,11 @@ while portability and semantic review remain the model author's responsibility.
   receives an empty or partial relation. A constrained eager load that sets an
   explicit smaller `limit(n)` (applied to the whole batch) or
   `unsafe_unlimited()` is honored as written.
+* Every parent receives the related rows it shares with other parents (one
+  `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
+  parent rows). The shared value is cloned for every such parent but the last;
+  when the related model does not implement `Clone`, a shared row fails the
+  load with a `Validation` error instead of leaving a parent empty.
 
 ### 5.4. Tenant Scope Contract
 
