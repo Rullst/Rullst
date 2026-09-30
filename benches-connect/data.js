@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790790069872,
+  "lastUpdate": 1790794183310,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8355,6 +8355,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 338,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bb72ddeba6eea38f4571ee6585b63bc52d56a73",
+          "message": "Merge pull request #349 from Rullst/fix/v13-mail-capital-messaging-tail-fixes\n\nfix(mail,capital,messaging): ACS sends, IDN homograph check, base64 queued attachments, Wise status and replay claims",
+          "timestamp": "2026-09-30T15:29:18-03:00",
+          "tree_id": "ea9f0ee221bb6ce03bd7d5065db521ca95301a4e",
+          "url": "https://github.com/Rullst/Rullst/commit/1bb72ddeba6eea38f4571ee6585b63bc52d56a73"
+        },
+        "date": 1790794182088,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 543,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
