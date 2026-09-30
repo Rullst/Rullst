@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790789358583,
+  "lastUpdate": 1790791625832,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22503,6 +22503,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1215,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "852f7162e5f810d1a6a09d6d5b9bb1ad6e599717",
+          "message": "Merge pull request #351 from Rullst/fix/v13-orm-macros-tail-fixes\n\nfix(orm-macros,nexus): shared eager rows, macro feature gates, scoped Redis hashes, raw bindings and derive(Nexus) field semantics",
+          "timestamp": "2026-09-30T14:59:29-03:00",
+          "tree_id": "eda795174c2308f1eda255bd5c744f716c175611",
+          "url": "https://github.com/Rullst/Rullst/commit/852f7162e5f810d1a6a09d6d5b9bb1ad6e599717"
+        },
+        "date": 1790791623246,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 616,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 888,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 648,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1807,
+            "range": "± 43",
             "unit": "ns/iter"
           }
         ]
