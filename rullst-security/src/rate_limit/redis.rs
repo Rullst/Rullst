@@ -66,6 +66,10 @@ pub struct RedisRateLimiter {
 
 impl RedisRateLimiter {
     /// Builds a limiter without opening a network connection.
+    ///
+    /// Redis expires windows with millisecond precision, so `window` must be
+    /// at least 1 ms (and at most 24 hours); a fractional millisecond is
+    /// truncated in both modes.
     pub fn new(
         redis_url: impl Into<String>,
         key_prefix: impl Into<String>,
@@ -78,8 +82,13 @@ impl RedisRateLimiter {
         if window.is_zero() || window > MAX_WINDOW {
             return Err(RateLimitError::InvalidConfiguration("window"));
         }
+        // `PEXPIRE key 0` deletes the counter, so every Redis check of a
+        // sub-millisecond window would fail with an invalid response.
         let window_ms = i64::try_from(window.as_millis())
-            .map_err(|_| RateLimitError::InvalidConfiguration("window"))?;
+            .ok()
+            .filter(|window_ms| *window_ms > 0)
+            .ok_or(RateLimitError::InvalidConfiguration("window"))?;
+        let window = Duration::from_millis(window_ms.unsigned_abs());
         let key_prefix = key_prefix.into();
         if key_prefix.is_empty()
             || key_prefix.len() > 128
@@ -249,5 +258,22 @@ mod tests {
         assert!(!key.contains("sensitive@example.com"));
         assert!(REDIS_FIXED_WINDOW_SCRIPT.contains("redis.call('INCR'"));
         assert!(REDIS_FIXED_WINDOW_SCRIPT.contains("redis.call('PEXPIRE'"));
+    }
+
+    #[test]
+    fn sub_millisecond_windows_are_rejected_for_both_modes() {
+        for url in ["mock_rate_limit", "redis://127.0.0.1:6379/"] {
+            for window in [Duration::from_nanos(1), Duration::from_micros(999)] {
+                assert_eq!(
+                    RedisRateLimiter::new(url, "rullst:test", 10, window).err(),
+                    Some(RateLimitError::InvalidConfiguration("window"))
+                );
+            }
+            let limiter =
+                RedisRateLimiter::new(url, "rullst:test", 10, Duration::from_micros(1_500))
+                    .expect("one whole millisecond");
+            assert_eq!(limiter.window_ms, 1);
+            assert_eq!(limiter.window, Duration::from_millis(1));
+        }
     }
 }
