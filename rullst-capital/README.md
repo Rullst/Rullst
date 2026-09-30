@@ -889,8 +889,11 @@ When a verified provider protocol supplies a stable event ID, prefer
 `check_and_record_event_key` over payload-only replay detection. A relational
 handler that uses the provider's low-level signature contract can call
 `check_and_record_event_key_with_transaction` and write its domain mutation
-through the same transaction before one commit. Do not pre-claim the same event
-through SQL middleware on this atomic path. This is atomic only inside that
+through the same transaction before one commit. The claim may follow earlier
+reads in that transaction: on MySQL/MariaDB a duplicate committed after the
+transaction's REPEATABLE READ snapshot is still rejected by the claim insert's
+duplicate key. Do not pre-claim the same event through SQL middleware on this
+atomic path. This is atomic only inside that
 database: provider API calls, e-mail, queues, and other systems still require
 an outbox, idempotent consumers, and reconciliation.
 

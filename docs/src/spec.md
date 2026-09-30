@@ -2484,7 +2484,9 @@ sending.
   claims across processes on SQLite, PostgreSQL, MySQL, and MariaDB. Its schema
   profile is immutable, claims serialize through one configuration lock, expiry
   uses the database transaction clock, and storage/configuration/capacity
-  failures reject the request.
+  failures reject the request. MySQL/MariaDB claims use a plain `INSERT` whose
+  duplicate-key error is a replay, so a caller-owned REPEATABLE READ transaction
+  whose snapshot predates a concurrently committed claim cannot re-claim it.
 * SQL-backed middleware admission claims a payload before handler dispatch; it
   is replay protection, not an exactly-once delivery protocol. When billing
   correctness requires atomic domain mutation, the application must verify the
