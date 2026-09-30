@@ -36,7 +36,7 @@ html, body { height: 100%; }
 .nexus-sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh; background: var(--bg-800); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; z-index: 100; transition: transform var(--transition); padding-bottom: 16px; }
 .nexus-brand { display: flex; align-items: center; gap: 10px; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px; flex-shrink: 0; }
 .nexus-brand-icon { font-size: 22px; }
-.nexus-brand-mark { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, #818cf8, #c084fc); color: var(--bg-900); font-size: 14px; font-weight: 800; }
+.nexus-brand-logo { display: block; flex-shrink: 0; width: 24px; height: 24px; object-fit: contain; }
 .nexus-brand-name { font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .nexus-brand-name { min-width: 0; overflow-wrap: anywhere; }
 .nexus-sidebar-close { display: none; flex-shrink: 0; margin-left: auto; width: 40px; height: 40px; background: var(--bg-700); border: 1px solid var(--border); border-radius: 6px; color: var(--text-100); font-size: 24px; cursor: pointer; }
