@@ -284,6 +284,29 @@ A prepared version section does not establish that its tag or crates exist.
   releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
   existing shells require an explicit application-owned dependency update.
 
+### Auth, AI and IoT low-severity review fixes
+
+- Auth: the SQLite passkey and JWT revocation stores reject every in-memory or
+  URI-selected target, and passkey usage and revocation survive a backward
+  clock step.
+- Auth: session cookie extraction ignores unrelated malformed cookies, JWT
+  lifetimes under one second are rejected, and concurrent first calls to
+  `get_app_key` in development agree on one key.
+- Auth: duplicate registrations return `InvalidAction`, delivered or failed
+  outbox rows no longer block sign-ups or silently drop resets, and API-token
+  and email-login state tolerate up to 5 s of cross-host clock skew.
+- AI: `FallbackProvider` never switches embedding models after a failure, a
+  relative Markdown image next to an unrelated link no longer blocks a RAG
+  prompt, and blocks caused by the combined context are audited as
+  `ContextRejected`.
+- AI: a tool approval survives an audit failure before the tool runs; chat
+  memory keeps in-memory SQLite stable, accepts fully expired histories and
+  reports invalid model responses as generation failures; padded `mock_*` keys
+  are labelled offline.
+- IoT: CoAP rejects `.`/`..` Uri-Path segments and checks the datagram ceiling
+  with exact option sizes; OTA lost-acknowledgement reconciliation applies
+  only when the same manifest is retried.
+
 ### Auth review fixes
 
 - `SqlRecoveryStore` rejects passwords over 72 bytes with `InvalidInput` before
