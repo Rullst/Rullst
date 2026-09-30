@@ -672,6 +672,10 @@ consumes the same limit. `Billable::quota_request` derives the limit from the
 subscription owner's tier rather than a client payload. `QuotaGate` atomically
 reserves before calling the application operation, skips exact idempotent
 replays and releases a fresh reservation when the callback returns an error.
+`QuotaExecution::Replay` means only that the key is already claimed: the first
+call may still be running and later fail and release it, or may have been
+dropped without releasing it. Do not report a replay as completed work without
+checking the application's own record.
 
 The always-available `InMemoryQuotaStore` is deterministic and process-local.
 With `quota-sql`, `SqlQuotaStore` persists a unique event claim and conditionally
