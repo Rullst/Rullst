@@ -1,5 +1,5 @@
 use super::{
-    record::{Asset, Kind, Lifecycle, Record, random_hex},
+    record::{Asset, Kind, Lifecycle, OperationFailure, Record, random_hex},
     service::MediaService,
     transaction::Operation,
 };
@@ -12,6 +12,32 @@ pub(super) struct Lease {
     pub record: Record,
     pub nonce: String,
     pub first_dispatch: bool,
+}
+
+/// A provider error; `stopped` marks a non-transient create or metadata-update
+/// outcome that must be recorded instead of retried after the lease.
+pub(super) struct Failed {
+    error: Error,
+    stopped: Option<OperationFailure>,
+}
+impl From<Error> for Failed {
+    fn from(error: Error) -> Self {
+        Self {
+            error,
+            stopped: None,
+        }
+    }
+}
+impl From<Failed> for Error {
+    fn from(failed: Failed) -> Self {
+        failed.error
+    }
+}
+fn stop(error: Error, reason: OperationFailure) -> Failed {
+    Failed {
+        error,
+        stopped: Some(reason),
+    }
 }
 impl<P: VideoProvider, C: Clock> MediaService<P, C> {
     pub(super) async fn claim(
@@ -54,32 +80,69 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         }))
     }
 
-    pub(super) async fn execute(&self, lease: &Lease) -> Result<Option<RemoteVideo>, Error> {
+    pub(super) async fn execute(&self, lease: &Lease) -> Result<Option<RemoteVideo>, Failed> {
         let record = &lease.record;
         let pending = record.pending.as_ref().ok_or(Error::Configuration)?;
         let remote = match pending.kind {
             Kind::Create => {
                 let video = if lease.first_dispatch {
-                    self.provider.create(&record.marker).await?
-                } else {
+                    // Only a definitive refusal proves that nothing was created.
                     self.provider
-                        .find_created(&record.marker)
-                        .await?
-                        .ok_or(Error::Uncertain)?
+                        .create(&record.marker)
+                        .await
+                        .map_err(|error| match error {
+                            Error::Rejected | Error::NotFound => {
+                                stop(error, OperationFailure::Rejected)
+                            }
+                            error => error.into(),
+                        })?
+                } else {
+                    match self.provider.find_created(&record.marker).await {
+                        Ok(Some(video)) => video,
+                        Ok(None) => {
+                            return Err(stop(
+                                Error::Uncertain,
+                                OperationFailure::CreationUnconfirmed,
+                            ));
+                        }
+                        Err(Error::Conflict) => {
+                            return Err(stop(
+                                Error::Conflict,
+                                OperationFailure::CreationUnconfirmed,
+                            ));
+                        }
+                        Err(error) => return Err(error.into()),
+                    }
                 };
                 if video.title != record.marker {
-                    return Err(Error::Protocol);
+                    return Err(Error::Protocol.into());
                 }
                 Some(video)
             }
             Kind::Update => {
                 let id = record.asset.video.as_ref().ok_or(Error::Configuration)?;
-                self.provider.update(id, &record.asset.metadata).await?;
-                let current = self.provider.get(id).await?.ok_or(Error::Uncertain)?;
-                if current.title != record.asset.metadata.title()
-                    || current.description != record.asset.metadata.description()
+                let metadata = &record.asset.metadata;
+                self.provider
+                    .update(id, metadata)
+                    .await
+                    .map_err(|error| match error {
+                        Error::Rejected => stop(error, OperationFailure::Rejected),
+                        Error::NotFound => stop(error, OperationFailure::RemoteMissing),
+                        Error::Capacity => stop(error, OperationFailure::TagCapacity),
+                        error => error.into(),
+                    })?;
+                let current = self
+                    .provider
+                    .get(id)
+                    .await?
+                    .ok_or_else(|| stop(Error::NotFound, OperationFailure::RemoteMissing))?;
+                if current.title != metadata.title()
+                    || current.description != metadata.description()
                 {
-                    return Err(Error::Uncertain);
+                    return Err(stop(
+                        Error::Uncertain,
+                        OperationFailure::VerificationMismatch,
+                    ));
                 }
                 Some(current)
             }
@@ -92,7 +155,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
                 let id = record.asset.video.as_ref().ok_or(Error::Configuration)?;
                 self.provider.delete(id).await?;
                 if self.provider.get(id).await?.is_some() {
-                    return Err(Error::Uncertain);
+                    return Err(Error::Uncertain.into());
                 }
                 None
             }
@@ -100,7 +163,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         if let Some(video) = &remote {
             validate_remote(video, self.store.config.binding.library)?;
             if record.asset.video.as_ref().is_some_and(|v| v != &video.id) {
-                return Err(Error::Protocol);
+                return Err(Error::Protocol.into());
             }
         }
         Ok(remote)
@@ -191,7 +254,19 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
                 self.permit(auth, actor, scope, Action::Manage).await?;
                 return self.load(scope, id).await;
             };
-            let remote = self.execute(&lease).await?;
+            let remote = match self.execute(&lease).await {
+                Ok(remote) => remote,
+                Err(Failed {
+                    error,
+                    stopped: Some(reason),
+                }) => {
+                    let permit = self.permit(auth, actor, scope, Action::Manage).await?;
+                    self.stop_intent(lease, reason, Some(permit.expires_at()))
+                        .await?;
+                    return Err(error);
+                }
+                Err(failed) => return Err(failed.into()),
+            };
             let permit = self.permit(auth, actor, scope, Action::Manage).await?;
             let asset = self
                 .finish(lease, remote, None, Some(permit.expires_at()))

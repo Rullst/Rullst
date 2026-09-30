@@ -2,6 +2,7 @@ use super::{
     record::{Asset, Kind, Lifecycle, OperationFailure, Record},
     service::{MediaService, bounded},
     transaction::Operation,
+    workflow::Lease,
 };
 use crate::{
     Action, Authorization, Clock, MediaError as Error, Metadata, Processing, Reference, Scope,
@@ -9,6 +10,40 @@ use crate::{
 };
 
 impl<P: VideoProvider, C: Clock> MediaService<P, C> {
+    /// Records a non-transient outcome under the same fence as `finish` and
+    /// releases the lease. The intent stays pending but is never re-executed
+    /// until the host explicitly retries or discards it.
+    pub(super) async fn stop_intent(
+        &self,
+        lease: Lease,
+        reason: OperationFailure,
+        permission_until: Option<i64>,
+    ) -> Result<(), Error> {
+        let mut tx = Operation::begin(&self.store).await?;
+        tx.until(permission_until)?;
+        let previous = &lease.record.asset;
+        let mut record = tx.get(&previous.scope, &previous.id).await?;
+        let revision = record.asset.revision;
+        let pending = record.pending.as_mut().ok_or(Error::Conflict)?;
+        tx.until(Some(pending.until))?;
+        if revision != previous.revision
+            || pending.revision != previous.revision
+            || pending.nonce.as_deref() != Some(&lease.nonce)
+        {
+            return Err(Error::Conflict);
+        }
+        pending.nonce = None;
+        pending.until = 0;
+        if pending.kind == Kind::Create && reason == OperationFailure::Rejected {
+            // The refusal was definitive, so an explicit retry may send again.
+            pending.dispatched = false;
+        }
+        record.asset.failure = Some(reason);
+        record.next(tx.now)?;
+        tx.save(&record, previous.revision).await?;
+        tx.commit().await
+    }
+
     /// Explicitly resumes a create or metadata update stopped with
     /// `Asset::failure`. A refused creation sends a new create request; an
     /// unconfirmed creation only repeats the persisted marker search and never

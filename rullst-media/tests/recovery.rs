@@ -140,12 +140,27 @@ async fn absent_or_ambiguous_creation_markers_never_cause_another_post() {
                 .count(),
             1
         );
+        let stopped = app.get(&auth, &teacher, &scope, &id).await.unwrap();
+        assert_eq!(stopped.lifecycle, Lifecycle::Creating);
+        // The unresolved marker is reported instead of staying pending forever,
+        // and the host can abandon it without another create request.
+        assert_eq!(stopped.failure, Some(OperationFailure::CreationUnconfirmed));
+        let discarded = app
+            .discard_failed(&auth, &teacher, &scope, &id, stopped.revision)
+            .await
+            .unwrap();
+        assert_eq!(discarded.lifecycle, Lifecycle::Deleted);
+        assert!(!discarded.pending && discarded.video.is_none());
         assert_eq!(
-            app.get(&auth, &teacher, &scope, &id)
-                .await
+            fixture
+                .remote
+                .lock()
                 .unwrap()
-                .lifecycle,
-            Lifecycle::Creating
+                .calls
+                .iter()
+                .filter(|s| *s == "create")
+                .count(),
+            1
         );
         app.close().await;
     }

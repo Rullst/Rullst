@@ -158,7 +158,8 @@ ledger. API and webhook numeric status mappings differ and are handled separatel
 | `Conflict` | Reload current revision/state before a deliberate new action |
 | `Busy` | Respect the in-flight lease; retry with bounded backoff |
 | `Unavailable`, `Uncertain`, timeout or process death | Inspect persisted intent; `reconcile` after its 45-second lease, rechecking management authorization |
-| Unknown create result | Search the persisted opaque marker; zero or multiple matches remain uncertain; never generate another create request automatically |
+| Unknown create result | Search the persisted opaque marker; zero or multiple matches stop the intent as `CreationUnconfirmed`; never generate another create request automatically |
+| `Asset.failure` set (stopped create/update) | Never retried automatically; mutations, `reconcile` and upload return `Conflict` while withdrawal and playback still work. Fix the cause, then call `retry_failed` or `discard_failed` with the current revision |
 | Pending refresh | Upload or the same notification can resume it after lease expiry; they cannot take over pending update/delete/create. Playback neither takes nor waits for leases |
 | `Denied`, `Expired` | Reauthenticate/recheck entitlement; issue no capability |
 | `Protocol`, `Configuration`, `Storage`, clock rollback | Stop granting access; investigate rather than reset/repair the store |
@@ -172,6 +173,19 @@ retry. A timed-out future does not prove that the provider rolled back its work.
 Remote marker lookup is bounded to 100 results; out-of-band renaming before
 identity binding or ambiguous search needs operator investigation.
 
+A create or metadata update that fails for a non-transient reason stops rather
+than staying pending forever. The failing call returns the provider error and
+`Asset.failure` records a bounded, non-secret `OperationFailure`: `Rejected` (a
+definitive refusal; a refused create made no remote video), `CreationUnconfirmed`,
+`RemoteMissing`, `TagCapacity` or `VerificationMismatch`. Transient outcomes such
+as `Unavailable`, a timeout or a protocol violation keep the intent leased for
+`reconcile`. `retry_failed` resends a refused create, only searches the marker
+again for an unconfirmed one and re-executes a stopped update. `discard_failed`
+turns a stopped create into a local tombstone: retire its creation ID; a remote
+video carrying the marker that exists or appears later is neither owned nor
+deleted. A discarded update keeps the requested local metadata while the remote
+may keep earlier values; the asset can then be refreshed, published or deleted.
+
 ## Durable storage and operation
 
 SQLite is shared-local on trusted local storage, not a multi-host/network-FS
@@ -184,12 +198,13 @@ Key rotation with unchanged environment/library is accepted; it can invalidate
 old capabilities. Changing environment, origin, CDN host, mode or capacity needs
 an explicit reviewed migration, not silent opening of unrelated state.
 
-`purge_deleted` removes at most 100 confirmed local tombstones per authorized
-call, with a cutoff at least 24 hours old. It preserves active/pending assets.
-Once purged, **retire the creation ID**: its idempotency/replay memory ends there.
-Deletion clears local metadata before this retention step. This is not proof
-of physical disk, provider backup or CDN erasure. Restore policy must address
-stale permissions, keys, retired IDs and provider reconciliation.
+`purge_deleted` removes at most 100 confirmed or discarded local tombstones per
+authorized call, with a cutoff at least 24 hours old. It preserves active and
+pending assets. Once purged, **retire the creation ID**: its idempotency/replay
+memory ends there. Deletion clears local metadata before this retention step.
+This is not proof of physical disk, provider backup or CDN erasure. Restore
+policy must address stale permissions, keys, retired IDs and provider
+reconciliation.
 
 ## Acceptance and limits
 
