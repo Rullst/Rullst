@@ -2,6 +2,17 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Error, ImplItem, Item};
 
+/// Matches `#[live_event]` however it is qualified (`#[rullst::live_event]`,
+/// `#[rullst_macros::live_event]`, a renamed crate path), so a qualified
+/// marker never silently leaves its handler without a dispatch arm.
+fn is_live_event(attribute: &syn::Attribute) -> bool {
+    attribute
+        .path()
+        .segments
+        .last()
+        .is_some_and(|segment| segment.ident == "live_event")
+}
+
 pub fn parse_live_component(item: TokenStream) -> TokenStream {
     let parsed = syn::parse2::<Item>(item.clone());
     match parsed {
@@ -25,8 +36,7 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                         has_render = true;
                     }
 
-                    let has_live_event =
-                        method.attrs.iter().any(|a| a.path().is_ident("live_event"));
+                    let has_live_event = method.attrs.iter().any(is_live_event);
 
                     if has_live_event {
                         // Assume self is first argument, check if it takes payload
@@ -51,7 +61,7 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                             #method_name_str => { #call; },
                         });
 
-                        method.attrs.retain(|a| !a.path().is_ident("live_event"));
+                        method.attrs.retain(|a| !is_live_event(a));
                     }
                 }
             }

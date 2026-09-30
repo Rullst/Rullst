@@ -168,7 +168,8 @@ pub fn live_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
     live_parser::parse_live_component(input).into()
 }
 
-/// Marker attribute for events handled by a Live Component.
+/// Marker attribute for events handled by a Live Component. `#[live_component]`
+/// recognizes it however its path is qualified, e.g. `#[rullst::live_event]`.
 #[proc_macro_attribute]
 pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item

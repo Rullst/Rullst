@@ -1161,7 +1161,8 @@ client or proxy keepalives do not end a legacy Live session. A
 `#[live_component]` dispatches only on the first present `rullst_event`,
 `action` or `event` string field and runs at most one `#[live_event]` handler
 per message; other payload keys and values, including form inputs, never
-select a handler.
+select a handler. A path-qualified marker such as `#[rullst::live_event]` marks
+a handler exactly like the bare attribute.
 The implementation and its local protocol/Chromium acceptance are recorded in
 [the recovery guide](live-recovery.md). Hosted workspace/platform/package
 admission passed in PR #236; final release admission remains separate.
