@@ -99,7 +99,8 @@ let current = Event::find(event.id).await?;
 
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
-migrations, status, and rollback. Generated `make:model` and `make:migration`
+migrations, status, and rollback. An equality filter whose value encodes as
+`NULL` (such as `Option::None`) matches with `IS NULL`. Generated `make:model` and `make:migration`
 commands retain the Turso backend. It does not yet provide SQLx ORM relations,
 hooks, automatic timestamps, seed generation, schema auto-diff, or transparent
 embedded-replica synchronization. Those limits are why only the blank/API

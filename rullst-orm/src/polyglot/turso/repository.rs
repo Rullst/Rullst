@@ -226,7 +226,8 @@ where
         }
     }
 
-    /// Adds one equality predicate after validating the model column.
+    /// Adds one equality predicate after validating the model column. A value
+    /// that encodes as `NULL` (such as `Option::None`) matches `IS NULL`.
     pub fn where_eq<Value>(mut self, column: &str, value: &Value) -> Result<Self, PolyglotError>
     where
         Value: TursoCodec,
@@ -338,22 +339,27 @@ where
         )
     }
 
+    /// Renders the equality predicates. A `NULL` value (for example
+    /// `Option::None`) renders `IS NULL` without a binding, because SQL's
+    /// `column = NULL` never matches a row.
     fn where_sql(&self) -> (String, Vec<TursoValue>) {
         if self.filters.is_empty() {
             return (String::new(), Vec::new());
         }
+        let mut parameters = Vec::new();
         let predicates = self
             .filters
             .iter()
-            .enumerate()
-            .map(|(index, (column, _))| format!("{} = ?{}", quoted(column), index + 1))
+            .map(|(column, value)| {
+                if matches!(value, TursoValue::Null) {
+                    format!("{} IS NULL", quoted(column))
+                } else {
+                    parameters.push(value.clone());
+                    format!("{} = ?{}", quoted(column), parameters.len())
+                }
+            })
             .collect::<Vec<_>>()
             .join(" AND ");
-        let parameters = self
-            .filters
-            .iter()
-            .map(|(_, value)| value.clone())
-            .collect();
         (format!(" WHERE {predicates}"), parameters)
     }
 }
