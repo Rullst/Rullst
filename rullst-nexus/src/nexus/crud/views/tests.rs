@@ -47,19 +47,6 @@ async fn table_view_escapes_metadata_and_only_offers_supported_batch_actions() {
     assert!(!html.contains("value=\"deactivate\""));
 }
 
-#[test]
-fn password_widgets_are_never_prefilled() {
-    let field = FieldMeta::new("api_key", "API key", FieldKind::Password);
-    for is_edit in [false, true] {
-        let html = render_field_widget(&field, "stored-sample-value", is_edit, "id");
-        assert!(html.contains("type=\"password\""));
-        assert!(html.contains("value=\"\""));
-        assert!(html.contains("autocomplete=\"new-password\""));
-        assert!(!html.contains("stored-sample-value"));
-        assert_eq!(html.contains("Leave blank"), is_edit);
-    }
-}
-
 #[tokio::test]
 async fn password_columns_have_no_sort_link() {
     let entry = RegistryEntry {

@@ -55,10 +55,57 @@
         }).catch(error => toast("Network error: " + error, "danger"));
     }
 
+    // The edit form sends only controls the administrator changed, so an
+    // untouched NULL, unregistered or undisplayable value is never rewritten
+    // with a widget default. A control counts only after an input/change event:
+    // browsers may normalize a default value without any user action.
+    function changedNames(form) {
+        const names = new Set();
+        for (const control of form.elements) {
+            if (!control.name || control.dataset.nexusTouched !== "true") continue;
+            let changed;
+            if (control instanceof HTMLSelectElement) {
+                changed = Array.from(control.options).some(option => option.selected !== option.defaultSelected);
+            } else if (control.type === "checkbox" || control.type === "radio") {
+                changed = control.checked !== control.defaultChecked;
+            } else {
+                changed = control.value !== control.defaultValue;
+            }
+            if (changed) names.add(control.name);
+        }
+        return names;
+    }
+
+    function recordBody(form) {
+        const data = new FormData(form);
+        if (form.dataset.nexusMode !== "edit") return new URLSearchParams(data);
+        const names = changedNames(form);
+        const body = new URLSearchParams();
+        for (const [name, value] of data) {
+            if (names.has(name)) body.append(name, value);
+        }
+        return body;
+    }
+
+    const markTouched = event => {
+        const control = event.target;
+        if (control instanceof HTMLElement && control.closest("form[data-nexus-mode='edit']")) {
+            control.dataset.nexusTouched = "true";
+        }
+    };
+    document.addEventListener("input", markTouched);
+    document.addEventListener("change", markTouched);
+
     function saveRecord(button) {
         const form = button.closest("form");
         if (!form) return;
-        const body = new URLSearchParams(new FormData(form)).toString();
+        const params = recordBody(form);
+        if (form.dataset.nexusMode === "edit" && !params.toString()) {
+            closeModal();
+            toast("No changes to save.", "warning");
+            return;
+        }
+        const body = params.toString();
         const restore = () => {
             button.disabled = false;
             button.textContent = "Save Record";

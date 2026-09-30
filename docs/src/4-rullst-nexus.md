@@ -64,6 +64,14 @@ pub struct User {
 }
 ```
 
+The edit form sends only the fields you change, so an edit never rewrites a
+value its widget cannot show: NULL (shown as an empty `NULL` input), an enum
+value that is not a registered option (kept selected but disabled), a date-time
+with an offset (shown as text) or a value that cannot be decoded. Emptying a
+number, relation, date, date-time, enum or JSON field stores NULL; emptying a
+text, textarea, e-mail or URL field stores an empty string. A database
+`NOT NULL` constraint therefore rejects clearing a required typed column.
+
 A `password` field is never displayed: the list shows a fixed mask and the
 edit form an empty input, and leaving it empty keeps the stored value. Nexus
 writes a new value exactly as typed and does **not** hash it. Keep hash columns
