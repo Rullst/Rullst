@@ -221,7 +221,11 @@ reject known suspicious patterns in supported URI, header, and bounded body data
 but application queries must still use binds and access control. Body media
 types are classified at least as broadly as axum's extractors: any ASCII case,
 parameters, a `json`/`xml` subtype or `+json`/`+xml` suffix, and any type that
-starts with `application/x-www-form-urlencoded`.
+starts with `application/x-www-form-urlencoded`. Core's WAF checks the
+percent-decoded request path for traversal signatures only (`../`, `..\`,
+`/etc/passwd`, `win.ini`), since routers decode path parameters; its SQL, XSS
+and command patterns apply to the query, the `Referer`, each cookie pair and
+bounded bodies.
 
 DLP modifies only supported textual responses whose body can be safely buffered
 within configured limits. Applications must test JSON, HTML, binary, compressed,
