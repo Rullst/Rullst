@@ -5,6 +5,7 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
+use super::dialect::tenant_predicate;
 use super::handlers::tenant_for_entry;
 use super::input::{FormInputError, FormMode, validate_form_values};
 use super::query::sanitize_identifier;
@@ -151,9 +152,12 @@ pub(super) async fn update_record(
     let pk_position = data.len() + 1;
     let tenant_predicate = tenant_id.map(|_| {
         format!(
-            " AND {} = {}",
-            sanitize_identifier(entry.tenant_column.unwrap_or_default()),
-            placeholder(pk_position + 1, driver)
+            " AND {}",
+            tenant_predicate(
+                entry.tenant_column.unwrap_or_default(),
+                &placeholder(pk_position + 1, driver),
+                driver
+            )
         )
     });
     let sql = format!(
@@ -242,9 +246,12 @@ pub(super) async fn delete_record(
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let tenant_predicate = tenant_id.map(|_| {
         format!(
-            " AND {} = {}",
-            sanitize_identifier(entry.tenant_column.unwrap_or_default()),
-            placeholder(2, driver)
+            " AND {}",
+            tenant_predicate(
+                entry.tenant_column.unwrap_or_default(),
+                &placeholder(2, driver),
+                driver
+            )
         )
     });
     let sql = format!(

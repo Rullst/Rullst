@@ -60,7 +60,9 @@ struct Project {
 ```
 
 Every built-in list, search, edit, create, update, delete and batch operation for
-that model includes the exact tenant predicate. Create injects the trusted
+that model includes the exact tenant predicate; on MySQL/MariaDB, whose default
+collations ignore case, it compares binary strings so `Acme` never matches
+`acme`. Create injects the trusted
 tenant value; a submitted tenant field is rejected. A scoped model fails with
 `403 Forbidden` when no `TenantContext` is present. Models without `tenant`
 metadata deliberately remain global administrator models.

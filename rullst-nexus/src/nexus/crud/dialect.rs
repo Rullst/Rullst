@@ -1,5 +1,21 @@
 //! SQL dialect details shared by the Nexus CRUD queries.
 
+use super::query::sanitize_identifier;
+
+/// The exact tenant scope `column = placeholder`.
+///
+/// MySQL and MariaDB default collations compare case-insensitively (and
+/// ignore trailing spaces), which would equate the distinct Core tenants
+/// `Acme` and `acme`; there both sides are compared as binary strings.
+pub(crate) fn tenant_predicate(column: &str, placeholder: &str, driver: &str) -> String {
+    let column = sanitize_identifier(column);
+    if driver == "mysql" {
+        format!("CAST({column} AS BINARY) = CAST({placeholder} AS BINARY)")
+    } else {
+        format!("{column} = {placeholder}")
+    }
+}
+
 /// Escape character for `LIKE` patterns. `!` is an ordinary character in
 /// SQLite, PostgreSQL and MySQL string literals, unlike `\`, which MySQL
 /// treats as a string escape.
@@ -35,6 +51,19 @@ pub(crate) fn search_predicate(column: &str, placeholder: &str, driver: &str) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tenant_scope_is_byte_exact_on_mysql() {
+        assert_eq!(
+            tenant_predicate("tenant_id", "?", "mysql"),
+            "CAST(tenant_id AS BINARY) = CAST(? AS BINARY)"
+        );
+        assert_eq!(
+            tenant_predicate("tenant_id", "$3", "postgres"),
+            "tenant_id = $3"
+        );
+        assert_eq!(tenant_predicate("tenant;id", "?", "sqlite"), "tenantid = ?");
+    }
 
     #[test]
     fn search_patterns_match_wildcards_literally() {

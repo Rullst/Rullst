@@ -1,6 +1,6 @@
 //! Query building and parameter extraction for Nexus CRUD.
 
-use super::dialect::{contains_pattern, search_predicate};
+use super::dialect::{contains_pattern, search_predicate, tenant_predicate};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use serde::Deserialize;
 
@@ -175,11 +175,7 @@ pub fn build_table_query(
             } else {
                 "?".to_string()
             };
-            predicates.push(format!(
-                "{} = {}",
-                sanitize_identifier(tenant_column),
-                placeholder
-            ));
+            predicates.push(tenant_predicate(tenant_column, &placeholder, driver));
             binds.push(tenant_id.to_string());
         } else {
             // Public rendering helpers also fail closed if called outside the

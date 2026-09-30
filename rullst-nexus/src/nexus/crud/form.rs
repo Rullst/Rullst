@@ -6,6 +6,7 @@
 //! `data-nexus-mode="edit"` so `nexus.js` submits only the controls the
 //! administrator changed.
 
+use crate::nexus::crud::dialect::tenant_predicate;
 use crate::nexus::crud::input::{datetime_local_value, is_local_date};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -51,11 +52,9 @@ pub async fn render_record_form(
             let clean_pk = sanitize_identifier(pk);
             let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
             let tenant_predicate = match (entry.tenant_column, tenant_id) {
-                (Some(column), Some(_)) if driver == "postgres" => {
-                    format!(" AND {} = $2", sanitize_identifier(column))
-                }
                 (Some(column), Some(_)) => {
-                    format!(" AND {} = ?", sanitize_identifier(column))
+                    let placeholder = if driver == "postgres" { "$2" } else { "?" };
+                    format!(" AND {}", tenant_predicate(column, placeholder, driver))
                 }
                 (Some(_), None) => " AND 1 = 0".to_string(),
                 (None, _) => String::new(),

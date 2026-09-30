@@ -183,8 +183,9 @@ pub struct Project {
 Authentication middleware must resolve membership and install a trusted
 `rullst::security::TenantContext`. Do not construct it directly from
 `X-Tenant-ID`, a query parameter or another client assertion. Nexus applies the
-exact scope to list/search/edit/create/update/delete and batch routes; missing
-context denies a scoped model. A model without the attribute remains global by
+exact scope to list/search/edit/create/update/delete and batch routes (as a
+binary-string comparison on MySQL/MariaDB, whose default collations ignore
+case); missing context denies a scoped model. A model without the attribute remains global by
 design.
 
 `#[derive(Nexus)]` reads only `table` (or its ORM alias `table_name`) and

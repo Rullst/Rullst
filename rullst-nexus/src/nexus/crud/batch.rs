@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::nexus::NexusPrincipal;
 use crate::nexus::audit::{MutationAudit, append_mutation, correlation_id};
+use crate::nexus::crud::dialect::tenant_predicate;
 use crate::nexus::crud::handlers::tenant_for_entry;
 use crate::nexus::crud::query::{BatchActionForm, find_entry, sanitize_identifier};
 use crate::nexus::types::{FieldKind, NexusAuditPolicy, NexusState, RegistryEntry};
@@ -113,8 +114,8 @@ fn build_batch_sql(
             "?".to_string()
         };
         format!(
-            " AND {} = {placeholder}",
-            sanitize_identifier(tenant_column)
+            " AND {}",
+            tenant_predicate(tenant_column, &placeholder, driver)
         )
     } else {
         String::new()
@@ -343,6 +344,13 @@ mod tests {
         assert_eq!(
             build_batch_sql(&entry, "delete", 2, "sqlite", true).as_deref(),
             Some("DELETE FROM users WHERE id IN (?,?) AND tenant_id = ?")
+        );
+        assert_eq!(
+            build_batch_sql(&entry, "delete", 1, "mysql", true).as_deref(),
+            Some(
+                "DELETE FROM users WHERE id IN (?) \
+                 AND CAST(tenant_id AS BINARY) = CAST(? AS BINARY)"
+            )
         );
     }
 
