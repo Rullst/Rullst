@@ -95,4 +95,39 @@ pub async fn exercise_outbox() {
             .expect("delivered stream query should succeed")
             .is_none()
     );
+
+    // Streams and event keys are case-sensitive on every backend, including
+    // MySQL/MariaDB whose default collations fold case.
+    let (lower, upper) = Orm::transaction(|_| {
+        Box::pin(async {
+            let lower = Outbox::enqueue(
+                "matrix-case",
+                "order:aB3x:created",
+                "matrix.created",
+                &json!({"id": "aB3x"}),
+            )
+            .await?;
+            let upper = Outbox::enqueue(
+                "matrix-case",
+                "order:Ab3X:created",
+                "matrix.created",
+                &json!({"id": "Ab3X"}),
+            )
+            .await?;
+            Ok::<_, Error>((lower, upper))
+        })
+    })
+    .await
+    .expect("keys that differ only in case should both enqueue");
+    assert!(lower.inserted && upper.inserted);
+    assert_ne!(lower.id, upper.id);
+    assert!(
+        Outbox::claim_next("MATRIX-CASE", "matrix-worker", 30, 2)
+            .await
+            .expect("case-distinct stream query should succeed")
+            .is_none()
+    );
+    Outbox::install()
+        .await
+        .expect("reinstalling the outbox should be idempotent");
 }

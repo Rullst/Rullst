@@ -13,7 +13,7 @@ directly, because generated code calls the matching runtime API.
 | `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. Code that opens a separate connection is outside that sandbox. |
 | `#[derive(PersonalData)]` | Declares application-selected personal-data fields; it is metadata, not automatic privacy compliance. |
 | `#[derive(Enum)]` | Generates a closed bounded label contract shared by string parsing/display, Serde, `RullstValue` and SQLx codecs. `#[rullst_enum(type_name = "...", rename_all = "snake_case")]` and per-variant `rename` are validated at compile time; schema DDL is owned by `Blueprint::native_enum`. |
-| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. |
+| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. Other shared `#[orm(...)]` options are skipped, and ORM relation fields are left out of the metadata. |
 
 ## Compile-time safety boundaries
 
@@ -30,7 +30,9 @@ Rust column-enum variant receives a compile error instead of a macro panic.
 
 Exactly one relation declaration is accepted per relation field. Orphan
 relation options are rejected, `belongs_to_many` requires a pivot table,
-`cascade_soft_delete` is limited to has-one/has-many, and polymorphic metadata
+`cascade_soft_delete` is limited to has-one/has-many whose related model also
+uses soft deletes (otherwise the generated cascade fails to compile at the
+relation field rather than hard-deleting the children), and polymorphic metadata
 is limited to morph relations. The generated many-to-many foreign/related keys
 default to the owner and related model names when omitted.
 

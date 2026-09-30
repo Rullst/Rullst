@@ -1523,6 +1523,11 @@ while portability and semantic review remain the model author's responsibility.
   distances; they do not interpolate those runtime values. Methods explicitly
   suffixed/named `raw` remain caller-owned escape hatches rather than an
   injection-safety claim.
+* Schema DDL cannot bind values. `ColumnDefault::Text` and `Blueprint::enum_col`
+  variants are emitted as single-quoted literals with doubled single quotes,
+  and building the schema rejects such text when it contains a backslash
+  (an escape character in MySQL/MariaDB's default SQL mode) or a control
+  character.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
@@ -1545,11 +1550,26 @@ while portability and semantic review remain the model author's responsibility.
   cascading bulk deletes. Instance `restore()` and `force_delete()` statements,
   including their tenant predicate, are numbered the same way and run in those
   matrices too.
+* The PostgreSQL renumbering skips quoted text using PostgreSQL's default
+  `standard_conforming_strings = on` rules: a backslash escapes the next
+  character only inside `E'...'` strings, so a raw fragment such as
+  `ESCAPE '\'` does not hide the markers after it. A server configured with
+  `standard_conforming_strings = off` is outside this contract.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
+* A per-column helper (`where_{column}`, `or_where_{column}`,
+  `where_not_{column}`, `order_by_{column}`, `order_by_{column}_desc`) is not
+  generated when its name equals a fixed builder method (for example
+  `where_raw`, `where_exists`, `where_column`, `where_col`, `where_similar` or
+  `order_by_desc` for columns `raw`, `exists`, `column`, `col`, `similar` or
+  `desc`) or when two columns would produce the same name (`x` and `not_x`
+  both yield `where_not_x`). Those columns remain available through the
+  string-column methods. The `update_partial()` builder keeps its model
+  reference under the reserved `__rullst_` prefix and emits no setter for a
+  column named `save` or `save_with_tx`.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
 * Generated secondary projections never carry `#[orm(encrypted)]` or
   `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
@@ -1619,7 +1639,14 @@ while portability and semantic review remain the model author's responsibility.
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
-  traversal remains a separate contract.
+  traversal remains a separate contract. The related model must itself use
+  soft deletes (a `deleted_at` field or `#[orm(soft_delete)]`): a cascade into
+  a model without them fails to compile (no method
+  `__rullst_cascade_soft_delete_with_tx`, reported at the relation field)
+  instead of permanently deleting the children of a restorable parent. A
+  policy-protected child cannot be authorized in bulk, so its cascade fails
+  closed with `Error::Validation` and rolls the parent delete back; delete
+  such children individually first.
 * Generated `#[orm(auditable)]` instance `save()`/`delete()` operations (and
   `restore()`/`force_delete()`, recorded as `restored`/`force_deleted`) write
   their bounded audit entry through the same explicit, implicit, or task-scoped
@@ -1714,7 +1741,13 @@ while portability and semantic review remain the model author's responsibility.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed
-  auditable mutation cannot leak a later `committed` effect.
+  mutation cannot leak a later `committed` effect.
+* Every `save_with_tx` (and a `save()` joining a task-scoped transaction), not
+  only an auditable one, runs in a savepoint of the caller's transaction. A
+  failed policy, hook, observer or SQL write rolls that savepoint back and
+  restores the model's `id`, so a caller that catches the error and commits
+  does not persist the failed write. A direct `save()` owns its transaction
+  and needs no savepoint.
 * Every queued callback is attempted. A failure is returned as `PostCommit`,
   whose contract explicitly means the database mutation is already durable.
   Applications must not retry the database mutation blindly from this error.
@@ -1738,7 +1771,10 @@ while portability and semantic review remain the model author's responsibility.
   key and exact event kind/payload returns the existing `i64` identifier;
   reusing the key with different content fails closed. `stream`, event key,
   event kind and worker identifiers use a bounded ASCII grammar, and serialized
-  payloads are limited to one MiB.
+  payloads are limited to one MiB. Streams, event keys and claim tokens compare
+  case-sensitively on every backend; MySQL/MariaDB declare those columns
+  `CHARACTER SET ascii COLLATE ascii_bin`, and `Outbox::install` converts an
+  existing MySQL/MariaDB table whose key columns use another collation.
 * PostgreSQL, MySQL/MariaDB and SQLite share the outbox state machine. A claim
   increments attempts and receives a random token plus a bounded lease. Only
   that token may acknowledge or fail the event; expiration permits another
@@ -1902,6 +1938,18 @@ while portability and semantic review remain the model author's responsibility.
 
 ### ORM Driver Selection
 
+* `Orm::driver()` reports the SQL dialect from the connected DSN scheme,
+  case-insensitively: `postgres`/`postgresql` select PostgreSQL and
+  `mysql`/`mariadb` select MySQL/MariaDB, so dialect-gated SQL such as
+  `FOR UPDATE` row locks, quoting and outbox/migration DDL follows the server.
+  Any other scheme keeps the SQLite dialect (an unknown scheme fails to
+  connect under SQLx `Any`).
+* A DSN that still contains a bracketed template placeholder such as
+  `[your-database-id]` or `[YOUR-PASSWORD]` fails `Orm::init` with
+  `Error::Internal`; `init_with_options` and `init_with_replicas` print a
+  warning instead. A bracketed IPv6 literal host
+  (`postgres://app@[2001:db8::10]:5432/app`, optionally with a `%25` zone
+  identifier) is not a placeholder and is accepted by every entrypoint.
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
   `drivers-all` convenience feature. A standalone consumer can disable defaults
   and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables

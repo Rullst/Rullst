@@ -123,7 +123,8 @@ generated API.
   overhead, networked-database throughput or complete-application performance.
 - **Durable opt-in outbox:** `Outbox::enqueue` commits a stream-scoped,
   idempotent event with relational domain state. Exact lease tokens, bounded
-  retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.
+  retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB,
+  and streams and event keys are case-sensitive on all of them.
   Delivery is at least once, so the application dispatcher and consumer remain
   idempotent; generated observers are not silently converted into events.
   A nested `Orm::transaction` joins the active transaction through a
@@ -138,7 +139,8 @@ generated API.
   model definitions and emits a migration for review.
 - **Cascading soft deletes:** Opt-in relationship metadata can cascade through
   generated delete methods; transaction-aware variants use the supplied
-  transaction.
+  transaction. The related model must also use soft deletes; a cascade into a
+  model without them fails to compile instead of hard-deleting its rows.
 - **Transactional partial updates (v13 candidate):** `.update_partial()` merges
   selected values into a fresh row and performs its full save lifecycle, with
   explicit transaction support. See [the contract and migration](../transactional-partial-updates.md).

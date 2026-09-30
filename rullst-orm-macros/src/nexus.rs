@@ -20,6 +20,31 @@ struct FieldOptions {
     hidden: bool,
     readonly: bool,
     primary_key: bool,
+    relation: bool,
+}
+
+/// ORM relation declarations; such fields hold related models, not columns.
+const ORM_RELATIONS: &[&str] = &[
+    "has_many",
+    "has_one",
+    "belongs_to",
+    "belongs_to_many",
+    "morph_many",
+    "morph_one",
+    "morph_to",
+];
+
+/// Consumes the value of a shared `#[orm(...)]` option that Nexus does not
+/// read, so `key = value` and `key(...)` options of `#[derive(Orm)]` parse.
+fn skip_orm_option(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
+    if meta.input.peek(syn::Token![=]) {
+        meta.value()?.parse::<syn::Expr>()?;
+    } else if meta.input.peek(syn::token::Paren) {
+        let content;
+        syn::parenthesized!(content in meta.input);
+        content.parse::<TokenStream2>()?;
+    }
+    Ok(())
 }
 
 fn parse_model_options(input: &DeriveInput) -> syn::Result<ModelOptions> {
@@ -29,7 +54,10 @@ fn parse_model_options(input: &DeriveInput) -> syn::Result<ModelOptions> {
             continue;
         }
         attribute.parse_nested_meta(|meta| {
-            if meta.path.is_ident("table") {
+            // `table_name` is the ORM's alias of `table`.
+            if meta.path.is_ident("table")
+                || (meta.path.is_ident("table_name") && attribute.path().is_ident("orm"))
+            {
                 options.table = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if meta.path.is_ident("label") && attribute.path().is_ident("nexus") {
                 options.label = Some(meta.value()?.parse::<LitStr>()?.value());
@@ -41,6 +69,8 @@ fn parse_model_options(input: &DeriveInput) -> syn::Result<ModelOptions> {
                 options.tenant_column = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if attribute.path().is_ident("nexus") {
                 return Err(meta.error("unsupported Nexus model option"));
+            } else {
+                skip_orm_option(&meta)?;
             }
             Ok(())
         })?;
@@ -76,6 +106,9 @@ fn parse_field_options(field: &syn::Field) -> syn::Result<FieldOptions> {
                 options.readonly = true;
             } else if nexus_attribute {
                 return Err(meta.error("unsupported Nexus field option"));
+            } else {
+                options.relation |= ORM_RELATIONS.iter().any(|key| meta.path.is_ident(key));
+                skip_orm_option(&meta)?;
             }
             Ok(())
         })?;
@@ -207,6 +240,9 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             .unwrap_or(&raw_field_name)
             .to_string();
         let options = parse_field_options(field)?;
+        if options.relation {
+            continue;
+        }
         if tenant_column.as_deref() == Some(field_name.as_str())
             && (type_name(&field.ty) != "String"
                 || options.kind.as_deref().is_some_and(|kind| kind != "text")
@@ -397,6 +433,45 @@ mod tests {
                 .to_string()
                 .contains("must use a non-optional `String` with text metadata")
         );
+    }
+
+    #[test]
+    fn skips_shared_orm_options_and_relation_fields() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(
+                table_name = "projects",
+                tenant_column = "tenant_id",
+                policy = "ProjectPolicy",
+                soft_delete(column = "removed_at"),
+                auditable
+            )]
+            struct Project {
+                id: i32,
+                tenant_id: String,
+                #[orm(has_many = "Tag", foreign_key = "project_id", cascade_soft_delete)]
+                tags: Option<Vec<Tag>>,
+                #[orm(belongs_to = "Owner", foreign_key = "owner_id")]
+                owner: Option<Owner>,
+                owner_id: i32,
+                #[orm(masked)]
+                title: String,
+                removed_at: Option<String>,
+            }
+        };
+        let output = expand_nexus(&input)
+            .expect("shared ORM options must not break the Nexus derive")
+            .to_string();
+        assert!(output.contains("fn nexus_table () -> & 'static str { \"projects\" }"));
+        for column in ["id", "tenant_id", "owner_id", "title", "removed_at"] {
+            assert!(output.contains(&format!("name : \"{column}\"")), "{column}");
+        }
+        for relation in ["tags", "owner"] {
+            assert!(
+                !output.contains(&format!("name : \"{relation}\"")),
+                "{relation}"
+            );
+        }
+        assert!(!output.contains("fn nexus_tenant_column"));
     }
 
     #[test]

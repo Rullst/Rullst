@@ -80,6 +80,14 @@ payload returns the existing event ID with `inserted == false`. Reusing that
 key for different content is an error; it does not overwrite the original
 event.
 
+Streams and event keys are case-sensitive on every backend: `order:aB3x` and
+`order:Ab3X` are different keys, and a worker for `tenant-a` does not claim
+events of `tenant-A`. MySQL/MariaDB declare the key columns with the binary
+`ascii_bin` collation for this. A MySQL/MariaDB table created by an earlier
+version used the server's case-insensitive default collation; run
+`Outbox::install()` once, for example from a new migration, to convert it in
+place. The conversion rebuilds the table, so schedule it like other DDL.
+
 ## 3. Claim, deliver and acknowledge
 
 Each worker supplies a stable identifier, lease duration and maximum number of

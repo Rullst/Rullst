@@ -51,6 +51,12 @@ expression form `DEFAULT (CURRENT_TIMESTAMP)`, which those servers require for
 text columns (MySQL 8.0.13+, MariaDB 10.2.1+); SQLite and PostgreSQL use the
 plain `DEFAULT CURRENT_TIMESTAMP`.
 
+Text defaults (`ColumnDefault::Text`) and `table.enum_col(...)` variants are
+embedded in the DDL as single-quoted literals with doubled single quotes.
+`Schema::create` rejects such text when it contains a backslash or a control
+character, because MySQL/MariaDB treat a backslash inside a quoted literal as an
+escape character by default.
+
 ---
 
 ## Step 2: Run, inspect, and roll back migrations
@@ -72,6 +78,12 @@ These commands use the same database as the running server: the process
 environment), then `[database].url` in `Rullst.toml`. If none is set, the
 command fails instead of creating a new SQLite file, and a database that cannot
 be initialized also fails the command with exit status 1.
+
+Each migration's tracking row is removed as soon as its `down()` succeeds. If a
+later `down()` fails, the rollback stops with that error: the migrations it
+already reverted are no longer recorded as applied, while the failed migration
+and the rest of the batch stay recorded. Fix the cause and run `db:rollback`
+again to continue from that point.
 
 ---
 

@@ -207,6 +207,41 @@ fn mysql_text_like_defaults_are_expressions_and_other_defaults_are_literals() {
 }
 
 #[test]
+fn ddl_text_literals_reject_backslashes_and_control_characters() {
+    // A trailing backslash would escape the closing quote on MySQL/MariaDB.
+    for text in ["x\\", "a\\'b", "line\nfeed", "nul\0"] {
+        let mut defaults = Blueprint::new();
+        defaults
+            .string("status")
+            .default(ColumnDefault::Text(text.to_string()));
+        let mut variants = Blueprint::new();
+        variants.enum_col("kind", vec!["ok", text]);
+        for driver in ["mysql", "postgres", "sqlite"] {
+            for blueprint in [&defaults, &variants] {
+                assert!(
+                    matches!(
+                        blueprint.build_for_driver(driver),
+                        Err(crate::Error::Validation(_))
+                    ),
+                    "{driver}: {text:?}"
+                );
+            }
+        }
+    }
+
+    let mut blueprint = Blueprint::new();
+    blueprint
+        .string("note")
+        .default(ColumnDefault::Text("owner's não".to_string()));
+    blueprint.enum_col("kind", vec!["it's"]);
+    let mysql = blueprint
+        .build_for_driver("mysql")
+        .expect("quoted literals");
+    assert!(mysql.contains("DEFAULT ('owner''s não')"), "{mysql}");
+    assert!(mysql.contains("CHECK(kind IN ('it''s'))"), "{mysql}");
+}
+
+#[test]
 fn mysql_native_enum_defaults_remain_literals() {
     let mut blueprint = Blueprint::new();
     blueprint
