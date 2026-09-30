@@ -413,6 +413,31 @@ A prepared version section does not establish that its tag or crates exist.
 - Recurring publication instances tolerate up to 5 s of cross-host clock skew
   instead of failing with `Clock`.
 
+### Capital low-severity review fixes
+
+- PicPay live callbacks fail closed, Coinbase charge events no longer invent
+  plans, identities or access periods, and offline checkout and portal
+  fixtures use reserved `.invalid` hosts without the customer's email.
+- Invoices bind zero- and three-decimal currencies (JPY, KWD) with their real
+  minor units.
+- Local input and offline-key mistakes return `ConfigurationError` or
+  `UnsupportedOperation` instead of provider contract failures, and Lemon
+  Squeezy pause and cancel send the JSON:API headers.
+- In-memory SQLite replay and quota stores keep their data, a concurrent
+  duplicate quota release returns `Ok(false)`, and the in-memory replay store's
+  `Debug` output no longer prints its ledger.
+- NFS-e: a real SEFIN authorization carrying the signed DPS validates and is
+  bound to the signed DPS Id and environment; schema checks require a DPS root
+  and redact personal data from errors; the legacy DPS preview is escaped and
+  uses the official codes.
+- Fiscal journal: HTTP 500 answers stay pending, space is reserved for answers,
+  new journals are durable on Unix and partial-write recovery works on
+  Windows.
+- New: `try_init_provider`, `try_init_payout_provider`,
+  `verify_checkpoint_prefix`,
+  `NfseIssueRequest::try_from_dps_xml_gzip_base64` and the journal errors
+  `EnvironmentMismatch`, `ClockRegression` and `IndeterminateResponse`.
+
 ### Capital review fixes
 
 - `WiseProvider::parse_webhook_payload` performs no signature check and now
