@@ -128,6 +128,8 @@ pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
 }
 
 static CACHED_APP_KEY: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+/// Serializes development-key resolution so concurrent first callers agree.
+static DEVELOPMENT_KEY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Validates the minimum size and estimated entropy required for application secrets.
 pub fn validate_app_key(key: &[u8]) -> Result<(), AuthError> {
@@ -256,10 +258,11 @@ fn detect_environment() -> Result<rullst_core::config::Environment, AuthError> {
     detect_environment_with_dotenv(&load_dotenv_values()?)
 }
 
+/// Returns the key actually cached, so a caller that lost a concurrent first
+/// resolution never seals data with a key that is not used afterwards.
 fn cache_validated_app_key(key: Vec<u8>) -> Result<Vec<u8>, AuthError> {
     validate_app_key(&key)?;
-    let _ = CACHED_APP_KEY.set(key.clone());
-    Ok(key)
+    Ok(CACHED_APP_KEY.get_or_init(|| key).clone())
 }
 
 /// Resolves the application's unique secret key for encryption.
@@ -294,10 +297,14 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     }
 
     let dev_key_path = ".rullst_dev_key";
-    if let Ok(key_hex) = fs::read_to_string(dev_key_path)
-        && let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim())
-        && key_bytes.len() == 32
-    {
+    // Only one caller in this process generates the key; later ones reuse it.
+    let _generation = DEVELOPMENT_KEY_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(cached) = CACHED_APP_KEY.get() {
+        return Ok(cached.clone());
+    }
+    if let Some(key_bytes) = read_development_key(dev_key_path) {
         return cache_validated_app_key(key_bytes);
     }
 
@@ -309,15 +316,40 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     let mut key = [0u8; 32];
     rand::rng().fill_bytes(&mut key);
     let key_vec = key.to_vec();
+    let encoded_key = general_purpose::STANDARD.encode(&key_vec);
 
-    persist_development_key(dev_key_path, &general_purpose::STANDARD.encode(&key_vec))?;
+    match persist_development_key(dev_key_path, &encoded_key, false) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            // Another process published its key first: adopt it when complete,
+            // otherwise replace the unusable file as before.
+            if let Some(winner) = read_development_key(dev_key_path) {
+                return cache_validated_app_key(winner);
+            }
+            persist_development_key(dev_key_path, &encoded_key, true)
+                .map_err(|error| AuthError::MissingAppKey(error.to_string()))?;
+        }
+        Err(error) => return Err(AuthError::MissingAppKey(error.to_string())),
+    }
 
     cache_validated_app_key(key_vec)
 }
 
-fn persist_development_key(path: &str, encoded_key: &str) -> Result<(), AuthError> {
+fn read_development_key(path: &str) -> Option<Vec<u8>> {
+    let encoded = fs::read_to_string(path).ok()?;
+    let key = general_purpose::STANDARD.decode(encoded.trim()).ok()?;
+    (key.len() == 32).then_some(key)
+}
+
+/// Creates the key file, or with `replace` overwrites an unusable one.
+fn persist_development_key(path: &str, encoded_key: &str, replace: bool) -> std::io::Result<()> {
     let mut options = fs::OpenOptions::new();
-    options.create(true).truncate(true).write(true);
+    options.write(true);
+    if replace {
+        options.create(true).truncate(true);
+    } else {
+        options.create_new(true);
+    }
 
     #[cfg(unix)]
     {
@@ -326,11 +358,7 @@ fn persist_development_key(path: &str, encoded_key: &str) -> Result<(), AuthErro
     }
 
     use std::io::Write;
-    let mut file = options
-        .open(path)
-        .map_err(|error| AuthError::MissingAppKey(error.to_string()))?;
-    file.write_all(encoded_key.as_bytes())
-        .map_err(|error| AuthError::MissingAppKey(error.to_string()))
+    options.open(path)?.write_all(encoded_key.as_bytes())
 }
 
 static CACHED_CIPHER: std::sync::OnceLock<(Vec<u8>, Aes256Gcm)> = std::sync::OnceLock::new();
