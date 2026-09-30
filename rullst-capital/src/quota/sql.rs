@@ -205,6 +205,9 @@ impl SqlQuotaStore {
     }
 
     /// Releases a grant inside a caller-owned transaction.
+    ///
+    /// Returns `Ok(false)` when the grant is already released, including by a
+    /// concurrent release that committed while this one waited.
     pub async fn release_with_transaction(
         &self,
         transaction: &mut Transaction<'_, Any>,
@@ -233,7 +236,9 @@ impl SqlQuotaStore {
             .delete_claim_with_transaction(transaction, request, &token)
             .await?;
         if !deleted {
-            return Err(QuotaError::CorruptState);
+            // A concurrent release deleted the claim after the read above (it
+            // waited on that transaction's row lock), so it is already released.
+            return Ok(false);
         }
         let decremented = rullst_orm::sqlx::query(decrement_counter_sql(self.backend))
             .bind(to_i64(units)?)
