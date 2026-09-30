@@ -1759,7 +1759,12 @@ while portability and semantic review remain the model author's responsibility.
   `SecretString`/`Option<SecretString>` model fields are audited, excluded and
   change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
   on a model therefore emits the envelope; call `reveal_audited()` for
-  deliberate exposure.
+  deliberate exposure. Each write encrypts a `SecretString` column with a
+  fresh nonce, so generated builder filters, ordering and grouping on it
+  (including `where_<column>` helpers) fail with `Validation` instead of never
+  matching, and `pluck_string`/`pluck_i32` reject it rather than return
+  envelopes. An explicit `select` of the column remains available because the
+  codec decrypts it while decoding the model.
 
 ### 5.3. Generated Relationship Contract
 

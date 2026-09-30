@@ -64,8 +64,9 @@ opt-in (an older runtime) the output keeps the legacy
 `#[cfg(feature = "redis")]`/`#[cfg(feature = "ai")]` attributes, which the
 invoking crate evaluates.
 
-Randomized encrypted fields cannot be used as ordinary generated filter/order
-columns. Tenant scope and model policies are generated only when explicitly
+Randomized encrypted fields and `SecretString` columns cannot be used as
+ordinary generated filter/order/group columns or plucked (`SecretString`
+columns can still be selected, because their codec decrypts them). Tenant scope and model policies are generated only when explicitly
 declared; the macro does not authenticate a principal or authorize `unscoped`
 access. Post-commit callbacks are process-local unless the application composes
 the transactional outbox.

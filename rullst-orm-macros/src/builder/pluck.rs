@@ -27,6 +27,11 @@ pub fn generate_pluck_methods(parsed: &ParsedModel) -> TokenStream {
                     "pluck() cannot read skipped column `{}`", column
                 )));
             }
+            if Self::is_secret_column(column) {
+                return Err(rullst_orm::Error::Validation(format!(
+                    "pluck() cannot decode `SecretString` column `{}`; load the model instead", column
+                )));
+            }
             Ok(column.rsplit('.').next().unwrap_or(column))
         }
 
