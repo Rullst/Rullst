@@ -56,7 +56,8 @@ pub enum OpaqueAttachmentPolicy {
 /// extensions, SVG, active PDF content wherever a `%PDF-` header appears, and a
 /// declared type that disagrees with a known extension or signature. The strict
 /// policy also rejects HTML extensions, HTML/script markup or script URIs,
-/// unknown extensions and opaque formats.
+/// unknown extensions, declared types other than the inspected ones and
+/// `application/octet-stream`, and opaque formats.
 ///
 /// This is not antivirus, sandbox execution, recursive archive inspection or a
 /// substitute for an independently operated content-disarm/scanning service.
@@ -132,9 +133,17 @@ impl LocalAttachmentInspector {
         {
             return Err(AttachmentInspectionError::Rejected("active_markup_content"));
         }
+        // A client may render by the declared type (e.g. `text/html`) whatever
+        // the filename says; only the generic binary type makes no such claim.
+        let unknown_declared = declared.is_none()
+            && !attachment
+                .mime_type
+                .eq_ignore_ascii_case("application/octet-stream");
         match kind {
-            // The strict policy cannot vouch for an extension it does not know.
-            Some(_) if strict && extension.is_some() && named.is_none() => self.opaque_result(),
+            // The strict policy cannot vouch for a type or extension it does not know.
+            Some(_) if strict && (unknown_declared || (extension.is_some() && named.is_none())) => {
+                self.opaque_result()
+            }
             Some(Kind::Zip) | None => self.opaque_result(),
             Some(_) => Ok(()),
         }
