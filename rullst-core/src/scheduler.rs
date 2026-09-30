@@ -537,4 +537,4 @@ mod tests {
 
 #[cfg(test)]
 #[path = "scheduler_contract_tests.rs"]
-mod contract_tests;
+pub(crate) mod contract_tests;
