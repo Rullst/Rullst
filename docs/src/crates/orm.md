@@ -97,6 +97,10 @@ generated API.
   vector/distance values in L2, cosine and inner-product helpers are bound, not
   interpolated. The strict PostgreSQL matrix creates the extension and runs a
   typed live lifecycle. See [RAG Systems & Vector Search](../tutorials/22-rag-vector-search.md).
+- **Generated embeddings:** `ai` implies `pgvector` and adds
+  `save_with_embedding(&rullst_ai::AiClient)` to models with an
+  `#[orm(embedding_for = "...")]` field; the application must also depend on
+  `rullst-ai`.
 - **Bounded Qdrant vectors:** `qdrant` keeps specialized dense-cosine
   collection/upsert/delete/query semantics separate from SQL Active Record,
   with resource/transport bounds, deterministic fallback, authenticated

@@ -105,6 +105,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   digest-pinned PostgreSQL + pgvector lifecycle covers typed insert/read and
   parameterized nearest-neighbor filtering/ordering; RAG orchestration and
   production index tuning remain application concerns.
+- **Generated Embeddings**: the `ai` feature (which implies `pgvector`) adds
+  `save_with_embedding(&rullst_ai::AiClient)` to models with an
+  `#[orm(embedding_for = "...")]` vector field. The application must also
+  depend on `rullst-ai`, whose client the generated method names.
 - **Bounded Qdrant Search**: `qdrant` exposes validated dense-cosine collection,
   single-point upsert/delete and bounded nearest-neighbor query operations with
   deterministic fallback, authenticated protocol fixtures and a digest-pinned

@@ -87,6 +87,7 @@ rullst-orm|turso
 rullst-orm|surrealdb
 rullst-orm|scout-http
 rullst-orm|pgvector
+rullst-orm|ai
 rullst-orm|qdrant
 rullst-orm|polyglot
 rullst-core|orm
