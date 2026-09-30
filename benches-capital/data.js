@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790738461658,
+  "lastUpdate": 1790742197552,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9518,6 +9518,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b",
+          "message": "Merge pull request #340 from Rullst/fix/v13-capital-review-fixes\n\nfix(capital): fail closed on unsigned Wise webhooks, tighten Paddle and Razorpay handling",
+          "timestamp": "2026-09-30T00:44:35-03:00",
+          "tree_id": "3de7ba1079519b769c5aae74121b00a73b21643e",
+          "url": "https://github.com/Rullst/Rullst/commit/dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b"
+        },
+        "date": 1790742196354,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 4,
             "range": "± 0",
             "unit": "ns/iter"
           }
