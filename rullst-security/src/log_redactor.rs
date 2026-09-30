@@ -32,6 +32,7 @@ pub fn redact_secrets(input: &str) -> String {
         "passwd",
         "secret",
         "api_key",
+        "apikey",
         "token",
         "authorization",
         "cookie",
@@ -150,8 +151,12 @@ fn redact_assignment_values(value: &str, key: &str) -> Option<String> {
             continue;
         }
 
+        // A key may be closed by a quote, or by an escaped quote (`\"`) when
+        // the record embeds JSON inside a JSON string.
         let mut separator = identifier_end;
-        if bytes
+        if is_escaped_quote(bytes, separator) {
+            separator += 2;
+        } else if bytes
             .get(separator)
             .is_some_and(|byte| matches!(byte, b'"' | b'\''))
         {
@@ -177,15 +182,22 @@ fn redact_assignment_values(value: &str, key: &str) -> Option<String> {
         {
             separator += 1;
         }
+        let escaped_quote = is_escaped_quote(bytes, separator);
         let quote = bytes
             .get(separator)
             .copied()
-            .filter(|byte| matches!(byte, b'"' | b'\''));
-        let mut start = separator + usize::from(quote.is_some());
+            .filter(|byte| !escaped_quote && matches!(byte, b'"' | b'\''));
+        let mut start = if escaped_quote {
+            separator + 2
+        } else {
+            separator + usize::from(quote.is_some())
+        };
         if key == "authorization" {
             start = skip_authorization_scheme(bytes, start);
         }
-        let end = if quote.is_none() && matches!(key, "authorization" | "cookie") {
+        let end = if escaped_quote {
+            escaped_quote_value_end(bytes, start)
+        } else if quote.is_none() && matches!(key, "authorization" | "cookie") {
             header_value_end(value, start)
         } else {
             secret_value_end(value, start, quote)
@@ -258,6 +270,38 @@ fn header_value_end(value: &str, start: usize) -> usize {
     start + value[start..line_end].trim_end_matches([' ', '\t']).len()
 }
 
+/// Whether `bytes[index..]` starts with an escaped double quote (`\"`).
+fn is_escaped_quote(bytes: &[u8], index: usize) -> bool {
+    bytes.get(index) == Some(&b'\\') && bytes.get(index + 1) == Some(&b'"')
+}
+
+/// End of a value delimited by escaped quotes (`\"`) inside a JSON string.
+///
+/// Each `\x` pair is one escaped character of the embedded text: `\\` is an
+/// embedded backslash and `\"` an embedded quote. The value ends at the first
+/// embedded quote that the embedded text does not itself escape, so
+/// `\"a\\\"b\"` yields `a\\\"b`. Without a terminator the rest of the
+/// record is the value.
+fn escaped_quote_value_end(bytes: &[u8], start: usize) -> usize {
+    let mut index = start;
+    let mut embedded_escape = false;
+    while let Some(&byte) = bytes.get(index) {
+        if byte != b'\\' {
+            embedded_escape = false;
+            index += 1;
+            continue;
+        }
+        match bytes.get(index + 1) {
+            Some(b'"') if !embedded_escape => return index,
+            Some(b'\\') => embedded_escape = !embedded_escape,
+            Some(_) => embedded_escape = false,
+            None => return bytes.len(),
+        }
+        index += 2;
+    }
+    bytes.len()
+}
+
 fn secret_value_end(value: &str, start: usize, quote: Option<u8>) -> usize {
     if let Some(quote) = quote {
         let mut escaped = false;
@@ -279,11 +323,17 @@ fn secret_value_end(value: &str, start: usize, quote: Option<u8>) -> usize {
     } else {
         start
     };
+    // An escaped quote (`\"`) also ends the value, so a value inside JSON
+    // embedded in a JSON string keeps its closing escape.
+    let bytes = value.as_bytes();
     value[search_start..]
-        .find(|character: char| {
-            character.is_whitespace() || matches!(character, '"' | '\'' | ',' | '&' | '}' | ']')
+        .char_indices()
+        .find(|&(offset, character)| {
+            character.is_whitespace()
+                || matches!(character, '"' | '\'' | ',' | '&' | '}' | ']')
+                || is_escaped_quote(bytes, search_start + offset)
         })
-        .map_or(value.len(), |offset| search_start + offset)
+        .map_or(value.len(), |(offset, _)| search_start + offset)
 }
 
 #[cfg(test)]

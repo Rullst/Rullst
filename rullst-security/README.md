@@ -83,9 +83,11 @@
   the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or control
   character, or after 2,048 bytes.
 - **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
-  AWS, and database patterns, including escaped quoted values, in time linear
-  in the record length. An assignment key (`password`, `passwd`, `secret`,
-  `api_key`, `token`, `authorization`, `cookie`, `session`) also matches as
+  AWS, and database patterns, including escaped quoted values and keys and
+  values of JSON embedded in a JSON string (`{"body":"{\"password\":\"..\"}"}`),
+  in time linear in the record length. An assignment key (`password`,
+  `passwd`, `secret`, `api_key`/`api-key`, `apikey`, `token`,
+  `authorization`, `cookie`, `session`, in any ASCII case) also matches as
   the final component of a compound name joined by `_`, `-` or `.`
   (`DB_PASSWORD`, `access_token`, `client-secret`, `app.db.password`) or when
   a final `key`/`id` component follows it (`SECRET_KEY`, `session_id`).

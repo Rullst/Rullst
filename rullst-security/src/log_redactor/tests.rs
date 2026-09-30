@@ -184,6 +184,43 @@ fn unquoted_authorization_and_cookie_values_are_redacted_to_the_end_of_the_line(
 }
 
 #[test]
+fn api_key_spellings_and_keys_inside_escaped_json_are_redacted() {
+    assert_eq!(
+        redact_secrets(r#"{"apiKey":"k1"} x-apikey: k2 X-API-Key: k3"#),
+        r#"{"apiKey":"[REDACTED]"} x-apikey: [REDACTED] X-API-Key: [REDACTED]"#
+    );
+    for (input, expected) in [
+        (
+            r#"{"body":"{\"password\":\"hunter2\"}"}"#,
+            r#"{"body":"{\"password\":\"[REDACTED]\"}"}"#,
+        ),
+        (
+            r#"{"body":"{\"token\": \"a\\\"still-secret\",\"ok\":1}"}"#,
+            r#"{"body":"{\"token\": \"[REDACTED]\",\"ok\":1}"}"#,
+        ),
+        (
+            r#"{"headers":"{\"authorization\":\"Bearer t0k\"}"}"#,
+            r#"{"headers":"{\"authorization\":\"Bearer [REDACTED]\"}"}"#,
+        ),
+        (
+            r#"{"body":"{\"secret\":\"unterminated"#,
+            r#"{"body":"{\"secret\":\"[REDACTED]"#,
+        ),
+    ] {
+        let clean = redact_secrets(input);
+        assert_eq!(clean, expected);
+        assert_eq!(redact_secrets(&clean), clean);
+    }
+    let body: serde_json::Value = serde_json::from_str(&redact_secrets(
+        r#"{"body":"{\"password\":\"hunter2\",\"user\":\"ana\"}"}"#,
+    ))
+    .unwrap();
+    let inner: serde_json::Value = serde_json::from_str(body["body"].as_str().unwrap()).unwrap();
+    assert_eq!(inner["password"], "[REDACTED]");
+    assert_eq!(inner["user"], "ana");
+}
+
+#[test]
 fn unrelated_text_and_empty_input_are_preserved() {
     assert_eq!(redact_secrets("ordinary event"), "ordinary event");
     assert_eq!(redact_secrets(""), "");
