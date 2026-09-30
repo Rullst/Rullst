@@ -2683,8 +2683,8 @@ sending.
 * `MqttPublish` encodes one bounded MQTT 5 PUBLISH packet with validated topic,
   minimal Remaining Length, QoS/packet-identifier invariants and an empty
   property section. `CoapRequest` encodes bounded RFC 7252 base requests with
-  a token, ordered URI-Path/Content-Format options and a non-empty payload
-  marker. Both compile under `no_std`; neither opens a socket or owns protocol
+  a token, ordered URI-Path (1-255 bytes per segment)/Content-Format options
+  and a non-empty payload marker. Both compile under `no_std`; neither opens a socket or owns protocol
   session state.
 * 🔵 **`[Roadmap]` MQTT/CoAP Transport:** Async connections, TLS/DTLS, broker
   negotiation, acknowledgements, retransmission/congestion control, block-wise
