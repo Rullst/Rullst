@@ -23,6 +23,7 @@ fn service(router: axum::Router) -> HotSwapService {
         shield: None,
         limiter: None,
         lifecycle: None,
+        trusted_proxy: None,
     }
 }
 

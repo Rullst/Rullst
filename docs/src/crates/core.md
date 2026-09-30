@@ -190,6 +190,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
   and `/ready` probes through, so load shedding or an exhausted bucket cannot
   fail a liveness probe.
+- **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
+  mounts `security::TrustedProxyLayer` outside every other framework layer.
+  Only a socket peer inside the listed networks may report the client through
+  `X-Forwarded-For` or RFC 7239 `Forwarded`; the resolved address replaces
+  `ConnectInfo`, so existing rate limiters and lockouts use it unchanged. See
+  [Running behind a reverse proxy](#running-behind-a-reverse-proxy).
 - **Bounded database flag cache:** `DbFeatureDriver` caches a found flag, a
   flag without a row and a failed or timed-out lookup (missing table,
   unavailable database) for its TTL, so an undefined flag does not query the
@@ -244,6 +250,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+### Running behind a reverse proxy
+
+Behind a load balancer or TLS terminator every connection comes from the proxy,
+so limits and lockouts would treat all clients as one. List the networks your
+own proxies connect from, and nothing broader:
+
+```rust,no_run
+use rullst_core::{Router, Server, security::TrustedProxyConfig};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let proxies = TrustedProxyConfig::new(["10.0.0.0/8", "fd00::/8"])?
+        .trust_forwarded_proto(true);
+    Server::new(Router::new())
+        .trusted_proxies(proxies)
+        .run(3000)
+        .await?;
+    Ok(())
+}
+```
+
+Or configure the same policy in `Rullst.toml`; a builder policy replaces it:
+
+```toml
+[security]
+trusted_proxies = ["10.0.0.0/8", "fd00::/8"]
+trusted_proxy_header = "x-forwarded-for" # or "forwarded" (RFC 7239)
+trust_forwarded_proto = true
+```
+
+Forwarding headers from any other peer are ignored. The chain is read right to
+left, skipping trusted hops, and the first untrusted address becomes the
+client: `ConnectInfo<SocketAddr>` is replaced by that IP with port 0, and a
+`ClientAddr` extension records the client, the original socket peer and whether
+a proxy supplied it. A missing or malformed header from a trusted proxy keeps the
+proxy address and logs one `tracing` event without header contents. Enable
+`trust_forwarded_proto` only when your proxies overwrite `X-Forwarded-Proto`
+(or set `proto=`); `ClientAddr::forwarded_proto` then reports the scheme, and
+Nexus accepts an HTTPS report as its TLS evidence. Any host inside a listed
+network can choose the client address, so never list client-reachable ranges.
 
 ### Axum First-Class Escape Hatches & Tower Interoperability
 

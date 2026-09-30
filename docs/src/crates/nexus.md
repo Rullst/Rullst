@@ -38,9 +38,12 @@ let app = axum::Router::new().nest("/nexus", nexus);
 
 The serving boundary must preserve the socket address, for example with Axum's
 `into_make_service_with_connect_info::<SocketAddr>()`. Basic Auth additionally
-requires direct HTTPS or the application-owned `NexusVerifiedTls` capability
-inserted only after validating a trusted TLS terminator. Never derive that
-capability from an untrusted forwarded header.
+requires the application-owned `NexusVerifiedTls` capability inserted only after
+validating a trusted TLS terminator, or an HTTPS report accepted by Core's
+`TrustedProxyLayer` from a listed proxy network with `trust_forwarded_proto`
+enabled. The same layer (`Server::trusted_proxies`) gives each client behind the
+proxy its own lockout bucket. Never derive either from an untrusted forwarded
+header.
 
 `NexusAuthPolicy::protect_router` can apply the same administrator boundary to
 application-owned operational routes, as the ERP blueprint does for inventory

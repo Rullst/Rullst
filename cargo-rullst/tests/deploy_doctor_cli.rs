@@ -246,6 +246,8 @@ fn core_security_errors_and_application_policy_reviews_remain_distinct() {
         "coep='invalid-private'",
         "csp=''",
         "cors_allow_origins=['https://private.invalid/path']",
+        "trusted_proxies=['0.0.0.0/0']",
+        "trusted_proxy_header='invalid-private'",
     ] {
         fs::write(
             root.join("Rullst.toml"),
@@ -258,7 +260,7 @@ fn core_security_errors_and_application_policy_reviews_remain_distinct() {
         assert!(!String::from_utf8_lossy(&output.stdout).contains("invalid-private"));
         assert!(!String::from_utf8_lossy(&output.stdout).contains("private.invalid"));
     }
-    fs::write(root.join("Rullst.toml"), "[app]\nport=0\n[security]\ncoep='unsafe-none'\ncsrf_same_site='None'\ncors_allow_credentials=true\ncsrf_signed_webhook_paths=['/billing/webhook']\ncsp=\"default-src 'self'; script-src 'unsafe-inline'\"\nmispeled='private-value'\n").unwrap();
+    fs::write(root.join("Rullst.toml"), "[app]\nport=0\n[security]\ncoep='unsafe-none'\ncsrf_same_site='None'\ncors_allow_credentials=true\ncsrf_signed_webhook_paths=['/billing/webhook']\ntrusted_proxies=['10.0.0.0/8']\ncsp=\"default-src 'self'; script-src 'unsafe-inline'\"\nmispeled='private-value'\n").unwrap();
     let (output, value) = run(root, &["--env-file", "selected.env"]);
     assert!(!output.status.success());
     assert_eq!(status(&value, "configured_port"), Some("FAIL"));
@@ -266,6 +268,7 @@ fn core_security_errors_and_application_policy_reviews_remain_distinct() {
         "custom_csp",
         "browser_policy_exceptions",
         "signed_webhook_exemptions",
+        "trusted_proxy_networks",
         "unrecognized_configuration",
     ] {
         assert_eq!(status(&value, code), Some("REVIEW"));
