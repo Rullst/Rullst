@@ -9,6 +9,7 @@ use rullst_studio::{LocalStudioAccess, Studio};
 use std::net::SocketAddr;
 use tower::ServiceExt;
 
+mod feature_flags;
 mod incomplete_key;
 
 #[cfg(any(feature = "strict-postgres", feature = "strict-mysql"))]
@@ -198,78 +199,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     assert!(er_diagram.contains(&parent_table));
     assert!(er_diagram.contains("parent_id_to_id"));
 
-    let feature_flags = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/studio/features")
-                .body(Body::empty())
-                .expect("valid Studio feature-flags request"),
-        )
-        .await
-        .expect("Studio feature-flags response");
-    assert_eq!(feature_flags.status(), StatusCode::OK);
-
-    let mut insert_flag = rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(
-        "INSERT INTO rullst_feature_flags \
-             (name, enabled, rollout_percentage, variants) VALUES (",
-    );
-    insert_flag
-        .push_bind("academy_beta")
-        .push(", ")
-        .push_bind(false)
-        .push(", ")
-        .push_bind(50_i32)
-        .push(", ")
-        .push_bind("<script>unsafe</script>")
-        .push(")");
-    insert_flag
-        .build()
-        .execute(pool)
-        .await
-        .expect("insert Studio matrix feature flag");
-
-    let feature_flags = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/studio/features")
-                .body(Body::empty())
-                .expect("valid populated feature-flags request"),
-        )
-        .await
-        .expect("Studio populated feature-flags response");
-    assert_eq!(feature_flags.status(), StatusCode::OK);
-    let feature_flags = response_text(feature_flags).await;
-    assert!(feature_flags.contains("academy_beta"));
-    assert!(feature_flags.contains("&lt;script&gt;unsafe&lt;/script&gt;"));
-    assert!(!feature_flags.contains("<script>unsafe</script>"));
-
-    let toggle_flag = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/studio/features/toggle/academy_beta")
-                .body(Body::empty())
-                .expect("valid feature-flag toggle request"),
-        )
-        .await
-        .expect("Studio feature-flag toggle response");
-    assert!(toggle_flag.status().is_redirection());
-
-    let missing_flag = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/studio/features/toggle/not_present")
-                .body(Body::empty())
-                .expect("valid missing feature-flag request"),
-        )
-        .await
-        .expect("Studio missing feature-flag response");
-    assert_eq!(missing_flag.status(), StatusCode::NOT_FOUND);
+    feature_flags::exercise_feature_flags(&app, pool, driver).await;
 
     let initial_table = app
         .clone()

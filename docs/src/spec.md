@@ -2812,7 +2812,9 @@ sending.
   scheduled jobs, retries failed jobs and purges failures; custom queue
   inspection remains capability-specific. Queue retry/purge and feature-flag
   toggles require the same crate-private verified-local marker as database
-  writes, so their raw routers return `403` outside the local boundary.
+  writes, so their raw routers return `403` outside the local boundary. Safe
+  `GET` views perform no schema or data writes; the feature-flag page reports
+  a missing `rullst_feature_flags` table instead of creating it.
 * `Studio::with_cache` is an explicit metadata-only diagnostic capability. The
   memory and Redis cache drivers return at most 200 sorted entries containing
   logical key, UTF-8 value byte length and remaining TTL; custom drivers return

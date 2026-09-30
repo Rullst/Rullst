@@ -18,80 +18,101 @@ pub fn router() -> Router {
         .route("/toggle/{name}", post(toggle_feature_flag))
 }
 
-async fn ensure_table_exists() {
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-        let sql = match driver {
-            "postgres" => {
-                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                    name VARCHAR(255) PRIMARY KEY,
-                    enabled BOOLEAN NOT NULL DEFAULT false,
-                    rollout_percentage INTEGER,
-                    variants TEXT
-                )"
-            }
-            "mysql" | "mariadb" => {
-                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                    name VARCHAR(255) PRIMARY KEY,
-                    enabled BOOLEAN NOT NULL DEFAULT false,
-                    rollout_percentage INTEGER,
-                    variants TEXT
-                )"
-            }
-            _ => {
-                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                    name TEXT PRIMARY KEY,
-                    enabled INTEGER NOT NULL DEFAULT 0,
-                    rollout_percentage INTEGER,
-                    variants TEXT
-                )"
-            }
-        };
-        let _ = rullst_orm::_sqlx::query(sql).execute(pool).await;
+/// Schema that `DbFeatureDriver` reads, shown as migration guidance. Studio
+/// never runs it: a safe `GET` must not change the database schema.
+fn feature_flag_table_ddl(driver: &str) -> &'static str {
+    match driver {
+        "postgres" | "mysql" | "mariadb" => {
+            "CREATE TABLE rullst_feature_flags (\n    name VARCHAR(255) PRIMARY KEY,\n    enabled BOOLEAN NOT NULL DEFAULT false,\n    rollout_percentage INTEGER,\n    variants TEXT\n);"
+        }
+        _ => {
+            "CREATE TABLE rullst_feature_flags (\n    name TEXT PRIMARY KEY,\n    enabled INTEGER NOT NULL DEFAULT 0,\n    rollout_percentage INTEGER,\n    variants TEXT\n);"
+        }
     }
 }
 
-async fn render_feature_flags() -> Html<String> {
-    ensure_table_exists().await;
+fn feature_flag_notice(message: &str, ddl: Option<&str>) -> String {
+    let ddl = ddl.map_or_else(String::new, |ddl| {
+        format!(
+            "<pre class=\"mt-3 mx-auto max-w-xl text-left text-xs text-slate-400 bg-slate-950 border border-slate-800 rounded p-3 overflow-x-auto\">{}</pre>",
+            rullst_core::html::escape_str(ddl)
+        )
+    });
+    format!(
+        "<tr><td colspan=\"4\" class=\"py-8 text-center text-slate-500\">{message}{ddl}</td></tr>"
+    )
+}
 
+const FEATURE_FLAGS_QUERY: &str = "SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC";
+
+fn render_flag_rows(rows: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row]) -> String {
+    use sqlx::Row;
     let mut rows_html = String::new();
+    for row in rows {
+        let name = row.try_get::<String, _>("name").unwrap_or_default();
+        let enabled = row
+            .try_get::<i32, _>("enabled")
+            .map(|v| v != 0)
+            .or_else(|_| row.try_get::<bool, _>("enabled"))
+            .unwrap_or(false);
+        let rollout = row
+            .try_get::<i32, _>("rollout_percentage")
+            .map(|v| v.to_string())
+            .unwrap_or_else(|_| "-".to_string());
+        let variants = row
+            .try_get::<String, _>("variants")
+            .unwrap_or_else(|_| "-".to_string());
+        let encoded_name = urlencoding::encode(&name);
 
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let _driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-        if let Ok(rows) = rullst_orm::_sqlx::query("SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC").fetch_all(pool).await {
-            use sqlx::Row;
-            for row in rows {
-                let name = row.try_get::<String, _>("name").unwrap_or_default();
-                let enabled = row.try_get::<i32, _>("enabled").map(|v| v != 0).or_else(|_| row.try_get::<bool, _>("enabled")).unwrap_or(false);
-                let rollout = row.try_get::<i32, _>("rollout_percentage").map(|v| v.to_string()).unwrap_or_else(|_| "-".to_string());
-                let variants = row.try_get::<String, _>("variants").unwrap_or_else(|_| "-".to_string());
-                let encoded_name = urlencoding::encode(&name);
+        let toggle_btn = if enabled {
+            format!(
+                "<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button></form>"
+            )
+        } else {
+            format!(
+                "<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button></form>"
+            )
+        };
 
-                let toggle_btn = if enabled {
-                    format!("<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button></form>")
-                } else {
-                    format!("<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button></form>")
-                };
-
-                rows_html.push_str(&format!(
-                    "<tr class=\"border-b border-slate-800 hover:bg-slate-800/50 transition-colors\">\
-                     <td class=\"py-4 px-4 font-semibold text-slate-200\">{}</td>\
-                     <td class=\"py-4 px-4\">{}</td>\
-                     <td class=\"py-4 px-4 text-slate-400\">{}</td>\
-                     <td class=\"py-4 px-4 text-slate-400\">{}</td>\
-                     </tr>",
-                    rullst_core::html::escape_str(&name),
-                    toggle_btn,
-                    rollout,
-                    rullst_core::html::escape_str(&variants)
-                ));
-            }
-        }
+        rows_html.push_str(&format!(
+            "<tr class=\"border-b border-slate-800 hover:bg-slate-800/50 transition-colors\">\
+             <td class=\"py-4 px-4 font-semibold text-slate-200\">{}</td>\
+             <td class=\"py-4 px-4\">{}</td>\
+             <td class=\"py-4 px-4 text-slate-400\">{}</td>\
+             <td class=\"py-4 px-4 text-slate-400\">{}</td>\
+             </tr>",
+            rullst_core::html::escape_str(&name),
+            toggle_btn,
+            rollout,
+            rullst_core::html::escape_str(&variants)
+        ));
     }
+    rows_html
+}
 
-    if rows_html.is_empty() {
-        rows_html = "<tr><td colspan=\"4\" class=\"py-8 text-center text-slate-500\">No feature flags found. (Table <code>rullst_feature_flags</code> is empty)</td></tr>".to_string();
-    }
+async fn render_feature_flags() -> Html<String> {
+    let rows_html = match rullst_core::db::safe_pool() {
+        None => feature_flag_notice(
+            "No database is configured; feature flags are unavailable.",
+            None,
+        ),
+        Some(pool) => match rullst_orm::_sqlx::query(FEATURE_FLAGS_QUERY)
+            .fetch_all(pool)
+            .await
+        {
+            Ok(rows) if rows.is_empty() => feature_flag_notice(
+                "No feature flags found. (Table <code>rullst_feature_flags</code> is empty)",
+                None,
+            ),
+            Ok(rows) => render_flag_rows(&rows),
+            Err(_) => feature_flag_notice(
+                "The <code>rullst_feature_flags</code> table is unavailable. Studio does not create it; add it with a migration:",
+                Some(feature_flag_table_ddl(
+                    rullst_core::db::safe_driver().unwrap_or("sqlite"),
+                )),
+            ),
+        },
+    };
 
     Html(format!(
         r#"<!DOCTYPE html>

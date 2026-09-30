@@ -25,7 +25,9 @@ views from the sources explicitly supplied by the application.
 - **Safe configuration view:** Environment values are deny-by-default redacted;
   typed runtime configuration is projected without URLs, paths, or secrets.
 - **Feature flags manager:** Toggle database-backed flags and immediately
-  invalidate already-warm `DbFeatureDriver` caches in the same process.
+  invalidate already-warm `DbFeatureDriver` caches in the same process. Studio
+  never creates the `rullst_feature_flags` table; a missing table is reported
+  with the schema to add in a migration.
 - **Distributed diagnostics:** Visualize in-process sources plus bounded,
   attribute-free v1 spans from a separately mounted HMAC-authenticated push
   endpoint. Slow-query and repeated-label findings are heuristics; no SQL text,

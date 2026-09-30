@@ -19,7 +19,9 @@ telemetry views from the sources explicitly supplied by the application.
 - **Safe configuration view:** Environment values are deny-by-default redacted;
   typed runtime configuration is projected without URLs, paths, or secrets.
 - **Feature flags manager:** Toggle database-backed flags and immediately
-  invalidate already-warm `DbFeatureDriver` caches in the same process.
+  invalidate already-warm `DbFeatureDriver` caches in the same process. Studio
+  never creates the `rullst_feature_flags` table; when it is missing, the page
+  shows the schema to add in a migration.
 - **Distributed diagnostics:** Visualize local spans plus bounded,
   attribute-free v1 spans submitted through a separately mounted
   HMAC-authenticated push endpoint. The profiler reports slow SQL labels and a
