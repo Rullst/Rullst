@@ -331,3 +331,48 @@ fn memoize_runs_uncached_when_arguments_cannot_be_serialized() {
     assert_eq!(memoized_fallible::wide(7), "item 7");
     assert_eq!(memoized_fallible::WIDE_CALLS.load(Ordering::SeqCst), 3);
 }
+
+mod memoized_floats {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub(super) static LABEL_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[crate::memoize]
+    pub(super) fn label(x: f64) -> String {
+        LABEL_CALLS.fetch_add(1, Ordering::SeqCst);
+        if x == f64::INFINITY {
+            "+inf".into()
+        } else if x == f64::NEG_INFINITY {
+            "-inf".into()
+        } else {
+            x.to_string()
+        }
+    }
+
+    #[crate::memoize]
+    pub(super) fn ratio(a: f64, b: f64) -> Option<f64> {
+        Some(a / b)
+    }
+}
+
+#[test]
+fn memoize_never_conflates_values_that_json_writes_as_null() {
+    use std::sync::atomic::Ordering;
+
+    // NaN and both infinities serialize as `null`: they must not share a key.
+    assert_eq!(memoized_floats::label(f64::INFINITY), "+inf");
+    assert_eq!(memoized_floats::label(f64::NEG_INFINITY), "-inf");
+    assert_eq!(memoized_floats::label(f64::NAN), "NaN");
+    assert_eq!(memoized_floats::label(f64::INFINITY), "+inf");
+    assert_eq!(memoized_floats::LABEL_CALLS.load(Ordering::SeqCst), 4);
+
+    // `Some(NaN)` would read back from the cache as `None`.
+    for _ in 0..2 {
+        assert!(memoized_floats::ratio(0.0, 0.0).is_some_and(f64::is_nan));
+    }
+
+    // Finite arguments are still cached.
+    assert_eq!(memoized_floats::label(2.5), "2.5");
+    assert_eq!(memoized_floats::label(2.5), "2.5");
+    assert_eq!(memoized_floats::LABEL_CALLS.load(Ordering::SeqCst), 5);
+}

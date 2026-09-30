@@ -250,3 +250,39 @@ fn markup_hidden_behind_a_bom_prolog_or_comment_is_denied() {
         );
     }
 }
+
+#[test]
+fn bidi_and_invisible_format_characters_cannot_disguise_a_display_name() {
+    let policy = all_kinds_policy();
+    let png = b"\x89PNG\r\n\x1a\n".as_slice();
+    // U+202E makes this admitted PNG display as "reportgnp.pdf".
+    for name in [
+        "report\u{202E}fdp.png",
+        "invoice\u{202D}gnp.png",
+        "a\u{2066}b\u{2069}.png",
+        "a\u{061C}.png",
+        "a\u{200E}.png",
+        "zero\u{200B}width.png",
+        "bom\u{FEFF}.png",
+        "tag\u{E0041}.png",
+        "soft\u{00AD}hyphen.png",
+        "line\u{2028}break.png",
+    ] {
+        assert_eq!(
+            policy.admit("tenant", name, "image/png", png),
+            Err(UploadError::InvalidFileName),
+            "{name:?}"
+        );
+    }
+    // Joiners that scripts and emoji need, and ordinary non-ASCII, remain valid.
+    for name in [
+        "\u{0645}\u{06CC}\u{200C}\u{062E}\u{0648}\u{0627}\u{0645}.png",
+        "\u{1F469}\u{200D}\u{1F4BB}.png",
+        "a\u{00E7}\u{00E3}o.png",
+    ] {
+        assert!(
+            policy.admit("tenant", name, "image/png", png).is_ok(),
+            "{name:?}"
+        );
+    }
+}

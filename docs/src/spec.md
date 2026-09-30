@@ -186,11 +186,13 @@ and local revision/state after external work and use bounded durable leases to
 reject concurrent/stale mutation results. Playback is a read: it takes no lease,
 so concurrent viewers never serialize and an abandoned request leaves no intent;
 it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
-library and capacity, refuses clock rollback and requires trusted local files,
+library, store-wide capacity and an optional per-tenant asset quota for shared
+stores, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
 Only confirmed-deleted or explicitly discarded local tombstones may be purged,
 in batches up to 100 and after at least 24 hours; the host must retire purged
-creation IDs because their idempotency memory ends at that point. Provider backups/cache erasure is separate.
+creation IDs because their idempotency memory ends at that point. Tombstones
+keep no digest of the deleted title or description. Provider backups/cache erasure is separate.
 
 Creation is journaled before remote dispatch. Bunny's documented creation API
 does not supply an idempotency key: ambiguous creation must reconcile a persisted
@@ -251,6 +253,9 @@ binding, risk/legal assessment and durable shared state.
 The v13 persistence contract uses static-dispatch asynchronous nonce claims.
 Verification samples a trusted server clock before validation and after the
 claim; expiry or clock rollback during storage cannot return permission.
+A claim that the high-water check rejected only because a concurrent request
+committed a later second is repeated, at most twice, with a fresh sample that
+has advanced past the rejected one; the check itself is never relaxed.
 The optional `sqlite` adapter is shared-local only: a private file-backed pool,
 WAL with full synchronization, serialized quota/expiry/claim transactions and
 persisted configuration/clock high-water state. It stores only domain-separated
@@ -377,7 +382,8 @@ are server-owned inputs, never browser identity fields. The explicit submission
 also binds the displayed purpose/notice version to current server configuration,
 so a policy change cannot borrow an old form's unchanged revision. A bounded store must
 serialize reads/updates against a persisted clock high-water mark and preserve
-withdrawal tombstones; production rejects process-local state. Permission must
+withdrawal tombstones; production rejects process-local state. The gate retries
+an operation that lost the lock to a later second the same bounded way. Permission must
 be checked immediately before each processing action, including deferred jobs.
 Already-started external effects are not cancelled retroactively by a later
 withdrawal, and consent does not authorize essential processing or establish
@@ -613,7 +619,9 @@ SQLite and an injected deterministic clock; no memory mock is needed for this
 initial backend. One private initialized database owns scoped authority,
 sessions, parental enrollment/policy and allowlisted events. Serialize operations
 with `BEGIN IMMEDIATE`, persist configuration, a clock high-water mark and a
-global revision counter, and enforce bounded quotas and retention. An opener
+global revision counter, and enforce bounded quotas and retention. One learner
+has a bounded retained-session quota inside the store-wide limit, and rows
+already past retention never block admission. An opener
 must supply the independently retained deployment epoch. This detects epoch
 mismatch, not restoration of an old database with the same epoch.
 
@@ -1155,7 +1163,8 @@ client or proxy keepalives do not end a legacy Live session. A
 `#[live_component]` dispatches only on the first present `rullst_event`,
 `action` or `event` string field and runs at most one `#[live_event]` handler
 per message; other payload keys and values, including form inputs, never
-select a handler.
+select a handler. A path-qualified marker such as `#[rullst::live_event]` marks
+a handler exactly like the bare attribute.
 The implementation and its local protocol/Chromium acceptance are recorded in
 [the recovery guide](live-recovery.md). Hosted workspace/platform/package
 admission passed in PR #236; final release admission remains separate.
@@ -1466,7 +1475,8 @@ the same server-authoritative controls.
   entries run uncached; otherwise expired and then the oldest entries are
   evicted. Arguments that `serde_json` cannot represent (a failing `Serialize`
   impl, or a `u128`/`i128` outside the 64-bit range) also run uncached instead
-  of panicking; an `#[island]` with such props renders its server HTML with an
+  of panicking, as do arguments whose JSON would equal another value's (NaN or
+  infinite floats, `Some(())`, `Some(None)`); such results are never cached; an `#[island]` with such props renders its server HTML with an
   empty `data-props`, so hydration is skipped.
 * **Example:**
   ```rust
@@ -1506,6 +1516,9 @@ default permissions, so permissions or hard links of the previous file are not
 carried over. The directory is not fsynced, so a power loss can roll a
 completed put back to the previous version. On Windows a replacement fails
 while another process holds the object open without delete sharing.
+Like the cloud backends, local `exists`, `get`, `metadata` and `delete` treat
+a key that names a directory, or that continues below a regular file, as a
+missing object rather than an I/O failure.
 
 ### Public object URLs
 
@@ -1515,8 +1528,9 @@ and non-ASCII characters stay part of the object key. Local storage returns the
 root-relative `/storage/<key>` path whatever its base directory, so the
 filesystem path is never disclosed; the application must serve that directory
 at `/storage` (Rullst does not mount it). Unconfigured S3/R2 drivers return the
-provider's unsigned object URL; a configured private backend rejects `url()`
-and requires a signed download.
+provider's unsigned object URL; S3 follows the cloud client's endpoint rules
+(`amazonaws.com.cn` for `cn-*` regions, path style for dotted bucket names). A
+configured private backend rejects `url()` and requires a signed download.
 
 ---
 

@@ -72,3 +72,38 @@ async fn only_the_explicit_event_field_selects_one_handler() {
     assert_eq!(chat.counts(), (1, 1, 1));
     assert_eq!(LiveComponent::render(&chat), "<div id=\"chat\">1 1 1</div>");
 }
+
+#[derive(Default)]
+struct Qualified {
+    crate_path: usize,
+    facade_path: usize,
+}
+
+#[crate::live_component]
+impl Qualified {
+    #[crate::live_event]
+    fn by_crate_path(&mut self) {
+        self.crate_path += 1;
+    }
+
+    #[rullst::live_event]
+    async fn by_facade_path(&mut self, _payload: serde_json::Value) {
+        self.facade_path += 1;
+    }
+
+    pub fn render(&self) -> String {
+        format!("{} {}", self.crate_path, self.facade_path)
+    }
+}
+
+#[tokio::test]
+async fn path_qualified_live_event_markers_dispatch_their_handlers() {
+    let mut component = Qualified::default();
+    component
+        .handle_event(json!({"rullst_event": "by_crate_path"}))
+        .await;
+    component
+        .handle_event(json!({"rullst_event": "by_facade_path"}))
+        .await;
+    assert_eq!(LiveComponent::render(&component), "1 1");
+}

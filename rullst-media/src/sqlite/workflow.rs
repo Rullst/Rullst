@@ -1,5 +1,5 @@
 use super::{
-    record::{Asset, Kind, Lifecycle, OperationFailure, Record, random_hex},
+    record::{Asset, Kind, Lifecycle, OperationFailure, Record, random_hex, tombstone_digest},
     service::MediaService,
     transaction::Operation,
 };
@@ -214,6 +214,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
             if kind == Kind::Delete {
                 record.asset.lifecycle = Lifecycle::Deleted;
                 record.asset.metadata = Metadata::new("Deleted video", "")?;
+                record.create_digest = tombstone_digest();
                 record.asset.length_seconds = 0;
                 record.notifications.clear();
             }

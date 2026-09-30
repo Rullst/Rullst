@@ -26,7 +26,9 @@ The application must never spawn learner code or expose a container control sock
 - Ed25519 controller receipts bound to the source/request/profile/current lease.
   Exact trusted grading compares worker values with stored answers. Public
   feedback contains pass/wrong-answer/trap categories, never hidden case inputs,
-  expected values or raw returned values. Compiler diagnostics are bounded
+  expected values or raw returned values. Status views identify the exercise
+  snapshot with a store-keyed digest, not the raw `Exercise::digest`, which
+  hashes the hidden cases. Compiler diagnostics are bounded
   untrusted text and must be escaped when rendered.
 - Terminal source/snapshot removal and explicitly authorized retention cleanup.
   Status/idempotency records must be retained for at least 24 hours before purge.
@@ -37,20 +39,41 @@ The application must never spawn learner code or expose a container control sock
 ## Application and controller boundary
 
 The application registers an `Exercise`, submits a `Submission` through
-`SqliteLabs::submit`, reads `get_job` and records `cancel`. The dedicated controller
+`SqliteLabs::submit`, reads `get_job` and records `cancel`. Submission IDs are
+idempotency keys shared by the course, so generate unpredictable random IDs;
+another learner's ID is a `Conflict` on submit and `NotFound` from `get_job`
+and `cancel` unless the caller may manage jobs. The dedicated controller
 uses `claim_next`, monitors `lease_status`, performs isolated execution and submits
 a `SignedReceipt` to `complete`. Cancellation and expiry fence late results.
+A job expires at the earlier of its `ttl_seconds` and the Submit permission's
+expiry, and is claimed only while more than the exercise's wall limit plus 5
+seconds remain. Grant Submit for longer than expected queueing plus that time;
+`submit` refuses a job that could never run (`InvalidInput` for a too-short
+TTL, `Expired` for a too-short permission).
 
 A lost worker first requires a fenced attempt and confirmed whole-group teardown.
 `cleanup_candidates`/`abandon_attempt` and `reconcile_cleanup` provide that durable
 boundary. Only then may a controller deliberately request one bounded retry.
 The supplied first controller cancels abandoned work after cleanup by default.
+Cleanup is attested with the same `SignedReceipt` type, reporting
+`Rejected(WorkerLost)`; sent to `complete`, that outcome is a terminal `Failed`
+job without the retry. `complete` accepts a receipt only when `started_at` is
+not before the claim (sample it after `claim_next`, on a clock synchronized
+with the store), `finished_at` is not after the store's time and precedes the
+lease expiry; otherwise it returns `Protocol`.
 
 Schedule `expire_queued` with current course-management authorization to clear
 expired queued source even if the runner is unavailable. It never clears a
 running lease or claims worker teardown. `purge_terminal` later removes eligible
 status records. `remove_exercise` permits removing a withdrawn grader only after
 all referencing jobs have been purged; do not reuse removed revision IDs.
+
+`max_jobs` (at most 1,000) is shared by every tenant using the store and counts
+terminal jobs until `purge_terminal`, which requires at least 24 hours, so it
+bounds submissions per rolling day. One learner may retain at most 100 jobs per
+course, or `max_jobs` when lower; `StoreConfig::learner_jobs` selects another
+bound that every opener must share. Rate-limit submissions in
+`Authorization::check` for `Submit`, and consider one store per tenant.
 
 Use a dedicated random content key and a separate controller signing seed. The
 application receives only the controller's pinned public key. The untrusted worker

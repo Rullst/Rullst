@@ -181,9 +181,19 @@ pub(super) fn random_hex() -> Result<String, Error> {
 }
 pub(super) fn create_digest(metadata: &Metadata) -> Result<String, Error> {
     let bytes = serde_json::to_vec(metadata).map_err(|_| Error::InvalidInput)?;
-    Ok(ring::digest::digest(&ring::digest::SHA256, &bytes)
+    Ok(sha256_hex(&bytes))
+}
+/// Creation digest of a deleted or discarded tombstone. `create_digest` is an
+/// unsalted hash of the title and description, which a store reader could
+/// confirm by guessing; a tombstone keeps a digest of a fixed domain string
+/// instead, so its creation ID stays retired (`create` conflicts) until purge.
+pub(super) fn tombstone_digest() -> String {
+    sha256_hex(b"rullst.media.deleted-creation.v1")
+}
+fn sha256_hex(bytes: &[u8]) -> String {
+    ring::digest::digest(&ring::digest::SHA256, bytes)
         .as_ref()
         .iter()
         .map(|b| format!("{b:02x}"))
-        .collect())
+        .collect()
 }

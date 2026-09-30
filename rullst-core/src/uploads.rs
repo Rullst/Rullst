@@ -168,7 +168,10 @@ impl QuarantinedUpload {
         &self.quarantine_key
     }
 
-    /// Returns the validated, display-only client filename.
+    /// Returns the validated, display-only client filename. It contains no
+    /// control, bidi-override or other invisible format characters, so its
+    /// visible extension is the one that was checked; still escape it when
+    /// rendering.
     pub fn display_name(&self) -> &str {
         &self.display_name
     }
@@ -300,7 +303,9 @@ fn validate_file_name(value: &str) -> Result<(), UploadError> {
         || value == "."
         || value == ".."
         || value.contains(['/', '\\', '\0'])
-        || value.chars().any(char::is_control)
+        || value
+            .chars()
+            .any(|c| c.is_control() || file_names::is_hidden_format(c))
     {
         return Err(UploadError::InvalidFileName);
     }
@@ -477,3 +482,6 @@ mod tests {
 #[cfg(test)]
 #[path = "uploads_contract_tests.rs"]
 mod contract_tests;
+
+#[path = "uploads_file_names.rs"]
+mod file_names;

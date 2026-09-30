@@ -30,12 +30,20 @@ pub(super) const SCHEMA: &[(&str, &str)] = &[
     ),
 ];
 
+/// Jobs one learner may retain in one course by default.
+const LEARNER_JOBS: u32 = 100;
+
+/// `max_jobs` is store-wide across tenants and counts terminal jobs until
+/// `purge_terminal` (at least 24 hours later), so it bounds submissions per
+/// rolling day. One learner may retain at most 100 jobs per course, or
+/// `max_jobs` when lower, so a single learner cannot fill it.
 #[derive(Debug, Clone)]
 pub struct StoreConfig {
     pub(super) namespace: Reference,
     pub(super) max_jobs: u32,
     pub(super) max_exercises: u32,
     pub(super) profile: ExecutionProfile,
+    pub(super) learner_jobs: u32,
 }
 impl StoreConfig {
     pub fn new(
@@ -52,17 +60,44 @@ impl StoreConfig {
             max_jobs,
             max_exercises,
             profile,
+            learner_jobs: LEARNER_JOBS.min(max_jobs),
         })
     }
+    /// Jobs one learner may retain in one course, from 1 to `max_jobs`
+    /// (v13). The default is 100, or `max_jobs` when lower. Every opener
+    /// must supply the same value.
+    pub fn learner_jobs(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || maximum > self.max_jobs {
+            return Err(Error::Configuration);
+        }
+        self.learner_jobs = maximum;
+        Ok(self)
+    }
     pub(super) fn binding(&self, key: &ContentKey) -> Result<String, Error> {
-        serde_json::to_string(&(
+        let base = (
             crate::PROTOCOL_VERSION,
             &self.namespace,
             self.max_jobs,
             self.max_exercises,
             &self.profile,
             key.binding(),
-        ))
+        );
+        // Only an explicit learner quota extends the binding, so stores that
+        // were initialized before it existed keep opening unchanged.
+        if self.learner_jobs == LEARNER_JOBS.min(self.max_jobs) {
+            serde_json::to_string(&base)
+        } else {
+            let (protocol, namespace, jobs, exercises, profile, key) = base;
+            serde_json::to_string(&(
+                protocol,
+                namespace,
+                jobs,
+                exercises,
+                profile,
+                key,
+                self.learner_jobs,
+            ))
+        }
         .map_err(|_| Error::Configuration)
     }
 }
@@ -166,7 +201,9 @@ impl<C: Clock> SqliteLabs<C> {
         })
     }
     async fn validate(&self) -> Result<(), Error> {
-        let rows:Vec<(String,String)>=sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,4097) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 6").fetch_all(&self.pool).await.map_err(storage)?;
+        // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
+        // also skip user objects such as a trigger named `sqliteXhook`.
+        let rows:Vec<(String,String)>=sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,4097) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 6").fetch_all(&self.pool).await.map_err(storage)?;
         if rows.len() != SCHEMA.len()
             || SCHEMA
                 .iter()

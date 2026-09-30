@@ -66,14 +66,31 @@ impl<S: ConsentStore> ConsentGate<S> {
         clock: &impl ConsentClock,
     ) -> Result<(ConsentRecord, i64), ConsentError> {
         self.production_state()?;
-        let now = clock.now()?;
-        if now < 0 {
-            return Err(ConsentError::ClockRollback);
-        }
-        let record = self.store.read(subject, purpose.id(), now).await?;
+        let (record, now) = self.read_at(subject, purpose, clock.now()?, clock).await?;
         record.validate_scope(subject, purpose, now)?;
         let completed = self.completed(now, clock)?;
         Ok((record, completed))
+    }
+
+    /// Serialized store read at `now`, repeated at a fresh time after losing
+    /// the lock race described in [`later_time`].
+    async fn read_at(
+        &self,
+        subject: &ConsentSubject,
+        purpose: &ConsentPurpose,
+        mut now: i64,
+        clock: &impl ConsentClock,
+    ) -> Result<(ConsentRecord, i64), ConsentError> {
+        let mut retries = 0;
+        loop {
+            if now < 0 {
+                return Err(ConsentError::ClockRollback);
+            }
+            match self.store.read(subject, purpose.id(), now).await {
+                Ok(record) => return Ok((record, now)),
+                Err(error) => now = later_time(error, now, &mut retries, clock)?,
+            }
+        }
     }
 
     pub async fn allows(
@@ -96,7 +113,7 @@ impl<S: ConsentStore> ConsentGate<S> {
             // Persist an expiry observed after a delayed read, so a later clock
             // rollback cannot revive this expired grant. This is already a denial;
             // concurrent fresh consent requires a new processing check.
-            self.store.read(subject, purpose.id(), completed).await?;
+            self.read_at(subject, purpose, completed, clock).await?;
             return Ok(false);
         }
         Ok(record.choice() == ConsentChoice::Granted
@@ -186,10 +203,18 @@ impl<S: ConsentStore> ConsentGate<S> {
         clock: &impl ConsentClock,
     ) -> Result<ConsentRecord, ConsentError> {
         self.production_state()?;
-        if update.now < 0 || !state::valid_expiry(update.choice, update.now, update.valid_until) {
-            return Err(ConsentError::InvalidConfiguration);
-        }
-        let record = self.store.update(&update).await?;
+        let mut update = update;
+        let mut retries = 0;
+        let record = loop {
+            if update.now < 0 || !state::valid_expiry(update.choice, update.now, update.valid_until)
+            {
+                return Err(ConsentError::InvalidConfiguration);
+            }
+            match self.store.update(&update).await {
+                Ok(record) => break record,
+                Err(error) => update.now = later_time(error, update.now, &mut retries, clock)?,
+            }
+        };
         record.validate_scope(&update.subject, &update.purpose, update.now)?;
         // A trusted adapter still must return the exact acknowledged operation.
         if record.choice() != update.choice
@@ -205,8 +230,7 @@ impl<S: ConsentStore> ConsentGate<S> {
         }
         let completed = self.completed(update.now, clock)?;
         if record.choice() == ConsentChoice::Granted && completed >= record.valid_until() {
-            self.store
-                .read(&update.subject, update.purpose.id(), completed)
+            self.read_at(&update.subject, &update.purpose, completed, clock)
                 .await?;
             return Err(ConsentError::InvalidConfiguration);
         }
@@ -228,4 +252,33 @@ impl<S: ConsentStore> ConsentGate<S> {
         }
         Ok(completed)
     }
+}
+
+/// Extra attempts after a store rejects a sampled time as a rollback.
+const CLOCK_RACE_RETRIES: u8 = 2;
+
+/// Returns the time for one more serialized attempt, or the original error.
+///
+/// Each request samples the one-second trusted clock before it waits for the
+/// store's serialized lock. A request can therefore lose that wait to one that
+/// sampled the next second, and the store's high-water check then reports a
+/// rollback although no clock moved backwards. Only when the trusted clock has
+/// advanced past the rejected sample is the operation repeated with the fresh
+/// value; a clock that has not advanced keeps failing closed, and the strict
+/// high-water check still applies to every attempt.
+fn later_time(
+    error: ConsentError,
+    rejected: i64,
+    retries: &mut u8,
+    clock: &impl ConsentClock,
+) -> Result<i64, ConsentError> {
+    if error != ConsentError::ClockRollback || *retries >= CLOCK_RACE_RETRIES {
+        return Err(error);
+    }
+    let fresh = clock.now()?;
+    if fresh <= rejected {
+        return Err(error);
+    }
+    *retries += 1;
+    Ok(fresh)
 }

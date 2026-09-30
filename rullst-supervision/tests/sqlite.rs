@@ -89,5 +89,7 @@ mod isolation;
 mod observations;
 #[path = "sqlite_cases/parental.rs"]
 mod parental;
+#[path = "sqlite_cases/retention.rs"]
+mod retention;
 #[path = "sqlite_cases/storage.rs"]
 mod storage;

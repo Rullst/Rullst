@@ -146,3 +146,130 @@ async fn clock_changes_across_storage_fail_without_acknowledging_or_reviving_exp
         Err(ConsentError::ClockRollback)
     );
 }
+
+/// A request that sampled `stale` just before a second boundary and then waited
+/// for the store's lock; the trusted clock reads `current` afterwards.
+struct SampledBeforeLockWait {
+    stale: i64,
+    current: i64,
+    sampled: AtomicBool,
+}
+impl SampledBeforeLockWait {
+    fn new(stale: i64, current: i64) -> Self {
+        Self {
+            stale,
+            current,
+            sampled: AtomicBool::new(false),
+        }
+    }
+}
+impl ConsentClock for SampledBeforeLockWait {
+    fn now(&self) -> Result<i64, ConsentError> {
+        Ok(if self.sampled.swap(true, Ordering::SeqCst) {
+            self.current
+        } else {
+            self.stale
+        })
+    }
+}
+
+#[tokio::test]
+async fn losing_the_lock_to_a_later_second_is_not_a_clock_rollback() {
+    let shared = store();
+    let gate = ConsentGate::for_development(shared.clone());
+    let other = ConsentSubject::new("other", "school-1").unwrap();
+    // Another request sampled 1001 and committed its observation first.
+    gate.current_with_clock(&other, &purpose(), &Clock::at(1001))
+        .await
+        .unwrap();
+    let granted = gate
+        .choose_with_clock(
+            &subject(),
+            &purpose(),
+            &submission(0, ConsentChoice::Granted),
+            2000,
+            &SampledBeforeLockWait::new(1000, 1001),
+        )
+        .await
+        .unwrap();
+    assert_eq!(granted.changed_at(), 1001);
+    gate.current_with_clock(&other, &purpose(), &Clock::at(1002))
+        .await
+        .unwrap();
+    assert!(
+        gate.allows_with_clock(
+            &subject(),
+            &purpose(),
+            &SampledBeforeLockWait::new(1001, 1002)
+        )
+        .await
+        .unwrap()
+    );
+    gate.current_with_clock(&other, &purpose(), &Clock::at(1003))
+        .await
+        .unwrap();
+    let withdrawn = gate
+        .withdraw_with_clock(
+            &subject(),
+            &purpose(),
+            &SampledBeforeLockWait::new(1002, 1003),
+        )
+        .await
+        .unwrap();
+    assert_eq!(withdrawn.choice(), ConsentChoice::Withdrawn);
+    assert_eq!(withdrawn.changed_at(), 1003);
+    // A clock that has not advanced past the high-water mark still fails closed.
+    assert_eq!(
+        gate.current_with_clock(&subject(), &purpose(), &Clock::at(1002))
+            .await,
+        Err(ConsentError::ClockRollback)
+    );
+    assert_eq!(
+        gate.withdraw_with_clock(
+            &subject(),
+            &purpose(),
+            &SampledBeforeLockWait::new(1001, 1002)
+        )
+        .await,
+        Err(ConsentError::ClockRollback)
+    );
+}
+
+struct AlwaysBehind(AtomicI64);
+impl ConsentStore for AlwaysBehind {
+    fn durability(&self) -> ConsentDurability {
+        ConsentDurability::SharedDurable
+    }
+    async fn read(
+        &self,
+        _: &ConsentSubject,
+        _: &str,
+        _: i64,
+    ) -> Result<ConsentRecord, ConsentError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Err(ConsentError::ClockRollback)
+    }
+    async fn update(&self, _: &ConsentUpdate) -> Result<ConsentRecord, ConsentError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Err(ConsentError::ClockRollback)
+    }
+}
+
+#[tokio::test]
+async fn clock_race_retries_are_bounded() {
+    let attempts = Arc::new(AlwaysBehind(AtomicI64::new(0)));
+    let gate = ConsentGate::new(attempts.clone()).unwrap();
+    let advancing = SteppingClock(AtomicI64::new(1000));
+    assert_eq!(
+        gate.allows_with_clock(&subject(), &purpose(), &advancing)
+            .await,
+        Err(ConsentError::ClockRollback)
+    );
+    assert_eq!(attempts.0.load(Ordering::SeqCst), 3);
+    assert_eq!(
+        gate.withdraw_with_clock(&subject(), &purpose(), &advancing)
+            .await,
+        Err(ConsentError::ClockRollback)
+    );
+    assert_eq!(attempts.0.load(Ordering::SeqCst), 6);
+}

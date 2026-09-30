@@ -182,6 +182,9 @@ impl<S: ReplayStore> AgeVerifier<S> {
     }
 }
 
+/// Extra claim attempts after a store rejects a sampled time as a rollback.
+const CLOCK_RACE_RETRIES: u8 = 2;
+
 pub(super) async fn finish_assessment<S: ReplayStore>(
     store: &S,
     development: bool,
@@ -195,10 +198,32 @@ pub(super) async fn finish_assessment<S: ReplayStore>(
     if !development && store.durability() != ReplayDurability::SharedDurable {
         return Err(AgeError::DurableReplayRequired);
     }
-    if !store
-        .claim(challenge.0.nonce, challenge.expires_at(), now)
-        .await?
-    {
+    let mut now = now;
+    let mut retries = 0;
+    let claimed = loop {
+        match store
+            .claim(challenge.0.nonce, challenge.expires_at(), now)
+            .await
+        {
+            // The sample was taken before the store's serialized lock wait, so
+            // a request that sampled the next second can commit first. The
+            // rejected claim consumed nothing; repeat it only at a fresh time
+            // that has advanced, keeping the strict high-water check.
+            Err(AgeError::ClockRollback) if retries < CLOCK_RACE_RETRIES => {
+                let fresh = clock.now()?;
+                if fresh <= now {
+                    return Err(AgeError::ClockRollback);
+                }
+                if fresh >= challenge.expires_at() {
+                    return Err(AgeError::Expired);
+                }
+                now = fresh;
+                retries += 1;
+            }
+            result => break result?,
+        }
+    };
+    if !claimed {
         return Err(AgeError::Replay);
     }
     // The nonce stays consumed even when time or the final check fails.

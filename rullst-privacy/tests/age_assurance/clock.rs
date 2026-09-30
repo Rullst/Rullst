@@ -128,3 +128,61 @@ async fn default_verification_uses_server_time_and_memory_rejects_clock_rollback
         );
     }
 }
+
+/// Samples `stale` first, as a request that waited for the store's lock after
+/// reading its time just before a second boundary, then `current`.
+struct SampledBeforeLockWait {
+    stale: i64,
+    current: i64,
+    sampled: std::sync::atomic::AtomicBool,
+}
+
+impl AgeClock for SampledBeforeLockWait {
+    fn now(&self) -> Result<i64, AgeError> {
+        Ok(if self.sampled.swap(true, Ordering::SeqCst) {
+            self.current
+        } else {
+            self.stale
+        })
+    }
+}
+
+#[tokio::test]
+async fn a_claim_that_loses_the_lock_to_a_later_second_is_retried_at_fresh_time() {
+    let store = Arc::new(MemoryReplayStore::new(10).unwrap());
+    // Another verifier sampled 1002 and committed its claim first.
+    assert!(store.claim([9; 32], 1100, 1002).await.unwrap());
+    let verifier = AgeVerifier::for_development(issuer(), store.clone());
+    let late = SampledBeforeLockWait {
+        stale: 1001,
+        current: 1002,
+        sampled: Default::default(),
+    };
+    let challenge = challenge(AgeMethod::VerifiedAttribute);
+    assert_eq!(
+        assess(&verifier, &challenge, &late)
+            .await
+            .unwrap()
+            .decision(),
+        AgeDecision::Allowed
+    );
+    assert_eq!(
+        assess(&verifier, &challenge, &FixedClock(1002)).await,
+        Err(AgeError::Replay)
+    );
+    // Without an advancing clock the rollback check still fails closed, and
+    // the rejected proof was not consumed.
+    let other =
+        AgeChallenge::issue(&policy(), binding(), AgeMethod::VerifiedAttribute, 1000).unwrap();
+    assert_eq!(
+        assess(&verifier, &other, &FixedClock(1001)).await,
+        Err(AgeError::ClockRollback)
+    );
+    assert_eq!(
+        assess(&verifier, &other, &FixedClock(1002))
+            .await
+            .unwrap()
+            .decision(),
+        AgeDecision::Allowed
+    );
+}

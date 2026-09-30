@@ -14,6 +14,13 @@ impl<C: Clock> SqliteLabs<C> {
     /// Authenticated runner statement. Signature validation is against the pinned
     /// controller public key, never a key from the submitted receipt. Must not be
     /// wired to an unauthenticated application route.
+    ///
+    /// A correctly signed receipt is still `LabError::Protocol` unless
+    /// `started_at` is at or after the claim time recorded by the store,
+    /// `finished_at` is not after the store's current time and `finished_at`
+    /// is before the lease expiry. Every output, including
+    /// `Rejected(WorkerLost)`, is final here; use `abandon_attempt` and
+    /// `reconcile_cleanup` for lost workers.
     pub async fn complete(
         &self,
         scope: &Scope,
@@ -72,7 +79,7 @@ impl<C: Clock> SqliteLabs<C> {
                 if result.evidence() == &evidence && !matches!(evidence, ResultEvidence::Simulation)
                 {
                     tx.commit().await?;
-                    return Ok(record.view);
+                    return self.public_view(record.view);
                 }
                 return Err(Error::Conflict);
             }
@@ -119,7 +126,7 @@ impl<C: Clock> SqliteLabs<C> {
             record.next(tx.now)?;
             self.save_job(&mut tx, &record, None, revision).await?;
             tx.commit().await?;
-            Ok(record.view)
+            self.public_view(record.view)
         })
         .await
     }

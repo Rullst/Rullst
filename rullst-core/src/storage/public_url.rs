@@ -9,9 +9,34 @@ use std::fmt::Write;
 /// `?`, `%`, space or non-ASCII byte therefore stays part of the object key
 /// instead of starting a fragment or query or being re-decoded.
 pub(super) fn encode_key_path(key: &str) -> String {
-    let mut encoded = String::with_capacity(key.len());
-    for byte in key.bytes() {
-        if byte == b'/' || byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~')
+    encode(key, true)
+}
+
+/// Unsigned S3 object URL for an already encoded key path, following the
+/// endpoint rules `CloudClient` uses: `cn-*` regions live in the
+/// `amazonaws.com.cn` partition, and a bucket name containing `.` is addressed
+/// path-style because the `*.s3.<region>.amazonaws.com` wildcard certificate
+/// does not cover a multi-label virtual host.
+pub(super) fn s3_object_url(bucket: &str, region: &str, path: &str) -> String {
+    let suffix = if region.starts_with("cn-") {
+        "amazonaws.com.cn"
+    } else {
+        "amazonaws.com"
+    };
+    if bucket.contains('.') {
+        let bucket = encode(bucket, false);
+        format!("https://s3.{region}.{suffix}/{bucket}/{path}")
+    } else {
+        format!("https://{bucket}.s3.{region}.{suffix}/{path}")
+    }
+}
+
+fn encode(value: &str, keep_separators: bool) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if (keep_separators && byte == b'/')
+            || byte.is_ascii_alphanumeric()
+            || matches!(byte, b'-' | b'.' | b'_' | b'~')
         {
             encoded.push(char::from(byte));
         } else {
@@ -55,6 +80,31 @@ mod tests {
         assert_eq!(
             r2.url("reports/ação?.pdf").unwrap(),
             "https://account.r2.cloudflarestorage.com/assets/reports/a%C3%A7%C3%A3o%3F.pdf"
+        );
+    }
+
+    #[test]
+    fn s3_urls_follow_the_partition_and_dotted_bucket_endpoint_rules() {
+        assert_eq!(
+            Storage::s3("assets", "cn-north-1").url("a.png").unwrap(),
+            "https://assets.s3.cn-north-1.amazonaws.com.cn/a.png"
+        );
+        // A dotted virtual host fails the provider's wildcard certificate.
+        assert_eq!(
+            Storage::s3("assets.example.com", "us-east-1")
+                .url("a b.png")
+                .unwrap(),
+            "https://s3.us-east-1.amazonaws.com/assets.example.com/a%20b.png"
+        );
+        assert_eq!(
+            Storage::s3("assets.example.com", "cn-northwest-1")
+                .url("a.png")
+                .unwrap(),
+            "https://s3.cn-northwest-1.amazonaws.com.cn/assets.example.com/a.png"
+        );
+        assert_eq!(
+            Storage::s3("assets", "eu-west-1").url("a.png").unwrap(),
+            "https://assets.s3.eu-west-1.amazonaws.com/a.png"
         );
     }
 
