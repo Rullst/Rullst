@@ -254,12 +254,27 @@ async fn quotas_duplicates_and_configuration_drift_fail_closed() {
 async fn memory_and_existing_symlink_targets_are_rejected() {
     use std::os::unix::fs::symlink;
 
-    assert!(matches!(
-        SqlitePasskeyStore::connect("sqlite::memory:", 4, 2).await,
-        Err(PasskeyStoreError::InvalidConfiguration(
-            "database must be file-backed"
-        ))
-    ));
+    let file_backed = database_url(&temporary_database("volatile"));
+    for url in [
+        "sqlite::memory:".to_string(),
+        "sqlite::memory:?cache=shared".to_string(),
+        "sqlite://:memory:?cache=private".to_string(),
+        "sqlite:file:registry%3Fmode%3Dmemory".to_string(),
+        "sqlite:file::memory:".to_string(),
+        format!("{file_backed}?vfs=memdb"),
+        format!("{file_backed}?immutable=1"),
+        format!("{file_backed}?mode=memory"),
+    ] {
+        assert!(
+            matches!(
+                SqlitePasskeyStore::connect(url.as_str(), 4, 2).await,
+                Err(PasskeyStoreError::InvalidConfiguration(
+                    "database must be file-backed"
+                ))
+            ),
+            "accepted volatile URL {url}"
+        );
+    }
     let target = temporary_database("target");
     let link = temporary_database("link");
     std::fs::File::create(&target).expect("create target");
