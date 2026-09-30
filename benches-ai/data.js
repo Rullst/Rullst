@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790725513764,
+  "lastUpdate": 1790728178659,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10785,6 +10785,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 263,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2918d6c117aae0103e8650bd6afde5cca2efc073",
+          "message": "Merge pull request #331 from Rullst/fix/v13-core-runtime-fixes\n\nfix(core): artisan database resolution, atomic local puts, memoize keys, S3 path signing",
+          "timestamp": "2026-09-29T21:04:49-03:00",
+          "tree_id": "122ec91f08c8b95dd1082417bcea1104cb8469eb",
+          "url": "https://github.com/Rullst/Rullst/commit/2918d6c117aae0103e8650bd6afde5cca2efc073"
+        },
+        "date": 1790728178088,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1646,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 372,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 402,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
