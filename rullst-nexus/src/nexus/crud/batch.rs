@@ -127,8 +127,12 @@ fn build_batch_sql(
         )),
         "deactivate" => deactivation_field(entry).map(|field| {
             let field = sanitize_identifier(field);
+            // PostgreSQL has no assignment cast from `boolean` to the INTEGER
+            // columns `Blueprint::boolean` creates; an untyped '0' literal is
+            // accepted by INTEGER and BOOLEAN columns alike.
+            let inactive = if driver == "postgres" { "'0'" } else { "FALSE" };
             format!(
-                "UPDATE {table} SET {field} = FALSE WHERE {primary_key} IN ({placeholders}){tenant_predicate}"
+                "UPDATE {table} SET {field} = {inactive} WHERE {primary_key} IN ({placeholders}){tenant_predicate}"
             )
         }),
         _ => None,
@@ -309,6 +313,10 @@ mod tests {
         assert_eq!(
             build_batch_sql(&active, "deactivate", 1, "mysql", false).as_deref(),
             Some("UPDATE users SET is_active = FALSE WHERE id IN (?)")
+        );
+        assert_eq!(
+            build_batch_sql(&active, "deactivate", 2, "postgres", false).as_deref(),
+            Some("UPDATE users SET is_active = '0' WHERE id IN ($1,$2)")
         );
 
         for protected in [
