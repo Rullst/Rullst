@@ -220,6 +220,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+A new chain starts at sequence 1 from the genesis predecessor. After a
+restart, continue the persisted trail with `AuditChain::try_resume(secret,
+logger, &tip)` (unpublished v13), where `tip` is the newest persisted record
+and must verify with the key; otherwise `verify_sequence` rejects the retained
+trail. One writer must own each persisted chain.
+
 ### 5. TOTP Enrollment QR
 
 ```rust

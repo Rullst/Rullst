@@ -83,6 +83,42 @@ impl AuditChain {
         Self::new_inner(secret_key, logger)
     }
 
+    /// Continues a persisted chain after its newest durable record.
+    ///
+    /// Every constructor otherwise starts at sequence 1 from the genesis
+    /// predecessor, so a restarted writer would begin a second chain that
+    /// [`AuditChain::verify_sequence`] rejects over the retained trail. Load
+    /// `tip`, the record with the highest `sequence_id`, from the persisted
+    /// trail on startup: its HMAC must verify with `secret_key`, and the next
+    /// record continues at `tip.sequence_id + 1` with `tip.hash` as its
+    /// predecessor.
+    ///
+    /// One writer must own a persisted chain. Two processes that resume from
+    /// the same tip fork it, and verification of the merged trail fails. The
+    /// tip is only as trustworthy as the store it came from: deleting the
+    /// newest records before a restart is not detected without an external
+    /// checkpoint of the last sequence and hash. Unpublished v13 API.
+    pub fn try_resume(
+        secret_key: &[u8],
+        logger: Arc<dyn AuditLogger>,
+        tip: &AuditRecord,
+    ) -> Result<Self, SecurityError> {
+        validate_secret_key(secret_key)?;
+        if tip.sequence_id == 0 || !Self::verify_record(secret_key, tip) {
+            return Err(SecurityError::AuditChainError(
+                "audit chain tip does not verify with this key".to_string(),
+            ));
+        }
+        let chain = Self::new_inner(secret_key, logger);
+        Ok(Self {
+            state: Arc::new(Mutex::new(AuditState {
+                last_hash: tip.hash.clone(),
+                sequence: tip.sequence_id,
+            })),
+            ..chain
+        })
+    }
+
     fn new_inner(secret_key: &[u8], logger: Arc<dyn AuditLogger>) -> Self {
         Self {
             secret_key: Zeroizing::new(secret_key.to_vec()),
@@ -333,6 +369,58 @@ mod tests {
             .expect("second log succeeds");
         assert_eq!(first_durable.sequence_id, 1);
         assert_eq!(first_durable.previous_hash, GENESIS_HASH);
+    }
+
+    #[tokio::test]
+    async fn a_resumed_chain_continues_the_persisted_trail() {
+        let secret = b"audit-key-material-with-32-plus-bytes";
+        let logger: Arc<dyn AuditLogger> = Arc::new(StdoutAuditLogger);
+        let first_run = AuditChain::try_new(secret, logger.clone()).expect("strong audit key");
+        let mut trail = Vec::new();
+        for action in ["create", "publish"] {
+            trail.push(
+                first_run
+                    .record_event("actor", action, "course:1", "{}")
+                    .await
+                    .expect("durable record"),
+            );
+        }
+
+        // A restarted writer resumes from the newest persisted record.
+        let tip = trail.last().expect("tip").clone();
+        let resumed = AuditChain::try_resume(secret, logger.clone(), &tip).expect("valid tip");
+        let next = resumed
+            .record_event("actor", "archive", "course:1", "{}")
+            .await
+            .expect("durable record");
+        assert_eq!(next.sequence_id, 3);
+        assert_eq!(next.previous_hash, tip.hash);
+        trail.push(next);
+        assert!(AuditChain::verify_sequence(secret, &trail));
+
+        // A fresh chain after a restart restarts at genesis and breaks the trail.
+        let restarted = AuditChain::try_new(secret, logger.clone()).expect("strong audit key");
+        let mut broken = trail.clone();
+        broken.push(
+            restarted
+                .record_event("actor", "archive", "course:1", "{}")
+                .await
+                .expect("durable record"),
+        );
+        assert!(!AuditChain::verify_sequence(secret, &broken));
+
+        let mut forged = tip.clone();
+        forged.sequence_id = 99;
+        assert!(AuditChain::try_resume(secret, logger.clone(), &forged).is_err());
+        assert!(
+            AuditChain::try_resume(
+                b"another-audit-key-with-32-plus-bytes",
+                logger.clone(),
+                &tip
+            )
+            .is_err()
+        );
+        assert!(AuditChain::try_resume(b"weak", logger, &tip).is_err());
     }
 
     #[tokio::test]

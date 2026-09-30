@@ -238,6 +238,12 @@ Audit records use an unambiguous canonical representation and a non-empty HMAC
 key. Verification must cover the ordered sequence, not just isolated records. A
 valid chain is tamper-evident; it cannot stop an attacker who can delete every
 record or steal the key. Store the log and key in separate protected systems.
+A new `AuditChain` starts at sequence 1 from the genesis predecessor, so a
+restarted writer must continue its persisted trail with the unpublished v13
+`AuditChain::try_resume`, passing the newest persisted record; that record's
+HMAC must verify. Exactly one writer may own a persisted chain, and deleting
+the newest records before a restart is detected only against an external
+checkpoint of the last sequence and hash.
 
 ## Supply-chain and compliance evidence
 
