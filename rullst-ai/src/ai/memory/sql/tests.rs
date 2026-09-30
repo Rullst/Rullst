@@ -109,6 +109,18 @@ async fn conversation_continues_after_retention_removed_every_message() {
 }
 
 #[tokio::test]
+async fn in_memory_sqlite_keeps_its_only_connection() {
+    let memory = SqlChatMemory::connect("sqlite::memory:", ChatMemoryConfig::default())
+        .await
+        .expect("SQLite memory");
+    let options = memory.pool().options();
+    assert_eq!(options.get_max_connections(), 1);
+    assert_eq!(options.get_min_connections(), 1);
+    assert_eq!(options.get_idle_timeout(), None);
+    assert_eq!(options.get_max_lifetime(), None);
+}
+
+#[tokio::test]
 async fn unsupported_database_urls_fail_before_network_io() {
     assert!(matches!(
         SqlChatMemory::connect("https://database.invalid", ChatMemoryConfig::default()).await,

@@ -183,7 +183,9 @@ reordering history or automatically repeating a billable provider call.
 Tenant and conversation IDs are case-sensitive on every backend: MySQL and
 MariaDB tables declare both key columns `CHARACTER SET ascii COLLATE ascii_bin`,
 and every tenant-scoped MySQL/MariaDB statement also compares the key
-byte-exactly.
+byte-exactly. An in-memory SQLite URL (`sqlite::memory:` or `mode=memory`)
+keeps one pooled connection for the pool's lifetime, because a replacement
+connection would open an empty database; its history is still lost on restart.
 
 ```rust,no_run
 # use rullst_ai::{AiClient, ChatMemoryConfig, ConversationId, SqlChatMemory, StatefulChat, providers::openai::OpenAiProvider};
