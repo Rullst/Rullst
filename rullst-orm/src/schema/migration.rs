@@ -357,30 +357,26 @@ async fn rollback_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), 
         rollback_map.insert(m.name().to_string(), m);
     }
 
-    let mut rolled_back = Vec::with_capacity(to_rollback.len());
+    let forget_sql = if driver == "postgres" {
+        "DELETE FROM migrations WHERE migration = $1"
+    } else {
+        "DELETE FROM migrations WHERE migration = ?"
+    };
     for (name,) in to_rollback {
         if let Some(m) = rollback_map.get(&name) {
             println!("Rolling back: {}", name);
             m.down().await?;
+            // Forget each migration as soon as its down() succeeds, so a later
+            // failing down() leaves only the migrations that were not reverted
+            // recorded as applied; the next rollback resumes from there.
+            sqlx::query(forget_sql).bind(&name).execute(pool).await?;
             println!("Rolled back:  {}", name);
-            rolled_back.push(name);
         } else {
             println!(
                 "Warning: migration {} found in database but not in compiled binary.",
                 name
             );
         }
-    }
-
-    if !rolled_back.is_empty() {
-        let mut query_builder =
-            sqlx::query_builder::QueryBuilder::new("DELETE FROM migrations WHERE migration IN (");
-        let mut separated = query_builder.separated(", ");
-        for name in rolled_back {
-            separated.push_bind(name);
-        }
-        separated.push_unseparated(")");
-        query_builder.build().execute(pool).await?;
     }
 
     Ok(())

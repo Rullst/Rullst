@@ -73,6 +73,12 @@ environment), then `[database].url` in `Rullst.toml`. If none is set, the
 command fails instead of creating a new SQLite file, and a database that cannot
 be initialized also fails the command with exit status 1.
 
+Each migration's tracking row is removed as soon as its `down()` succeeds. If a
+later `down()` fails, the rollback stops with that error: the migrations it
+already reverted are no longer recorded as applied, while the failed migration
+and the rest of the batch stay recorded. Fix the cause and run `db:rollback`
+again to continue from that point.
+
 ---
 
 ## Step 3: Define and register a seeder
