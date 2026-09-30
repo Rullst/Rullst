@@ -320,6 +320,93 @@ async fn basic_auth_requires_verified_tls() {
     assert_eq!(response.status(), StatusCode::UPGRADE_REQUIRED);
 }
 
+fn known_client_pair(response: &Response) -> String {
+    response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .find(|value| value.starts_with("rullst_nexus_known_client="))
+        .and_then(|value| value.split(';').next())
+        .expect("successful Basic Auth issues the known-client cookie")
+        .to_owned()
+}
+
+#[tokio::test]
+async fn credential_less_challenges_never_count_as_failures() {
+    let secret = dynamic_test_secret();
+    let credentials =
+        NexusBasicAuth::new("ops", &secret).expect("test credentials should be valid");
+    let app = protected_test_router(credentials);
+
+    // Browsers, probes and attackers behind one proxy address all send the
+    // bare challenge request; none of them may lock the shared peer.
+    for _ in 0..NEXUS_BASIC_AUTH_MAX_FAILURES * 3 {
+        let mut request = test_request("Basic x", true);
+        request.headers_mut().remove(header::AUTHORIZATION);
+        let response = app.clone().oneshot(request).await.expect("router response");
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert!(response.headers().contains_key(header::WWW_AUTHENTICATE));
+
+        let bearer = test_request("Bearer token", true);
+        let response = app.clone().oneshot(bearer).await.expect("router response");
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    let valid = test_request(&basic_header("ops", &secret), true);
+    let response = app.oneshot(valid).await.expect("router response");
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn known_client_keeps_access_while_a_shared_peer_is_locked() {
+    let secret = dynamic_test_secret();
+    let wrong = dynamic_wrong_secret();
+    let credentials =
+        NexusBasicAuth::new("ops", &secret).expect("test credentials should be valid");
+    let app = protected_test_router(credentials);
+
+    // The administrator authenticated earlier through the shared proxy peer.
+    let first = test_request(&basic_header("ops", &secret), true);
+    let response = app.clone().oneshot(first).await.expect("router response");
+    assert_eq!(response.status(), StatusCode::OK);
+    let known_client = known_client_pair(&response);
+
+    // An unauthenticated client behind the same peer locks it.
+    for _ in 0..NEXUS_BASIC_AUTH_MAX_FAILURES {
+        let request = test_request(&basic_header("ops", &wrong), true);
+        app.clone().oneshot(request).await.expect("router response");
+    }
+    let unknown = test_request(&basic_header("ops", &secret), true);
+    let response = app.clone().oneshot(unknown).await.expect("router response");
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+
+    let mut returning = test_request(&basic_header("ops", &secret), true);
+    returning.headers_mut().insert(
+        header::COOKIE,
+        HeaderValue::from_str(&known_client).expect("cookie header"),
+    );
+    let response = app
+        .clone()
+        .oneshot(returning)
+        .await
+        .expect("router response");
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        !response.headers().contains_key(header::SET_COOKIE),
+        "a known client is not re-issued the cookie"
+    );
+
+    // A known client may retype a password: it is re-challenged, not locked.
+    let mut mistyped = test_request(&basic_header("ops", &wrong), true);
+    mistyped.headers_mut().insert(
+        header::COOKIE,
+        HeaderValue::from_str(&known_client).expect("cookie header"),
+    );
+    let response = app.oneshot(mistyped).await.expect("router response");
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
 #[tokio::test]
 async fn basic_auth_locks_peer_after_bounded_failures() {
     let secret = dynamic_test_secret();
@@ -347,6 +434,8 @@ async fn basic_auth_locks_peer_after_bounded_failures() {
     assert_eq!(locking_response.status(), StatusCode::TOO_MANY_REQUESTS);
     assert!(locking_response.headers().contains_key(header::RETRY_AFTER));
 
+    // Without the known-client cookie a locked peer gets no credential
+    // evaluation, so a correct guess is indistinguishable from a wrong one.
     let valid_request = test_request(&basic_header("ops", &secret), true);
     let locked_response = app.oneshot(valid_request).await.expect("router response");
     assert_eq!(locked_response.status(), StatusCode::TOO_MANY_REQUESTS);

@@ -78,7 +78,17 @@ failed-attempt telemetry and external immutable delivery.
 
 Nexus is fail-closed: `try_build()` returns an error until an explicit access policy is selected.
 The built-in Basic Auth policy rejects weak/example credentials, compares both credential fields in
-constant time, limits failures by verified socket peer, and locks peers after repeated failures.
+constant time, and counts failed credentials per client bucket: one IPv4 address or one IPv6 /64
+taken from the verified socket peer. Five failures within five minutes lock the bucket for fifteen
+minutes. A request without a Basic `Authorization` header only receives the `401` challenge and is
+never counted.
+
+While a bucket is locked, credentials from an unknown client are not evaluated (`429`), so the
+lockout cannot be used to test passwords. After a successful login Nexus sets an `HttpOnly`,
+`Secure` cookie (`rullst_nexus_known_client`, random per process). A browser that presents it keeps
+having its credentials checked during a lockout, so an attacker sharing its address cannot lock that
+administrator out. The value changes on restart, and a first login during an active lockout still
+waits for the lockout to expire.
 
 Basic credentials are only encoding, not encryption. The middleware therefore accepts them only on
 an HTTPS request or when trusted deployment middleware inserts `NexusVerifiedTls`. This marker is a
@@ -116,6 +126,13 @@ at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, whic
 guard requires so a forged forwarding header cannot choose the rate-limit identity.
 The Basic Auth guard also requires `NexusVerifiedTls` from trusted transport
 integration; an `https` request URI or a forwarding header alone never proves TLS.
+
+Behind a reverse proxy, the socket peer is the proxy, so every client shares one failure bucket:
+anyone can lock it, and only browsers holding the known-client cookie keep access. To give each
+client its own bucket, the same trusted middleware that inserts `NexusVerifiedTls` may replace
+`ConnectInfo<SocketAddr>` with the client address it took from the proxy's forwarding header, and
+only when the socket peer is that proxy. Never derive it from a header an arbitrary client can
+set.
 
 For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
