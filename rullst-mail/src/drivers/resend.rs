@@ -106,7 +106,7 @@ impl ResendDriver {
             let mut headers_obj = serde_json::json!({
                 "List-Unsubscribe": unsub
             });
-            if message.unsubscribe_url.is_some() {
+            if message.has_one_click_unsubscribe() {
                 headers_obj["List-Unsubscribe-Post"] =
                     serde_json::json!("List-Unsubscribe=One-Click");
             }

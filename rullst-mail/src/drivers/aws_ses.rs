@@ -262,7 +262,7 @@ fn proxy_payload(message: &Message) -> serde_json::Value {
     let mut headers = Vec::new();
     if let Some(unsubscribe) = message.list_unsubscribe_header() {
         headers.push(serde_json::json!({"Name": "List-Unsubscribe", "Value": unsubscribe}));
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             headers.push(serde_json::json!({
                 "Name": "List-Unsubscribe-Post",
                 "Value": "List-Unsubscribe=One-Click"

@@ -192,3 +192,17 @@ fn plain_text_fallback_decodes_each_reference_once() {
     let message = Message::new().html(format!("<p>{}</p>", escape_html("Men's shirt & tie")));
     assert_eq!(message.body_text.as_deref(), Some("Men's shirt & tie"));
 }
+
+#[test]
+fn one_click_unsubscribe_requires_https() {
+    let message = |url: &str| Message::new().unsubscribe_url(url);
+    assert!(message("https://example.com/unsub").has_one_click_unsubscribe());
+    assert!(message("HTTPS://example.com/unsub").has_one_click_unsubscribe());
+    assert!(!message("http://example.com/unsub").has_one_click_unsubscribe());
+    assert!(
+        !Message::new()
+            .unsubscribe_email("u@example.com")
+            .has_one_click_unsubscribe()
+    );
+    assert!(!Message::new().has_one_click_unsubscribe());
+}

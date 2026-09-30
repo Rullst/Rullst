@@ -172,7 +172,7 @@ fn payload(message: &Message) -> Result<Vec<u8>, MailError> {
     }
     if let Some(header) = message.list_unsubscribe_header() {
         value["headers"] = json!({"List-Unsubscribe":header});
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             value["headers"]["List-Unsubscribe-Post"] = json!("List-Unsubscribe=One-Click");
         }
     }

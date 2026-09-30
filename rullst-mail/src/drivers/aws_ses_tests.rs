@@ -338,3 +338,31 @@ fn native_constructors_require_regions_and_non_empty_credentials() {
     assert_eq!(driver.delivery_mode(), DeliveryMode::Real);
     assert!(format!("{driver:?}").contains("native_sigv4"));
 }
+
+#[test]
+fn one_click_post_header_is_limited_to_https_unsubscribe_urls() {
+    let payload = |url: &str| {
+        proxy_payload(
+            &Message::new()
+                .to("recipient@example.com")
+                .from("sender@example.com")
+                .unsubscribe_url(url),
+        )
+    };
+    let names = |payload: serde_json::Value| -> Vec<String> {
+        payload["Content"]["Simple"]["Headers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|header| header["Name"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(
+        names(payload("https://example.com/unsub")),
+        ["List-Unsubscribe", "List-Unsubscribe-Post"]
+    );
+    assert_eq!(
+        names(payload("http://example.com/unsub")),
+        ["List-Unsubscribe"]
+    );
+}

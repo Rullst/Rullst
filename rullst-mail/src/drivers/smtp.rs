@@ -187,7 +187,7 @@ fn build_smtp_message(message: &Message) -> Result<lettre::Message, MailError> {
             header,
             unsubscribe,
         ));
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             let header =
                 lettre::message::header::HeaderName::new_from_ascii_str("List-Unsubscribe-Post");
             builder = builder.raw_header(lettre::message::header::HeaderValue::new(

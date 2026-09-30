@@ -105,7 +105,7 @@ fn build_content(message: &Message) -> Result<EmailContent, MailError> {
 
     if let Some(unsubscribe) = message.list_unsubscribe_header() {
         simple = simple.headers(header("List-Unsubscribe", unsubscribe)?);
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             simple = simple.headers(header(
                 "List-Unsubscribe-Post",
                 "List-Unsubscribe=One-Click".to_string(),

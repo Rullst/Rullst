@@ -74,7 +74,7 @@ impl MailDriver for PostmarkDriver {
                 "Name": "List-Unsubscribe",
                 "Value": unsub
             }));
-            if message.unsubscribe_url.is_some() {
+            if message.has_one_click_unsubscribe() {
                 headers_vec.push(serde_json::json!({
                     "Name": "List-Unsubscribe-Post",
                     "Value": "List-Unsubscribe=One-Click"
