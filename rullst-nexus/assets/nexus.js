@@ -174,6 +174,14 @@
         if (event.detail?.target?.id === "nexus-modal-body") openModal();
     });
 
+    // htmx does not swap 4xx/5xx responses, so report them instead of leaving
+    // the page unchanged (for example the edit form of a missing record).
+    document.addEventListener("htmx:responseError", event => {
+        const xhr = event.detail?.xhr;
+        const text = String(xhr?.responseText || "").trim().slice(0, 200);
+        toast("Request failed: " + (text || String(xhr?.status || "")), "danger");
+    });
+
     document.addEventListener("htmx:afterRequest", event => {
         const source = event.detail?.elt;
         if (!(source instanceof HTMLFormElement) || !source.matches(".nexus-chat-form")) return;

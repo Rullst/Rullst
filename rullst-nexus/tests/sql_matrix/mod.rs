@@ -270,8 +270,8 @@ async fn tenant_scope_is_exact(app: &axum::Router, pool: &RullstPool, driver: &s
             .await
             .expect("foreign product id");
     let uri = format!("/table/nexus_matrix_products/{foreign}");
-    let (_, form) = send(app, "GET", &format!("{uri}/edit"), "").await;
-    assert!(!form.contains("value=\"2\""), "{driver}: {form}");
+    let (status, form) = send(app, "GET", &format!("{uri}/edit"), "").await;
+    assert_eq!(status, StatusCode::NOT_FOUND, "{driver}: {form}");
     assert_eq!(
         send(app, "PUT", &uri, "price=99").await.0,
         StatusCode::NOT_FOUND

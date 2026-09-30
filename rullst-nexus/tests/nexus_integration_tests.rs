@@ -118,11 +118,9 @@ async fn test_nexus_dashboard_and_views() {
         "/chat",
         "/table/users",
         "/table/users/new",
-        "/table/users/1/edit",
         "/table/users/search?q=alice",
         "/table/complex_records",
         "/table/complex_records/new",
-        "/table/complex_records/1/edit",
     ];
 
     for route in routes {
@@ -139,6 +137,15 @@ async fn test_nexus_dashboard_and_views() {
             res.status()
         );
     }
+
+    // No `complex_records` table exists (with or without a pool): the edit
+    // form reports the failure instead of rendering an empty editable form.
+    let req = local_request()
+        .uri("/table/complex_records/1/edit")
+        .body(Body::empty())
+        .expect("valid request");
+    let res = app.clone().oneshot(req).await.expect("handler executed");
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]

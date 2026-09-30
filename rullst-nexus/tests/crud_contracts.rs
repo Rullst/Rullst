@@ -170,6 +170,17 @@ async fn numeric_keys_are_canonical_in_sql_and_audit(app: &axum::Router, pool: &
         mutate(app, "DELETE", "/table/nexus_counters/1000", "").await,
         StatusCode::OK
     );
+    // The edit form of a missing or misspelled key is a 404, not an empty
+    // editable form (NX2-05).
+    for key in ["999", "+1", "01"] {
+        let (status, body) = get(app, &format!("/table/nexus_counters/{key}/edit")).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{key}: {body}");
+        assert!(!body.contains("<form"));
+    }
+    let (status, form) = get(app, "/table/nexus_counters/1/edit").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(form.contains("value=\"first\""), "{form}");
+
     assert_eq!(
         audited_keys("nexus_counters", "update").await,
         [Some("1".to_owned())]

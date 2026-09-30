@@ -35,6 +35,10 @@ applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
 change.
 
+Opening the edit form of a missing, other-tenant or misspelled key returns
+`404` (and a failed query `500`) instead of an empty editable form. The form
+reads only the registered visible, non-password columns.
+
 Form values are bound as text. PostgreSQL has no assignment cast from text,
 so there Nexus writes `number` values through `NUMERIC`, relation values that
 are canonical integers (or empty) through `BIGINT`, and Booleans as untyped

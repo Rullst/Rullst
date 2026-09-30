@@ -120,9 +120,37 @@ async fn forms_declare_their_mode_for_change_only_submission() {
     };
     let create = render_record_form(&state, &entry, None, None).await;
     assert!(create.contains("data-nexus-mode=\"create\""));
-    let edit = render_record_form(&state, &entry, Some("7"), None).await;
+    let edit = form_html(&entry, Some("7"), None);
     assert!(edit.contains("data-nexus-mode=\"edit\""));
     assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/7\""));
+}
+
+#[tokio::test]
+async fn unloadable_records_render_an_error_instead_of_an_empty_edit_form() {
+    let entry = RegistryEntry {
+        table: "articles",
+        label: "Articles",
+        icon: "A",
+        pk: "id",
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+        ],
+    };
+    let state = NexusState {
+        registry: std::sync::Arc::new(vec![entry.clone()]),
+        brand: std::sync::Arc::new("Nexus".to_owned()),
+        audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
+    };
+    // A non-canonical numeric key names no record, before any query runs.
+    assert_eq!(
+        record_form(&state, &entry, Some("+7"), None).await,
+        Err(RecordFormError::NotFound)
+    );
+    let html = render_record_form(&state, &entry, Some("+7"), None).await;
+    assert_eq!(html, "<p class=\"nexus-error\">Record not found.</p>");
+    assert!(!html.contains("<form"));
 }
 
 #[test]

@@ -6,7 +6,10 @@
 //! `data-nexus-mode="edit"` so `nexus.js` submits only the controls the
 //! administrator changed.
 
-use crate::nexus::crud::dialect::{RecordKey, tenant_predicate};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+
+use crate::nexus::crud::dialect::{RecordKey, placeholder, tenant_predicate};
 use crate::nexus::crud::input::{datetime_local_value, is_local_date};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -26,13 +29,133 @@ pub(super) enum StoredValue {
     Value(String),
 }
 
+type StoredRow = <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Row;
+
+/// Why an edit form could not be rendered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RecordFormError {
+    /// No record of this model (and tenant) has that key.
+    NotFound,
+    /// The database is not configured or the query failed.
+    Unavailable,
+}
+
+impl RecordFormError {
+    fn message(self) -> &'static str {
+        match self {
+            Self::NotFound => "Record not found.",
+            Self::Unavailable => "The record could not be loaded.",
+        }
+    }
+}
+
+impl IntoResponse for RecordFormError {
+    fn into_response(self) -> Response {
+        let status = match self {
+            Self::NotFound => StatusCode::NOT_FOUND,
+            Self::Unavailable => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        (status, self.message()).into_response()
+    }
+}
+
 /// Renders HTML form for creating or editing records in the modal dialog.
+///
+/// An edit form for a record that does not exist or cannot be loaded renders
+/// a short error message instead of an empty, editable form.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn render_record_form(
+    state: &NexusState,
+    entry: &RegistryEntry,
+    record_id: Option<&str>,
+    tenant_id: Option<&str>,
+) -> String {
+    record_form(state, entry, record_id, tenant_id)
+        .await
+        .unwrap_or_else(|error| {
+            format!(
+                "<p class=\"nexus-error\">{}</p>",
+                escape_str(error.message())
+            )
+        })
+}
+
+/// Loads the columns the edit form shows: registered fields that are neither
+/// hidden nor `Password`, so undeclared columns and stored secrets are never
+/// read.
+async fn load_record(
+    entry: &RegistryEntry,
+    id: &str,
+    tenant_id: Option<&str>,
+) -> Result<StoredRow, RecordFormError> {
+    let key = RecordKey::parse(entry, id).ok_or(RecordFormError::NotFound)?;
+    let pool = rullst_core::db::safe_pool().ok_or(RecordFormError::Unavailable)?;
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    let columns = entry
+        .fields
+        .iter()
+        .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
+        .map(|field| sanitize_identifier(field.name))
+        .collect::<Vec<_>>();
+    let select_list = if columns.is_empty() {
+        sanitize_identifier(entry.pk)
+    } else {
+        columns.join(", ")
+    };
+    let tenant_predicate = match (entry.tenant_column, tenant_id) {
+        (Some(column), Some(_)) => {
+            format!(
+                " AND {}",
+                tenant_predicate(column, &placeholder(2, driver), driver)
+            )
+        }
+        (Some(_), None) => " AND 1 = 0".to_string(),
+        (None, _) => String::new(),
+    };
+    let sql = format!(
+        "SELECT {select_list} FROM {} WHERE {} = {}{tenant_predicate} LIMIT 1",
+        sanitize_identifier(entry.table),
+        sanitize_identifier(entry.pk),
+        placeholder(1, driver),
+    );
+    let mut query = key.bind(rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(
+        sql.as_str(),
+    )));
+    if entry.tenant_column.is_some()
+        && let Some(tenant_id) = tenant_id
+    {
+        query = query.bind(tenant_id.to_owned());
+    }
+    match query.fetch_optional(pool).await {
+        Ok(Some(row)) => Ok(row),
+        Ok(None) => Err(RecordFormError::NotFound),
+        Err(_) => {
+            tracing::error!(table = entry.table, "Nexus record query failed");
+            Err(RecordFormError::Unavailable)
+        }
+    }
+}
+
+/// Renders the create form (`record_id` is `None`) or the edit form for an
+/// existing record.
+pub(crate) async fn record_form(
     _state: &NexusState,
     entry: &RegistryEntry,
     record_id: Option<&str>,
     tenant_id: Option<&str>,
+) -> Result<String, RecordFormError> {
+    let row = match record_id {
+        Some(id) => Some(load_record(entry, id, tenant_id).await?),
+        None => None,
+    };
+    Ok(form_html(entry, record_id, row.as_ref()))
+}
+
+/// Renders the form for `record_id` from its loaded `row`.
+pub(super) fn form_html(
+    entry: &RegistryEntry,
+    record_id: Option<&str>,
+    row_data: Option<&StoredRow>,
 ) -> String {
     let is_edit = record_id.is_some();
     let title = if is_edit {
@@ -45,48 +168,6 @@ pub async fn render_record_form(
     let pk = entry.pk;
 
     use rullst_orm::_sqlx::{Row, ValueRef};
-    let row_data = if let Some(id) = record_id {
-        if let Some(pool) = rullst_core::db::safe_pool() {
-            let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-            let clean_table = sanitize_identifier(t);
-            let clean_pk = sanitize_identifier(pk);
-            let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
-            let tenant_predicate = match (entry.tenant_column, tenant_id) {
-                (Some(column), Some(_)) => {
-                    let placeholder = if driver == "postgres" { "$2" } else { "?" };
-                    format!(" AND {}", tenant_predicate(column, placeholder, driver))
-                }
-                (Some(_), None) => " AND 1 = 0".to_string(),
-                (None, _) => String::new(),
-            };
-            let sql = format!(
-                "SELECT * FROM {} WHERE {} = {}{} LIMIT 1",
-                clean_table, clean_pk, pk_placeholder, tenant_predicate
-            );
-            let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-            // A key that cannot name a record of this model matches nothing.
-            q = match RecordKey::parse(entry, id) {
-                Some(key) => key.bind(q),
-                None => q.bind(Option::<String>::None),
-            };
-            if entry.tenant_column.is_some()
-                && let Some(tenant_id) = tenant_id
-            {
-                q = q.bind(tenant_id);
-            }
-            match q.fetch_optional(pool).await {
-                Ok(row) => row,
-                Err(_) => {
-                    tracing::error!(table = entry.table, "Nexus record query failed");
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    } else {
-        None
-    };
 
     let fields_html =
         entry
@@ -95,7 +176,7 @@ pub async fn render_record_form(
             .filter(|field| !field.hidden)
             .fold(String::new(), |mut acc, f| {
                 let fname = f.name;
-                let stored = match row_data.as_ref() {
+                let stored = match row_data {
                     None => StoredValue::Absent,
                     // The stored secret or hash never reaches the browser.
                     Some(_) if matches!(f.kind, FieldKind::Password) => StoredValue::Absent,
