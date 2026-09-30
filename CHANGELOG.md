@@ -637,6 +637,18 @@ A prepared version section does not establish that its tag or crates exist.
   providers, verified guardianship and automatic global privacy compliance
   remain outside the unpublished package; see the v13 source inventory below.
 
+### Media review fixes
+
+- `rullst-media` playback no longer takes the asset's exclusive 45-second
+  lease: concurrent viewers are served in parallel, and a failed, timed-out or
+  dropped playback request no longer blocks other learners.
+- A create or metadata update that fails for a non-transient reason stops with
+  `Asset::failure` (`OperationFailure`) instead of staying pending forever; the
+  new `MediaService::retry_failed` and `discard_failed` resolve it explicitly.
+- Metadata updates verify the same Bunny `description` meta tag they write, not
+  the separate top-level Description, so a generated or unmirrored description
+  no longer leaves an update permanently uncertain.
+
 ### Private object storage candidate
 
 - Prepare an opt-in `storage-s3` Core/facade adapter for private S3/R2 files,
