@@ -165,6 +165,10 @@ pub async fn fetch_access_token(
 }
 
 /// Helper to exchange a refresh token for new access tokens using standard OAuth2.
+///
+/// The request asks for a JSON response (`Accept: application/json`), which
+/// providers such as GitHub require before they stop answering with a
+/// form-encoded body.
 pub async fn fetch_refresh_token(
     client: &dyn crate::client::HttpClient,
     token_url: &str,
@@ -174,6 +178,7 @@ pub async fn fetch_refresh_token(
 ) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
     let token_res = client
         .post(token_url)
+        .header("Accept", "application/json")
         .form(&[
             ("client_id", client_id),
             ("client_secret", client_secret),
