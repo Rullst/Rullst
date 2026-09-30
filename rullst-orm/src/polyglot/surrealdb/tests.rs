@@ -117,6 +117,8 @@ fn configuration_and_graph_queries_fail_closed() {
 
     let insecure = SurrealConfig::new("http://database.example", "main", "app", SurrealAuth::None);
     assert!(SurrealDbStore::<Event>::connect_or_mock(insecure).is_err());
+    let ipv6_loopback = SurrealConfig::new("http://[::1]:8000", "main", "app", SurrealAuth::None);
+    assert!(SurrealDbStore::<Event>::connect_or_mock(ipv6_loopback).is_ok());
     let invalid_mock =
         SurrealConfig::new("mock_local", "invalid namespace", "app", SurrealAuth::None);
     assert!(SurrealDbStore::<Event>::connect_or_mock(invalid_mock).is_err());

@@ -77,6 +77,12 @@ fn validates_transport_tokens_statements_and_bounds() {
             .validate()
             .is_ok()
     );
+    assert!(
+        TursoConfig::new("http://[::1]:8080", "")
+            .allow_insecure_loopback()
+            .validate()
+            .is_ok()
+    );
     assert!(TursoStatement::new("", vec![]).is_err());
     assert!(TursoStatement::new("SELECT 1", vec![TursoValue::Null; 1_025]).is_err());
     assert!(

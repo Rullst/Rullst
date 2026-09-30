@@ -153,3 +153,17 @@ fn endpoint_policy_and_debug_output_are_fail_closed() {
     assert!(!rendered.contains("private.example.com"));
     assert!(!rendered.contains("top-secret"));
 }
+
+#[test]
+fn bracketed_ipv6_loopback_is_a_local_endpoint() {
+    assert!(
+        QdrantStore::connect_or_mock(QdrantConfig::unauthenticated_local("http://[::1]:6333"))
+            .is_ok()
+    );
+    assert!(
+        QdrantStore::connect_or_mock(QdrantConfig::unauthenticated_local(
+            "http://[2001:db8::1]:6333"
+        ))
+        .is_err()
+    );
+}

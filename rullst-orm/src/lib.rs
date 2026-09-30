@@ -73,6 +73,14 @@ pub mod db;
 mod enum_codecs;
 pub mod error;
 pub mod intent;
+#[cfg(any(
+    feature = "redis",
+    feature = "turso",
+    feature = "scout-http",
+    feature = "qdrant",
+    feature = "surrealdb"
+))]
+mod loopback;
 pub mod outbox;
 pub mod policy;
 pub mod polyglot;

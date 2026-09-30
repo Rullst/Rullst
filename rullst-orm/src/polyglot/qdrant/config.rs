@@ -1,8 +1,9 @@
-use std::{fmt, net::IpAddr};
+use std::fmt;
 
 use reqwest::Url;
 
 use super::super::PolyglotError;
+use crate::loopback::is_loopback_host;
 
 const DEFAULT_RESPONSE_LIMIT: usize = 2 * 1024 * 1024;
 const MIN_RESPONSE_LIMIT: usize = 1024;
@@ -133,13 +134,6 @@ fn validate_api_key(value: &str) -> Result<(), PolyglotError> {
         return Err(invalid("API key must contain 1-2,048 visible ASCII bytes"));
     }
     Ok(())
-}
-
-fn is_loopback_host(host: &str) -> bool {
-    host.eq_ignore_ascii_case("localhost")
-        || host
-            .parse::<IpAddr>()
-            .is_ok_and(|address| address.is_loopback())
 }
 
 fn is_mock_value(value: &str) -> bool {

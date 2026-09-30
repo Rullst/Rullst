@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt, net::IpAddr, path::PathBuf};
+use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 use super::{Backend, BackendCapabilities, Capability, PolyglotError};
 
@@ -209,12 +209,9 @@ impl TursoConfig {
             });
         }
         let secure = matches!(parsed.scheme(), "libsql" | "https");
-        let loopback = parsed.host_str().is_some_and(|host| {
-            host.eq_ignore_ascii_case("localhost")
-                || host
-                    .parse::<IpAddr>()
-                    .is_ok_and(|address| address.is_loopback())
-        });
+        let loopback = parsed
+            .host_str()
+            .is_some_and(crate::loopback::is_loopback_host);
         let permitted_loopback =
             parsed.scheme() == "http" && loopback && self.allow_insecure_loopback;
         if !secure && !permitted_loopback {
