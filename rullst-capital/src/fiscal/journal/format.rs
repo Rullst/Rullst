@@ -49,6 +49,7 @@ pub(super) fn open(
             .map_err(|error| io_failure("initialize", &error))?;
         file.sync_data()
             .map_err(|error| io_failure("initialize sync", &error))?;
+        sync_parent_directory(path)?;
         return Ok((
             JournalFileState {
                 file,
@@ -293,6 +294,30 @@ fn open_file(path: &Path) -> Result<File, FiscalJournalError> {
         .map_err(|error| io_failure("open", &error))
 }
 
+// A new file's directory entry is durable only after its directory is synced;
+// otherwise a crash could drop a journal whose prepared records were acknowledged.
+#[cfg(unix)]
+fn sync_parent_directory(path: &Path) -> Result<(), FiscalJournalError> {
+    File::open(parent_directory(path))
+        .and_then(|directory| directory.sync_all())
+        .map_err(|error| io_failure("directory sync", &error))
+}
+
+// Windows cannot open a directory as a `File` for syncing; NTFS journals the
+// directory entry of a created file.
+#[cfg(not(unix))]
+fn sync_parent_directory(_path: &Path) -> Result<(), FiscalJournalError> {
+    Ok(())
+}
+
+#[cfg(any(unix, test))]
+fn parent_directory(path: &Path) -> &Path {
+    match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    }
+}
+
 fn validate_target(path: &Path) -> Result<(), FiscalJournalError> {
     if path.as_os_str().is_empty() {
         return Err(FiscalJournalError::InvalidPath);
@@ -327,5 +352,23 @@ fn io_failure(operation: &'static str, error: &io::Error) -> FiscalJournalError 
     FiscalJournalError::Io {
         operation,
         kind: error.kind(),
+    }
+}
+
+#[cfg(test)]
+mod directory_tests {
+    use super::parent_directory;
+    use std::path::Path;
+
+    #[test]
+    fn a_bare_file_name_syncs_the_working_directory() {
+        assert_eq!(
+            parent_directory(Path::new("fiscal.journal")),
+            Path::new(".")
+        );
+        assert_eq!(
+            parent_directory(Path::new("/var/lib/app/fiscal.journal")),
+            Path::new("/var/lib/app")
+        );
     }
 }
