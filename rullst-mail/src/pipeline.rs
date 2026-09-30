@@ -235,6 +235,12 @@ fn validate_tenant_id(tenant_id: &str) -> Result<(), MailError> {
             "tenant ID may contain only ASCII letters, digits, '-', '_', '.' and ':'".to_string(),
         ));
     }
+    // As in Core, `.` and `..` are relative path components, not tenant names.
+    if tenant_id.bytes().all(|byte| byte == b'.') {
+        return Err(MailError::ValidationError(
+            "tenant ID must not consist only of dots".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -305,6 +311,11 @@ mod tests {
         );
 
         assert!(DeliveryPipeline::prepare_for_tenant("../acme", &message).is_err());
+        for dots in [".", "..", "..."] {
+            assert!(DeliveryPipeline::prepare_for_tenant(dots, &message).is_err());
+            assert!(DeliveryContext::for_tenant(dots).is_err());
+        }
+        assert!(DeliveryPipeline::prepare_for_tenant("acme.v2", &message).is_ok());
     }
 
     #[test]
