@@ -57,6 +57,11 @@ and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
 capability also rejects DNS-rebinding-style non-local `Host` values,
 cross-origin requests, and unsafe requests without an `Origin` header.
+Responses use `Referrer-Policy: same-origin`, so browsers send the real origin
+on Studio's own form posts. `Origin: null` passes only together with
+`Sec-Fetch-Site: same-origin`, as browsers send it when a host layer imposes
+`no-referrer`; a bare `null` origin or a same-site document on another local
+port is rejected.
 Database, queue, cache and feature-flag writes also require a crate-private
 marker that only this capability installs, so raw subrouters mounted elsewhere
 return `403` for them.

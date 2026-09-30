@@ -53,6 +53,10 @@ The supported v12 mode is a standalone debug server. `run_studio` and
 and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. Non-local
 `Host`, cross-origin requests, and unsafe requests without `Origin` fail closed.
+Studio responses use `Referrer-Policy: same-origin` so that browsers keep the
+real origin on Studio's own form posts. `Origin: null` is accepted only with
+`Sec-Fetch-Site: same-origin` (sent when a host layer imposes `no-referrer`);
+a bare `null` origin or a same-site document on another port is rejected.
 Data-browser writes, queue retry/purge and feature-flag toggles additionally
 require a crate-private marker created only by that verified access middleware,
 so importing the raw browser, `jobs_monitor` or `feature_flags` router cannot

@@ -2818,7 +2818,10 @@ sending.
 * Generated applications start the standalone Studio only in debug builds and
   bind it to loopback. Its local capability verifies the direct loopback peer,
   accepts only a local `Host` authority, requires same-origin `Origin` on unsafe
-  methods, and rejects missing origins on mutations. This is a local
+  methods, and rejects missing origins on mutations. Responses carry
+  `Referrer-Policy: same-origin` so that browser form posts keep the real
+  origin; `Origin: null` is accepted only with `Sec-Fetch-Site: same-origin`,
+  never alone or from a same-site document. This is a local
   DNS-rebinding/CSRF boundary, not production authentication.
 * Queue, revenue, security and telemetry pages report only values supplied by
   their configured process-local source. Unsupported driver operations and
