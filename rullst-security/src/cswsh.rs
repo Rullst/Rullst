@@ -100,6 +100,10 @@ fn normalize_port(scheme: &str, port: Option<u16>) -> Option<u16> {
 /// Middleware that protects WebSocket upgrades against Cross-Site WebSocket Hijacking (CSWSH).
 /// HTTP/2+ CONNECT requests on guarded routes use the same origin policy even
 /// without the HTTP/1-only `Upgrade` header.
+///
+/// Without an explicit [`CswsPolicy`] allowlist, the `Origin` must name the
+/// request's own host and port: the `Host` header or, when it is absent (as in
+/// HTTP/2), the request `:authority`.
 pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
     let is_ws_upgrade = req
         .headers()
@@ -116,10 +120,12 @@ pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
             .get(header::ORIGIN)
             .and_then(|v| v.to_str().ok());
 
-        let host = req
-            .headers()
-            .get(header::HOST)
-            .and_then(|v| v.to_str().ok());
+        // HTTP/2 carries the target host in `:authority`, which hyper exposes
+        // only through the URI; a present `Host` header always takes precedence.
+        let host = match req.headers().get(header::HOST) {
+            Some(value) => value.to_str().ok(),
+            None => req.uri().authority().map(Authority::as_str),
+        };
 
         let policy = req.extensions().get::<CswsPolicy>();
         let valid = match origin.and_then(NormalizedOrigin::parse) {
@@ -189,6 +195,38 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         assert_eq!(app.oneshot(valid).await.unwrap().status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn http2_requests_without_a_host_header_use_the_authority() {
+        let app = Router::new()
+            .route("/ws", axum::routing::any(|| async { "upgraded" }))
+            .layer(middleware::from_fn(cswsh_guard_middleware));
+        let connect = |uri: &str, origin: &str| {
+            HttpRequest::builder()
+                .version(axum::http::Version::HTTP_2)
+                .method(axum::http::Method::CONNECT)
+                .uri(uri)
+                .header(header::ORIGIN, origin)
+                .body(Body::empty())
+                .unwrap()
+        };
+        let same_origin = connect("https://app.example.com/ws", "https://app.example.com");
+        assert_eq!(
+            app.clone().oneshot(same_origin).await.unwrap().status(),
+            StatusCode::OK
+        );
+        let cross_origin = connect("https://app.example.com/ws", "https://attacker.example");
+        assert_eq!(
+            app.clone().oneshot(cross_origin).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+        // Without a Host header or an authority there is nothing to match.
+        let no_authority = connect("/ws", "https://app.example.com");
+        assert_eq!(
+            app.oneshot(no_authority).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
     }
 
     #[tokio::test]
