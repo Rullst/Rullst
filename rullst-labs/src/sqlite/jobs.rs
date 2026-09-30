@@ -5,12 +5,19 @@ use super::{
     transaction::Operation,
 };
 use crate::{
-    Action, Authorization, Clock, ContentHash, LabError as Error, Reference, Scope, Submission,
+    Action, Authorization, Clock, ContentHash, LabError as Error, Permission, Reference, Scope,
+    Submission,
 };
 
 impl<C: Clock> SqliteLabs<C> {
     /// Durable idempotent submission. Only a registered, enabled instructor
     /// revision can supply the grader; scope/learner come from host authorization.
+    ///
+    /// The job expires at the earlier of `ttl_seconds` and the Submit
+    /// permission's expiry. A job must outlive the exercise's wall limit plus
+    /// 5 seconds to be claimed, so a shorter `ttl_seconds` is `InvalidInput` and
+    /// a shorter-lived Submit permission is `Expired`; queueing time still
+    /// counts against that lifetime.
     pub async fn submit<A: Authorization>(
         &self,
         auth: &A,
@@ -30,14 +37,24 @@ impl<C: Clock> SqliteLabs<C> {
             match self.load_job(&mut tx,scope,&submission.id).await {
                 Ok((record,_))=>{
                     if record.view.learner!=*actor || record.request_digest!=request_digest { return Err(Error::Conflict); }
-                    tx.commit().await?;return Ok(record.view);
+                    tx.commit().await?;return self.public_view(record.view);
                 }
                 Err(Error::NotFound)=>(),
                 Err(error)=>return Err(error),
             }
             let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs").fetch_one(&mut *tx.tx).await.map_err(storage)?;
             if count>=i64::from(self.config.max_jobs) { return Err(Error::Capacity); }
+            // Terminal jobs keep their slot until retention purge, so bound what
+            // one learner can hold instead of letting one flood the whole store.
+            let own:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs WHERE tenant=? AND course=? AND learner=?")
+                .bind(scope.tenant.as_str()).bind(scope.course.as_str()).bind(actor.as_str()).fetch_one(&mut *tx.tx).await.map_err(storage)?;
+            if own>=i64::from(self.config.learner_jobs) { return Err(Error::Capacity); }
+            // claim_next expires a job whose remaining lifetime does not exceed
+            // the wall limit plus 5 s, so never queue one that could not run.
+            let needed=i64::from(exercise.limits().wall_seconds())+5;
+            if i64::from(submission.ttl_seconds)<=needed { return Err(Error::InvalidInput); }
             let expires_at=tx.now.checked_add(i64::from(submission.ttl_seconds)).ok_or(Error::Clock)?.min(permission.expires_at());
+            if expires_at.saturating_sub(tx.now)<=needed { return Err(Error::Expired); }
             let record=Record {
                 view:JobView { id:submission.id,scope:scope.clone(),learner:actor.clone(),exercise:submission.exercise,source_digest,exercise_digest,state:JobState::Queued,revision:1,created_at:tx.now,updated_at:tx.now,expires_at,cleanup_pending:false,result:None },
                 request_digest,profile_digest,lease:None,attempts:0,
@@ -50,7 +67,7 @@ impl<C: Clock> SqliteLabs<C> {
             sqlx::query("INSERT INTO labs_jobs (tenant,course,id,learner,state,revision,expires_at,lease_until,body,content) VALUES (?,?,?,?,'Queued',1,?,0,?,?)")
                 .bind(scope.tenant.as_str()).bind(scope.course.as_str()).bind(record.view.id.as_str()).bind(actor.as_str()).bind(expires_at).bind(body).bind(content)
                 .execute(&mut *tx.tx).await.map_err(storage)?;
-            tx.commit().await?;Ok(record.view)
+            tx.commit().await?;self.public_view(record.view)
         }).await
     }
     pub async fn get_job<A: Authorization>(
@@ -69,13 +86,9 @@ impl<C: Clock> SqliteLabs<C> {
             let mut tx = Operation::begin(self, Some(permission.expires_at())).await?;
             let (record, _) = self.load_job(&mut tx, scope, id).await?;
             tx.commit().await?;
-            let action = if record.view.learner == *actor {
-                Action::ReadOwn
-            } else {
-                Action::ManageJobs
-            };
-            self.permit(auth, actor, scope, action).await?;
-            Ok(record.view)
+            self.permit_job(auth, actor, scope, &record, Action::ReadOwn)
+                .await?;
+            self.public_view(record.view)
         })
         .await
     }
@@ -95,13 +108,10 @@ impl<C: Clock> SqliteLabs<C> {
                 .await?;
             let mut tx = Operation::begin(self, Some(permission.expires_at())).await?;
             let (mut record, mut content) = self.load_job(&mut tx, scope, id).await?;
-            let action = if record.view.learner == *actor {
-                Action::CancelOwn
-            } else {
-                Action::ManageJobs
-            };
             tx.commit().await?;
-            let permission = self.permit(auth, actor, scope, action).await?;
+            let permission = self
+                .permit_job(auth, actor, scope, &record, Action::CancelOwn)
+                .await?;
             if revision <= 0 || record.view.revision != revision {
                 return Err(Error::Conflict);
             }
@@ -117,9 +127,38 @@ impl<C: Clock> SqliteLabs<C> {
             self.save_job(&mut tx, &record, content.as_deref(), revision)
                 .await?;
             tx.commit().await?;
-            Ok(record.view)
+            self.public_view(record.view)
         })
         .await
+    }
+    /// Own jobs need `own`; any other learner's job needs `ManageJobs`. Job IDs
+    /// are course-scoped, so a denied request for someone else's job reports
+    /// `NotFound`, exactly like an unused ID, rather than revealing it exists.
+    async fn permit_job<A: Authorization>(
+        &self,
+        auth: &A,
+        actor: &Reference,
+        scope: &Scope,
+        record: &Record,
+        own: Action,
+    ) -> Result<Permission, Error> {
+        if record.view.learner == *actor {
+            return self.permit(auth, actor, scope, own).await;
+        }
+        match self.permit(auth, actor, scope, Action::ManageJobs).await {
+            Err(Error::Denied) => Err(Error::NotFound),
+            result => result,
+        }
+    }
+    /// Status projection returned to callers. The stored record keeps the raw
+    /// `Exercise::digest`, an unkeyed hash over the hidden cases; callers get a
+    /// store-keyed value that still identifies the exact exercise snapshot.
+    pub(super) fn public_view(&self, mut view: JobView) -> Result<JobView, Error> {
+        view.exercise_digest = self.key.keyed_digest(
+            b"rullst-labs.exercise-view.v1",
+            view.exercise_digest.as_str().as_bytes(),
+        )?;
+        Ok(view)
     }
     pub(super) async fn load_job(
         &self,

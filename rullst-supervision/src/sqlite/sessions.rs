@@ -33,11 +33,22 @@ impl<C: Clock> SqliteSupervision<C> {
         {
             return Err(Error::Conflict);
         }
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_sessions")
+        let mut count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_sessions")
             .fetch_one(&mut *op.tx)
             .await
             .map_err(storage)?;
         if count >= op.config.limits.sessions {
+            count -= op.sweep_retired_sessions().await?;
+        }
+        if count >= op.config.limits.sessions {
+            return Err(Error::Capacity);
+        }
+        // Ended sessions keep their slot until retention ends, so bound what
+        // one learner can hold instead of letting start/end loops fill the store.
+        let retained: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND retain_until>?")
+            .bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(op.now)
+            .fetch_one(&mut *op.tx).await.map_err(storage)?;
+        if retained >= op.config.limits.subject_sessions {
             return Err(Error::Capacity);
         }
         let active: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND resource=? AND state IN (1,2) AND expires_at>?")
@@ -248,9 +259,12 @@ impl<C: Clock> Operation<'_, C> {
             .await
     }
 
+    /// Latest session still inside its retention. Sessions may use different
+    /// policy lifetimes, so a newer session can leave retention before an older
+    /// one; only retained rows compete for "latest".
     async fn latest_session(&mut self, scope: &Scope) -> Result<Option<Session>, Error> {
-        let id: Option<String> = sqlx::query_scalar("SELECT substr(id,1,129) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND resource=? ORDER BY revision DESC LIMIT 1")
-            .bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str())
+        let id: Option<String> = sqlx::query_scalar("SELECT substr(id,1,129) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND resource=? AND retain_until>? ORDER BY revision DESC LIMIT 1")
+            .bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str()).bind(self.now)
             .fetch_optional(&mut *self.tx).await.map_err(storage)?;
         let Some(id) = id else {
             return Ok(None);

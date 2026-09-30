@@ -13,6 +13,10 @@ pub enum Action {
     ManageJobs,
 }
 /// Refresh current membership and action permission from the authoritative host.
+///
+/// A `Submit` permission's expiry also bounds the submitted job's lifetime. It
+/// must cover the expected queueing time plus the exercise's wall limit and 5
+/// seconds; `SqliteLabs::submit` refuses a job that could never be claimed.
 pub trait Authorization: Send + Sync {
     fn check(
         &self,

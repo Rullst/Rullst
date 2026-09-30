@@ -131,7 +131,7 @@ impl<C: Clock> SqliteSupervision<C> {
 
     fn config_key(&self) -> String {
         let c = &self.config;
-        format!(
+        let mut key = format!(
             "v2|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             c.epoch.as_str(),
             c.limits.grants,
@@ -142,7 +142,13 @@ impl<C: Clock> SqliteSupervision<C> {
             c.limits.event_interval,
             c.event_retention,
             c.session_lifetime
-        )
+        );
+        // Only an explicit per-learner quota extends the key, so stores that
+        // were initialized before it existed keep opening unchanged.
+        if !c.limits.default_subject_sessions() {
+            key.push_str(&format!("|subject-sessions={}", c.limits.subject_sessions));
+        }
+        key
     }
 
     async fn validate_schema(&self) -> Result<(), Error> {
@@ -151,8 +157,10 @@ impl<C: Clock> SqliteSupervision<C> {
             .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(storage)?;
+        // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
+        // also skip user objects such as a trigger named `sqliteXhook`.
         let records: Vec<(String, String)> =
-            sqlx::query_as("SELECT substr(name,1,129),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 10")
+            sqlx::query_as("SELECT substr(name,1,129),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 10")
                 .fetch_all(&mut *tx)
                 .await
                 .map_err(storage)?;

@@ -1,6 +1,7 @@
 #![cfg_attr(mutants, mutants::skip)]
 extern crate proc_macro;
 
+use memoize::expand_memoize;
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
@@ -8,6 +9,7 @@ use syn::parse_macro_input;
 mod billable_tests;
 mod html_parser;
 mod live_parser;
+mod memoize;
 #[cfg(test)]
 mod memoize_tests;
 #[cfg(test)]
@@ -168,7 +170,8 @@ pub fn live_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
     live_parser::parse_live_component(input).into()
 }
 
-/// Marker attribute for events handled by a Live Component.
+/// Marker attribute for events handled by a Live Component. `#[live_component]`
+/// recognizes it however its path is qualified, e.g. `#[rullst::live_event]`.
 #[proc_macro_attribute]
 pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
@@ -186,89 +189,15 @@ pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// (4,096 entries, 32 MiB, one hour each; oldest evicted first). A call whose
 /// key plus serialized result exceeds 256 KiB, or whose arguments cannot be
 /// serialized to JSON (e.g. a `u128` above `u64::MAX`), runs uncached.
+///
+/// JSON writes NaN and infinite floats as `null`, and `Some(())` or
+/// `Some(None)` as `null` too. A call with such an argument runs uncached
+/// rather than sharing another argument's entry, and such a result is not
+/// cached, so a cached call never returns a changed value.
 #[proc_macro_attribute]
 pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as syn::ItemFn);
     expand_memoize(&input_fn).into()
-}
-
-fn expand_memoize(input_fn: &syn::ItemFn) -> proc_macro2::TokenStream {
-    let vis = &input_fn.vis;
-    let sig = &input_fn.sig;
-    let name = &sig.ident;
-    let body = &input_fn.block;
-    let output_type = match &sig.output {
-        syn::ReturnType::Default => quote::quote!(()),
-        syn::ReturnType::Type(_, ty) => quote::quote!(#ty),
-    };
-
-    // Extract argument names
-    let mut arg_names = Vec::new();
-    let mut arg_types = Vec::new();
-    for arg in &sig.inputs {
-        if let syn::FnArg::Typed(pat_type) = arg
-            && let syn::Pat::Ident(pat_ident) = &*pat_type.pat
-        {
-            arg_names.push(&pat_ident.ident);
-            arg_types.push(&pat_type.ty);
-        }
-    }
-
-    quote::quote! {
-        #vis fn #name(#(#arg_names: #arg_types),*) -> #output_type {
-            // The key combines a per-function identity with the serialized
-            // arguments. `module_path!()` separates modules and crates; the
-            // attribute's location separates same-named associated functions.
-            // Arguments that cannot be represented as JSON (for example a u128
-            // above u64::MAX) run the body uncached instead of panicking.
-            let cache_key = (|| -> ::core::result::Result<serde_json::Value, serde_json::Error> {
-                ::core::result::Result::Ok(serde_json::Value::Array(vec![
-                    #(serde_json::to_value(&#arg_names)?),*
-                ]))
-            })()
-            .ok()
-            .map(|arguments| {
-                format!(
-                    "{}:{}",
-                    concat!(
-                        module_path!(),
-                        "::",
-                        stringify!(#name),
-                        "@",
-                        file!(),
-                        ":",
-                        line!(),
-                        ":",
-                        column!()
-                    ),
-                    arguments
-                )
-            });
-
-            // Check if it exists in the global Rullst memory cache
-            if let Some(cache_key) = &cache_key {
-                if let Some(cached) = rullst::cache::memory::get(cache_key) {
-                    // If it's a String (HTML output), we can downcast or deserialize it.
-                    // For simplicity, we assume String return types.
-                    if let Ok(cached_str) = serde_json::from_str::<#output_type>(&cached) {
-                        return cached_str;
-                    }
-                }
-            }
-
-            // Otherwise, execute the function
-            let result: #output_type = { #body };
-
-            // Store it in the cache
-            if let Some(cache_key) = &cache_key {
-                if let Ok(serialized) = serde_json::to_string(&result) {
-                    rullst::cache::memory::set(cache_key, &serialized);
-                }
-            }
-
-            result
-        }
-    }
 }
 
 /// Legacy compatibility marker that preserves the annotated function unchanged.

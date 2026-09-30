@@ -1,6 +1,6 @@
 use crate::{ContentHash, LabError};
 use ring::{
-    aead,
+    aead, hmac,
     rand::{SecureRandom, SystemRandom},
 };
 use zeroize::Zeroizing;
@@ -20,6 +20,19 @@ impl ContentKey {
     }
     pub(super) fn binding(&self) -> ContentHash {
         ContentHash::of(self.0.as_ref())
+    }
+    /// HMAC-SHA256 of `value` under a subkey derived for `purpose`. Equal
+    /// inputs compare equal within one store, but without the key a guess
+    /// about the input cannot be confirmed offline.
+    pub(super) fn keyed_digest(
+        &self,
+        purpose: &[u8],
+        value: &[u8],
+    ) -> Result<ContentHash, LabError> {
+        let root = hmac::Key::new(hmac::HMAC_SHA256, self.0.as_ref());
+        let subkey = hmac::Key::new(hmac::HMAC_SHA256, hmac::sign(&root, purpose).as_ref());
+        ContentHash::new(hex::encode(hmac::sign(&subkey, value).as_ref()))
+            .map_err(|_| LabError::Integrity)
     }
     fn key(&self) -> Result<aead::LessSafeKey, LabError> {
         let key = aead::UnboundKey::new(&aead::AES_256_GCM, self.0.as_ref())

@@ -1,5 +1,8 @@
-use super::{SqliteSupervision, storage};
+use super::{SqliteSupervision, storage, transaction::Operation};
 use crate::{Clock, Operator, SupervisionError as Error};
+
+/// Rows past retention that one admission removes when a ceiling is reached.
+const SWEEP_BATCH: i64 = 32;
 
 /// Logical row counts only. Deletion does not erase pages, WAL or backups.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,5 +50,25 @@ impl<C: Clock> SqliteSupervision<C> {
             sessions,
             grants,
         })
+    }
+}
+
+impl<C: Clock> Operation<'_, C> {
+    /// Removes a bounded batch of sessions already past retention, in any
+    /// tenant, so logically deleted rows never block a new session. Their
+    /// events expired before `retain_until` and cascade with them.
+    pub(super) async fn sweep_retired_sessions(&mut self) -> Result<i64, Error> {
+        let removed = sqlx::query("DELETE FROM rullst_supervision_sessions WHERE id IN (SELECT id FROM rullst_supervision_sessions WHERE retain_until<=? ORDER BY retain_until,id LIMIT ?)")
+            .bind(self.now).bind(SWEEP_BATCH)
+            .execute(&mut *self.tx).await.map_err(storage)?.rows_affected();
+        i64::try_from(removed).map_err(|_| Error::Configuration)
+    }
+
+    /// Removes a bounded batch of already expired events, which reads exclude.
+    pub(super) async fn sweep_expired_events(&mut self) -> Result<i64, Error> {
+        let removed = sqlx::query("DELETE FROM rullst_supervision_events WHERE rowid IN (SELECT rowid FROM rullst_supervision_events WHERE expires_at<=? ORDER BY expires_at,rowid LIMIT ?)")
+            .bind(self.now).bind(SWEEP_BATCH)
+            .execute(&mut *self.tx).await.map_err(storage)?.rows_affected();
+        i64::try_from(removed).map_err(|_| Error::Configuration)
     }
 }

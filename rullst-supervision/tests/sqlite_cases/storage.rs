@@ -434,3 +434,26 @@ async fn symlink_state_and_non_private_initial_file_are_not_created() {
     ));
     store.close().await;
 }
+
+#[tokio::test]
+async fn user_objects_with_a_sqlite_like_name_fail_the_exact_schema_check() {
+    for object in [
+        "CREATE TRIGGER sqliteXhook AFTER UPDATE ON rullst_supervision_sessions BEGIN SELECT 1; END",
+        "CREATE VIEW sqlite1sessions AS SELECT id FROM rullst_supervision_sessions",
+    ] {
+        let (temp, store, clock) = fixture().await;
+        store.close().await;
+        let path = temp.path().join("supervision.sqlite");
+        let mut connection =
+            SqliteConnection::connect_with(&SqliteConnectOptions::new().filename(&path))
+                .await
+                .unwrap();
+        sqlx::query(object).execute(&mut connection).await.unwrap();
+        connection.close().await.unwrap();
+        // `_` is a LIKE wildcard: only the literal `sqlite_` prefix is exempt.
+        assert!(matches!(
+            SqliteSupervision::open(&path, config(), clock).await,
+            Err(Error::Configuration)
+        ));
+    }
+}

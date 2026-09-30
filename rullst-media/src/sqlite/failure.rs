@@ -1,5 +1,5 @@
 use super::{
-    record::{Asset, Kind, Lifecycle, OperationFailure, Record},
+    record::{Asset, Kind, Lifecycle, OperationFailure, Record, tombstone_digest},
     service::{MediaService, bounded},
     transaction::Operation,
     workflow::Lease,
@@ -101,6 +101,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
                     asset.metadata = Metadata::new("Deleted video", "")?;
                     asset.length_seconds = 0;
                     asset.mp4_720p = false;
+                    record.create_digest = tombstone_digest();
                     record.notifications.clear();
                 }
                 (Kind::Update, OperationFailure::RemoteMissing) => {

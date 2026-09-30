@@ -76,6 +76,10 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
                 Err(Error::NotFound) => {
                     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM media_assets").fetch_one(&mut *tx.tx).await.map_err(storage)?;
                     if count >= i64::from(self.store.config.max_assets) { return Err(Error::Capacity); }
+                    if let Some(limit) = self.store.config.tenant_assets {
+                        let held: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM media_assets WHERE tenant=?").bind(scope.tenant.as_str()).fetch_one(&mut *tx.tx).await.map_err(storage)?;
+                        if held >= i64::from(limit) { return Err(Error::Capacity); }
+                    }
                     let mut record = Record {
                         asset: Asset { id: id.clone(), scope: scope.clone(), owner: actor.clone(), metadata, video: None,
                             lifecycle: Lifecycle::Creating, processing: Processing::AwaitingUpload, published: false, pending: true,

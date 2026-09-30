@@ -18,6 +18,11 @@ impl ExerciseRef {
 
 /// Client submission contains no tenant, actor, expected answers or executable
 /// command. The server supplies authenticated scope and the registered grader.
+///
+/// `id` is an idempotency key shared by the whole course: when another learner
+/// already holds it, `submit` returns `Conflict`. Generate unpredictable random
+/// IDs, never ones derived from learner or exercise names or counters.
+/// `get_job` and `cancel` report another learner's ID as `NotFound`.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(try_from = "SubmissionWire", into = "SubmissionWire")]
 pub struct Submission {

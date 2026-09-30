@@ -363,6 +363,59 @@ async fn issuer_capabilities_and_key_rotation_are_explicit() {
     assert!(issuer().with_key("key-1", [1; 32]).is_err());
 }
 
+#[test]
+fn small_order_and_non_canonical_issuer_keys_are_rejected() {
+    fn encoding(low: u8, fill: u8, high: u8) -> [u8; 32] {
+        let mut bytes = [fill; 32];
+        bytes[0] = low;
+        bytes[31] = high;
+        bytes
+    }
+    let order_eight = [
+        "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+        "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+    ]
+    .map(|hex| {
+        let mut bytes = [0u8; 32];
+        for (index, byte) in bytes.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).unwrap();
+        }
+        bytes
+    });
+    let mut degenerate = vec![
+        [0; 32],
+        encoding(1, 0, 0),          // identity: [h]A vanishes for every message
+        encoding(0xec, 0xff, 0x7f), // y = p - 1, order 2
+        encoding(0xed, 0xff, 0x7f), // y = p, a non-canonical 0
+        encoding(0xee, 0xff, 0x7f), // y = p + 1, a non-canonical 1
+        encoding(0xff, 0xff, 0x7f), // largest non-canonical y
+    ];
+    degenerate.extend(order_eight);
+    for key in degenerate.clone() {
+        let mut negative = key;
+        negative[31] |= 0x80;
+        degenerate.push(negative);
+    }
+    for public_key in degenerate {
+        assert_eq!(
+            TrustedIssuer::new(
+                "evaluated-issuer",
+                "key-1",
+                public_key,
+                [AgeMethod::VerifiedAttribute]
+            )
+            .err(),
+            Some(AgeError::InvalidConfiguration)
+        );
+        assert!(issuer().with_key("key-2", public_key).is_err());
+    }
+    // Ordinary keys, including ones with the x sign bit set, remain accepted.
+    for seed in 2..40 {
+        let public_key: [u8; 32] = key(seed).public_key().as_ref().try_into().unwrap();
+        assert!(issuer().with_key("key-2", public_key).is_ok());
+    }
+}
+
 #[tokio::test]
 async fn invalid_configuration_cannot_create_a_usable_policy() {
     for age in [0, 121, 255] {
