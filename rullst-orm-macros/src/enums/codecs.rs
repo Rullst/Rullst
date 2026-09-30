@@ -12,6 +12,9 @@ pub(super) fn type_codecs(name: &syn::Ident, type_name: &str) -> TokenStream {
     }
     #[cfg(not(feature = "runtime-driver-codecs"))]
     {
+        // Quoted like the schema builder's `CREATE TYPE`, so SQLx resolves a
+        // mixed-case type name case-sensitively.
+        let quoted_type_name = format!("\"{type_name}\"");
         quote! {
         impl rullst_orm::_sqlx::Type<rullst_orm::_sqlx::Sqlite> for #name {
             fn type_info() -> rullst_orm::_sqlx::sqlite::SqliteTypeInfo {
@@ -31,13 +34,13 @@ pub(super) fn type_codecs(name: &syn::Ident, type_name: &str) -> TokenStream {
 
         impl rullst_orm::_sqlx::Type<rullst_orm::_sqlx::Postgres> for #name {
             fn type_info() -> rullst_orm::_sqlx::postgres::PgTypeInfo {
-                rullst_orm::_sqlx::postgres::PgTypeInfo::with_name(#type_name)
+                rullst_orm::_sqlx::postgres::PgTypeInfo::with_name(#quoted_type_name)
             }
         }
 
         impl rullst_orm::_sqlx::postgres::PgHasArrayType for #name {
             fn array_type_info() -> rullst_orm::_sqlx::postgres::PgTypeInfo {
-                rullst_orm::_sqlx::postgres::PgTypeInfo::array_of(#type_name)
+                rullst_orm::_sqlx::postgres::PgTypeInfo::array_of(#quoted_type_name)
             }
         }
         }

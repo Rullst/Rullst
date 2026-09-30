@@ -1,3 +1,4 @@
+use super::migration_lock::MigrationLock;
 use super::validation::validate_table_name;
 use crate::Error;
 
@@ -23,7 +24,7 @@ pub async fn run_artisan_with_args(
         println!("  status                   Show migrations status");
         println!("  db:seed                  Populate the database with seeders");
         println!(
-            "  sail:install             Generate a default docker-compose.yml (Laravel Sail style)"
+            "  sail:install [--force]   Generate a local docker-compose.yml (Laravel Sail style); --force replaces an existing file"
         );
         return Ok(());
     }
@@ -53,54 +54,11 @@ pub async fn run_artisan_with_args(
             println!("Database seeded successfully!");
         }
         "sail:install" => {
-            println!("Generating docker-compose.yml...");
-            let content = r#"version: '3'
-services:
-  postgres:
-    image: postgres:15
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: rullst
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: password
-    volumes:
-      - sail-postgres:/var/lib/postgresql/data
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - sail-redis:/data
-  meilisearch:
-    image: getmeili/meilisearch:latest
-    ports:
-      - "7700:7700"
-    environment:
-      MEILI_MASTER_KEY: sail
-    volumes:
-      - sail-meilisearch:/meili_data
-  pgadmin:
-    image: dpage/pgadmin4
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rullst.com
-      PGADMIN_DEFAULT_PASSWORD: password
-
-volumes:
-  sail-postgres:
-    driver: local
-  sail-redis:
-    driver: local
-  sail-meilisearch:
-    driver: local
-"#;
-            std::fs::write("docker-compose.yml", content).map_err(|e| {
-                crate::Error::Internal(format!("Failed to write docker-compose.yml: {}", e))
-            })?;
+            let force = args.iter().skip(2).any(|argument| argument == "--force");
+            let path = super::sail::install(std::path::Path::new("."), force)?;
             println!(
-                "docker-compose.yml created successfully! Run `docker compose up -d` to start."
+                "{} created successfully! Run `docker compose up -d` to start.",
+                path.display()
             );
         }
         _ => {
@@ -121,10 +79,15 @@ pub async fn run_artisan(
 
 #[cfg_attr(mutants, mutants::skip)]
 async fn migrations_table_exists(pool: &crate::RullstPool, driver: &str) -> Result<bool, Error> {
+    // Only the schema/database that unqualified `migrations` statements use
+    // counts; a same-named table of another application must not.
     match driver {
         "postgres" | "mysql" => {
-            let query_str =
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'migrations'";
+            let query_str = if driver == "postgres" {
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'migrations'"
+            } else {
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migrations'"
+            };
             let row: (i64,) = sqlx::query_as(query_str).fetch_one(pool).await?;
             Ok(row.0 > 0)
         }
@@ -248,30 +211,44 @@ fn regenerate_migrations_mod() -> Result<(), Error> {
     Ok(())
 }
 
+/// Applies pending migrations while holding the database's runner lock, so
+/// concurrent runners (for example replicas starting together) apply each
+/// migration once: the executed set is read only after the lock is held.
 #[cfg_attr(test, mutants::skip)]
 async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
     let pool = crate::Orm::try_pool()?;
     let driver = crate::Orm::try_driver()?;
+    let lock = MigrationLock::acquire(pool, driver).await?;
+    let result = run_pending_migrations(pool, driver, migrations).await;
+    lock.release().await;
+    result
+}
 
+#[cfg_attr(test, mutants::skip)]
+async fn run_pending_migrations(
+    pool: &crate::RullstPool,
+    driver: &str,
+    migrations: Vec<Box<dyn Migration>>,
+) -> Result<(), Error> {
     let query_str = match driver {
         "postgres" => {
             "CREATE TABLE IF NOT EXISTS migrations (
                 id SERIAL PRIMARY KEY,
-                migration VARCHAR(255) NOT NULL,
+                migration VARCHAR(255) NOT NULL UNIQUE,
                 batch INTEGER NOT NULL
             )"
         }
         "mysql" => {
             "CREATE TABLE IF NOT EXISTS migrations (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                migration VARCHAR(255) NOT NULL,
+                migration VARCHAR(255) NOT NULL UNIQUE,
                 batch INT NOT NULL
             )"
         }
         _ => {
             "CREATE TABLE IF NOT EXISTS migrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                migration TEXT NOT NULL,
+                migration TEXT NOT NULL UNIQUE,
                 batch INTEGER NOT NULL
             )"
         }
@@ -318,11 +295,23 @@ async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error
     Ok(())
 }
 
+/// Rolls back the last batch while holding the database's runner lock.
 #[cfg_attr(test, mutants::skip)]
 async fn rollback_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
     let pool = crate::Orm::try_pool()?;
     let driver = crate::Orm::try_driver()?;
+    let lock = MigrationLock::acquire(pool, driver).await?;
+    let result = rollback_last_batch(pool, driver, migrations).await;
+    lock.release().await;
+    result
+}
 
+#[cfg_attr(test, mutants::skip)]
+async fn rollback_last_batch(
+    pool: &crate::RullstPool,
+    driver: &str,
+    migrations: Vec<Box<dyn Migration>>,
+) -> Result<(), Error> {
     let table_exists = migrations_table_exists(pool, driver).await?;
 
     if !table_exists {

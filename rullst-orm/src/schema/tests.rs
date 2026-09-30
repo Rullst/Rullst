@@ -485,17 +485,3 @@ async fn test_run_artisan_entrypoint() {
     let result = run_artisan(vec![], vec![]).await;
     assert!(result.is_ok());
 }
-
-#[tokio::test]
-async fn test_sail_install() {
-    let args = vec!["artisan".to_string(), "sail:install".to_string()];
-    let result = run_artisan_with_args(&args, vec![], vec![]).await;
-    assert!(result.is_ok());
-
-    let content = std::fs::read_to_string("docker-compose.yml").unwrap();
-    assert!(content.contains("postgres:15"));
-    assert!(content.contains("redis:alpine"));
-
-    // Cleanup
-    std::fs::remove_file("docker-compose.yml").unwrap();
-}

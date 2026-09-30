@@ -1,7 +1,8 @@
-use std::{fmt, net::IpAddr};
+use std::fmt;
 
 use url::Url;
 
+use crate::loopback::is_loopback_host;
 use crate::polyglot::PolyglotError;
 
 const MAX_CREDENTIAL_BYTES: usize = 2_048;
@@ -149,13 +150,6 @@ fn validate_credential(value: &str) -> Result<(), PolyglotError> {
         ));
     }
     Ok(())
-}
-
-fn is_loopback_host(host: &str) -> bool {
-    host.eq_ignore_ascii_case("localhost")
-        || host
-            .parse::<IpAddr>()
-            .is_ok_and(|address| address.is_loopback())
 }
 
 fn is_mock_value(value: &str) -> bool {

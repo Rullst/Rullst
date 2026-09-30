@@ -1,8 +1,9 @@
-use std::{fmt, net::IpAddr};
+use std::fmt;
 
 use reqwest::Url;
 
 use super::{DocumentId, PolyglotError};
+use crate::loopback::is_loopback_host;
 
 const DEFAULT_RESPONSE_LIMIT: usize = 1024 * 1024;
 const MIN_RESPONSE_LIMIT: usize = 1024;
@@ -154,13 +155,6 @@ pub(super) fn validate_endpoint(
         endpoint.set_path(&path);
     }
     Ok(endpoint)
-}
-
-fn is_loopback_host(host: &str) -> bool {
-    host.eq_ignore_ascii_case("localhost")
-        || host
-            .parse::<IpAddr>()
-            .is_ok_and(|address| address.is_loopback())
 }
 
 pub(super) fn is_mock_credential(value: &str) -> bool {

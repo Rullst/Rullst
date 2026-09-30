@@ -6,6 +6,7 @@
 
 use super::mutation_parts::{
     deleted_effects, execute_mutation, instance_hook, tenant_guard, tenant_predicate,
+    tenant_scoped_invalidation,
 };
 use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
@@ -349,6 +350,7 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
 fn restored_effects(parsed: &ParsedModel) -> TokenStream {
     let table_name = &parsed.table_name;
     let redis_cfg = crate::feature_gates::redis();
+    let invalidate = tenant_scoped_invalidation();
     let scout_update = if parsed.searchable {
         quote! {
             let event = rullst_orm::ModelCommittedEvent::new(
@@ -378,10 +380,11 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
                 rullst_orm::ModelOperation::Updated,
                 restored.to_json(),
             );
+            let cache_tenant = rullst_orm::get_tenant_id();
             rullst_orm::after_commit(move || async move {
                 use rullst_orm::_redis::AsyncCommands;
                 // A failed invalidation must not suppress the events.
-                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
+                #invalidate
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:updated", event.table);
                     let _: usize = connection.publish(&topic, &event.payload).await?;
