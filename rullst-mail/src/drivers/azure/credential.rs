@@ -75,9 +75,11 @@ impl AzureManagedIdentity {
         )
     }
 
-    /// Restricts the secret identity header to a literal loopback address;
-    /// redirects and proxies are disabled. Remote identity brokers need an
-    /// explicitly implemented `AzureMailCredential` instead.
+    /// Restricts the secret identity header to a literal loopback address or
+    /// the exact name `localhost` (as Container Apps injects), which is pinned
+    /// to the loopback addresses rather than resolved; redirects and proxies
+    /// are disabled. Remote identity brokers need an explicitly implemented
+    /// `AzureMailCredential` instead.
     pub fn new(
         endpoint: impl Into<String>,
         identity_header: impl Into<String>,
@@ -85,11 +87,14 @@ impl AzureManagedIdentity {
     ) -> Result<Self, MailError> {
         let endpoint = reqwest::Url::parse(&endpoint.into()).map_err(|_| config())?;
         let host = endpoint.host_str().ok_or_else(config)?;
-        if endpoint.scheme() != "http"
-            || !host
+        // The URL parser lower-cases registered names, so this is exact.
+        let loopback = host == "localhost"
+            || host
                 .trim_matches(['[', ']'])
                 .parse::<std::net::IpAddr>()
-                .is_ok_and(|ip| ip.is_loopback())
+                .is_ok_and(|ip| ip.is_loopback());
+        if endpoint.scheme() != "http"
+            || !loopback
             || !endpoint.username().is_empty()
             || endpoint.password().is_some()
             || endpoint.query().is_some()
@@ -124,7 +129,7 @@ impl AzureMailCredential for AzureManagedIdentity {
                 .query_pairs_mut()
                 .append_pair("client_id", client_id);
         }
-        let response = super::super::http::client()?
+        let response = super::super::http::loopback_client()?
             .get(endpoint)
             .header("X-IDENTITY-HEADER", self.identity_header.expose_secret())
             .timeout(std::time::Duration::from_secs(3))
