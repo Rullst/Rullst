@@ -68,10 +68,14 @@ overhead.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is
-  required, backend-specific types remain read-only, and anything other than
-  exactly one affected row fails. SQLite, PostgreSQL, MySQL, and MariaDB run
+  required and backend-specific types remain read-only. A table is read-only
+  when a primary-key column falls outside the ASCII identifier boundary or the
+  256-column cap, and rows with a `NULL` key value offer no actions. Each write
+  runs in a transaction that commits only when exactly one row changed; any
+  other count is rolled back and fails (non-transactional engines such as
+  MySQL MyISAM cannot roll back). SQLite, PostgreSQL, MySQL, and MariaDB run
   separate executable contracts. This does not supply application tenant/RBAC,
-  audit history, rollback, or a shared-production database administrator.
+  audit history, undo, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
   routes.

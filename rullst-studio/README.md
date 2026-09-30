@@ -143,10 +143,16 @@ nor exact logical keys.
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types
-remain read-only, a mutation must affect exactly one row, request bodies are
-limited to 64 KiB, and deletion requires typing `DELETE <table>`. This is a
-local developer database tool, not application authorization, tenant policy,
-audit history, rollback, or a supported shared-production admin surface.
+remain read-only, request bodies are limited to 64 KiB, and deletion requires
+typing `DELETE <table>`. A table stays read-only when any primary-key column is
+outside Studio's ASCII identifier boundary or beyond its 256-column cap, and a
+row whose key value is `NULL` offers no actions. Each write runs in a database
+transaction that commits only when exactly one row changed; otherwise it is
+rolled back and reported as `404` (no row) or `409` (several rows). Storage
+engines without transactions, such as MySQL MyISAM, cannot provide that
+rollback. This is a local developer database tool, not application
+authorization, tenant policy, audit history, undo, or a supported
+shared-production admin surface.
 
 ## 📚 Documentation
 
