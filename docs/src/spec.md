@@ -283,6 +283,13 @@ PostgreSQL enum creation, its label drift check and
 active, exactly like the table DDL: they roll back with it, and dropping the
 type after its tables in one transaction cannot block on that transaction's
 own locks from a second pooled connection.
+Generated builder comparisons (`=`, `!=`, `<`, `>`, `IN`, `BETWEEN`, with
+their `or_`/`not_` and `where_<column>` forms) on a persisted field whose type
+implements `DatabaseEnum` bind the value as `CAST(? AS "<type_name>")` under
+the `strict-postgres` runtime, where a text parameter has no operator against
+a named enum; SQLx `Any` (whose PostgreSQL enum fields are text columns) and
+the other backends keep `?`. The live strict PostgreSQL matrix filters such
+columns.
 PostgreSQL through SQLx Any must fail before DDL because that driver cannot
 decode custom PostgreSQL types. Adding, removing or reordering variants,
 deployment order, dependent-object removal and rollback remain explicit,

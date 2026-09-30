@@ -50,6 +50,9 @@ Comment rejection covers `--`, block-comment delimiters, and MySQL's `#`.
 Database enums accept 1–64 unit variants with unique labels of at most 63 bytes
 from the portable ASCII allowlist. PostgreSQL native enums require the
 `strict-postgres` runtime profile; SQLx Any cannot decode its custom types.
+Builder comparisons on a field whose type implements `DatabaseEnum` bind
+`CAST(? AS "<type_name>")` under the strict PostgreSQL runtime; the derive
+detects such fields at compile time through the field type, not its name.
 
 Generated Redis APIs follow the runtime's features, not the application's:
 `rullst-orm` opts this crate into `runtime-feature-gates` and forwards its
