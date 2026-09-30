@@ -2976,7 +2976,8 @@ sending.
   boundary. Reads are bounded: a page loads at most 25 rows, the database cuts
   each cell's text to 256 characters (key columns keep up to 16 KiB so that
   rows remain addressable; a longer key makes the row read-only) and search
-  terms are limited to 256 bytes. Writes require the crate-private proof inserted
+  terms are limited to 256 bytes. Search matches the displayed columns (at most
+  256), and the record count uses the same predicate. Writes require the crate-private proof inserted
   by the verified local middleware, database-inspected table/column/complete-PK
   metadata, a 64 KiB request limit, primitive typed binds and exactly one
   affected row. A primary-key column outside the identifier boundary or the

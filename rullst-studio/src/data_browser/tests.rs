@@ -349,3 +349,63 @@ async fn test_studio_layout_and_telemetry_handlers() {
     let _ = handle_dashboard(htmx_headers).await;
     let _ = handle_dashboard(plain_headers).await;
 }
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// The record count and the page must search the same (capped) columns, so
+// the view never reports matches that no page can show.
+async fn record_counts_use_the_page_search_predicate() {
+    use axum::{
+        extract::{Path, Query},
+        response::IntoResponse,
+    };
+
+    let pool = super::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_wide_search_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    let columns = (1..300)
+        .map(|index| format!("c{index} TEXT"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+        "CREATE TABLE studio_wide_search_probe (id INTEGER PRIMARY KEY, {columns})"
+    ))
+    .build()
+    .execute(pool)
+    .await
+    .unwrap();
+    // Column 280 lies beyond the 256 columns that Studio inspects and shows.
+    sqlx::query("INSERT INTO studio_wide_search_probe (id, c279) VALUES (1, 'needle-marker')")
+        .execute(pool)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        count_table_rows("studio_wide_search_probe", Some("needle-marker"))
+            .await
+            .unwrap(),
+        0
+    );
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert("hx-request", "true".parse().unwrap());
+    let response = super::handlers::handle_table(
+        Path("studio_wide_search_probe".to_string()),
+        Query(TableQuery {
+            page: Some(1),
+            search: Some("needle-marker".to_string()),
+        }),
+        headers,
+    )
+    .await
+    .into_response();
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), 2 * 1024 * 1024)
+        .await
+        .unwrap();
+    let body = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body.contains("of <strong>0</strong> records"));
+    assert!(!body.contains("to <strong>0</strong> of <strong>1</strong>"));
+}

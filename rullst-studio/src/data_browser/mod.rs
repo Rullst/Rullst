@@ -9,6 +9,7 @@ pub mod layout;
 pub(crate) mod limits;
 pub(crate) mod pool;
 pub(crate) mod portable;
+mod search;
 
 #[cfg(test)]
 mod tests;

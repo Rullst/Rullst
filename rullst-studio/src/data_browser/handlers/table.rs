@@ -6,6 +6,7 @@ use super::super::limits::{
     MAX_CELL_BYTES, MAX_DISPLAY_CHARS, MAX_SEARCH_BYTES, bounded_text_expression,
 };
 use super::super::portable::build_for_driver;
+use super::super::search::{count_matching_rows, push_search_predicate};
 use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
@@ -87,27 +88,19 @@ pub async fn handle_table(
     let per_page = 25;
     let offset = (page - 1).saturating_mul(per_page);
 
-    let total_records = match count_table_rows(
-        &clean_table,
-        if search_str.is_empty() {
-            None
-        } else {
-            Some(search_str)
-        },
-    )
-    .await
-    {
-        Ok(total) => total,
-        Err(error) => {
-            return table_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &format!("Could not count table records: {error}"),
-                is_htmx,
-                Some(&clean_table),
-                &tables,
-            );
-        }
-    };
+    let total_records =
+        match count_matching_rows(pool, driver, &clean_table, &schema.columns, search_str).await {
+            Ok(total) => total,
+            Err(error) => {
+                return table_error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Could not count table records: {error}"),
+                    is_htmx,
+                    Some(&clean_table),
+                    &tables,
+                );
+            }
+        };
     let total_pages = total_records.div_ceil(per_page);
 
     if schema.columns.is_empty() {
@@ -153,14 +146,7 @@ pub async fn handle_table(
     let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
         QueryBuilder::new(format!("SELECT {selected_columns} FROM {quoted_table}"));
 
-    if !search_str.is_empty() && !col_names.is_empty() {
-        qb.push(" WHERE ");
-        let mut separated = qb.separated(" OR ");
-        for col in &col_names {
-            separated.push(build_search_clause(driver, col));
-            separated.push_bind_unseparated(format!("%{}%", search_str));
-        }
-    }
+    push_search_predicate(&mut qb, driver, &schema.columns, search_str);
 
     qb.push(" LIMIT ");
     qb.push_bind(per_page as i64);

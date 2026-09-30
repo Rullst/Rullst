@@ -164,7 +164,8 @@ nor exact logical keys.
 Table views load at most 25 rows. The database cuts each cell's text to 256
 characters before Studio renders it; key columns keep up to 16 KiB for row
 actions, and a longer key makes its row read-only. Search terms are limited to
-256 bytes.
+256 bytes and match the displayed columns (at most 256); the record count uses
+the same predicate.
 
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys; on PostgreSQL they cover the `public` schema, which every data

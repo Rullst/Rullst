@@ -8,8 +8,9 @@ pub(crate) use super::identifiers::qualified_table_name;
 pub use super::identifiers::{
     build_search_clause, is_safe_identifier, quote_table_name, sanitize_identifier,
 };
-use super::limits::{MAX_SEARCH_BYTES, display_cell};
+use super::limits::display_cell;
 pub use super::pool::{ensure_pool_initialized, resolve_db_url};
+pub use super::search::count_table_rows;
 
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
@@ -292,6 +293,8 @@ fn row_flag(row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row, column: &
         .unwrap_or(false)
 }
 
+/// Legacy column-name query kept for API compatibility. Studio itself uses
+/// the inspected, column-capped schema from `fetch_table_schema`.
 pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
     match driver {
         "postgres" => format!(
@@ -304,66 +307,6 @@ pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
         ),
         _ => format!("PRAGMA table_info(\"{}\")", clean_table),
     }
-}
-
-/// Counts a table's rows, optionally filtered by a search term of at most
-/// 256 bytes that is bound once per inspected column.
-pub async fn count_table_rows(
-    table: &str,
-    search_query: Option<&str>,
-) -> Result<usize, sqlx::Error> {
-    if search_query.is_some_and(|search| search.len() > MAX_SEARCH_BYTES) {
-        return Err(sqlx::Error::Configuration(
-            "Studio search terms are limited to 256 bytes".into(),
-        ));
-    }
-    let pool = ensure_pool_initialized().await?;
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let clean_table = sanitize_identifier(table);
-    if clean_table != table || !is_safe_identifier(&clean_table) {
-        return Err(sqlx::Error::Configuration(
-            "Studio received an unsupported SQL identifier".into(),
-        ));
-    }
-
-    let quoted_table = qualified_table_name(driver, &clean_table);
-
-    let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
-        QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
-
-    if let Some(search) = search_query
-        && !search.is_empty()
-    {
-        let schema_query = build_schema_query(driver, &clean_table);
-        if let Ok(columns_rows) = QueryBuilder::<rullst_orm::RullstDatabase>::new(schema_query)
-            .build()
-            .fetch_all(pool)
-            .await
-        {
-            let mut col_names = Vec::new();
-            for r in columns_rows {
-                if let Ok(name) = r.try_get::<String, _>("name")
-                    && is_safe_identifier(&name)
-                {
-                    col_names.push(name);
-                }
-            }
-            if !col_names.is_empty() {
-                qb.push(" WHERE ");
-                let mut separated = qb.separated(" OR ");
-                for col in &col_names {
-                    separated.push(build_search_clause(driver, col));
-                    separated.push_bind_unseparated(format!("%{}%", search));
-                }
-            }
-        }
-    }
-
-    let row = super::portable::build_for_driver(&mut qb, driver)?
-        .fetch_one(pool)
-        .await?;
-    let count: i64 = row.try_get(0).unwrap_or(0);
-    Ok(count as usize)
 }
 
 /// Helper to build table headers HTML
