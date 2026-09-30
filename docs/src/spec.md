@@ -1418,7 +1418,10 @@ the same server-authoritative controls.
   request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
   and preserves it after a valid state-changing request. Server-rendered forms
   must echo that value in `_token`; HTMX/JavaScript may instead send it through
-  `X-CSRF-Token`. Nested application and `Server` baseline composition is
+  `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
+  place its `_token` field before any file input: the middleware reads at most
+  the first 64 KiB of that body to find the field, compares it in constant
+  time and then passes the whole body on unchanged. Nested application and `Server` baseline composition is
   request-idempotent: exactly one CSRF layer owns token validation/cookie
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
