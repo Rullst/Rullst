@@ -230,14 +230,12 @@ impl Service<axum::extract::Request> for HotSwapService {
             let handle = tokio::spawn(async move { fut.await });
             match handle.await {
                 Ok(Ok(res)) => {
-                    let status = res.status().as_u16();
-                    let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-                    if !path.starts_with("/_rullst_hmr") {
-                        println!(
-                            "[HTTP] {} {} -> {} ({:.2} ms)",
-                            method, path, status, elapsed
-                        );
-                    }
+                    super::console::log_request(
+                        &method,
+                        &path,
+                        res.status().as_u16(),
+                        start.elapsed().as_secs_f64() * 1000.0,
+                    );
                     Ok(res)
                 }
                 Ok(Err(_)) => Self::handle_oneshot_error(),
