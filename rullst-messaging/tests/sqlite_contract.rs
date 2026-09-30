@@ -233,6 +233,12 @@ async fn durable_adapter_rejects_in_memory_databases() {
         "sqlite://:memory:",
         "sqlite:",
         "sqlite:file::memory:?cache=shared",
+        "sqlite::memory:?cache=shared",
+        "sqlite://:memory:?cache=private",
+        "sqlite::memory:?mode=rwc",
+        "sqlite::memory:?immutable=0",
+        "sqlite:%3Amemory%3A",
+        "sqlite:file:messages.sqlite%3Fmode=memory",
         "sqlite://named?mode=memory",
         "sqlite://named?mode=mem%6fry",
         "postgres://localhost/messages",
@@ -250,6 +256,41 @@ async fn durable_adapter_rejects_in_memory_databases() {
             "unexpected result for {database_url}"
         );
     }
+}
+
+#[tokio::test]
+async fn durable_adapter_rejects_vfs_and_immutable_overrides() {
+    let (path, url) = fixture("vfs-override");
+    for query in [
+        "vfs=memdb",
+        "vfs=unix-none",
+        "immutable=1",
+        "immutable=true",
+    ] {
+        let result = SqliteBroker::connect(format!("{url}?{query}"), config("vfs-contract")).await;
+        assert!(
+            matches!(
+                result,
+                Err(MessagingError::Invalid {
+                    field: "durable SQLite database URL",
+                    reason: "must not select a SQLite VFS or immutable mode",
+                })
+            ),
+            "unexpected result for {query}"
+        );
+    }
+    assert!(
+        !path.exists(),
+        "a rejected URL must not create the database"
+    );
+    let broker = SqliteBroker::connect(
+        format!("{url}?mode=rwc&immutable=0"),
+        config("vfs-contract"),
+    )
+    .await
+    .unwrap();
+    broker.close().await;
+    cleanup(&path);
 }
 
 #[tokio::test]
