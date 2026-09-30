@@ -99,6 +99,28 @@ A prepared version section does not establish that its tag or crates exist.
   keys, dropping refilled buckets and evicting the least recently used ones.
   Clients in one IPv6 /64 now share a limit.
 
+### Core queue and cache hardening
+
+- SQLite and Redis fence lease transitions on the claimed attempt number, so a
+  stale worker can no longer complete, fail or requeue a job that was recovered
+  and claimed again. New `QueueDriver::*_attempt` methods default to the
+  unfenced behaviour for custom drivers.
+- A worker without a handler for a job hands it back with a five-second delay
+  instead of failing it, so mixed handler sets and rolling deploys no longer
+  fail each other's jobs.
+- Workers record a handler's own result when it finishes as a timeout or
+  graceful shutdown is processed; a success is no longer failed as timed out or
+  requeued.
+- `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors;
+  overflow is dropped, counted by the new `dropped_errors()` and logged.
+- The Redis queue retains at most 10,000 failed jobs and 10,000 dead letters by
+  default, evicting the oldest atomically (`RedisDriver::try_with_failure_retention`
+  sets 1 to 100,000). The Redis driver also implements `list_all_jobs` (at most
+  1,000 rows), `retry_failed_job` and `purge_failed_jobs`.
+- `Cache::memory()` no longer panics on a TTL too large for the monotonic clock
+  (such entries never expire), and expiry on read no longer deletes a value
+  written concurrently.
+
 ### Portfolio blueprint escaping
 
 - The generated portfolio page escapes CMS values and renders only `http(s)`
@@ -149,6 +171,34 @@ A prepared version section does not establish that its tag or crates exist.
 - S3/R2 SigV4 request paths percent-encode the bucket and every key segment
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
+
+### Core runtime hardening
+
+- `ValidatedForm` and `ValidatedJson` no longer echo deserializer errors:
+  extraction failures return a fixed message (the detail is logged at `debug`),
+  and every value in the HTMX error fragment is HTML-escaped.
+- `Server` mounts the panic console and `/_rullst/explain` and `/_rullst/autofix`
+  only in debug builds running in Development, and the panic console shows
+  details only to loopback peers.
+- `Server::run` exits with status 1 for `db:*` commands when the application
+  never called `rullst::artisan!`, instead of reporting success against an
+  empty registry.
+- `ws::WebSocket::recv` skips Ping and Pong frames, so client and proxy
+  keepalives no longer end Live sessions.
+- The edge emulator rejects oversized (413) or unreadable (400) bodies instead
+  of passing an empty body, serves `/`, and binds 127.0.0.1 unless `HOST` or
+  `RULLST_HOST` is set.
+- Feature rollout buckets use a versioned, length-prefixed SHA-256 hash that is
+  stable across toolchains; upgrading reassigns buckets once.
+  `TomlFeatureDriver::reload` swaps flags atomically.
+- Server-function failures for rejected envelopes echo the client
+  `request_id`, so `rpc.version_unsupported` and `rpc.request_invalid` reach
+  the caller.
+- `zstd_static_middleware` honours `zstd;q=0`, probes only plain paths under
+  `static/`, and sets `Content-Encoding` only on 2xx and 304 responses.
+- Radar reads Linux RSS from `VmRSS` and scales CPU by the host CPU count.
+- `Debug` for `DatabaseConfig`, `RullstConfig` and `db::ReplicationConfig`
+  redacts database URLs and auth tokens.
 
 ### Omni dependency compatibility maintenance
 

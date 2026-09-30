@@ -7,7 +7,9 @@ silently fall back when Redis is unavailable.
 ## Cache choices
 
 `Cache::memory()` uses a process-local `DashMap`. Values disappear on restart
-and are not shared between replicas:
+and are not shared between replicas. A TTL too large for the monotonic clock
+to represent, such as `u64::MAX`, is stored as "never expires" instead of
+panicking:
 
 ```rust
 use rullst_core::cache::{Cache, CacheError};
@@ -142,7 +144,15 @@ Ok(())
 
 With `queue-redis`, construct `Queue::redis(redis_url)` instead. The Redis
 driver uses atomic Lua transitions for pending, processing, failed, and
-dead-letter state. Like the cache, each driver shares one lazily opened
+dead-letter state. Failed jobs (with their payloads) and dead letters are each
+retained up to 10,000 entries; recording one more evicts the oldest in the same
+script. `RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)`
+accepts 1–100,000 for each (pass the configured driver to `Queue::custom`).
+Failed jobs recorded before this bound was introduced are not indexed, so they
+are neither counted nor evicted, but `purge_failed_jobs` removes them.
+`list_all_jobs` returns at most 1,000 rows, failures and dead letters first;
+`retry_failed_job` moves a failed job back to the pending list with its attempt
+counter intact; `purge_failed_jobs` deletes every failed job and dead letter. Like the cache, each driver shares one lazily opened
 multiplexed connection and reconnects after a failed operation. Production validation must still cover Redis persistence,
 eviction policy, credentials/TLS, failover, monitoring, and worker recovery in
 the target topology.

@@ -61,7 +61,18 @@ pub(crate) enum ArtisanError {
     /// The ORM command itself failed.
     #[error("{0}")]
     Command(String),
+
+    /// `Server::run` intercepted a `db:*` command, but the application never
+    /// supplied its migrations and seeders.
+    #[error(
+        "`{0}` needs the application's migrations and seeders; call `rullst::artisan!(migrations, seeders)` before `Server::run`"
+    )]
+    RegistryMissing(String),
 }
+
+/// Migrations and seeders an intercepted command runs against. `None` means the
+/// command was intercepted by `Server::run`, which has no registry.
+pub(crate) type ArtisanRegistry = Option<(Vec<Box<dyn Migration>>, Vec<Box<dyn Seeder>>)>;
 
 /// Intercepts command line database calls (like `db:migrate` or `studio`) before AXUM web server starts.
 ///
@@ -72,12 +83,16 @@ pub(crate) enum ArtisanError {
 /// SQLite file. When a requested command runs, the process exits with status 0
 /// on success and 1 on any failure, including database initialization.
 /// Without an Artisan command this returns `Ok(())` and has no side effects.
+///
+/// `Server::run` also intercepts these commands, but it has no registry: there
+/// a `db:*` command exits with status 1 and asks for `rullst::artisan!` instead
+/// of reporting success for an empty registry. `studio` still runs.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn check_and_run_artisan(
     migrations: Vec<Box<dyn Migration>>,
     seeders: Vec<Box<dyn Seeder>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    intercept_artisan_command(migrations, seeders, None).await;
+    intercept_artisan_command(Some((migrations, seeders)), None).await;
     Ok(())
 }
 
@@ -86,8 +101,7 @@ pub async fn check_and_run_artisan(
 /// `Server::with_db` value so the server and its commands share one database.
 #[cfg_attr(mutants, mutants::skip)]
 pub(crate) async fn intercept_artisan_command(
-    migrations: Vec<Box<dyn Migration>>,
-    seeders: Vec<Box<dyn Seeder>>,
+    registry: ArtisanRegistry,
     explicit_db_url: Option<&str>,
 ) {
     let args: Vec<String> = env::args().collect();
@@ -99,8 +113,7 @@ pub(crate) async fn intercept_artisan_command(
     let result = run_artisan_command(
         command,
         &translated_args,
-        migrations,
-        seeders,
+        registry,
         explicit_db_url,
         Path::new("."),
         read_optional_environment_variable,
@@ -118,15 +131,20 @@ pub(crate) async fn intercept_artisan_command(
 
 /// Resolves the database for `project_dir`, initializes the ORM pool and runs
 /// one translated Artisan command. `environment` reads process variables.
+/// Without a registry only `studio` runs; `db:*` fails before touching the
+/// database.
 pub(crate) async fn run_artisan_command(
     command: &str,
     translated_args: &[String],
-    migrations: Vec<Box<dyn Migration>>,
-    seeders: Vec<Box<dyn Seeder>>,
+    registry: ArtisanRegistry,
     explicit_db_url: Option<&str>,
     project_dir: &Path,
     environment: impl Fn(&str) -> Result<Option<String>, ServerError>,
 ) -> Result<(), ArtisanError> {
+    if registry.is_none() && command != "studio" {
+        return Err(ArtisanError::RegistryMissing(command.to_string()));
+    }
+
     // Like `Server`, reuse a pool the application initialized explicitly.
     let pool_ready = rullst_orm::Orm::try_pool().is_ok();
     let database_url = if pool_ready {
@@ -157,6 +175,7 @@ pub(crate) async fn run_artisan_command(
         return Ok(());
     }
 
+    let (migrations, seeders) = registry.unwrap_or_default();
     run_artisan_with_args(translated_args, migrations, seeders)
         .await
         .map_err(|error| ArtisanError::Command(error.to_string()))

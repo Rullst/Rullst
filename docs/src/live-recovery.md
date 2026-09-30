@@ -8,7 +8,8 @@ Protocol and Chromium acceptance have passed. Hosted workspace/platform and extr
 The older `LiveComponent`, `Live::mount` and `make:live` example keep their
 per-connection state and HTMX WebSocket protocol. Their `live_ws_handler` now
 limits incoming frames and messages to 64 KiB (previously the 64 MiB transport
-default) but still has no origin check, connection cap or idle timeout. Adopting the recovery API is
+default) and ignores Ping/Pong keepalive frames instead of ending the session,
+but still has no origin check, connection cap or idle timeout. Adopting the recovery API is
 an application change; upgrading a dependency does not migrate those components.
 
 ## Application contract
