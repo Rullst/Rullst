@@ -3,6 +3,9 @@
 use crate::error::MailError;
 use std::collections::HashSet;
 
+mod homograph;
+pub use homograph::is_homograph_domain;
+
 /// Sanitizes all recognized credentials, AWS access keys, and private-key blocks.
 ///
 /// Every pass is one forward scan that builds its output incrementally, so the
@@ -81,34 +84,6 @@ fn redact_pem_blocks(input: &str, label: &str) -> String {
     }
     output.push_str(remaining);
     output
-}
-
-/// Scans a URL string for internationalized domain name (IDN) homograph spoofing attacks.
-///
-/// An IDN homograph attack occurs when an attacker registers a domain using visually identical
-/// glyphs from mixed scripts (e.g. Cyrillic `а` / `U+0430` instead of Latin `a` / `U+0061`
-/// in `pаypal.com`).
-pub fn is_homograph_domain(domain: &str) -> bool {
-    let mut has_latin = false;
-    let mut has_cyrillic = false;
-    let mut has_greek = false;
-
-    for c in domain.chars() {
-        if c == '.' || c == '-' || c.is_ascii_digit() {
-            continue;
-        }
-        if c.is_ascii_alphabetic() {
-            has_latin = true;
-        } else if ('\u{0400}'..='\u{04FF}').contains(&c) {
-            has_cyrillic = true;
-        } else if ('\u{0370}'..='\u{03FF}').contains(&c) {
-            has_greek = true;
-        }
-    }
-
-    // Mixed scripts within the same domain label indicate a classic homograph attack
-    let script_count = (has_latin as u8) + (has_cyrillic as u8) + (has_greek as u8);
-    script_count > 1
 }
 
 /// Checks if a link uses a forbidden or dangerous URI scheme (e.g. `javascript:`, `vbscript:`, `data:text/html`).
@@ -209,17 +184,7 @@ pub fn scan_content_security(content: &str) -> Result<(), MailError> {
             )));
         }
 
-        let domain = url
-            .trim_start_matches("https://")
-            .trim_start_matches("http://")
-            .split('/')
-            .next()
-            .unwrap_or("")
-            .split(':')
-            .next()
-            .unwrap_or("");
-
-        if is_homograph_domain(domain) {
+        if let Some(domain) = homograph::homograph_link_host(&url) {
             return Err(MailError::SendError(format!(
                 "Outbound mail security violation: Homograph domain spoofing attempt detected: '{}' (domain '{}')",
                 url, domain
