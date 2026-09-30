@@ -250,3 +250,33 @@ fn dangerous_hrefs_are_found_however_they_are_written() {
         vec!["https://a.example/x", "/local"]
     );
 }
+
+#[test]
+fn private_key_blocks_are_redacted_whatever_their_label() {
+    for label in [
+        "PRIVATE KEY",
+        "RSA PRIVATE KEY",
+        "OPENSSH PRIVATE KEY",
+        "EC PRIVATE KEY",
+        "DSA PRIVATE KEY",
+        "ENCRYPTED PRIVATE KEY",
+    ] {
+        let body = format!(
+            "before\n-----BEGIN {label}-----\nb3BlbnNzaC1rZXk\n-----END {label}-----\nafter"
+        );
+        let redacted = redact_email_secrets(&body);
+        assert_eq!(redacted, "before\n[REDACTED PRIVATE KEY]\nafter", "{label}");
+    }
+    let unterminated = "x -----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXk";
+    assert_eq!(
+        redact_email_secrets(unterminated),
+        "x [REDACTED PRIVATE KEY]"
+    );
+    for kept in [
+        "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
+        "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----",
+        "-----BEGIN lowercase private KEY-----",
+    ] {
+        assert_eq!(redact_email_secrets(kept), kept);
+    }
+}

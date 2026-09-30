@@ -8,6 +8,11 @@ pub use homograph::is_homograph_domain;
 
 /// Sanitizes all recognized credentials, AWS access keys, and private-key blocks.
 ///
+/// Private-key blocks are recognized by any `-----BEGIN <label>PRIVATE KEY-----`
+/// line (PKCS#8, RSA, EC, DSA, OpenSSH, encrypted and so on) and redacted
+/// through the matching `END` line, or to the end of the input when it is
+/// missing.
+///
 /// Every pass is one forward scan that builds its output incrementally, so the
 /// cost grows linearly with the input instead of with `matches * length`.
 pub fn redact_email_secrets(input: &str) -> String {
@@ -17,7 +22,8 @@ pub fn redact_email_secrets(input: &str) -> String {
     }
     redact_aws_access_keys(&mut output);
     let output = redact_pem_blocks(&output, "PRIVATE KEY");
-    redact_pem_blocks(&output, "RSA PRIVATE KEY")
+    let output = redact_pem_blocks(&output, "RSA PRIVATE KEY");
+    redact_labelled_private_keys(&output)
 }
 
 fn redact_values_after(input: &str, marker: &str, stop_at_ampersand: bool) -> String {
@@ -83,6 +89,47 @@ fn redact_pem_blocks(input: &str, label: &str) -> String {
         remaining = body.get(relative_end + end.len()..).unwrap_or_default();
     }
     output.push_str(remaining);
+    output
+}
+
+/// Longest `<label>PRIVATE KEY` label accepted on a BEGIN line.
+const MAX_PEM_LABEL_BYTES: usize = 64;
+
+/// Redacts private-key blocks with any label ending in `PRIVATE KEY`, such as
+/// `OPENSSH PRIVATE KEY`, `EC PRIVATE KEY` or `ENCRYPTED PRIVATE KEY`.
+fn redact_labelled_private_keys(input: &str) -> String {
+    const BEGIN: &str = "-----BEGIN ";
+    let mut output = String::with_capacity(input.len());
+    let mut copied = 0usize;
+    let mut offset = 0usize;
+    while let Some(relative) = input.get(offset..).and_then(|tail| tail.find(BEGIN)) {
+        let start = offset + relative;
+        let label_start = start + BEGIN.len();
+        let label_len = input.as_bytes()[label_start..]
+            .iter()
+            .take(MAX_PEM_LABEL_BYTES + 1)
+            .take_while(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || **byte == b' ')
+            .count();
+        let label = &input[label_start..label_start + label_len];
+        let line_end = label_start + label_len + "-----".len();
+        if label_len > MAX_PEM_LABEL_BYTES
+            || !label.ends_with("PRIVATE KEY")
+            || input.get(label_start + label_len..line_end) != Some("-----")
+        {
+            offset = label_start;
+            continue;
+        }
+        output.push_str(&input[copied..start]);
+        output.push_str("[REDACTED PRIVATE KEY]");
+        let end = format!("-----END {label}-----");
+        let Some(relative_end) = input[line_end..].find(&end) else {
+            // An unterminated block is redacted through the end of the input.
+            return output;
+        };
+        copied = line_end + relative_end + end.len();
+        offset = copied;
+    }
+    output.push_str(&input[copied..]);
     output
 }
 

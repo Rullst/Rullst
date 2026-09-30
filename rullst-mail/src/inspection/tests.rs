@@ -120,6 +120,20 @@ async fn text_scanning_rejects_unsafe_links_and_invalid_utf8_without_leaking_con
         AttachmentInspectionError::Rejected("unsafe_link_content")
     );
     assert!(!error.to_string().contains("javascript"));
+
+    for label in [
+        "OPENSSH PRIVATE KEY",
+        "EC PRIVATE KEY",
+        "ENCRYPTED PRIVATE KEY",
+    ] {
+        let key = format!("-----BEGIN {label}-----\nb3BlbnNzaC1rZXk\n-----END {label}-----\n");
+        let attachment = Attachment::new("id_ed25519.txt", key.into_bytes(), "text/plain");
+        assert_eq!(
+            inspector.inspect(&attachment).await,
+            Err(AttachmentInspectionError::Rejected("secret_detected")),
+            "{label}"
+        );
+    }
 }
 
 #[tokio::test]

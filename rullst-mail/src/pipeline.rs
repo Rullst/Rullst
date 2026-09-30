@@ -372,6 +372,8 @@ mod tests {
                 "key=a ".repeat(limit / 6),
                 "http://a ".repeat(limit / 9),
                 "-----BEGIN PRIVATE KEY-----x-----END PRIVATE KEY-----".repeat(limit / 53),
+                "-----BEGIN EC PRIVATE KEY-----x-----END EC PRIVATE KEY-----".repeat(limit / 59),
+                "-----BEGIN CERTIFICATE PRIVATE KEY ".repeat(limit / 35),
             ];
             let outcome = bodies.into_iter().all(|body| {
                 let mut message = Message::new().to("bounded@example.com").html(body.clone());
