@@ -1,7 +1,7 @@
 //! Security middlewares and utilities for `rullst-core`.
 //!
 //! Provides CSRF protection, OWASP secure headers, WAF intrusion prevention,
-//! and zero-alloc PII data masking.
+//! zero-alloc PII data masking and explicit trusted-proxy client resolution.
 
 mod baseline;
 mod csrf;
@@ -10,6 +10,7 @@ mod machine;
 mod media_type;
 mod pii;
 mod tenant_guard;
+mod trusted_proxy;
 mod waf;
 
 #[cfg(test)]
@@ -40,4 +41,8 @@ pub use tenant_guard::{
     tenant_guard_middleware,
 };
 pub(crate) use tenant_guard::{tenant_namespaced_name, validate_tenant_id};
+pub use trusted_proxy::{
+    ClientAddr, ForwardedHeader, ForwardedProto, TrustedProxyConfig, TrustedProxyError,
+    TrustedProxyLayer, TrustedProxyService,
+};
 pub use waf::waf_middleware;

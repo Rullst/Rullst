@@ -216,6 +216,20 @@ pub struct SecurityConfig {
     /// webhook middleware authenticates them. Wildcards and route parameters are rejected.
     #[serde(default)]
     pub csrf_signed_webhook_paths: Vec<String>,
+    /// Reverse-proxy addresses or CIDR networks allowed to report the client
+    /// address. Empty (the default) never reads forwarding headers. List only
+    /// the real proxy networks: any host inside them can choose the client
+    /// identity. At most 64 entries; `/0` and host bits are rejected.
+    #[serde(default)]
+    pub trusted_proxies: Vec<String>,
+    /// Forwarding header read from `trusted_proxies`: `x-forwarded-for`
+    /// (default) or the RFC 7239 `forwarded` header. Never both.
+    #[serde(default = "default_trusted_proxy_header")]
+    pub trusted_proxy_header: String,
+    /// Report the scheme received by a trusted proxy (`X-Forwarded-Proto` or
+    /// `Forwarded: proto=`). Enable only when every trusted proxy overwrites it.
+    #[serde(default = "default_false")]
+    pub trust_forwarded_proto: bool,
 }
 
 /// Strict default CSP template. `{NONCE}` is replaced by the secure headers middleware for each
@@ -243,6 +257,10 @@ fn default_user_agent_blocklist() -> Vec<String> {
     ]
 }
 
+fn default_trusted_proxy_header() -> String {
+    "x-forwarded-for".to_string()
+}
+
 fn default_same_site() -> String {
     "Lax".to_string()
 }
@@ -262,12 +280,16 @@ impl Default for SecurityConfig {
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
             csrf_signed_webhook_paths: Vec::new(),
+            trusted_proxies: Vec::new(),
+            trusted_proxy_header: default_trusted_proxy_header(),
+            trust_forwarded_proto: false,
         }
     }
 }
 
 impl SecurityConfig {
-    /// Validates browser security policy and exact-path CSRF webhook exemptions.
+    /// Validates browser security policy, exact-path CSRF webhook exemptions
+    /// and the trusted-proxy settings.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if !matches!(self.csrf_same_site.as_str(), "Lax" | "Strict" | "None") {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
@@ -337,6 +359,9 @@ impl SecurityConfig {
                 )));
             }
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::security::TrustedProxyConfig::from_security_config(self)
+            .map_err(|error| ConfigError::InvalidSecurityConfiguration(error.to_string()))?;
         Ok(())
     }
 }
