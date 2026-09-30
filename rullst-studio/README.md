@@ -51,9 +51,11 @@ The supported v12 mode is a standalone debug server. `run_studio` and
 and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. Non-local
 `Host`, cross-origin requests, and unsafe requests without `Origin` fail closed.
-Data-browser writes additionally require a crate-private marker created only by
-that verified access middleware, so importing the raw browser router cannot
-turn its mutation handlers into an unprotected database API.
+Data-browser writes, queue retry/purge and feature-flag toggles additionally
+require a crate-private marker created only by that verified access middleware,
+so importing the raw browser, `jobs_monitor` or `feature_flags` router cannot
+turn those handlers into an unprotected write API; without the marker they
+return `403`.
 
 **Database selection:** Studio uses the process-wide ORM pool that the
 application initialized (`Server`, Artisan or an explicit `Orm::init`). When no

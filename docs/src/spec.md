@@ -2810,7 +2810,9 @@ sending.
   a separate purge; retained payload access and lifecycle belong to the host.
   Redis lists at most 1,000 failed, dead-letter, processing, pending and
   scheduled jobs, retries failed jobs and purges failures; custom queue
-  inspection remains capability-specific.
+  inspection remains capability-specific. Queue retry/purge and feature-flag
+  toggles require the same crate-private verified-local marker as database
+  writes, so their raw routers return `403` outside the local boundary.
 * `Studio::with_cache` is an explicit metadata-only diagnostic capability. The
   memory and Redis cache drivers return at most 200 sorted entries containing
   logical key, UTF-8 value byte length and remaining TTL; custom drivers return

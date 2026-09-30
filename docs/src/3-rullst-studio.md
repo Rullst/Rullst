@@ -97,11 +97,15 @@ overhead.
   `Queue::sqlite_with_completed_history` for bounded, transactionally pruned
   completion history and can purge that history from Studio. Retained payloads
   require host-controlled access and retention policy. Other drivers expose
-  only the inspection/history contract they implement.
+  only the inspection/history contract they implement. Retry and purge require
+  the verified local marker, so the raw `jobs_monitor::router` returns `403`
+  for them when mounted outside `Studio::into_router`.
 - The ER view inspects SQLite, PostgreSQL, MySQL, or MariaDB metadata with bound
   lookup values and normalizes Mermaid identifiers. An unconfigured or
   unsupported source remains visibly unavailable.
 - The feature-flags page changes the database table used by `DbFeatureDriver`.
+  Toggles require the verified local marker; the raw `feature_flags::router`
+  returns `403` for them.
   A successful toggle invalidates already-warm drivers in the same process;
   other processes and direct writers converge by TTL unless the host distributes
   an invalidation signal.

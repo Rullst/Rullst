@@ -1,10 +1,16 @@
+use crate::access::{VerifiedLocalStudioAccess, verified_local_access_required};
 use axum::{
     Router,
-    extract::Path,
+    extract::{Extension, Path},
     response::{Html, IntoResponse},
     routing::{get, post},
 };
 
+/// Raw feature-flag routes, without an access boundary.
+///
+/// [`crate::Studio::into_router`] mounts them behind the verified local
+/// boundary. Toggling additionally requires the crate-private marker installed
+/// by that boundary, so mounting this router elsewhere returns `403` for it.
 pub fn router() -> Router {
     Router::new()
         .route("/", get(render_feature_flags))
@@ -127,7 +133,13 @@ async fn render_feature_flags() -> Html<String> {
     ))
 }
 
-async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Response {
+async fn toggle_feature_flag(
+    Path(name): Path<String>,
+    verified: Option<Extension<VerifiedLocalStudioAccess>>,
+) -> axum::response::Response {
+    if verified.is_none() {
+        return verified_local_access_required();
+    }
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     toggle_feature_flag_with_pool(&name, rullst_core::db::safe_pool(), driver).await
 }
@@ -203,5 +215,72 @@ mod tests {
         // 3. Directly check render_feature_flags HTML
         let html = render_feature_flags().await.0;
         assert!(html.contains("Feature Flags Manager"));
+    }
+
+    fn toggle_request(name: &str, verified: bool) -> Request<Body> {
+        let mut request = Request::builder()
+            .method("POST")
+            .uri(format!("/toggle/{name}"))
+            .body(Body::empty())
+            .unwrap();
+        if verified {
+            request
+                .extensions_mut()
+                .insert(crate::access::VerifiedLocalStudioAccess);
+        }
+        request
+    }
+
+    #[tokio::test]
+    // TM-STUDIO-06: the raw router cannot toggle flags without the marker that
+    // only the verified local Studio boundary installs.
+    async fn raw_router_denies_toggles_without_verified_local_access() {
+        let response = router()
+            .oneshot(toggle_request("any_flag", false))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    #[cfg(not(miri))]
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+    async fn denied_toggles_leave_the_stored_flag_unchanged() {
+        let pool = crate::data_browser::pool::test_sqlite_pool().await;
+        rullst_orm::_sqlx::query(
+            "CREATE TABLE IF NOT EXISTS rullst_feature_flags (name TEXT PRIMARY KEY, \
+             enabled INTEGER NOT NULL DEFAULT 0, rollout_percentage INTEGER, variants TEXT)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        rullst_orm::_sqlx::query(
+            "INSERT OR REPLACE INTO rullst_feature_flags (name, enabled) VALUES ('raw_router_probe', 0)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        let enabled = || async {
+            rullst_orm::_sqlx::query_scalar::<_, i64>(
+                "SELECT enabled FROM rullst_feature_flags WHERE name = 'raw_router_probe'",
+            )
+            .fetch_one(pool)
+            .await
+            .unwrap()
+        };
+
+        let denied = router()
+            .oneshot(toggle_request("raw_router_probe", false))
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+        assert_eq!(enabled().await, 0);
+
+        let allowed = router()
+            .oneshot(toggle_request("raw_router_probe", true))
+            .await
+            .unwrap();
+        assert!(allowed.status().is_redirection());
+        assert_eq!(enabled().await, 1);
     }
 }

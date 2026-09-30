@@ -54,6 +54,9 @@ and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
 capability also rejects DNS-rebinding-style non-local `Host` values,
 cross-origin requests, and unsafe requests without an `Origin` header.
+Database, queue, cache and feature-flag writes also require a crate-private
+marker that only this capability installs, so raw subrouters mounted elsewhere
+return `403` for them.
 
 Studio uses the ORM pool that the application initialized. When none exists,
 its first database view initializes one from the resolver shared by `Server`
