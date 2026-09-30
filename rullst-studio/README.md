@@ -19,7 +19,9 @@ telemetry views from the sources explicitly supplied by the application.
 - **Safe configuration view:** Environment values are deny-by-default redacted;
   typed runtime configuration is projected without URLs, paths, or secrets.
 - **Feature flags manager:** Toggle database-backed flags and immediately
-  invalidate already-warm `DbFeatureDriver` caches in the same process.
+  invalidate already-warm `DbFeatureDriver` caches in the same process. Studio
+  never creates the `rullst_feature_flags` table; when it is missing, the page
+  shows the schema to add in a migration.
 - **Distributed diagnostics:** Visualize local spans plus bounded,
   attribute-free v1 spans submitted through a separately mounted
   HMAC-authenticated push endpoint. The profiler reports slow SQL labels and a
@@ -51,9 +53,23 @@ The supported v12 mode is a standalone debug server. `run_studio` and
 and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. Non-local
 `Host`, cross-origin requests, and unsafe requests without `Origin` fail closed.
-Data-browser writes additionally require a crate-private marker created only by
-that verified access middleware, so importing the raw browser router cannot
-turn its mutation handlers into an unprotected database API.
+Data-browser writes, queue retry/purge and feature-flag toggles additionally
+require a crate-private marker created only by that verified access middleware,
+so importing the raw browser, `jobs_monitor` or `feature_flags` router cannot
+turn those handlers into an unprotected write API; without the marker they
+return `403`.
+
+**Database selection:** Studio uses the process-wide ORM pool that the
+application initialized (`Server`, Artisan or an explicit `Orm::init`). When no
+pool exists yet, the first database view initializes it once with the resolver
+shared by `Server` and Artisan: the process `DATABASE_URL`, then `DATABASE_URL`
+from `./.env` (which never overrides the process environment), then
+`[database].url` parsed from `./Rullst.toml`. Without a configured database,
+Studio reports that its database tools are unavailable and creates nothing;
+there is no `sqlite://db.sqlite` fallback. Error messages never echo
+configuration content. An application that calls `Orm::init` with its own URL
+should do so before Studio serves requests. `data_browser::resolve_db_url`
+remains only for API compatibility; Studio no longer uses it.
 
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
@@ -140,13 +156,24 @@ The cache inspector uses the same verified local request marker as database
 mutations for individual invalidation. Its HTML contains neither cache values
 nor exact logical keys.
 
+Table views load at most 25 rows. The database cuts each cell's text to 256
+characters before Studio renders it; key columns keep up to 16 KiB for row
+actions, and a longer key makes its row read-only. Search terms are limited to
+256 bytes.
+
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types
-remain read-only, a mutation must affect exactly one row, request bodies are
-limited to 64 KiB, and deletion requires typing `DELETE <table>`. This is a
-local developer database tool, not application authorization, tenant policy,
-audit history, rollback, or a supported shared-production admin surface.
+remain read-only, request bodies are limited to 64 KiB, and deletion requires
+typing `DELETE <table>`. A table stays read-only when any primary-key column is
+outside Studio's ASCII identifier boundary or beyond its 256-column cap, and a
+row whose key value is `NULL` offers no actions. Each write runs in a database
+transaction that commits only when exactly one row changed; otherwise it is
+rolled back and reported as `404` (no row) or `409` (several rows). Storage
+engines without transactions, such as MySQL MyISAM, cannot provide that
+rollback. This is a local developer database tool, not application
+authorization, tenant policy, audit history, undo, or a supported
+shared-production admin surface.
 
 ## 📚 Documentation
 

@@ -1,8 +1,9 @@
 //! Bounded queue inspection routes for a queue explicitly supplied to Studio.
 
+use crate::access::{VerifiedLocalStudioAccess, verified_local_access_required};
 use axum::{
     Router,
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -14,6 +15,12 @@ struct HorizonState {
     queue: Queue,
 }
 
+/// Raw queue routes, without an access boundary.
+///
+/// [`crate::Studio::with_horizon`] mounts them behind the verified local
+/// boundary. Retry and purge additionally require the crate-private marker
+/// installed by that boundary, so mounting this router elsewhere exposes only
+/// the read-only snapshot and those writes return `403`.
 pub fn router(queue: Queue) -> Router {
     let state = Arc::new(HorizonState { queue });
 
@@ -54,21 +61,40 @@ async fn jobs_table(State(state): State<Arc<HorizonState>>) -> Response {
     }
 }
 
-async fn retry_job(State(state): State<Arc<HorizonState>>, Path(id): Path<String>) -> Response {
+async fn retry_job(
+    State(state): State<Arc<HorizonState>>,
+    verified: Option<Extension<VerifiedLocalStudioAccess>>,
+    Path(id): Path<String>,
+) -> Response {
+    if verified.is_none() {
+        return verified_local_access_required();
+    }
     match state.queue.retry_failed_job(&id).await {
         Ok(()) => Redirect::to("/studio/jobs").into_response(),
         Err(error) => queue_error_response(error),
     }
 }
 
-async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> Response {
+async fn purge_failed_jobs(
+    State(state): State<Arc<HorizonState>>,
+    verified: Option<Extension<VerifiedLocalStudioAccess>>,
+) -> Response {
+    if verified.is_none() {
+        return verified_local_access_required();
+    }
     match state.queue.purge_failed_jobs().await {
         Ok(()) => Redirect::to("/studio/jobs").into_response(),
         Err(error) => queue_error_response(error),
     }
 }
 
-async fn purge_completed_history(State(state): State<Arc<HorizonState>>) -> Response {
+async fn purge_completed_history(
+    State(state): State<Arc<HorizonState>>,
+    verified: Option<Extension<VerifiedLocalStudioAccess>>,
+) -> Response {
+    if verified.is_none() {
+        return verified_local_access_required();
+    }
     match state.queue.purge_completed_history().await {
         Ok(()) => Redirect::to("/studio/jobs").into_response(),
         Err(error) => queue_error_response(error),
@@ -195,6 +221,29 @@ mod tests {
     use rullst_core::queue::{QueueDriver, SqliteDriver};
     use tower::ServiceExt;
 
+    fn verified_post(uri: &str) -> Request<Body> {
+        let mut request = Request::builder()
+            .method("POST")
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap();
+        request
+            .extensions_mut()
+            .insert(crate::access::VerifiedLocalStudioAccess);
+        request
+    }
+
+    async fn snapshot_html(app: &Router) -> String {
+        let response = app
+            .clone()
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
+        String::from_utf8(body.to_vec()).unwrap()
+    }
+
     #[tokio::test]
     async fn queue_dashboard_routes_return_real_snapshots() {
         let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
@@ -211,28 +260,69 @@ mod tests {
 
         let purge = app
             .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/purge-failed")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(verified_post("/purge-failed"))
             .await
             .unwrap();
         assert!(purge.status().is_redirection());
 
-        let legacy_purge = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/purge")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+        let legacy_purge = app.oneshot(verified_post("/purge")).await.unwrap();
+        assert!(legacy_purge.status().is_redirection());
+    }
+
+    #[tokio::test]
+    // TM-STUDIO-06: importing the raw queue router cannot turn retry or purge
+    // into an unprotected write API.
+    async fn raw_queue_router_denies_writes_without_verified_local_access() {
+        let driver = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_completed_history_limit(10)
+            .unwrap();
+        driver
+            .push("completed-job", "report", r#"{"scope":"daily"}"#)
             .await
             .unwrap();
-        assert!(legacy_purge.status().is_redirection());
+        let completed = driver.pop().await.unwrap().unwrap();
+        driver.mark_complete(&completed.id).await.unwrap();
+        driver
+            .push("failed-job", "report", r#"{"scope":"weekly"}"#)
+            .await
+            .unwrap();
+        let failed = driver.pop().await.unwrap().unwrap();
+        driver.mark_failed(&failed.id, "boom").await.unwrap();
+        let app = router(Queue::custom(Box::new(driver)));
+
+        for uri in [
+            "/retry/failed-job",
+            "/purge-failed",
+            "/purge-completed",
+            "/purge",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri(uri)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::FORBIDDEN, "{uri}");
+        }
+        let html = snapshot_html(&app).await;
+        assert!(html.contains("<code>complete…</code>"));
+        assert!(html.contains("<code>failed-j…</code>"));
+        assert!(html.contains("Retry job"));
+
+        let retry = app
+            .clone()
+            .oneshot(verified_post("/retry/failed-job"))
+            .await
+            .unwrap();
+        assert!(retry.status().is_redirection());
+        assert!(!snapshot_html(&app).await.contains("Retry job"));
     }
 
     #[tokio::test]
@@ -265,13 +355,7 @@ mod tests {
 
         let purge = app
             .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/purge-completed")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(verified_post("/purge-completed"))
             .await
             .unwrap();
         assert!(purge.status().is_redirection());

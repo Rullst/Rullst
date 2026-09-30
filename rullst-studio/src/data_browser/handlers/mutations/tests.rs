@@ -147,3 +147,156 @@ fn mutation_failures_have_stable_non_secret_statuses() {
         assert_eq!(mutation_error_response(failure).status(), expected);
     }
 }
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// TM-STUDIO-06: a predicate that matches several rows is rolled back, so the
+// conflict response never follows an already committed multi-row change.
+async fn row_mutations_commit_only_when_exactly_one_row_changes() {
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_single_row_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "CREATE TABLE studio_single_row_probe (grp INTEGER NOT NULL, qty INTEGER NOT NULL)",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO studio_single_row_probe (grp, qty) VALUES (1, 10), (1, 20), (2, 30)")
+        .execute(pool)
+        .await
+        .unwrap();
+    let snapshot = || async {
+        sqlx::query_as::<_, (i64, i64)>(
+            "SELECT grp, qty FROM studio_single_row_probe ORDER BY grp, qty",
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap()
+    };
+    let original = vec![(1, 10), (1, 20), (2, 30)];
+    let update = |group: i64| {
+        let mut query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
+            "UPDATE studio_single_row_probe SET qty = qty + 1 WHERE grp = ",
+        );
+        query.push_bind(group);
+        query
+    };
+
+    let mut shared_group = update(1);
+    assert!(matches!(
+        execute_single_row_mutation(pool, &mut shared_group).await,
+        Err(MutationFailure::Conflict)
+    ));
+    assert_eq!(snapshot().await, original);
+
+    let mut missing_group = update(9);
+    assert!(matches!(
+        execute_single_row_mutation(pool, &mut missing_group).await,
+        Err(MutationFailure::NotFound)
+    ));
+
+    let mut delete_shared = QueryBuilder::<rullst_orm::RullstDatabase>::new(
+        "DELETE FROM studio_single_row_probe WHERE grp = ",
+    );
+    delete_shared.push_bind(1_i64);
+    assert!(matches!(
+        execute_single_row_mutation(pool, &mut delete_shared).await,
+        Err(MutationFailure::Conflict)
+    ));
+    assert_eq!(snapshot().await, original);
+
+    let mut single_group = update(2);
+    assert!(
+        execute_single_row_mutation(pool, &mut single_group)
+            .await
+            .is_ok()
+    );
+    assert_eq!(snapshot().await, [(1, 10), (1, 20), (2, 31)]);
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// SQLite accepts NULL in a non-integer key. Its cell renders as `NULL`, which
+// would bind as the text key 'NULL', so such rows must not offer row actions.
+async fn rows_with_a_null_key_value_stay_read_only() {
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_null_key_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("CREATE TABLE studio_null_key_probe (code TEXT PRIMARY KEY, label TEXT)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO studio_null_key_probe (code, label) VALUES (NULL, 'missing'), ('NULL', 'literal')")
+        .execute(pool)
+        .await
+        .unwrap();
+    let schema = fetch_table_schema(pool, "sqlite", "studio_null_key_probe")
+        .await
+        .unwrap();
+    assert!(schema.supports_mutations());
+    let rows = sqlx::query(
+        "SELECT CAST(code AS TEXT) AS code, CAST(label AS TEXT) AS label \
+         FROM studio_null_key_probe ORDER BY label",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap();
+
+    let html = build_mutable_rows_html(&rows, &schema, "studio_null_key_probe");
+    assert_eq!(html.matches("Read-only: NULL key").count(), 1);
+    assert_eq!(html.matches("/rows/delete").count(), 1);
+    assert!(html.contains("name=\"pk_code\" value=\"NULL\""));
+}
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// A key longer than a mutation accepts could not be submitted back, so its row
+// offers no actions, and long cells are displayed only up to the bound.
+async fn rows_with_keys_longer_than_a_mutation_accepts_stay_read_only() {
+    use crate::data_browser::limits::{MAX_DISPLAY_CHARS, bounded_text_expression};
+
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    sqlx::query("DROP TABLE IF EXISTS studio_long_key_probe")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("CREATE TABLE studio_long_key_probe (code TEXT PRIMARY KEY, label TEXT)")
+        .execute(pool)
+        .await
+        .unwrap();
+    let mut insert = QueryBuilder::<rullst_orm::RullstDatabase>::new(
+        "INSERT INTO studio_long_key_probe VALUES (",
+    );
+    insert
+        .push_bind("k".repeat(MAX_CELL_BYTES + 1))
+        .push(", 'long'), (")
+        .push_bind("short")
+        .push(", ")
+        .push_bind(format!("{}tail-marker", "x".repeat(MAX_DISPLAY_CHARS)))
+        .push(")");
+    insert.build().execute(pool).await.unwrap();
+    let schema = fetch_table_schema(pool, "sqlite", "studio_long_key_probe")
+        .await
+        .unwrap();
+    let mut select = QueryBuilder::<rullst_orm::RullstDatabase>::new(format!(
+        "SELECT {}, {} FROM studio_long_key_probe ORDER BY label",
+        bounded_text_expression("sqlite", "code", MAX_CELL_BYTES + 1),
+        bounded_text_expression("sqlite", "label", MAX_DISPLAY_CHARS + 1),
+    ));
+    let rows = select.build().fetch_all(pool).await.unwrap();
+
+    let html = build_mutable_rows_html(&rows, &schema, "studio_long_key_probe");
+    assert_eq!(html.matches("Read-only: key longer than 16 KiB").count(), 1);
+    assert_eq!(html.matches("/rows/delete").count(), 1);
+    assert!(html.contains("name=\"pk_code\" value=\"short\""));
+    assert!(!html.contains("tail-marker"));
+    assert!(html.contains(&format!("{}…", "x".repeat(MAX_DISPLAY_CHARS))));
+}

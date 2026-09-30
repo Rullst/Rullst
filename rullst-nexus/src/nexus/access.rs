@@ -300,25 +300,37 @@ pub(crate) async fn basic_auth_middleware(
         return status_response(StatusCode::SERVICE_UNAVAILABLE);
     };
 
-    match credentials.rate_limiter.status(peer_ip) {
+    // The credential-less challenge round trip is not a guess; only a
+    // presented Basic credential is evaluated and counted.
+    if !has_basic_authorization(&request) {
+        return unauthorized_response();
+    }
+
+    let limiter = &credentials.rate_limiter;
+    let known_client = limiter.is_known_client(request.headers());
+    match limiter.status(peer_ip) {
         AuthGuardStatus::Allowed => {}
-        AuthGuardStatus::Locked(remaining) => return lockout_response(remaining),
+        // Unknown clients get no credential evaluation while locked, so the
+        // lockout is not a password oracle.
+        AuthGuardStatus::Locked(remaining) if !known_client => return lockout_response(remaining),
+        AuthGuardStatus::Locked(_) => {}
         AuthGuardStatus::Unavailable => return status_response(StatusCode::SERVICE_UNAVAILABLE),
     }
 
     if has_valid_basic_credentials(&request, &credentials) {
-        if !credentials.rate_limiter.record_success(peer_ip) {
-            return status_response(StatusCode::SERVICE_UNAVAILABLE);
-        }
         request
             .extensions_mut()
             .insert(NexusPrincipal::authenticated(credentials.username.clone()));
-        next.run(request).await
+        let mut response = next.run(request).await;
+        if !known_client && let Some(cookie) = limiter.known_client_cookie() {
+            response.headers_mut().append(header::SET_COOKIE, cookie);
+        }
+        response
     } else {
-        match credentials.rate_limiter.record_failure(peer_ip) {
-            AuthGuardStatus::Allowed => unauthorized_response(),
-            AuthGuardStatus::Locked(remaining) => lockout_response(remaining),
+        match limiter.record_failure(peer_ip) {
             AuthGuardStatus::Unavailable => status_response(StatusCode::SERVICE_UNAVAILABLE),
+            AuthGuardStatus::Locked(remaining) if !known_client => lockout_response(remaining),
+            AuthGuardStatus::Allowed | AuthGuardStatus::Locked(_) => unauthorized_response(),
         }
     }
 }
@@ -337,6 +349,17 @@ pub(crate) async fn loopback_only_middleware(mut request: Request, next: Next) -
     } else {
         status_response(StatusCode::FORBIDDEN)
     }
+}
+
+fn has_basic_authorization(request: &Request) -> bool {
+    let basic = |value: &str| {
+        value
+            .split(' ')
+            .next()
+            .is_some_and(|s| s.eq_ignore_ascii_case("basic"))
+    };
+    let headers = request.headers().get_all(header::AUTHORIZATION);
+    headers.iter().any(|value| value.to_str().is_ok_and(basic))
 }
 
 fn has_valid_basic_credentials(request: &Request, credentials: &NexusBasicAuth) -> bool {

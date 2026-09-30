@@ -31,6 +31,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 }
 ```
 
+Studio uses the process-wide ORM pool that the application initialized
+(`Server`, Artisan or an explicit `Orm::init`). If none exists when a database
+view is requested, Studio initializes it once from the current directory with
+the resolver shared by `Server` and Artisan: the process `DATABASE_URL`, then
+`DATABASE_URL` from `./.env` (never overriding the process environment), then
+`[database].url` parsed from `Rullst.toml`. Without a configured database the
+views report that database tools are unavailable and nothing is created; the
+former `sqlite://db.sqlite` fallback is gone, and errors never echo
+configuration content. Applications that call `Orm::init` with their own URL
+should do so before Studio serves requests.
+
 `Studio::new().into_router(LocalStudioAccess::loopback_only())` builds the same
 debug-only router for explicit composition. The serving stack must preserve
 Axum `ConnectInfo<SocketAddr>` or requests fail closed. Optional OpenAPI and
@@ -65,13 +76,21 @@ overhead.
 ## Tooling boundaries
 
 - The data browser reads, searches, and paginates allowlisted SQLx identifiers.
+  A page shows at most 25 rows; the database cuts each cell's text to 256
+  characters before it reaches Studio (key columns keep up to 16 KiB for row
+  actions, and a longer key makes its row read-only), and search terms are
+  limited to 256 bytes.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is
-  required, backend-specific types remain read-only, and anything other than
-  exactly one affected row fails. SQLite, PostgreSQL, MySQL, and MariaDB run
+  required and backend-specific types remain read-only. A table is read-only
+  when a primary-key column falls outside the ASCII identifier boundary or the
+  256-column cap, and rows with a `NULL` key value offer no actions. Each write
+  runs in a transaction that commits only when exactly one row changed; any
+  other count is rolled back and fails (non-transactional engines such as
+  MySQL MyISAM cannot roll back). SQLite, PostgreSQL, MySQL, and MariaDB run
   separate executable contracts. This does not supply application tenant/RBAC,
-  audit history, rollback, or a shared-production database administrator.
+  audit history, undo, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
   routes.
@@ -82,11 +101,17 @@ overhead.
   `Queue::sqlite_with_completed_history` for bounded, transactionally pruned
   completion history and can purge that history from Studio. Retained payloads
   require host-controlled access and retention policy. Other drivers expose
-  only the inspection/history contract they implement.
+  only the inspection/history contract they implement. Retry and purge require
+  the verified local marker, so the raw `jobs_monitor::router` returns `403`
+  for them when mounted outside `Studio::into_router`.
 - The ER view inspects SQLite, PostgreSQL, MySQL, or MariaDB metadata with bound
   lookup values and normalizes Mermaid identifiers. An unconfigured or
   unsupported source remains visibly unavailable.
 - The feature-flags page changes the database table used by `DbFeatureDriver`.
+  Toggles require the verified local marker; the raw `feature_flags::router`
+  returns `403` for them. Viewing the page never changes the schema: a missing
+  `rullst_feature_flags` table is reported with the schema to add in an
+  application migration.
   A successful toggle invalidates already-warm drivers in the same process;
   other processes and direct writers converge by TTL unless the host distributes
   an invalidation signal.

@@ -5,6 +5,8 @@
 pub mod db;
 pub mod handlers;
 pub mod layout;
+pub(crate) mod limits;
+pub(crate) mod pool;
 
 #[cfg(test)]
 mod tests;

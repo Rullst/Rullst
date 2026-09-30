@@ -397,6 +397,25 @@ A prepared version section does not establish that its tag or crates exist.
   `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
   587 and 25 configurations deliver.
 
+### Nexus review fixes
+
+- Nexus Basic Auth no longer counts credential-less 401 challenges, buckets
+  failures per IPv4 address or IPv6 /64, and keeps previously authenticated
+  browsers (a per-process known-client cookie) working during a shared-proxy
+  lockout, so one client behind a TLS proxy can no longer lock out every
+  administrator. Pruning is amortised.
+- Nexus serves its stylesheet, script and a vendored htmx 2.0.4 (0BSD)
+  same-origin under `/nexus/assets` and emits no inline code, handlers or style
+  attributes, so the panel works under the default production nonce CSP. The
+  external logo, favicon and fonts are removed.
+- Nexus never renders stored Password-kind values: list cells are masked and
+  not selected or sortable, the edit input is empty, and an empty submission
+  keeps the stored value. Nexus does not hash values; the docs describe the
+  supported flow.
+- Nexus edits submit only changed fields and no longer overwrite NULL,
+  unregistered enum values or date-times with offsets; emptied typed fields
+  become NULL instead of `''`, and date-times accept RFC 3339 offsets.
+
 ### Nexus stored-value escaping maintenance
 
 - Forward-port unconditional escaping of stored Nexus table values, including
@@ -406,6 +425,22 @@ A prepared version section does not establish that its tag or crates exist.
   maintenance. JavaScript execution and production exploitation have not been
   established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
   for the demonstrated defect, application actions and admission boundaries.
+
+### Studio review fixes
+
+- Data-browser row updates and deletes require the table's complete primary
+  key and run in a transaction that commits only when exactly one row changed.
+  Tables whose key includes a column outside Studio's identifier boundary are
+  read-only, and rows with a NULL key show no actions.
+- Studio selects its database with the resolver shared by Server and Artisan
+  (process environment, then `.env`, then `[database].url`) and no longer
+  falls back to creating `sqlite://db.sqlite`.
+- Queue retry/purge and feature-flag toggles require the verified local Studio
+  marker; the raw routers return 403 for them.
+- `GET /studio/features` no longer creates `rullst_feature_flags`; a missing
+  table is reported with the schema to add in a migration.
+- The table view limits cell text to 256 characters in the database query and
+  search terms to 256 bytes.
 
 ### Optional v13 WebGPU example
 
