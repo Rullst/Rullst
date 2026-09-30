@@ -13,7 +13,7 @@ mod sql;
 mod support;
 #[cfg(feature = "sql-memory")]
 pub use sql::{SqlChatBackend, SqlChatMemory};
-use support::{unix_timestamp, validate_content};
+use support::{unix_timestamp, validate_content, validate_response};
 
 const MAX_CONVERSATION_ID_BYTES: usize = 128;
 const MAX_MESSAGE_BYTES: usize = 64 * 1024;
@@ -455,7 +455,8 @@ where
     /// turn. A provider response that the guardrail would block is therefore
     /// rejected with [`StatefulChatError::Generation`] carrying
     /// [`AiError::BlockedByFirewall`] and neither half of the exchange is
-    /// persisted, so one response cannot make the conversation unusable.
+    /// persisted, so one response cannot make the conversation unusable. An
+    /// empty or oversized response is likewise a `Generation` failure.
     pub async fn send(
         &self,
         tenant: &TenantContext,
@@ -478,7 +479,7 @@ where
             .send()
             .await
             .map_err(StatefulChatError::Generation)?;
-        validate_content(&response)?;
+        validate_response(&response).map_err(StatefulChatError::Generation)?;
         AiGuardrails::prepare(&response).map_err(StatefulChatError::Generation)?;
         let revision = self
             .memory
