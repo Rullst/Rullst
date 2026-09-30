@@ -307,7 +307,7 @@ async fn untouched_values_round_trip_through_an_edit(pool: &RullstPool) {
         form.contains("type=\"text\" name=\"published_at\" value=\"2026-01-01T10:00:00+00:00\"")
     );
     assert!(form.contains("<option value=\"legacy\" selected disabled>"));
-    assert!(form.contains("placeholder=\"NULL\"></textarea>"));
+    assert!(form.contains("placeholder=\"NULL\">\n</textarea>"));
 
     // nexus.js sends only the edited field.
     assert_eq!(put(&app, "title=New").await, StatusCode::OK);

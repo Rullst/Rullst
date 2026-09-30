@@ -244,8 +244,9 @@ pub(super) fn form_html(
 /// `datetime-local`, `email`, `url`) when that widget shows it unchanged;
 /// otherwise a text input shows the raw value, because browsers silently
 /// replace unrepresentable values with `''`. NULL and undecodable values
-/// render empty with an explanatory placeholder. `Password` values are never
-/// rendered.
+/// render empty with an explanatory placeholder. A single-line value with line
+/// breaks or control characters is shown read-only in a text area. `Password`
+/// values are never rendered.
 pub(super) fn render_field_widget(
     f: &FieldMeta,
     stored: &StoredValue,
@@ -276,8 +277,10 @@ pub(super) fn render_field_widget(
     };
 
     match &f.kind {
+        // The HTML parser drops one newline right after `<textarea>`; the
+        // emitted newline keeps a value's own leading line break.
         FieldKind::Textarea | FieldKind::Json => format!(
-            "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}{placeholder}>{}</textarea>",
+            "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}{placeholder}>\n{}</textarea>",
             escape_str(text)
         ),
         FieldKind::Boolean => {
@@ -330,6 +333,15 @@ pub(super) fn render_field_widget(
             }
             format!("<select{name_attr} class=\"nexus-input\"{locked_attr}>{opts}</select>")
         }
+        // A single-line input strips line breaks, so editing the field would
+        // silently join the lines, and a tab or other control character could
+        // never be saved back. Show such values read-only instead.
+        _ if text.chars().any(char::is_control) => format!(
+            "<textarea class=\"nexus-input\" rows=\"4\" readonly>\n{}</textarea>\
+             <p class=\"nexus-field-note\">This stored value has line breaks or control \
+             characters, which this single-line field cannot keep, so it is read-only here.</p>",
+            escape_str(text)
+        ),
         kind => {
             let (input_type, value) = typed_input(kind, text);
             format!(

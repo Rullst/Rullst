@@ -37,7 +37,7 @@ fn null_and_unreadable_values_render_empty_with_an_explanation() {
         assert!(html.contains("Stored value not shown"), "{kind:?}");
     }
     let html = widget(FieldKind::Json, StoredValue::Null);
-    assert!(html.contains("placeholder=\"NULL\"></textarea>"));
+    assert!(html.contains("placeholder=\"NULL\">\n</textarea>"));
     let html = widget(FieldKind::Boolean, StoredValue::Null);
     assert!(!html.contains("checked"));
 }
@@ -173,4 +173,28 @@ fn readonly_checkboxes_and_selects_are_disabled_rather_than_interactive() {
     let text = FieldMeta::new("title", "Title", FieldKind::Text).readonly();
     let html = render_field_widget(&text, &value("kept"), true, "id");
     assert!(html.contains(" readonly") && !html.contains("disabled"));
+}
+
+#[test]
+fn multi_line_single_line_values_are_read_only_and_textareas_keep_leading_newlines() {
+    for (kind, stored) in [
+        (FieldKind::Text, "Line one\nLine two\n\nPara 2"),
+        (FieldKind::Email, "ada@example.com\r\n"),
+        (FieldKind::Url, "https://example.com/\nnext"),
+        (FieldKind::Text, "tab\tseparated"),
+    ] {
+        let html = widget(kind.clone(), value(stored));
+        assert!(!html.contains("name=\"field\""), "{kind:?}");
+        assert!(!html.contains("<input"), "{kind:?}");
+        assert!(
+            html.starts_with("<textarea class=\"nexus-input\" rows=\"4\" readonly>\n"),
+            "{kind:?}"
+        );
+        assert!(html.contains("nexus-field-note"), "{kind:?}");
+    }
+    let html = widget(FieldKind::Text, value("single line"));
+    assert!(html.contains("type=\"text\" name=\"field\" value=\"single line\""));
+
+    let html = widget(FieldKind::Textarea, value("\nstarts with a blank line"));
+    assert!(html.contains("rows=\"4\">\n\nstarts with a blank line</textarea>"));
 }

@@ -28,7 +28,9 @@ fields the administrator changed. Values a widget cannot show unchanged are neve
 rewritten by an unrelated edit: SQL NULL renders as an empty input marked `NULL`,
 an unregistered enum value stays selected but disabled, a date-time with an offset
 or more than millisecond precision (and any value a number, date, e-mail or URL
-input would alter) is shown in a text input, and an undecodable value renders
+input would alter) is shown in a text input, a single-line value with line
+breaks or other control characters is shown read-only in a text area (declare
+`kind = "textarea"` to edit multi-line text), and an undecodable value renders
 empty with a note. An emptied number, relation, date, date-time, enum or JSON
 field is stored as NULL, never `''` (a new record omits it so the column default
 applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
