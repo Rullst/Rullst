@@ -53,6 +53,9 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 
     let mut update_sets = vec![];
     let mut bind_updates = vec![];
+    // Only delete()/restore()/force_delete() change the soft-delete marker; a
+    // stale handle must not undelete (or delete) its row through save().
+    let soft_delete_column = parsed.soft_delete_column();
 
     for field_name in normal_fields {
         let field_name_str = field_name.to_string();
@@ -86,9 +89,14 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             };
             bind_inserts.push(binding.clone());
 
-            update_sets.push(format!("{} = ?", field_name_str));
-            bind_updates.push(binding);
+            if soft_delete_column != Some(field_name_str.as_str()) {
+                update_sets.push(format!("{} = ?", field_name_str));
+                bind_updates.push(binding);
+            }
         }
+    }
+    if update_sets.is_empty() {
+        update_sets.push("id = id".to_string());
     }
 
     let insert_columns_str = insert_columns.join(", ");
