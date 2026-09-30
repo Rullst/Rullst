@@ -71,6 +71,74 @@ pub enum HtmlAttrValue {
     Dynamic(Box<Expr>),
 }
 
+/// Attributes whose value a browser follows as a URL. A dynamic value with a
+/// `javascript:`, `vbscript:` or (outside media elements) `data:` scheme is
+/// replaced by `#` at runtime.
+const URL_ATTRIBUTES: [&str; 13] = [
+    "action",
+    "background",
+    "cite",
+    "codebase",
+    "data",
+    "formaction",
+    "href",
+    "icon",
+    "longdesc",
+    "manifest",
+    "poster",
+    "src",
+    "usemap",
+];
+
+/// Media elements whose URL attributes may keep inline `data:` resources.
+const DATA_URL_ELEMENTS: [&str; 6] = ["audio", "image", "img", "source", "track", "video"];
+
+fn is_url_attribute(name: &str) -> bool {
+    URL_ATTRIBUTES
+        .iter()
+        .any(|attribute| name.eq_ignore_ascii_case(attribute))
+}
+
+/// Local helper emitted into elements with dynamic URL attributes. It returns
+/// the escaped value, or `#` for a script-capable scheme. It is generated
+/// inline instead of calling a runtime function, so the expansion works with
+/// any `rullst::html` version that provides `escape_attr`.
+///
+/// Like the URL parser, it skips leading C0 controls and spaces and ignores
+/// ASCII tab, LF and CR anywhere before reading the scheme. Every character
+/// that can appear in a scheme survives `escape_attr` unchanged, so checking
+/// the escaped value checks the URL the browser decodes. Entity references
+/// written inside an explicit `RawHtml` value are not decoded.
+fn url_guard_tokens() -> TokenStream {
+    quote! {
+        #[inline]
+        fn rullst_url_attr(value: &str, allow_data: bool) -> &str {
+            let mut scheme = [0u8; 10];
+            let mut len = 0usize;
+            for byte in value.bytes().skip_while(|byte| *byte <= b' ') {
+                match byte {
+                    b'\t' | b'\n' | b'\r' => {}
+                    b':' => {
+                        let scheme = &scheme[..len];
+                        let unsafe_scheme = scheme == b"javascript"
+                            || scheme == b"vbscript"
+                            || (!allow_data && scheme == b"data");
+                        return if unsafe_scheme { "#" } else { value };
+                    }
+                    b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'+' | b'-' | b'.'
+                        if len < scheme.len() =>
+                    {
+                        scheme[len] = byte.to_ascii_lowercase();
+                        len += 1;
+                    }
+                    _ => return value,
+                }
+            }
+            value
+        }
+    }
+}
+
 impl Parse for HtmlNode {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Token![<]) {
@@ -238,6 +306,10 @@ impl HtmlElement {
         // writes; interpolated caller expressions retain their original spans.
         let buffer = Ident::new("s", Span::mixed_site());
 
+        let allow_data_urls = DATA_URL_ELEMENTS
+            .iter()
+            .any(|element| tag.eq_ignore_ascii_case(element));
+        let mut needs_url_guard = false;
         let mut attr_tokens = Vec::new();
         for attr in &self.attributes {
             let attr_name = attr.name.to_string();
@@ -247,6 +319,20 @@ impl HtmlElement {
                     let static_attr = format!(" {}=\"{}\"", attr_name, val);
                     attr_tokens.push(quote! {
                         #buffer.push_str(#static_attr);
+                    });
+                }
+                HtmlAttrValue::Dynamic(expr) if is_url_attribute(&attr_name) => {
+                    needs_url_guard = true;
+                    let attr_prefix = format!(" {}=\"", attr_name);
+                    // One statement, so temporaries such as `format!(..)`
+                    // live until the value has been written.
+                    attr_tokens.push(quote! {
+                        #buffer.push_str(#attr_prefix);
+                        #buffer.push_str(rullst_url_attr(
+                            &rullst::html::escape_attr(&(#expr)),
+                            #allow_data_urls,
+                        ));
+                        #buffer.push_str("\"");
                     });
                 }
                 HtmlAttrValue::Dynamic(expr) => {
@@ -259,6 +345,11 @@ impl HtmlElement {
                 }
             }
         }
+        let url_guard = if needs_url_guard {
+            url_guard_tokens()
+        } else {
+            TokenStream::new()
+        };
 
         let child_tokens = self.children.iter().map(|child| child.to_tokens());
 
@@ -271,6 +362,7 @@ impl HtmlElement {
         if self.children.is_empty() && is_void {
             quote! {
                 {
+                    #url_guard
                     let mut #buffer = String::with_capacity(#capacity);
                     #buffer.push_str("<");
                     #buffer.push_str(#tag);
@@ -282,6 +374,7 @@ impl HtmlElement {
         } else {
             quote! {
                 {
+                    #url_guard
                     let mut #buffer = String::with_capacity(#capacity);
                     #buffer.push_str("<");
                     #buffer.push_str(#tag);

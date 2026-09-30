@@ -18,6 +18,9 @@ mod server_function;
 /// It compiles down to highly optimized string concatenations at compile time,
 /// and automatically escapes dynamic variables to prevent XSS.
 ///
+/// Dynamic URL attributes (`href`, `src`, `action`, …) render `#` for script or
+/// non-media `data:` URLs; dynamic `style`/`on*` values are trusted-only.
+///
 /// # Example
 ///
 /// This block is ignored only in the standalone proc-macro crate because the
