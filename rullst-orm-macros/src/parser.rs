@@ -132,7 +132,7 @@ fn encrypted_field_kind(field_type: &syn::Type) -> Option<EncryptedFieldKind> {
 }
 
 /// Recognizes `SecretString` and `Option<SecretString>` by the last path segment.
-fn is_secret_string_type(field_type: &syn::Type) -> bool {
+pub(crate) fn is_secret_string_type(field_type: &syn::Type) -> bool {
     let syn::Type::Path(type_path) = field_type else {
         return false;
     };
