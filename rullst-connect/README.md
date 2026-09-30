@@ -405,7 +405,10 @@ does not rotate its refresh token, adopts a validated rotation and binds every
 response to the original provider user. When a response for that user is
 otherwise rejected (for example it omits `expires_in`), the rotated refresh
 token is still kept and the generation advances, so persist the snapshot after
-that failure too; the next call refreshes with the rotation. Seal `state_snapshot()` with
+that failure too; the next call refreshes with the rotation. If the grant
+succeeds but the follow-up profile or ID-token step fails, adapters return
+`ConnectError::RefreshIncomplete` with the issued tokens (`IssuedTokens`), and
+the session keeps the rotation the same way. Seal `state_snapshot()` with
 `EncryptedTokenSnapshot` before writing it to application-owned storage:
 
 ```rust

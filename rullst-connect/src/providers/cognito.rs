@@ -217,19 +217,15 @@ impl Provider for CognitoProvider {
         &self,
         refresh_token: &str,
     ) -> Result<crate::user::ConnectUser, crate::error::ConnectError> {
-        let token = crate::provider::fetch_refresh_token(
+        crate::provider::refresh_and_get_user(
+            self,
             self.http_client.as_ref(),
             &self.token_url(),
             &self.client_id,
-            secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            &self.client_secret,
             refresh_token,
         )
-        .await?;
-
-        let mut user = self.get_user_from_token(&token.access_token).await?;
-        user.refresh_token = token.refresh_token.map(secrecy::SecretString::from);
-        user.expires_in = token.expires_in;
-        Ok(user)
+        .await
     }
 
     async fn revoke_token_with_kind(

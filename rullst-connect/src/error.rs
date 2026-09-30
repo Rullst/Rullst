@@ -42,6 +42,99 @@ pub enum ConnectError {
 
     #[error("Server-side OAuth session error: {0}")]
     Session(String),
+
+    /// A refresh grant succeeded, but a later step (profile lookup, ID-token
+    /// validation or the response's lifetime) failed.
+    ///
+    /// Providers that rotate refresh tokens have already consumed the one
+    /// that was sent, so the newly issued tokens are carried here instead of
+    /// being dropped. `AutoRefreshingSession` keeps the rotated refresh token
+    /// and returns `source`. Unpublished v13 API.
+    #[error("the provider refreshed the tokens, but a follow-up step failed: {source}")]
+    RefreshIncomplete {
+        /// Tokens the provider issued before the failure.
+        tokens: Box<IssuedTokens>,
+        /// The failure that followed the successful refresh grant.
+        source: Box<ConnectError>,
+    },
+}
+
+/// Tokens a provider issued before a later refresh step failed.
+///
+/// `Debug` redacts both tokens. Persist them only in an encrypted secret store
+/// bound to the owning account and provider. Unpublished v13 API.
+#[derive(Clone)]
+#[non_exhaustive]
+pub struct IssuedTokens {
+    access_token: secrecy::SecretString,
+    refresh_token: Option<secrecy::SecretString>,
+    expires_in: Option<u64>,
+}
+
+impl IssuedTokens {
+    pub(crate) fn new(
+        access_token: String,
+        refresh_token: Option<String>,
+        expires_in: Option<u64>,
+    ) -> Self {
+        Self {
+            access_token: access_token.into(),
+            refresh_token: refresh_token.map(Into::into),
+            expires_in,
+        }
+    }
+
+    /// Returns the newly issued access token.
+    pub fn access_token(&self) -> &secrecy::SecretString {
+        &self.access_token
+    }
+
+    /// Returns the rotated refresh token, when the provider issued one.
+    pub fn refresh_token(&self) -> Option<&secrecy::SecretString> {
+        self.refresh_token.as_ref()
+    }
+
+    /// Returns the validated lifetime in seconds, when one was usable.
+    pub fn expires_in(&self) -> Option<u64> {
+        self.expires_in
+    }
+}
+
+impl std::fmt::Debug for IssuedTokens {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("IssuedTokens")
+            .field("access_token", &"[REDACTED]")
+            .field(
+                "refresh_token",
+                &self.refresh_token.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("expires_in", &self.expires_in)
+            .finish()
+    }
+}
+
+/// Wraps `source` with the tokens in a refresh response that carried an
+/// access token; otherwise nothing was issued and `source` is returned.
+pub(crate) fn refresh_incomplete(
+    response: &serde_json::Value,
+    source: ConnectError,
+) -> ConnectError {
+    if response["error"].is_string() {
+        return source;
+    }
+    let Some(access_token) = response["access_token"].as_str() else {
+        return source;
+    };
+    let tokens = IssuedTokens::new(
+        access_token.to_owned(),
+        response["refresh_token"].as_str().map(String::from),
+        crate::provider::token_lifetime(response).ok().flatten(),
+    );
+    ConnectError::RefreshIncomplete {
+        tokens: Box::new(tokens),
+        source: Box::new(source),
+    }
 }
 
 /// Maximum bytes of a provider-supplied error description kept in an error.
@@ -194,11 +287,20 @@ mod tests {
             ConnectError::Provider("test".to_string()),
             ConnectError::InvalidState("test".to_string()),
             ConnectError::Session("test".to_string()),
+            ConnectError::RefreshIncomplete {
+                tokens: Box::new(IssuedTokens::new(
+                    "issued-access".to_string(),
+                    Some("issued-refresh".to_string()),
+                    Some(60),
+                )),
+                source: Box::new(ConnectError::Provider("test".to_string())),
+            },
         ];
 
         for err in errors {
-            let _debug = format!("{:?}", err);
-            let _display = format!("{}", err);
+            let debug = format!("{:?}", err);
+            let display = format!("{}", err);
+            assert!(!debug.contains("issued-") && !display.contains("issued-"));
         }
     }
 }

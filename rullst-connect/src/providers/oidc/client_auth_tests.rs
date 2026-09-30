@@ -1,4 +1,5 @@
-//! Token-endpoint client authentication selected from OIDC discovery.
+//! OIDC token-endpoint contracts: client authentication selected from
+//! discovery and tokens carried out of an incomplete refresh.
 
 use super::discovery::OidcProvider;
 use crate::client::{HttpClient, HttpRequest, HttpResponse};
@@ -12,6 +13,7 @@ use std::sync::{Arc, Mutex};
 struct RecordingClient {
     auth_methods: Option<Value>,
     token_requests: Mutex<Vec<HttpRequest>>,
+    userinfo_status: u16,
 }
 
 #[async_trait]
@@ -37,6 +39,12 @@ impl HttpClient for RecordingClient {
                 "expires_in": 3600
             })
         } else if request.url.ends_with("/userinfo") {
+            if self.userinfo_status != 200 {
+                return Ok(HttpResponse {
+                    status: self.userinfo_status,
+                    body: json!({ "error": "temporarily_unavailable" }),
+                });
+            }
             json!({ "sub": "user-1", "name": "Ada" })
         } else {
             return Err(ConnectError::Provider("unexpected URL".to_string()));
@@ -46,9 +54,17 @@ impl HttpClient for RecordingClient {
 }
 
 async fn provider(auth_methods: Option<Value>) -> (OidcProvider, Arc<RecordingClient>) {
+    provider_with_userinfo(auth_methods, 200).await
+}
+
+async fn provider_with_userinfo(
+    auth_methods: Option<Value>,
+    userinfo_status: u16,
+) -> (OidcProvider, Arc<RecordingClient>) {
     let client = Arc::new(RecordingClient {
         auth_methods,
         token_requests: Mutex::new(Vec::new()),
+        userinfo_status,
     });
     let provider = OidcProvider::discover_with_client(
         "https://issuer.example",
@@ -117,4 +133,33 @@ async fn post_stays_selected_when_advertised_or_unspecified() {
             assert!(body_carries_secret(request));
         }
     }
+}
+
+#[tokio::test]
+async fn a_refresh_whose_userinfo_fails_carries_the_issued_tokens() {
+    use secrecy::ExposeSecret as _;
+
+    let (provider, _client) = provider_with_userinfo(None, 403).await;
+    let error = provider.refresh_token("prior-refresh").await.unwrap_err();
+    let ConnectError::RefreshIncomplete { tokens, source } = error else {
+        panic!("expected RefreshIncomplete");
+    };
+    assert!(tokens.access_token().expose_secret() == "issued-access");
+    assert!(
+        tokens
+            .refresh_token()
+            .is_some_and(|token| token.expose_secret() == "issued-refresh")
+    );
+    assert_eq!(tokens.expires_in(), Some(3600));
+    assert!(matches!(*source, ConnectError::ProviderApiError { .. }));
+
+    // A failed code exchange is a login failure, not an incomplete refresh.
+    let login = provider
+        .get_user(crate::provider::ExchangeParams {
+            auth_code: "code",
+            ..Default::default()
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(login, ConnectError::ProviderApiError { .. }));
 }

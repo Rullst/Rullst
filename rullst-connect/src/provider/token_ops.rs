@@ -271,6 +271,7 @@ pub(crate) async fn request_refresh_token(
         .json::<serde_json::Value>()
         .await?;
     parse_token_response(&token_res, "Failed to get access_token during refresh")
+        .map_err(|source| crate::error::refresh_incomplete(&token_res, source))
 }
 
 /// Helper to exchange an authorization code and build the ConnectUser profile.
@@ -312,7 +313,34 @@ where
         authentication,
     )
     .await?;
-    user_with_tokens(provider, token).await
+    refreshed_user_with_tokens(provider, token).await
+}
+
+/// Like [`user_with_tokens`] for a refresh grant: a failed profile lookup
+/// returns [`crate::error::ConnectError::RefreshIncomplete`] carrying the
+/// issued tokens, so a rotated refresh token is never silently dropped.
+pub(crate) async fn refreshed_user_with_tokens<P>(
+    provider: &P,
+    token: Oauth2TokenResponse,
+) -> Result<ConnectUser, crate::error::ConnectError>
+where
+    P: Provider + ?Sized,
+{
+    match provider.get_user_from_token(&token.access_token).await {
+        Ok(mut user) => {
+            user.refresh_token = token.refresh_token.map(secrecy::SecretString::from);
+            user.expires_in = token.expires_in;
+            Ok(user)
+        }
+        Err(source) => Err(crate::error::ConnectError::RefreshIncomplete {
+            tokens: Box::new(crate::error::IssuedTokens::new(
+                token.access_token,
+                token.refresh_token,
+                token.expires_in,
+            )),
+            source: Box::new(source),
+        }),
+    }
 }
 
 /// Loads the profile for freshly issued tokens and attaches their metadata.
@@ -330,6 +358,10 @@ where
 }
 
 /// Helper to refresh an access token and fetch the updated ConnectUser profile.
+///
+/// If the refresh grant succeeds but the response lifetime or the profile
+/// lookup fails, the error is [`crate::error::ConnectError::RefreshIncomplete`]
+/// and carries the issued tokens.
 pub async fn refresh_and_get_user<P>(
     provider: &P,
     client: &dyn crate::client::HttpClient,

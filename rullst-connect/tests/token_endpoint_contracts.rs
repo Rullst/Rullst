@@ -172,3 +172,118 @@ async fn x_authenticates_confidential_token_requests_with_http_basic() {
         .expect("refresh uses client_secret_basic");
     assert_eq!(refreshed.id, "2244994945");
 }
+
+#[tokio::test]
+async fn a_profile_failure_after_rotation_keeps_the_issued_refresh_token() {
+    use rullst_connect::{AutoRefreshingSession, ConnectError, ConnectUser};
+    use secrecy::ExposeSecret as _;
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    for (sent, access, rotated) in [
+        ("ghr-first", "ghu-second", "ghr-second"),
+        ("ghr-second", "ghu-third", "ghr-third"),
+    ] {
+        Mock::given(method("POST"))
+            .and(path("/login/oauth/access_token"))
+            .and(body_string_contains(format!("refresh_token={sent}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "access_token": access,
+                "refresh_token": rotated,
+                "expires_in": 28_800
+            })))
+            .mount(&server)
+            .await;
+    }
+    // The profile call right after the first rotation fails once. A 401 is
+    // not retried by the optional `retry` transport, unlike a 5xx or 429.
+    Mock::given(method("GET"))
+        .and(path("/user"))
+        .respond_with(ResponseTemplate::new(401))
+        .up_to_n_times(1)
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/user"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 42,
+            "login": "octocat"
+        })))
+        .mount(&server)
+        .await;
+
+    let github = github(&server);
+    let signed_in = ConnectUser {
+        id: "42".to_string(),
+        name: "octocat".to_string(),
+        email: None,
+        email_verified: None,
+        avatar_url: None,
+        raw_data: serde_json::json!({}),
+        access_token: SecretString::from("ghu-first".to_string()),
+        refresh_token: Some(SecretString::from("ghr-first".to_string())),
+        expires_in: Some(10),
+    };
+    let session = AutoRefreshingSession::from_user_at(&github, &signed_in, 1_000)
+        .expect("session")
+        .with_refresh_leeway(0)
+        .expect("leeway");
+
+    let error = session
+        .access_token_at(1_010)
+        .await
+        .expect_err("the profile lookup failed");
+    assert!(matches!(error, ConnectError::ProviderApiError { .. }));
+    let state = session.state_snapshot().await;
+    assert!(
+        state.refresh_token().expose_secret() == "ghr-second",
+        "the rotated refresh token must survive the profile failure"
+    );
+
+    let lease = session
+        .access_token_at(1_010)
+        .await
+        .expect("the next call refreshes with the rotation");
+    assert!(lease.access_token().expose_secret() == "ghu-third");
+    assert_eq!(lease.generation(), 2);
+}
+
+#[tokio::test]
+async fn direct_refresh_callers_receive_the_issued_tokens() {
+    use rullst_connect::ConnectError;
+    use secrecy::ExposeSecret as _;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/login/oauth/access_token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "ghu-issued",
+            "refresh_token": "ghr-issued",
+            "expires_in": 28_800
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/user"))
+        .respond_with(ResponseTemplate::new(403))
+        .mount(&server)
+        .await;
+
+    let error = github(&server)
+        .refresh_token("ghr-original")
+        .await
+        .expect_err("profile lookup rejected");
+    let ConnectError::RefreshIncomplete { tokens, source } = error else {
+        panic!("expected RefreshIncomplete");
+    };
+    assert!(tokens.access_token().expose_secret() == "ghu-issued");
+    assert!(
+        tokens
+            .refresh_token()
+            .is_some_and(|token| token.expose_secret() == "ghr-issued")
+    );
+    assert_eq!(tokens.expires_in(), Some(28_800));
+    assert!(matches!(*source, ConnectError::ProviderApiError { .. }));
+    assert!(!format!("{tokens:?}").contains("ghr-issued"));
+}

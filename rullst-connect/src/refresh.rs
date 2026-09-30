@@ -253,10 +253,12 @@ impl std::fmt::Debug for AccessTokenLease {
 ///
 /// A Tokio mutex serializes refresh calls and the access token changes only
 /// after a complete, validated provider response. When a response for the same
-/// provider user is rejected (for example because it omits `expires_in`), a
-/// rotated refresh token is still kept and the generation advances, because
-/// the provider has already consumed the prior one; the call returns the
-/// error and the next call refreshes again. Cross-process leases, encrypted
+/// provider user is rejected (for example because it omits `expires_in`), or
+/// the provider reports [`ConnectError::RefreshIncomplete`] because its
+/// profile or ID-token step failed after the grant, a rotated refresh token is
+/// still kept and the generation advances, because the provider has already
+/// consumed the prior one; the call returns the underlying error and the next
+/// call refreshes again. Cross-process leases, encrypted
 /// persistence and account authorization remain application responsibilities.
 pub struct AutoRefreshingSession<'provider, SelectedProvider>
 where
@@ -326,10 +328,21 @@ where
         let next_generation = state.generation.checked_add(1).ok_or_else(|| {
             ConnectError::Token("automatic refresh generation overflowed".to_string())
         })?;
-        let refreshed = self
+        let refreshed = match self
             .provider
             .refresh_token(state.refresh_token.expose_secret())
-            .await?;
+            .await
+        {
+            Ok(refreshed) => refreshed,
+            Err(ConnectError::RefreshIncomplete { tokens, source }) => {
+                // The grant succeeded for this session's refresh token, so a
+                // rotation belongs to the bound user even though the profile
+                // step failed. Keep it and retry the refresh on the next call.
+                state.adopt_rotated_refresh_token(tokens.refresh_token(), next_generation);
+                return Err(*source);
+            }
+            Err(error) => return Err(error),
+        };
         match RefreshableTokenState::from_refresh(
             &refreshed,
             &state.provider_user_id,

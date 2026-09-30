@@ -378,9 +378,13 @@ replaces the access token only after the lifetime and original provider user ID
 validate. If a response for the original user is otherwise rejected (for
 example it omits `expires_in`), its rotated refresh token is still kept and the
 generation advances, because the provider has already consumed the prior one;
-the call fails and the next call refreshes with the rotation. Persist the
-snapshot after such a failure too. Use `access_token_at` in deterministic
-workers/tests. Seal
+the call fails and the next call refreshes with the rotation. The same
+applies when the grant succeeds but the follow-up profile lookup or ID-token
+validation fails: provider adapters then return
+`ConnectError::RefreshIncomplete`, whose `IssuedTokens` carry the new tokens
+to direct `Provider::refresh_token` callers, and the session keeps the
+rotation and returns the underlying error. Persist the snapshot after such a
+failure too. Use `access_token_at` in deterministic workers/tests. Seal
 `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
 dedicated application store:
 
