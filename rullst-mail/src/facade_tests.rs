@@ -318,7 +318,7 @@ async fn explicit_queue_preserves_tenant_and_schedule_and_maps_driver_errors() {
     }));
     assert!(matches!(
         Mail::enqueue(&failing, valid_message()).await,
-        Err(MailError::SendError(message)) if message.contains("offline failure")
+        Err(MailError::TransportError { provider: "queue", message }) if message.contains("offline failure")
     ));
 }
 

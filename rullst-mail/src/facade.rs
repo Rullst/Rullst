@@ -174,9 +174,13 @@ impl Mail {
         } else {
             queue.dispatch("rullst_mail_send", payload).await
         };
-        result
-            .map(|_| ())
-            .map_err(|error| MailError::SendError(format!("failed to enqueue mail job: {error}")))
+        result.map(|_| ()).map_err(|error| match error {
+            // A connection or storage outage may clear, so it is retryable.
+            rullst_core::queue::QueueError::Driver(_) => {
+                MailError::transport("queue", format!("failed to enqueue mail job: {error}"))
+            }
+            other => MailError::SendError(format!("failed to enqueue mail job: {other}")),
+        })
     }
 
     #[cfg_attr(mutants, mutants::skip)]
