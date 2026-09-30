@@ -446,25 +446,30 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
 }
 
 /// Extracts the secure session cookie value from the request's Cookie headers.
+///
+/// Unrelated cookies without `=` or with non-ASCII bytes are ignored. A
+/// duplicate, empty, oversized or non-graphic `rullst_session` fails closed.
 pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
     let mut session = None;
 
     for header in headers.get_all(axum::http::header::COOKIE) {
-        let cookie_header = header.to_str().ok()?;
-        for cookie in cookie_header.split(';') {
-            let (name, value) = cookie.trim().split_once('=')?;
-            if name != "rullst_session" {
+        for cookie in header.as_bytes().split(|byte| *byte == b';') {
+            let mut parts = cookie.trim_ascii().splitn(2, |byte| *byte == b'=');
+            let (Some(name), Some(value)) = (parts.next(), parts.next()) else {
+                continue;
+            };
+            if name != b"rullst_session" {
                 continue;
             }
 
             if session.is_some()
                 || value.is_empty()
                 || value.len() > MAX_SESSION_COOKIE_BYTES
-                || !value.bytes().all(|byte| byte.is_ascii_graphic())
+                || !value.iter().all(u8::is_ascii_graphic)
             {
                 return None;
             }
-            session = Some(value.to_string());
+            session = Some(std::str::from_utf8(value).ok()?.to_owned());
         }
     }
 
