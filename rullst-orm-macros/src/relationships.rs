@@ -1,9 +1,24 @@
-use crate::parser::ParsedModel;
+use crate::parser::{ParsedModel, ParsedRelation};
 use proc_macro2::TokenStream;
 use quote::quote;
 
 mod eager_assign;
 use eager_assign::generate_eager_load_assignment;
+
+/// The foreign-key field of a relation. An omitted `foreign_key` names the
+/// model on the other side of the key: a `belongs_to` key lives on this model
+/// and defaults to `<related model>_id` (`post_id` for `belongs_to = "Post"`),
+/// while a has-one/has-many key lives on the related table and defaults to
+/// `<this model>_id`.
+fn foreign_key_field(name: &syn::Ident, rel: &ParsedRelation) -> String {
+    if !rel.foreign_key.is_empty() {
+        rel.foreign_key.clone()
+    } else if rel.rel_type == "belongs_to" {
+        format!("{}_id", rel.rel_model.to_lowercase())
+    } else {
+        format!("{}_id", name.to_string().to_lowercase())
+    }
+}
 
 pub struct GeneratedRelationships {
     pub flags: Vec<TokenStream>,
@@ -63,14 +78,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         let rel_model_ident = syn::Ident::new(rel_model, field_name.span());
         let method_name = quote::format_ident!("{}", field_name);
         let method_name_constrained = quote::format_ident!("{}_constrained", field_name);
-        let fk_ident = quote::format_ident!(
-            "{}",
-            if foreign_key.is_empty() {
-                format!("{}_id", name.to_string().to_lowercase())
-            } else {
-                foreign_key.clone()
-            }
-        );
+        let fk_ident = quote::format_ident!("{}", foreign_key_field(name, rel));
         let lk_ident = quote::format_ident!(
             "{}",
             if local_key.is_empty() {
@@ -284,7 +292,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         let method_name = quote::format_ident!("{}", field_name);
 
         let rel_model_ident = syn::Ident::new(rel_model, field_name.span());
-        let fk_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", name.to_string().to_lowercase()) } else { foreign_key.clone() });
+        let fk_ident = quote::format_ident!("{}", foreign_key_field(name, rel));
         let lk_ident = quote::format_ident!("{}", if local_key.is_empty() { "id".to_string() } else { local_key.clone() });
         let pk_ident = quote::format_ident!("{}", if related_key.is_empty() { "id".to_string() } else { related_key.clone() });
         let morph_id_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", morph_name) } else { foreign_key.clone() });

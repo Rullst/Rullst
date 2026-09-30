@@ -40,6 +40,26 @@ struct ConstraintDocument {
     filename: String,
 }
 
+#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[orm(table = "constraint_owners")]
+struct Owner {
+    id: i32,
+    name: String,
+}
+
+/// `belongs_to` without `foreign_key` reads `<related model>_id` from this
+/// model (`owner_id`), not `<this model>_id`.
+#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[orm(table = "constraint_pets")]
+struct ConstraintPet {
+    id: i32,
+    owner_id: i32,
+    name: String,
+    #[orm(belongs_to = "Owner")]
+    #[sqlx(default, skip)]
+    owner: Option<Owner>,
+}
+
 async fn setup() {
     Orm::init_with_options("sqlite::memory:", 1, 5)
         .await
@@ -55,6 +75,10 @@ async fn setup() {
         "CREATE TABLE constraint_account_tags (account_id INTEGER NOT NULL, tag_id INTEGER NOT NULL)",
         "INSERT INTO constraint_tags (id, label) VALUES (1, 'vip')",
         "INSERT INTO constraint_account_tags (account_id, tag_id) VALUES (1, 1)",
+        "CREATE TABLE constraint_owners (id INTEGER PRIMARY KEY, name TEXT NOT NULL)",
+        "CREATE TABLE constraint_pets (id INTEGER PRIMARY KEY, owner_id INTEGER NOT NULL, name TEXT NOT NULL)",
+        "INSERT INTO constraint_owners (id, name) VALUES (1, 'ada'), (2, 'grace')",
+        "INSERT INTO constraint_pets (id, owner_id, name) VALUES (1, 2, 'rex'), (2, 1, 'tom')",
     ] {
         rullst_orm::_sqlx::query(statement)
             .execute(pool)
@@ -125,9 +149,30 @@ async fn eager_many_to_many_loads_empty_parents() {
     assert_eq!(labels(&untagged[0]), Some(Vec::new()));
 }
 
+async fn belongs_to_defaults_to_the_related_model_key() {
+    let pet = ConstraintPet::find(1)
+        .await
+        .expect("find pet")
+        .expect("pet exists");
+    let owner = pet.owner().await.expect("lazy belongs_to").expect("owner");
+    assert_eq!(owner.name, "grace");
+    let pets = ConstraintPet::query()
+        .order_by("id")
+        .with_owner()
+        .get()
+        .await
+        .expect("eager belongs_to");
+    let owners = pets
+        .iter()
+        .map(|pet| pet.owner.as_ref().map(|owner| owner.id))
+        .collect::<Vec<_>>();
+    assert_eq!(owners, vec![Some(2), Some(1)]);
+}
+
 #[tokio::test]
 async fn relation_queries_stay_bound_to_their_parent() {
     setup().await;
     constrained_relations_keep_the_ownership_predicate().await;
     eager_many_to_many_loads_empty_parents().await;
+    belongs_to_defaults_to_the_related_model_key().await;
 }

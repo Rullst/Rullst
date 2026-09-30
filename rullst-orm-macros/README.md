@@ -34,7 +34,9 @@ relation options are rejected, `belongs_to_many` requires a pivot table,
 uses soft deletes (otherwise the generated cascade fails to compile at the
 relation field rather than hard-deleting the children), and polymorphic metadata
 is limited to morph relations. The generated many-to-many foreign/related keys
-default to the owner and related model names when omitted.
+default to the owner and related model names when omitted; an omitted
+`foreign_key` defaults to `<related model>_id` on `belongs_to` and to
+`<owner model>_id` on has-one/has-many (lowercased model names).
 
 The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
 `#[sqlx(json(nullable))]`. SQLx mappings such as `rename`, `try_from`, and

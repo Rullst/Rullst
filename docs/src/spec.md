@@ -1771,6 +1771,11 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.3. Generated Relationship Contract
 
+* An omitted `foreign_key` defaults to a lowercased model name plus `_id`:
+  `belongs_to` reads `<related model>_id` from the declaring model (`post_id`
+  for `belongs_to = "Post"`), while `has_one`/`has_many` and the owner side of
+  `belongs_to_many` match `<declaring model>_id` on the other table. Models
+  whose names are not single words usually need an explicit `foreign_key`.
 * SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
   typed `morph_to` targets. A polymorphic relation requires
   `morph_name = "..."` (`name` remains a legacy alias).
