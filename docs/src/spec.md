@@ -1826,8 +1826,10 @@ while portability and semantic review remain the model author's responsibility.
   bounded and recursively mask sensitive names for create, update, and delete.
   The reverse patch records only the presence of a sensitive key, including a
   nested JSON key that an update adds or removes, and such an operation is not
-  restorable. Audit/debug output does not expose principal, tenant,
-  correlation, reason, or payload values.
+  restorable. A reverse patch that would exceed its depth (64), operation
+  (4,096) or 5 MiB size bound is omitted: the update and its audit diff are
+  still recorded, and that revision cannot be restored. Audit/debug output does
+  not expose principal, tenant, correlation, reason, or payload values.
 * An auditable model exposes `restore_revision(audit_id, reason)` and its
   caller-owned transaction variant. Only a bounded v2 update patch for the
   exact model, ID, and active tenant is eligible. The current row must still
