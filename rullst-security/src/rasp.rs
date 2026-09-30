@@ -10,6 +10,8 @@ use std::{
 };
 use tower::{Layer, Service};
 
+use crate::media_type;
+
 const MAX_INSPECTED_REQUEST_BYTES: usize = 1024 * 1024;
 
 /// Heuristic RASP (Runtime Application Self-Protection) inspector.
@@ -124,29 +126,12 @@ fn request_body_media_type(headers: &HeaderMap) -> Option<&str> {
     headers
         .get(header::CONTENT_TYPE)?
         .to_str()
-        .ok()?
-        .split(';')
-        .next()
-        .map(str::trim)
+        .ok()
+        .map(media_type::essence)
 }
 
 fn should_inspect_body(headers: &HeaderMap) -> bool {
-    let Some(media_type) = request_body_media_type(headers) else {
-        return false;
-    };
-
-    media_type
-        .get(..5)
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("text/"))
-        || media_type.eq_ignore_ascii_case("application/json")
-        || media_type.eq_ignore_ascii_case("application/x-www-form-urlencoded")
-        || media_type.eq_ignore_ascii_case("application/xml")
-        || media_type
-            .strip_suffix("+json")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
-        || media_type
-            .strip_suffix("+xml")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
+    request_body_media_type(headers).is_some_and(media_type::is_inspected_request_body)
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -239,8 +224,7 @@ impl RaspInspector {
             return true;
         }
 
-        let is_json =
-            media_type.eq_ignore_ascii_case("application/json") || media_type.ends_with("+json");
+        let is_json = media_type::is_json(media_type::essence(media_type));
         is_json
             && serde_json::from_str::<serde_json::Value>(payload)
                 .ok()

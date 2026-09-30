@@ -48,8 +48,12 @@ pub(super) async fn quotas_expiry_configuration_and_corruption(url: &str) {
         .await
         .unwrap();
     assert_eq!(count, 1);
-    clock.set(1029);
-    assert!(matches!(b.issue(&intent(10)).await, Err(Error::Corrupt)));
+    // A regression beyond the cross-host skew tolerance fails closed.
+    clock.set(1024);
+    assert!(matches!(
+        b.issue(&intent(10)).await,
+        Err(Error::Configuration)
+    ));
     clock.set(1030);
     sqlx::query("UPDATE rullst_passkey_ceremony.pending SET credentials=$1")
         .bind(vec![1u8])
@@ -95,6 +99,54 @@ pub(super) async fn quotas_expiry_configuration_and_corruption(url: &str) {
     );
     a.close().await;
     b.close().await;
+    raw.close().await;
+}
+
+/// Separate hosts cross each whole-second boundary at slightly different
+/// instants. A host whose clock trails the shared high-water mark by less
+/// than the tolerance adopts it; a larger regression fails closed as a clock
+/// configuration fault rather than storage corruption.
+pub(super) async fn cross_host_clock_skew(url: &str) {
+    let (raw, a, b, clock) = reset(url).await;
+    let lagging_clock = TestClock::new();
+    let lagging = Store::connect_with_clock(url, config(), lagging_clock.clone())
+        .await
+        .unwrap();
+    clock.set(1001);
+    a.issue(&intent(40)).await.unwrap();
+    // One second behind the recorded time, as after a boundary race.
+    lagging_clock.set(1000);
+    let consumed = lagging
+        .consume([40; 32], [7; 32], CeremonyKind::Registration)
+        .await
+        .unwrap();
+    lagging.confirm(&consumed).await.unwrap();
+    lagging.issue(&intent(41)).await.unwrap();
+    let issued_at: i64 = sqlx::query_scalar(
+        "SELECT issued_at FROM rullst_passkey_ceremony.pending WHERE challenge=$1",
+    )
+    .bind([41u8; 32].as_slice())
+    .fetch_one(&raw)
+    .await
+    .unwrap();
+    assert_eq!(issued_at, 1001, "the shared time must not move backwards");
+    b.consume([41; 32], [7; 32], CeremonyKind::Registration)
+        .await
+        .unwrap();
+    lagging_clock.set(995);
+    assert!(matches!(
+        lagging.issue(&intent(42)).await,
+        Err(Error::Configuration)
+    ));
+    let last_now: i64 =
+        sqlx::query_scalar("SELECT last_now FROM rullst_passkey_ceremony.metadata WHERE id=1")
+            .fetch_one(&raw)
+            .await
+            .unwrap();
+    assert_eq!(last_now, 1001);
+    a.close().await;
+    b.close().await;
+    lagging.close().await;
     raw.close().await;
 }
 

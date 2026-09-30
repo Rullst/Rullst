@@ -236,13 +236,14 @@ field; Nexus never guesses which arbitrary status value means inactive.
 ## Content Security Policy
 
 Nexus pages load only same-origin assets from `/nexus/assets/` (`nexus.css`,
-`nexus.js` and a vendored htmx 2.0.4) and contain no inline scripts, styles,
+`nexus.js`, a vendored htmx 2.0.4 and the Rullst logo `rullst-logo.png`,
+used as the brand mark and favicon) and contain no inline scripts, styles,
 event-handler attributes or `hx-on` attributes. The default production CSP
 applies to the panel unchanged, so there is no reason to add `'unsafe-inline'`,
 `'unsafe-eval'` or a CDN to the application-wide `security.csp`. A custom
 policy must keep `'self'` for scripts, styles and `connect-src`, and `data:`
-for images. The logo, favicon and web fonts that previously came from GitHub,
-unpkg and Google Fonts are no longer requested.
+for images. Nothing is requested from GitHub, unpkg or Google Fonts; the panel
+uses system fonts.
 
 ## Benefits of Nexus
 

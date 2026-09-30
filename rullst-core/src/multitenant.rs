@@ -164,7 +164,11 @@ where
 
     fn call(&mut self, mut req: axum::http::Request<ReqBody>) -> Self::Future {
         let config = self.config.clone();
-        let mut inner = self.inner.clone();
+        // `poll_ready` readied `self.inner`, so that instance must handle the
+        // request: services such as `ConcurrencyLimit` reserve capacity there
+        // and reject a call on a fresh clone. Leave the clone for the next call.
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
 
         Box::pin(async move {
             let requested_tenant_id = match config.strategy {
@@ -361,5 +365,64 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(rejected.status(), StatusCode::FORBIDDEN);
+    }
+
+    /// Inner service that accepts a call only on the instance that was
+    /// readied, like tower's `ConcurrencyLimit`, `RateLimit` and `Buffer`.
+    #[derive(Default)]
+    struct ReadiedOnly {
+        ready: bool,
+    }
+
+    impl Clone for ReadiedOnly {
+        fn clone(&self) -> Self {
+            Self::default()
+        }
+    }
+
+    impl tower_service::Service<axum::http::Request<axum::body::Body>> for ReadiedOnly {
+        type Response = axum::http::Response<axum::body::Body>;
+        type Error = &'static str;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(
+            &mut self,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), Self::Error>> {
+            self.ready = true;
+            std::task::Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: axum::http::Request<axum::body::Body>) -> Self::Future {
+            let readied = std::mem::take(&mut self.ready);
+            std::future::ready(if readied {
+                Ok(axum::http::Response::new(axum::body::Body::empty()))
+            } else {
+                Err("called without poll_ready")
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn tenant_service_calls_the_inner_service_it_readied() {
+        use tower::ServiceExt;
+        use tower_layer::Layer;
+
+        let service =
+            tenant_layer(TenantConfig::new(TenantStrategy::Header)).layer(ReadiedOnly::default());
+        let mut request = axum::http::Request::builder()
+            .uri("/")
+            .header("X-Tenant-ID", "acme-corp")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        request
+            .extensions_mut()
+            .insert(crate::security::TenantMembership::try_new(["acme-corp"]).unwrap());
+
+        let status = service
+            .oneshot(request)
+            .await
+            .map(|response| response.status());
+        assert_eq!(status, Ok(axum::http::StatusCode::OK));
     }
 }

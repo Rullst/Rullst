@@ -162,7 +162,9 @@ unless a trusted-proxy policy explicitly accepts forwarded metadata. Core's
 `RateLimiter` keys IPv4 peers per address and IPv6 peers per /64, so rotating
 addresses inside one delegated prefix shares a bucket. Its process-local map
 tracks at most 100,000 keys: fully refilled buckets are dropped and, beyond the
-cap, the least recently used buckets are evicted and restart with a full burst. Never trust
+cap, the least recently used buckets are evicted and restart with a full burst.
+Security's `rate_limit_middleware` groups peers the same way; its table tracks at
+most 16,384 keys and fails closed for new keys while it is full. Never trust
 `X-Forwarded-For`, tenant headers, or role headers directly from an arbitrary
 client. Tenant membership and roles must come from an authenticated session or a
 cryptographically trusted internal gateway.
@@ -171,7 +173,10 @@ cryptographically trusted internal gateway.
 
 RASP/WAF rules are bounded to avoid uncontrolled CPU or memory work. They can
 reject known suspicious patterns in supported URI, header, and bounded body data,
-but application queries must still use binds and access control.
+but application queries must still use binds and access control. Body media
+types are classified at least as broadly as axum's extractors: any ASCII case,
+parameters, a `json`/`xml` subtype or `+json`/`+xml` suffix, and any type that
+starts with `application/x-www-form-urlencoded`.
 
 DLP modifies only supported textual responses whose body can be safely buffered
 within configured limits. Applications must test JSON, HTML, binary, compressed,

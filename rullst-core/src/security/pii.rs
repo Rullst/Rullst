@@ -24,11 +24,12 @@ pub(super) const fn card_mask_count(digit_count: usize) -> Option<usize> {
 }
 
 fn is_textual_response(headers: &HeaderMap) -> bool {
+    use super::media_type::{essence, is_json, is_text, is_xml};
+
     let Some(media_type) = headers
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(';').next())
-        .map(str::trim)
+        .map(essence)
     else {
         return false;
     };
@@ -37,18 +38,10 @@ fn is_textual_response(headers: &HeaderMap) -> bool {
         return false;
     }
 
-    media_type
-        .get(..5)
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("text/"))
-        || media_type.eq_ignore_ascii_case("application/json")
+    is_text(media_type)
+        || is_json(media_type)
+        || is_xml(media_type)
         || media_type.eq_ignore_ascii_case("application/javascript")
-        || media_type.eq_ignore_ascii_case("application/xml")
-        || media_type
-            .strip_suffix("+json")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
-        || media_type
-            .strip_suffix("+xml")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -258,7 +251,7 @@ pub fn mask_pii(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{card_mask_count, mask_card_numbers, mask_pii};
+    use super::{card_mask_count, is_textual_response, mask_card_numbers, mask_pii};
     use std::time::{Duration, Instant};
 
     /// The former per-position rescan, kept as a differential oracle for the
@@ -393,5 +386,27 @@ mod tests {
             "masking 400,000 characters took {:?}",
             started.elapsed()
         );
+    }
+
+    #[test]
+    fn textual_responses_are_recognized_in_any_ascii_case() {
+        use axum::http::{HeaderMap, HeaderValue, header};
+        for media_type in [
+            "application/problem+JSON",
+            "Application/Vnd.Api+Json; charset=utf-8",
+            "APPLICATION/JSON",
+            "Application/Atom+XML",
+            "Text/HTML",
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(media_type));
+            assert!(is_textual_response(&headers), "{media_type}");
+        }
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("Text/Event-Stream"),
+        );
+        assert!(!is_textual_response(&headers));
     }
 }

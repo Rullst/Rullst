@@ -221,6 +221,34 @@ A prepared version section does not establish that its tag or crates exist.
 - `Debug` for `DatabaseConfig`, `RullstConfig` and `db::ReplicationConfig`
   redacts database URLs and auth tokens.
 
+### Security second-pass review fixes
+
+- `rate_limit_middleware` keys IPv6 peers per /64 (IPv4 per address,
+  IPv4-mapped IPv6 as IPv4), so rotating addresses inside one prefix no longer
+  yields fresh budgets or fills the identity table.
+- The shared PostgreSQL passkey ceremony store tolerates up to 5 s of
+  cross-host clock skew instead of reporting `Corrupt`; larger regressions fail
+  closed with `Configuration`.
+- `redact_secrets` redacts compound key names such as `DB_PASSWORD`,
+  `access_token`, `client_secret`, `SECRET_KEY` and `X-API-Key`, and redacts
+  unquoted Authorization/Cookie values to the end of the line, keeping only a
+  recognized auth scheme.
+- `TenantService` calls the inner service instance it readied, fixing panics
+  with `ConcurrencyLimit`, `RateLimit` or `Buffer` inside `tenant_layer`.
+- `RedisRateLimiter` reuses one lazily opened multiplexed connection, shared by
+  clones and reopened after connection failures, instead of connecting per
+  check.
+- The CSRF middleware finds `rullst_csrf` even when another cookie contains
+  non-ASCII bytes, instead of rejecting every POST and rotating the token.
+- DLP and `redact_secrets` mask EC, DSA, encrypted PKCS#8 and OpenPGP PEM
+  private-key blocks.
+- WAF, RASP, schema guard, DLP, PII and AI-firewall checks classify JSON, XML
+  and form media types case-insensitively and by suffix or prefix, like axum's
+  extractors, closing a body-inspection bypass.
+- The honeypot refuses but no longer bans requests that a page initiated
+  (cross-site or same-site subresource loads and navigations), so lure pages
+  cannot ban visitors or shared NAT addresses.
+
 ### Omni dependency compatibility maintenance
 
 - Keep generated Omni shells on a compatible Tauri runtime/macro/build family
@@ -407,7 +435,8 @@ A prepared version section does not establish that its tag or crates exist.
 - Nexus serves its stylesheet, script and a vendored htmx 2.0.4 (0BSD)
   same-origin under `/nexus/assets` and emits no inline code, handlers or style
   attributes, so the panel works under the default production nonce CSP. The
-  external logo, favicon and fonts are removed.
+  external fonts are removed, and the Rullst logo and favicon are served
+  same-origin from `/nexus/assets/rullst-logo.png`.
 - Nexus never renders stored Password-kind values: list cells are masked and
   not selected or sortable, the edit input is empty, and an empty submission
   keeps the stored value. Nexus does not hash values; the docs describe the

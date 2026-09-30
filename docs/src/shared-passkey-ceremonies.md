@@ -62,7 +62,11 @@ of 1–100,000 pending challenges and a 1–600 second lifetime. PostgreSQL owns
 fixed private schema with metadata and pending rows. All operations validate
 configuration and a persistent clock high-water mark under a transaction-level
 metadata lock. Clocks are trusted server clocks; hosts must synchronize them.
-A backward clock fails closed. Challenge and identity references are digested;
+Hosts cross each whole-second boundary at slightly different instants, so a
+host whose clock trails the recorded high-water mark by at most five seconds
+adopts that mark: shared time never moves backwards and no lifetime is
+extended. A larger backward step fails closed with `Configuration`, not
+`Corrupt`. Challenge and identity references are digested;
 rows contain purpose, bounded credential fingerprints and issued/expiry times,
 not passwords, private keys, display names, raw sessions or response bodies.
 
