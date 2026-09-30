@@ -231,7 +231,8 @@ impl TrackingEngine {
         }
     }
 
-    /// Rewrites absolute HTTP(S) links through a validated tracker endpoint.
+    /// Rewrites absolute HTTP(S) `<a href="...">` links through a validated
+    /// tracker endpoint; `<link>`, `<base>` and other elements are unchanged.
     ///
     /// Each token signs the destination with HTML character references
     /// decoded, and the tracker URL is escaped for the attribute it enters.

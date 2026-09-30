@@ -304,3 +304,36 @@ fn click_tokens_sign_the_decoded_destination_and_escape_the_tracker() {
         "https://shop.example/p?id=1&utm=mail&token=a1"
     );
 }
+
+#[test]
+fn only_anchor_hrefs_are_rewritten() {
+    let html = concat!(
+        r#"<head><link href="https://fonts.example/css?family=U" rel="stylesheet">"#,
+        r#"<base href="https://app.example/"></head><body>"#,
+        r#"<A class="btn" HREF="x" href="https://app.example/a">a</A>"#,
+        r#"<a data-href="https://app.example/data" title="t">d</a>"#,
+        r#"<p>href="https://app.example/text"</p>"#,
+        r#"<abbr href="https://app.example/abbr">x</abbr>"#,
+        "<a\n  href=\"https://app.example/b\">b</a></body>"
+    );
+    let rewritten = TrackingEngine::try_rewrite_links(
+        html,
+        "https://track.example.com",
+        SECRET,
+        "user@example.com",
+        NOW,
+    )
+    .expect("valid rewrite");
+    for kept in [
+        "https://fonts.example/css?family=U",
+        "href=\"https://app.example/\"",
+        "https://app.example/data",
+        "https://app.example/text",
+        "https://app.example/abbr",
+    ] {
+        assert!(rewritten.contains(kept), "{kept}");
+    }
+    assert!(!rewritten.contains("https://app.example/a\""));
+    assert!(!rewritten.contains("https://app.example/b\""));
+    assert_eq!(rewritten.matches("/track/click/").count(), 2);
+}

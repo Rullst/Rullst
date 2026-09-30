@@ -340,6 +340,12 @@ the current token payload contains the recipient address and destination URL in
 base64-readable form. Applications must decide whether to use tracking at all
 and own consent, minimization, retention, redirects and applicable law.
 
+Click tracking rewrites only the double-quoted `href` of `<a>` elements, so a
+`<link>` stylesheet or `<base>` fetched when a message is opened never registers
+as a click. The token signs the destination with HTML character references
+decoded (`?a=1&amp;b=2` is redirected as `?a=1&b=2`), and the tracker base is
+escaped for the attribute it enters.
+
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
 use std::time::Duration;

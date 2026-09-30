@@ -1,13 +1,16 @@
-//! `href` rewriting for click tracking.
+//! Anchor `href` rewriting for click tracking.
 
 use super::TrackingError;
 
-/// Replaces each double-quoted absolute HTTP(S) `href` value with
-/// `{tracker_base}/track/click/{token}`.
+/// Replaces the double-quoted absolute HTTP(S) `href` of each `<a>` element
+/// with `{tracker_base}/track/click/{token}`.
 ///
-/// `tracker_base` must already be escaped for an attribute value. The token
-/// signs the destination as a browser reads it, with character references
-/// decoded, so `?a=1&amp;b=2` is signed and later redirected as `?a=1&b=2`.
+/// Other elements keep their `href`: a `<link>` stylesheet or `<base>` that
+/// a mail client fetches on open must not register as a click or consume a
+/// one-time click token. `tracker_base` must already be escaped for an
+/// attribute value. The token signs the destination as a browser reads it,
+/// with character references decoded, so `?a=1&amp;b=2` is signed and later
+/// redirected as `?a=1&b=2`.
 pub(super) fn rewrite_links(
     html: &str,
     tracker_base: &str,
@@ -16,9 +19,12 @@ pub(super) fn rewrite_links(
     const PATTERN: &str = "href=\"";
     let mut output = String::with_capacity(html.len() + 256);
     let mut last_index = 0;
+    let mut in_anchor = false;
     while let Some(relative) = html[last_index..].find(PATTERN) {
-        let href_start = last_index + relative + PATTERN.len();
+        let attribute = last_index + relative;
+        let href_start = attribute + PATTERN.len();
         output.push_str(&html[last_index..href_start]);
+        in_anchor = inside_anchor_tag(&html[last_index..attribute], in_anchor);
         let Some(end) = html[href_start..].find('"') else {
             last_index = href_start;
             break;
@@ -26,7 +32,13 @@ pub(super) fn rewrite_links(
         let url_end = href_start + end;
         let raw = &html[href_start..url_end];
         let target = crate::entities::decode(raw);
-        if target.starts_with("http://") || target.starts_with("https://") {
+        // `data-href` and other names merely ending in `href` are not links.
+        let is_href = html[..attribute]
+            .bytes()
+            .next_back()
+            .is_some_and(|byte| byte.is_ascii_whitespace());
+        if in_anchor && is_href && (target.starts_with("http://") || target.starts_with("https://"))
+        {
             output.push_str(tracker_base);
             output.push_str("/track/click/");
             output.push_str(&sign(&target)?);
@@ -37,4 +49,21 @@ pub(super) fn rewrite_links(
     }
     output.push_str(&html[last_index..]);
     Ok(output)
+}
+
+/// Whether an attribute that follows `gap` still sits inside an `<a>` start
+/// tag. `gap` is the text since the previous attribute value, so each byte
+/// is examined once and `previous` carries the state across attributes of
+/// one tag. A `>` inside an earlier quoted value leaves that link untracked.
+fn inside_anchor_tag(gap: &str, previous: bool) -> bool {
+    match gap.rfind('<') {
+        Some(open) => {
+            let tag = &gap[open + 1..];
+            let name_end = tag
+                .find(|c: char| c.is_ascii_whitespace() || matches!(c, '/' | '>'))
+                .unwrap_or(tag.len());
+            tag[..name_end].eq_ignore_ascii_case("a") && !tag.contains('>')
+        }
+        None => previous && !gap.contains('>'),
+    }
 }
