@@ -78,10 +78,11 @@ let coap = CoapRequest::new(
 `MqttPublish` emits one MQTT 5 PUBLISH packet with an empty property section and
 a 1 MiB local ceiling. It does not implement CONNECT, broker negotiation,
 PUBACK/PUBREC/PUBREL/PUBCOMP, or retries. `CoapRequest` emits base GET/POST/PUT/
-DELETE requests with ordered URI-Path (at most 255 bytes per segment, as RFC
-7252 requires) and Content-Format options under a conservative 1152-byte
-datagram ceiling; token uniqueness, message correlation, retransmission,
-block-wise transfer, UDP and DTLS remain caller responsibilities.
+DELETE requests with ordered URI-Path (at most 255 bytes per segment and never
+`.` or `..`, as RFC 7252 requires) and Content-Format options under a
+conservative 1152-byte datagram ceiling; token uniqueness, message correlation,
+retransmission, block-wise transfer, UDP and DTLS remain caller
+responsibilities.
 
 ## Signed OTA gate
 

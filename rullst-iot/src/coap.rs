@@ -57,7 +57,8 @@ impl CoapMethod {
 pub enum CoapCodecError {
     /// RFC 7252 limits tokens to eight bytes.
     TokenTooLong,
-    /// A simplified URI path segment is empty, contains `/`, or has controls.
+    /// A simplified URI path segment is empty, `.` or `..` (which RFC 7252
+    /// forbids as Uri-Path values), contains `/`, or has controls.
     InvalidPathSegment,
     /// An option value exceeds its RFC 7252 length limit or cannot be
     /// represented by the base option encoding.
@@ -117,12 +118,16 @@ impl CoapRequest {
     }
 
     /// Appends one decoded URI-Path segment. `/` separators are not accepted
-    /// inside a segment; callers should append each segment separately. A
+    /// inside a segment; callers should append each segment separately. The
+    /// dot segments `.` and `..` are rejected because RFC 7252 section 5.10.1
+    /// requires the URI to be resolved before it is split into options. A
     /// segment longer than the RFC 7252 limit of 255 bytes is rejected with
     /// [`CoapCodecError::OptionTooLarge`].
     pub fn path_segment(mut self, segment: impl Into<String>) -> Result<Self, CoapCodecError> {
         let segment = segment.into();
         if segment.is_empty()
+            || segment == "."
+            || segment == ".."
             || segment.contains('/')
             || segment.chars().any(|character| character.is_control())
         {
@@ -327,6 +332,19 @@ mod tests {
             .and_then(|request| request.path_segment("bad/path")),
             Err(CoapCodecError::InvalidPathSegment)
         );
+        for dot_segment in [".", ".."] {
+            assert_eq!(
+                CoapRequest::new(
+                    CoapMessageType::Confirmable,
+                    CoapMethod::Get,
+                    1,
+                    Vec::<u8>::new()
+                )
+                .and_then(|request| request.path_segment("files"))
+                .and_then(|request| request.path_segment(dot_segment)),
+                Err(CoapCodecError::InvalidPathSegment)
+            );
+        }
         assert_eq!(
             CoapRequest::new(
                 CoapMessageType::Confirmable,
