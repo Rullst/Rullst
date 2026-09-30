@@ -407,6 +407,22 @@ A prepared version section does not establish that its tag or crates exist.
   established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
   for the demonstrated defect, application actions and admission boundaries.
 
+### Studio review fixes
+
+- Data-browser row updates and deletes require the table's complete primary
+  key and run in a transaction that commits only when exactly one row changed.
+  Tables whose key includes a column outside Studio's identifier boundary are
+  read-only, and rows with a NULL key show no actions.
+- Studio selects its database with the resolver shared by Server and Artisan
+  (process environment, then `.env`, then `[database].url`) and no longer
+  falls back to creating `sqlite://db.sqlite`.
+- Queue retry/purge and feature-flag toggles require the verified local Studio
+  marker; the raw routers return 403 for them.
+- `GET /studio/features` no longer creates `rullst_feature_flags`; a missing
+  table is reported with the schema to add in a migration.
+- The table view limits cell text to 256 characters in the database query and
+  search terms to 256 bytes.
+
 ### Optional v13 WebGPU example
 
 - Add a non-publishable wave-interference teaching application in `examples/webgpu`,
