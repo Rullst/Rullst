@@ -155,7 +155,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
   Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  active tenant and table only after commit through a per-table key index,
+  tenant active at the write and its table only after commit (even when that
+  `with_tenant` scope ended before the commit) through a per-table key index,
   never a keyspace `SCAN`, so write latency does not grow with unrelated keys
   in a shared Redis database; cluster/failover evidence remains outside the
   current contract.

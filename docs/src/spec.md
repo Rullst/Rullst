@@ -2005,8 +2005,10 @@ while portability and semantic review remain the model author's responsibility.
   generated cache write also records its key in a per-namespace/tenant/table
   Redis set in the same `EVAL` script, extending that set's TTL to the longest
   entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the active tenant/table only after commit by popping
-  that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  operations invalidate the tenant/table active at the write only after
+  commit (the tenant is captured when the callback is registered, so a
+  `with_tenant` scope that ended inside the transaction closure still has its
+  keys removed) by popping that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
   write); they never `SCAN` the Redis keyspace, so their cost does not grow
   with unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the
