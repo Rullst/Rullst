@@ -102,10 +102,11 @@ having its credentials checked during a lockout, so an attacker sharing its addr
 administrator out. The value changes on restart, and a first login during an active lockout still
 waits for the lockout to expire.
 
-Basic credentials are only encoding, not encryption. The middleware therefore accepts them only on
-an HTTPS request or when trusted deployment middleware inserts `NexusVerifiedTls`. This marker is a
-security assertion: never create it solely because an untrusted request supplied
-`X-Forwarded-Proto` or another forwarding header.
+Basic credentials are only encoding, not encryption. The middleware therefore accepts them only
+when trusted deployment middleware inserts `NexusVerifiedTls`, or when Core's trusted-proxy layer
+reported HTTPS from a trusted proxy peer (see below). The marker is a security assertion: never
+create it solely because an untrusted request supplied `X-Forwarded-Proto` or another forwarding
+header.
 
 ```rust
 use axum::{Extension, Router};
@@ -140,11 +141,17 @@ The Basic Auth guard also requires `NexusVerifiedTls` from trusted transport
 integration; an `https` request URI or a forwarding header alone never proves TLS.
 
 Behind a reverse proxy, the socket peer is the proxy, so every client shares one failure bucket:
-anyone can lock it, and only browsers holding the known-client cookie keep access. To give each
-client its own bucket, the same trusted middleware that inserts `NexusVerifiedTls` may replace
-`ConnectInfo<SocketAddr>` with the client address it took from the proxy's forwarding header, and
-only when the socket peer is that proxy. Never derive it from a header an arbitrary client can
-set.
+anyone can lock it, and only browsers holding the known-client cookie keep access. Give each client
+its own bucket with Core's trusted-proxy layer, listing only the proxy's own network:
+
+```rust,ignore
+Server::new(app).trusted_proxies(TrustedProxyConfig::new(["10.0.0.0/8"])?.trust_forwarded_proto(true))
+```
+
+Forwarding headers are read only from peers inside those networks; any host in a listed network can
+choose the client address. `trust_forwarded_proto(true)` also accepts that proxy's
+`X-Forwarded-Proto: https` as the TLS evidence above; enable it only when the proxy overwrites the
+header. The `NexusVerifiedTls` path keeps working unchanged.
 
 For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified

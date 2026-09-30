@@ -42,7 +42,8 @@ The fixture's routing and control endpoints are test code. Its management channe
 is the parent-owned stdin pipe, not an HTTP administration route. There are no
 user accounts or domain authorization claims. A socket-level quota behind a proxy
 conservatively combines clients from that peer; real per-user quotas must use an
-authenticated application identity, or an explicitly reviewed trusted-hop policy.
+authenticated application identity, or an explicitly reviewed trusted-hop policy
+such as Core's `Server::trusted_proxies`, which this fixture does not enable.
 Raw forwarding headers never supply a tenant, role or user identity.
 
 ## HTTP drain correction

@@ -24,8 +24,8 @@ trust.
 
 Process-local replay caches, counters, rate limits and audit buffers are useful
 single-instance controls. They are not distributed guarantees. Forwarded
-addresses are untrusted unless a separately reviewed proxy policy establishes
-the direct peer as trusted.
+addresses are untrusted unless an explicit proxy policy (Core's
+`TrustedProxyLayer`, see `CORE-03`) establishes the direct peer as trusted.
 
 The machine-readable release minimum in
 `.github/threat-model-release-minimum.json` binds 55 distinct abuse-case IDs to
@@ -50,6 +50,22 @@ checks ↔ process-local readiness bits; new requests ↔ draining server.
 
 **Release-negative minimum:** unready/draining response without private labels;
 request accepted before drain completes while a later request is denied.
+
+## TM-CORE-2 — client identity behind reverse proxies
+
+**Assets:** rate-limit, lockout, ban and audit identity; the TLS evidence used
+by Nexus Basic Auth; availability of clients that share a proxy.
+
+**Trust boundaries:** arbitrary client ↔ forwarding headers; socket peer ↔
+configured proxy networks; trusted proxy ↔ its appended entries.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `CORE-03` forged forwarding metadata chooses or collapses the client identity | Read `X-Forwarded-For` or RFC 7239 `Forwarded` (exactly one) only from a socket peer inside a bounded, validated list of trusted networks; never trust `/0` or an empty policy. Walk right to left, skip trusted hops, bound examined bytes/hops and keep the socket peer without failing the request when the trusted part is missing, malformed, unidentified or over-long. Report the forwarded scheme only after explicit opt-in. | `TrustedProxyLayer` unit tests cover direct-client spoofing, multi-hop chains, IPv6/brackets/ports/IPv4-mapped forms, `unknown`/obfuscated nodes, quoted-comma injection, byte/hop limits and client padding that is never parsed. Router tests prove Core `RateLimiter`, Security `rate_limit_middleware` and Nexus Basic Auth lockout bucket each client behind a trusted proxy while forged headers from a direct client are ignored, that only a trusted peer's `https` report satisfies Nexus TLS evidence, and that `Server` mounts the layer outside its rate limiter (static and hot-reload paths). A trusted proxy that forwards client-supplied headers unchanged, proxy address spoofing on a shared network, CDN/provider range maintenance and distributed limits remain deployment work. |
+
+**Release-negative minimum:** a direct client forging forwarding headers keeps
+its socket identity, and two clients behind one trusted proxy receive separate
+rate-limit buckets.
 
 ## TM-AUTH-1 — sessions, passwords, OAuth/OIDC and passkeys
 
@@ -102,7 +118,7 @@ tools, audit evidence and security telemetry.
 
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
-| `NEXUS-01` anonymous/default access | Fail closed without explicit production policy. Local shortcut requires debug build and verified loopback peer. | Router policy and loopback tests. Basic Auth counts only failed presented credentials per IPv4 address or IPv6 /64; credential-less challenges never lock. A locked bucket is not evaluated for unknown clients, while browsers holding the per-process known-client cookie keep access, and pruning is amortized. Behind a shared proxy a first login can still be locked out unless trusted middleware supplies the verified client address as `ConnectInfo`. |
+| `NEXUS-01` anonymous/default access | Fail closed without explicit production policy. Local shortcut requires debug build and verified loopback peer. | Router policy and loopback tests. Basic Auth counts only failed presented credentials per IPv4 address or IPv6 /64; credential-less challenges never lock. A locked bucket is not evaluated for unknown clients, while browsers holding the per-process known-client cookie keep access, and pruning is amortized. Behind a shared proxy a first login can still be locked out unless Core's `TrustedProxyLayer` (`CORE-03`) is configured with the proxy's network; a router test then proves per-client lockout isolation. |
 | `NEXUS-02` IDOR/BOLA on CRUD/batch routes | Resolve subject/tenant, then authorize object ownership or role for every ID and bulk member. | Models that explicitly register a text tenant column now scope every built-in read/mutation/batch predicate to a trusted `TenantContext`, inject it on create and fail closed without context. A real SQLite HTTP regression proves cross-tenant list/update/delete/batch denial and protected create input; pure SQL tests keep the all-feature release minimum portable. Global models, custom routes, identity/membership resolution, within-tenant object ownership and independent review remain host work. |
 | `NEXUS-03` stored/reflected XSS | Escape dynamic HTML; make raw HTML explicit; enforce nonce CSP. | Core proves renderer/header nonce identity. Generated LMS auth/catalog/course/player style elements consume the request nonce, remove remote shell dependencies/inline style attributes and the materialized catalog escapes script-shaped search text. Nexus serves its stylesheet, script and vendored htmx same-origin with no inline code, handler or style attributes; an HTTP regression checks every Nexus page and fragment against the default production CSP, and the Linux browser check loads the shell under that CSP and fails on any violation. A route-by-route review of application routes mounted next to Nexus remains open. |
 | `NEXUS-04` AI assistant privilege escalation | Treat model output as untrusted; allowlist typed tools and authorize each invocation as the human subject. | Prompt filtering exists; tool approval/audit policy remains open. |

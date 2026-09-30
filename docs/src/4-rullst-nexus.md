@@ -122,10 +122,25 @@ during this process: it received the `HttpOnly`, `Secure`
 
 Behind a TLS-terminating reverse proxy every client shares the proxy's address,
 so one attacker can lock the bucket for everyone who has no known-client cookie
-(new browsers, or all browsers after a restart). To isolate clients, have the
-trusted middleware that inserts `NexusVerifiedTls` also replace
-`ConnectInfo<SocketAddr>` with the client address from the proxy's forwarding
-header, only for connections whose socket peer is that proxy.
+(new browsers, or all browsers after a restart). Configure Core's trusted-proxy
+layer with the proxy's own network to give each client its own bucket:
+
+```rust,ignore
+Server::new(router).trusted_proxies(
+    TrustedProxyConfig::new(["10.0.0.0/8"])?.trust_forwarded_proto(true),
+)
+```
+
+List only the networks your proxies connect from: any host inside a listed
+network can choose the client address. Forwarding headers from every other peer
+are ignored. With `trust_forwarded_proto(true)`, an `X-Forwarded-Proto: https`
+from that trusted peer also satisfies the Basic Auth TLS requirement, so a
+separate `NexusVerifiedTls` middleware is unnecessary; enable it only when the
+proxy overwrites that header. The same settings are available in `Rullst.toml`
+as `[security] trusted_proxies`, `trusted_proxy_header` and
+`trust_forwarded_proto`. See the
+[security architecture](security-architecture.md#identity-and-network-trust)
+for the resolution rules.
 
 ## Tenant-scoped administration
 
