@@ -64,7 +64,7 @@ impl FiscalCommandJournal {
         validate_observed_at(observed_at_unix_ms)?;
         let environment = JournalEnvironment::from_execution(environment)?;
         if environment != JournalEnvironment::from_api(request.environment()) {
-            return Err(FiscalJournalError::ResponseMismatch);
+            return Err(FiscalJournalError::EnvironmentMismatch);
         }
         let request_digest = evidence::request_fingerprint(request)?;
         let mut state = self.lock_and_refresh()?;

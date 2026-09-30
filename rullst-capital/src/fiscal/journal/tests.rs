@@ -261,7 +261,7 @@ fn pending_recovery_and_conflicting_transitions_fail_closed() {
             request(),
             30
         ),
-        Err(FiscalJournalError::ResponseMismatch)
+        Err(FiscalJournalError::EnvironmentMismatch)
     );
     assert_eq!(
         journal.record_response_at("missing", request(), &rejection(), 30),

@@ -64,6 +64,10 @@ pub enum FiscalJournalError {
     },
     #[error("fiscal journal event encoding failed")]
     Encoding,
+    /// The selected environment differs from the `tpAmb` signed in the DPS.
+    /// Earlier releases reported this as `ResponseMismatch`. New in 13.0.
+    #[error("fiscal command environment does not match the signed DPS tpAmb")]
+    EnvironmentMismatch,
 }
 
 /// A named 256-bit HMAC key used to authenticate a local fiscal journal.
