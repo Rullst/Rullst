@@ -116,7 +116,7 @@ pub fn build_table_query(
 
     let clean_pk = sanitize_identifier(entry.pk);
     if !select_cols.contains(&clean_pk) {
-        select_cols.insert(0, clean_pk);
+        select_cols.insert(0, clean_pk.clone());
     }
 
     let mut select_list = select_cols.join(", ");
@@ -203,12 +203,19 @@ pub fn build_table_query(
         .filter(|&o| o.eq_ignore_ascii_case("asc") || o.eq_ignore_ascii_case("desc"))
         .unwrap_or("DESC");
     let clean_sort_col = sanitize_identifier(sort_col);
+    // A non-unique sort column has no stable order between separate page
+    // queries; the primary key breaks ties so rows neither repeat nor vanish.
+    let tie_breaker = if clean_sort_col == clean_pk {
+        String::new()
+    } else {
+        format!(", {clean_pk} {sort_dir}")
+    };
 
     let _ = std::fmt::Write::write_fmt(
         &mut sql,
         format_args!(
-            " ORDER BY {} {} LIMIT {} OFFSET {}",
-            clean_sort_col, sort_dir, limit, offset
+            " ORDER BY {} {}{} LIMIT {} OFFSET {}",
+            clean_sort_col, sort_dir, tie_breaker, limit, offset
         ),
     );
 
@@ -283,6 +290,31 @@ mod tests {
         assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
         assert!(!sql.contains("api_key"), "{sql}");
         assert!(sql.contains("ORDER BY id asc"), "{sql}");
+    }
+
+    #[test]
+    fn pages_sorted_by_a_non_unique_column_break_ties_by_primary_key() {
+        let entry = tenant_entry();
+        let visible = vec![&entry.fields[0], &entry.fields[2]];
+        let (sql, _) = build_table_query(
+            &entry,
+            &visible,
+            "",
+            2,
+            Some("title"),
+            Some("asc"),
+            Some("tenant-a"),
+        );
+        assert!(
+            sql.ends_with(" ORDER BY title asc, id asc LIMIT 15 OFFSET 15"),
+            "{sql}"
+        );
+
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, Some("tenant-a"));
+        assert!(
+            sql.ends_with(" ORDER BY id DESC LIMIT 15 OFFSET 0"),
+            "{sql}"
+        );
     }
 
     #[test]
