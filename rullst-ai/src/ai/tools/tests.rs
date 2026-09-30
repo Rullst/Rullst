@@ -1,5 +1,9 @@
 use super::*;
 use std::io;
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicUsize, Ordering},
+};
 
 struct EchoTool;
 
@@ -346,4 +350,135 @@ fn invalid_registration_policy_context_and_audit_capacity_are_rejected() {
     assert!(ToolExecutionContext::new("user", ["echo"], 0).is_err());
     assert!(InMemoryToolAuditTrail::new(0).is_err());
     assert!(InMemoryToolAuditTrail::new(1_000_001).is_err());
+}
+
+#[derive(Clone, Copy)]
+enum CountedResult {
+    Output,
+    Error,
+    OversizedOutput,
+}
+
+/// Counts executions so a test can tell whether a side effect happened.
+struct CountingTool {
+    executions: Arc<AtomicUsize>,
+    result: CountedResult,
+}
+
+impl AiTool for CountingTool {
+    fn name(&self) -> &str {
+        "count"
+    }
+
+    fn description(&self) -> &str {
+        "Count executions"
+    }
+
+    fn parameters(&self) -> Vec<ToolParam> {
+        Vec::new()
+    }
+
+    fn risk(&self) -> ToolRisk {
+        ToolRisk::Mutating
+    }
+
+    fn execute(&self, _: Value) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        self.executions.fetch_add(1, Ordering::SeqCst);
+        match self.result {
+            CountedResult::Output => Ok(serde_json::json!({"ok": true})),
+            CountedResult::Error => Err(Box::new(io::Error::other("downstream failure"))),
+            CountedResult::OversizedOutput => Ok(serde_json::json!({"data": "x".repeat(64)})),
+        }
+    }
+}
+
+/// Accepts the first `accepted` records and rejects every later one.
+struct AuditAcceptingOnly {
+    accepted: usize,
+    outcomes: Mutex<Vec<ToolAuditOutcome>>,
+}
+
+impl AuditAcceptingOnly {
+    fn new(accepted: usize) -> Self {
+        Self {
+            accepted,
+            outcomes: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+impl ToolAuditSink for AuditAcceptingOnly {
+    fn record(&self, event: ToolAuditEvent) -> Result<(), ToolExecutionError> {
+        let mut outcomes = self
+            .outcomes
+            .lock()
+            .map_err(|_| ToolExecutionError::AuditUnavailable("lock poisoned".to_string()))?;
+        if outcomes.len() >= self.accepted {
+            return Err(ToolExecutionError::AuditUnavailable(
+                "audit capacity is exhausted".to_string(),
+            ));
+        }
+        outcomes.push(event.outcome);
+        Ok(())
+    }
+}
+
+#[test]
+fn audit_failure_after_execution_is_distinguished_from_one_before() {
+    for result in [
+        CountedResult::Output,
+        CountedResult::Error,
+        CountedResult::OversizedOutput,
+    ] {
+        let executions = Arc::new(AtomicUsize::new(0));
+        let mut registry = ToolRegistry::new();
+        registry
+            .register(CountingTool {
+                executions: Arc::clone(&executions),
+                result,
+            })
+            .expect("valid counting tool");
+        let policy = ToolExecutionPolicy::new(["count"])
+            .and_then(|policy| policy.with_payload_limits(1_024, 32))
+            .expect("valid policy");
+        let mut context =
+            ToolExecutionContext::new("user-17", ["count"], 2).expect("valid authorization");
+
+        let unavailable = AuditAcceptingOnly::new(0);
+        assert_eq!(
+            registry.execute(
+                "count",
+                serde_json::json!({}),
+                &mut context,
+                &policy,
+                &unavailable
+            ),
+            Err(ToolExecutionError::AuditUnavailable(
+                "audit capacity is exhausted".to_string()
+            ))
+        );
+        assert_eq!(executions.load(Ordering::SeqCst), 0);
+
+        let after_authorization = AuditAcceptingOnly::new(1);
+        let outcome = match result {
+            CountedResult::Output => ToolAuditOutcome::Succeeded,
+            CountedResult::Error | CountedResult::OversizedOutput => ToolAuditOutcome::Failed,
+        };
+        assert_eq!(
+            registry.execute(
+                "count",
+                serde_json::json!({}),
+                &mut context,
+                &policy,
+                &after_authorization
+            ),
+            Err(ToolExecutionError::OutcomeUnaudited {
+                tool: "count".to_string(),
+                outcome,
+                reason: "audit capacity is exhausted".to_string(),
+            })
+        );
+        assert_eq!(executions.load(Ordering::SeqCst), 1);
+        assert_eq!(context.remaining_calls(), 1);
+    }
 }
