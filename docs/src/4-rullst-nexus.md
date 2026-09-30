@@ -72,6 +72,15 @@ number, relation, date, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
 `NOT NULL` constraint therefore rejects clearing a required typed column.
 
+Form values are bound as text. PostgreSQL has no assignment cast from text,
+so there Nexus writes `number` values through `NUMERIC`, relation values that
+are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
+`'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
+and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
+are written as text, so keep dates, date-times, JSON and enum values in text
+columns, as Rullst's schema builder does; native `DATE`, `TIMESTAMP`, `JSONB`,
+`UUID` or enum columns are not supported by Nexus.
+
 Record keys follow the registered primary-key kind: a `number` (or relation)
 key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
