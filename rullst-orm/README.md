@@ -149,8 +149,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
   Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  active tenant and table only after commit, using a bounded non-blocking scan; cluster/failover
-  evidence remains outside the current contract.
+  active tenant and table only after commit through a per-table key index,
+  never a keyspace `SCAN`, so write latency does not grow with unrelated keys
+  in a shared Redis database; cluster/failover evidence remains outside the
+  current contract.
 - **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
   instance mutations. Policy-protected models reject `delete_all()` because
   bulk SQL cannot invoke per-row authorization; load the intended rows and call
@@ -240,6 +242,18 @@ helper that wraps `Outbox::enqueue` or model saves in its own
 `Orm::transaction` is therefore atomic with its caller. The returned future is
 `Send`, so it can also run in a spawned task. Do not hold the shared handle's
 lock across a nested call.
+
+Sibling nested transactions started concurrently on one task (for example with
+`tokio::join!`) take turns on the shared connection: each opens its savepoint
+only after the previous sibling's savepoint was released or rolled back, so a
+failure rolls back only that sibling's work. Plain model statements issued by
+a sibling future while another sibling's savepoint is open still run inside
+that savepoint; wrap each concurrent branch in its own `Orm::transaction` when
+they must be isolated. A savepoint that cannot be settled (for example a nested
+future cancelled while another operation holds the connection) makes the
+enclosing transaction fail closed: it rolls back and returns an error instead
+of committing, and the pool closes any connection returned while still inside
+a transaction instead of reusing it.
 
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
@@ -401,7 +415,10 @@ the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
 labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
-PostgreSQL; the method is a validated no-op on the other backends.
+PostgreSQL; the method is a validated no-op on the other backends. The enum
+type creation, its label check and `drop_native_enum` use the active
+`Orm::transaction` or test sandbox like the table DDL, so they roll back with it
+and the type can be dropped right after its tables in the same transaction.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
@@ -409,6 +426,15 @@ on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
 builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
 defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
 SQLite and PostgreSQL DDL is unchanged.
+
+`table.float(...)` and `table.boolean(...)` map to `f64` and `bool` model
+fields. PostgreSQL receives `DOUBLE PRECISION` and `BOOLEAN` (an integer
+`ColumnDefault` of `0`/`1` becomes `FALSE`/`TRUE`); MySQL/MariaDB receive
+`DOUBLE` and an `INTEGER` 0/1 flag; SQLite keeps `REAL` and `INTEGER`. This
+applies to newly built DDL only: PostgreSQL columns created by earlier versions
+remain `REAL`/`INTEGER` until a reviewed migration alters them, and a model that
+paired `boolean()` with an integer field on PostgreSQL must switch to `bool`
+(or use `integer()`) for new tables.
 
 ### Optional Redis query cache
 
@@ -433,7 +459,9 @@ An explicitly remembered query outside a transaction requires Redis
 initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and
 task-scoped transactions always bypass the cache. Generated model saves and
-deletes invalidate that table's generated cache keys after commit. Raw SQL,
+deletes invalidate that table's generated cache keys after commit, using the
+index each cache write maintains for its table (at most 10,000 keys per write;
+entries cached by earlier versions are not indexed and expire by TTL). Raw SQL,
 bulk builders and writes outside generated model methods cannot be inferred, so
 keep a defensive TTL and do not cache authorization or other reads whose
 freshness requires a stronger distributed consistency contract.
