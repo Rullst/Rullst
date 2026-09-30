@@ -9,7 +9,11 @@ pub use validator::Validate;
 
 /// Error type returned by [`ValidatedForm`] and [`ValidatedJson`] extractors.
 /// Automatically renders HTMX-friendly HTML error components for HTMX requests,
-/// or standard JSON `422`/`400` responses for REST clients.
+/// or standard JSON responses for REST clients: `422` for a payload that fails
+/// its `validator` constraints, and for an extraction failure `413` (body too
+/// large), `415` (unsupported content type) or `400` (any other unreadable or
+/// mistyped payload, including Axum's `422` data errors, so that `422` always
+/// means a constraint failure).
 ///
 /// HTMX 1.x and 2.x swap only successful responses by default, so an HTMX
 /// request (`HX-Request: true`) receives the fragment with `200 OK` and the
@@ -57,6 +61,18 @@ impl std::fmt::Display for ValidationError {
 }
 
 impl std::error::Error for ValidationError {}
+
+/// REST status of an extraction failure, recovered from its fixed message.
+/// Any other message, such as one built by application code, maps to `400`.
+fn extraction_status(message: &str) -> StatusCode {
+    [
+        StatusCode::PAYLOAD_TOO_LARGE,
+        StatusCode::UNSUPPORTED_MEDIA_TYPE,
+    ]
+    .into_iter()
+    .find(|status| extraction_failure_message(*status) == message)
+    .unwrap_or(StatusCode::BAD_REQUEST)
+}
 
 /// Fixed client-facing text for an extraction failure.
 ///
@@ -118,6 +134,7 @@ impl IntoResponse for ValidationError {
     fn into_response(self) -> Response {
         match self {
             ValidationError::ExtractionError { message, is_htmx } => {
+                let status = extraction_status(&message);
                 if is_htmx {
                     let html_error = format!(
                         r#"<div class="p-4 mb-4 rounded-lg bg-red-950/50 border border-red-500/30 text-red-200 text-sm">
@@ -125,11 +142,11 @@ impl IntoResponse for ValidationError {
                         </div>"#,
                         crate::html::escape_str(&message)
                     );
-                    htmx_fragment(StatusCode::BAD_REQUEST, html_error)
+                    htmx_fragment(status, html_error)
                 } else {
                     let mut err_map = HashMap::new();
                     err_map.insert("error".to_string(), vec![message]);
-                    (StatusCode::BAD_REQUEST, Json(err_map)).into_response()
+                    (status, Json(err_map)).into_response()
                 }
             }
             ValidationError::ValidationError { errors, is_htmx } => {

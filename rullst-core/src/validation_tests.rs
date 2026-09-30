@@ -215,3 +215,56 @@ async fn htmx_fragments_escape_messages_and_fields() {
     assert!(!body.contains("<b onmouseover"), "{body}");
     assert!(body.contains("&lt;b onmouseover=x&gt;"), "{body}");
 }
+
+#[tokio::test]
+async fn extraction_failures_keep_their_413_and_415_status() {
+    let oversized = "a".repeat(3 * 1024 * 1024);
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(format!(
+            r#"{{"username":"{oversized}","email":"a@b.c"}}"#
+        )))
+        .unwrap();
+    let err = ValidatedJson::<TestPayload>::from_request(req, &())
+        .await
+        .unwrap_err();
+    assert_eq!(err.into_response().status(), StatusCode::PAYLOAD_TOO_LARGE);
+
+    let req = Request::builder()
+        .header("content-type", "text/plain")
+        .header("HX-Request", "true")
+        .body(axum::body::Body::from("{}"))
+        .unwrap();
+    let err = ValidatedJson::<TestPayload>::from_request(req, &())
+        .await
+        .unwrap_err();
+    let response = err.into_response();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[VALIDATION_STATUS_HEADER], "415");
+
+    let req = Request::builder()
+        .method("POST")
+        .header("content-type", "text/plain")
+        .body(axum::body::Body::from("username=abc"))
+        .unwrap();
+    let err = ValidatedForm::<TestPayload>::from_request(req, &())
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err.into_response().status(),
+        StatusCode::UNSUPPORTED_MEDIA_TYPE
+    );
+
+    // A mistyped but well-formed payload stays a 400: 422 means a failed
+    // validator constraint.
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(
+            r#"{"username": 7, "email": "a@b.c"}"#,
+        ))
+        .unwrap();
+    let err = ValidatedJson::<TestPayload>::from_request(req, &())
+        .await
+        .unwrap_err();
+    assert_eq!(err.into_response().status(), StatusCode::BAD_REQUEST);
+}
