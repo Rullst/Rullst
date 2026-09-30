@@ -386,15 +386,9 @@ pub fn strip_html_to_plain_text(html: &str) -> String {
         }
     }
 
-    // Decode standard HTML entities
-    let decoded = result
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'");
+    // Decode numeric and common named references in one pass, so each is
+    // decoded once (`&amp;lt;` stays `&lt;`).
+    let decoded = crate::entities::decode(&result);
 
     // Normalize multiple newlines and spaces
     let mut normalized = String::new();
