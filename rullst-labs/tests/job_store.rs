@@ -395,3 +395,41 @@ async fn submissions_that_could_never_be_claimed_are_refused() {
         .unwrap();
     assert_eq!(rows, 1);
 }
+
+#[tokio::test]
+async fn returned_views_never_carry_the_unkeyed_exercise_digest() {
+    let f = Fixture::new(2).await;
+    // The raw digest hashes the hidden case: a learner holding it could test
+    // guesses of the case inputs and expected values offline.
+    let raw = exercise().digest().unwrap();
+    let first = f
+        .store
+        .submit(&f.policy, &id("alice"), &scope(), submission("one"))
+        .await
+        .unwrap();
+    assert_ne!(first.exercise_digest, raw);
+    assert!(
+        !serde_json::to_string(&first)
+            .unwrap()
+            .contains(raw.as_str())
+    );
+    // It still identifies the same exercise snapshot across jobs and reads.
+    let second = f
+        .store
+        .submit(&f.policy, &id("bob"), &scope(), submission("two"))
+        .await
+        .unwrap();
+    assert_eq!(second.exercise_digest, first.exercise_digest);
+    let read = f
+        .store
+        .get_job(&f.policy, &id("alice"), &scope(), &id("one"))
+        .await
+        .unwrap();
+    assert_eq!(read, first);
+    let cancelled = f
+        .store
+        .cancel(&f.policy, &id("alice"), &scope(), &id("one"), 1)
+        .await
+        .unwrap();
+    assert_eq!(cancelled.exercise_digest, first.exercise_digest);
+}

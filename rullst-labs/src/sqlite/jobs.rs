@@ -37,7 +37,7 @@ impl<C: Clock> SqliteLabs<C> {
             match self.load_job(&mut tx,scope,&submission.id).await {
                 Ok((record,_))=>{
                     if record.view.learner!=*actor || record.request_digest!=request_digest { return Err(Error::Conflict); }
-                    tx.commit().await?;return Ok(record.view);
+                    tx.commit().await?;return self.public_view(record.view);
                 }
                 Err(Error::NotFound)=>(),
                 Err(error)=>return Err(error),
@@ -62,7 +62,7 @@ impl<C: Clock> SqliteLabs<C> {
             sqlx::query("INSERT INTO labs_jobs (tenant,course,id,learner,state,revision,expires_at,lease_until,body,content) VALUES (?,?,?,?,'Queued',1,?,0,?,?)")
                 .bind(scope.tenant.as_str()).bind(scope.course.as_str()).bind(record.view.id.as_str()).bind(actor.as_str()).bind(expires_at).bind(body).bind(content)
                 .execute(&mut *tx.tx).await.map_err(storage)?;
-            tx.commit().await?;Ok(record.view)
+            tx.commit().await?;self.public_view(record.view)
         }).await
     }
     pub async fn get_job<A: Authorization>(
@@ -83,7 +83,7 @@ impl<C: Clock> SqliteLabs<C> {
             tx.commit().await?;
             self.permit_job(auth, actor, scope, &record, Action::ReadOwn)
                 .await?;
-            Ok(record.view)
+            self.public_view(record.view)
         })
         .await
     }
@@ -122,7 +122,7 @@ impl<C: Clock> SqliteLabs<C> {
             self.save_job(&mut tx, &record, content.as_deref(), revision)
                 .await?;
             tx.commit().await?;
-            Ok(record.view)
+            self.public_view(record.view)
         })
         .await
     }
@@ -144,6 +144,16 @@ impl<C: Clock> SqliteLabs<C> {
             Err(Error::Denied) => Err(Error::NotFound),
             result => result,
         }
+    }
+    /// Status projection returned to callers. The stored record keeps the raw
+    /// `Exercise::digest`, an unkeyed hash over the hidden cases; callers get a
+    /// store-keyed value that still identifies the exact exercise snapshot.
+    pub(super) fn public_view(&self, mut view: JobView) -> Result<JobView, Error> {
+        view.exercise_digest = self.key.keyed_digest(
+            b"rullst-labs.exercise-view.v1",
+            view.exercise_digest.as_str().as_bytes(),
+        )?;
+        Ok(view)
     }
     pub(super) async fn load_job(
         &self,

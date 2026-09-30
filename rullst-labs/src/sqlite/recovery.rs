@@ -157,7 +157,7 @@ impl<C: Clock> SqliteLabs<C> {
             self.save_job(&mut tx, &record, content.as_deref(), revision)
                 .await?;
             tx.commit().await?;
-            Ok(record.view)
+            self.public_view(record.view)
         })
         .await
     }

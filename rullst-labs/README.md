@@ -26,7 +26,9 @@ The application must never spawn learner code or expose a container control sock
 - Ed25519 controller receipts bound to the source/request/profile/current lease.
   Exact trusted grading compares worker values with stored answers. Public
   feedback contains pass/wrong-answer/trap categories, never hidden case inputs,
-  expected values or raw returned values. Compiler diagnostics are bounded
+  expected values or raw returned values. Status views identify the exercise
+  snapshot with a store-keyed digest, not the raw `Exercise::digest`, which
+  hashes the hidden cases. Compiler diagnostics are bounded
   untrusted text and must be escaped when rendered.
 - Terminal source/snapshot removal and explicitly authorized retention cleanup.
   Status/idempotency records must be retained for at least 24 hours before purge.

@@ -72,7 +72,7 @@ impl<C: Clock> SqliteLabs<C> {
                 if result.evidence() == &evidence && !matches!(evidence, ResultEvidence::Simulation)
                 {
                     tx.commit().await?;
-                    return Ok(record.view);
+                    return self.public_view(record.view);
                 }
                 return Err(Error::Conflict);
             }
@@ -119,7 +119,7 @@ impl<C: Clock> SqliteLabs<C> {
             record.next(tx.now)?;
             self.save_job(&mut tx, &record, None, revision).await?;
             tx.commit().await?;
-            Ok(record.view)
+            self.public_view(record.view)
         })
         .await
     }

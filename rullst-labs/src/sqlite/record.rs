@@ -39,6 +39,9 @@ pub struct JobView {
     pub learner: Reference,
     pub exercise: ExerciseRef,
     pub source_digest: ContentHash,
+    /// Store-keyed identifier of the exact exercise snapshot. Returned views
+    /// never carry the raw `Exercise::digest`, which is an unkeyed hash over
+    /// hidden cases and would let guesses about them be confirmed offline.
     pub exercise_digest: ContentHash,
     pub state: JobState,
     pub revision: i64,
