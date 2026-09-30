@@ -2398,6 +2398,20 @@ sending.
   a positive transfer ID, recipient, ISO 4217 currency, amount and documented
   transfer state instead of inventing defaults, and scales exact decimal
   amounts to the currency's minor units without floating point.
+* The additive v13 `WiseProvider::verify_transfer_state_change` verifies the
+  Base64 `X-Signature-SHA256` RSA-SHA256 (PKCS#1 v1.5) signature over the exact
+  body (at most 64 KiB) against up to four caller-configured SubjectPublicKeyInfo
+  PEM keys of 2048-8192 bits before parsing. Rullst bundles neither Wise's
+  sandbox nor its production key. Only `transfers#state-change` events for a
+  `transfer` resource with a positive numeric ID, a documented current state and
+  a valid `occurred_at` are accepted; unrecognized states, including `unknown`,
+  are rejected and nothing missing is defaulted. `WiseTransferStateChange`
+  carries no amount, currency or recipient because Wise does not send them, and
+  `payout_status()` returns `None` for charge-backs and bounce-backs. The
+  signature covers no timestamp or delivery identity, so an exact replay
+  verifies again: hosts bind transfer and profile to their own records, apply
+  transitions idempotently and read the transfer before moving money. The
+  billing middleware does not mount this payout verifier.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters that accept live
   deliveries use provider-appropriate cryptographic verification; legacy

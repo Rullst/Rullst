@@ -28,6 +28,8 @@ fn mock_transfer_id(recipient_email: &str, amount_cents: u64, currency: &str) ->
 pub struct WiseProvider {
     api_token: String,
     _profile_id: String,
+    // RSAPublicKey DER values accepted for signed webhooks.
+    pub(super) webhook_keys: Vec<Vec<u8>>,
 }
 
 impl WiseProvider {
@@ -36,6 +38,7 @@ impl WiseProvider {
         Self {
             api_token: api_token.into(),
             _profile_id: profile_id.into(),
+            webhook_keys: Vec::new(),
         }
     }
 
@@ -158,7 +161,8 @@ impl WiseProvider {
     /// offline fixtures selected by an explicit `mock_*` API token. An empty
     /// token returns `ConfigurationError` and any other token returns
     /// `UnsupportedOperation` before the body is read. Never re-issue, release
-    /// or reconcile money from its result.
+    /// or reconcile money from its result. Live deliveries use
+    /// [`WiseProvider::verify_transfer_state_change`].
     pub fn parse_webhook_payload(&self, payload: &[u8]) -> Result<PayoutEvent, CapitalError> {
         self.require_webhook_fixture_mode()?;
         let json: Value = serde_json::from_slice(payload)
@@ -221,7 +225,7 @@ impl WiseProvider {
             ));
         }
         Err(CapitalError::UnsupportedOperation(
-            "Wise webhook payload parsing is unauthenticated; live deliveries require X-Signature-SHA256 verification".into(),
+            "Wise webhook payload parsing is unauthenticated; use verify_transfer_state_change for live deliveries".into(),
         ))
     }
 }

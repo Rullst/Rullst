@@ -61,7 +61,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Transfer-status read; legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
+| **Wise** | Payout | Transfer-status read and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -125,6 +125,44 @@ amount and a documented transfer state; nothing missing is replaced with a
 default. Amounts are exact decimals scaled to the currency's minor units
 without floating point, and negative, zero, over-precise or overflowing
 values are rejected.
+
+### Verified Wise transfer webhooks (v13 candidate)
+
+`verify_transfer_state_change` checks Wise's Base64 `X-Signature-SHA256`
+RSA-SHA256 signature over the exact body before parsing it. Configure the
+public key Wise publishes for the matching environment; sandbox and production
+keys differ and Rullst bundles neither. Up to four keys may be configured for
+rotation.
+
+```rust,no_run
+use rullst_capital::{CapitalError, WiseProvider, WiseTransferState};
+use std::collections::HashMap;
+
+fn on_wise_webhook(
+    wise_public_key_pem: &str,
+    raw_body: &[u8],
+    lowercase_headers: &HashMap<String, String>,
+) -> Result<(), CapitalError> {
+    let provider = WiseProvider::new("mock_wise_token", "profile_id")
+        .with_webhook_public_key_pem(wise_public_key_pem)?;
+    let event = provider.verify_transfer_state_change(raw_body, lowercase_headers)?;
+    if event.current_state() == WiseTransferState::FundsRefunded {
+        // Load the application's transfer record by event.transfer_id() and
+        // read the transfer from Wise before moving money.
+    }
+    Ok(())
+}
+```
+
+Only `transfers#state-change` deliveries for a transfer resource with a
+positive numeric ID, a documented state and a valid `occurred_at` are accepted;
+missing or unknown values are rejected, not defaulted. The result carries no
+amount, currency or recipient because Wise does not send them. The signature
+covers no timestamp or delivery identity, so an exact replay verifies again:
+bind the transfer and profile to the application's own records, apply state
+transitions idempotently and read the transfer before re-issuing, releasing or
+refunding money. The billing webhook middleware does not mount this payout
+verifier.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.

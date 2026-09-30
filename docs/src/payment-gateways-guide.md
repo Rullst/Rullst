@@ -289,6 +289,16 @@ never trigger a payout, refund or release. The fixture requires every field it
 reports and scales exact decimal amounts to ISO 4217 minor units without
 floating point.
 
+The v13 candidate adds `WiseProvider::with_webhook_public_key_pem` and
+`verify_transfer_state_change`. The verifier checks the Base64
+`X-Signature-SHA256` RSA-SHA256 signature over the exact body against the
+configured Wise key for that environment before parsing, and returns a typed
+`WiseTransferStateChange` with the transfer ID, optional profile ID, documented
+current/previous states and occurrence time. Unsigned, tampered or
+wrong-environment deliveries fail as `InvalidSignature`. Wise signs no
+timestamp, so process transitions idempotently and read the transfer before
+acting on money.
+
 ---
 
 ## 🛡️ Security controls and boundaries
