@@ -94,8 +94,10 @@ On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
 `#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
-widget kinds. Implementing `NexusModel` manually remains available when an
-application needs metadata that cannot be derived.
+widget kinds. A `hidden` field is left out of the list, search and the
+create/edit forms, and a submitted value for it is rejected; `readonly` keeps a
+field visible but rejects submitted values. Implementing `NexusModel` manually
+remains available when an application needs metadata that cannot be derived.
 
 Then select an explicit access policy in your routing file (usually `src/lib.rs`
 or `src/main.rs`) and mount the resulting router:
