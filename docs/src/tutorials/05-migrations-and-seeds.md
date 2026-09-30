@@ -108,6 +108,11 @@ rullst::artisan!(
 );
 ```
 
+Without `artisan!`, `Server::run` still recognizes `db:migrate`, `db:rollback`,
+`db:status` and `db:seed`, but it has no registry to run them against: the
+process exits with status 1 and asks for `rullst::artisan!` rather than
+reporting "Nothing to migrate." as a success.
+
 Then run:
 
 ```bash

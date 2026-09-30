@@ -1338,7 +1338,10 @@ the same server-authoritative controls.
   environment), then `[database].url` parsed as TOML. There is no implicit
   SQLite fallback: a `db:*` command without a configured database, and any
   configuration or `Orm::init` failure, exits with status 1. Parse errors
-  report positions only, never file content.
+  report positions only, never file content. `Server::run` has no migration or
+  seeder registry, so a `db:*` command it intercepts (because the application
+  never called `artisan!`) exits with status 1 and names `rullst::artisan!`
+  instead of reporting success for an empty registry; `studio` still runs.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
