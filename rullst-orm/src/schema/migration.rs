@@ -78,10 +78,15 @@ pub async fn run_artisan(
 
 #[cfg_attr(mutants, mutants::skip)]
 async fn migrations_table_exists(pool: &crate::RullstPool, driver: &str) -> Result<bool, Error> {
+    // Only the schema/database that unqualified `migrations` statements use
+    // counts; a same-named table of another application must not.
     match driver {
         "postgres" | "mysql" => {
-            let query_str =
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'migrations'";
+            let query_str = if driver == "postgres" {
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'migrations'"
+            } else {
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'migrations'"
+            };
             let row: (i64,) = sqlx::query_as(query_str).fetch_one(pool).await?;
             Ok(row.0 > 0)
         }

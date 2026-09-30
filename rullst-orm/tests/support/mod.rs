@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+pub mod migrations;
+
 const REQUIRE_CONTAINERS_ENV: &str = "RULLST_REQUIRE_TESTCONTAINERS";
 
 #[allow(dead_code)]

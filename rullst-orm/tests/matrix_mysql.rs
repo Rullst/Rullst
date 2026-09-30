@@ -129,6 +129,7 @@ async fn test_matrix_mysql_crud() {
 
     support::exercise_outbox().await;
     support::exercise_large_audit_payload().await;
+    support::migrations::exercise_foreign_migrations_table().await;
     partial_update_contract::exercise().await;
     exercise_native_enum().await;
     driver_contract::exercise().await;
