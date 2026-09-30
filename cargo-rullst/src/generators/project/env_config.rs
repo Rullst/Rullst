@@ -176,6 +176,7 @@ RULLST_ENV=development
     // staging and production need an explicit MAIL_DRIVER before sending.
     let mail_template = r#"
 # ── Mail ──────────────────────────────────────────────────────
+# The Mail facade reads these from the process environment, then this file.
 # Default sender for messages without `from`, e.g. MAIL_FROM="App <no-reply@example.com>";
 # use an address your mail provider has verified.
 MAIL_FROM=
