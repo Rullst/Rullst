@@ -26,6 +26,38 @@ async fn unprotected_data_browser_cannot_execute_mutations() {
     assert_eq!(response.status(), axum::http::StatusCode::FORBIDDEN);
 }
 
+#[tokio::test]
+// The raw browser supports nesting under `/studio`; its row forms always post
+// to `/studio/tables/...`, so the nested router must route them to the
+// handlers (which then require the verified marker) instead of returning 404.
+async fn nested_data_browser_routes_row_mutations_to_their_handlers() {
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    let app = axum::Router::new().nest("/studio", super::router());
+    for action in ["update", "delete"] {
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/studio/tables/users/rows/{action}"))
+            .header(
+                axum::http::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            )
+            .body(Body::from("confirm=DELETE+users&pk_id=1"))
+            .expect("valid bounded mutation request");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("nested data-browser response");
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::FORBIDDEN,
+            "{action}"
+        );
+    }
+}
+
 #[test]
 fn test_escape_html_attr() {
     let input = r#"<script>alert("XSS & Hack")</script> 'test'"#;

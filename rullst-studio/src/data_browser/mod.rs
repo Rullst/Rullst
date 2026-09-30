@@ -22,8 +22,9 @@ use axum::{Router, extract::DefaultBodyLimit};
 
 /// Raw Studio browser routes, without an authentication boundary.
 ///
-/// Supports root composition and nesting under `/studio`. Assets follow the
-/// same access layers as the browser; cache inspection is explicitly unavailable.
+/// Supports root composition and nesting under `/studio`, including the row
+/// mutation routes that table forms post to. Assets follow the same access
+/// layers as the browser; cache inspection is explicitly unavailable.
 /// Prefer [`crate::Studio::into_router`] for the supported local development
 /// boundary. Do not expose this raw router publicly without your own policy.
 pub fn router() -> Router {
@@ -53,10 +54,22 @@ pub(crate) fn router_with_cache(
         // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/studio/tables/{table}", axum::routing::get(handle_table))
         // These handlers additionally require the request-local proof inserted
-        // by LocalStudioAccess after its loopback and same-origin checks.
+        // by LocalStudioAccess after its loopback and same-origin checks. Row
+        // forms post to `/studio/tables/...`, which reaches the unprefixed
+        // routes when the raw browser is nested under `/studio`.
+        .route(
+            "/tables/{table}/rows/update",
+            axum::routing::post(handle_table_update)
+                .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
+        )
         .route(
             "/studio/tables/{table}/rows/update",
             axum::routing::post(handle_table_update)
+                .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
+        )
+        .route(
+            "/tables/{table}/rows/delete",
+            axum::routing::post(handle_table_delete)
                 .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
         )
         .route(
