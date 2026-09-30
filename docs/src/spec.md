@@ -3003,8 +3003,12 @@ sending.
   never alone or from a same-site document. This is a local
   DNS-rebinding/CSRF boundary, not production authentication.
 * Queue, revenue, security and telemetry pages report only values supplied by
-  their configured process-local source. Unsupported driver operations and
-  disconnected integrations remain errors or `Unavailable`. The standalone
+  their configured process-local source. The queue page labels its status
+  counts as covering only its 50 most recent records; the pending count and
+  purges cover the whole queue. Its previews are cut to 256 payload and 512
+  error characters, but the queue listing still loads complete records, so
+  the snapshot bounds records rather than payload bytes. Unsupported driver
+  operations and disconnected integrations remain errors or `Unavailable`. The standalone
   migration surface provides CLI guidance and returns `501` from legacy
   mutation handlers because no migration/seeder registry is installed.
 * Studio's database views use the application's ORM pool or, when none
@@ -3012,30 +3016,42 @@ sending.
   is no implicit SQLite fallback; resolution errors never echo configuration
   content.
 * The database browser accepts a deliberately narrow ASCII SQL-identifier
-  boundary. Reads are bounded: a page loads at most 25 rows, the database cuts
+  boundary. Reads are bounded: a page loads at most 25 rows, ordered by the
+  complete primary key (otherwise by every selected column) so that pages
+  neither repeat nor skip rows, the database cuts
   each cell's text to 256 characters (key columns keep up to 16 KiB so that
   rows remain addressable; a longer key makes the row read-only) and search
-  terms are limited to 256 bytes. Writes require the crate-private proof inserted
+  terms are limited to 256 bytes. Search matches the displayed columns (at most
+  256), and the record count uses the same predicate. Writes require the crate-private proof inserted
   by the verified local middleware, database-inspected table/column/complete-PK
   metadata, a 64 KiB request limit, primitive typed binds and exactly one
-  affected row. A primary-key column outside the identifier boundary or the
-  256-column cap makes the table read-only instead of shortening the key, and
-  rows with a `NULL` key value offer no actions. Each write runs in a
+  affected row. A row offers only the actions whose form (for Edit, with a
+  maximum-size value) fits that limit, and an empty text key is addressable. A primary-key column outside the identifier boundary or the
+  256-column cap makes the table read-only instead of shortening the key, as
+  does a floating-point key column, whose rendered text is rounded. Rows whose
+  key is `NULL`, is not decodable as text or contains a line break or NUL
+  (which browsers rewrite in form values) offer no actions. Each write runs in a
   transaction that commits only for exactly one affected row; zero or several
   rows are rolled back and reported as `404`/`409` (engines without
   transactions, such as MySQL MyISAM, cannot roll back). Primary
-  keys/backend-specific values are read-only, while delete requires
+  keys/backend-specific values (including MySQL/MariaDB unsigned or zero-filled
+  integers) are read-only, while delete requires
   `DELETE <table>`. SQLite, PostgreSQL, MySQL and MariaDB run
   separate mutation contracts; PostgreSQL runs under both the default
   `sqlx::Any` build, where Studio renumbers bind markers and casts
-  information-schema identifiers to `VARCHAR`, and `strict-postgres`. This is
-  not application authorization, tenant
+  information-schema identifiers to `VARCHAR`, and `strict-postgres`. On
+  PostgreSQL Studio browses the `public` schema and names it in every data
+  statement, so `search_path` cannot resolve a table to a same-named table in
+  another schema. This is not application authorization, tenant
   scoping, audit, rollback or shared-production administration. The ER diagram
   inspects the same relational backends with bound lookup values and strict
-  normalized Mermaid identifiers. Swagger requires an application-supplied
+  normalized Mermaid identifiers, lists each column once and pairs composite
+  foreign-key columns by key position. Swagger requires an application-supplied
   `OpenApi`.
 * Request SSE records method, URI, status, and latency without bodies or headers.
-  Environment values are redacted by default and the typed config projection
+  Environment values are redacted by default; an allowlisted value is also
+  redacted when it carries URL user information, a bearer token or a
+  secret-named assignment. The typed config projection
   never renders connection URLs, filesystem paths, cookies, tokens, or
   credentials. A successful Studio database-flag mutation invalidates warm
   `DbFeatureDriver` caches in the same process; direct writers and other
@@ -3052,7 +3068,9 @@ sending.
   toggles require the same crate-private verified-local marker as database
   writes, so their raw routers return `403` outside the local boundary. Safe
   `GET` views perform no schema or data writes; the feature-flag page reports
-  a missing `rullst_feature_flags` table instead of creating it.
+  a missing `rullst_feature_flags` table instead of creating it; other query
+  failures (connection, permission, column types) are reported without
+  migration guidance.
 * `Studio::with_cache` is an explicit metadata-only diagnostic capability. The
   memory and Redis cache drivers return at most 200 sorted entries containing
   logical key, UTF-8 value byte length and remaining TTL; custom drivers return

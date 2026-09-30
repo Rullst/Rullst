@@ -577,6 +577,27 @@ A prepared version section does not establish that its tag or crates exist.
   established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
   for the demonstrated defect, application actions and admission boundaries.
 
+### Studio low-severity review fixes
+
+- Studio table pages are ordered by primary key, the record count and search
+  use the same predicate over the displayed columns, and PostgreSQL statements
+  name the `public` schema so `search_path` cannot pick another table.
+- Row actions: floating-point keys and keys that are NULL, undecodable or
+  contain line breaks or NUL are read-only; empty text keys work; actions are
+  offered only when their form fits the 64 KiB limit; row mutations work when
+  the raw browser is nested under `/studio`; MySQL/MariaDB unsigned and
+  zerofill integers are read-only.
+- The PostgreSQL ER diagram lists each column once and pairs composite foreign
+  keys correctly, and the ER and feature-flag pages connect to the configured
+  database on first visit.
+- Feature flags show migration DDL only for a missing table, and the Database
+  Tools page reports an unavailable database.
+- The environment viewer no longer panics on non-Unicode variables and hides
+  credential-shaped values of allowlisted keys.
+- Queue status counts, the Capital webhook badge and the dashboard database
+  label describe what they actually measure, and queue previews no longer scan
+  whole payloads.
+
 ### Studio, AI and IoT second-pass review fixes
 
 - Studio serves `Referrer-Policy: same-origin` and accepts `Origin: null` only

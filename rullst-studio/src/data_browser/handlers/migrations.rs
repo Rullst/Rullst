@@ -7,8 +7,24 @@ use std::fmt::Write;
 
 pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> impl IntoResponse {
     let is_htmx = headers.contains_key("hx-request");
+    // Like the dashboard, report an unavailable database instead of an
+    // apparently connected, empty schema.
+    let tables = match fetch_tables().await {
+        Ok(tables) => tables,
+        Err(error) => {
+            let notice = format!(
+                r##"<div class="mt-8 pt-6 border-t border-slate-800"><p class="text-sm text-amber-300">Database unavailable: {}</p></div>"##,
+                rullst_core::html::escape_str(&error.to_string())
+            );
+            let content = crate::migration_manager::render_migration_manager_html(&notice);
+            return if is_htmx {
+                Html(content).into_response()
+            } else {
+                Html(studio_layout(content, None, &[])).into_response()
+            };
+        }
+    };
     let mut table_badges_html = String::new();
-    let tables = fetch_tables().await.unwrap_or_default();
     let tables_count = tables.len();
 
     for t in &tables {
@@ -30,7 +46,7 @@ pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> i
             tables_count, table_badges_html
         )
     } else {
-        String::new()
+        r##"<div class="mt-8 pt-6 border-t border-slate-800"><p class="text-sm text-slate-500">No application tables are currently visible.</p></div>"##.to_string()
     };
 
     let content = crate::migration_manager::render_migration_manager_html(&schema_section);

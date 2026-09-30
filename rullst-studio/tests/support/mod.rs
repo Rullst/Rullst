@@ -11,8 +11,12 @@ use std::net::SocketAddr;
 use tower::ServiceExt;
 
 mod bounded_view;
+mod er_keys;
 mod feature_flags;
 mod incomplete_key;
+mod paging;
+mod postgres_schema;
+mod unsigned;
 
 // The SQLite matrix binary under the default build compiles this unused.
 #[cfg(not(feature = "strict-sqlite"))]
@@ -441,4 +445,12 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
 
     incomplete_key::exercise_incomplete_primary_key(&app, pool, driver, table).await;
     bounded_view::exercise_bounded_table_view(&app, pool, driver, table).await;
+    paging::exercise_stable_paging(&app, pool, driver, table).await;
+    er_keys::exercise_composite_keys(&app, pool, driver, table).await;
+    if driver == "mysql" {
+        unsigned::exercise_unsigned_columns(&app, pool, table).await;
+    }
+    if driver == "postgres" {
+        postgres_schema::exercise_search_path_shadow(&app, pool, table).await;
+    }
 }

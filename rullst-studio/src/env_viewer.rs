@@ -1,5 +1,6 @@
 #![cfg_attr(mutants, mutants::skip)]
 use axum::{Router, response::Html, routing::get};
+use std::ffi::OsString;
 
 pub fn router() -> Router {
     Router::new().route("/", get(render_env_viewer))
@@ -45,17 +46,67 @@ fn may_display_environment_value(key: &str) -> bool {
         || normalized.starts_with("LC_")
 }
 
-async fn render_env_viewer() -> Html<String> {
-    let mut vars: Vec<(String, String)> = std::env::vars().collect();
+/// Names that mark the value after `=` or `:` as a credential, as in a query
+/// string (`?access_token=...`) or a DSN (`password=...`).
+const SECRET_ASSIGNMENT_NAMES: [&str; 12] = [
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "key",
+    "apikey",
+    "auth",
+    "credential",
+    "credentials",
+    "signature",
+    "sig",
+];
+
+/// Whether an allowlisted value still looks like it carries a credential: URL
+/// user information (`scheme://user:secret@host`), a bearer token or a
+/// secret-named assignment. Key names alone cannot classify such values.
+fn value_may_hold_credentials(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    if lower.contains("bearer ") {
+        return true;
+    }
+    let mut rest = lower.as_str();
+    while let Some(start) = rest.find("://") {
+        let authority = &rest[start + 3..];
+        let end = authority.find(['/', '?', '#']).unwrap_or(authority.len());
+        if authority[..end].contains('@') {
+            return true;
+        }
+        rest = &authority[end..];
+    }
+    let bytes = lower.as_bytes();
+    SECRET_ASSIGNMENT_NAMES.iter().any(|name| {
+        lower.match_indices(name).any(|(start, _)| {
+            let end = start + name.len();
+            let whole_word = start == 0 || !bytes[start - 1].is_ascii_alphanumeric();
+            let separator = lower[end..].trim_start().chars().next();
+            whole_word && matches!(separator, Some('=' | ':'))
+        })
+    })
+}
+
+/// Renders one table row per variable. `std::env::vars` panics on a key or
+/// value that is not valid Unicode, so the OS strings are rendered lossily.
+fn render_environment_rows(vars: impl IntoIterator<Item = (OsString, OsString)>) -> String {
+    let mut vars = vars
+        .into_iter()
+        .map(|(key, value)| (key.to_string_lossy().into_owned(), value))
+        .collect::<Vec<_>>();
     vars.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut rows = String::new();
     for (key, val) in vars {
-        let display_val = if may_display_environment_value(&key) {
-            val
-        } else {
-            "[REDACTED]".to_string()
-        };
+        let display_val = Some(key.as_str())
+            .filter(|key| may_display_environment_value(key))
+            .map(|_| val.to_string_lossy().into_owned())
+            .filter(|value| !value_may_hold_credentials(value))
+            .unwrap_or_else(|| "[REDACTED]".to_string());
 
         let val_html = rullst_core::html::escape_str(&display_val);
 
@@ -68,7 +119,11 @@ async fn render_env_viewer() -> Html<String> {
             val_html
         ));
     }
+    rows
+}
 
+async fn render_env_viewer() -> Html<String> {
+    let rows = render_environment_rows(std::env::vars_os());
     let config_rows = render_safe_config_rows();
 
     Html(format!(
@@ -224,6 +279,62 @@ mod tests {
         assert!(!html.contains("tok12"));
         assert!(!html.contains("postgres://admin:secret@db/app"));
         assert!(!html.contains("redis://:secret@cache/0"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_unicode_variables_render_lossily_instead_of_panicking() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let rows = render_environment_rows([
+            (
+                OsString::from_vec(b"LEGACY_\xffPATH".to_vec()),
+                OsString::from("hidden"),
+            ),
+            (
+                OsString::from("LANG"),
+                OsString::from_vec(b"pt_BR.\xff".to_vec()),
+            ),
+        ]);
+        assert!(rows.contains("LEGACY_\u{fffd}PATH"));
+        assert!(rows.contains("pt_BR.\u{fffd}"));
+        assert!(!rows.contains("hidden"));
+    }
+
+    #[test]
+    fn allowlisted_values_with_credentials_are_redacted() {
+        let rows = render_environment_rows(
+            [
+                (
+                    "PUBLIC_REPLICA_URL",
+                    "postgres://reporter:hidden-one@db.internal/app",
+                ),
+                ("NEXT_PUBLIC_API_URL", "https://svc:hidden-two@api.internal"),
+                (
+                    "PUBLIC_CALLBACK_URL",
+                    "https://example.test/cb?access_token=hidden-three",
+                ),
+                ("PUBLIC_HEADER", "Bearer hidden-four"),
+                ("PUBLIC_DB_PARTS", "host=db password = hidden-five"),
+                ("PUBLIC_SITE_URL", "https://example.test/docs?page=2"),
+                ("PUBLIC_PRIMATE_NAME", "monkey=george"),
+                ("LANG", "pt_BR.UTF-8"),
+            ]
+            .map(|(key, value)| (OsString::from(key), OsString::from(value))),
+        );
+        for hidden in [
+            "hidden-one",
+            "hidden-two",
+            "hidden-three",
+            "hidden-four",
+            "hidden-five",
+        ] {
+            assert!(!rows.contains(hidden), "{hidden}");
+        }
+        assert_eq!(rows.matches("[REDACTED]").count(), 5);
+        assert!(rows.contains("https://example.test/docs?page=2"));
+        assert!(rows.contains("monkey=george"));
+        assert!(rows.contains("pt_BR.UTF-8"));
     }
 
     #[test]

@@ -4,8 +4,13 @@ use serde::Deserialize;
 use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
-use super::limits::{MAX_SEARCH_BYTES, display_cell};
+pub(crate) use super::identifiers::qualified_table_name;
+pub use super::identifiers::{
+    build_search_clause, is_safe_identifier, quote_table_name, sanitize_identifier,
+};
+use super::limits::display_cell;
 pub use super::pool::{ensure_pool_initialized, resolve_db_url};
+pub use super::search::count_table_rows;
 
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
@@ -28,6 +33,12 @@ pub(crate) enum StudioColumnKind {
 impl StudioColumnKind {
     pub(crate) fn from_database_type(database_type: &str) -> Self {
         let normalized = database_type.trim().to_ascii_lowercase();
+        // MariaDB and MySQL 5.7 report `int(10) unsigned` (MySQL 8: `int
+        // unsigned`). The signed and floating codecs cannot represent every
+        // unsigned or zero-filled value, so such columns stay read-only.
+        if normalized.contains("unsigned") || normalized.contains("zerofill") {
+            return Self::Unsupported;
+        }
         if matches!(
             normalized.as_str(),
             "text"
@@ -77,6 +88,13 @@ impl StudioColumnKind {
     pub(crate) const fn is_editable(self) -> bool {
         !matches!(self, Self::Unsupported)
     }
+
+    /// Whether a key value's rendered text binds back to exactly that value.
+    /// Floating-point text is rounded (SQLite renders both `0.3` and
+    /// `0.1 + 0.2` as `0.3`), so it cannot address one row.
+    pub(crate) const fn round_trips_as_key(self) -> bool {
+        matches!(self, Self::Text | Self::Integer | Self::Boolean)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,12 +120,13 @@ pub(crate) struct StudioTableSchema {
 
 impl StudioTableSchema {
     /// Row mutations need the complete primary key, and every key column must
-    /// use a primitive codec that Studio can bind back unchanged.
+    /// use an exact text, integer or Boolean codec whose rendered text Studio
+    /// can bind back unchanged.
     pub(crate) fn supports_mutations(&self) -> bool {
         let mut key_columns = self.columns.iter().filter(|column| column.primary_key);
         self.primary_key_complete
             && key_columns.clone().next().is_some()
-            && key_columns.all(|column| column.kind.is_editable())
+            && key_columns.all(|column| column.kind.round_trips_as_key())
     }
 
     pub(crate) fn primary_key_indices(&self) -> Vec<usize> {
@@ -280,14 +299,8 @@ fn row_flag(row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row, column: &
         .unwrap_or(false)
 }
 
-pub fn quote_table_name(driver: &str, clean_table: &str) -> String {
-    if driver == "mysql" {
-        format!("`{}`", clean_table)
-    } else {
-        format!("\"{}\"", clean_table)
-    }
-}
-
+/// Legacy column-name query kept for API compatibility. Studio itself uses
+/// the inspected, column-capped schema from `fetch_table_schema`.
 pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
     match driver {
         "postgres" => format!(
@@ -299,96 +312,6 @@ pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
             clean_table
         ),
         _ => format!("PRAGMA table_info(\"{}\")", clean_table),
-    }
-}
-
-/// Counts a table's rows, optionally filtered by a search term of at most
-/// 256 bytes that is bound once per inspected column.
-pub async fn count_table_rows(
-    table: &str,
-    search_query: Option<&str>,
-) -> Result<usize, sqlx::Error> {
-    if search_query.is_some_and(|search| search.len() > MAX_SEARCH_BYTES) {
-        return Err(sqlx::Error::Configuration(
-            "Studio search terms are limited to 256 bytes".into(),
-        ));
-    }
-    let pool = ensure_pool_initialized().await?;
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let clean_table = sanitize_identifier(table);
-    if clean_table != table || !is_safe_identifier(&clean_table) {
-        return Err(sqlx::Error::Configuration(
-            "Studio received an unsupported SQL identifier".into(),
-        ));
-    }
-
-    let quoted_table = quote_table_name(driver, &clean_table);
-
-    let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
-        QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
-
-    if let Some(search) = search_query
-        && !search.is_empty()
-    {
-        let schema_query = build_schema_query(driver, &clean_table);
-        if let Ok(columns_rows) = QueryBuilder::<rullst_orm::RullstDatabase>::new(schema_query)
-            .build()
-            .fetch_all(pool)
-            .await
-        {
-            let mut col_names = Vec::new();
-            for r in columns_rows {
-                if let Ok(name) = r.try_get::<String, _>("name")
-                    && is_safe_identifier(&name)
-                {
-                    col_names.push(name);
-                }
-            }
-            if !col_names.is_empty() {
-                qb.push(" WHERE ");
-                let mut separated = qb.separated(" OR ");
-                for col in &col_names {
-                    separated.push(build_search_clause(driver, col));
-                    separated.push_bind_unseparated(format!("%{}%", search));
-                }
-            }
-        }
-    }
-
-    let row = super::portable::build_for_driver(&mut qb, driver)?
-        .fetch_one(pool)
-        .await?;
-    let count: i64 = row.try_get(0).unwrap_or(0);
-    Ok(count as usize)
-}
-
-/// Sanitize table and column names to prevent SQL injections in dynamic queries
-pub fn sanitize_identifier(id: &str) -> String {
-    let mut res = String::with_capacity(64);
-    for c in id.chars() {
-        if c.is_ascii_alphanumeric() || c == '_' {
-            if res.len() == 64 {
-                break;
-            }
-            res.push(c);
-        }
-    }
-    res
-}
-
-/// Whether an identifier is accepted by Studio's deliberately narrow dynamic-SQL boundary.
-pub fn is_safe_identifier(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 64 && sanitize_identifier(id) == id
-}
-
-/// Helper to build a search clause taking driver syntax into account
-pub fn build_search_clause(driver: &str, col: &str) -> String {
-    if driver == "postgres" {
-        format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col))
-    } else if driver == "mysql" {
-        format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col))
-    } else {
-        format!("\"{}\" LIKE ", sanitize_identifier(col))
     }
 }
 
@@ -452,36 +375,19 @@ pub fn build_rows_html(
     )
 }
 
+/// Engine label of the pool that Studio queries. It never parses
+/// `DATABASE_URL`, which may name another database than an explicitly
+/// initialized pool.
 pub fn resolve_driver_display_name() -> String {
-    if let Ok(url) = std::env::var("DATABASE_URL") {
-        let url_lower = url.to_lowercase();
-        if url_lower.contains("turso") || url_lower.starts_with("libsql") {
-            return "TURSO / LIBSQL".to_string();
-        } else if url_lower.starts_with("postgres") || url_lower.starts_with("postgresql") {
-            return "POSTGRESQL".to_string();
-        } else if url_lower.starts_with("mysql") || url_lower.starts_with("mariadb") {
-            return "MYSQL / MARIADB".to_string();
-        } else if url_lower.starts_with("sqlite") {
-            return "SQLITE".to_string();
-        }
-    }
-    rullst_core::db::safe_driver()
-        .unwrap_or("sqlite")
-        .to_uppercase()
+    driver_display_name(rullst_core::db::safe_driver())
 }
 
-#[cfg(kani)]
-#[cfg_attr(mutants, mutants::skip)]
-mod kani_proofs {
-    use super::*;
-
-    #[kani::proof]
-    #[kani::unwind(5)]
-    fn proof_sanitize_identifier_length_bound() {
-        let id: [u8; 4] = kani::any();
-        if let Ok(s) = std::str::from_utf8(&id) {
-            let clean = sanitize_identifier(s);
-            assert!(clean.len() <= 64);
-        }
+pub(crate) fn driver_display_name(driver: Option<&str>) -> String {
+    match driver {
+        Some("postgres") => "POSTGRESQL".to_string(),
+        Some("mysql") => "MYSQL / MARIADB".to_string(),
+        Some("sqlite") => "SQLITE".to_string(),
+        Some(other) => other.to_ascii_uppercase(),
+        None => "NOT CONNECTED".to_string(),
     }
 }
