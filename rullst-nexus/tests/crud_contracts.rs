@@ -171,6 +171,68 @@ async fn crud_contracts_hold_on_sqlite() {
     unrepresentable_keys_do_not_block_required_audit(&app, pool).await;
     null_and_unreadable_list_values_are_not_fabricated(&app, pool).await;
     browser_forms_carry_the_csrf_body_token(&app, pool).await;
+    keys_named_like_action_routes_remain_addressable(&app, pool).await;
+}
+
+/// A record keyed `new`, `search`, `batch` or `record` can be opened, saved
+/// and deleted: the UI addresses records under `/record/` (NEXUS-2P-06).
+async fn keys_named_like_action_routes_remain_addressable(app: &axum::Router, pool: &RullstPool) {
+    sqlx::query("DELETE FROM nexus_pages")
+        .execute(pool)
+        .await
+        .expect("reset pages");
+    let keys = ["new", "search", "batch", "record", "edit"];
+    for key in keys {
+        sqlx::query("INSERT INTO nexus_pages (slug, title) VALUES (?, 'before')")
+            .bind(key)
+            .execute(pool)
+            .await
+            .expect("insert colliding key");
+    }
+    let (_, list) = get(app, "/table/nexus_pages").await;
+    for key in keys {
+        assert!(
+            list.contains(&format!(
+                "hx-get=\"/nexus/table/nexus_pages/record/{key}/edit\""
+            )),
+            "{key}"
+        );
+        let uri = format!("/table/nexus_pages/record/{key}");
+        let (status, form) = get(app, &format!("{uri}/edit")).await;
+        assert_eq!(status, StatusCode::OK, "{key}");
+        assert!(
+            form.contains(&format!(
+                "data-nexus-action=\"/nexus/table/nexus_pages/record/{key}\""
+            )),
+            "{key}"
+        );
+        assert_eq!(
+            mutate(app, "POST", &uri, "title=after").await,
+            StatusCode::OK,
+            "{key}"
+        );
+        assert_eq!(
+            mutate(app, "PUT", &uri, "title=again").await,
+            StatusCode::OK,
+            "{key}"
+        );
+        let (title,): (String,) = sqlx::query_as("SELECT title FROM nexus_pages WHERE slug = ?")
+            .bind(key)
+            .fetch_one(pool)
+            .await
+            .expect("updated page");
+        assert_eq!(title, "again", "{key}");
+        assert_eq!(
+            mutate(app, "DELETE", &uri, "").await,
+            StatusCode::OK,
+            "{key}"
+        );
+    }
+    let (remaining,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nexus_pages")
+        .fetch_one(pool)
+        .await
+        .expect("count pages");
+    assert_eq!(remaining, 0);
 }
 
 /// The bulk-action form is a plain browser POST without the `X-CSRF-Token`

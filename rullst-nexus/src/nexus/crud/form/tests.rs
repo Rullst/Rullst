@@ -122,7 +122,7 @@ async fn forms_declare_their_mode_for_change_only_submission() {
     assert!(create.contains("data-nexus-mode=\"create\""));
     let edit = form_html(&entry, Some("7"), None);
     assert!(edit.contains("data-nexus-mode=\"edit\""));
-    assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/7\""));
+    assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/record/7\""));
 }
 
 #[tokio::test]

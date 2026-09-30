@@ -218,7 +218,10 @@ pub(super) fn form_html(
 
     let table_path = urlencoding::encode(t);
     let action_url = if let Some(id) = record_id {
-        format!("/nexus/table/{table_path}/{}", urlencoding::encode(id))
+        format!(
+            "/nexus/table/{table_path}/record/{}",
+            urlencoding::encode(id)
+        )
     } else {
         format!("/nexus/table/{table_path}")
     };

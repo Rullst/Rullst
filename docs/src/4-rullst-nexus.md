@@ -91,6 +91,11 @@ are written as text, so keep dates, date-times, JSON and enum values in text
 columns, as Rullst's schema builder does; native `DATE`, `TIMESTAMP`, `JSONB`,
 `UUID` or enum columns are not supported by Nexus.
 
+The panel addresses records under `/nexus/table/{table}/record/{key}` (with
+`/edit` for the form), so a key named `new`, `search` or `batch` never collides
+with an action route. The older `/nexus/table/{table}/{key}` routes remain for
+other keys.
+
 Record keys follow the registered primary-key kind: a `number` (or relation)
 key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.

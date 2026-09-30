@@ -41,7 +41,7 @@
         const table = button.dataset.nexusTable || "";
         const id = button.dataset.nexusRecord || "";
         if (!confirm("Are you sure you want to delete record #" + id + "?")) return;
-        fetch("/nexus/table/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), {
+        fetch("/nexus/table/" + encodeURIComponent(table) + "/record/" + encodeURIComponent(id), {
             method: "DELETE",
             credentials: "same-origin",
             headers: { "X-CSRF-Token": csrfToken() },

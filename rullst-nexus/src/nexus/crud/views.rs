@@ -137,7 +137,7 @@ pub async fn render_table_rows(
                  {cells}\
                  <td class=\"nexus-td nexus-td-actions\">\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
-                 hx-get=\"/nexus/table/{table_path}/{row_path}/edit\" \
+                 hx-get=\"/nexus/table/{table_path}/record/{row_path}/edit\" \
                  hx-target=\"#nexus-modal-body\">&#9999;&#65039;</button>\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" data-nexus-delete=\"true\" \
                  data-nexus-table=\"{}\" data-nexus-record=\"{safe_row_id}\">&#128465;&#65039;</button>\
