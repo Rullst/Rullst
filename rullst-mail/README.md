@@ -553,9 +553,10 @@ extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
 similar), SVG by type, extension or content, active PDF content wherever a
 `%PDF-` header appears in the first KiB, and a declared type that disagrees
 with a known extension or signature. `strict()` also rejects HTML extensions,
-HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions and
-opaque formats; `allowing_opaque()` still accepts HTML and other opaque
-content. PDF names written with `#xx` escapes or inside compressed streams are
+HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions, any
+declared type it does not inspect other than `application/octet-stream` (so a
+`text/html` attachment named `invoice.txt` is rejected), and opaque formats;
+`allowing_opaque()` still accepts HTML and other opaque content. PDF names written with `#xx` escapes or inside compressed streams are
 not decoded.
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
