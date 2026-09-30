@@ -110,7 +110,12 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
   identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
-  process uptime. Unsupported probes return `None`.
+  process uptime. Unsupported probes return `None`. On Linux, RSS comes from
+  `VmRSS` in `/proc/self/status` (correct on 16/64 KiB page kernels), and CPU
+  percent is process CPU time over wall time: the host-wide `/proc/stat` delta
+  is scaled by its host CPU count, not by the cgroup-limited
+  `available_parallelism`, so a container saturating a 2-CPU quota reports
+  about 200%.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
   reports process availability and uptime. The opt-in
