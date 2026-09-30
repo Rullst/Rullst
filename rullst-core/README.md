@@ -47,6 +47,9 @@
   leaves the previous object intact. Each put creates a new file with default
   permissions; the directory is not fsynced, so a power loss can roll a
   completed put back to the previous version.
+- **Encoded Object URLs:** `Storage::url`/`LocalDriver::url` percent-encode
+  each key segment. Local storage always returns `/storage/<key>` (serve the
+  base directory there), never the filesystem base path.
 - **Metadata-only Cache Inspection:** Memory and Redis drivers can return a
   sorted snapshot of at most 200 logical keys, UTF-8 value lengths and TTLs
   without returning values. Custom drivers fail explicitly unless they opt in;
