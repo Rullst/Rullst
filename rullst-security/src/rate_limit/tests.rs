@@ -113,6 +113,50 @@ fn global_helper_keeps_a_separate_budget_per_policy_on_the_same_key() {
 }
 
 #[test]
+fn shared_policy_store_reclaims_each_entry_after_its_own_window() {
+    let store = DashMap::new();
+    let admission = Mutex::new(AdmissionState::default());
+    let hourly = Duration::from_secs(3_600);
+    let short = Duration::from_secs(1);
+    let limited = |key: &str, max: u64, window: Duration| {
+        is_rate_limited_in(
+            &store,
+            &admission,
+            key,
+            max,
+            window,
+            StoreKey::ClientAndPolicy,
+        )
+    };
+
+    assert!(!limited("login@example.com", 5, hourly));
+    // Short-window API clients whose one-second windows ended long ago.
+    let expired = Instant::now() - Duration::from_secs(10);
+    for index in 1..MAX_RATE_LIMIT_IDENTITIES {
+        store.insert(
+            StoreKey::ClientAndPolicy.entry_key(&format!("198.51.100.{index}"), 100, short),
+            (expired, AtomicU64::new(1)),
+        );
+    }
+    admission.lock().unwrap().last_cleanup = expired;
+
+    // A new client is admitted once the expired short windows are reclaimed,
+    // while the unexpired hourly entry keeps its budget.
+    assert!(!limited("203.0.113.9", 100, short));
+    assert_eq!(store.len(), 2);
+    assert!(store.contains_key(&StoreKey::ClientAndPolicy.entry_key(
+        "login@example.com",
+        5,
+        hourly
+    )));
+    assert_eq!(
+        policy_window(&StoreKey::ClientAndPolicy.entry_key("a/b", 1, Duration::new(3, 5))),
+        Some(Duration::new(3, 5))
+    );
+    assert_eq!(policy_window("not-a-policy-key"), None);
+}
+
+#[test]
 fn test_rate_limiter_builder() {
     let limiter = RateLimiter::new(5, Duration::from_secs(1));
     assert_eq!(limiter.max_requests, 5);
