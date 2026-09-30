@@ -4,6 +4,7 @@
 
 use super::*;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Driver that hands out one claim and records which transition API the
 /// worker used for it.
@@ -12,6 +13,8 @@ struct RecordingState {
     job: Mutex<Option<QueuedJob>>,
     fenced: Mutex<Vec<(&'static str, String, u32)>>,
     unfenced: Mutex<Vec<&'static str>>,
+    deferral_unsupported: AtomicBool,
+    deferral: Mutex<Option<(String, Duration)>>,
 }
 
 struct RecordingDriver(Arc<RecordingState>);
@@ -50,6 +53,22 @@ impl QueueDriver for RecordingDriver {
     ) -> Result<(), QueueError> {
         let entry = ("mark_failed_attempt", job_id.to_string(), attempt);
         self.0.fenced.lock().unwrap().push(entry);
+        Ok(())
+    }
+
+    async fn requeue_attempt_after(
+        &self,
+        job_id: &str,
+        attempt: u32,
+        reason: &str,
+        delay: Duration,
+    ) -> Result<(), QueueError> {
+        if self.0.deferral_unsupported.load(Ordering::SeqCst) {
+            return Err(QueueError::Unsupported("no deferral".to_string()));
+        }
+        let entry = ("requeue_attempt_after", job_id.to_string(), attempt);
+        self.0.fenced.lock().unwrap().push(entry);
+        *self.0.deferral.lock().unwrap() = Some((reason.to_string(), delay));
         Ok(())
     }
 
@@ -111,6 +130,48 @@ async fn worker_fences_transitions_on_the_claimed_attempt() {
     assert_eq!(
         *state.fenced.lock().unwrap(),
         vec![("mark_failed_attempt", "job".to_string(), 3)]
+    );
+}
+
+#[tokio::test]
+async fn a_worker_without_the_handler_hands_the_claim_back_with_a_delay() {
+    let (queue, state) = recording_queue("export_csv", 4);
+    let mut worker = Worker::new(&queue).poll_interval(2);
+    worker.register("send_mail", |_| async { Ok(()) });
+    let mut handle = worker.run().unwrap();
+    wait_for_transition(&state).await;
+    assert!(matches!(
+        handle.next_error().await,
+        Some(QueueError::HandlerNotFound(name)) if name == "export_csv"
+    ));
+    handle.shutdown().await.unwrap();
+
+    assert_eq!(
+        *state.fenced.lock().unwrap(),
+        vec![("requeue_attempt_after", "job".to_string(), 4)]
+    );
+    let (reason, delay) = state.deferral.lock().unwrap().clone().unwrap();
+    assert!(reason.contains("export_csv"));
+    assert_eq!(delay, worker::UNHANDLED_JOB_RETRY_DELAY);
+    assert!(!delay.is_zero());
+    assert!(state.unfenced.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_driver_without_deferral_still_fails_an_unhandled_claim() {
+    let (queue, state) = recording_queue("export_csv", 2);
+    state.deferral_unsupported.store(true, Ordering::SeqCst);
+    let mut handle = Worker::new(&queue).poll_interval(2).run().unwrap();
+    wait_for_transition(&state).await;
+    assert!(matches!(
+        handle.next_error().await,
+        Some(QueueError::HandlerNotFound(_))
+    ));
+    handle.shutdown().await.unwrap();
+
+    assert_eq!(
+        *state.fenced.lock().unwrap(),
+        vec![("mark_failed_attempt", "job".to_string(), 2)]
     );
 }
 
@@ -289,5 +350,93 @@ mod sqlite {
             status(&driver, "retained").await.as_deref(),
             Some("completed")
         );
+    }
+
+    /// During a rolling deploy an old worker claims a job only a new worker
+    /// can run. It must leave the job for that worker instead of failing it,
+    /// and must not re-claim it in a hot loop.
+    #[tokio::test]
+    async fn an_unhandled_job_is_left_for_a_worker_that_can_run_it() {
+        let (_directory, url) = file_queue().await;
+        let inspector = SqliteDriver::new(url.clone()).await.unwrap();
+        let queue = Queue::sqlite(url.clone()).await.unwrap();
+        let id = queue
+            .dispatch("export_csv", serde_json::json!({"report": 1}))
+            .await
+            .unwrap();
+
+        let mut old_worker = Worker::new(&queue).poll_interval(2);
+        old_worker.register("send_mail", |_| async { Ok(()) });
+        let mut old_handle = old_worker.run().unwrap();
+        let error = tokio::time::timeout(Duration::from_secs(5), old_handle.next_error())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(error, QueueError::HandlerNotFound(name) if name == "export_csv"));
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        old_handle.shutdown().await.unwrap();
+
+        let (job_status, attempts, available_at_ms): (String, i64, i64) = sqlx::query_as(
+            "SELECT status, attempts, available_at_ms FROM rullst_jobs WHERE id = ?",
+        )
+        .bind(&id)
+        .fetch_one(&inspector.pool)
+        .await
+        .unwrap();
+        assert_eq!(job_status, "pending");
+        assert_eq!(attempts, 1, "the old worker must not re-claim it in a loop");
+        let now_ms =
+            i64::try_from(unix_timestamp_millis_floor(SystemTime::now()).unwrap()).unwrap();
+        assert!(available_at_ms > now_ms);
+
+        // Once due, a worker that registered the handler runs it.
+        sqlx::query("UPDATE rullst_jobs SET available_at_ms = 0 WHERE id = ?")
+            .bind(&id)
+            .execute(&inspector.pool)
+            .await
+            .unwrap();
+        let ran = Arc::new(AtomicBool::new(false));
+        let ran_for_handler = Arc::clone(&ran);
+        let mut new_worker = Worker::new(&queue).poll_interval(2);
+        new_worker.register("export_csv", move |_| {
+            let ran = Arc::clone(&ran_for_handler);
+            async move {
+                ran.store(true, Ordering::SeqCst);
+                Ok(())
+            }
+        });
+        let new_handle = new_worker.run().unwrap();
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while status(&inspector, &id).await.is_some() {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+        new_handle.shutdown().await.unwrap();
+        assert!(ran.load(Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn a_deferred_claim_is_fenced_and_not_claimable_before_its_delay() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let (stale, current) = claimed_twice(&driver, "deferred").await;
+        assert!(
+            driver
+                .requeue_attempt_after("deferred", stale, "stale", Duration::from_millis(60))
+                .await
+                .is_err()
+        );
+        driver
+            .requeue_attempt_after("deferred", current, "no handler", Duration::from_millis(60))
+            .await
+            .unwrap();
+        assert!(driver.pop().await.unwrap().is_none());
+        assert_eq!(driver.pending_count().await.unwrap(), 1);
+
+        tokio::time::sleep(Duration::from_millis(80)).await;
+        let reclaimed = driver.pop().await.unwrap().unwrap();
+        assert_eq!(reclaimed.id, "deferred");
+        assert_eq!(reclaimed.attempts, current + 1);
     }
 }

@@ -82,6 +82,25 @@ redis.call('LPUSH', KEYS[3], raw)
 return 1
 "#;
 
+// Moves a fenced processing lease into the scheduled set, due ARGV[2]
+// milliseconds after the Redis server time. The claim script promotes it to the
+// tail of the pending list once it is due.
+pub(super) const REQUEUE_AFTER_SCRIPT: &str = r#"
+local raw = redis.call('HGET', KEYS[2], ARGV[1])
+if not raw then return 0 end
+local expected = ARGV[3]
+if expected and expected ~= '' then
+    local ok, envelope = pcall(cjson.decode, raw)
+    if not ok or type(envelope) ~= 'table' or envelope.attempts ~= tonumber(expected) then return 0 end
+end
+local now = redis.call('TIME')
+local due_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000) + tonumber(ARGV[2])
+redis.call('ZREM', KEYS[1], raw)
+redis.call('HDEL', KEYS[2], ARGV[1])
+redis.call('ZADD', KEYS[3], due_ms, raw)
+return 1
+"#;
+
 pub(super) const RECOVER_SCRIPT: &str = r#"
 local stalled = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
 local recovered = 0

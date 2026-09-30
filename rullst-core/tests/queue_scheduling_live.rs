@@ -224,6 +224,58 @@ async fn redis_stale_claims_cannot_finish_a_reclaimed_job() {
 }
 
 #[tokio::test]
+async fn redis_deferred_claims_wait_for_their_delay_and_are_fenced() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("deferral"))
+        .expect("isolated queue namespace");
+
+    driver
+        .push("deferred", "export_csv", "{}")
+        .await
+        .expect("push unhandled job");
+    driver
+        .push("next", "mail", "{}")
+        .await
+        .expect("push next job");
+    let claim = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(claim.id, "deferred");
+
+    let delay = Duration::from_millis(250);
+    assert!(
+        driver
+            .requeue_attempt_after(&claim.id, claim.attempts + 1, "stale", delay)
+            .await
+            .is_err()
+    );
+    driver
+        .requeue_attempt_after(&claim.id, claim.attempts, "no handler", delay)
+        .await
+        .expect("defer the current claim");
+    assert_eq!(driver.pending_count().await.expect("pending count"), 2);
+
+    let next = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(next.id, "next");
+    driver
+        .mark_complete_attempt(&next.id, next.attempts)
+        .await
+        .expect("complete next job");
+    assert!(driver.pop().await.expect("early poll").is_none());
+
+    tokio::time::sleep(Duration::from_millis(350)).await;
+    let reclaimed = driver.pop().await.expect("claim").expect("deferred job");
+    assert_eq!(reclaimed.id, "deferred");
+    assert_eq!(reclaimed.attempts, claim.attempts + 1);
+    driver
+        .mark_complete_attempt(&reclaimed.id, reclaimed.attempts)
+        .await
+        .expect("complete deferred job");
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")

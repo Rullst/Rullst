@@ -8,7 +8,7 @@ pub mod redis_driver {
     use super::super::{QueueDriver, QueueError, QueuedJob, unix_timestamp_millis_ceil};
     use super::scripts::{
         CLAIM_SCRIPT, COMPLETE_SCRIPT, FAIL_SCRIPT, PENDING_COUNT_SCRIPT, RECOVER_SCRIPT,
-        REJECT_SCRIPT, REQUEUE_SCRIPT,
+        REJECT_SCRIPT, REQUEUE_AFTER_SCRIPT, REQUEUE_SCRIPT,
     };
     use crate::redis_connection::{RedisConnection, SharedRedisConnection};
     use async_trait::async_trait;
@@ -344,6 +344,34 @@ pub mod redis_driver {
             reason: &str,
         ) -> Result<(), QueueError> {
             self.requeue_claim(job_id, Some(attempt), reason).await
+        }
+
+        async fn requeue_attempt_after(
+            &self,
+            job_id: &str,
+            attempt: u32,
+            _reason: &str,
+            delay: Duration,
+        ) -> Result<(), QueueError> {
+            let delay_ms = u64::try_from(delay.as_millis()).map_err(|_| {
+                QueueError::InvalidConfiguration(
+                    "requeue delay exceeds the Redis score range".to_string(),
+                )
+            })?;
+            let expected = attempt.to_string();
+            self.transition(
+                REQUEUE_AFTER_SCRIPT,
+                &[
+                    &self.processing_key,
+                    &self.processing_index_key,
+                    &self.scheduled_key,
+                ],
+                &[job_id, &delay_ms.to_string(), &expected],
+                job_id,
+                "requeue_after",
+                Some(attempt),
+            )
+            .await
         }
 
         async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
