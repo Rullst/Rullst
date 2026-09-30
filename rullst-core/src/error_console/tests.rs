@@ -61,3 +61,53 @@ fn test_extract_source_context_bounds() {
 
     let _ = std::fs::remove_file(test_file);
 }
+
+async fn panic_console_response(peer: Option<std::net::SocketAddr>) -> (u16, String) {
+    use tower::ServiceExt;
+
+    async fn panics() {
+        panic!("secret panic payload");
+    }
+
+    let mut router = axum::Router::new()
+        .route("/panic", axum::routing::get(panics))
+        .layer(axum::middleware::from_fn(catch_panic_middleware));
+    if let Some(peer) = peer {
+        router = router.layer(axum::extract::connect_info::MockConnectInfo(peer));
+    }
+    let response = router
+        .oneshot(
+            axum::http::Request::get("/panic")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    (status, String::from_utf8_lossy(&body).into_owned())
+}
+
+#[tokio::test]
+async fn panic_console_hides_details_from_non_loopback_peers() {
+    let (status, body) =
+        panic_console_response(Some(std::net::SocketAddr::from(([192, 168, 1, 7], 4000)))).await;
+    assert_eq!(status, 500);
+    assert!(!body.contains("secret panic payload"), "{body}");
+
+    let mapped: std::net::SocketAddr = "[::ffff:10.0.0.1]:4000".parse().unwrap();
+    let (status, body) = panic_console_response(Some(mapped)).await;
+    assert_eq!(status, 500);
+    assert!(!body.contains("secret panic payload"), "{body}");
+
+    for peer in ["127.0.0.1:4000", "[::1]:4000", "[::ffff:127.0.0.1]:4000"] {
+        let (status, body) = panic_console_response(Some(peer.parse().unwrap())).await;
+        assert_eq!(status, 500);
+        assert!(body.contains("secret panic payload"), "{peer}: {body}");
+    }
+
+    let (_, body) = panic_console_response(None).await;
+    assert!(body.contains("secret panic payload"), "{body}");
+}

@@ -1132,7 +1132,8 @@ replication and proxy configuration remain explicit application responsibilities
 No automatic durability or upgrade of legacy `LiveComponent` code is implied.
 The legacy `live_ws_handler` bounds incoming WebSocket frames and messages to
 64 KiB before JSON parsing; its origin, admission and idle policy stay with the
-application route.
+application route. `ws::WebSocket::recv` skips Ping/Pong control frames, so
+client or proxy keepalives do not end a legacy Live session.
 The implementation and its local protocol/Chromium acceptance are recorded in
 [the recovery guide](live-recovery.md). Hosted workspace/platform/package
 admission passed in PR #236; final release admission remains separate.
@@ -1338,7 +1339,10 @@ the same server-authoritative controls.
   environment), then `[database].url` parsed as TOML. There is no implicit
   SQLite fallback: a `db:*` command without a configured database, and any
   configuration or `Orm::init` failure, exits with status 1. Parse errors
-  report positions only, never file content.
+  report positions only, never file content. `Server::run` has no migration or
+  seeder registry, so a `db:*` command it intercepts (because the application
+  never called `artisan!`) exits with status 1 and names `rullst::artisan!`
+  instead of reporting success for an empty registry; `studio` still runs.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`

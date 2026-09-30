@@ -48,6 +48,13 @@ siblings for `html`, `css`, `js`, `json`, `svg`, `wasm`, `xml`, and `txt` files
 under `static/`. The standard server negotiates Brotli through `ServeDir` and
 Zstandard through its static middleware.
 
+The Zstandard middleware serves `name.zst` only when `Accept-Encoding` lists
+`zstd` with a quality above zero (`zstd;q=0` is a refusal) and the path below
+`/static/` has only plain segments. Paths with `.`, `..`, empty segments,
+backslashes or percent-encoding skip the `.zst` lookup and go to `ServeDir`
+uncompressed. `Content-Encoding: zstd` is added only to `2xx` and `304`
+responses.
+
 Verify deployed behavior rather than assuming negotiation worked:
 
 ```bash

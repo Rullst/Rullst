@@ -150,6 +150,34 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Core runtime hardening
+
+- `ValidatedForm` and `ValidatedJson` no longer echo deserializer errors:
+  extraction failures return a fixed message (the detail is logged at `debug`),
+  and every value in the HTMX error fragment is HTML-escaped.
+- `Server` mounts the panic console and `/_rullst/explain` and `/_rullst/autofix`
+  only in debug builds running in Development, and the panic console shows
+  details only to loopback peers.
+- `Server::run` exits with status 1 for `db:*` commands when the application
+  never called `rullst::artisan!`, instead of reporting success against an
+  empty registry.
+- `ws::WebSocket::recv` skips Ping and Pong frames, so client and proxy
+  keepalives no longer end Live sessions.
+- The edge emulator rejects oversized (413) or unreadable (400) bodies instead
+  of passing an empty body, serves `/`, and binds 127.0.0.1 unless `HOST` or
+  `RULLST_HOST` is set.
+- Feature rollout buckets use a versioned, length-prefixed SHA-256 hash that is
+  stable across toolchains; upgrading reassigns buckets once.
+  `TomlFeatureDriver::reload` swaps flags atomically.
+- Server-function failures for rejected envelopes echo the client
+  `request_id`, so `rpc.version_unsupported` and `rpc.request_invalid` reach
+  the caller.
+- `zstd_static_middleware` honours `zstd;q=0`, probes only plain paths under
+  `static/`, and sets `Content-Encoding` only on 2xx and 304 responses.
+- Radar reads Linux RSS from `VmRSS` and scales CPU by the host CPU count.
+- `Debug` for `DatabaseConfig`, `RullstConfig` and `db::ReplicationConfig`
+  redacts database URLs and auth tokens.
+
 ### Omni dependency compatibility maintenance
 
 - Keep generated Omni shells on a compatible Tauri runtime/macro/build family

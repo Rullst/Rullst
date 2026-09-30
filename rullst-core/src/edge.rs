@@ -124,68 +124,23 @@ where
     }
 
     /// Serves request handling either natively as an emulator or natively in WASM edge runtimes.
+    ///
+    /// The native emulator binds `127.0.0.1` unless `HOST` or `RULLST_HOST` is
+    /// set (the same variables, in the same order, as [`crate::Server`]). It
+    /// answers every path including `/`. A request body larger than
+    /// 2 MiB is rejected with `413`, and a body that cannot be
+    /// read with `400`, without calling the handler.
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
-        use axum::Router;
-        use axum::extract::Request;
-        use axum::routing::any;
-
-        let handler = self.handler.clone();
-        let app = Router::new().route(
-            "/{*path}",
-            any(move |req: Request| {
-                let handler = handler.clone();
-                async move {
-                    let (parts, body) = req.into_parts();
-                    let method = parts.method.to_string();
-                    let path = parts.uri.path().to_string();
-                    let mut headers = HashMap::new();
-                    for (k, v) in parts.headers.iter() {
-                        if let Ok(val) = v.to_str() {
-                            headers.insert(k.as_str().to_string(), val.to_string());
-                        }
-                    }
-
-                    let body_bytes = match axum::body::to_bytes(body, 2 * 1024 * 1024).await {
-                        Ok(bytes) => bytes.to_vec(),
-                        Err(_) => Vec::new(),
-                    };
-
-                    let edge_req = EdgeRequest {
-                        method,
-                        path,
-                        headers,
-                        body: body_bytes,
-                    };
-
-                    let edge_resp = handler(edge_req).await;
-
-                    let mut res_builder = axum::http::Response::builder().status(edge_resp.status);
-                    for (k, v) in edge_resp.headers.iter() {
-                        res_builder = res_builder.header(k, v);
-                    }
-                    match res_builder.body(axum::body::Body::from(edge_resp.body)) {
-                        Ok(res) => res,
-                        Err(_) => {
-                            let mut err_res =
-                                axum::response::Response::new(axum::body::Body::empty());
-                            *err_res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
-                            err_res
-                        }
-                    }
-                }
-            }),
-        );
-
-        let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", self.port)).await?;
+        let host = emulator_host(crate::server::builder::read_optional_environment_variable)?;
+        let listener = tokio::net::TcpListener::bind((host.as_str(), self.port)).await?;
         println!(
-            "🚀 Edge local emulator running on http://localhost:{}",
-            self.port
+            "🚀 Edge local emulator running on http://{}",
+            listener.local_addr()?
         );
 
-        // Spawn serving loop
-        axum::serve(listener, app).await?;
+        axum::serve(listener, emulator_router(self.handler)).await?;
         Ok(())
     }
 
@@ -199,6 +154,73 @@ where
         web_sys::console::log_1(&"🚀 Rullst Edge Runtime serving on WASM target".into());
         Ok(())
     }
+}
+
+/// Largest request body the native emulator buffers for an [`EdgeRequest`].
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_EDGE_BODY_BYTES: usize = 2 * 1024 * 1024;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn emulator_host(
+    environment: impl Fn(&str) -> Result<Option<String>, crate::server::ServerError>,
+) -> Result<String, crate::server::ServerError> {
+    Ok(environment("HOST")?
+        .or(environment("RULLST_HOST")?)
+        .unwrap_or_else(|| "127.0.0.1".to_string()))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn emulator_router<F, Fut>(handler: F) -> axum::Router
+where
+    F: Fn(EdgeRequest) -> Fut + Clone + Send + Sync + 'static,
+    Fut: Future<Output = EdgeResponse> + Send + 'static,
+{
+    use axum::extract::DefaultBodyLimit;
+    use axum::http::{HeaderMap, Method, StatusCode, Uri};
+    use axum::routing::any;
+
+    // `Bytes` rejects an oversized body with 413 and an unreadable one with 400
+    // before the handler runs, instead of substituting an empty body.
+    let service = any(
+        move |method: Method, uri: Uri, header_map: HeaderMap, body: axum::body::Bytes| {
+            let handler = handler.clone();
+            async move {
+                let mut headers = HashMap::new();
+                for (k, v) in header_map.iter() {
+                    if let Ok(val) = v.to_str() {
+                        headers.insert(k.as_str().to_string(), val.to_string());
+                    }
+                }
+
+                let edge_req = EdgeRequest {
+                    method: method.to_string(),
+                    path: uri.path().to_string(),
+                    headers,
+                    body: body.to_vec(),
+                };
+
+                let edge_resp = handler(edge_req).await;
+
+                let mut res_builder = axum::http::Response::builder().status(edge_resp.status);
+                for (k, v) in edge_resp.headers.iter() {
+                    res_builder = res_builder.header(k, v);
+                }
+                match res_builder.body(axum::body::Body::from(edge_resp.body)) {
+                    Ok(res) => res,
+                    Err(_) => {
+                        let mut err_res = axum::response::Response::new(axum::body::Body::empty());
+                        *err_res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                        err_res
+                    }
+                }
+            }
+        },
+    );
+
+    axum::Router::new()
+        .route("/", service.clone())
+        .route("/{*path}", service)
+        .layer(DefaultBodyLimit::max(MAX_EDGE_BODY_BYTES))
 }
 
 #[cfg(test)]
@@ -227,5 +249,61 @@ mod tests {
             Some("application/json")
         );
         assert_eq!(res.body, vec![123, 125]);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test]
+    #[allow(clippy::unwrap_used)]
+    async fn emulator_rejects_unreadable_bodies_and_serves_the_root() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use tower::ServiceExt;
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let seen = calls.clone();
+        let router = emulator_router(move |req: EdgeRequest| {
+            let seen = seen.clone();
+            async move {
+                seen.fetch_add(1, Ordering::SeqCst);
+                EdgeResponse::new(200).with_body(format!("{} {}", req.path, req.body.len()).into())
+            }
+        });
+        let send = |uri: &str, body: Vec<u8>| {
+            router.clone().oneshot(
+                axum::http::Request::post(uri)
+                    .body(axum::body::Body::from(body))
+                    .unwrap(),
+            )
+        };
+
+        let response = send("/documents/1", vec![b'x'; MAX_EDGE_BODY_BYTES + 1])
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 413);
+        assert_eq!(calls.load(Ordering::SeqCst), 0, "handler must not run");
+
+        let response = send("/", b"ok".to_vec()).await.unwrap();
+        assert_eq!(response.status(), 200);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"/ 2");
+
+        let response = send("/documents/1", vec![b'x'; MAX_EDGE_BODY_BYTES])
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn emulator_binds_loopback_unless_a_host_is_configured() {
+        assert_eq!(emulator_host(|_| Ok(None)).unwrap(), "127.0.0.1");
+        let configured = |name: &str| Ok((name == "RULLST_HOST").then(|| "0.0.0.0".to_string()));
+        assert_eq!(emulator_host(configured).unwrap(), "0.0.0.0");
+        let both = |name: &str| Ok(Some(name.to_ascii_lowercase()));
+        assert_eq!(emulator_host(both).unwrap(), "host");
     }
 }

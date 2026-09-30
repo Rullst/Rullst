@@ -20,6 +20,28 @@ fn test_calculate_hash_bucket() {
 }
 
 #[test]
+fn hash_buckets_are_frozen_and_length_prefixed() {
+    // Frozen v1 vectors: a change here reassigns every rollout and A/B user.
+    for (flag, identifier, bucket) in [
+        ("flag-a", "user-1", 75),
+        ("flag-a", "user-2", 32),
+        ("new-checkout", "42", 33),
+        ("pricing-ab", "user@example.com", 51),
+        ("", "", 72),
+        ("beta", "\u{fc}", 21),
+    ] {
+        assert_eq!(
+            calculate_hash_bucket(flag, identifier),
+            bucket,
+            "{flag}/{identifier}"
+        );
+    }
+    // The flag length prefix keeps ("ab", "c") and ("a", "bc") apart.
+    assert_eq!(calculate_hash_bucket("ab", "c"), 15);
+    assert_eq!(calculate_hash_bucket("a", "bc"), 93);
+}
+
+#[test]
 fn test_parse_rollout() {
     assert_eq!(parse_rollout("30%"), Some(30));
     assert_eq!(parse_rollout("  100% "), Some(100));
@@ -186,9 +208,46 @@ fn test_toml_feature_driver_load() {
             flag2 = false
             ",
     );
-    assert_eq!(driver.config.get("flag1").unwrap().value(), "true");
-    assert_eq!(driver.config.get("flag2").unwrap().value(), "false");
-    assert_eq!(driver.config.len(), 2);
+    assert_eq!(driver.value("flag1").unwrap(), "true");
+    assert_eq!(driver.value("flag2").unwrap(), "false");
+    assert_eq!(driver.config.read().unwrap().len(), 2);
+}
+
+#[test]
+fn toml_section_headers_may_carry_comments() {
+    let driver = TomlFeatureDriver::new();
+    driver.load_from_str("[features] # rollout flags\nkill = true\n[app] # other\nname = x\n");
+    assert_eq!(driver.value("kill").as_deref(), Some("true"));
+    assert_eq!(driver.value("name"), None);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn toml_reload_never_exposes_a_partially_loaded_set() {
+    let mut content = String::from("[features]\n");
+    for index in 0..2_000 {
+        content.push_str(&format!("filler-{index} = false\n"));
+    }
+    content.push_str("kill-switch = true\n");
+
+    let driver = std::sync::Arc::new(TomlFeatureDriver::new());
+    driver.load_from_str(&content);
+    let reloader = {
+        let driver = driver.clone();
+        tokio::task::spawn_blocking(move || {
+            for _ in 0..200 {
+                driver.load_from_str(&content);
+            }
+        })
+    };
+
+    let mut misses = 0_usize;
+    while !reloader.is_finished() {
+        if driver.enabled("kill-switch").await != Some(true) {
+            misses += 1;
+        }
+    }
+    reloader.await.unwrap();
+    assert_eq!(misses, 0, "a reload exposed an empty or partial flag set");
 }
 
 #[tokio::test]

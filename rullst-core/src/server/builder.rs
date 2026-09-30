@@ -221,8 +221,7 @@ impl Server {
     {
         let dotenv = Self::load_dotenv_values().await?;
         #[cfg(feature = "orm")]
-        crate::artisan::runner::intercept_artisan_command(vec![], vec![], self.db_url.as_deref())
-            .await;
+        crate::artisan::runner::intercept_artisan_command(None, self.db_url.as_deref()).await;
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;
@@ -383,7 +382,9 @@ impl Server {
                     port,
                 })?;
 
-        if environment.allows_development_tools() && addr.ip().is_unspecified() {
+        if development_console_enabled(cfg!(debug_assertions), environment)
+            && addr.ip().is_unspecified()
+        {
             eprintln!(
                 "⚠️  Rullst Dev: Self-Healing Console mounted on /_rullst/*\n\
                    Set RULLST_ENV=production to disable before deploying."
@@ -505,7 +506,7 @@ impl Server {
                 .layer(axum::middleware::from_fn(zstd_static_middleware));
         }
 
-        if is_dev {
+        if development_console_enabled(cfg!(debug_assertions), environment) {
             app = app
                 .route(
                     "/_rullst/explain",
@@ -579,6 +580,14 @@ pub(crate) fn read_optional_environment_variable(
             "{name} is not valid Unicode"
         ))),
     }
+}
+
+/// The panic console and `/_rullst/explain`/`/_rullst/autofix` are mounted only
+/// in debug builds running in Development, like hot reload and the generation
+/// probe. An unset environment resolves to Development, so a release binary must
+/// not rely on the environment alone.
+fn development_console_enabled(debug_build: bool, environment: crate::config::Environment) -> bool {
+    debug_build && environment.allows_development_tools()
 }
 
 fn resolve_hot_reload_token() -> Result<Arc<str>, ServerError> {

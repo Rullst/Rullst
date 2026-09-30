@@ -46,20 +46,23 @@ impl WebSocket {
         self.send_text(html_content).await
     }
 
-    /// Receive the next text/binary frame from the client
+    /// Receive the next text/binary frame from the client.
+    ///
+    /// Ping and Pong control frames are skipped (the underlying socket already
+    /// answers pings), so client keepalives never surface as errors. A Close
+    /// frame or the end of the stream returns `None`.
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn recv(&mut self) -> Option<Result<String, WsError>> {
-        match self.inner.recv().await {
-            Some(Ok(msg)) => match msg {
-                AxumMessage::Text(t) => Some(Ok(t.to_string())),
-                AxumMessage::Binary(b) => Some(Ok(String::from_utf8_lossy(&b).to_string())),
-                AxumMessage::Close(_) => None,
-                _ => Some(Err(WsError::RecvError(
-                    "Unsupported message frame type".to_string(),
-                ))),
-            },
-            Some(Err(e)) => Some(Err(WsError::RecvError(e.to_string()))),
-            None => None,
+        loop {
+            return match self.inner.recv().await {
+                Some(Ok(AxumMessage::Text(t))) => Some(Ok(t.to_string())),
+                Some(Ok(AxumMessage::Binary(b))) => {
+                    Some(Ok(String::from_utf8_lossy(&b).to_string()))
+                }
+                Some(Ok(AxumMessage::Ping(_) | AxumMessage::Pong(_))) => continue,
+                Some(Ok(AxumMessage::Close(_))) | None => None,
+                Some(Err(e)) => Some(Err(WsError::RecvError(e.to_string()))),
+            };
         }
     }
 }

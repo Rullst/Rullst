@@ -73,7 +73,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
-  process uptime. Unsupported probes return `None`.
+  process uptime. Unsupported probes return `None`. On Linux, RSS comes from
+  `VmRSS` in `/proc/self/status` (correct on 16/64 KiB page kernels), and CPU
+  percent is process CPU time over wall time: the host-wide `/proc/stat` delta
+  is scaled by its host CPU count, not by the cgroup-limited
+  `available_parallelism`, so a container saturating a 2-CPU quota reports
+  about 200%.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
   reports process availability and uptime. The opt-in
@@ -87,6 +92,10 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   and other subsystems expose their own typed errors. Applications may compose
   those into an application-owned `AppError`; Core does not define one global
   application error type.
+- **Redacted configuration `Debug`:** `DatabaseConfig` (and therefore
+  `RullstConfig`) prints only the database URL scheme, such as
+  `postgres://<redacted>`; `db::ReplicationConfig` redacts `auth_token` and
+  prints only the `sync_url` scheme. Fields stay public and unchanged.
 - **Durable scheduled queues:** SQLite and Redis persist bounded due timestamps;
   the live Redis CI contract proves that an immediate job remains claimable
   while a future job stays unavailable.
@@ -97,6 +106,15 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
   that cap; state is process-local, not a distributed limit.
+- **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
+  TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
+  SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.
+  It gives every toolchain, platform and replica the same assignment.
+  Earlier releases used `std`'s unspecified `DefaultHasher`, so upgrading
+  reassigns users to buckets once; percentages and variant weights are kept.
+  `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
+  so concurrent evaluations never see a flag as unset mid-reload, and a
+  `[features] # comment` header is recognized.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk
