@@ -56,7 +56,7 @@ impl Provider for GoogleProvider {
             avatar_url: user_res["picture"]
                 .as_str()
                 .map(|s: &str| s.replace("=s96-c", "=s400-c")),
-            email_verified: user_res["email_verified"].as_bool(),
+            email_verified: crate::user::email_verified_claim(&user_res["email_verified"]),
             raw_data: user_res,
             access_token: secrecy::SecretString::from(access_token.to_owned()),
             refresh_token: None,

@@ -73,6 +73,18 @@ mod opt_secret_serde {
     }
 }
 
+/// Reads an `email_verified` claim sent as a JSON boolean or, as Apple and
+/// Amazon Cognito do, as the string `"true"` or `"false"`. Any other value is
+/// unknown.
+pub(crate) fn email_verified_claim(value: &Value) -> Option<bool> {
+    match value {
+        Value::Bool(verified) => Some(*verified),
+        Value::String(text) if text.eq_ignore_ascii_case("true") => Some(true),
+        Value::String(text) if text.eq_ignore_ascii_case("false") => Some(false),
+        _ => None,
+    }
+}
+
 /// Provider-independent profile data that is safe to serialize.
 ///
 /// Access and refresh tokens, expiry metadata and raw provider payloads are
@@ -199,6 +211,17 @@ mod tests {
         assert!(secrecy::ExposeSecret::expose_secret(&restored.access_token).is_empty());
         assert!(restored.refresh_token.is_none());
         assert_eq!(restored.expires_in, Some(3600));
+    }
+
+    #[test]
+    fn email_verified_claims_accept_booleans_and_boolean_strings() {
+        assert_eq!(email_verified_claim(&json!(true)), Some(true));
+        assert_eq!(email_verified_claim(&json!(false)), Some(false));
+        assert_eq!(email_verified_claim(&json!("true")), Some(true));
+        assert_eq!(email_verified_claim(&json!("FALSE")), Some(false));
+        for unknown in [json!(null), json!("yes"), json!(1), json!({})] {
+            assert_eq!(email_verified_claim(&unknown), None);
+        }
     }
 
     #[test]

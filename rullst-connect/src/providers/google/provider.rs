@@ -355,7 +355,7 @@ fn user_from_id_token_claims(
         avatar_url: p["picture"]
             .as_str()
             .map(|s: &str| s.replace("=s96-c", "=s400-c")),
-        email_verified: p["email_verified"].as_bool(),
+        email_verified: crate::user::email_verified_claim(&p["email_verified"]),
         raw_data: p,
         access_token,
         refresh_token: None,
