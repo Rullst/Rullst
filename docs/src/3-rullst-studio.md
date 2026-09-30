@@ -102,7 +102,9 @@ overhead.
   renumbers bind markers to `$n` for PostgreSQL and reads information-schema
   identifiers as `VARCHAR`, so the table view, search, row actions and ER
   diagram also work there; the PostgreSQL contract runs under that build and
-  under `strict-postgres`. This does not supply application tenant/RBAC,
+  under `strict-postgres`. PostgreSQL browsing covers the `public` schema, and
+  every data statement names that schema so that `search_path` cannot select a
+  same-named table elsewhere. This does not supply application tenant/RBAC,
   audit history, undo, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum

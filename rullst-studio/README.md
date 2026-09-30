@@ -167,7 +167,8 @@ actions, and a longer key makes its row read-only. Search terms are limited to
 256 bytes.
 
 Data-browser mutation forms use database-inspected tables, columns and complete
-primary keys. SQL values are parameterized; only text, signed integer, finite
+primary keys; on PostgreSQL they cover the `public` schema, which every data
+statement names explicitly. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types
 remain read-only, request bodies are limited to 64 KiB, and deletion requires
 typing `DELETE <table>`. A table stays read-only when any primary-key column is

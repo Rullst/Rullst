@@ -2991,8 +2991,10 @@ sending.
   `DELETE <table>`. SQLite, PostgreSQL, MySQL and MariaDB run
   separate mutation contracts; PostgreSQL runs under both the default
   `sqlx::Any` build, where Studio renumbers bind markers and casts
-  information-schema identifiers to `VARCHAR`, and `strict-postgres`. This is
-  not application authorization, tenant
+  information-schema identifiers to `VARCHAR`, and `strict-postgres`. On
+  PostgreSQL Studio browses the `public` schema and names it in every data
+  statement, so `search_path` cannot resolve a table to a same-named table in
+  another schema. This is not application authorization, tenant
   scoping, audit, rollback or shared-production administration. The ER diagram
   inspects the same relational backends with bound lookup values and strict
   normalized Mermaid identifiers. Swagger requires an application-supplied

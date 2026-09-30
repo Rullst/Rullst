@@ -3,7 +3,7 @@
 use super::super::db::{
     StudioColumn, StudioColumnKind, StudioTableSchema, ensure_pool_initialized, escape_html_attr,
     fetch_table_schema, fetch_tables, get_any_value_as_string, is_safe_identifier,
-    quote_table_name,
+    qualified_table_name, quote_table_name,
 };
 use crate::access::VerifiedLocalStudioAccess;
 use axum::{
@@ -116,7 +116,7 @@ async fn update_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
     }
 
     let mut query = QueryBuilder::<rullst_orm::RullstDatabase>::new("UPDATE ");
-    query.push(quote_table_name(driver, table));
+    query.push(qualified_table_name(driver, table));
     query.push(" SET ");
     query.push(quote_table_name(driver, &column.name));
     query.push(" = ");
@@ -140,7 +140,7 @@ async fn delete_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
     }
 
     let mut query = QueryBuilder::<rullst_orm::RullstDatabase>::new("DELETE FROM ");
-    query.push(quote_table_name(driver, table));
+    query.push(qualified_table_name(driver, table));
     push_primary_key_predicate(&mut query, driver, primary_key);
     execute_single_row_mutation(pool, driver, &mut query).await
 }

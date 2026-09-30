@@ -4,6 +4,10 @@ use serde::Deserialize;
 use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
+pub(crate) use super::identifiers::qualified_table_name;
+pub use super::identifiers::{
+    build_search_clause, is_safe_identifier, quote_table_name, sanitize_identifier,
+};
 use super::limits::{MAX_SEARCH_BYTES, display_cell};
 pub use super::pool::{ensure_pool_initialized, resolve_db_url};
 
@@ -288,14 +292,6 @@ fn row_flag(row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row, column: &
         .unwrap_or(false)
 }
 
-pub fn quote_table_name(driver: &str, clean_table: &str) -> String {
-    if driver == "mysql" {
-        format!("`{}`", clean_table)
-    } else {
-        format!("\"{}\"", clean_table)
-    }
-}
-
 pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
     match driver {
         "postgres" => format!(
@@ -330,7 +326,7 @@ pub async fn count_table_rows(
         ));
     }
 
-    let quoted_table = quote_table_name(driver, &clean_table);
+    let quoted_table = qualified_table_name(driver, &clean_table);
 
     let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
         QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
@@ -368,36 +364,6 @@ pub async fn count_table_rows(
         .await?;
     let count: i64 = row.try_get(0).unwrap_or(0);
     Ok(count as usize)
-}
-
-/// Sanitize table and column names to prevent SQL injections in dynamic queries
-pub fn sanitize_identifier(id: &str) -> String {
-    let mut res = String::with_capacity(64);
-    for c in id.chars() {
-        if c.is_ascii_alphanumeric() || c == '_' {
-            if res.len() == 64 {
-                break;
-            }
-            res.push(c);
-        }
-    }
-    res
-}
-
-/// Whether an identifier is accepted by Studio's deliberately narrow dynamic-SQL boundary.
-pub fn is_safe_identifier(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 64 && sanitize_identifier(id) == id
-}
-
-/// Helper to build a search clause taking driver syntax into account
-pub fn build_search_clause(driver: &str, col: &str) -> String {
-    if driver == "postgres" {
-        format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col))
-    } else if driver == "mysql" {
-        format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col))
-    } else {
-        format!("\"{}\" LIKE ", sanitize_identifier(col))
-    }
 }
 
 /// Helper to build table headers HTML
@@ -476,20 +442,4 @@ pub fn resolve_driver_display_name() -> String {
     rullst_core::db::safe_driver()
         .unwrap_or("sqlite")
         .to_uppercase()
-}
-
-#[cfg(kani)]
-#[cfg_attr(mutants, mutants::skip)]
-mod kani_proofs {
-    use super::*;
-
-    #[kani::proof]
-    #[kani::unwind(5)]
-    fn proof_sanitize_identifier_length_bound() {
-        let id: [u8; 4] = kani::any();
-        if let Ok(s) = std::str::from_utf8(&id) {
-            let clean = sanitize_identifier(s);
-            assert!(clean.len() <= 64);
-        }
-    }
 }

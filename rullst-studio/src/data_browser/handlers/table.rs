@@ -133,7 +133,7 @@ pub async fn handle_table(
         "Read-only: row changes need a complete primary key whose columns use text, integer or Boolean types and Studio's ASCII identifier boundary"
     };
 
-    let quoted_table = quote_table_name(driver, &clean_table);
+    let quoted_table = qualified_table_name(driver, &clean_table);
     // Key columns keep up to one character more than a mutation accepts, so a
     // longer key is detected and its row stays read-only; other cells need
     // only one character more than the display bound to show truncation.
