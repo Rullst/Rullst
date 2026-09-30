@@ -51,6 +51,17 @@ When a handler finishes while its timeout or a graceful shutdown is being
 processed, the worker records the handler's own result: only a handler that
 was actually cancelled is failed as timed out or requeued, so a success is
 never reported as a timeout or run again.
+Worker transitions are fenced by the claim's attempt number. The SQLite and
+Redis drivers complete, fail or requeue a job only while it is still processing
+under the attempt that `pop` returned, so a worker whose lease was recovered and
+claimed again receives a `StateTransition` error instead of finishing, failing
+or deleting the newer claim. The new `QueueDriver::mark_complete_attempt`,
+`mark_failed_attempt` and `requeue_attempt` methods default to the unfenced
+methods, so custom drivers keep their behaviour until they override them. The
+stale handler may still have run its side effects (delivery stays
+at-least-once), and SQLite `retry_failed_job` restarts the attempt counter, so
+a worker that stays stale across a manual retry and a new claim with the same
+attempt number is not fenced.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained

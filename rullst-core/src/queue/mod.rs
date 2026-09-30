@@ -34,6 +34,8 @@ pub mod sqlite;
 /// Background job worker executor.
 pub mod worker;
 
+#[cfg(test)]
+mod lease_tests;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
 #[cfg(test)]
@@ -185,6 +187,8 @@ pub trait QueueDriver: Send + Sync {
     /// Mark a job as successfully completed.
     ///
     /// Drivers may remove it immediately or retain a bounded history under an explicit policy.
+    /// This transition is not fenced by claim; [`Worker`] uses
+    /// [`Self::mark_complete_attempt`].
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError>;
     /// Mark a job as failed, recording the error message.
     async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError>;
@@ -193,6 +197,41 @@ pub trait QueueDriver: Send + Sync {
         Err(QueueError::Unsupported(
             "this driver cannot requeue interrupted jobs".to_string(),
         ))
+    }
+    /// Marks the exact claim returned by [`Self::pop`] as completed.
+    ///
+    /// `attempt` is that claim's [`QueuedJob::attempts`] value and acts as a
+    /// fencing token: the built-in drivers complete the job only while it is
+    /// still processing under the same attempt, so a worker whose lease was
+    /// recovered and claimed again cannot finish the newer claim. [`Worker`]
+    /// calls this method. The default delegates to [`Self::mark_complete`]
+    /// without a fence, so existing custom drivers keep their behaviour.
+    async fn mark_complete_attempt(&self, job_id: &str, _attempt: u32) -> Result<(), QueueError> {
+        self.mark_complete(job_id).await
+    }
+    /// Marks the exact claim returned by [`Self::pop`] as failed.
+    ///
+    /// Fenced like [`Self::mark_complete_attempt`]; the default delegates to
+    /// [`Self::mark_failed`].
+    async fn mark_failed_attempt(
+        &self,
+        job_id: &str,
+        _attempt: u32,
+        error: &str,
+    ) -> Result<(), QueueError> {
+        self.mark_failed(job_id, error).await
+    }
+    /// Returns the exact claim returned by [`Self::pop`] to the pending state.
+    ///
+    /// Fenced like [`Self::mark_complete_attempt`]; the default delegates to
+    /// [`Self::requeue`].
+    async fn requeue_attempt(
+        &self,
+        job_id: &str,
+        _attempt: u32,
+        reason: &str,
+    ) -> Result<(), QueueError> {
+        self.requeue(job_id, reason).await
     }
     /// Recover processing leases left behind by a crashed worker.
     async fn recover_stalled(&self, _stale_after: std::time::Duration) -> Result<u64, QueueError> {

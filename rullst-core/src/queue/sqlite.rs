@@ -177,6 +177,99 @@ impl SqliteDriver {
             })?;
         Ok(())
     }
+
+    /// Completes a processing job. With `attempt`, only the claim with that
+    /// attempt number matches, so a recovered and re-claimed lease is fenced.
+    async fn complete_claim(&self, job_id: &str, attempt: Option<u32>) -> Result<(), QueueError> {
+        let attempt = attempt.map(i64::from);
+        if self.completed_history_limit == 0 {
+            let result = sqlx::query(
+                "DELETE FROM rullst_jobs WHERE id = ? AND status = 'processing' AND attempts = COALESCE(?, attempts)",
+            )
+            .bind(job_id)
+            .bind(attempt)
+            .execute(&self.pool)
+            .await
+            .map_err(|error| QueueError::Driver(format!("Failed to mark job complete: {error}")))?;
+            ensure_claim_transition(result.rows_affected(), job_id, "mark_complete", attempt)?;
+            return Ok(());
+        }
+
+        let retained_jobs = i64::try_from(self.completed_history_limit).map_err(|_| {
+            QueueError::InvalidConfiguration(
+                "completed job history exceeds SQLite integer range".to_string(),
+            )
+        })?;
+        let mut transaction = self.pool.begin().await.map_err(|error| {
+            QueueError::Driver(format!(
+                "Failed to begin job completion transaction: {error}"
+            ))
+        })?;
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'completed', error = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND status = 'processing' AND attempts = COALESCE(?, attempts)",
+        )
+        .bind(job_id)
+        .bind(attempt)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| QueueError::Driver(format!("Failed to retain completed job: {error}")))?;
+        ensure_claim_transition(result.rows_affected(), job_id, "mark_complete", attempt)?;
+        sqlx::query(
+            "DELETE FROM rullst_jobs WHERE status = 'completed' AND id NOT IN (SELECT id FROM rullst_jobs WHERE status = 'completed' ORDER BY updated_at DESC, rowid DESC LIMIT ?)",
+        )
+        .bind(retained_jobs)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| {
+            QueueError::Driver(format!("Failed to prune completed job history: {error}"))
+        })?;
+        transaction.commit().await.map_err(|error| {
+            QueueError::Driver(format!("Failed to commit completed job history: {error}"))
+        })?;
+        Ok(())
+    }
+
+    async fn fail_claim(
+        &self,
+        job_id: &str,
+        attempt: Option<u32>,
+        error: &str,
+    ) -> Result<(), QueueError> {
+        let attempt = attempt.map(i64::from);
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing' AND attempts = COALESCE(?, attempts)",
+        )
+        .bind(error)
+        .bind(job_id)
+        .bind(attempt)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to mark job failed: {}", e)))?;
+        ensure_claim_transition(result.rows_affected(), job_id, "mark_failed", attempt)
+    }
+
+    async fn requeue_claim(
+        &self,
+        job_id: &str,
+        attempt: Option<u32>,
+        reason: &str,
+    ) -> Result<(), QueueError> {
+        let attempt = attempt.map(i64::from);
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'pending', error = ?, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'processing' AND attempts = COALESCE(?, attempts)",
+        )
+        .bind(reason)
+        .bind(job_id)
+        .bind(attempt)
+        .execute(&self.pool)
+        .await
+        .map_err(|error| QueueError::StateTransition {
+            job_id: job_id.to_string(),
+            operation: "requeue",
+            message: error.to_string(),
+        })?;
+        ensure_claim_transition(result.rows_affected(), job_id, "requeue", attempt)
+    }
 }
 
 #[async_trait]
@@ -283,80 +376,37 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
-        if self.completed_history_limit == 0 {
-            let result =
-                sqlx::query("DELETE FROM rullst_jobs WHERE id = ? AND status = 'processing'")
-                    .bind(job_id)
-                    .execute(&self.pool)
-                    .await
-                    .map_err(|error| {
-                        QueueError::Driver(format!("Failed to mark job complete: {error}"))
-                    })?;
-            ensure_transition(result.rows_affected(), job_id, "mark_complete")?;
-            return Ok(());
-        }
-
-        let retained_jobs = i64::try_from(self.completed_history_limit).map_err(|_| {
-            QueueError::InvalidConfiguration(
-                "completed job history exceeds SQLite integer range".to_string(),
-            )
-        })?;
-        let mut transaction = self.pool.begin().await.map_err(|error| {
-            QueueError::Driver(format!(
-                "Failed to begin job completion transaction: {error}"
-            ))
-        })?;
-        let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'completed', error = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND status = 'processing'",
-        )
-        .bind(job_id)
-        .execute(&mut *transaction)
-        .await
-        .map_err(|error| QueueError::Driver(format!("Failed to retain completed job: {error}")))?;
-        ensure_transition(result.rows_affected(), job_id, "mark_complete")?;
-        sqlx::query(
-            "DELETE FROM rullst_jobs WHERE status = 'completed' AND id NOT IN (SELECT id FROM rullst_jobs WHERE status = 'completed' ORDER BY updated_at DESC, rowid DESC LIMIT ?)",
-        )
-        .bind(retained_jobs)
-        .execute(&mut *transaction)
-        .await
-        .map_err(|error| {
-            QueueError::Driver(format!("Failed to prune completed job history: {error}"))
-        })?;
-        transaction.commit().await.map_err(|error| {
-            QueueError::Driver(format!("Failed to commit completed job history: {error}"))
-        })?;
-        Ok(())
+        self.complete_claim(job_id, None).await
     }
 
     async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError> {
-        let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing'",
-        )
-        .bind(error)
-        .bind(job_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| QueueError::Driver(format!("Failed to mark job failed: {}", e)))?;
-        ensure_transition(result.rows_affected(), job_id, "mark_failed")?;
-        Ok(())
+        self.fail_claim(job_id, None, error).await
     }
 
     async fn requeue(&self, job_id: &str, reason: &str) -> Result<(), QueueError> {
-        let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'pending', error = ?, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'processing'",
-        )
-        .bind(reason)
-        .bind(job_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|error| QueueError::StateTransition {
-            job_id: job_id.to_string(),
-            operation: "requeue",
-            message: error.to_string(),
-        })?;
-        ensure_transition(result.rows_affected(), job_id, "requeue")?;
-        Ok(())
+        self.requeue_claim(job_id, None, reason).await
+    }
+
+    async fn mark_complete_attempt(&self, job_id: &str, attempt: u32) -> Result<(), QueueError> {
+        self.complete_claim(job_id, Some(attempt)).await
+    }
+
+    async fn mark_failed_attempt(
+        &self,
+        job_id: &str,
+        attempt: u32,
+        error: &str,
+    ) -> Result<(), QueueError> {
+        self.fail_claim(job_id, Some(attempt), error).await
+    }
+
+    async fn requeue_attempt(
+        &self,
+        job_id: &str,
+        attempt: u32,
+        reason: &str,
+    ) -> Result<(), QueueError> {
+        self.requeue_claim(job_id, Some(attempt), reason).await
     }
 
     async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
@@ -399,6 +449,27 @@ impl QueueDriver for SqliteDriver {
 
     async fn purge_completed_history(&self) -> Result<(), QueueError> {
         SqliteDriver::purge_completed_history(self).await
+    }
+}
+
+/// Like [`ensure_transition`], naming the claim attempt when a fenced
+/// transition matched nothing, which usually means a stale lease.
+fn ensure_claim_transition(
+    rows_affected: u64,
+    job_id: &str,
+    operation: &'static str,
+    attempt: Option<i64>,
+) -> Result<(), QueueError> {
+    match attempt {
+        Some(attempt) if rows_affected != 1 => Err(QueueError::StateTransition {
+            job_id: job_id.to_string(),
+            operation,
+            message: format!(
+                "expected one processing job at claim attempt {attempt}, affected {rows_affected}; \
+                 the lease may have been recovered and claimed again"
+            ),
+        }),
+        _ => ensure_transition(rows_affected, job_id, operation),
     }
 }
 

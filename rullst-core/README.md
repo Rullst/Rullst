@@ -34,6 +34,9 @@
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.
+- **Fenced Queue Leases:** SQLite and Redis complete, fail or requeue a claimed
+  job only under the attempt number `pop` returned, so a stale worker whose
+  lease was recovered and claimed again cannot finish the newer claim.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.

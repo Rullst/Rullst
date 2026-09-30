@@ -324,7 +324,7 @@ async fn release_claim_after_shutdown(
     match popped {
         Ok(Some(job)) => {
             if let Err(error) = driver
-                .requeue(&job.id, "worker shutdown before dispatch")
+                .requeue_attempt(&job.id, job.attempts, "worker shutdown before dispatch")
                 .await
             {
                 errors.report(state_error(&job.id, "requeue_claim_after_shutdown", error));
@@ -372,7 +372,10 @@ async fn dispatch_job(
 ) {
     let Some(handler) = handlers.get(&job.name).cloned() else {
         let missing = QueueError::HandlerNotFound(job.name.clone());
-        if let Err(error) = driver.mark_failed(&job.id, &missing.to_string()).await {
+        if let Err(error) = driver
+            .mark_failed_attempt(&job.id, job.attempts, &missing.to_string())
+            .await
+        {
             errors.report(state_error(&job.id, "mark_failed", error));
         } else {
             errors.report(missing);
