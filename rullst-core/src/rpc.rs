@@ -136,7 +136,7 @@ mod server {
             Ok(envelope) => envelope,
             Err(error) => {
                 let (status, failure) = request_contract_failure(&error);
-                return failure_response(status, server_request_id(), failure);
+                return failure_response(status, client_request_id(&body), failure);
             }
         };
         let version = envelope.version();
@@ -205,6 +205,21 @@ mod server {
         (status, [(header::CONTENT_TYPE, "application/json")], body).into_response()
     }
 
+    /// Echoes the caller's validated `request_id` when a rejected envelope
+    /// still carries one (for example an unsupported version or a payload of
+    /// the wrong shape), so the client correlates the failure and sees its real
+    /// code instead of `rpc.correlation_mismatch`. Otherwise a fresh
+    /// framework identifier is used.
+    fn client_request_id(body: &[u8]) -> RequestId {
+        #[derive(serde::Deserialize)]
+        struct Correlation {
+            request_id: RequestId,
+        }
+        serde_json::from_slice::<Correlation>(body)
+            .map(|correlation| correlation.request_id)
+            .unwrap_or_else(|_| server_request_id())
+    }
+
     fn server_request_id() -> RequestId {
         let value = format!("rpc_{}", uuid::Uuid::new_v4().simple());
         RequestId::framework(value)
@@ -228,3 +243,57 @@ mod server {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use server::{handle_request, route};
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::client_contract::ClientContractPolicy;
+
+    async fn failure_for(body: &str) -> (u16, String, String) {
+        let request = axum::http::Request::post("/api/rpc/test")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(body.to_string()))
+            .unwrap();
+        let response =
+            handle_request::<u32, u32, _, _>(request, |value| async move { Ok(value) }).await;
+        let status = response.status().as_u16();
+        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        let failure = ClientContractPolicy::default()
+            .decode_failure(&bytes)
+            .expect("a framework failure envelope");
+        (
+            status,
+            failure.request_id().as_str().to_string(),
+            failure.error().code().as_str().to_string(),
+        )
+    }
+
+    #[tokio::test]
+    async fn rejected_envelopes_echo_the_client_request_id() {
+        let (status, id, code) = failure_for(
+            r#"{"contract":"rullst.client","version":99,"request_id":"rpc_client1","payload":1}"#,
+        )
+        .await;
+        assert_eq!(
+            (status, id.as_str(), code.as_str()),
+            (409, "rpc_client1", "rpc.version_unsupported")
+        );
+
+        let (status, id, code) = failure_for(
+            r#"{"contract":"rullst.client","version":1,"request_id":"rpc_client2","payload":"x"}"#,
+        )
+        .await;
+        assert_eq!(
+            (status, id.as_str(), code.as_str()),
+            (400, "rpc_client2", "rpc.request_invalid")
+        );
+
+        // Without a valid identifier the server still answers with its own.
+        let (status, id, code) = failure_for(r#"{"request_id":"has space"}"#).await;
+        assert_eq!((status, code.as_str()), (400, "rpc.request_invalid"));
+        assert!(id.starts_with("rpc_") && id != "has space", "{id}");
+    }
+}
