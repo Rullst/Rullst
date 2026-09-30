@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790734545805,
+  "lastUpdate": 1790738070882,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -20936,6 +20936,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "generate_csrf_token_32_chars",
             "value": 127,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "745f3e61239ebf76417e858f9008464dccee530b",
+          "message": "Merge pull request #337 from Rullst/test/v13-codeql-test-logging\n\ntest(orm): keep protected test values out of assertion messages",
+          "timestamp": "2026-09-29T23:54:00-03:00",
+          "tree_id": "22d18a96558f001e66b97f17e1d89dacff8590a8",
+          "url": "https://github.com/Rullst/Rullst/commit/745f3e61239ebf76417e858f9008464dccee530b"
+        },
+        "date": 1790738069809,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 102,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 31,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 86,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 107,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 91,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 88,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 93,
             "range": "± 2",
             "unit": "ns/iter"
           }
