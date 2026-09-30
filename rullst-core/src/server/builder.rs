@@ -221,8 +221,7 @@ impl Server {
     {
         let dotenv = Self::load_dotenv_values().await?;
         #[cfg(feature = "orm")]
-        crate::artisan::runner::intercept_artisan_command(vec![], vec![], self.db_url.as_deref())
-            .await;
+        crate::artisan::runner::intercept_artisan_command(None, self.db_url.as_deref()).await;
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;

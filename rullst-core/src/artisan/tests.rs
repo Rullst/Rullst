@@ -276,8 +276,7 @@ async fn artisan_command_fails_without_a_configured_database() {
         let error = run_artisan_command(
             command,
             &args,
-            vec![],
-            vec![],
+            Some((vec![], vec![])),
             None,
             project.path(),
             environment(None),
@@ -301,8 +300,7 @@ async fn artisan_command_propagates_configuration_and_database_failures() {
     let error = run_artisan_command(
         "db:migrate",
         &args,
-        vec![],
-        vec![],
+        Some((vec![], vec![])),
         None,
         malformed.path(),
         environment(None),
@@ -317,8 +315,7 @@ async fn artisan_command_propagates_configuration_and_database_failures() {
     let error = run_artisan_command(
         "db:migrate",
         &args,
-        vec![],
-        vec![],
+        Some((vec![], vec![])),
         None,
         empty.path(),
         environment(Some("postgres://[your-database-id]/app")),
@@ -327,4 +324,25 @@ async fn artisan_command_propagates_configuration_and_database_failures() {
     .expect_err("an initialization failure must not be discarded");
     assert!(matches!(error, ArtisanError::Database(_)));
     assert!(rullst_orm::Orm::try_pool().is_err());
+}
+
+#[tokio::test]
+async fn server_intercepted_database_commands_fail_without_a_registry() {
+    let project = project(None, None);
+    for command in ["db:migrate", "db:rollback", "db:status", "db:seed"] {
+        let args = translate_artisan_args(&["app".to_string(), command.to_string()]).unwrap();
+        // A configured database must not turn an empty registry into success.
+        let error = run_artisan_command(
+            command,
+            &args,
+            None,
+            Some("sqlite::memory:"),
+            project.path(),
+            environment(None),
+        )
+        .await
+        .expect_err("Server::run has no migration or seeder registry");
+        assert!(matches!(&error, ArtisanError::RegistryMissing(name) if name == command));
+        assert!(error.to_string().contains("rullst::artisan!"));
+    }
 }
