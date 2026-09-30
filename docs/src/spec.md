@@ -1685,7 +1685,10 @@ while portability and semantic review remain the model author's responsibility.
   before FROM would take the tenant or model-wide scope binding.
 * Generated builders start with the global row cap from
   `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
-  clamps to it and `unsafe_unlimited()` removes it for one query.
+  clamps to it and `unsafe_unlimited()` removes it for one query. An
+  `offset()` without a limit is emitted after `LIMIT -1` on SQLite and
+  `LIMIT 18446744073709551615` on MySQL/MariaDB, which accept `OFFSET` only
+  after `LIMIT`; PostgreSQL receives `OFFSET` alone.
   `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
   effective value in `PaginationResult::per_page` and `last_page`.
 * `count()` and the `paginate()` total count the rows `get()` would return

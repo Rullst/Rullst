@@ -8,6 +8,7 @@ mod aggregate_counts;
 mod bulk_delete;
 mod column_types;
 mod nested_transaction;
+mod offset_paging;
 mod soft_delete_lifecycle;
 mod timestamps;
 
@@ -19,4 +20,5 @@ pub async fn exercise() {
     nested_transaction::exercise().await;
     column_types::exercise().await;
     aggregate_counts::exercise().await;
+    offset_paging::exercise().await;
 }

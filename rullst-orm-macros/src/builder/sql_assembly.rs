@@ -152,6 +152,14 @@ pub fn generate_sql_assembly_methods(
             if let Some(limit) = self.limit {
                 sql.push_str(" LIMIT ");
                 sql.push_str(&limit.to_string());
+            } else if self.offset.is_some() {
+                // SQLite and MySQL/MariaDB accept OFFSET only after LIMIT, so an
+                // uncapped offset query names each dialect's "no limit" value.
+                match rullst_orm::Orm::driver() {
+                    Ok("sqlite") => sql.push_str(" LIMIT -1"),
+                    Ok("mysql") => sql.push_str(" LIMIT 18446744073709551615"),
+                    Ok(_) | Err(_) => {}
+                }
             }
             if let Some(offset) = self.offset {
                 sql.push_str(" OFFSET ");
