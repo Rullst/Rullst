@@ -186,7 +186,8 @@ and local revision/state after external work and use bounded durable leases to
 reject concurrent/stale mutation results. Playback is a read: it takes no lease,
 so concurrent viewers never serialize and an abandoned request leaves no intent;
 it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
-library and capacity, refuses clock rollback and requires trusted local files,
+library, store-wide capacity and an optional per-tenant asset quota for shared
+stores, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
 Only confirmed-deleted or explicitly discarded local tombstones may be purged,
 in batches up to 100 and after at least 24 hours; the host must retire purged

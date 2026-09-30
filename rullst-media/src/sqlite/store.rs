@@ -23,11 +23,15 @@ pub(super) const SCHEMA: &[(&str, &str)] = &[
     ),
 ];
 
+/// `max_assets` bounds every tenant and course in the store together and
+/// counts deleted tombstones until purge. Stores shared by several tenants
+/// should also set [`StoreConfig::tenant_assets`], or use one store per tenant.
 #[derive(Debug, Clone)]
 pub struct StoreConfig {
     pub(super) binding: ProviderBinding,
     pub(super) max_assets: u32,
     pub(super) testing: bool,
+    pub(super) tenant_assets: Option<u32>,
 }
 impl StoreConfig {
     pub fn production(binding: ProviderBinding, max_assets: u32) -> Result<Self, Error> {
@@ -48,11 +52,29 @@ impl StoreConfig {
             binding,
             max_assets,
             testing,
+            tenant_assets: None,
         })
     }
+    /// Assets, including tombstones, that one tenant may hold, from 1 to
+    /// `max_assets` (v13). Without it, one tenant's managers can use the whole
+    /// store-wide capacity. Every opener must supply the same value.
+    pub fn tenant_assets(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || maximum > self.max_assets {
+            return Err(Error::Configuration);
+        }
+        self.tenant_assets = Some(maximum);
+        Ok(self)
+    }
     pub(super) fn key(&self) -> Result<String, Error> {
-        serde_json::to_string(&(&self.binding, self.max_assets, self.testing))
-            .map_err(|_| Error::Configuration)
+        // A tenant quota extends the key only when set, so stores that were
+        // initialized before it existed keep opening unchanged.
+        match self.tenant_assets {
+            None => serde_json::to_string(&(&self.binding, self.max_assets, self.testing)),
+            Some(tenant) => {
+                serde_json::to_string(&(&self.binding, self.max_assets, self.testing, tenant))
+            }
+        }
+        .map_err(|_| Error::Configuration)
     }
 }
 

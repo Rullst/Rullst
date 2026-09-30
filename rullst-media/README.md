@@ -198,6 +198,12 @@ Key rotation with unchanged environment/library is accepted; it can invalidate
 old capabilities. Changing environment, origin, CDN host, mode or capacity needs
 an explicit reviewed migration, not silent opening of unrelated state.
 
+Capacity is store-wide: every tenant and course shares `max_assets`, and
+deleted tombstones count until purge. A store shared by several tenants should
+add `StoreConfig::tenant_assets(n)` so one tenant's managers cannot exhaust it
+for the others; the quota is persisted like capacity. Otherwise use one store
+per tenant.
+
 `purge_deleted` removes at most 100 confirmed or discarded local tombstones per
 authorized call, with a cutoff at least 24 hours old. It preserves active and
 pending assets. Once purged, **retire the creation ID**: its idempotency/replay
