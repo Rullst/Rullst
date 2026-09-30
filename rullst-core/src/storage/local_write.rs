@@ -53,7 +53,9 @@ fn write_and_rename(temporary: &Path, target: &Path, bytes: &[u8]) -> std::io::R
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::super::{LocalDriver, Storage, StorageError};
+    #[cfg(unix)]
+    use super::super::LocalDriver;
+    use super::super::{Storage, StorageError};
     use super::TEMPORARY_PREFIX;
 
     /// A unique directory under the system temporary directory, removed on drop.
