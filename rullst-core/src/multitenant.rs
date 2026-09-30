@@ -6,8 +6,8 @@ use std::cell::RefCell;
 pub enum TenantStrategy {
     /// Select a tenant from the request host subdomain (e.g. `tenant.example.com`).
     /// The host is the `Host` header or, when it is absent (HTTP/2), the
-    /// request `:authority`. The selection is accepted only when authenticated
-    /// membership allows it.
+    /// request `:authority`; a `www` label is not a tenant. The selection is
+    /// accepted only when authenticated membership allows it.
     Subdomain,
     /// Select a tenant from a custom HTTP header. The header is an untrusted
     /// hint and is accepted only when authenticated membership allows it.
@@ -108,15 +108,18 @@ fn request_host<B>(req: &axum::http::Request<B>) -> Option<&str> {
     }
 }
 
-/// Helper function to extract subdomain from Host header
+/// Extracts the tenant subdomain from a request host.
+///
+/// The first label of a host with at least three labels is the tenant
+/// (`tenant1.example.com` -> `tenant1`). IP addresses, shorter hosts and a
+/// `www` label have no tenant subdomain, so `domain_fallback` applies.
 fn extract_subdomain(host: &str) -> Option<String> {
     let host_only = host.split(':').next()?;
     if host_only.parse::<std::net::IpAddr>().is_ok() {
         return None;
     }
     let parts: Vec<&str> = host_only.split('.').collect();
-    if parts.len() >= 3 {
-        // e.g. tenant1.example.com -> tenant1
+    if parts.len() >= 3 && !parts[0].eq_ignore_ascii_case("www") {
         Some(parts[0].to_string())
     } else {
         None

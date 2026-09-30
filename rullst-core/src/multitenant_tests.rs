@@ -12,6 +12,29 @@ fn test_extract_subdomain() {
     );
     assert_eq!(extract_subdomain("localhost:3000"), None);
     assert_eq!(extract_subdomain("127.0.0.1"), None);
+    assert_eq!(extract_subdomain("www.example.com"), None);
+    assert_eq!(extract_subdomain("WWW.example.com:443"), None);
+}
+
+#[tokio::test]
+async fn a_www_host_uses_the_domain_fallback() {
+    use axum::http::{Request, StatusCode};
+
+    let membership = crate::security::TenantMembership::try_new(["main", "lab"]).unwrap();
+    let request = Request::builder()
+        .uri("/test")
+        .header("host", "www.example.com")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    assert_eq!(
+        subdomain_tenant(
+            TenantConfig::new(TenantStrategy::Subdomain).with_domain_fallback("main"),
+            membership,
+            request
+        )
+        .await,
+        (StatusCode::OK, "main".to_string())
+    );
 }
 
 #[test]
