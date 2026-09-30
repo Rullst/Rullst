@@ -118,21 +118,37 @@ impl DeliveryPipeline {
         validate_email_deliverability(&recipient)
             .map_err(|error| MailError::ValidationError(error.to_string()))?;
 
+        // The sender uses the recipient parser too, so a display-name form is
+        // parsed the same way everywhere; transports that take a bare address
+        // split it with `mailbox_parts`.
         if let Some(from) = message.from.as_deref() {
             validate_header("From", from)?;
-            validate_email_syntax(from)
+            recipient_address(from)
                 .map_err(|error| MailError::ValidationError(error.to_string()))?;
         }
 
+        // Both values are written verbatim inside `<...>` in List-Unsubscribe,
+        // so neither may close its bracket or start another entry.
         if let Some(email) = message.unsubscribe_email.as_deref() {
             validate_header("List-Unsubscribe email", email)?;
             validate_email_syntax(email)
                 .map_err(|error| MailError::ValidationError(error.to_string()))?;
+            if recipient_address(email).ok() != Some(email) {
+                return Err(MailError::ValidationError(
+                    "List-Unsubscribe email must be one bare address".to_string(),
+                ));
+            }
         }
 
         if let Some(url) = message.unsubscribe_url.as_deref() {
             validate_header("List-Unsubscribe URL", url)?;
             validate_http_url("List-Unsubscribe URL", url)?;
+            if url.contains(|c: char| c.is_whitespace() || matches!(c, '<' | '>' | '"')) {
+                return Err(MailError::ValidationError(
+                    "List-Unsubscribe URL must not contain whitespace, '<', '>' or '\"'"
+                        .to_string(),
+                ));
+            }
         }
 
         if message.send_at.as_ref().is_some_and(|send_at| {
@@ -235,6 +251,12 @@ fn validate_tenant_id(tenant_id: &str) -> Result<(), MailError> {
             "tenant ID may contain only ASCII letters, digits, '-', '_', '.' and ':'".to_string(),
         ));
     }
+    // As in Core, `.` and `..` are relative path components, not tenant names.
+    if tenant_id.bytes().all(|byte| byte == b'.') {
+        return Err(MailError::ValidationError(
+            "tenant ID must not consist only of dots".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -305,6 +327,36 @@ mod tests {
         );
 
         assert!(DeliveryPipeline::prepare_for_tenant("../acme", &message).is_err());
+        for dots in [".", "..", "..."] {
+            assert!(DeliveryPipeline::prepare_for_tenant(dots, &message).is_err());
+            assert!(DeliveryContext::for_tenant(dots).is_err());
+        }
+        assert!(DeliveryPipeline::prepare_for_tenant("acme.v2", &message).is_ok());
+    }
+
+    #[test]
+    fn list_unsubscribe_values_cannot_add_entries() {
+        let base = || Message::new().to("member@example.com").text("safe");
+        for message in [
+            base().unsubscribe_email("x@y.com>, <https://evil.example/u"),
+            base().unsubscribe_email("Name <x@y.com>"),
+            base().unsubscribe_url("https://a.example/x>, <mailto:evil@attacker.example"),
+            base().unsubscribe_url("https://a.example/x\"y"),
+            base().unsubscribe_url("https://a.example/x y"),
+        ] {
+            assert!(matches!(
+                DeliveryPipeline::prepare(&message),
+                Err(MailError::ValidationError(_))
+            ));
+        }
+        let valid = base()
+            .unsubscribe_email("unsubscribe@example.com")
+            .unsubscribe_url("https://example.com/unsub?ids=1,2");
+        let prepared = DeliveryPipeline::prepare(&valid).expect("bare values");
+        assert_eq!(
+            prepared.message().list_unsubscribe_header().as_deref(),
+            Some("<mailto:unsubscribe@example.com>, <https://example.com/unsub?ids=1,2>")
+        );
     }
 
     #[test]
@@ -372,6 +424,8 @@ mod tests {
                 "key=a ".repeat(limit / 6),
                 "http://a ".repeat(limit / 9),
                 "-----BEGIN PRIVATE KEY-----x-----END PRIVATE KEY-----".repeat(limit / 53),
+                "-----BEGIN EC PRIVATE KEY-----x-----END EC PRIVATE KEY-----".repeat(limit / 59),
+                "-----BEGIN CERTIFICATE PRIVATE KEY ".repeat(limit / 35),
             ];
             let outcome = bodies.into_iter().all(|body| {
                 let mut message = Message::new().to("bounded@example.com").html(body.clone());

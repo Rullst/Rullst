@@ -389,6 +389,39 @@ A prepared version section does not establish that its tag or crates exist.
   the same stored challenge from a bounded form POST, and tutorial 42 explains
   the `SameSite=None; Secure` challenge cookie it needs.
 
+### Mail low-severity review fixes and configured sender
+
+- The Mail facade reads a default sender from `MAIL_FROM` or `[mail] from`
+  (`Mail::default_sender()` validates it). Real transports require an explicit
+  or configured sender instead of sending as `noreply@rullst.dev`, and new
+  projects list `MAIL_FROM` and `MAIL_DRIVER` in `.env`.
+- Mail settings and provider credentials resolve from the process environment,
+  then `./.env`, then `Rullst.toml`, like `DATABASE_URL`, through a hidden Core
+  `ProjectSettings` helper. `Mail` no longer silently logs mail in staging or
+  production when no driver is set.
+- Link checks read `href` values the way browsers do (any case, spacing or
+  quoting, entities decoded), security errors no longer echo the link, and the
+  secret filter covers every PEM private-key type and `ASIA` keys without
+  corrupting base64 content.
+- Click tracking rewrites only `<a>` links, signs the decoded destination,
+  escapes the tracker URL and leaves links that pre-flight would reject visible
+  to it; the plain-text fallback decodes entities exactly once.
+- Display-name senders are split for providers that need a bare address,
+  List-Unsubscribe values cannot inject extra entries and one-click unsubscribe
+  is declared only for HTTPS URLs.
+- Suppression, inspection and queue outages are retryable (`Transient`),
+  `FailoverDriver` stops at a permanent fallback error and keeps rate-limit
+  delays, Azure identity tokens are reused and throttling is retryable, and
+  native SES errors keep only the error code.
+- The worker tolerates 300 s of clock lag, SendGrid schedules beyond 72 h are
+  rejected up front, `TenantMailResolver` forwards the tenant and `.`/`..`
+  tenant IDs are rejected.
+- The attachment inspector rejects Outlook Level-1 extensions, active PDF forms
+  and actions and universal Mach-O binaries; suppression keys IDN domains by
+  A-label; the offline mock and `Attachment::from_file` are bounded; and
+  `MailFeedbackError::UnsupportedEvent` reports authentic but unhandled Resend
+  events.
+
 ### Mail, capital and messaging second-pass review fixes
 
 - Azure Communication Services sends work again: the driver no longer builds

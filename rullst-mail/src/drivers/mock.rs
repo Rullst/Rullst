@@ -3,9 +3,53 @@
 use crate::error::MailError;
 use crate::message::Message;
 use sha2::{Digest, Sha256};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-static OFFLINE_DELIVERIES: OnceLock<Mutex<Vec<OfflineMockDelivery>>> = OnceLock::new();
+/// Newest offline deliveries retained for inspection; older ones are evicted.
+const MAX_OFFLINE_DELIVERIES: usize = 1_000;
+/// Retained subject, body and attachment bytes across those deliveries.
+const MAX_OFFLINE_BYTES: usize = 64 * 1024 * 1024;
+
+static OFFLINE_DELIVERIES: OnceLock<Mutex<OfflineStore>> = OnceLock::new();
+static OFFLINE_MODE_REPORTED: AtomicBool = AtomicBool::new(false);
+
+/// Bounded FIFO of captured deliveries. The fallback is also reachable by
+/// misconfiguration (an empty provider secret), so it must not grow forever.
+#[derive(Default)]
+struct OfflineStore {
+    deliveries: VecDeque<(usize, OfflineMockDelivery)>,
+    bytes: usize,
+}
+
+impl OfflineStore {
+    /// Appends a delivery, then evicts the oldest ones until both bounds hold
+    /// again. The newest delivery is always kept.
+    fn push(&mut self, delivery: OfflineMockDelivery, max_items: usize, max_bytes: usize) {
+        let size = retained_bytes(&delivery.message);
+        self.bytes = self.bytes.saturating_add(size);
+        self.deliveries.push_back((size, delivery));
+        while self.deliveries.len() > 1
+            && (self.deliveries.len() > max_items || self.bytes > max_bytes)
+        {
+            if let Some((evicted, _)) = self.deliveries.pop_front() {
+                self.bytes = self.bytes.saturating_sub(evicted);
+            }
+        }
+    }
+}
+
+fn retained_bytes(message: &Message) -> usize {
+    let bodies = [message.body_html.as_deref(), message.body_text.as_deref()]
+        .into_iter()
+        .flatten()
+        .map(str::len);
+    let attachments = message.attachments.iter().map(|item| item.content.len());
+    bodies
+        .chain(attachments)
+        .fold(message.subject.len(), usize::saturating_add)
+}
 
 /// Whether a provider will use its real transport or the deterministic offline fallback.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,18 +79,28 @@ pub struct OfflineMailMock;
 impl OfflineMailMock {
     /// Removes all captured offline deliveries.
     pub fn clear() -> Result<(), MailError> {
-        deliveries()
+        let mut store = deliveries()
             .lock()
-            .map_err(|_| MailError::DriverError("offline mock store lock poisoned".to_string()))?
-            .clear();
+            .map_err(|_| MailError::DriverError("offline mock store lock poisoned".to_string()))?;
+        store.deliveries.clear();
+        store.bytes = 0;
         Ok(())
     }
 
-    /// Returns a snapshot of all captured offline deliveries.
+    /// Returns a snapshot of the retained offline deliveries, oldest first.
+    ///
+    /// Only the newest 1,000 deliveries, and at most 64 MiB of their subject,
+    /// body and attachment bytes, are retained; older ones are evicted.
     pub fn deliveries() -> Result<Vec<OfflineMockDelivery>, MailError> {
         deliveries()
             .lock()
-            .map(|items| items.clone())
+            .map(|store| {
+                store
+                    .deliveries
+                    .iter()
+                    .map(|(_, delivery)| delivery.clone())
+                    .collect()
+            })
             .map_err(|_| MailError::DriverError("offline mock store lock poisoned".to_string()))
     }
 }
@@ -90,15 +144,24 @@ pub(crate) fn record_offline_delivery(provider: &str, message: &Message) -> Resu
         delivery_id,
         message: message.clone(),
     };
+    // An empty provider secret selects this fallback too, so make it visible
+    // once per process instead of silently reporting success.
+    if !OFFLINE_MODE_REPORTED.swap(true, Ordering::Relaxed) {
+        tracing::warn!(
+            event = "mail.offline_mock.active",
+            provider,
+            "Mail is captured by the offline mock (empty or mock_* credential) and not delivered"
+        );
+    }
     deliveries()
         .lock()
         .map_err(|_| MailError::DriverError("offline mock store lock poisoned".to_string()))?
-        .push(delivery);
+        .push(delivery, MAX_OFFLINE_DELIVERIES, MAX_OFFLINE_BYTES);
     Ok(())
 }
 
-fn deliveries() -> &'static Mutex<Vec<OfflineMockDelivery>> {
-    OFFLINE_DELIVERIES.get_or_init(|| Mutex::new(Vec::new()))
+fn deliveries() -> &'static Mutex<OfflineStore> {
+    OFFLINE_DELIVERIES.get_or_init(|| Mutex::new(OfflineStore::default()))
 }
 
 fn to_hex(bytes: &[u8]) -> String {
@@ -114,6 +177,43 @@ fn to_hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn delivery(subject: &str, attachment_bytes: usize) -> OfflineMockDelivery {
+        OfflineMockDelivery {
+            provider: "fixture".to_string(),
+            delivery_id: subject.to_string(),
+            message: Message::new().subject(subject).attach_bytes(
+                "a.bin",
+                vec![0_u8; attachment_bytes],
+                "application/octet-stream",
+            ),
+        }
+    }
+
+    #[test]
+    fn offline_store_keeps_only_the_newest_bounded_deliveries() {
+        let mut store = OfflineStore::default();
+        for index in 0..5 {
+            store.push(delivery(&format!("m{index}"), 1), 3, usize::MAX);
+        }
+        let subjects: Vec<_> = store
+            .deliveries
+            .iter()
+            .map(|(_, item)| item.message.subject.as_str())
+            .collect();
+        assert_eq!(subjects, ["m2", "m3", "m4"]);
+
+        let mut store = OfflineStore::default();
+        store.push(delivery("a", 40), 10, 100);
+        store.push(delivery("b", 40), 10, 100);
+        store.push(delivery("c", 40), 10, 100);
+        assert_eq!(store.deliveries.len(), 2);
+        assert!(store.bytes <= 100);
+        // A single oversized delivery is still retained on its own.
+        store.push(delivery("huge", 500), 10, 100);
+        assert_eq!(store.deliveries.len(), 1);
+        assert_eq!(store.bytes, 504);
+    }
 
     #[test]
     fn credential_modes_are_explicit() {

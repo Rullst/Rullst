@@ -15,6 +15,10 @@ enum MailJobPayload {
 /// Registers the background mail worker.
 /// When the system polls a "rullst_mail_send" job, it will parse the JSON payload
 /// into a versioned envelope and dispatch it synchronously through the same safe pipeline.
+///
+/// Every delivery error fails the job, including transient and rate-limited
+/// provider failures: the queue has no handler-requested retry, so failed mail
+/// jobs are sent again only through `Queue::retry_failed_job`.
 pub fn register_mail_handler(worker: &mut Worker) {
     worker.register("rullst_mail_send", |payload: Value| async move {
         let payload: MailJobPayload = serde_json::from_value(payload)?;
@@ -43,11 +47,18 @@ pub fn register_mail_handler(worker: &mut Worker) {
     });
 }
 
+/// How far a claimed job's `send_at` may lie ahead of this worker's clock.
+///
+/// Redis promotes scheduled jobs by the server's `TIME`, so a worker whose
+/// clock lags that server sees a correctly due job as slightly early. The
+/// check still rejects a queue that claims a schedule materially early.
+const CLAIM_CLOCK_SKEW: chrono::TimeDelta = chrono::TimeDelta::seconds(300);
+
 fn prepare_claimed_message(mut message: Message) -> Result<Message, MailError> {
     if message
         .send_at
         .as_ref()
-        .is_some_and(|send_at| send_at > &chrono::Utc::now())
+        .is_some_and(|send_at| *send_at > chrono::Utc::now() + CLAIM_CLOCK_SKEW)
     {
         return Err(MailError::SendError(
             "queue claimed scheduled mail before its due timestamp".to_string(),
@@ -112,11 +123,18 @@ mod tests {
     fn claimed_schedule_is_enforced_then_consumed_by_the_queue() {
         let future = Message::new()
             .to("future@example.com")
-            .send_in(std::time::Duration::from_secs(60));
+            .send_in(std::time::Duration::from_secs(3_600));
         assert!(matches!(
             prepare_claimed_message(future),
             Err(MailError::SendError(_))
         ));
+
+        // A worker clock slightly behind the queue server's still sends.
+        let lagging = Message::new()
+            .to("lagging@example.com")
+            .send_in(std::time::Duration::from_millis(50));
+        let claimed = prepare_claimed_message(lagging).expect("due within skew");
+        assert!(claimed.send_at.is_none());
 
         let due = Message::new()
             .to("due@example.com")

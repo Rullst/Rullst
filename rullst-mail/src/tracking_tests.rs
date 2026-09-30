@@ -276,3 +276,96 @@ fn tracking_errors_have_stable_non_secret_messages() {
         assert!(!display.contains("rullst-mail-test-key"));
     }
 }
+
+#[test]
+fn click_tokens_sign_the_decoded_destination_and_escape_the_tracker() {
+    let html = r#"<a href="https://shop.example/p?id=1&amp;utm=mail&amp;token=a1">x</a>"#;
+    let rewritten = TrackingEngine::try_rewrite_links(
+        html,
+        "https://t.example/c\"onmouseover=\"alert(1)",
+        SECRET,
+        "user@example.com",
+        NOW,
+    )
+    .expect("valid tracker");
+    assert!(!rewritten.contains("\"onmouseover"));
+    assert!(
+        rewritten.contains("https://t.example/c&quot;onmouseover=&quot;alert(1)/track/click/v2.")
+    );
+    let token = rewritten
+        .split("/track/click/")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("token");
+    let event = TrackingEngine::verify_click_token_at(SECRET, token, NOW, Duration::from_secs(60))
+        .expect("valid click token");
+    assert_eq!(
+        event.target_url,
+        "https://shop.example/p?id=1&utm=mail&token=a1"
+    );
+}
+
+#[test]
+fn only_anchor_hrefs_are_rewritten() {
+    let html = concat!(
+        r#"<head><link href="https://fonts.example/css?family=U" rel="stylesheet">"#,
+        r#"<base href="https://app.example/"></head><body>"#,
+        r#"<A class="btn" HREF="x" href="https://app.example/a">a</A>"#,
+        r#"<a data-href="https://app.example/data" title="t">d</a>"#,
+        r#"<p>href="https://app.example/text"</p>"#,
+        r#"<abbr href="https://app.example/abbr">x</abbr>"#,
+        "<a\n  href=\"https://app.example/b\">b</a></body>"
+    );
+    let rewritten = TrackingEngine::try_rewrite_links(
+        html,
+        "https://track.example.com",
+        SECRET,
+        "user@example.com",
+        NOW,
+    )
+    .expect("valid rewrite");
+    for kept in [
+        "https://fonts.example/css?family=U",
+        "href=\"https://app.example/\"",
+        "https://app.example/data",
+        "https://app.example/text",
+        "https://app.example/abbr",
+    ] {
+        assert!(rewritten.contains(kept), "{kept}");
+    }
+    assert!(!rewritten.contains("https://app.example/a\""));
+    assert!(!rewritten.contains("https://app.example/b\""));
+    assert_eq!(rewritten.matches("/track/click/").count(), 2);
+}
+
+#[test]
+fn unsafe_click_targets_stay_visible_to_the_mandatory_pipeline() {
+    let tracked = |html: &str| {
+        crate::Message::new()
+            .to("user@example.com")
+            .html(html)
+            .try_with_click_tracking("https://track.example.com", SECRET)
+            .expect("valid tracker")
+    };
+    let homograph = tracked("<a href=\"https://p\u{0430}ypal.com/login\">Pay</a>");
+    assert!(
+        homograph
+            .body_html
+            .as_deref()
+            .unwrap()
+            .contains("ypal.com/login")
+    );
+    assert!(matches!(
+        crate::DeliveryPipeline::prepare(&homograph),
+        Err(crate::MailError::SendError(_))
+    ));
+
+    let secret = tracked(
+        r#"<a href="https://api.example.com/?api_key=LIVE_SECRET">x</a><a href="https://app.example.com/reset?token=opaque1">y</a>"#,
+    );
+    let prepared = crate::DeliveryPipeline::prepare(&secret).expect("redacted message");
+    let html = prepared.message().body_html.as_deref().unwrap();
+    assert!(!html.contains("LIVE_SECRET"));
+    assert!(html.contains("api_key=[REDACTED]"));
+    assert_eq!(html.matches("/track/click/").count(), 1);
+}

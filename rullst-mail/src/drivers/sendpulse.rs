@@ -58,7 +58,7 @@ fn payload(message: &Message) -> Result<Value, MailError> {
     {
         return Err(MailError::ValidationError("SendPulse REST does not support this driver's inline-CID or unsubscribe-header contract; use SMTP".into()));
     }
-    let mut email = json!({"subject":message.subject,"from":{"email":rest::sender(message)?},
+    let mut email = json!({"subject":message.subject,"from":rest::mailbox_json(rest::sender(message)?, "email", "name")?,
         "to":[{"email":message.to}],"auto_plain_text":false});
     if let Some(html) = &message.body_html {
         email["html"] = json!(STANDARD.encode(html));

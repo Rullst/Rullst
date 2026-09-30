@@ -14,6 +14,7 @@ pub mod account;
 pub mod action;
 pub mod attachment;
 pub mod drivers;
+mod entities;
 pub mod error;
 pub mod facade;
 pub mod factory;

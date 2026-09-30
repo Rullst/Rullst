@@ -244,13 +244,16 @@ async fn submission_ports_negotiate_starttls_instead_of_implicit_tls() {
 
 #[test]
 fn message_builder_covers_text_html_unsubscribe_and_attachment_shapes() {
-    let text = formatted(
-        &Message::new()
-            .to("recipient@example.com")
-            .subject("text")
-            .text("plain"),
-    );
-    assert!(text.contains("From: noreply@rullst.dev"));
+    let anonymous = Message::new()
+        .to("recipient@example.com")
+        .subject("text")
+        .text("plain");
+    assert!(matches!(
+        build_smtp_message(&anonymous),
+        Err(MailError::ConfigError(_))
+    ));
+    let text = formatted(&anonymous.from("sender@example.com"));
+    assert!(text.contains("From: sender@example.com"));
     assert!(text.contains("Content-Type: text/plain"));
 
     let mut html_only = base_message().html("<strong>HTML</strong>");
@@ -293,7 +296,13 @@ fn message_builder_rejects_addresses_empty_body_and_invalid_attachment_mime() {
         Err(MailError::ValidationError(message)) if message.contains("invalid sender")
     ));
     assert!(matches!(
-        build_smtp_message(&Message::new().to("not an address").subject("bad").text("body")),
+        build_smtp_message(
+            &Message::new()
+                .to("not an address")
+                .from("sender@example.com")
+                .subject("bad")
+                .text("body")
+        ),
         Err(MailError::ValidationError(message)) if message.contains("invalid recipient")
     ));
     assert!(build_smtp_message(&base_message()).is_err());

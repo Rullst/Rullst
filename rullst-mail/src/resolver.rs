@@ -146,10 +146,12 @@ impl TenantMailResolver {
     ) -> Result<(), MailError> {
         let prepared = DeliveryPipeline::prepare_for_tenant(tenant_id, message)?;
         let message = prepared.message();
+        // The selected driver keeps the tenant context, so tenant-aware
+        // wrappers and nested resolvers do not fall back to their global path.
         if let Some(driver) = self.get_driver(tenant_id)? {
-            driver.send(message).await
+            driver.send_for_tenant(tenant_id, message).await
         } else if let Some(ref default) = self.default_driver {
-            default.send(message).await
+            default.send_for_tenant(tenant_id, message).await
         } else {
             Err(MailError::ConfigError(format!(
                 "No mail driver registered for tenant '{}' and no default fallback driver configured",
@@ -218,6 +220,60 @@ impl MailDriver for TenantMailResolver {
 mod tests {
     use super::*;
     use crate::drivers::MemoryDriver;
+
+    #[tokio::test]
+    async fn selected_drivers_receive_the_tenant_context() {
+        use crate::{BoundedMailObserver, ObservedMailDriver};
+        let observer = BoundedMailObserver::new(4).expect("observer");
+        let (tenant, _) = MemoryDriver::isolated();
+        let (fallback, _) = MemoryDriver::isolated();
+        let resolver = TenantMailResolver::with_default(
+            ObservedMailDriver::try_new("default", fallback, observer.clone()).expect("wrapper"),
+        );
+        resolver
+            .register(
+                "tenant_acme",
+                ObservedMailDriver::try_new("tenant", tenant, observer.clone()).expect("wrapper"),
+            )
+            .expect("register");
+        let message = Message::new().to("owner@acme.example").subject("Scoped");
+        for tenant_id in ["tenant_acme", "tenant_other"] {
+            resolver
+                .send_for_tenant(tenant_id, &message)
+                .await
+                .expect("delivery");
+        }
+
+        let (inner_tenant, inner_store) = MemoryDriver::isolated();
+        let (inner_default, inner_default_store) = MemoryDriver::isolated();
+        let inner = TenantMailResolver::with_default(inner_default);
+        inner
+            .register("tenant_acme", inner_tenant)
+            .expect("register");
+        let outer = TenantMailResolver::new();
+        outer
+            .register("tenant_acme", inner)
+            .expect("register nested");
+        outer
+            .send_for_tenant("tenant_acme", &message)
+            .await
+            .expect("nested delivery");
+
+        let snapshot = observer.snapshot().expect("snapshot");
+        let observed: Vec<(&str, bool)> = snapshot
+            .observations()
+            .iter()
+            .map(|observation| (observation.provider(), observation.tenant_scoped()))
+            .collect();
+        assert_eq!(observed, [("tenant", true), ("default", true)]);
+        assert_eq!(inner_store.lock().expect("inner store").len(), 1);
+        assert!(
+            inner_default_store
+                .lock()
+                .expect("inner default")
+                .is_empty()
+        );
+    }
 
     #[tokio::test]
     async fn poisoned_registry_fails_closed_without_default_delivery() {

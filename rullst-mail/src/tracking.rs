@@ -10,6 +10,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 type HmacSha256 = Hmac<Sha256>;
 
+mod links;
+
 const TOKEN_VERSION: &str = "v2";
 const OPEN_PURPOSE: &[u8] = b"open";
 const CLICK_PURPOSE: &[u8] = b"click";
@@ -229,7 +231,11 @@ impl TrackingEngine {
         }
     }
 
-    /// Rewrites absolute HTTP(S) links through a validated tracker endpoint.
+    /// Rewrites absolute HTTP(S) `<a href="...">` links through a validated
+    /// tracker endpoint; `<link>`, `<base>` and other elements are unchanged.
+    ///
+    /// Each token signs the destination with HTML character references
+    /// decoded, and the tracker URL is escaped for the attribute it enters.
     pub fn try_rewrite_links(
         html: &str,
         base_tracker_url: &str,
@@ -239,30 +245,10 @@ impl TrackingEngine {
     ) -> Result<String, TrackingError> {
         validate_secret(secret)?;
         validate_tracker_url(base_tracker_url)?;
-        let base_clean = base_tracker_url.trim_end_matches('/');
-        let mut output = String::with_capacity(html.len() + 256);
-        let mut last_index = 0;
-        let pattern = "href=\"";
-
-        while let Some(start) = html[last_index..].find(pattern) {
-            let href_start = last_index + start + pattern.len();
-            output.push_str(&html[last_index..href_start]);
-            let Some(end) = html[href_start..].find('"') else {
-                last_index = href_start;
-                break;
-            };
-            let url_end = href_start + end;
-            let target_url = &html[href_start..url_end];
-            if target_url.starts_with("http://") || target_url.starts_with("https://") {
-                let token = Self::try_generate_click_token(secret, email, target_url, timestamp)?;
-                output.push_str(&format!("{base_clean}/track/click/{token}"));
-            } else {
-                output.push_str(target_url);
-            }
-            last_index = url_end;
-        }
-        output.push_str(&html[last_index..]);
-        Ok(output)
+        let tracker_base = escape_html_attribute(base_tracker_url.trim_end_matches('/'));
+        links::rewrite_links(html, &tracker_base, |target| {
+            Self::try_generate_click_token(secret, email, target, timestamp)
+        })
     }
 
     /// Legacy link rewriter. Invalid secrets or tracker URLs leave HTML unchanged.

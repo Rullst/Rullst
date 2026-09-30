@@ -93,7 +93,10 @@ revoke schema CREATE from untrusted roles. Namespace row locks serialize lookups
 ingestion and retention. Quotas, clock observations and both event/recipient
 writes commit together. Cancellation before commit rolls back; an uncertain
 commit requires reconciliation. Storage/configuration failures make the guard
-return `SuppressionUnavailable` without invoking its transport.
+return `SuppressionUnavailable` without invoking its transport. That error is
+classified `Transient`, so an outbox retries it later, but it is never
+failover-eligible: `FailoverDriver` does not hand the unchecked recipient to
+another provider.
 
 Every operation advances a per-namespace clock high-water mark monotonically in
 whole seconds. A host whose clock is at most 300 seconds behind that mark,

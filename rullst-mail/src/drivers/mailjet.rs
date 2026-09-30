@@ -71,7 +71,7 @@ impl MailDriver for MailjetDriver {
 }
 
 fn payload(message: &Message, sandbox: bool) -> Result<Value, MailError> {
-    let mut mail = json!({"From":{"Email":rest::sender(message)?},"To":[{"Email":message.to}],
+    let mut mail = json!({"From":rest::mailbox_json(rest::sender(message)?, "Email", "Name")?,"To":[{"Email":message.to}],
         "Subject":message.subject,"TrackOpens":"disabled","TrackClicks":"disabled","Headers":rest::headers(message)});
     if let Some(html) = &message.body_html {
         mail["HTMLPart"] = json!(html);

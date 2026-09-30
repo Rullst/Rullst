@@ -372,3 +372,59 @@ async fn event_record_and_guard_accessors_preserve_the_bounded_contract() {
         .expect("tenant delivery");
     assert_eq!(deliveries.lock().expect("deliveries").len(), 1);
 }
+
+#[tokio::test]
+async fn internationalized_domains_share_their_a_label_key() {
+    let now = unix_time().expect("clock");
+    let store = InMemorySuppressionStore::new(4, 4).expect("bounded store");
+    store
+        .record(event(
+            "resend",
+            "idn-1",
+            "kunde@xn--bcher-kva.de",
+            SuppressionReason::HardBounce,
+            now,
+        ))
+        .await
+        .expect("A-label event");
+    for spelling in [
+        "kunde@bücher.de",
+        "kunde@BÜCHER.de",
+        "Kunde <kunde@bücher.de>",
+    ] {
+        assert!(
+            store
+                .lookup(spelling)
+                .await
+                .expect("keyed lookup")
+                .is_some(),
+            "{spelling}"
+        );
+    }
+    assert_eq!(
+        normalize_recipient("kunde@bücher.de").as_deref(),
+        Ok("kunde@xn--bcher-kva.de")
+    );
+    for invalid in ["jörg@example.de", "kunde@bücher.de/x"] {
+        assert!(normalize_recipient(invalid).is_err(), "{invalid}");
+    }
+
+    let (driver, deliveries) = MemoryDriver::isolated();
+    let guard = SuppressionGuard::new(driver, store);
+    let message = |to: &str| Message::new().to(to).subject("IDN").text("body");
+    assert_eq!(
+        guard.send(&message("kunde@bücher.de")).await,
+        Err(MailError::SuppressedRecipient {
+            reason: "hard_bounce"
+        })
+    );
+    guard
+        .send(&message("other@bücher.de"))
+        .await
+        .expect("unsuppressed IDN recipient");
+    assert!(matches!(
+        guard.send(&message("jörg@example.de")).await,
+        Err(MailError::ValidationError(_))
+    ));
+    assert_eq!(deliveries.lock().expect("deliveries").len(), 1);
+}
