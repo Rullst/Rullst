@@ -96,6 +96,19 @@ async fn test_matrix_surrealdb_document_contract() {
         .replace(&collection, &first, &event(11))
         .await
         .expect("replace event");
+    let missing = DocumentId::new("event-missing").expect("valid id");
+    assert!(matches!(
+        store.replace(&collection, &missing, &event(12)).await,
+        Err(PolyglotError::NotFound)
+    ));
+    assert_eq!(
+        store
+            .find(&collection, &missing)
+            .await
+            .expect("find missing"),
+        None,
+        "replace must not create a missing document"
+    );
     assert_eq!(
         store
             .list(&collection, DocumentPage::new(0, 1).expect("bounded page"),)

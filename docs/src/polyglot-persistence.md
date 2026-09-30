@@ -318,8 +318,12 @@ Ok(())
 }
 ```
 
-The adapter uses SurrealDB's documented HTTP `/key`, `/sql`, and `/gql`
-protocol instead of embedding its BSL-licensed SDK. It disables redirects,
+The adapter uses SurrealDB's documented HTTP `/key`, `/sql`, `/rpc` and `/gql`
+protocol instead of embedding its BSL-licensed SDK. `replace` runs a typed
+`UPDATE type::record($table, $id)` through `/rpc` rather than `PUT /key`,
+which upserts: replacing a missing (for example concurrently deleted) document
+returns `PolyglotError::NotFound` instead of recreating it, as on MongoDB. This
+statement uses SurrealDB 3 function naming. It disables redirects,
 requires HTTPS outside loopback unless cleartext is explicitly enabled, redacts
 authentication in `Debug`, streams through a configurable 1 KiB–8 MiB memory
 ceiling, and sends namespace/database headers on every scoped request.

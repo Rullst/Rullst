@@ -186,11 +186,17 @@ where
             return surreal_mock(self)?.replace(collection, id, entity).await;
         };
         let body = encode_document(entity)?;
+        // `PUT /key/...` upserts, which would recreate a deleted document.
+        // `UPDATE` never creates a record; `type::record` (SurrealDB 3) with
+        // the string `$id` addresses the same key as `record_route`.
         let envelopes = live
-            .send(
-                Method::PUT,
-                &record_route(live, collection, id)?,
-                Some(body),
+            .rpc_query(
+                "UPDATE type::record($table, $id) CONTENT $data RETURN AFTER",
+                serde_json::json!({
+                    "table": collection.as_str(),
+                    "id": id.as_str(),
+                    "data": body,
+                }),
             )
             .await?;
         if result_values(statement_result(envelopes, false)?)?.is_empty() {

@@ -150,3 +150,41 @@ async fn oversized_responses_are_rejected_before_deserialization() {
     ));
     server.abort();
 }
+
+async fn update_missing_record(Json(body): Json<Value>) -> Json<Value> {
+    assert_eq!(body["method"], "query");
+    assert!(
+        body["params"][0]
+            .as_str()
+            .is_some_and(|statement| statement.starts_with("UPDATE type::record($table, $id)"))
+    );
+    assert_eq!(
+        body["params"][1],
+        json!({ "table": "events", "id": "evt-9", "data": { "label": "edited" } })
+    );
+    Json(json!({ "id": 1, "result": [{ "status": "OK", "result": [] }] }))
+}
+
+#[tokio::test]
+async fn replace_updates_without_creating_a_missing_document() {
+    let (endpoint, server) =
+        spawn_test_server(Router::new().route("/rpc", post(update_missing_record))).await;
+    let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        endpoint,
+        "main",
+        "app",
+        SurrealAuth::None,
+    ))
+    .unwrap();
+    let replaced = store
+        .replace(
+            &CollectionName::new("events").unwrap(),
+            &DocumentId::new("evt-9").unwrap(),
+            &Event {
+                label: "edited".to_owned(),
+            },
+        )
+        .await;
+    assert!(matches!(replaced, Err(PolyglotError::NotFound)));
+    server.abort();
+}

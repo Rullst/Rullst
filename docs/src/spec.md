@@ -2082,8 +2082,9 @@ while portability and semantic review remain the model author's responsibility.
   one-connection SQLite fallback that exercises real SQL without pretending to
   be a remote replica. HTTPS/`libsql://` is required outside explicitly enabled
   loopback development.
-* `SurrealDbStore<T>` uses the documented `/key`, `/sql`, and `/gql` HTTP
-  endpoints with namespace/database headers, no redirects, bounded streaming
+* `SurrealDbStore<T>` uses the documented `/key`, `/sql`, `/rpc` and `/gql`
+  HTTP endpoints with namespace/database headers (`replace` is a non-creating
+  `UPDATE` through `/rpc`, and document IDs are always string keys), no redirects, bounded streaming
   responses, HTTPS by default, and redacted authentication configuration.
   `GraphQuery::read_only` accepts one `MATCH` query, rejects mutation tokens
   and caller-supplied limits, then appends a bounded limit.

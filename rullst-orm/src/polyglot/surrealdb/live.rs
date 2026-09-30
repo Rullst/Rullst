@@ -2,6 +2,7 @@
 
 use futures::StreamExt;
 use reqwest::{Method, RequestBuilder, Url};
+use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use super::{LiveSurreal, PolyglotError, StatementEnvelope, SurrealAuth, response_too_large};
@@ -68,10 +69,40 @@ impl LiveSurreal {
         }
     }
 
-    async fn execute(
+    /// Runs one SurrealQL statement through the JSON-RPC `query` method.
+    /// Unlike `/sql` URL parameters, which always arrive as strings, its
+    /// variables keep their JSON types (a document stays an object), and no
+    /// value is spliced into the statement text.
+    pub(super) async fn rpc_query(
+        &self,
+        statement: &'static str,
+        variables: Value,
+    ) -> Result<Vec<StatementEnvelope>, PolyglotError> {
+        let body = serde_json::json!({
+            "id": 1,
+            "method": "query",
+            "params": [statement, variables],
+        });
+        let request = self
+            .request(Method::POST, &self.route(&["rpc"])?)
+            .json(&body);
+        let response: RpcResponse = self.execute(request).await?;
+        match response {
+            RpcResponse {
+                result: Some(envelopes),
+                error: None,
+            } => Ok(envelopes),
+            _ => Err(PolyglotError::Driver {
+                backend: "SurrealDB",
+                message: "RPC query returned an error".to_owned(),
+            }),
+        }
+    }
+
+    async fn execute<R: DeserializeOwned>(
         &self,
         request: RequestBuilder,
-    ) -> Result<Vec<StatementEnvelope>, PolyglotError> {
+    ) -> Result<R, PolyglotError> {
         let response = request
             .send()
             .await
@@ -99,4 +130,13 @@ impl LiveSurreal {
         }
         serde_json::from_slice(&bytes).map_err(PolyglotError::serialization)
     }
+}
+
+/// JSON-RPC response envelope: statement results or an error object.
+#[derive(Deserialize)]
+struct RpcResponse {
+    #[serde(default)]
+    result: Option<Vec<StatementEnvelope>>,
+    #[serde(default)]
+    error: Option<Value>,
 }
