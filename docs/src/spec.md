@@ -1709,7 +1709,12 @@ while portability and semantic review remain the model author's responsibility.
   active `with_tenant(...)` scope. The host remains responsible for deriving
   both contexts from authenticated authority rather than client assertions.
 * `create_audit_table` creates the v2 schema and adds its columns to a legacy
-  table without presenting legacy rows as v2 evidence. JSON payloads are
+  table without presenting legacy rows as v2 evidence. On MySQL/MariaDB a new
+  table (or a newly added `restore_patch` column) stores `old_values`,
+  `new_values` and `restore_patch` as `LONGTEXT`, because `TEXT` (64 KiB)
+  cannot hold the bounded 5 MiB payloads. An existing table is never altered
+  implicitly; while those columns are still `TEXT`, the call logs a warning
+  naming the reviewed `ALTER TABLE ... MODIFY ... LONGTEXT` migration. JSON payloads are
   bounded and recursively mask sensitive names for create, update, and delete;
   audit/debug output does not expose principal, tenant, correlation, reason, or
   payload values.

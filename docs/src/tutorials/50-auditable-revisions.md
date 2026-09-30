@@ -32,6 +32,20 @@ rullst_orm::audit::create_audit_table().await?;
 `create_audit_table` also adds the v2 columns to the legacy audit table. Legacy
 records retain version 1 and cannot be restored.
 
+On MySQL/MariaDB, new audit tables store `old_values`, `new_values` and
+`restore_patch` as `LONGTEXT`; `TEXT` holds only 64 KiB, so a larger audited
+change would fail the mutation in strict SQL mode (or be truncated otherwise).
+A table created by an earlier version keeps `TEXT` columns and
+`create_audit_table` only logs a warning. Apply this reviewed migration during a
+maintenance window (it rebuilds the table):
+
+```sql
+ALTER TABLE rullst_audits
+    MODIFY old_values LONGTEXT,
+    MODIFY new_values LONGTEXT,
+    MODIFY restore_patch LONGTEXT;
+```
+
 Fields whose names contain password, token, secret, API key, credential, cookie
 or similar markers must use `#[orm(masked)]` on auditable models. Their values
 are never retained in audit payloads or reverse patches.

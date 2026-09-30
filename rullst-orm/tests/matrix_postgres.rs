@@ -146,6 +146,7 @@ async fn test_matrix_postgres_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    support::exercise_large_audit_payload().await;
     partial_update_contract::exercise().await;
     exercise_tenant_subqueries().await;
 

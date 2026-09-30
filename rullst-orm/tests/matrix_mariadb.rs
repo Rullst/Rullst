@@ -89,6 +89,7 @@ async fn test_matrix_mariadb_crud() {
     );
 
     support::exercise_outbox().await;
+    support::exercise_large_audit_payload().await;
     exercise_native_enum().await;
     driver_contract::exercise().await;
 }
