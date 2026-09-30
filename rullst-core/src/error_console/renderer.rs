@@ -1,14 +1,24 @@
 //! Sleek, glowing dark-theme HTML console renderer for panic diagnosis.
 
+use crate::error_console::capture::PanicCapture;
 use crate::error_console::parser::{extract_source_context, find_source_location};
 
+/// The panic's own location when it lies in a readable project file, else
+/// the first project frame of the backtrace, else the panic location.
+fn panic_source_location(capture: &PanicCapture, backtrace: &str) -> Option<(String, u32)> {
+    let readable = |(file, line): &(String, u32)| extract_source_context(file, *line, 0).is_some();
+    let location = capture.location.clone();
+    location
+        .clone()
+        .filter(readable)
+        .or_else(|| find_source_location(backtrace).filter(readable))
+        .or(location)
+}
+
 #[cfg_attr(mutants, mutants::skip)]
-pub(crate) async fn render_console_html(
-    error_message: &str,
-    backtrace: &std::backtrace::Backtrace,
-) -> String {
-    let bt_str = format!("{:#?}", backtrace);
-    let source_loc = find_source_location(&bt_str);
+pub(crate) async fn render_console_html(error_message: &str, capture: &PanicCapture) -> String {
+    let bt_str = capture.backtrace.clone().unwrap_or_default();
+    let source_loc = panic_source_location(capture, &bt_str);
 
     let (file_display, line_display, code_frame_html) = if let Some((file, line)) =
         source_loc.clone()
@@ -44,7 +54,10 @@ pub(crate) async fn render_console_html(
     };
 
     // Filter and clean stack trace lines for presentation
-    let trace_html = bt_str.lines().enumerate().fold(String::with_capacity(1024), |mut trace_html, (i, line)| {
+    let trace_html = if bt_str.is_empty() {
+        "<div class='trace-line'>No backtrace was captured. Set RUST_BACKTRACE=1 to record one.</div>".to_string()
+    } else {
+        bt_str.lines().enumerate().fold(String::with_capacity(1024), |mut trace_html, (i, line)| {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             return trace_html;
@@ -63,7 +76,8 @@ pub(crate) async fn render_console_html(
             class, i, crate::html::escape_str(trimmed)
         ));
         trace_html
-    });
+    })
+    };
 
     let escaped_err = crate::html::escape_str(error_message);
 

@@ -138,7 +138,7 @@ async fn panic_and_cancellation_errors_become_bounded_error_responses() {
     })
     .await
     .unwrap_err();
-    let response = HotSwapService::handle_panic_error(string_panic, true)
+    let response = HotSwapService::handle_panic_error(string_panic, Default::default(), true)
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
@@ -147,7 +147,7 @@ async fn panic_and_cancellation_errors_become_bounded_error_responses() {
     let opaque_panic = tokio::spawn(async { std::panic::panic_any(7_u8) })
         .await
         .unwrap_err();
-    let response = HotSwapService::handle_panic_error(opaque_panic, true)
+    let response = HotSwapService::handle_panic_error(opaque_panic, Default::default(), true)
         .await
         .unwrap();
     assert!(
@@ -158,9 +158,10 @@ async fn panic_and_cancellation_errors_become_bounded_error_responses() {
 
     let cancelled = tokio::spawn(std::future::pending::<()>());
     cancelled.abort();
-    let response = HotSwapService::handle_panic_error(cancelled.await.unwrap_err(), true)
-        .await
-        .unwrap();
+    let response =
+        HotSwapService::handle_panic_error(cancelled.await.unwrap_err(), Default::default(), true)
+            .await
+            .unwrap();
     assert!(
         body_text(response)
             .await

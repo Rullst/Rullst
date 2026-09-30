@@ -1,5 +1,6 @@
 //! Development middleware catching application panic unwinds.
 
+use crate::error_console::capture::spawn_capturing;
 use crate::error_console::renderer::render_console_html;
 use axum::{
     body::Body,
@@ -20,7 +21,7 @@ use std::net::SocketAddr;
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response {
     let render_details = console_details_allowed(req.extensions());
-    let handle = tokio::spawn(async move { next.run(req).await });
+    let (handle, panic_slot) = spawn_capturing(async move { next.run(req).await });
 
     match handle.await {
         Ok(response) => response,
@@ -35,8 +36,7 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
                     "Unhandled application panic".to_string()
                 };
 
-                let backtrace = std::backtrace::Backtrace::capture();
-                let html_content = render_console_html(&message, &backtrace).await;
+                let html_content = render_console_html(&message, &panic_slot.take()).await;
 
                 match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
