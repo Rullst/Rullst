@@ -34,6 +34,9 @@
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
   name hands the claim back with a five-second delay (SQLite and Redis) instead
   of failing it, so a worker that registered that name can run it.
+- **Bounded Redis Failure State:** Failed jobs and dead letters are each
+  retained up to 10,000 entries (configurable with
+  `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.
