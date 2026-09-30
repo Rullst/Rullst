@@ -117,7 +117,9 @@ record or a legal-compliance certificate.
 
 MAIL-001/RULLST-005 is fixed in the mandatory pipeline: bounded opaque `token=`
 query values inside safe body URLs survive preparation, including HTML-escaped
-query separators. Other credentials and non-URL token text remain redacted.
+query separators and plain-text links wrapped in `<…>`, `(…)` or Markdown
+`[label](…)` or followed by sentence punctuation. Other credentials and non-URL
+token text remain redacted.
 `Message`, action links and recovery notices omit sensitive content from Debug;
 `LogDriver` emits delivery metadata only. Do not log values explicitly exposed
 for delivery by `expose_url`, `expose` or `into_message`.
