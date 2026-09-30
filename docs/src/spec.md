@@ -1357,7 +1357,10 @@ the same server-authoritative controls.
   The process-wide store is bounded: at most 4,096 entries and 32 MiB of key
   plus value bytes, each entry at most 256 KiB and one hour old. Oversized
   entries run uncached; otherwise expired and then the oldest entries are
-  evicted.
+  evicted. Arguments that `serde_json` cannot represent (a failing `Serialize`
+  impl, or a `u128`/`i128` outside the 64-bit range) also run uncached instead
+  of panicking; an `#[island]` with such props renders its server HTML with an
+  empty `data-props`, so hydration is skipped.
 * **Example:**
   ```rust
   use rullst::html;

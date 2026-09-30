@@ -18,6 +18,8 @@ generated paths and matching runtime features stay aligned.
 
 - `#[island]` emits the current native/Wasm island wrapper. It is not a
   complete hydration/RPC protocol and should not be treated as a stable ABI.
+  Arguments that cannot be serialized to JSON leave `data-props` empty, so the
+  server HTML renders without hydration instead of panicking.
 - `#[live_component]` and `#[live_event]` generate the bounded process-local
   Live component bridge. Authentication, reconnect, ordering, backpressure,
   and browser interoperability belong to the host contract.
@@ -27,7 +29,9 @@ generated paths and matching runtime features stay aligned.
   functions in different modules, crates or `impl` blocks never share entries.
   The store is bounded to 4,096 entries and 32 MiB of key plus value bytes;
   an entry larger than 256 KiB is not cached, and the oldest entries are
-  evicted first. Entries expire after one hour.
+  evicted first. Entries expire after one hour. Arguments that cannot be
+  serialized to JSON (for example a `u128` above `u64::MAX`) run uncached
+  instead of panicking.
   It is not tenant-aware, distributed, invalidation-aware, or suitable for
   secrets/authorization decisions.
 
