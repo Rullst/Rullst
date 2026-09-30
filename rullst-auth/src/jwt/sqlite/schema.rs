@@ -93,22 +93,30 @@ async fn add_columns(pool: &SqlitePool) -> Result<(), JwtError> {
         .map_err(|_| backend_error("commit SQLite revocation migration"))
 }
 
+/// Rejects every URL form SQLx or SQLite would open as volatile or
+/// process-private storage. SQLx strips the `sqlite:` prefix, renames a
+/// `:memory:` database (whatever its query) to a `file:` URI and opens every
+/// filename with URI interpretation, so a `file:` target can select memory
+/// storage through its own encoded query. `vfs` can select an in-memory VFS
+/// and `immutable` disables the locking that shares updates between processes.
 pub(super) fn volatile_database_url(database_url: &str, filename: &Path) -> bool {
     let filename = filename.as_os_str().to_string_lossy();
-    let memory_mode = database_url
-        .split_once('?')
-        .map(|(_, query)| {
-            url::form_urlencoded::parse(query.as_bytes()).any(|(key, value)| {
-                key.eq_ignore_ascii_case("mode") && value.eq_ignore_ascii_case("memory")
-            })
-        })
-        .unwrap_or(false);
-    database_url.eq_ignore_ascii_case("sqlite::memory:")
-        || database_url.eq_ignore_ascii_case("sqlite://:memory:")
+    let target = database_url
+        .trim_start_matches("sqlite://")
+        .trim_start_matches("sqlite:");
+    let (database, query) = target.split_once('?').unwrap_or((target, ""));
+    let unsafe_parameter = url::form_urlencoded::parse(query.as_bytes()).any(|(key, value)| {
+        key.eq_ignore_ascii_case("vfs")
+            || key.eq_ignore_ascii_case("immutable")
+            || (key.eq_ignore_ascii_case("mode") && value.eq_ignore_ascii_case("memory"))
+    });
+    database.eq_ignore_ascii_case(":memory:")
         || filename.is_empty()
         || filename.eq_ignore_ascii_case(":memory:")
-        || filename.eq_ignore_ascii_case("file::memory:")
-        || memory_mode
+        || filename
+            .get(..5)
+            .is_some_and(|scheme| scheme.eq_ignore_ascii_case("file:"))
+        || unsafe_parameter
 }
 
 pub(super) fn reject_existing_unsafe_target(path: &Path) -> Result<(), JwtError> {

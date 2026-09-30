@@ -246,12 +246,26 @@ async fn updates_do_not_consume_capacity_and_configuration_drift_fails_closed() 
 
 #[tokio::test]
 async fn volatile_and_corrupt_revocation_databases_are_rejected() {
-    assert!(matches!(
-        SqliteJwtRevocationStore::connect("sqlite::memory:", 16).await,
-        Err(JwtError::InvalidConfiguration(
-            "SQLite revocation database must be file-backed"
-        ))
-    ));
+    let file_backed = database_url(&temporary_database("volatile"));
+    for url in [
+        "sqlite::memory:".to_string(),
+        "sqlite::memory:?cache=private".to_string(),
+        "sqlite://:memory:?cache=shared".to_string(),
+        "sqlite:file:revocations%3Fmode%3Dmemory".to_string(),
+        format!("{file_backed}?vfs=memdb"),
+        format!("{file_backed}?immutable=1"),
+        format!("{file_backed}?mode=memory"),
+    ] {
+        assert!(
+            matches!(
+                SqliteJwtRevocationStore::connect(url.as_str(), 16).await,
+                Err(JwtError::InvalidConfiguration(
+                    "SQLite revocation database must be file-backed"
+                ))
+            ),
+            "accepted volatile URL {url}"
+        );
+    }
 
     let path = temporary_database("corrupt");
     let url = database_url(&path);

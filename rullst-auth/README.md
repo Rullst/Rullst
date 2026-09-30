@@ -166,7 +166,10 @@ adds a `subject` and a `revoked_through_iat` column to an existing file. Earlier
 still open it but ignore subject cutoffs, so upgrade every process sharing the file.
 
 The SQLite adapter is durable across restarts and shared across local processes,
-not replicated across hosts. The deployment owns its trusted directory, file
+not replicated across hosts. `SqliteJwtRevocationStore` and `SqlitePasskeyStore`
+therefore accept only an ordinary database file: `:memory:` in any form, `file:`
+URI filenames and the `vfs`, `immutable` and `mode=memory` URL parameters fail
+with `InvalidConfiguration`. The deployment owns its trusted directory, file
 permissions/encryption, backup, availability and disaster recovery. This API
 does not verify third-party OAuth/OIDC tokens or provide refresh tokens.
 
