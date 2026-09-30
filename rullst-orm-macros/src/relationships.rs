@@ -433,6 +433,9 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 pivot_query.fetch_all(executor).await
                             })?;
 
+                            // Build parent_id -> Vec<model> from pivot pairs
+                            let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
+                                std::collections::HashMap::with_capacity(results.len());
                             if !pivot_pairs.is_empty() {
                                 // Deduplicate related IDs for Q2
                                 let mut related_ids: Vec<i32> = pivot_pairs.iter().map(|(_, rid)| *rid).collect();
@@ -449,10 +452,6 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 let mut related_map: std::collections::HashMap<i32, #rel_model_ident> =
                                     all_related.into_iter().map(|m| (m.id, m)).collect();
 
-                                // Build parent_id -> Vec<model> from pivot pairs
-                                let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
-                                    std::collections::HashMap::with_capacity(results.len());
-
                                 for (parent_id, related_id) in &pivot_pairs {
                                     if let Some(m) = related_map.get(related_id) {
                                         parent_to_related
@@ -461,11 +460,15 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                             .push(m.clone());
                                     }
                                 }
+                            }
 
-                                // Parents that share a local key each receive the group.
-                                for model in &mut results {
-                                    model.#method_name = parent_to_related.get(&model.#lk_ident).cloned();
-                                }
+                            // Every parent is loaded: one without related rows gets
+                            // an empty list, and parents sharing a local key each
+                            // receive the group.
+                            for model in &mut results {
+                                model.#method_name = Some(
+                                    parent_to_related.get(&model.#lk_ident).cloned().unwrap_or_default()
+                                );
                             }
                         }
                     }

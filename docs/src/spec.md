@@ -1778,7 +1778,9 @@ while portability and semantic review remain the model author's responsibility.
   `Validation` error if the cap would truncate it, so no parent silently
   receives an empty or partial relation. A constrained eager load that sets an
   explicit smaller `limit(n)` (applied to the whole batch) or
-  `unsafe_unlimited()` is honored as written.
+  `unsafe_unlimited()` is honored as written. A to-many eager load
+  (`has_many`, `morph_many`, `belongs_to_many`) assigns `Some(vec![])` to a
+  parent without related rows, so `None` always means "not loaded".
 * Every parent receives the related rows it shares with other parents (one
   `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
   parent rows). The shared value is cloned for every such parent but the last;

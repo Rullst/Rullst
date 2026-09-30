@@ -14,6 +14,21 @@ struct ConstraintAccount {
     #[orm(has_many = "ConstraintDocument", foreign_key = "account_id")]
     #[sqlx(default, skip)]
     documents: Option<Vec<ConstraintDocument>>,
+    #[orm(
+        belongs_to_many = "ConstraintTag",
+        pivot_table = "constraint_account_tags",
+        foreign_key = "account_id",
+        related_key = "tag_id"
+    )]
+    #[sqlx(default, skip)]
+    tags: Option<Vec<ConstraintTag>>,
+}
+
+#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[orm(table = "constraint_tags")]
+struct ConstraintTag {
+    id: i32,
+    label: String,
 }
 
 #[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
@@ -36,6 +51,10 @@ async fn setup() {
         "INSERT INTO constraint_accounts (id, name) VALUES (1, 'ada'), (2, 'grace')",
         "INSERT INTO constraint_documents (id, account_id, title, filename) VALUES \
             (1, 1, 'report', 'a.pdf'), (2, 2, 'other', 'report.pdf'), (3, 1, 'misc', 'b.txt')",
+        "CREATE TABLE constraint_tags (id INTEGER PRIMARY KEY, label TEXT NOT NULL)",
+        "CREATE TABLE constraint_account_tags (account_id INTEGER NOT NULL, tag_id INTEGER NOT NULL)",
+        "INSERT INTO constraint_tags (id, label) VALUES (1, 'vip')",
+        "INSERT INTO constraint_account_tags (account_id, tag_id) VALUES (1, 1)",
     ] {
         rullst_orm::_sqlx::query(statement)
             .execute(pool)
@@ -78,8 +97,37 @@ async fn constrained_relations_keep_the_ownership_predicate() {
     assert_eq!(ids(eager[0].documents.as_deref().expect("loaded")), vec![1]);
 }
 
+/// An eager `belongs_to_many` load marks parents without related rows as
+/// loaded (`Some(vec![])`), like `has_many`, also when no parent has any.
+async fn eager_many_to_many_loads_empty_parents() {
+    let labels = |account: &ConstraintAccount| {
+        account
+            .tags
+            .as_ref()
+            .map(|tags| tags.iter().map(|tag| tag.label.clone()).collect::<Vec<_>>())
+    };
+    let accounts = ConstraintAccount::query()
+        .order_by("id")
+        .with_tags()
+        .get()
+        .await
+        .expect("eager belongs_to_many");
+    assert_eq!(
+        accounts.iter().map(labels).collect::<Vec<_>>(),
+        vec![Some(vec!["vip".to_string()]), Some(Vec::new())]
+    );
+    let untagged = ConstraintAccount::query()
+        .where_eq("id", 2)
+        .with_tags()
+        .get()
+        .await
+        .expect("eager belongs_to_many without pivot rows");
+    assert_eq!(labels(&untagged[0]), Some(Vec::new()));
+}
+
 #[tokio::test]
 async fn relation_queries_stay_bound_to_their_parent() {
     setup().await;
     constrained_relations_keep_the_ownership_predicate().await;
+    eager_many_to_many_loads_empty_parents().await;
 }
