@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790793484956,
+  "lastUpdate": 1790794536947,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22665,6 +22665,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2216,
             "range": "± 133",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "db6fb84e86a18b48b85e37759cb45309c1ce6812",
+          "message": "Merge pull request #353 from Rullst/feat/v13-trusted-proxy-layer\n\nfeat(core): trusted-proxy client resolution for Server, rate limiters and Nexus",
+          "timestamp": "2026-09-30T15:49:24-03:00",
+          "tree_id": "7dffd3e4c4057ff6a5d07ab5c1faf93e9e04f9d2",
+          "url": "https://github.com/Rullst/Rullst/commit/db6fb84e86a18b48b85e37759cb45309c1ce6812"
+        },
+        "date": 1790794534882,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 745,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 994,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 651,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2202,
+            "range": "± 62",
             "unit": "ns/iter"
           }
         ]
