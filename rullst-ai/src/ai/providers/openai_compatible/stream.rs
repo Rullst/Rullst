@@ -39,7 +39,7 @@ impl StreamingAiProvider for OpenAiCompatibleProvider {
         }));
         let response = tokio::select! {
             () = cancellation.cancelled() => return Err(AiError::Cancelled),
-            response = request.send() => response?,
+            response = request.send() => response.map_err(redacted_transport_error)?,
         };
         if !response.status().is_success() {
             return Err(AiError::ApiError(format!(
@@ -60,7 +60,7 @@ impl StreamingAiProvider for OpenAiCompatibleProvider {
             let Some(chunk) = next else {
                 break;
             };
-            let chunk = chunk?;
+            let chunk = chunk.map_err(redacted_transport_error)?;
             for event in decoder.push(&chunk)? {
                 match event {
                     SseEvent::Text(text) => sink.send(&text)?,
