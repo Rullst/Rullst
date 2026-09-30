@@ -443,6 +443,13 @@ type creation, its label check and `drop_native_enum` use the active
 `Orm::transaction` or test sandbox like the table DDL, so they roll back with it
 and the type can be dropped right after its tables in the same transaction.
 
+Builder filters on a model field whose type derives `Enum` (or
+`Option<...>` of it) work on every backend: on PostgreSQL the comparison,
+`IN` and `BETWEEN` markers of that column become `CAST(? AS "<type_name>")`,
+because a text parameter has no operator against a named enum type. This
+covers `where_eq`, `where_in`, the generated `where_<column>` helpers and
+their `or_`/`not_` variants; `where_like` and raw SQL are unchanged.
+
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
 on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the

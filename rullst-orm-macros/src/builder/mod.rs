@@ -6,6 +6,7 @@ use proc_macro2::TokenStream;
 mod bulk_delete;
 pub mod chunking;
 pub mod clauses;
+mod enum_columns;
 pub mod execution;
 pub mod magic_methods;
 mod pluck;
@@ -86,6 +87,7 @@ pub fn generate(
     let mut execution_methods = generate_execution_methods(parsed, &builder_name, eager_loads);
     execution_methods.extend(generate_chunk_methods(parsed));
     execution_methods.push(generate_cascade_soft_delete_target(parsed));
+    execution_methods.push(enum_columns::generate(parsed));
     let magic_methods = generate_magic_methods(parsed);
 
     generate_builder_struct(
