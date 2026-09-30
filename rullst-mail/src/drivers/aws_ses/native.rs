@@ -184,11 +184,19 @@ fn map_sdk_error(
             .map(|response| response.status().as_u16())
             .unwrap_or(502)
     };
-    let detail = service_error
-        .message()
-        .or_else(|| service_error.code())
-        .unwrap_or("AWS SES rejected the request");
-    let detail = crate::security::redact_email_secrets(detail);
+    // SES messages can quote identities, such as the unverified recipient of
+    // a sandbox account, so only a bounded error code is kept, as the HTTP
+    // adapters keep only the status.
+    let code = service_error
+        .code()
+        .filter(|code| {
+            (1..=64).contains(&code.len())
+                && code
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+        })
+        .unwrap_or("unrecognized");
+    let detail = format!("AWS SES error {code}; provider message omitted [REDACTED]");
     let retry_after = error
         .raw_response()
         .and_then(|response| response.headers().get("retry-after"))
