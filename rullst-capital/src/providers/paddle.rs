@@ -1,12 +1,10 @@
 use super::{
-    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, SubscriptionStatus, WebhookEvent,
-    WebhookVerificationMode, ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature,
-    webhook_mode_from_secret,
+    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, WebhookEvent, WebhookVerificationMode,
+    ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
 use ring::hmac;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Duration;
 use subtle::ConstantTimeEq;
@@ -194,42 +192,8 @@ impl BillingProvider for PaddleProvider {
             CapitalError::InvalidSignature("Missing paddle-signature header".to_string())
         })?;
         self.verify_signature(payload, sig_header)?;
-
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
-
-        let data = &json["data"];
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = data["customer_id"].as_str().unwrap_or("").to_string();
-        let customer_email = data["customer"]["email"].as_str().unwrap_or("").to_string();
-
-        let plan_id = data["items"][0]["price"]["id"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-
-        let status_str = data["status"]
-            .as_str()
-            .filter(|status| !status.trim().is_empty())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
-            })?;
-        let ends_at = data["current_billing_period"]["ends_at"]
-            .as_str()
-            .and_then(|s| {
-                chrono::DateTime::parse_from_rfc3339(s)
-                    .ok()
-                    .map(|dt| dt.timestamp())
-            });
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
+        // Only subscription lifecycle events may become subscription state.
+        super::paddle_webhook::parse(payload)
     }
 
     async fn create_customer_portal(
@@ -325,6 +289,7 @@ impl BillingProvider for PaddleProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SubscriptionStatus;
 
     #[tokio::test]
     async fn test_paddle_provider_methods() {
@@ -387,7 +352,7 @@ mod tests {
         let secret = "sec_paddle123";
         let now = chrono::Utc::now().timestamp();
         let timestamp = now.to_string();
-        let payload = br#"{"data":{"id":"sub_pad_100","customer_id":"ct_999","customer":{"email":"pad@test.com"},"items":[{"price":{"id":"pri_pro"}}],"status":"active","current_billing_period":{"ends_at":"2026-12-31T23:59:59Z"}}}"#;
+        let payload = br#"{"event_type":"subscription.activated","data":{"id":"sub_01hv8x29kz0t586xy6zn1a62ny","customer_id":"ctm_01hv6y1jedq4p1n0yqn5ba3ky4","customer":{"email":"pad@test.com"},"items":[{"price":{"id":"pri_01gsz8x8sawmvhz1pv30nge1ke"}}],"status":"active","current_billing_period":{"ends_at":"2026-12-31T23:59:59Z"}}}"#;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
         let mut ctx = hmac::Context::with_key(&key);
@@ -433,10 +398,10 @@ mod tests {
         headers.insert("paddle-signature".to_string(), valid_header);
 
         let event = provider.handle_webhook(payload, &headers).unwrap();
-        assert_eq!(event.subscription_id, "sub_pad_100");
-        assert_eq!(event.customer_id, "ct_999");
+        assert_eq!(event.subscription_id, "sub_01hv8x29kz0t586xy6zn1a62ny");
+        assert_eq!(event.customer_id, "ctm_01hv6y1jedq4p1n0yqn5ba3ky4");
         assert_eq!(event.customer_email, "pad@test.com");
-        assert_eq!(event.plan_id, "pri_pro");
+        assert_eq!(event.plan_id, "pri_01gsz8x8sawmvhz1pv30nge1ke");
         assert_eq!(event.status, SubscriptionStatus::Active);
         assert!(event.ends_at.is_some());
 
