@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790790365670,
+  "lastUpdate": 1790797131188,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9854,6 +9854,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21154a65f98aa479f30ea05ad24c9e67d3de35a7",
+          "message": "Merge pull request #355 from Rullst/fix/v13-auth-ai-iot-low-fixes\n\nfix(auth,ai,iot): low-severity review fixes for stores, cookies, fallbacks and CoAP/OTA edges",
+          "timestamp": "2026-09-30T16:14:48-03:00",
+          "tree_id": "1a2c1c91c3287e0792f9619522d82e38d33c82c2",
+          "url": "https://github.com/Rullst/Rullst/commit/21154a65f98aa479f30ea05ad24c9e67d3de35a7"
+        },
+        "date": 1790797130211,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
