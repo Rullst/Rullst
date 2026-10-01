@@ -24,6 +24,10 @@ pub(crate) enum DevCommand {
     Restart,
 }
 
+/// The single line `dev` adds to its plain output.
+const DASH_HINT: &str =
+    "Tip: run `cargo rullst dash` for live requests/s, latency, errors and database metrics.";
+
 pub fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {
     run_dev(is_dash, false)
 }
@@ -60,6 +64,7 @@ pub(crate) async fn run_dev(
         }
     } else {
         drop(log_rx);
+        eprintln!("{DASH_HINT}");
         tokio::select! {
             result = &mut supervisor => result?,
             result = shutdown => result?,
