@@ -186,6 +186,12 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 ) && rust_sources.contains("run_studio(5555)"),
                                 "{case}: Studio must be a debug-build-only local service"
                             );
+                            // `make:k8s`, `deploy` and `foundry:deploy` probe these routes.
+                            assert!(
+                                rust_sources
+                                    .contains(".merge_axum(rullst::health::health_router())"),
+                                "{case}: starter must answer the /health and /ready probes"
+                            );
 
                             let cargo_toml = build_cargo_toml(
                                 "matrix-app",

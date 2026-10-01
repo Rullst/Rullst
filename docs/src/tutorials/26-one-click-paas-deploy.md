@@ -58,8 +58,11 @@ by UID/GID 10001 when attaching persistent storage.
 Apply migrations in one bounded pre-deployment job and start application
 replicas only after it succeeds. Automatically running migrations inside every
 replica creates an avoidable concurrent-startup race and is therefore not the
-v12 default. Also add the application's explicit `/health` and `/ready` routes
-before configuring platform probes; a redirect to login is not a health signal.
+v12 default. The generated `fly.toml`, `railway.json` and `render.yaml` probe
+`/health` (Fly also `/ready`); starters created by `cargo rullst new` mount
+`rullst::health::health_router()` for both. An application created otherwise
+must mount those routes before configuring platform probes; a redirect to login
+is not a health signal.
 
 ---
 

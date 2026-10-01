@@ -33,6 +33,12 @@ session cookies, HSTS and Nexus Basic Auth over verified TLS do not work.
 
 ## Step 2: Mount lifecycle-aware health routes
 
+Projects created by `cargo rullst new` already merge
+`rullst::health::health_router()` into their router, so the generated probes
+answer from the first deployment: `/health` and `/ready` both return `200` while
+the process serves requests. To report startup, dependency and drain state on
+`/ready` instead, replace that merge with the lifecycle-aware router:
+
 ```rust,no_run
 use rullst::{ApplicationLifecycle, Router, Server};
 use rullst::health::{health_router_with_lifecycle, init_health_boot_time};

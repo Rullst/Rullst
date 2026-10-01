@@ -44,8 +44,11 @@ the generated application:
     embedded and no anonymous volume is declared. Run schema migrations as one
     deployment job before starting or rolling multiple replicas; the generated
     image deliberately does not race migrations from every application process.
-    Compose services, persistent-volume ownership, backup/restore, health
-    probes and platform deployment hardening remain explicit project work.
+    Compose services, persistent-volume ownership, backup/restore and platform
+    deployment hardening remain explicit project work. Every starter mounts
+    `rullst::health::health_router()`, so the `/health` and `/ready` probes
+    written by `make:k8s`, `deploy` and `foundry:deploy` answer `200` without
+    authentication.
   * `--turso`: Adds the direct Hrana HTTP v3 Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
   * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
   * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.

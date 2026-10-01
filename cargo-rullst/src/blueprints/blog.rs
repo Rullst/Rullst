@@ -42,7 +42,10 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
-    ].nest_axum("/nexus", nexus))
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
@@ -131,7 +134,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
-    ].nest_axum("/nexus", nexus);
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus);
 
     #[cfg(debug_assertions)]
     {{
