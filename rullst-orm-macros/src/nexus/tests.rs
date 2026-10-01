@@ -270,6 +270,9 @@ fn an_annotated_primary_key_outranks_a_later_id_field() {
         .expect("valid Nexus derive")
         .to_string();
     assert!(output.contains("fn nexus_pk () -> & 'static str { \"number\" }"));
+    // An application-assigned key is entered on create.
+    let number = field_meta(&output, "number").expect("key metadata");
+    assert!(number.contains("hidden : false") && number.contains("readonly : false"));
     let id = field_meta(&output, "id").expect("id metadata");
     assert!(id.contains("hidden : false"), "{id}");
     assert!(id.contains("readonly : false"), "{id}");
@@ -303,4 +306,26 @@ fn an_annotated_primary_key_outranks_a_later_id_field() {
             .to_string()
             .contains("contradicts the struct-level primary key `code`")
     );
+}
+
+#[test]
+fn only_integer_keys_are_treated_as_database_generated() {
+    let generated: DeriveInput = parse_quote! {
+        struct Invoice { id: i64, total: f64 }
+    };
+    let output = expand_nexus(&generated)
+        .expect("valid Nexus derive")
+        .to_string();
+    let id = field_meta(&output, "id").expect("id metadata");
+    assert!(id.contains("hidden : true") && id.contains("readonly : true"));
+
+    let assigned: DeriveInput = parse_quote! {
+        #[nexus(primary_key = "sku")]
+        struct Product { sku: String, name: String }
+    };
+    let output = expand_nexus(&assigned)
+        .expect("valid Nexus derive")
+        .to_string();
+    let sku = field_meta(&output, "sku").expect("sku metadata");
+    assert!(sku.contains("hidden : false") && sku.contains("readonly : false"));
 }

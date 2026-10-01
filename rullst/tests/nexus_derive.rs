@@ -81,7 +81,9 @@ fn derive_nexus_generates_model_and_widget_metadata() {
 
     let fields = DerivedArticle::nexus_fields();
     assert_eq!(fields.len(), 4);
-    assert!(fields[0].hidden && fields[0].readonly);
+    // An application-assigned (non-integer) key is entered on create; the
+    // runtime keeps it read-only on edit.
+    assert!(!fields[0].hidden && !fields[0].readonly);
     assert_eq!(fields[1].label, "Article body");
     assert_eq!(fields[1].kind, FieldKind::Textarea);
     assert_eq!(

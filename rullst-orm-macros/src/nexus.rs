@@ -148,6 +148,13 @@ fn unwrapped_type_name(field_type: &Type) -> String {
     type_name
 }
 
+fn is_integer_type(field_type: &Type) -> bool {
+    matches!(
+        unwrapped_type_name(field_type).as_str(),
+        "i8" | "i16" | "i32" | "i64" | "isize" | "u8" | "u16" | "u32" | "u64" | "usize"
+    )
+}
+
 fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
     match unwrapped_type_name(field_type).as_str() {
         "String" | "&str" => quote!(::rullst::nexus::FieldKind::Text),
@@ -364,14 +371,17 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let label = options
             .label
             .unwrap_or_else(|| humanize_field_name(&field_name));
-        let is_primary_key = field_name == primary_key;
+        // An integer key is taken to be database-generated and stays out of
+        // the forms. Any other key (a UUID, a code) is entered on create;
+        // the runtime still keeps every key read-only on edit.
+        let generated_key = field_name == primary_key && is_integer_type(&field.ty);
         let hidden = options.hidden
             || concealed
-            || is_primary_key
+            || generated_key
             || matches!(field_name.as_str(), "password_hash" | "deleted_at");
         let readonly = options.readonly
             || concealed
-            || is_primary_key
+            || generated_key
             || tenant_column.as_deref() == Some(field_name.as_str())
             || matches!(field_name.as_str(), "created_at" | "updated_at");
         let hidden = hidden || tenant_column.as_deref() == Some(field_name.as_str());

@@ -129,7 +129,10 @@ On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
 `#[nexus(primary_key = "uuid")]` on the struct for another key. An annotated
 field is the key even when the struct also has an `id` field, which then stays
 an ordinary column; annotating two fields, or a field other than the
-struct-level key, is a compile error. Field options
+struct-level key, is a compile error. An integer key is treated as
+database-generated, so it is hidden and read-only; any other key (a UUID or
+code) is listed and entered in the create form, and stays read-only on edit.
+Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
 widget kinds. A `hidden` field is left out of the list, search and the
