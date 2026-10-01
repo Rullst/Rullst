@@ -1,6 +1,6 @@
 //! Unit tests for error console parsing and source context extraction.
 
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
 
