@@ -166,7 +166,8 @@ durable primitive where the event schema and operational policy are explicit.
 
 With the umbrella `messaging-orm-outbox` feature, `OrmOutboxRelay<B>` maps one
 exact outbox stream to one topic on any static `MessageBroker`. It validates the
-claimed JSON, uses `event_key` as the broker idempotency key, publishes and then
+claimed JSON, uses the stream-scoped `event_key` (the stream's SHA-256, `/`,
+then the event key) as the broker idempotency key, publishes and then
 acknowledges the exact ORM claim. Its executable crash-window test stops after
 the first publish, reclaims the expired event and observes an exact broker
 replay with only one retained message.
