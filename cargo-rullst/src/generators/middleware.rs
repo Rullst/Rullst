@@ -1,6 +1,6 @@
 // src/generators/middleware.rs — Middleware generator.
 
-use crate::generators::{is_rullst_project, middleware_to_snake_case};
+use crate::generators::{is_rullst_project, is_valid_rust_identifier, middleware_to_snake_case};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -9,6 +9,7 @@ pub fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error
     validate_project_root()?;
 
     let snake_name = middleware_to_snake_case(name);
+    validate_middleware_identifier(name, &snake_name)?;
 
     println!(
         "{}",
@@ -57,6 +58,20 @@ pub fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error
     );
 
     Ok(())
+}
+
+/// Rejects a name whose module and function would not be a non-keyword Rust
+/// identifier (for example `Bad.Name`) before `src/middlewares/mod.rs` is edited.
+fn validate_middleware_identifier(name: &str, snake_name: &str) -> std::io::Result<()> {
+    if !name.trim().is_empty() && is_valid_rust_identifier(snake_name) {
+        return Ok(());
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        format!(
+            "middleware name must produce a valid non-keyword Rust identifier (`{snake_name}`); use letters, digits, `_` or `-`, for example RequestAudit"
+        ),
+    ))
 }
 
 fn validate_project_root() -> Result<(), Box<dyn std::error::Error>> {
@@ -160,4 +175,21 @@ fn inject_middleware_module_in_main() -> Result<(), Box<dyn std::error::Error>> 
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn middleware_names_must_produce_rust_identifiers() {
+        let check =
+            |name: &str| validate_middleware_identifier(name, &middleware_to_snake_case(name));
+        for valid in ["RequestAudit", "rate-limit", "AuthMiddleware"] {
+            assert!(check(valid).is_ok(), "{valid} must be accepted");
+        }
+        for invalid in ["Bad.Name", "../escape", "a/b", "9Lives", " "] {
+            assert!(check(invalid).is_err(), "{invalid} must be rejected");
+        }
+    }
 }

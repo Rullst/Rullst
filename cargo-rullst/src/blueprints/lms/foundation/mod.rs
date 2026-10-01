@@ -196,6 +196,41 @@ mod tests {
     }
 
     #[test]
+    fn a_concurrent_resubmission_replays_instead_of_failing() {
+        let manifest = manifest(false);
+        let service = source(&manifest, "src/services/learning_service.rs");
+        // Checking the key before the transaction and inserting the event
+        // last let a double click pass the check twice; the loser hit the
+        // unique index (or SQLITE_BUSY after its read) and returned 503.
+        let transaction = service
+            .split_once("let mut transaction = pool.begin().await")
+            .map(|(_, body)| body)
+            .unwrap_or_default();
+        let claim = transaction
+            .find("INSERT INTO lesson_progress_events")
+            .expect("the transaction claims the key");
+        let upsert = transaction
+            .find("INSERT INTO lesson_progress (")
+            .expect("the transaction records progress");
+        assert!(claim < upsert, "the key must be claimed by the first write");
+        assert!(!transaction[..claim].contains("SELECT"));
+        assert!(service.contains(
+            "COALESCE((SELECT progress_percent FROM lesson_progress WHERE user_id = $5 AND lesson_id = $6), 0)"
+        ));
+        assert!(service.contains(
+            "Err(rullst::db::sqlx::Error::Database(error)) if error.is_unique_violation() => {"
+        ));
+        assert_eq!(
+            service
+                .matches(
+                    "replay(driver, user_id, lesson_id, progress_percent, idempotency_key).await?"
+                )
+                .count(),
+            2
+        );
+    }
+
+    #[test]
     fn dashboard_describes_the_schoolless_starter() {
         let manifest = manifest(false);
         let pages = source(&manifest, "src/pages/auth.rs");

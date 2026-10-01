@@ -61,20 +61,20 @@ pub(super) fn stage(
     Ok(file)
 }
 
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
+const EXTENDED_METADATA: ProjectError = ProjectError::Invalid(
+    "extended file metadata requires manual update; no ACL/xattrs are discarded",
+);
+
+/// Largest attribute-name list inspected (Linux's `XATTR_LIST_MAX`).
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
+const MAX_XATTR_NAMES: usize = 64 * 1024;
+
 fn plain(file: &fs::File) -> Result<(), ProjectError> {
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     {
-        let mut names = [0u8; 1];
-        match rustix::fs::flistxattr(file, &mut names[..]) {
-            Ok(0) => (),
-            // A filesystem with no xattr support cannot carry POSIX ACL xattrs.
-            Err(rustix::io::Errno::NOTSUP) => (),
-            Ok(_) | Err(rustix::io::Errno::RANGE) => {
-                return Err(ProjectError::Invalid(
-                    "extended file metadata requires manual update; no ACL/xattrs are discarded",
-                ));
-            }
-            Err(error) => return Err(std::io::Error::from(error).into()),
+        if has_unreproduced_attribute(&xattr_names(file)?) {
+            return Err(EXTENDED_METADATA);
         }
         #[cfg(target_os = "macos")]
         apple_acl::check(file)?;
@@ -87,6 +87,52 @@ fn plain(file: &fs::File) -> Result<(), ProjectError> {
             "extended access-policy inspection is unavailable on this platform",
         ))
     }
+}
+
+/// The NUL-separated extended attribute names of `file`.
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
+fn xattr_names(file: &fs::File) -> Result<Vec<u8>, ProjectError> {
+    // The list can grow between the size query and the read; retry briefly.
+    for _ in 0..4 {
+        let size = match rustix::fs::flistxattr(file, &mut [0u8; 0][..]) {
+            Ok(size) => size,
+            // A filesystem with no xattr support cannot carry POSIX ACL xattrs.
+            Err(rustix::io::Errno::NOTSUP) => return Ok(Vec::new()),
+            Err(error) => return Err(std::io::Error::from(error).into()),
+        };
+        if size == 0 {
+            return Ok(Vec::new());
+        }
+        if size > MAX_XATTR_NAMES {
+            return Err(EXTENDED_METADATA);
+        }
+        let mut names = vec![0u8; size];
+        match rustix::fs::flistxattr(file, &mut names[..]) {
+            Ok(length) => {
+                names.truncate(length);
+                return Ok(names);
+            }
+            Err(rustix::io::Errno::RANGE) => continue,
+            Err(error) => return Err(std::io::Error::from(error).into()),
+        }
+    }
+    Err(EXTENDED_METADATA)
+}
+
+/// Whether `names` holds an attribute that replacing the file would drop.
+///
+/// The SELinux label (`security.selinux`) is the exception: the kernel gives
+/// every file one, including the replacement staged in the same directory,
+/// so rejecting it made review/apply fail on every SELinux host. ACLs
+/// (`system.posix_acl_*`), file capabilities and other attributes still fail.
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
+fn has_unreproduced_attribute(names: &[u8]) -> bool {
+    names
+        .split(|byte| *byte == 0)
+        .filter(|name| !name.is_empty())
+        .any(|name| {
+            !(cfg!(any(target_os = "linux", target_os = "android")) && name == b"security.selinux")
+        })
 }
 
 #[cfg(target_os = "macos")]
@@ -135,5 +181,30 @@ mod apple_acl {
             return Err(error.into());
         }
         Ok(())
+    }
+}
+
+#[cfg(all(
+    test,
+    any(target_os = "linux", target_os = "android", target_os = "macos")
+))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_selinux_label_is_reproduced_by_a_staged_replacement() {
+        assert!(!has_unreproduced_attribute(b""));
+        assert_eq!(
+            has_unreproduced_attribute(b"security.selinux\0"),
+            !cfg!(any(target_os = "linux", target_os = "android"))
+        );
+        for names in [
+            &b"security.selinux\0user.note\0"[..],
+            b"system.posix_acl_access\0",
+            b"security.capability\0",
+            b"user.rullst-test\0",
+        ] {
+            assert!(has_unreproduced_attribute(names), "{names:?}");
+        }
     }
 }

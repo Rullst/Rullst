@@ -320,3 +320,37 @@ async fn cancelling_a_real_migration_kills_its_owned_descendant_and_drains_bound
     assert!(rx.len() <= 1);
     assert!(matches!(rx.try_recv(), Ok(LogMsg::AppStdout(line)) if line.len() <= 4096));
 }
+
+#[cfg(all(
+    unix,
+    not(any(
+        target_os = "cygwin",
+        target_os = "horizon",
+        target_os = "openbsd",
+        target_os = "redox"
+    ))
+))]
+#[test]
+fn waitid_observes_an_exit_without_reaping_the_child() {
+    // macOS and the BSDs use this instead of spawning `ps` every 20 ms.
+    let mut exited = Command::new("/bin/sh")
+        .args(["-c", "exit 3"])
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !group::exited_without_reaping(exited.id()).unwrap() {
+        assert!(Instant::now() < deadline, "exit was never observed");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    // Still a zombie of ours: observing again works and the status is intact.
+    assert!(group::exited_without_reaping(exited.id()).unwrap());
+    assert_eq!(exited.wait().unwrap().code(), Some(3));
+
+    let mut running = Command::new("/bin/sh")
+        .args(["-c", "sleep 30"])
+        .spawn()
+        .unwrap();
+    assert!(!group::exited_without_reaping(running.id()).unwrap());
+    running.kill().unwrap();
+    running.wait().unwrap();
+}

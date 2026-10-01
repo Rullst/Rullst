@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::generators::audit::incomplete_walk_warning;
+use crate::generators::audit_source::audit_source;
 use crate::generators::source_walk::{RustSources, rust_sources};
 
 const ACCESS_MARKER: &str = "rullst-access:";
@@ -16,6 +17,10 @@ const ACCESS_MARKER: &str = "rullst-access:";
 /// This is a bounded source heuristic. It deliberately reports a finding when
 /// it cannot recognize the route boundary; a clean scan is not a proof that a
 /// domain resource lookup enforces ownership correctly at runtime.
+///
+/// Top-level `#[cfg(test)]` items are skipped individually. Guard evidence for
+/// an owner/role/admin classification is collected per crate (`src` tree)
+/// from code outside those items; comments and doc comments do not count.
 pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     let source_files = collect_rust_source_files(src_dir);
     let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
@@ -24,13 +29,13 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
         let Ok(content) = fs::read_to_string(&path) else {
             continue;
         };
-        let production = production_source(&content);
+        let views = audit_source(&content);
         let source_root = source_root_for(&path).unwrap_or_else(|| src_dir.to_path_buf());
         crate_evidence
             .entry(source_root.clone())
             .or_default()
-            .include(production);
-        sources.push((path, source_root, production.to_string()));
+            .include(&views.code);
+        sources.push((path, source_root, views.production));
     }
 
     let mut warnings = Vec::new();
@@ -70,8 +75,12 @@ pub(super) fn collect_rust_source_files(src_dir: &Path) -> RustSources {
 
 #[cfg(test)]
 fn scan_idor_source(path: &Path, content: &str) -> Vec<String> {
-    let production = production_source(content);
-    scan_idor_source_with_evidence(path, production, GuardEvidence::from_content(production))
+    let views = audit_source(content);
+    scan_idor_source_with_evidence(
+        path,
+        &views.production,
+        GuardEvidence::from_content(&views.code),
+    )
 }
 
 #[derive(Clone, Copy, Default)]
@@ -99,12 +108,6 @@ impl GuardEvidence {
     }
 }
 
-fn production_source(content: &str) -> &str {
-    content
-        .split_once("\n#[cfg(test)]")
-        .map_or(content, |(production, _)| production)
-}
-
 fn source_root_for(path: &Path) -> Option<std::path::PathBuf> {
     path.ancestors()
         .find(|ancestor| ancestor.file_name().and_then(|name| name.to_str()) == Some("src"))
@@ -122,15 +125,21 @@ fn scan_idor_source_with_evidence(
 
     for (index, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
+        // A comment (such as the access marker) between `.route(` and its path
+        // literal must not end the multi-line call.
+        if route_call_continues && trimmed.starts_with("//") {
+            continue;
+        }
         let declares_route = contains_route_call(trimmed) || route_call_continues;
         route_call_continues = trimmed.ends_with(".route(") || trimmed == "route(";
         if !declares_route {
             continue;
         }
 
-        let Some(route) = quoted_parameterized_route(trimmed) else {
+        let routes = quoted_parameterized_routes(trimmed);
+        if routes.is_empty() {
             continue;
-        };
+        }
         let marker_line = access_marker_line(&lines, index, trimmed);
         let classification = marker_line.and_then(access_classification);
         let reason = if marker_line.is_some_and(|marker| !access_marker_has_reason(marker)) {
@@ -143,15 +152,15 @@ fn scan_idor_source_with_evidence(
                 ),
                 Some("owner") if evidence.owner => None,
                 Some("owner") => Some(
-                    "owner classification requires RbacGuard::authorize_owner_or_role in this source file",
+                    "owner classification requires RbacGuard::authorize_owner_or_role in this crate's non-test code (comments do not count)",
                 ),
                 Some("role") if evidence.role => None,
                 Some("role") => Some(
-                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this source file",
+                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this crate's non-test code (comments do not count)",
                 ),
                 Some("admin") if evidence.admin => None,
                 Some("admin") => Some(
-                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this source file",
+                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this crate's non-test code (comments do not count)",
                 ),
                 Some(_) => Some("unknown rullst-access classification"),
                 None => Some(
@@ -161,11 +170,13 @@ fn scan_idor_source_with_evidence(
         };
 
         if let Some(reason) = reason {
-            findings.push(format!(
-                "File '{}:{}': parameterized route `{route}` {reason}",
-                path.display(),
-                index + 1
-            ));
+            for route in routes {
+                findings.push(format!(
+                    "File '{}:{}': parameterized route `{route}` {reason}",
+                    path.display(),
+                    index + 1
+                ));
+            }
         }
     }
 
@@ -180,16 +191,31 @@ fn contains_route_call(line: &str) -> bool {
     .any(|needle| line.contains(needle))
 }
 
-fn quoted_parameterized_route(line: &str) -> Option<&str> {
-    let quote_start = line.find('"')?;
-    let tail = &line[quote_start + 1..];
-    let quote_end = tail.find('"')?;
-    let candidate = &tail[..quote_end];
-    if candidate.starts_with('/') && candidate.split('/').any(is_parameter_segment) {
-        Some(candidate)
-    } else {
-        None
-    }
+/// Every quoted literal on the line that is a parameterized path, so a
+/// later route on a one-line `routes!` list is not hidden by an earlier one.
+fn quoted_parameterized_routes(line: &str) -> Vec<&str> {
+    quoted_literals(line)
+        .filter(|candidate| {
+            candidate.starts_with('/') && candidate.split('/').any(is_parameter_segment)
+        })
+        .collect()
+}
+
+/// The contents of each `"..."` on the line; `\"` does not end a literal.
+fn quoted_literals(line: &str) -> impl Iterator<Item = &str> {
+    let mut rest = line;
+    std::iter::from_fn(move || {
+        let start = rest.find('"')? + 1;
+        let body = rest.get(start..)?;
+        let mut escaped = false;
+        let end = body.char_indices().find_map(|(offset, character)| {
+            let closes = character == '"' && !escaped;
+            escaped = character == '\\' && !escaped;
+            closes.then_some(offset)
+        })?;
+        rest = body.get(end + 1..)?;
+        body.get(..end)
+    })
 }
 
 fn is_parameter_segment(segment: &str) -> bool {
@@ -332,6 +358,113 @@ get("/orders/{order_id}" => show_order),
 fn unrelated(_context: UserContext) {}
 "#;
         assert_eq!(findings(source).len(), 1);
+    }
+
+    #[test]
+    fn routes_after_an_early_test_declaration_are_still_scanned() {
+        // The old scan truncated the file at the first top-level
+        // `#[cfg(test)]` and reported this unclassified route as clean.
+        let source = r#"use rullst::prelude::*;
+#[cfg(test)]
+mod tests;
+
+fn routes() -> Router {
+    routes! {
+        get("/accounts/{id}" => show_account),
+    }
+}
+
+#[cfg(test)]
+mod inline {
+    fn fixture() { get("/fixtures/{id}" => show) }
+}
+"#;
+        let result = findings(source);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("routes.rs:7"));
+        assert!(result[0].contains("/accounts/{id}"));
+    }
+
+    #[test]
+    fn every_route_on_a_single_line_list_is_checked() {
+        // The old scan read only the first literal, "/", and skipped the line.
+        let source = r#"routes! { get("/" => home), get("/users/{id}" => show_user) }"#;
+        let result = findings(source);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("/users/{id}"));
+
+        let both = r#"routes! { get("/teams/{team}" => team), delete("/users/{id}" => drop) }"#;
+        assert_eq!(findings(both).len(), 2);
+        assert!(quoted_literals(r#"a("x\"y", "/z")"#).eq([r#"x\"y"#, "/z"]));
+    }
+
+    #[test]
+    fn guard_mentions_in_comments_are_not_evidence() {
+        // The old scan accepted any substring, so these comments satisfied
+        // the owner classification.
+        let commented = r#"
+// rullst-access: owner — the handler compares the authenticated subject.
+get("/accounts/{id}" => show_account),
+// TODO use RbacGuard::authorize_owner_or_role
+/// Calls `admin_access.protect_router(..)` later.
+fn show_account() {}
+"#;
+        let result = findings(commented);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("this crate's non-test code"));
+    }
+
+    #[test]
+    fn guard_evidence_is_crate_wide_and_ignores_test_items() {
+        let project = tempfile::tempdir().expect("temporary project");
+        let src = project.path().join("src");
+        fs::create_dir_all(&src).expect("source directory");
+        fs::write(
+            src.join("routes.rs"),
+            "// rullst-access: owner — checked by the guard module.\nget(\"/orders/{id}\" => show),\n",
+        )
+        .expect("route fixture");
+        fs::write(
+            src.join("guard.rs"),
+            "#[cfg(test)]\nmod tests { fn t() { RbacGuard::authorize_owner_or_role(c, o, \"admin\"); } }\n",
+        )
+        .expect("test-only guard fixture");
+        let (count, warnings) = scan_idor_vulnerabilities(&src);
+        assert_eq!(count, 1, "{warnings:?}");
+
+        fs::write(
+            src.join("guard.rs"),
+            "fn guard() { RbacGuard::authorize_owner_or_role(c, o, \"admin\"); }\n",
+        )
+        .expect("guard fixture");
+        let (count, warnings) = scan_idor_vulnerabilities(&src);
+        assert_eq!(count, 0, "{warnings:?}");
+    }
+
+    #[test]
+    fn a_comment_inside_a_multiline_route_call_keeps_the_route_in_scope() {
+        // The old scan ended the `.route(` continuation at the comment line and
+        // never inspected the path literal below it.
+        let note_only = r#"
+Router::new().route(
+    // Removes one invoice.
+    "/invoices/{id}",
+    delete(remove_invoice),
+)
+"#;
+        let result = findings(note_only);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("missing an adjacent"));
+
+        let classified = r#"
+let protected = admin_access.protect_router(router)?;
+Router::new().route(
+    // rullst-access: admin — composed behind the administrator boundary.
+    "/invoices/{id}",
+    delete(remove_invoice),
+)
+"#;
+        assert!(findings(classified).is_empty());
     }
 
     #[test]

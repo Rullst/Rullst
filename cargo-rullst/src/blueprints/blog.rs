@@ -429,6 +429,47 @@ mod tests {
             );
             assert!(page.contains("posts: rullst_orm::PaginationResult<Post>"));
             assert!(page.contains("href={format!(\"/?page={page}\")}"));
+            // An unbounded `?page=` overflowed the OFFSET and became a 503.
+            assert!(controller.contains(
+                "if page > MAX_PAGE {\n        return (StatusCode::NOT_FOUND, \"Page not found\").into_response();"
+            ));
+        }
+    }
+
+    #[test]
+    fn robots_and_sitemap_advertise_only_absolute_urls() {
+        let manifest = file_manifest("blog_app", false, "Active Record", "Zero-Bundle HTMX");
+        let controller = source(&manifest, "src/controllers/blog_controller.rs");
+        // Crawlers reject `<loc>/</loc>` and a relative `Sitemap:` line, and
+        // the sitemap listed none of the posts.
+        assert!(!controller.contains("<loc>/</loc>"));
+        assert!(!controller.contains("Sitemap: /sitemap.xml"));
+        assert!(controller.contains("project_setting(\"RULLST_PUBLIC_ORIGIN\")"));
+        assert!(controller.contains("format!(\"Sitemap: {origin}/sitemap.xml\\n\")"));
+        assert!(controller.contains("<url><loc>{origin}/</loc></url>"));
+        assert!(
+            controller.contains("<url><loc>{origin}/posts/{}</loc></url>\", path_segment(&slug)")
+        );
+        assert!(controller.contains("\"SELECT slug FROM posts ORDER BY id DESC LIMIT 1000\""));
+        assert!(controller.contains("fn sitemap_urls_are_absolute_encoded_and_xml_safe()"));
+
+        let root = tempfile::tempdir().expect("temporary project");
+        crate::generators::project::env_config::generate_env_and_configs(
+            root.path(),
+            true,
+            "Sqlite",
+            &[],
+            crate::blueprints::BLOG_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        for filename in [".env", ".env.example"] {
+            let generated = std::fs::read_to_string(root.path().join(filename))
+                .expect("generated environment file");
+            assert!(
+                generated.contains("\nRULLST_PUBLIC_ORIGIN=\n"),
+                "{filename}"
+            );
         }
     }
 }

@@ -53,22 +53,32 @@ pub enum PackageAddOutcome {
 /// build. No package-owned generator or application code is executed here.
 pub fn pkg_add(package_name: &str) -> Result<PackageAddOutcome, PackageError> {
     let manifest = Path::new("Cargo.toml");
-    let outcome = add_to_manifest(manifest, package_name, env!("CARGO_PKG_VERSION"))?;
+    let (outcome, table) = add_to_manifest(manifest, package_name, env!("CARGO_PKG_VERSION"))?;
+    let label = table.label();
 
     match outcome {
         PackageAddOutcome::Added => {
             println!(
                 "{}",
-                format!("Added `{package_name}` to Cargo.toml.")
+                format!("Added `{package_name}` to {label} in Cargo.toml.")
                     .green()
                     .bold()
             );
+            if table == DependencyTable::Workspace {
+                println!(
+                    "{}",
+                    format!(
+                        "Members use it with `{package_name} = {{ workspace = true }}` in their [dependencies]."
+                    )
+                    .cyan()
+                );
+            }
             println!("{}", "Run `cargo check` to resolve and verify it.".cyan());
         }
         PackageAddOutcome::AlreadyPresent => {
             println!(
                 "{}",
-                format!("`{package_name}` is already present in Cargo.toml.").yellow()
+                format!("`{package_name}` is already present in {label} of Cargo.toml.").yellow()
             );
         }
     }
@@ -81,7 +91,11 @@ pub fn pkg_list() -> Result<Vec<String>, PackageError> {
     let manifest = Path::new("Cargo.toml");
     let packages = packages_from_manifest(manifest)?;
 
-    println!("{}", "Rullst dependencies:".bold());
+    let heading = match DependencyTable::of(&read_manifest(manifest)?) {
+        DependencyTable::Package => "Rullst dependencies:",
+        DependencyTable::Workspace => "Rullst workspace dependencies:",
+    };
+    println!("{}", heading.bold());
     if packages.is_empty() {
         println!("{}", "  (none found)".dimmed());
     } else {
@@ -93,23 +107,62 @@ pub fn pkg_list() -> Result<Vec<String>, PackageError> {
     Ok(packages)
 }
 
+/// The table `pkg` edits and lists.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DependencyTable {
+    /// `[dependencies]` of a package manifest.
+    Package,
+    /// `[workspace.dependencies]` of a virtual workspace manifest, which
+    /// Cargo rejects with a top-level `[dependencies]` table.
+    Workspace,
+}
+
+impl DependencyTable {
+    fn of(document: &DocumentMut) -> Self {
+        if !document.contains_key("package") && document.contains_key("workspace") {
+            Self::Workspace
+        } else {
+            Self::Package
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Package => "[dependencies]",
+            Self::Workspace => "[workspace.dependencies]",
+        }
+    }
+
+    /// The table's parent: the document root or its `[workspace]` table.
+    fn parent(self, document: &mut DocumentMut) -> Option<&mut Table> {
+        match self {
+            Self::Package => Some(document.as_table_mut()),
+            Self::Workspace => document.get_mut("workspace")?.as_table_mut(),
+        }
+    }
+}
+
 fn add_to_manifest(
     manifest: &Path,
     package_name: &str,
     version: &str,
-) -> Result<PackageAddOutcome, PackageError> {
+) -> Result<(PackageAddOutcome, DependencyTable), PackageError> {
     validate_package_name(package_name)?;
     let mut document = read_manifest(manifest)?;
+    let table = DependencyTable::of(&document);
 
-    if !document.contains_key("dependencies") {
-        document.insert("dependencies", Item::Table(Table::new()));
-    }
-    let dependencies = document["dependencies"]
-        .as_table_mut()
+    let dependencies = table
+        .parent(&mut document)
+        .and_then(|parent| {
+            parent
+                .entry("dependencies")
+                .or_insert_with(|| Item::Table(Table::new()))
+                .as_table_mut()
+        })
         .ok_or_else(|| PackageError::InvalidDependenciesTable(manifest.to_path_buf()))?;
 
     if dependencies.contains_key(package_name) {
-        return Ok(PackageAddOutcome::AlreadyPresent);
+        return Ok((PackageAddOutcome::AlreadyPresent, table));
     }
     dependencies.insert(package_name, value(version));
 
@@ -117,12 +170,18 @@ fn add_to_manifest(
         path: manifest.to_path_buf(),
         source,
     })?;
-    Ok(PackageAddOutcome::Added)
+    Ok((PackageAddOutcome::Added, table))
 }
 
 fn packages_from_manifest(manifest: &Path) -> Result<Vec<String>, PackageError> {
     let document = read_manifest(manifest)?;
-    let Some(dependencies) = document.get("dependencies") else {
+    let dependencies = match DependencyTable::of(&document) {
+        DependencyTable::Package => document.get("dependencies"),
+        DependencyTable::Workspace => document
+            .get("workspace")
+            .and_then(|workspace| workspace.get("dependencies")),
+    };
+    let Some(dependencies) = dependencies else {
         return Ok(Vec::new());
     };
     let dependencies = dependencies
@@ -198,7 +257,7 @@ mod tests {
         )
         .expect("fixture manifest");
 
-        let outcome =
+        let (outcome, _) =
             add_to_manifest(&manifest, "rullst-example", "12.0.0").expect("valid addition");
         assert_eq!(outcome, PackageAddOutcome::Added);
 
@@ -217,10 +276,38 @@ mod tests {
         let source = "[dependencies]\nrullst-example = { version = \"11\", features = [\"x\"] }\n";
         fs::write(&manifest, source).expect("fixture manifest");
 
-        let outcome =
+        let (outcome, _) =
             add_to_manifest(&manifest, "rullst-example", "12.0.0").expect("idempotent add");
         assert_eq!(outcome, PackageAddOutcome::AlreadyPresent);
         assert_eq!(fs::read_to_string(manifest).expect("manifest"), source);
+    }
+
+    #[test]
+    fn a_virtual_workspace_gets_a_workspace_dependency() {
+        // The old command added a top-level [dependencies] table, which Cargo
+        // rejects in a virtual manifest.
+        let directory = tempdir().expect("temporary directory");
+        let manifest = directory.path().join("Cargo.toml");
+        fs::write(&manifest, "[workspace]\nmembers = [\"app\"]\n").expect("fixture manifest");
+
+        let (outcome, table) =
+            add_to_manifest(&manifest, "rullst-auth", "13.0.0").expect("workspace addition");
+        assert_eq!(outcome, PackageAddOutcome::Added);
+        assert_eq!(table, DependencyTable::Workspace);
+        let parsed = read_manifest(&manifest).expect("written manifest parses");
+        assert!(!parsed.contains_key("dependencies"));
+        assert_eq!(
+            parsed["workspace"]["dependencies"]["rullst-auth"].as_str(),
+            Some("13.0.0")
+        );
+        assert_eq!(parsed["workspace"]["members"][0].as_str(), Some("app"));
+        assert_eq!(
+            packages_from_manifest(&manifest).expect("package list"),
+            vec!["rullst-auth".to_owned()]
+        );
+        let (outcome, _) =
+            add_to_manifest(&manifest, "rullst-auth", "13.0.0").expect("idempotent add");
+        assert_eq!(outcome, PackageAddOutcome::AlreadyPresent);
     }
 
     #[test]

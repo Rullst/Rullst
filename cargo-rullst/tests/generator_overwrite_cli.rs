@@ -26,6 +26,18 @@ impl Project {
         Self { root }
     }
 
+    /// A project whose entry point registers the SQL migration runner, which
+    /// `auth` and `make:mfa` require.
+    fn with_migration_runner() -> Self {
+        let project = Self::new();
+        fs::write(
+            project.path("src/main.rs"),
+            "pub mod migrations;\n\nfn main() {\n    rullst::artisan!(crate::migrations::get_migrations());\n}\n",
+        )
+        .expect("migration runner entry point");
+        project
+    }
+
     fn run(&self, arguments: &[&str]) -> Output {
         Command::new(env!("CARGO_BIN_EXE_rullst"))
             .current_dir(&self.root)
@@ -203,6 +215,28 @@ fn kubernetes_manifests_are_never_replaced_or_written_through_links() {
 }
 
 #[test]
+fn packaging_generators_name_the_binary_after_the_parsed_package() {
+    // Line matching took the library name from a [lib] table before
+    // [package], and `app` from `name="shop"` or kept a trailing comment.
+    let project = Project::new();
+    fs::write(
+        project.path("Cargo.toml"),
+        "[lib]\nname = \"shop_core\"\npath = \"src/lib.rs\"\n\n[package]\nname=\"shop\" # storefront\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+    )
+    .expect("project manifest");
+    project.succeeds(&["dockerize"]);
+    let dockerfile = project.read("Dockerfile");
+    assert!(
+        dockerfile.contains("/app/target/release/shop /app/shop\n"),
+        "{dockerfile}"
+    );
+    assert!(dockerfile.contains("CMD [\"/app/shop\"]"), "{dockerfile}");
+    project.succeeds(&["generate:buildah"]);
+    let script = project.read("build_buildah.sh");
+    assert!(script.contains("-t shop:latest ."), "{script}");
+}
+
+#[test]
 fn packaging_generators_refuse_to_replace_customized_files() {
     let project = Project::new();
     let customized = "# customized\n";
@@ -235,7 +269,7 @@ fn packaging_generators_refuse_to_replace_customized_files() {
 
 #[test]
 fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
-    let customized = Project::new();
+    let customized = Project::with_migration_runner();
     fs::create_dir_all(customized.path("src/models")).expect("models directory");
     let model = "// customized User with NexusModel\n";
     fs::write(customized.path("src/models/user.rs"), model).expect("custom model");
@@ -251,7 +285,7 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     );
     assert!(customized.migrations_ending_with(".rs").is_empty());
 
-    let starter = Project::new();
+    let starter = Project::with_migration_runner();
     fs::create_dir_all(starter.path("src/migrations")).expect("migrations directory");
     let users = "// starter users table\n";
     let starter_migration = "src/migrations/m20260601000000_create_users_table.rs";
@@ -269,7 +303,7 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     );
     assert!(!starter.path("src/models/user.rs").exists());
 
-    let repeated = Project::new();
+    let repeated = Project::with_migration_runner();
     repeated.succeeds(&["auth"]);
     let controller = repeated.read("src/controllers/auth_controller.rs");
     repeated.fails(&["auth"]);
@@ -284,7 +318,7 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
 
 #[test]
 fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
-    let project = Project::new();
+    let project = Project::with_migration_runner();
     project.succeeds(&["auth"]);
     let manifest: toml::Value = toml::from_str(&project.read("Cargo.toml")).expect("manifest");
     let features = manifest["dependencies"]["rullst"]["features"]
@@ -321,7 +355,7 @@ fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
 
 #[test]
 fn mfa_scaffold_is_server_side_registered_and_never_overwrites() {
-    let project = Project::new();
+    let project = Project::with_migration_runner();
     project.succeeds(&["auth"]);
     project.succeeds(&["make:mfa"]);
     let controller = project.read("src/controllers/mfa.rs");
@@ -357,10 +391,37 @@ fn mfa_scaffold_is_server_side_registered_and_never_overwrites() {
         1
     );
 
-    let customized = Project::new();
+    let customized = Project::with_migration_runner();
     fs::create_dir_all(customized.path("src/controllers")).expect("controllers directory");
     fs::write(customized.path("src/controllers/mfa.rs"), "// mine\n").expect("custom MFA");
     customized.fails(&["make:mfa"]);
     assert_unchanged(&customized, "src/controllers/mfa.rs", "// mine\n");
     assert!(customized.migrations_ending_with(".rs").is_empty());
+}
+
+#[test]
+fn account_scaffolds_refuse_projects_without_a_migration_runner() {
+    // A `--no-database` starter: the users migration would never compile or run.
+    let project = Project::new();
+    let manifest = project.read("Cargo.toml");
+    let main = project.read("src/main.rs");
+    for command in ["auth", "make:mfa"] {
+        let refused = project.fails(&[command]);
+        assert!(refused.contains("no migration runner"), "{refused}");
+        assert_unchanged(&project, "Cargo.toml", &manifest);
+        assert_unchanged(&project, "src/main.rs", &main);
+        for generated in ["src/migrations", "src/models", "src/controllers"] {
+            assert!(
+                !project.path(generated).exists(),
+                "{command} wrote {generated}"
+            );
+        }
+    }
+
+    let project = Project::with_migration_runner();
+    project.succeeds(&["auth"]);
+    for source in ["src/models/user.rs", "src/controllers/auth_controller.rs"] {
+        let source = project.read(source);
+        assert!(!source.contains("rullst_orm"), "{source}");
+    }
 }

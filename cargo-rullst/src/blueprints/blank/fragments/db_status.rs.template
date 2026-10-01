@@ -1,5 +1,6 @@
-    // ORM usage example: verify availability without exposing database details.
-    let db_status = match User::all().await {
+    // ORM usage example: a one-row probe verifies availability without
+    // reading the table or exposing database details.
+    let db_status = match User::query().first().await {
         Ok(_) => "Database connected.".to_string(),
         Err(error) => {
             tracing::warn!(error = %error, "database status check failed");

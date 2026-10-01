@@ -34,7 +34,8 @@ static CREDENTIAL_LIMITER: LazyLock<rullst::RateLimiter> = LazyLock::new(|| {
 /// Route middleware for `POST /login` and `POST /register`. Each submission
 /// runs Argon2id, so it is budgeted per client before the handler runs. The
 /// budget is keyed by the connecting peer: behind a reverse proxy, configure
-/// `[security] trusted_proxies` so clients do not share the proxy's budget.
+/// `[security] trusted_proxies` so clients do not share the proxy's budget
+/// (`cargo rullst deploy --platform vps` does this for its Caddy proxy).
 pub async fn credential_rate_limit(request: Request, next: Next) -> Response {
     rullst::rate_limit_middleware(rullst::RateLimiter::clone(&CREDENTIAL_LIMITER), request, next)
         .await
@@ -101,8 +102,56 @@ fn valid_email(email: &str) -> bool {
         })
 }
 
+/// Length as the browser's `minlength`/`maxlength` count it (UTF-16 code
+/// units), so a value the form accepts is not rejected by a byte count.
+fn form_length(value: &str) -> usize {
+    value.encode_utf16().count()
+}
+
 fn valid_name(name: &str) -> bool {
-    !name.is_empty() && name.len() <= 120 && !name.contains(['\r', '\n'])
+    !name.is_empty() && form_length(name) <= 120 && !name.contains(['\r', '\n'])
+}
+
+/// `rullst::auth::hash_password` and `verify_password` accept at most 72
+/// bytes, so the upper bound stays in bytes while the minimum counts
+/// characters like the form's `minlength`.
+const MAX_PASSWORD_BYTES: usize = 72;
+const PASSWORD_LENGTH_MESSAGE: &str = "Use a password of at least 12 characters and at most 72 bytes (accented and non-Latin characters take 2 to 4 bytes each)";
+
+fn valid_password(password: &str) -> bool {
+    form_length(password) >= 12 && password.len() <= MAX_PASSWORD_BYTES
+}
+
+/// The current UTC time as `YYYY-MM-DD HH:MM:SS`, the text `CURRENT_TIMESTAMP`
+/// stores in the `timestamps()` columns. The ORM inserts every field, so an
+/// empty string would replace the column default.
+fn utc_timestamp() -> String {
+    format_utc_timestamp(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_secs()),
+    )
+}
+
+fn format_utc_timestamp(seconds: u64) -> String {
+    let (days, time) = (seconds / 86_400, seconds % 86_400);
+    // Civil date from days since 1970-01-01 (Howard Hinnant's algorithm).
+    let shifted = days + 719_468;
+    let era = shifted / 146_097;
+    let day_of_era = shifted % 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_index = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
+    let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
+    let year = year_of_era + era * 400 + u64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02} {:02}:{:02}:{:02}",
+        time / 3_600,
+        time % 3_600 / 60,
+        time % 60
+    )
 }
 
 fn get_csrf_token(headers: &HeaderMap) -> String {
@@ -230,13 +279,8 @@ pub async fn register_submit(
         return auth::register_page(&token, Some("Enter a valid email address"), nonce)
             .into_response();
     }
-    if !(12..=72).contains(&payload.password.len()) {
-        return auth::register_page(
-            &token,
-            Some("Password must contain between 12 and 72 characters"),
-            nonce,
-        )
-        .into_response();
+    if !valid_password(&payload.password) {
+        return auth::register_page(&token, Some(PASSWORD_LENGTH_MESSAGE), nonce).into_response();
     }
 
     match User::find_by_email(&email).await {
@@ -274,6 +318,7 @@ pub async fn register_submit(
         }
     };
 
+    let created_at = utc_timestamp();
     let mut user = User {
         id: 0,
         name: name.to_owned(),
@@ -281,8 +326,8 @@ pub async fn register_submit(
         password_hash: Some(password_hash),
         oauth_provider: None,
         oauth_id: None,
-        created_at: String::new(),
-        updated_at: String::new(),
+        updated_at: created_at.clone(),
+        created_at,
     };
     let original_id = user.id;
     let mut transaction = match rullst::db::Orm::begin_transaction().await {
@@ -296,7 +341,7 @@ pub async fn register_submit(
     let registration = async {
         user.save_with_tx(&mut transaction).await?;
         // __RULLST_REGISTRATION_HOOK__
-        Ok::<(), rullst_orm::Error>(())
+        Ok::<(), rullst::orm::Error>(())
     }
     .await;
     if let Err(error) = registration {
@@ -345,5 +390,39 @@ pub async fn dashboard(
             eprintln!("Dashboard user query failed: {error}");
             StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registration_timestamps_use_the_current_timestamp_text() {
+        assert_eq!(format_utc_timestamp(0), "1970-01-01 00:00:00");
+        assert_eq!(format_utc_timestamp(951_868_799), "2000-02-29 23:59:59");
+        assert_eq!(format_utc_timestamp(1_790_000_000), "2026-09-21 14:13:20");
+        assert_eq!(format_utc_timestamp(4_107_542_399), "2100-02-28 23:59:59");
+        let now = utc_timestamp();
+        assert_eq!(now.len(), "YYYY-MM-DD HH:MM:SS".len());
+        assert!(now.as_str() > "2026-01-01 00:00:00");
+    }
+
+    #[test]
+    fn length_limits_count_what_the_form_counts() {
+        // 30 Cyrillic letters are 60 bytes: accepted, although a byte count
+        // of the minimum would also have accepted only 6 of them.
+        assert!(valid_password(&"ж".repeat(30)));
+        assert!(!valid_password(&"ж".repeat(6)));
+        assert!(valid_password(&"a".repeat(72)));
+        // Hashing rejects more than 72 bytes, so the form's 72 characters
+        // cannot all be two-byte letters.
+        assert!(!valid_password(&"ж".repeat(40)));
+        assert!(!valid_password(&"a".repeat(73)));
+        assert!(valid_name(&"名".repeat(70)));
+        assert!(!valid_name(&"名".repeat(121)));
+        assert!(!valid_name(""));
+        // Browsers count a character outside the BMP as two units.
+        assert_eq!(form_length("🦀"), 2);
     }
 }

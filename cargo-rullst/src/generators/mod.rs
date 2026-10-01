@@ -12,6 +12,8 @@ mod audit_compliance;
 mod audit_evidence;
 mod audit_idor;
 mod audit_purl;
+mod audit_scope;
+mod audit_source;
 pub mod auth;
 pub mod billing;
 pub mod build;

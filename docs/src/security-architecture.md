@@ -137,7 +137,8 @@ carry an adjacent `// rullst-access: public|owner|role|admin — reason` marker.
 and `admin` requires `RequireRoleLayer` or
 `NexusAuthPolicy::protect_router`. The latter lets application operational
 routes reuse the same fail-closed peer/credential and administrator boundary as
-Nexus.
+Nexus. The guard is looked up in the same crate's `src` tree, outside comments
+and `#[cfg(test)]` items; it need not be in the route's file.
 
 The marker records intent and the scanner catches common omissions; neither is
 a proof of domain ownership. Protected object routes still need negative HTTP

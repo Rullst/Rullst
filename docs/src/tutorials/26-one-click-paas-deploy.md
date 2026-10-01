@@ -47,6 +47,25 @@ cargo rullst deploy --platform=render
 cargo rullst deploy --platform=vps
 ```
 
+### Client addresses behind the proxy
+
+Every platform puts a reverse proxy in front of the application, so the socket
+peer of each request is the proxy. Rate limits, such as the SaaS and LMS
+starters' ten login/registration submissions per client per minute, would then
+treat every visitor as one client. `--platform=vps` pins its Caddy container to
+`172.31.250.10` (on the `172.31.250.0/24` network in
+`docker-compose.prod.yml`) and lists that address in `Rullst.toml`:
+
+```toml
+[security]
+trusted_proxies = ["172.31.250.10"]
+```
+
+Change both files together if that subnet overlaps a network on the host. For
+Fly.io, Railway and Render, list the networks their proxies connect from, as
+documented by the provider; the command prints a reminder while none is set.
+List only proxy networks: any host inside them can choose the client address.
+
 ### Container lifecycle boundary
 
 Projects created with `cargo rullst new --docker` receive a non-root runtime
@@ -100,6 +119,13 @@ DATABASE_URL = "sqlite:///opt/rullst/my_rullst_app/data/db.sqlite"
 APP_KEY = "REPLACE_WITH_A_STRONG_RANDOM_KEY"
 ```
 
+Caddy proxies to the `[app] port` (3000 when omitted) and the health check
+probes it. Foundry passes that port to the service as `PORT`, so an `[env] PORT`
+must name the same port (when `[app] port` is omitted, `[env] PORT` selects it).
+Unless `[env]` sets `HOST` (or `RULLST_HOST`), Foundry also sets
+`HOST="127.0.0.1"`, so the application's plain-HTTP port is reachable only
+through Caddy on the server; set `HOST` only to expose it deliberately.
+
 ### Step 2: Run the reviewed deployment command
 
 ```bash
@@ -108,7 +134,8 @@ cargo rullst foundry:deploy
 
 ### What the current `foundry:deploy` does
 
-1. Builds the selected profile and optional target locally.
+1. Builds the selected profile and optional target locally and takes the
+   executable Cargo reports for the package, wherever its target directory is.
 2. Connects over SSH, checks the preinstalled `curl`, `systemctl`, `caddy` and
    `useradd` executables, creates `/opt/rullst/<app>/{bin,config,data}` and a
    dedicated system account (`rullst-<app>`, lowercase, with a digest suffix

@@ -101,3 +101,22 @@ fn generated_billing_reads_settings_from_the_process_then_dotenv() {
         assert!(readme.contains("rullst::config::project_setting"));
     }
 }
+
+#[test]
+fn generated_billing_rows_get_real_timestamps() {
+    for backend in [ProjectOrmBackend::Sqlx, ProjectOrmBackend::Turso] {
+        let source = render_billing_controller("workspace_id", backend);
+        // The ORM inserts every field, so '' replaced the CURRENT_TIMESTAMP
+        // default of new billing customers and (SQLx) subscriptions.
+        assert!(!source.contains("created_at: String::new()"));
+        assert!(!source.contains("updated_at: String::new()"));
+        assert_eq!(
+            source.matches("let created_at = utc_timestamp();").count(),
+            2
+        );
+        assert_eq!(source.matches("updated_at: created_at.clone(),").count(), 2);
+        assert!(source.contains(
+            "format!(\"{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}\")"
+        ));
+    }
+}

@@ -18,6 +18,10 @@ use rullst_orm::with_tenant;
 /// `with_tenant(...)` and bind the active tenant inside it; `save()` stamps the
 /// active tenant. Handlers take the tenant from the membership-checked
 /// [`TenantContext`] that `TenantLayer` inserts, never from the raw header.
+///
+/// The ORM option does not scope Nexus, so the `NexusModel` impl below also
+/// declares `nexus_tenant_column`: the admin panel lists and changes only the
+/// request tenant's posts and never accepts a submitted `tenant_id`.
 #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
 #[orm(table = "posts", tenant_column = "tenant_id")]
 pub struct Post {
@@ -40,6 +44,9 @@ impl rullst_nexus::NexusModel for Post {
     fn nexus_pk() -> &'static str {
         "id"
     }
+    fn nexus_tenant_column() -> Option<&'static str> {
+        Some("tenant_id")
+    }
     fn nexus_fields() -> Vec<rullst_nexus::FieldMeta> {
         vec![
             rullst_nexus::FieldMeta {
@@ -53,8 +60,10 @@ impl rullst_nexus::NexusModel for Post {
                 name: "tenant_id",
                 label: "Tenant ID",
                 kind: rullst_nexus::FieldKind::Text,
-                hidden: false,
-                readonly: false,
+                // Nexus stamps and filters this column from the request's
+                // TenantContext, as `#[derive(Nexus)]` does for `tenant`.
+                hidden: true,
+                readonly: true,
             },
             rullst_nexus::FieldMeta {
                 name: "title",

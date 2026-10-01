@@ -20,7 +20,10 @@ cargo check
 - accepts only ASCII Cargo names of at most 64 bytes beginning with `rullst-`
   or `rullst_` and ending in an alphanumeric character;
 - parses `Cargo.toml` as TOML and inserts the dependency into the real
-  `[dependencies]` table using the installed CLI's version;
+  `[dependencies]` table using the installed CLI's version; in a virtual
+  workspace manifest (`[workspace]` without `[package]`), which cannot declare
+  `[dependencies]`, it uses `[workspace.dependencies]` instead, and members
+  opt in with `rullst-auth = { workspace = true }`;
 - leaves an existing dependency and its features/version unchanged;
 - does not contact a registry, execute code, edit routes, or run a scaffold.
 
@@ -30,7 +33,7 @@ safe, compatible, maintained, or endorsed by Rullst. Review the crate source,
 publisher, checksum, license, advisories, feature graph and release policy
 before adding it.
 
-`pkg list` reads dependency keys from the parsed manifest and prints those with
+`pkg list` reads dependency keys from that same table and prints those with
 the same Rullst prefix. It is not a vulnerability, license or provenance scan;
 use the repository's audit and dependency-policy tooling for those questions.
 

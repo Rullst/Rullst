@@ -131,6 +131,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     assert_eq!(checkout.status(), StatusCode::SEE_OTHER);
     // Offline Stripe fixtures redirect to a reserved host, never checkout.stripe.com.
     assert!(checkout.headers()["location"].to_str()?.starts_with("https://mock.stripe.invalid/checkout/"));
+    // A first checkout creates the customer; its timestamps are real, not ''.
+    let first = BillingIdentity {{ owner_id: 8, email: "first@example.com".into() }};
+    let checkout = controllers::billing_controller::checkout_redirect(
+        Extension(first), Form(CheckoutForm {{ plan: "price_pro".into() }})
+    ).await;
+    assert_eq!(checkout.status(), StatusCode::SEE_OTHER);
+    let first = BillingCustomer::find_by_email("first@example.com").await?.ok_or("checkout created no customer")?;
+    assert_eq!((first.created_at.len(), first.updated_at.len()), (19, 19), "customer timestamps");
 
     let event = WebhookEvent {{
         subscription_id: "sub_contract".to_string(),
@@ -147,6 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .ok_or("subscription was not persisted")?;
     assert_eq!(subscription.workspace_id, 7);
     assert_eq!(subscription.customer_id, "cus_owner");
+    assert_eq!((subscription.created_at.len(), subscription.updated_at.len()), (19, 19), "subscription timestamps");
 
     let mut other = BillingCustomer {{
         id: 0,

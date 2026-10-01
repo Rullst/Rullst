@@ -86,7 +86,12 @@ pub async fn play_lesson(
         nonce,
     ) {
         Ok(page) => rullst::response::Html(page).into_response(),
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+        // Stored lesson data the player cannot render is a content error, not
+        // an outage: log it so an administrator can fix the lesson in Nexus.
+        Err(error) => {
+            eprintln!("Lesson {lesson_id} cannot be played: {error:?}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
     }
 }
 

@@ -91,3 +91,45 @@ fn portfolio_page_escapes_cms_values_and_ships_its_escape_test() {
         assert!(page.contains(guarded), "missing {guarded}");
     }
 }
+
+#[test]
+fn portfolio_never_shows_a_placeholder_identity_or_hides_outages() {
+    for pattern in ["Active Record", "Repository", "Hybrid"] {
+        let manifest = file_manifest("portfolio_app", false, pattern, "Zero-Bundle HTMX");
+        let controller = file(&manifest, "src/controllers/portfolio_controller.rs");
+        let repositories = manifest
+            .iter()
+            .filter(|(path, _)| path.starts_with("src/repositories/"))
+            .map(|(_, source)| source.as_str())
+            .collect::<String>();
+        // `Profile::find(1)` fell back to a hard-coded stranger with HTTP 200
+        // once the seeded profile was replaced, and query errors became
+        // empty lists without a log line.
+        for source in [controller, repositories.as_str()] {
+            assert!(!source.contains("find(1)"), "{pattern}");
+            assert!(!source.contains("Vene Light"), "{pattern}");
+            assert!(!source.contains(".await.unwrap_or_default()"), "{pattern}");
+            assert!(!source.contains("unwrap_or(None)"), "{pattern}");
+        }
+        let profile_query = "Profile::query().order_by(\"id\").first().await";
+        assert!(
+            controller.contains(profile_query) || repositories.contains(profile_query),
+            "{pattern}"
+        );
+        assert!(controller.contains("Ok(None) => {\n            return (StatusCode::NOT_FOUND,"));
+        assert!(controller.contains("eprintln!(\"Portfolio query failed: {error}\");"));
+        assert_eq!(
+            controller
+                .matches("Err(error) => return unavailable(error),")
+                .count(),
+            4,
+            "{pattern}"
+        );
+    }
+    let manifest = file_manifest("portfolio_app", false, "Active Record", "Zero-Bundle HTMX");
+    let seed = file(
+        &manifest,
+        "src/migrations/m20260701000000_create_portfolio_tables.rs",
+    );
+    assert!(seed.contains("'hello@example.com'"));
+}

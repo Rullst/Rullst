@@ -69,7 +69,8 @@ the generated application:
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
-    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals) and the
+    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals, one list
+    shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
     `.dockerignore` is kept unchanged. The runtime
@@ -169,7 +170,10 @@ cargo rullst new academy --default --blueprint lms --skip-initial-migration
 ### `cargo rullst upgrade`
 Plans or applies a transactional application upgrade. The target defaults to
 the exact installed `cargo-rullst` version; `--to <VERSION>` accepts an exact
-version in the same major release train as that CLI.
+version in the same major release train as that CLI. The command fails before
+writing anything when the target is older than a managed requirement's lower
+bound or than a Rullst package locked in `Cargo.lock`, so an older CLI never
+downgrades the project; install a CLI that is not older than the project.
 
 ```bash
 # Human-readable plan; no writes or dependency resolution
@@ -531,7 +535,8 @@ is supported. Keep both private source copies and `application.json` until finis
 Replacement is atomic per file, not for the whole workspace. Partial failures
 retain recovery evidence and report progress. Unix mode/owner/group and Windows
 owner/group/DACL/integrity label are bound to the review (1 MiB total policy budget). Unix extended ACLs/xattrs and special
-mode bits, Windows read-only/special attributes, alternate streams, resource/central-access
+mode bits (except the SELinux `security.selinux` label, which the replacement
+staged in the same directory receives like any new file there), Windows read-only/special attributes, alternate streams, resource/central-access
 policies and policies that cannot be
 recreated exactly require manual handling. Other updater cache configurations and
 filesystem aliases do not share the lock. Forced termination during staging may
@@ -542,8 +547,8 @@ Recovery does not undo application-code effects, databases or deployments.
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
 * **Subcommands:**
-  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`.
-  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project.
+  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`. In a virtual workspace manifest it adds the entry to `[workspace.dependencies]`, for members to use with `{ workspace = true }`.
+  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project (the workspace dependencies of a virtual workspace manifest).
 
 An unknown action, or `add` without a package name, fails with a non-zero exit
 status.
@@ -584,7 +589,9 @@ Generates a new Controller in the `src/controllers/` directory. It creates
 placeholder CRUD methods (`index`, `show`, `store`, `update`, `delete`) and
 registers the Rust module in `main.rs` when that file exists; it does not add
 application routes automatically.
-* **Arguments:** `<name>` (e.g., `UsersController` or `users`).
+* **Arguments:** `<name>` (e.g., `UsersController` or `users`). A name whose
+  module or type would not be a non-keyword Rust identifier (for example
+  `Bad.Name`) is rejected before any file is edited.
 * **Optional Flags:**
   * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`.
 
@@ -624,6 +631,8 @@ existing chat scaffold.
 
 ### `cargo rullst make:middleware <name>`
 Generates a standard Axum/Rullst Middleware struct in `src/middlewares/`. Perfect for injecting headers, checking authentication, rate limiting, or logging.
+A name whose module and function would not be a non-keyword Rust identifier is
+rejected before any file is edited.
 
 ### `cargo rullst make:island <name>`
 Creates a frontend interactive "Islands Architecture" component (similar to Fresh or Astro) in `src/islands/`. It generates the Rust infrastructure that, during build, will be transparently compiled to WebAssembly to run in the browser.
@@ -650,7 +659,16 @@ compares the `#[derive(Orm)]` models under `src/` with the database. It ignores
 framework tables (`migrations` and `rullst_*`) and writes a migration only for
 additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive
-differences remain, it lists them and writes no migration.
+differences remain, it lists them and writes no migration. Column types follow
+the field's Rust type: `i8`/`i16`/`i32` use `integer`, `i64` `big_integer`,
+`f32`/`f64` `float`, `bool` `boolean`, and `String`, `SecretString`, chrono
+date/time types and `Json` use `string`. A new table declares non-`Option`
+fields `NOT NULL`. A required field added to an existing table is declared
+`NOT NULL DEFAULT 0`, `0.0` or `''` (a commented backfill to review); a
+required date, encrypted or JSON field added to an existing table has no
+neutral value and is refused. Any other type (for example `Vec<u8>`, `Uuid` or
+an application enum) is refused, naming the field, and nothing is written; add
+such columns with `make:migration`.
 
 ### `cargo rullst make:billing`
 Scaffolds a SaaS billing starting point with subscription models, authenticated
@@ -885,7 +903,10 @@ the application.
 Scaffolds a LiveView-style server component at `src/live/<name>.rs` using a
 WebSocket and HTMX out-of-band swaps. Application JavaScript may be unnecessary,
 but HTMX remains client-side JavaScript and the generated transport requires
-origin, reconnect, and backpressure review.
+origin, reconnect, and backpressure review. It must run in a Rullst project
+root, and a name whose module or type would not be a non-keyword Rust
+identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
+anything is written.
 
 ### `cargo rullst make:grpc <ServiceName>`
 Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
@@ -900,6 +921,13 @@ lowercase label as `make:k8s` (`my_app` becomes `my-app`), while the
 `Dockerfile` and Railway start command keep the package's binary name. An
 unknown `--platform` value is rejected before anything is written, including
 the `Dockerfile` the command otherwise scaffolds when it is missing.
+`--platform vps` pins the Caddy container to `172.31.250.10` on a
+`172.31.250.0/24` compose network and adds that address to `[security]
+trusted_proxies` in `Rullst.toml` (creating the file before a missing
+`Dockerfile` is scaffolded, so the image copies it), so rate limits see each
+client instead of Caddy. An existing `trusted_proxies` list is left unchanged
+with a warning. Fly.io, Railway and Render print a notice while `Rullst.toml`
+trusts no proxy, because their proxy networks are provider-specific.
 Credentials, migrations, availability, DNS/TLS and rollback remain operator
 responsibilities.
 
@@ -918,7 +946,13 @@ anything when `src/models/user.rs`, `src/controllers/auth_controller.rs`,
 `src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists, or
 when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
 the users table (the blank database starter and the SaaS/LMS blueprints ship
-one). Mounting routes and the security baseline remains application work.
+one). It also refuses a project without a SQL migration runner (`pub mod
+migrations;` in `src/main.rs` or `src/lib.rs` plus a
+`rullst::artisan!(crate::migrations::get_migrations())` call, which database
+starters include), such as a `--no-database` starter, because nothing would
+compile or apply the users migration. Generated code names the ORM through the
+`rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
+routes and the security baseline remains application work.
 
 ### `cargo rullst make:mfa`
 Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
@@ -932,7 +966,8 @@ most once. Setup returns the secret and `otpauth://` URI once with
 `Cache-Control: no-store`; enrollment stays pending until `mfa_confirm`
 accepts a current code.
 
-The command targets the SQLx ORM (Turso-primary projects are rejected), enables
+The command targets the SQLx ORM (Turso-primary projects and projects without
+a migration runner are rejected, as for `cargo rullst auth`), enables
 the `orm` and `security` umbrella features, registers the module, refreshes the
 migration registry and refuses to overwrite an existing `src/controllers/mfa.rs`
 or `*_create_user_mfa_factors_table.rs` migration. Mount the handlers as POST
@@ -988,6 +1023,13 @@ Scans recognizable route declarations in `src/main.rs` and `src/lib.rs` and
 emits `rullst-client.ts` with unchecked request/response placeholders. Axum
 `{name}` and `{*name}` captures (and legacy `:name` segments) become method
 arguments interpolated with `encodeURIComponent` (per segment for a wildcard).
+State-changing requests (anything but `GET`, `HEAD`, `OPTIONS` and `TRACE`)
+follow the CSRF middleware's double-submit contract: the client echoes the
+`rullst_csrf` cookie in the `X-CSRF-Token` header and sends cookies with
+`credentials: 'same-origin'`. The cookie is set by a `GET`/`HEAD` response, so
+load a page or issue a `GET` before the first state-changing call. Outside a
+browser, or for a cross-origin `baseUrl`, pass
+`new RullstClient(baseUrl, { csrfToken: () => token, credentials: 'include' })`.
 Review the output before use; route scanning does not establish DTO shapes,
 serialization or authorization.
 
@@ -1007,8 +1049,11 @@ symlink, so move it aside to regenerate the diagram.
 ### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
 Connects to an existing database and generates reviewable starter structs from
 the tables and columns visible in SQLite or the current PostgreSQL/MySQL schema.
-Table lookups are parameterized and SQL identifiers are allowlisted. Table
-module names are normalized, while collisions and database columns that would
+Table lookups are parameterized and SQL identifiers are allowlisted.
+PostgreSQL and MySQL metadata columns are cast to text and aliased, so
+PostgreSQL 12+ `sql_identifier` columns and MySQL 8 upper-case labels are read
+portably; a missing or undecodable metadata column fails with an error rather
+than a panic. Table module names are normalized, while collisions and database columns that would
 require an unsupported ORM field remapping fail before the output directory is
 written. Existing model files are never replaced: if any `<table>.rs` target
 already exists, the command fails before writing anything. An existing
@@ -1160,7 +1205,7 @@ Scans source files and prints structural summaries in the terminal without
 starting a server, expanding macros or connecting to a database.
 * **Arguments:**
   * `[target]`: The item or file to inspect:
-    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line under `src/`.
+    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line in the regular `.rs` files under `src/`. Like `audit` and `generate:diagram`, the walk does not follow symlinks and is bounded in depth and entries; it reports when a bound left the table incomplete.
     * `model` or `models`: Lists the structs, enums and `pub` fields declared in `src/models`.
     * `schema`: Prints, as JSON, the table, fields, Rust types and optionality of every `#[derive(Orm)]` struct under `src/` (the extractor `make:migration:auto` uses). It describes the models, not the live database. A project-provided `rullst-schema.json` is printed instead when present; Rullst does not generate that file.
     * `<path/to/file.rs>`: Displays the first 40 lines of any target Rust file with line numbers.
@@ -1209,6 +1254,9 @@ only in debug/development. Readiness verifies that marker, not just an open port
 Changing the configured port requires restarting the CLI. In-memory state and
 unsaved browser state reset during reload. The process receives a bounded
 shutdown interval before forced termination; this is a development facility.
+Ctrl+C, SIGTERM (an IDE stop button or `kill`) and SIGHUP (a closed terminal)
+end `dev` and `dash` the same way: the application's process group is stopped
+and its executable snapshot removed (on Windows, Ctrl+C and closing the console).
 
 No scaffold question is required: `dev` and `dash` enable auto-reload, while
 `cargo run` runs the application normally. The legacy `--hot-reload` scaffold
@@ -1220,7 +1268,7 @@ See [Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.m
 for limitations, failure recovery and the v13 architecture decision.
 
 * **Optional Flags:**
-  * `--ts-sync`: Automatically watches controller and model file changes and syncs the TypeScript client SDK (`sdk.ts`) live during development.
+  * `--ts-sync`: Regenerates the TypeScript client SDK (`rullst-client.ts`, as `generate:ts` writes it from the routes in `src/main.rs` and `src/lib.rs`) after the initial build and after every successful rebuild. A failed generation is reported and the application keeps running.
 
 ### `cargo rullst build:client`
 Builds the library for `wasm32-unknown-unknown`, runs `wasm-bindgen`, and writes a
@@ -1247,7 +1295,9 @@ Injects infrastructure files into a pre-existing project (similar to the flags
 used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
 absent) and `nixify` writes `flake.nix` and `.envrc`. Both commands, like
 `generate:buildah` for `build_buildah.sh`, refuse to replace an existing file;
-move a customized file aside to regenerate its template.
+move a customized file aside to regenerate its template. The Dockerfile's binary
+and the Buildah image are named after `[package].name`, read with a TOML parser
+(`app` when `Cargo.toml` has no package name).
 
 ### `cargo rullst foundry:init`
 Generates the `Foundry.toml` deployment manifest at the project root containing
@@ -1263,11 +1313,20 @@ systemd provisioning, `scp` transfer, environment/Caddy configuration, service
 restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
 reviewed `curl`, systemd, and Caddy installation plus root or passwordless
 non-interactive `sudo`. Candidate files are staged under an application-specific
-`/opt/rullst/<app>` root: the binary is uploaded into
+`/opt/rullst/<app>` root: the binary is the executable Cargo reports for the
+package (so `CARGO_TARGET_DIR`, `build.target-dir`, a workspace target directory
+and `build.target` are honored; with several binaries, `package.default-run` or
+the one named after the package is chosen), uploaded into
 `/opt/rullst/<app>/incoming` (mode `0700`, owned by the SSH user), and its
 owner and the SHA-256 of the local build are checked before it is installed.
 The Caddy configuration is validated, and `.previous` copies of replaced files
-are retained. The application runs as a dedicated
+are retained. The service environment file holds the `[env]` table plus
+`PORT`, the `[app] port` (default 3000) that Caddy proxies to and the health
+check probes, unless `[env]` sets `PORT` itself; an `[env] PORT` different from
+`[app] port` is rejected. It also sets `HOST="127.0.0.1"` unless `[env]` sets
+`HOST` or `RULLST_HOST`: a production server otherwise binds `0.0.0.0`, and only
+Caddy needs that plain-HTTP port. Keep it private when overriding `HOST`. The
+application runs as a dedicated
 `rullst-<app>` system account (created with `useradd`) under a sandboxed unit
 (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
 capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
@@ -1294,6 +1353,10 @@ require their official SDK/toolchain and a reachable backend. For `desktop`, the
 spinner lasts until the shell prints `Launching Omni interface...` (or 200
 output lines arrive); the command then prints the held lines and keeps streaming
 the shell's and its managed backend's standard output until the window closes.
+For `android` and `ios`, the command resolves the Tauri CLI (the local
+`omni-app/node_modules/@tauri-apps/cli` or `cargo tauri`) before it starts the
+backend with `cargo run`, so a missing CLI fails without leaving a backend
+process on port 3000; the backend is stopped when the mobile client exits.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
 
 ---
@@ -1306,16 +1369,23 @@ route, dependency, and local network patterns.
 * **Optional Flags:**
   * `--ai`: Prints fixed, rule-based remediation suggestions; no AI model or network service is called.
   * `--compliance`: Generates the evidence report described above (no `PASS` results); it is not a SOC 2, ISO 27001, or transport certification.
-  * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. Manual review and runtime negative tests remain required.
+  * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. The marker goes on the route's line or the line above it; in a multi-line `.route(` call, on the line above the path literal. The guard may appear anywhere in the same crate's `src` tree outside comments and `#[cfg(test)]` items, so the check does not prove that the route is mounted behind it. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
 
-The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
-follow symlinked files or directories and skip `target/` and `.git/`. A walk
+In a package directory, the unsafe and IDOR/BOLA scans cover its `src` and the
+`src` of every workspace member below it, as listed by `cargo metadata`; in a
+directory without `src`, such as a virtual workspace root, the IDOR/BOLA scan
+walks every `src` tree below it. The source scans (unsafe syntax, IDOR/BOLA
+routes and listener bindings) do not follow symlinked files or directories and
+skip `target/` and `.git/`. A walk
 stops at 64 directory levels or 250,000 entries; reaching either bound is
-reported as a finding, so the scan fails as incomplete instead of passing.
+reported as a finding, so the scan fails as incomplete instead of passing. The
+route and listener scans skip each top-level `#[cfg(test)]` item (such as
+`mod tests;` or an inline test module) on its own; code after it is still
+scanned.
 
 SBOM components come from `Cargo.lock`. Only crates.io packages receive the
 plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a

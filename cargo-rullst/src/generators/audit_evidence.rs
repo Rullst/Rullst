@@ -218,9 +218,7 @@ fn inspect_bindings(directory: &Path, warnings: &mut Vec<String>, incomplete: &m
 }
 
 fn contains_unspecified_binding(content: &str) -> bool {
-    let production = content
-        .split_once("\n#[cfg(test)]")
-        .map_or(content, |(source, _)| source);
+    let production = super::audit_source::production_source(content);
     [
         "\"0.0.0.0:",
         "\"[::]:",
@@ -425,6 +423,10 @@ mod tests {
         assert!(contains_unspecified_binding("Ipv4Addr::UNSPECIFIED"));
         assert!(!contains_unspecified_binding(
             "TcpListener::bind(\"127.0.0.1:5555\")\n#[cfg(test)]\nfn test() { let _ = \"0.0.0.0:1\"; }"
+        ));
+        // Only the test item is skipped; a later listener is still found.
+        assert!(contains_unspecified_binding(
+            "#[cfg(test)]\nmod tests;\nfn serve() { TcpListener::bind(\"0.0.0.0:5555\"); }"
         ));
     }
 }

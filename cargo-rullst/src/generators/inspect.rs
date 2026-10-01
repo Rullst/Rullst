@@ -56,8 +56,13 @@ fn inspect_routes() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let mut found_routes = Vec::new();
-    scan_dir_for_routes(src_dir, &mut found_routes)?;
+    let (found_routes, incomplete) = collect_routes(src_dir)?;
+    if let Some(reason) = incomplete {
+        println!(
+            "{}",
+            format!("⚠️ The route table may be incomplete: {reason}").yellow()
+        );
+    }
 
     if found_routes.is_empty() {
         println!(
@@ -81,58 +86,61 @@ fn inspect_routes() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn scan_dir_for_routes(
-    dir: &Path,
-    routes: &mut Vec<(String, String, String)>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_dir() {
-            scan_dir_for_routes(&path, routes)?;
-        } else if path.extension().is_some_and(|ext| ext == "rs") {
-            let content = fs::read_to_string(&path)?;
-            for line in content.lines() {
-                let line_trim = line.trim();
-                if (line_trim.starts_with("get(")
-                    || line_trim.starts_with("post(")
-                    || line_trim.starts_with("put(")
-                    || line_trim.starts_with("delete("))
-                    && line_trim.contains("=>")
-                {
-                    let parts: Vec<&str> = line_trim.split("=>").collect();
-                    if parts.len() == 2 {
-                        let left = parts[0].trim();
-                        let handler = parts[1].trim().trim_matches(',').trim();
+type RouteRow = (String, String, String);
 
-                        let method = if left.starts_with("get") {
-                            "GET"
-                        } else if left.starts_with("post") {
-                            "POST"
-                        } else if left.starts_with("put") {
-                            "PUT"
-                        } else if left.starts_with("delete") {
-                            "DELETE"
-                        } else {
-                            "ALL"
-                        };
+/// Lists `routes!` entries in the regular `.rs` files under `src_dir`. The
+/// bounded walk never follows a symlink, so a link cycle or a link out of the
+/// project cannot make the scan unbounded or read files outside `src/`.
+fn collect_routes(
+    src_dir: &Path,
+) -> Result<(Vec<RouteRow>, Option<String>), Box<dyn std::error::Error>> {
+    let sources = super::source_walk::rust_sources(src_dir);
+    let mut routes = Vec::new();
+    for path in &sources.files {
+        routes_in_source(&fs::read_to_string(path)?, &mut routes);
+    }
+    Ok((routes, sources.incomplete))
+}
 
-                        let path = left
+fn routes_in_source(content: &str, routes: &mut Vec<RouteRow>) {
+    for line in content.lines() {
+        let line_trim = line.trim();
+        if (line_trim.starts_with("get(")
+            || line_trim.starts_with("post(")
+            || line_trim.starts_with("put(")
+            || line_trim.starts_with("delete("))
+            && line_trim.contains("=>")
+        {
+            let parts: Vec<&str> = line_trim.split("=>").collect();
+            if parts.len() == 2 {
+                let left = parts[0].trim();
+                let handler = parts[1].trim().trim_matches(',').trim();
+
+                let method = if left.starts_with("get") {
+                    "GET"
+                } else if left.starts_with("post") {
+                    "POST"
+                } else if left.starts_with("put") {
+                    "PUT"
+                } else if left.starts_with("delete") {
+                    "DELETE"
+                } else {
+                    "ALL"
+                };
+
+                let path = left
+                    .find('"')
+                    .and_then(|start| {
+                        left[start + 1..]
                             .find('"')
-                            .and_then(|start| {
-                                left[start + 1..]
-                                    .find('"')
-                                    .map(|end| &left[start + 1..start + 1 + end])
-                            })
-                            .unwrap_or(left);
+                            .map(|end| &left[start + 1..start + 1 + end])
+                    })
+                    .unwrap_or(left);
 
-                        routes.push((method.to_string(), path.to_string(), handler.to_string()));
-                    }
-                }
+                routes.push((method.to_string(), path.to_string(), handler.to_string()));
             }
         }
     }
-    Ok(())
 }
 
 fn inspect_models() -> Result<(), Box<dyn std::error::Error>> {
@@ -234,6 +242,44 @@ fn model_schema(tables: &[super::schema_diff::ParsedTable]) -> serde_json::Value
 mod tests {
     use super::super::schema_diff::{ParsedField, ParsedTable};
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn route_scan_never_follows_symlinks_out_of_or_around_src() {
+        let project = tempfile::tempdir().expect("project");
+        let outside = tempfile::tempdir().expect("outside tree");
+        let src = project.path().join("src");
+        fs::create_dir_all(src.join("controllers")).expect("source tree");
+        fs::write(
+            src.join("main.rs"),
+            "routes![\n    get(\"/posts/{id}\" => controllers::posts::show),\n];\n",
+        )
+        .expect("route source");
+        fs::write(
+            outside.path().join("vendored.rs"),
+            "routes![\n    post(\"/outside\" => outside::handler),\n];\n",
+        )
+        .expect("outside source");
+        // Loop links made the old recursion exponential; the outside link made
+        // it list routes from files outside the project.
+        std::os::unix::fs::symlink("..", src.join("shared")).expect("parent loop");
+        std::os::unix::fs::symlink(".", src.join("legacy")).expect("self loop");
+        std::os::unix::fs::symlink(outside.path(), src.join("vendor")).expect("outside link");
+        std::os::unix::fs::symlink(
+            outside.path().join("vendored.rs"),
+            src.join("controllers/linked.rs"),
+        )
+        .expect("outside file link");
+
+        let (routes, incomplete) = collect_routes(&src).expect("bounded route scan");
+        let listed = routes
+            .iter()
+            .map(|(method, path, _)| (method.as_str(), path.as_str()))
+            .collect::<Vec<_>>();
+        assert_eq!(listed, [("GET", "/posts/{id}")]);
+        assert!(routes[0].2.starts_with("controllers::posts::show"));
+        assert!(incomplete.is_none());
+    }
 
     #[test]
     fn model_schema_lists_tables_fields_and_optionality_in_table_order() {

@@ -1,4 +1,4 @@
-use rullst::server::{Extension, IntoResponse};
+use rullst::server::{Extension, IntoResponse, Response, StatusCode};
 use rullst::response::Html;
 use crate::repositories::profile_repository::ProfileRepository;
 use crate::repositories::project_repository::ProjectRepository;
@@ -15,13 +15,36 @@ fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
         .unwrap_or_default()
 }
 
+/// A failed query is an outage, not an empty portfolio.
+fn unavailable(error: rullst_orm::Error) -> Response {
+    eprintln!("Portfolio query failed: {error}");
+    StatusCode::SERVICE_UNAVAILABLE.into_response()
+}
+
 pub async fn index(
     csp_nonce: Option<Extension<rullst::security::CspNonce>>,
-) -> impl IntoResponse {
-    let profile = ProfileRepository::get().await;
-    let projects = ProjectRepository::all().await;
-    let experiences = ExperienceRepository::all().await;
-    let skills = SkillRepository::all().await;
+) -> Response {
+    // Without a profile nobody's identity is shown.
+    let profile = match ProfileRepository::get().await {
+        Ok(Some(profile)) => profile,
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, "No portfolio profile exists yet. Create one in Nexus.")
+                .into_response();
+        }
+        Err(error) => return unavailable(error),
+    };
+    let projects = match ProjectRepository::all().await {
+        Ok(projects) => projects,
+        Err(error) => return unavailable(error),
+    };
+    let experiences = match ExperienceRepository::all().await {
+        Ok(experiences) => experiences,
+        Err(error) => return unavailable(error),
+    };
+    let skills = match SkillRepository::all().await {
+        Ok(skills) => skills,
+        Err(error) => return unavailable(error),
+    };
 
-    Html(home::render(&profile, &projects, &experiences, &skills, nonce(&csp_nonce)))
+    Html(home::render(&profile, &projects, &experiences, &skills, nonce(&csp_nonce))).into_response()
 }

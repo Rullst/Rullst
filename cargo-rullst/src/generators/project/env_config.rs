@@ -1,6 +1,6 @@
 // cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, Nix, and Buildah configuration.
 
-use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::{BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use crate::generators::project::PolyglotIntegration;
 use crate::generators::project::has_binary;
 use colored::*;
@@ -94,18 +94,14 @@ csp = "{billing_csp}"
         fs::write(path.join("Rullst.toml"), rullst_toml)?;
     }
 
-    let gitignore_content = r#"# Rust build artifacts
+    let gitignore_content = format!(
+        r#"# Rust build artifacts
 /target
 
 # Commit Cargo.lock for reproducible application/deployment builds.
 
 # Rullst: Database
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
+{LOCAL_DATABASE_IGNORES}
 # Rullst: Environment & Secrets
 .env
 .env.*
@@ -118,7 +114,9 @@ csp = "{billing_csp}"
 .vscode/
 .idea/
 .DS_Store
-"#;
+"#,
+        LOCAL_DATABASE_IGNORES = super::docker::LOCAL_DATABASE_IGNORES
+    );
     fs::write(path.join(".gitignore"), gitignore_content)?;
 
     let db_url = match db_provider {
@@ -201,6 +199,17 @@ MAIL_FROM=
         env_example_content.push_str(
             "\n# ── Nexus Admin (required; use unique values, password >= 16 chars) ──\nNEXUS_ADMIN_USERNAME=\nNEXUS_ADMIN_PASSWORD=\n",
         );
+    }
+
+    if blueprint_selection == BLOG_BLUEPRINT_ID {
+        let origin_template = r#"
+# ── Public origin ──
+# Canonical HTTPS origin (no path) for the absolute URLs in robots.txt and
+# sitemap.xml, e.g. https://blog.example.com. Unset, neither lists a URL.
+RULLST_PUBLIC_ORIGIN=
+"#;
+        env_content.push_str(origin_template);
+        env_example_content.push_str(origin_template);
     }
 
     if blueprint_selection == SAAS_BLUEPRINT_ID {

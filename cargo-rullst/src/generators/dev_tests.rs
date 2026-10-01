@@ -120,3 +120,29 @@ fn configuration_parse_errors_never_echo_file_content() {
     let parsed = parse_dotenv(b"# comment\nPORT=4100\nPORT=4200\n").expect("valid .env");
     assert_eq!(parsed.get("PORT").map(String::as_str), Some("4200"));
 }
+
+#[test]
+fn ts_sync_reports_a_failed_generation_instead_of_exiting() {
+    // `generate:ts` exits the process without route sources; the supervisor
+    // must report it and keep running.
+    let project = tempfile::tempdir().expect("project");
+    let message = typescript_sync_message(project.path());
+    assert!(
+        message.starts_with("TypeScript SDK sync failed"),
+        "{message}"
+    );
+
+    std::fs::create_dir_all(project.path().join("src")).expect("source directory");
+    std::fs::write(
+        project.path().join("src/lib.rs"),
+        "routes! { get(\"/teams\" => teams::index) }\n",
+    )
+    .expect("routes");
+    let message = typescript_sync_message(project.path());
+    assert!(
+        message.starts_with("TypeScript SDK synchronized"),
+        "{message}"
+    );
+    let sdk = std::fs::read_to_string(project.path().join("rullst-client.ts")).expect("SDK");
+    assert!(sdk.contains("/teams"), "{sdk}");
+}

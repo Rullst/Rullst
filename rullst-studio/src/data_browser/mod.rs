@@ -59,21 +59,25 @@ pub(crate) fn router_with_cache(
         // forms post to `/studio/tables/...`, which reaches the unprefixed
         // routes when the raw browser is nested under `/studio`.
         .route(
+            // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
             "/tables/{table}/rows/update",
             axum::routing::post(handle_table_update)
                 .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
         )
         .route(
+            // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
             "/studio/tables/{table}/rows/update",
             axum::routing::post(handle_table_update)
                 .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
         )
         .route(
+            // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
             "/tables/{table}/rows/delete",
             axum::routing::post(handle_table_delete)
                 .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),
         )
         .route(
+            // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
             "/studio/tables/{table}/rows/delete",
             axum::routing::post(handle_table_delete)
                 .layer(DefaultBodyLimit::max(MUTATION_BODY_LIMIT)),

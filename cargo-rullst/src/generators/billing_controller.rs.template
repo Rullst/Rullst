@@ -200,6 +200,26 @@ fn normalize_email(email: &str) -> String {
     email.trim().to_ascii_lowercase()
 }
 
+/// The current UTC time as `YYYY-MM-DD HH:MM:SS`, the text `CURRENT_TIMESTAMP`
+/// stores. The ORM inserts every field, so '' would replace the column default.
+fn utc_timestamp() -> String {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_secs());
+    // Civil date from days since 1970-01-01 (Howard Hinnant's algorithm).
+    let (days, time) = (seconds / 86_400, seconds % 86_400);
+    let (era, day_of_era) = ((days + 719_468) / 146_097, (days + 719_468) % 146_097);
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_index = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
+    let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
+    let year = year_of_era + era * 400 + u64::from(month <= 2);
+    let (hour, minute, second) = (time / 3_600, time % 3_600 / 60, time % 60);
+    format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}")
+}
+
 fn valid_identity(identity: &BillingIdentity) -> bool {
     identity.owner_id > 0
         && identity.email.len() <= 254
@@ -222,13 +242,14 @@ async fn billing_customer(
         )),
         Ok(Some(customer)) => Ok(customer),
         Ok(None) => {
+            let created_at = utc_timestamp();
             let mut customer = BillingCustomer {
                 id: 0,
                 __FOREIGN_KEY__: identity.owner_id,
                 email,
                 customer_id: None,
-                created_at: String::new(),
-                updated_at: String::new(),
+                updated_at: created_at.clone(),
+                created_at,
             };
             // Database errors stay in server logs; responses carry no SQL detail.
             customer.save().await.map_err(|error| {
@@ -404,17 +425,20 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
             return StatusCode::CONFLICT.into_response();
         }
         Ok(Some(subscription)) => subscription,
-        Ok(None) => Subscription {
-            id: 0,
-            __FOREIGN_KEY__: customer.__FOREIGN_KEY__,
-            customer_id: event.customer_id.clone(),
-            subscription_id: event.subscription_id.clone(),
-            plan_id: event.plan_id.clone(),
-            status: event.status.as_str().to_string(),
-            ends_at: event.ends_at,
-            created_at: String::new(),
-            updated_at: String::new(),
-        },
+        Ok(None) => {
+            let created_at = utc_timestamp();
+            Subscription {
+                id: 0,
+                __FOREIGN_KEY__: customer.__FOREIGN_KEY__,
+                customer_id: event.customer_id.clone(),
+                subscription_id: event.subscription_id.clone(),
+                plan_id: event.plan_id.clone(),
+                status: event.status.as_str().to_string(),
+                ends_at: event.ends_at,
+                updated_at: created_at.clone(),
+                created_at,
+            }
+        }
         Err(error) => {
             eprintln!("Subscription lookup failed: {error}");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
