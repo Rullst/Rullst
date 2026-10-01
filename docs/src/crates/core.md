@@ -216,7 +216,11 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   valid TOML falls back to the earlier line reader. When an A/B split's weights
   sum to less than 100, an identifier outside them gets the variant
   `"disabled"` from the driver that defines the flag; it no longer falls
-  through to a lower-priority driver's split.
+  through to a lower-priority driver's split. The unpublished v13
+  `FeatureManager::overrides()` returns the first-priority
+  `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global
+  `feature::manager()` when it uses the default pipeline), so programmatic
+  overrides reach it.
 - **Shared project settings (internal, v13):** `server::ProjectSettings` and
   `server::read_project_setting` resolve a setting from the process
   environment first and then the project's `.env`, which never overrides the

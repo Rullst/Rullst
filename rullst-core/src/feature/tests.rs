@@ -360,3 +360,16 @@ async fn toml_features_accept_quoted_keys_spaced_headers_and_hashes_in_strings()
     assert_eq!(driver.enabled("billing.new-invoices").await, Some(false));
     assert_eq!(driver.value("env"), None);
 }
+
+#[tokio::test]
+async fn the_default_pipeline_exposes_its_override_layer() {
+    let manager = FeatureManager::default();
+    let overrides = manager.overrides().expect("default memory layer");
+    assert!(!manager.enabled("override-only-flag").await);
+    overrides.override_enabled("override-only-flag", true);
+    assert!(manager.enabled("override-only-flag").await);
+    overrides.override_enabled("override-only-flag", false);
+    assert!(!manager.enabled("override-only-flag").await);
+
+    assert!(FeatureManager::new().overrides().is_none());
+}
