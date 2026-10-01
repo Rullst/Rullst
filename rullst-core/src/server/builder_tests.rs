@@ -307,6 +307,9 @@ async fn custom_shutdown_drives_ready_drain_and_stopped_phases() {
         "DATABASE_URL",
     ]);
     environment.set("RULLST_ENV", "test");
+    // This child process runs no other test, so nothing recorded a boot time.
+    assert_eq!(crate::health::recorded_boot_time(), 0);
+    assert_eq!(crate::radar::recorded_boot_time(), 0);
 
     let lifecycle = crate::lifecycle::ApplicationLifecycle::new();
     let observed = lifecycle.clone();
@@ -327,6 +330,14 @@ async fn custom_shutdown_drives_ready_drain_and_stopped_phases() {
     })
     .await
     .expect("server became ready");
+    assert!(
+        crate::health::recorded_boot_time() > 0,
+        "health uptime origin"
+    );
+    assert!(
+        crate::radar::recorded_boot_time() > 0,
+        "Radar uptime origin"
+    );
     shutdown_tx.send(()).expect("shutdown receiver alive");
     tokio::time::timeout(std::time::Duration::from_secs(2), server)
         .await

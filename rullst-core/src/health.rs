@@ -10,12 +10,25 @@ use std::time::{SystemTime, UNIX_EPOCH};
 static START_TIME: AtomicU64 = AtomicU64::new(0);
 
 /// Initializes the application boot time tracking for health probe metrics.
+///
+/// `Server` records it when it starts unless this was called earlier.
 pub fn init_health_boot_time() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
     START_TIME.store(now, Ordering::Relaxed);
+}
+
+/// Records the boot time once: an explicit earlier [`init_health_boot_time`]
+/// wins.
+pub(crate) fn init_health_boot_time_if_unset() {
+    crate::radar::record_boot_time_once(&START_TIME);
+}
+
+#[cfg(test)]
+pub(crate) fn recorded_boot_time() -> u64 {
+    START_TIME.load(Ordering::Relaxed)
 }
 
 /// Structured response payload for health probes.

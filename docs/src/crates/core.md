@@ -163,7 +163,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   about 200%.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
-  reports process availability and uptime. The opt-in
+  reports process availability and uptime. `Server` records the health and
+  Radar uptime origin when it starts, unless `init_health_boot_time` or
+  `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
   times out its own dependency checks.

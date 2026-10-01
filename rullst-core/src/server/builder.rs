@@ -265,6 +265,9 @@ impl Server {
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
+        // Uptime counts from process start-up, not from the first probe.
+        crate::health::init_health_boot_time_if_unset();
+        crate::radar::init_radar_if_unset();
         let dotenv = Self::load_dotenv_values().await?;
         #[cfg(feature = "orm")]
         crate::artisan::runner::intercept_artisan_command(None, self.db_url.as_deref()).await;

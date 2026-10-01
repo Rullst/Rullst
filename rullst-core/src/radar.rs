@@ -18,12 +18,36 @@ static PREVIOUS_WINDOWS_CPU_SAMPLE: std::sync::LazyLock<
 > = std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
 
 /// Initializes the Radar boot time timestamp.
+///
+/// `Server` records it when it starts unless this was called earlier, so
+/// `uptime_seconds` measures process uptime rather than the time since the
+/// first snapshot.
 pub fn init_radar() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
     BOOT_TIME.store(now, Ordering::Relaxed);
+}
+
+/// Records the boot time once: an explicit earlier [`init_radar`] wins.
+pub(crate) fn init_radar_if_unset() {
+    record_boot_time_once(&BOOT_TIME);
+    std::sync::LazyLock::force(&BOOT_INSTANT);
+}
+
+/// Stores the current Unix time in `cell` unless it already holds one.
+pub(crate) fn record_boot_time_once(cell: &AtomicU64) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let _ = cell.compare_exchange(0, now, Ordering::Relaxed, Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn recorded_boot_time() -> u64 {
+    BOOT_TIME.load(Ordering::Relaxed)
 }
 
 /// Instantaneous telemetry snapshot data model.
@@ -442,6 +466,17 @@ mod tests {
         assert_eq!(linux_cpu_percent(200, 3200, 32), Some(200.0));
         assert_eq!(linux_cpu_percent(200, 0, 32), None);
         assert_eq!(linux_cpu_percent(u64::MAX, 1, 2), Some(200.0));
+    }
+
+    #[test]
+    fn a_recorded_boot_time_is_never_replaced() {
+        let cell = AtomicU64::new(0);
+        record_boot_time_once(&cell);
+        let first = cell.load(Ordering::Relaxed);
+        assert!(first > 0);
+        cell.store(42, Ordering::Relaxed);
+        record_boot_time_once(&cell);
+        assert_eq!(cell.load(Ordering::Relaxed), 42);
     }
 
     #[cfg(target_os = "linux")]
