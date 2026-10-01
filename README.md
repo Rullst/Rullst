@@ -60,6 +60,11 @@ full version such as `--version 12.1.2` to reproduce a specific release.
 · [Build a JSON REST API](https://rullst.github.io/Rullst/book/tutorials/rest-api-quickstart.html)
 · [CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html)
 
+Stuck? `cargo rullst doctor` checks the toolchain, project configuration,
+database and security baseline with a fix for each problem; run `cargo rullst`
+alone to search every command, and `cargo rullst completions <shell>` to enable
+tab completion.
+
 <details>
 <summary><strong>Prefer an interactive dashboard? Run <code>cargo rullst dash</code></strong></summary>
 
