@@ -207,6 +207,8 @@ pub struct SecurityConfig {
     /// Case-insensitive User-Agent substrings to block in the WAF middleware.
     /// Defaults cover selected crawlers, not general HTTP clients or health probes.
     /// This forgeable header is a traffic preference, never authentication.
+    /// An empty or whitespace-only entry is rejected by [`SecurityConfig::validate`],
+    /// because every User-Agent contains it.
     #[serde(default = "default_user_agent_blocklist")]
     pub user_agent_blocklist: Vec<String>,
     /// Enable global automatic PII masking middleware on all textual responses (heavy performance cost).
@@ -310,6 +312,16 @@ impl SecurityConfig {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
                 "COEP policy `{}` must be require-corp, credentialless, or unsafe-none",
                 self.coep
+            )));
+        }
+        if let Some(position) = self
+            .user_agent_blocklist
+            .iter()
+            .position(|agent| agent.trim().is_empty())
+        {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "user_agent_blocklist entry {} is empty; it would block every request",
+                position + 1
             )));
         }
         let mut unique_origins = std::collections::HashSet::new();

@@ -218,3 +218,15 @@ fn coep_policy_is_explicit_and_closed() {
         assert!(config.validate().is_err(), "{invalid:?} must be rejected");
     }
 }
+
+#[test]
+fn empty_user_agent_blocklist_entries_are_rejected() {
+    let mut config = SecurityConfig::default();
+    for empty in ["", "   ", "\t"] {
+        config.user_agent_blocklist = vec!["gptbot".to_string(), empty.to_string()];
+        let error = config.validate().unwrap_err().to_string();
+        assert!(error.contains("user_agent_blocklist entry 2"), "{error}");
+    }
+    config.user_agent_blocklist = Vec::new();
+    assert!(config.validate().is_ok());
+}
