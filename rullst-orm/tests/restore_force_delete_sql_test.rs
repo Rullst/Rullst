@@ -32,25 +32,26 @@ struct PlainNote {
 
 const NON_POSTGRES: [&str; 2] = ["mysql", "sqlite"];
 
+/// `restore()` changes only a trashed row, so restoring a live row is a no-op.
 #[test]
 fn restore_statements_are_numbered_only_for_postgres() {
     assert_eq!(
         ArchivedNote::__rullst_restore_sql("postgres"),
-        "UPDATE archived_notes SET deleted_at = NULL WHERE id = $1 AND tenant_id = $2"
+        "UPDATE archived_notes SET deleted_at = NULL WHERE id = $1 AND deleted_at IS NOT NULL AND tenant_id = $2"
     );
     assert_eq!(
         FlaggedNote::__rullst_restore_sql("postgres"),
-        "UPDATE flagged_notes SET archived = 0 WHERE id = $1"
+        "UPDATE flagged_notes SET archived = 0 WHERE id = $1 AND archived != 0"
     );
     for driver in NON_POSTGRES {
         assert_eq!(
             ArchivedNote::__rullst_restore_sql(driver),
-            "UPDATE archived_notes SET deleted_at = NULL WHERE id = ? AND tenant_id = ?",
+            "UPDATE archived_notes SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL AND tenant_id = ?",
             "{driver}"
         );
         assert_eq!(
             FlaggedNote::__rullst_restore_sql(driver),
-            "UPDATE flagged_notes SET archived = 0 WHERE id = ?",
+            "UPDATE flagged_notes SET archived = 0 WHERE id = ? AND archived != 0",
             "{driver}"
         );
     }

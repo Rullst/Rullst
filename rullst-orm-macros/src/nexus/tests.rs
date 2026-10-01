@@ -255,3 +255,111 @@ fn rejects_widgets_that_would_expose_protected_orm_fields() {
         assert!(error.contains("hidden"), "{error}");
     }
 }
+
+#[test]
+fn an_annotated_primary_key_outranks_a_later_id_field() {
+    let input: DeriveInput = parse_quote! {
+        struct Order {
+            #[nexus(primary_key)]
+            number: String,
+            id: i64,
+            total: f64,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    assert!(output.contains("fn nexus_pk () -> & 'static str { \"number\" }"));
+    // An application-assigned key is entered on create.
+    let number = field_meta(&output, "number").expect("key metadata");
+    assert!(number.contains("hidden : false") && number.contains("readonly : false"));
+    let id = field_meta(&output, "id").expect("id metadata");
+    assert!(id.contains("hidden : false"), "{id}");
+    assert!(id.contains("readonly : false"), "{id}");
+
+    let two_keys: DeriveInput = parse_quote! {
+        struct Order {
+            #[nexus(primary_key)]
+            number: String,
+            #[nexus(primary_key)]
+            code: String,
+        }
+    };
+    assert!(
+        expand_nexus(&two_keys)
+            .expect_err("two annotated keys must fail")
+            .to_string()
+            .contains("only one field may declare")
+    );
+
+    let contradicting: DeriveInput = parse_quote! {
+        #[nexus(primary_key = "code")]
+        struct Order {
+            #[nexus(primary_key)]
+            number: String,
+            code: String,
+        }
+    };
+    assert!(
+        expand_nexus(&contradicting)
+            .expect_err("contradicting keys must fail")
+            .to_string()
+            .contains("contradicts the struct-level primary key `code`")
+    );
+}
+
+#[test]
+fn only_integer_keys_are_treated_as_database_generated() {
+    let generated: DeriveInput = parse_quote! {
+        struct Invoice { id: i64, total: f64 }
+    };
+    let output = expand_nexus(&generated)
+        .expect("valid Nexus derive")
+        .to_string();
+    let id = field_meta(&output, "id").expect("id metadata");
+    assert!(id.contains("hidden : true") && id.contains("readonly : true"));
+
+    let assigned: DeriveInput = parse_quote! {
+        #[nexus(primary_key = "sku")]
+        struct Product { sku: String, name: String }
+    };
+    let output = expand_nexus(&assigned)
+        .expect("valid Nexus derive")
+        .to_string();
+    let sku = field_meta(&output, "sku").expect("sku metadata");
+    assert!(sku.contains("hidden : false") && sku.contains("readonly : false"));
+}
+
+#[test]
+fn infers_chrono_widgets_from_any_path_spelling() {
+    let input: DeriveInput = parse_quote! {
+        struct Event {
+            id: i64,
+            published_at: chrono::DateTime<Utc>,
+            edited_at: DateTime<chrono::Utc>,
+            archived_at: Option<chrono::DateTime<chrono::offset::Utc>>,
+            starts_at: chrono::NaiveDateTime,
+            ends_at: Option<NaiveDateTime>,
+            day: chrono::NaiveDate,
+            local_at: DateTime<chrono::FixedOffset>,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    for name in [
+        "published_at",
+        "edited_at",
+        "archived_at",
+        "starts_at",
+        "ends_at",
+    ] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(meta.contains("FieldKind :: DateTime"), "{name}: {meta}");
+    }
+    let day = field_meta(&output, "day").expect("day metadata");
+    assert!(day.contains("FieldKind :: Date ,"), "{day}");
+    // An offset other than UTC is not a datetime-local value.
+    let local = field_meta(&output, "local_at").expect("local metadata");
+    assert!(local.contains("FieldKind :: Text"), "{local}");
+}

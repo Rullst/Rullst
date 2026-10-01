@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("local note after insert: {}", row.transient_note);
 
     // ── SOFT DELETE ──────────────────────────────────────────────────────
-    // Generates: UPDATE soft_delete_demo SET is_deleted = 1 WHERE id = ?
+    // Generates: UPDATE soft_delete_demo SET is_deleted = 1 WHERE id = ? AND is_deleted = 0
     row.delete().await?;
     let visible_after = SoftDeleteDemo::query().get().await?;
     println!(
@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(trashed[0].is_deleted, 1);
 
     // ── RESTORE ──────────────────────────────────────────────────────────
-    // Generates: UPDATE soft_delete_demo SET is_deleted = 0 WHERE id = ?
+    // Generates: UPDATE soft_delete_demo SET is_deleted = 0 WHERE id = ? AND is_deleted != 0
     row.restore().await?;
     let visible_again = SoftDeleteDemo::query().get().await?;
     println!("visible rows after restore: {}", visible_again.len());

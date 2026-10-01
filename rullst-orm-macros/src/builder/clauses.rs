@@ -44,6 +44,7 @@ pub fn generate_builder_struct(
             pub with_trashed: bool,
             pub only_trashed: bool,
             select_raw_bound: Option<(String, Vec<rullst_orm::RullstValue>)>,
+            relevance_order: Option<String>,
             limit_explicit: bool,
             #redis_cfg
             pub remember_ttl: Option<usize>,
@@ -84,7 +85,7 @@ pub fn generate_builder_struct(
                     .chain(self.join_bindings.iter())
                     .chain(self.scope_bindings.iter())
                     .chain(self.bindings.iter())
-                    .chain(self.order_bindings.iter())
+                    .chain(self.__rullst_order_bindings().iter())
                     .cloned()
                     .collect()
             }
@@ -93,7 +94,7 @@ pub fn generate_builder_struct(
             fn __rullst_pluck_bindings(&self) -> Vec<rullst_orm::RullstValue> {
                 self.count_bindings()
                     .into_iter()
-                    .chain(self.order_bindings.iter().cloned())
+                    .chain(self.__rullst_order_bindings().iter().cloned())
                     .collect()
             }
 
@@ -130,6 +131,7 @@ pub fn generate_builder_struct(
                     with_trashed: false,
                     only_trashed: false,
                     select_raw_bound: None,
+                    relevance_order: None,
                     limit_explicit: false,
                     #redis_cfg
                     remember_ttl: None,

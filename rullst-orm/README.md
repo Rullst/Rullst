@@ -135,7 +135,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   SQLite AST/schema diff; review generated SQL before applying it.
 - **Atomic Cascading Soft Deletes**: Mark generated has-one/has-many
   relationships for cascade; implicit deletes open a transaction when needed,
-  while explicit or task-scoped transactions are reused without nesting.
+  while explicit or task-scoped transactions are reused without nesting. The
+  cascade honours the child's tenant scope, not its `global_scope`.
 - **Transactional Partial Updates (v13 candidate)**: `.update_partial()` merges
   selected values into the locked current row and runs the full save lifecycle,
   including audit and post-commit effects. The loaded row runs `after_fetch`
@@ -308,6 +309,14 @@ effects; it does not cascade. `restore()` re-reads the row, calls the `updated`
 and `saved` observers, writes a `restored` audit entry and registers the update
 effects of `save()`, including a Scout re-index. Their `can_force_delete` and
 `can_restore` policies run before the transaction, as before.
+
+A `save()` update, `delete()` or `force_delete()` that matches no row (the row
+was deleted after the handle was loaded) returns `RecordNotFound` (the
+tenant-scope `Validation` error on tenant models) and runs no later observer,
+audit or post-commit effect. Deleting a trashed row again fails the same way
+without touching its deletion time, and restoring a missing or live row is a
+no-op. If the COMMIT of a direct `save()` fails, the handle keeps its previous
+`id`, so retrying the save inserts the row again.
 
 Only `delete()`, `restore()` and `force_delete()` change the soft-delete marker
 of an existing row. `save()` leaves that column out of its `UPDATE` (an

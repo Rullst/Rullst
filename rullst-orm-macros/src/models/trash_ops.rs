@@ -124,19 +124,25 @@ fn generate_force_delete(parsed: &ParsedModel) -> TokenStream {
     let load_observers = load_observers();
     let execute = execute_mutation();
     let effects = deleted_effects(parsed);
-    let audit = if parsed.auditable {
-        quote! {
-            rullst_orm::audit::log_audit_with_tx(
-                tx,
-                #table_name,
-                self.id,
-                "force_deleted",
-                Some(self.to_json()),
-                None
-            ).await?;
-        }
+    // Audit the persisted row, read locked before the DELETE, not the handle.
+    let (pre_image, audit) = if parsed.auditable {
+        let row = quote::format_ident!("erased_row");
+        (
+            super::row_lookup::locked_row(parsed, &row),
+            quote! {
+                let #row = #row.ok_or(rullst_orm::Error::RecordNotFound)?;
+                rullst_orm::audit::log_audit_with_tx(
+                    tx,
+                    #table_name,
+                    self.id,
+                    "force_deleted",
+                    Some(#row.to_json()),
+                    None
+                ).await?;
+            },
+        )
     } else {
-        quote! {}
+        (quote! {}, quote! {})
     };
     let force_delete_sql = format!("DELETE FROM {} WHERE id = ?{}", table_name, tenant.clause);
     let with_tx = quote::format_ident!("__rullst_force_delete_with_tx");
@@ -147,6 +153,7 @@ fn generate_force_delete(parsed: &ParsedModel) -> TokenStream {
             #load_observers
             let futures = observers.iter().map(|obs| obs.deleting(&*self));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
+            #pre_image
             let query = Self::__rullst_force_delete_sql(rullst_orm::Orm::driver()?);
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
@@ -239,65 +246,70 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
 
     let tenant = tenant_predicate(parsed);
     let tenant_binding = &tenant.binding;
-    let tenant_rows_check = &tenant.rows_check;
+    // A missing row is a documented no-op, checked before this tenant check.
+    let tenant_rows_check = if parsed.tenant_column.is_empty() {
+        quote! {}
+    } else {
+        tenant.rows_check.clone()
+    };
     let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") || cfg.value.is_empty() {
         format!("{} = NULL", cfg.column)
     } else {
         format!("{} = {}", cfg.column, cfg.value)
     };
+    // Only a trashed row is restored; restoring a live row is a no-op.
     let restore_sql = format!(
-        "UPDATE {} SET {} WHERE id = ?{}",
-        table_name, set_clause, tenant.clause
+        "UPDATE {} SET {} WHERE id = ? AND {}{}",
+        table_name,
+        set_clause,
+        crate::builder::soft_delete_where_clause(cfg, true),
+        tenant.clause
     );
-    let restored_row_sql = format!("SELECT * FROM {} WHERE id = ?{}", table_name, tenant.clause);
+    let restored_row = super::row_lookup::locked_row(parsed, &quote::format_ident!("restored_row"));
     let load_observers = load_observers();
     let execute = execute_mutation();
-    let audit = if parsed.auditable {
-        quote! {
-            rullst_orm::audit::log_audit_with_tx(
-                tx,
-                #table_name,
-                self.id,
-                "restored",
-                Some(self.to_json()),
-                Some(restored.to_json())
-            ).await?;
-        }
+    // The old side is the trashed row read locked before the UPDATE.
+    let (pre_image, audit) = if parsed.auditable {
+        let row = quote::format_ident!("trashed_row");
+        (
+            super::row_lookup::locked_row(parsed, &row),
+            quote! {
+                let #row = #row.ok_or(rullst_orm::Error::RecordNotFound)?;
+                rullst_orm::audit::log_audit_with_tx(
+                    tx,
+                    #table_name,
+                    self.id,
+                    "restored",
+                    Some(#row.to_json()),
+                    Some(restored.to_json())
+                ).await?;
+            },
+        )
     } else {
-        quote! {}
+        (quote! {}, quote! {})
     };
     let effects = restored_effects(parsed);
     let with_tx = quote::format_ident!("__rullst_restore_with_tx");
     let entrypoint = transactional_entrypoint(&with_tx, "restore");
     let body = savepoint_body(
         quote! {
-            let driver = rullst_orm::Orm::driver()?;
-            let query = Self::__rullst_restore_sql(driver);
+            #pre_image
+            let query = Self::__rullst_restore_sql(rullst_orm::Orm::driver()?);
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
             }
             let exec = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
                 .bind(self.id) #tenant_binding;
             #execute
-            #tenant_rows_check
             if mutation_result.rows_affected() == 0 {
-                // No such row: nothing was restored, so no effect is emitted.
+                // No such trashed row: nothing was restored, so no effect is
+                // emitted. A tenant model reaches this only after its guard.
                 return Ok(());
             }
+            #tenant_rows_check
             // Observers, audit, events and Scout receive the persisted row.
-            let lookup = if driver == "postgres" {
-                rullst_orm::replace_placeholders(#restored_row_sql)
-            } else {
-                #restored_row_sql.to_string()
-            };
-            let lookup_query = rullst_orm::_sqlx::query_as::<_, Self>(
-                rullst_orm::_sqlx::AssertSqlSafe(lookup.as_str())
-            ).bind(self.id) #tenant_binding;
-            let mut restored = lookup_query
-                .fetch_optional(&mut **tx)
-                .await?
-                .ok_or(rullst_orm::Error::RecordNotFound)?;
-            restored.__rullst_decrypt_encrypted_fields()?;
+            #restored_row
+            let restored = restored_row.ok_or(rullst_orm::Error::RecordNotFound)?;
             #load_observers
             let futures = observers.iter().map(|obs| obs.updated(&restored));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
@@ -318,7 +330,7 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
         /// cache, Redis `updated`/`saved` events, `committed(Updated)` and
         /// Scout re-index effects. Save hooks and the `saving`/`updating`
         /// observers are not run: they receive a mutable model whose changes
-        /// restore() would not persist. A missing row is a no-op.
+        /// restore() would not persist. A missing or live row is a no-op.
         #instrument
         pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
             rullst_orm::__transaction_access::ensure_allowed()?;
@@ -407,5 +419,27 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }).await?;
         #scout_update
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn restore_reads_the_restored_row_under_the_query_timeout() {
+        let input: DeriveInput = parse_quote! {
+            struct Note { id: i32, deleted_at: Option<String> }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate(&parsed).to_string();
+        let reread = generated
+            .split_once("let restored_row")
+            .expect("restored row lookup")
+            .1
+            .split_once("let restored =")
+            .expect("restored row binding")
+            .0;
+        assert!(reread.contains("get_query_timeout"));
     }
 }

@@ -1,5 +1,11 @@
 use std::fmt::Display;
 
+#[cfg(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+))]
+pub mod json_columns;
 pub mod migrations;
 
 const REQUIRE_CONTAINERS_ENV: &str = "RULLST_REQUIRE_TESTCONTAINERS";

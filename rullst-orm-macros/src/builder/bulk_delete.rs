@@ -153,7 +153,8 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
                 Some("limit()")
             } else if self.offset.is_some() {
                 Some("offset()")
-            } else if self.order_by.is_some() {
+            } else if self.order_by.is_some() && !self.__rullst_has_relevance_order() {
+                // A search's relevance order does not bound the deleted rows.
                 Some("order_by()")
             } else if !self.joins.is_empty() || !self.join_bindings.is_empty() {
                 Some("joins")

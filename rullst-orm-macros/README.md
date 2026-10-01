@@ -10,8 +10,8 @@ directly, because generated code calls the matching runtime API.
 | :--- | :--- |
 | `#[derive(Orm)]` | Generates the SQLx Active Record/query surface for named-field structs, or the explicitly selected bounded Turso profile with `#[orm(backend = "turso")]`. |
 | `#[derive(TursoModel)]` | Generates only the typed Turso/libSQL model contract and rejects SQLx-only relations, soft deletes, hooks, policies, tenants, audit, and search behavior. |
-| `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. Code that opens a separate connection is outside that sandbox. |
-| `#[derive(PersonalData)]` | Declares application-selected personal-data fields; it is metadata, not automatic privacy compliance. |
+| `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. The declared return type is kept, so a test returning `Result` can use `?` and fails on `Err` after the rollback. Post-commit effects of sandboxed writes (`committed` observers, cache, Redis, Scout) are discarded like on any rollback. Code that opens a separate connection is outside that sandbox. |
+| `#[derive(PersonalData)]` | Declares application-selected personal-data fields (`#[privacy]`, listed by `ComplianceModel::personal_fields()` in v13) and redacts them from `Debug`; it is metadata, not automatic privacy compliance. Its `PrivacyReport` names the ORM table (`#[orm(table)]` or the `<struct>s` default) and lists as encrypted only `#[orm(encrypted)]` and `SecretString` columns. |
 | `#[derive(Enum)]` | Generates a closed bounded label contract shared by string parsing/display, Serde, `RullstValue` and SQLx codecs. `#[rullst_enum(type_name = "...", rename_all = "snake_case")]` and per-variant `rename` are validated at compile time; schema DDL is owned by `Blueprint::native_enum`. |
 | `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. ORM relation fields and `#[orm(skip)]`/`#[sqlx(skip)]` fields are left out of the metadata; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields (only `#[nexus(kind = "password")]` exposes an `#[orm(hidden)]` field, write-only), and `#[orm(masked)]` fields default to `Password`. Other shared `#[orm(...)]` options are skipped. |
 
@@ -49,10 +49,10 @@ The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
 `#[sqlx(json(nullable))]`. `#[orm(skip)]` only removes a field from generated
 SQL; the application's `FromRow` still reads it, so a field without a table
 column also needs `#[sqlx(skip)]` (the two may be combined) or
-`#[sqlx(default)]`. `#[sqlx(json)]` affects only that decoding: generated
-writes bind the field's own type, so it must itself encode as JSON on the
-selected SQLx driver (for example `serde_json::Value` under a strict driver
-feature); a Serde-only type fails to compile at the generated bind. SQLx mappings such as `rename`, `try_from`, and
+`#[sqlx(default)]`. A `#[sqlx(json)]` field is decoded through SQLx `Json`
+and generated writes bind it as `Json(value)` (a `json(nullable)` `None` as
+`NULL`), so a Serde-only type works on a JSON column; SQLx provides `Json` only
+for the strict driver features. SQLx mappings such as `rename`, `try_from`, and
 `flatten` fail compilation because the generated persistence SQL cannot honor
 them safely. The parser also rejects unsupported model shapes, unknown
 backends, missing or unbindable tenant columns, invalid encrypted field types,

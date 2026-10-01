@@ -597,6 +597,28 @@ A prepared version section does not establish that its tag or crates exist.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
 
+### ORM macros low-severity review fixes (models, test harness, Nexus derive)
+
+- `save()`, `delete()` and `force_delete()` return `RecordNotFound` when the row
+  no longer exists instead of succeeding and running observers, audit and
+  effects, and a failed COMMIT restores the model's `id`.
+- Soft `delete()` affects only live rows and `restore()` only trashed rows, so
+  repeated deletes no longer re-stamp `deleted_at` and restoring a missing or
+  live row is a no-op, also on tenant models.
+- Auditable saves lock the row they diff, delete/force-delete/restore audits
+  record the stored row, and in-transaction lookups and pivot loads respect
+  `Orm::set_query_timeout`.
+- `cascade_soft_delete` ignores the child's `global_scope`, models with only an
+  `id` column can be inserted, and `#[sqlx(json)]` fields are written as JSON.
+- Scout-backed `search()` returns results in the engine's relevance order
+  unless `order_by` is set.
+- `#[rullst_orm::test]` honours the test's `Result` and discards post-commit
+  effects of the rolled-back sandbox.
+- `PersonalData` reports actual encryption and the ORM table name, and
+  `ComplianceModel::personal_fields()` is new.
+- `#[derive(Nexus)]`: an annotated primary key beats `id`, non-integer keys can
+  be entered on create and chrono date-time types get the date-time widget.
+
 ### ORM macros low-severity review fixes (builder, relations, parser)
 
 - A `*_constrained` modifier's `or_where` can no longer return other parents'

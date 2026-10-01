@@ -1670,7 +1670,9 @@ Ok(())
 
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
-errors. Every SQLx model requires a persisted named `id` field. Explicit
+errors. Every SQLx model requires a persisted named `id` field; a model
+whose only persisted field is `id` inserts the column defaults (`DEFAULT
+VALUES`, or `() VALUES ()` on MySQL/MariaDB). Explicit
 table/column/relation identifiers use the 1–64 byte portable ASCII identifier
 grammar; the derived `<struct>s` default table name must match it only when
 no explicit `table` replaces it (for example for a non-ASCII struct name), and
@@ -1696,13 +1698,15 @@ application's SQLx `FromRow`, which still reads the column from `SELECT *`. A
 field without a table column therefore needs `#[sqlx(skip)]` (alone or
 together with `#[orm(skip)]`, which are distinct options) or
 `#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
-generated writes must not touch. `json` and `json(nullable)` change only how
-that `FromRow` decodes the column: generated INSERT/UPDATE statements bind the
-field's own Rust type, not a `Json(...)` wrapper. Such a field therefore
-needs a type that SQLx itself encodes as the column's JSON type on the
-selected driver (for example `serde_json::Value` under a strict driver
-feature); with a type that only implements Serde the derive fails to compile
-at the generated bind. `rename`, `try_from`,
+generated writes must not touch. `FromRow` decodes a `json` or
+`json(nullable)` field through SQLx `Json`, and generated INSERT/UPDATE
+statements (including `update_partial()`) encode it the same way: the value is
+bound as `sqlx::types::Json(value)`, and a `json(nullable)` `None` as SQL
+`NULL`. The field type therefore needs Serde `Serialize`/`Deserialize`, not
+an SQLx `Encode`, and the column the driver's JSON type (`JSONB`/`JSON` on
+PostgreSQL, `JSON` on MySQL, text on SQLite). SQLx implements `Json` only for
+the concrete drivers, so such models require a strict driver feature; the
+dynamic `Any` pool cannot decode them. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
 decoded shape drift from generated SQL. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are
@@ -1887,8 +1891,10 @@ while portability and semantic review remain the model author's responsibility.
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
-  commits, or rolls back its own transaction. Recursive descendant/cycle
-  traversal remains a separate contract. The related model must itself use
+  commits, or rolls back its own transaction. The children are selected with
+  the related model's tenant scope but without its `global_scope`, so a
+  child hidden by that model-wide filter is trashed with its parent too.
+  Recursive descendant/cycle traversal remains a separate contract. The related model must itself use
   soft deletes (a `deleted_at` field or `#[orm(soft_delete)]`): a cascade into
   a model without them fails to compile (no method
   `__rullst_cascade_soft_delete_with_tx`, reported at the relation field)
@@ -1906,6 +1912,15 @@ while portability and semantic review remain the model author's responsibility.
   optional correlation identifier and derives its typed tenant key from the
   active `with_tenant(...)` scope. The host remains responsible for deriving
   both contexts from authenticated authority rather than client assertions.
+  An auditable `save()` reads the pre-image of its diff inside its savepoint
+  with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB, so a concurrent writer
+  cannot change the row between that read and the full-row `UPDATE`. The
+  old side of a `deleted`, `force_deleted` or `restored` entry is likewise
+  the persisted row read the same way just before the statement, not the
+  caller's possibly edited or stale handle. These reads, the
+  revision-restore lookup, the row `restore()` re-reads and the
+  `belongs_to_many` pivot query run within `Orm::set_query_timeout`, like the
+  other generated statements.
 * `create_audit_table` creates the v2 schema and adds its columns to a legacy
   table without presenting legacy rows as v2 evidence. On MySQL/MariaDB a new
   table (or a newly added `restore_patch` column) stores `old_values`,
@@ -1953,7 +1968,8 @@ while portability and semantic review remain the model author's responsibility.
   A `PostCommit` failure does not undo a durable direct save. An ambiguous
   database commit error requires reconciliation rather than blind replay.
 * An empty builder remains a no-op. A failed policy, hook, SQL write or audit
-  rolls back the operation's savepoint and discards its pending effects. This
+  rolls back the operation's savepoint and discards its pending effects; if
+  that rollback fails too, the returned `DatabaseError` names both errors. This
   allows a managed outer transaction to catch that failure and continue.
   Strict post-commit timing requires `Orm::transaction` or the owned direct
   path; a raw SQLx transaction retains the documented observation limitation.
@@ -1998,7 +2014,9 @@ while portability and semantic review remain the model author's responsibility.
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
   managed transaction is active, `after_commit` executes immediately for an
-  already committed/autocommit operation.
+  already committed/autocommit operation. `#[rullst_orm::test]` runs its body
+  in such a scope too and never commits it, so the observers, cache, Redis
+  and Scout effects of sandboxed writes are discarded with the rollback.
 * Generated observers retain synchronous lifecycle callbacks such as
   `creating`, `created`, and `saved` for mutation validation. The separate
   `committed(ModelCommittedEvent)` callback receives an owned snapshot after
@@ -2022,7 +2040,19 @@ while portability and semantic review remain the model author's responsibility.
   with it and registers the update effects of `save()` (cache invalidation,
   Redis `updated`/`saved` events, `committed(Updated)`, Scout re-index). It
   runs no save hooks or `saving`/`updating` observers because it writes only
-  the soft-delete column, and restoring a missing row is a no-op.
+  the soft-delete column. Its `UPDATE` matches only a trashed row, so
+  restoring a missing or live row is a no-op; likewise the soft-delete
+  `UPDATE` of `delete()` matches only a live row, so deleting a trashed row
+  again keeps its deletion time and fails like a missing row.
+* A `save()` update, `delete()` or `force_delete()` whose by-ID statement
+  matches no row (for example a row deleted since its handle was loaded)
+  fails with `RecordNotFound`, or with the tenant-scope `Validation` error on
+  a tenant model, instead of reporting success; it rolls its savepoint back,
+  so no post-mutation observer, hook, audit entry or post-commit effect runs.
+  `restore()` of a missing row remains a no-op, also on tenant models. When
+  the COMMIT of a direct `save()` (or the savepoint release of `save_with_tx`)
+  fails, the handle's `id` is restored like on any other failure, so a retry
+  inserts again; an ambiguous commit error still needs reconciliation.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed
@@ -2221,7 +2251,13 @@ while portability and semantic review remain the model author's responsibility.
   answer of that size is treated as truncated: `search()` answers from the SQL
   fallback instead, so one tenant's hits can never push another tenant's
   matches out of the result. Below the cap the scoped provider IDs are used;
-  engine-side tenant filtering and relevance order are not provided.
+  engine-side tenant filtering is not provided.
+* Provider matches keep the provider's ranking: `search()` orders them with an
+  `ORDER BY CASE <table>.id WHEN ? THEN 0 ...` over the bound IDs, so `get()`,
+  `first()`, `paginate()` and `pluck_*` follow relevance. An explicit
+  `order_by` replaces that order, DISTINCT and GROUP BY statements omit it,
+  and `delete_all()` does not treat it as a rejected `order_by()`. The SQL
+  fallback has no relevance order.
 * Index names, positive IDs, object payloads, queries, response bytes and hit
   counts are bounded. Meilisearch/Algolia tasks use bounded polling;
   Elasticsearch requests use `refresh=wait_for`. Provider response bodies and
@@ -3278,7 +3314,7 @@ sending.
 * Updates write only submitted fields, and the edit form (`data-nexus-mode="edit"`) submits only controls the administrator changed. NULL, unregistered enum values, offset or sub-millisecond date-times and undecodable values render without a widget default that could overwrite them. An emptied number/relation/date/date-time/enum/JSON value is NULL (omitted on create), never `''`; the semantic validator rejects `''` for those kinds.
 * Record keys follow the registered primary-key kind: a `number` or relation key must be a canonical integer (`+1`, `01` and `1e3` name no record, so the audit key is the changed key); other kinds are compared as text. The UI addresses records under `/table/{table}/record/{key}` so keys such as `new`, `search` or `batch` never meet an action route. Form values are bound as text; on PostgreSQL, numbers are written through `NUMERIC`, canonical-integer relations through `BIGINT` and Booleans as untyped `'0'`/`'1'` literals, while other kinds need text columns. Search matches the typed text literally and case-insensitively (`ILIKE` on PostgreSQL), and the tenant predicate compares binary strings on MySQL/MariaDB.
 * `Password` fields are never rendered: list cells show a fixed mask (the column is not selected or sortable) and edit forms an empty input; an empty submission keeps the stored value. Non-empty values are written verbatim; Nexus neither hashes them nor runs ORM hooks, so credential-hash columns must be read-only in Nexus and changed by an application flow that hashes.
-* `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them.
+* `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them. The record key is the struct-level `primary_key`, else the single `#[nexus(primary_key)]` field, else `id`; an integer key is hidden and read-only as database-generated, while another key is entered on create and read-only on edit.
 * The panel loads only same-origin assets under `/nexus/assets/` (stylesheet, behaviour script and a vendored, unmodified htmx 2.0.4 with eval, script tags, injected indicator styles and its `localStorage` history cache disabled). Nexus markup contains no inline script/style blocks, event-handler, `hx-on` or `style` attributes, so the default production nonce CSP applies unchanged; the application-wide `security.csp` must not be relaxed for Nexus.
 * `with_required_audit` requires the fixed `rullst_nexus_audits` schema and appends one minimized committed-mutation row in the same transaction. Audit unavailability rolls the data change back. This is not append-only, tamper-evident, denied-attempt, retention, backup, replication or external-SIEM evidence; those properties remain host responsibilities.
 

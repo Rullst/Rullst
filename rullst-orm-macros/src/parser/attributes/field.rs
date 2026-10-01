@@ -10,6 +10,9 @@ pub(in crate::parser) struct FieldAttributes {
     pub is_skipped: bool,
     pub is_masked: bool,
     pub is_encrypted: bool,
+    /// `#[sqlx(json)]` (`Some(false)`) or `#[sqlx(json(nullable))]`
+    /// (`Some(true)`): generated writes bind the value as SQLx JSON.
+    pub sqlx_json: Option<bool>,
     pub rag_context: bool,
     pub embedding_for: Option<String>,
     relation_type: String,
@@ -156,12 +159,12 @@ impl FieldAttributes {
                 self.is_skipped = true;
             }
             "default" => mark_once(seen, "sqlx_default", &meta)?,
-            // Decoding only: generated writes bind the field's own type, which
-            // must therefore encode as JSON itself (see spec §5.1).
+            // FromRow decodes the column through SQLx `Json`; generated writes
+            // encode it the same way (see spec §5.1).
             "json" => {
                 mark_once(seen, "json", &meta)?;
+                let mut nullable = false;
                 if meta.input.peek(syn::token::Paren) {
-                    let mut nullable = false;
                     meta.parse_nested_meta(|nested| {
                         if !nested.path.is_ident("nullable") || nullable {
                             return Err(nested
@@ -171,6 +174,7 @@ impl FieldAttributes {
                         Ok(())
                     })?;
                 }
+                self.sqlx_json = Some(nullable);
             }
             "rename" | "try_from" | "flatten" => {
                 return Err(meta.error(format!(
@@ -272,6 +276,7 @@ impl Default for FieldAttributes {
             is_skipped: false,
             is_masked: false,
             is_encrypted: false,
+            sqlx_json: None,
             rag_context: false,
             embedding_for: None,
             relation_type: String::new(),

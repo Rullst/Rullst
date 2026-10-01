@@ -6,6 +6,7 @@ use rullst_orm::{
 };
 use std::fs;
 use std::sync::Once;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(FromRow, rullst_orm::Orm, Debug, Clone, PartialEq)]
 #[orm(table = "sandbox_users")]
@@ -72,4 +73,80 @@ async fn test_sandbox_isolation_part_2() {
 
     let users = SandboxUser::query().get().await.unwrap();
     assert!(users.iter().any(|u| u.name == "Bob"));
+}
+
+/// A sandboxed test may return `Result` and use `?`. Run only through
+/// `sandboxed_errors_reach_the_test_harness`, which expects its error.
+#[rullst_orm::test]
+#[ignore = "invoked by sandboxed_errors_reach_the_test_harness"]
+async fn failing_sandboxed_test() -> Result<(), rullst_orm::Error> {
+    init_db();
+    let _ = Schema::create("sandbox_users", |t: &mut Blueprint| {
+        t.id();
+        t.string("name").not_null();
+    })
+    .await;
+    let mut user = SandboxUser {
+        id: 0,
+        name: "Carol".to_string(),
+    };
+    user.save().await?;
+    Err(rullst_orm::Error::Validation(
+        "the sandboxed assertion failed".to_string(),
+    ))
+}
+
+#[test]
+fn sandboxed_errors_reach_the_test_harness() {
+    assert!(matches!(
+        failing_sandboxed_test(),
+        Err(rullst_orm::Error::Validation(message)) if message == "the sandboxed assertion failed"
+    ));
+}
+
+#[derive(FromRow, rullst_orm::Orm, Debug, Clone, PartialEq)]
+#[orm(table = "sandbox_events")]
+pub struct SandboxEvent {
+    pub id: i32,
+    pub name: String,
+}
+
+static COMMITTED_EVENTS: AtomicUsize = AtomicUsize::new(0);
+
+/// A `committed` callback that queries the ORM, as an audit forwarder might.
+struct CommittedQuery;
+
+#[rullst_orm::async_trait]
+impl SandboxEventObserver for CommittedQuery {
+    async fn committed(
+        &self,
+        _event: &rullst_orm::ModelCommittedEvent,
+    ) -> Result<(), rullst_orm::Error> {
+        SandboxEvent::query().count().await?;
+        COMMITTED_EVENTS.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+/// Sandboxed writes are rolled back, so their post-commit effects never run,
+/// and a `committed` callback cannot run while `save()` holds the sandbox.
+#[rullst_orm::test]
+async fn sandboxed_writes_discard_their_post_commit_effects() {
+    init_db();
+    let _ = Schema::create("sandbox_events", |t: &mut Blueprint| {
+        t.id();
+        t.string("name").not_null();
+    })
+    .await;
+    SandboxEvent::observe(std::sync::Arc::new(CommittedQuery));
+    let mut event = SandboxEvent {
+        id: 0,
+        name: "rolled back".to_string(),
+    };
+    tokio::time::timeout(std::time::Duration::from_secs(5), event.save())
+        .await
+        .expect("save must not wait for its own sandbox transaction")
+        .expect("sandboxed save");
+    assert!(event.id > 0);
+    assert_eq!(COMMITTED_EVENTS.load(Ordering::SeqCst), 0);
 }

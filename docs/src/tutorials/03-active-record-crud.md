@@ -142,7 +142,9 @@ permanently. Both check the tenant and the policy (`can_restore` /
   invalidates the cache, publishes the Redis `updated`/`saved` events, calls
   `committed(Updated)` and re-indexes the Scout document. The save hooks and
   the `saving`/`updating` observers are not called, because restore writes
-  only the soft-delete column. Restoring a missing row is a no-op.
+  only the soft-delete column. Restoring a missing or live row is a no-op,
+  and deleting an already trashed row again fails without changing its
+  deletion time.
 
 ---
 
@@ -152,5 +154,7 @@ permanently. Both check the tenant and the policy (`can_restore` /
   `Orm` models.
 - Creation uses a normal Rust struct, not a JSON map.
 - CRUD errors are returned as `rullst_orm::Error`; a missing row is `Ok(None)`.
+  Saving or deleting a handle whose row was deleted meanwhile returns
+  `RecordNotFound` instead of silently succeeding.
 - Use a caller-owned transaction and the generated `*_with_tx` methods when a
   business operation must commit multiple writes atomically.
