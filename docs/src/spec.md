@@ -1892,7 +1892,11 @@ while portability and semantic review remain the model author's responsibility.
   database-server cursor or a universal cross-shard snapshot. Without an
   `order_by`, `chunk(...)`/`chunk_with_tx(...)` order their pages by
   `<table>.id`, because SQL gives consecutive offset queries no stable order
-  (a PostgreSQL synchronized scan, for example, can start mid-table).
+  (a PostgreSQL synchronized scan, for example, can start mid-table). An
+  explicit `limit(n)` caps the rows every traversal hands to its handler in
+  total (the implicit global row cap does not), and an explicit `offset(k)`
+  is where `chunk(...)` starts and how many rows `chunk_by_id(...)` skips
+  before its first page.
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,

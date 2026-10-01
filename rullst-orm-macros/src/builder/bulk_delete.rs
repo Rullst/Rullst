@@ -170,9 +170,7 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
         /// global row cap is implicit; only an explicit `limit()` (or a
         /// directly assigned different limit) counts.
         fn __rullst_unsupported_delete_clause(&self) -> Option<&'static str> {
-            let explicit_limit = self.limit.is_some()
-                && (self.limit_explicit || self.limit != rullst_orm::schema::get_max_query_limit());
-            if explicit_limit {
+            if self.__rullst_explicit_limit().is_some() {
                 Some("limit()")
             } else if self.offset.is_some() {
                 Some("offset()")

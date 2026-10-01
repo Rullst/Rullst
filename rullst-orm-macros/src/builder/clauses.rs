@@ -448,6 +448,14 @@ pub fn generate_builder_struct(
                 self
             }
 
+            /// The caller's explicit row bound: a `limit()` call, or a directly
+            /// assigned limit other than the implicit global row cap.
+            fn __rullst_explicit_limit(&self) -> Option<usize> {
+                self.limit.filter(|_| {
+                    self.limit_explicit || self.limit != rullst_orm::schema::get_max_query_limit()
+                })
+            }
+
             pub fn unsafe_unlimited(mut self) -> Self {
                 self.limit = None;
                 self.limit_explicit = false;
