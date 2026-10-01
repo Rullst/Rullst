@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::generators::output_guard::write_output;
+use crate::generators::source_walk::rust_sources;
 
 /// Generates a CycloneDX 1.5 SBOM from the packages recorded in Cargo.lock.
 pub fn generate_cyclonedx_sbom(
@@ -150,15 +151,15 @@ pub fn scan_local_network_surface() -> (usize, Vec<String>) {
 }
 
 fn inspect_bindings(directory: &Path, warnings: &mut Vec<String>) {
-    let Ok(entries) = fs::read_dir(directory) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            inspect_bindings(&path, warnings);
-        } else if path.extension().and_then(|extension| extension.to_str()) == Some("rs")
-            && let Ok(content) = fs::read_to_string(&path)
+    let sources = rust_sources(directory);
+    if let Some(reason) = sources.incomplete {
+        warnings.push(format!(
+            "Source walk under '{}' is incomplete ({reason}); listener bindings beyond it were not scanned",
+            directory.display()
+        ));
+    }
+    for path in sources.files {
+        if let Ok(content) = fs::read_to_string(&path)
             && contains_unspecified_binding(&content)
         {
             warnings.push(format!(

@@ -1110,6 +1110,11 @@ route, dependency, and local network patterns.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan.
 
+The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
+follow symlinked files or directories and skip `target/` and `.git/`. A walk
+stops at 64 directory levels or 250,000 entries; reaching either bound is
+reported as a finding, so the scan fails as incomplete instead of passing.
+
 `SECURITY_COMPLIANCE.md` and `sbom-cyclonedx.json` are written in the current
 directory and replace a previous regular file. Because an audit may run on an
 untrusted checkout, the command refuses to write either file through a symlink.

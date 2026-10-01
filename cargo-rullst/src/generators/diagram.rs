@@ -4,6 +4,7 @@ use std::io;
 use std::path::Path;
 
 use crate::generators::output_guard::{reject_symlink, write_output};
+use crate::generators::source_walk::rust_sources;
 
 /// First line of every generated `diagram.md`. Only a file that carries it,
 /// or the unmarked single Mermaid block earlier releases wrote, is replaced.
@@ -42,108 +43,17 @@ pub fn generate_mermaid_diagram(
     let mut models = Vec::new();
     let mut relations = Vec::new();
 
-    fn scan_dir(dir: &Path, models: &mut Vec<ModelDef>, relations: &mut Vec<RelationDef>) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    scan_dir(&path, models, relations);
-                } else if path.extension().unwrap_or_default() == "rs"
-                    && let Ok(content) = fs::read_to_string(&path)
-                {
-                    if !content.contains("Orm") {
-                        continue;
-                    }
-
-                    if let Ok(syntax_tree) = syn::parse_file(&content) {
-                        for item in syntax_tree.items {
-                            if let syn::Item::Struct(s) = item {
-                                let mut has_orm = false;
-                                for attr in &s.attrs {
-                                    let attr_str = quote::quote!(#attr).to_string();
-                                    if attr_str.contains("Orm") {
-                                        has_orm = true;
-                                        break;
-                                    }
-                                }
-                                if !has_orm {
-                                    continue;
-                                }
-
-                                let model_name = s.ident.to_string();
-                                let mut model_fields = Vec::new();
-
-                                if let syn::Fields::Named(named_fields) = s.fields {
-                                    for f in named_fields.named {
-                                        if let Some(ident) = f.ident {
-                                            let field_name = ident.to_string();
-                                            let ty = &f.ty;
-                                            let ty_str =
-                                                quote::quote!(#ty).to_string().replace(" ", "");
-
-                                            if ty_str.starts_with("HasMany<") {
-                                                let target = ty_str
-                                                    .trim_start_matches("HasMany<")
-                                                    .trim_end_matches('>')
-                                                    .to_string();
-                                                relations.push(RelationDef {
-                                                    from: model_name.clone(),
-                                                    to: target,
-                                                    rel_type: "||--o{".to_string(),
-                                                    label: field_name,
-                                                });
-                                            } else if ty_str.starts_with("BelongsTo<") {
-                                                let target = ty_str
-                                                    .trim_start_matches("BelongsTo<")
-                                                    .trim_end_matches('>')
-                                                    .to_string();
-                                                relations.push(RelationDef {
-                                                    from: model_name.clone(),
-                                                    to: target,
-                                                    rel_type: "}o--||".to_string(),
-                                                    label: field_name,
-                                                });
-                                            } else if ty_str.starts_with("HasOne<") {
-                                                let target = ty_str
-                                                    .trim_start_matches("HasOne<")
-                                                    .trim_end_matches('>')
-                                                    .to_string();
-                                                relations.push(RelationDef {
-                                                    from: model_name.clone(),
-                                                    to: target,
-                                                    rel_type: "||--o|".to_string(),
-                                                    label: field_name,
-                                                });
-                                            } else if ty_str.starts_with("BelongsToMany<") {
-                                                let target = ty_str
-                                                    .trim_start_matches("BelongsToMany<")
-                                                    .trim_end_matches('>')
-                                                    .to_string();
-                                                relations.push(RelationDef {
-                                                    from: model_name.clone(),
-                                                    to: target,
-                                                    rel_type: "}o--o{".to_string(),
-                                                    label: field_name,
-                                                });
-                                            } else {
-                                                model_fields.push((ty_str, field_name));
-                                            }
-                                        }
-                                    }
-                                }
-                                models.push(ModelDef {
-                                    name: model_name,
-                                    fields: model_fields,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+    let sources = rust_sources(&src_path);
+    if let Some(reason) = &sources.incomplete {
+        eprintln!("  diagram.md may be incomplete: {reason}");
+    }
+    for path in sources.files {
+        if let Ok(content) = fs::read_to_string(&path)
+            && content.contains("Orm")
+        {
+            collect_models(&content, &mut models, &mut relations);
         }
     }
-
-    scan_dir(&src_path, &mut models, &mut relations);
 
     let mut diagram = format!("{MARKER}\n\n{LEGACY_PREFIX}");
 
@@ -174,6 +84,92 @@ pub fn generate_mermaid_diagram(
     );
 
     Ok(())
+}
+
+/// Records `#[derive(Orm)]` structs and their relation fields from one source file.
+fn collect_models(content: &str, models: &mut Vec<ModelDef>, relations: &mut Vec<RelationDef>) {
+    if let Ok(syntax_tree) = syn::parse_file(content) {
+        for item in syntax_tree.items {
+            if let syn::Item::Struct(s) = item {
+                let mut has_orm = false;
+                for attr in &s.attrs {
+                    let attr_str = quote::quote!(#attr).to_string();
+                    if attr_str.contains("Orm") {
+                        has_orm = true;
+                        break;
+                    }
+                }
+                if !has_orm {
+                    continue;
+                }
+
+                let model_name = s.ident.to_string();
+                let mut model_fields = Vec::new();
+
+                if let syn::Fields::Named(named_fields) = s.fields {
+                    for f in named_fields.named {
+                        if let Some(ident) = f.ident {
+                            let field_name = ident.to_string();
+                            let ty = &f.ty;
+                            let ty_str = quote::quote!(#ty).to_string().replace(" ", "");
+
+                            if ty_str.starts_with("HasMany<") {
+                                let target = ty_str
+                                    .trim_start_matches("HasMany<")
+                                    .trim_end_matches('>')
+                                    .to_string();
+                                relations.push(RelationDef {
+                                    from: model_name.clone(),
+                                    to: target,
+                                    rel_type: "||--o{".to_string(),
+                                    label: field_name,
+                                });
+                            } else if ty_str.starts_with("BelongsTo<") {
+                                let target = ty_str
+                                    .trim_start_matches("BelongsTo<")
+                                    .trim_end_matches('>')
+                                    .to_string();
+                                relations.push(RelationDef {
+                                    from: model_name.clone(),
+                                    to: target,
+                                    rel_type: "}o--||".to_string(),
+                                    label: field_name,
+                                });
+                            } else if ty_str.starts_with("HasOne<") {
+                                let target = ty_str
+                                    .trim_start_matches("HasOne<")
+                                    .trim_end_matches('>')
+                                    .to_string();
+                                relations.push(RelationDef {
+                                    from: model_name.clone(),
+                                    to: target,
+                                    rel_type: "||--o|".to_string(),
+                                    label: field_name,
+                                });
+                            } else if ty_str.starts_with("BelongsToMany<") {
+                                let target = ty_str
+                                    .trim_start_matches("BelongsToMany<")
+                                    .trim_end_matches('>')
+                                    .to_string();
+                                relations.push(RelationDef {
+                                    from: model_name.clone(),
+                                    to: target,
+                                    rel_type: "}o--o{".to_string(),
+                                    label: field_name,
+                                });
+                            } else {
+                                model_fields.push((ty_str, field_name));
+                            }
+                        }
+                    }
+                }
+                models.push(ModelDef {
+                    name: model_name,
+                    fields: model_fields,
+                });
+            }
+        }
+    }
 }
 
 /// Refreshes the diagram after a scaffold without ever failing the scaffold.

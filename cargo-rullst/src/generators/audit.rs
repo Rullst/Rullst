@@ -7,6 +7,7 @@ use crate::generators::audit_compliance::{
     ComplianceEvidence, EvidenceStatus, write_compliance_report,
 };
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
+use crate::generators::source_walk::{RustSources, rust_sources};
 
 const ACCESS_MARKER: &str = "rullst-access:";
 
@@ -20,7 +21,7 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     let source_files = collect_rust_source_files(src_dir);
     let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
     let mut sources = Vec::new();
-    for path in source_files {
+    for path in source_files.files {
         let Ok(content) = fs::read_to_string(&path) else {
             continue;
         };
@@ -34,6 +35,13 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     }
 
     let mut warnings = Vec::new();
+    if let Some(reason) = source_files.incomplete {
+        warnings.push(incomplete_walk_warning(
+            src_dir,
+            &reason,
+            "parameterized routes",
+        ));
+    }
     for (path, source_root, content) in sources {
         let evidence = crate_evidence
             .get(&source_root)
@@ -44,47 +52,29 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     (warnings.len(), warnings)
 }
 
-fn collect_rust_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
+/// Production Rust sources for the route scan; symlinks are never followed.
+fn collect_rust_source_files(src_dir: &Path) -> RustSources {
     let require_src_component = src_dir.file_name().and_then(|name| name.to_str()) != Some("src");
-    let mut source_files = Vec::new();
+    let mut sources = rust_sources(src_dir);
+    sources.files.retain(|path| {
+        path.file_name().and_then(|name| name.to_str()) != Some("tests.rs")
+            && !path
+                .components()
+                .any(|component| component.as_os_str() == "tests")
+            && (!require_src_component
+                || path
+                    .components()
+                    .any(|component| component.as_os_str() == "src"))
+    });
+    sources
+}
 
-    fn visit_dirs(
-        dir: &Path,
-        require_src_component: bool,
-        source_files: &mut Vec<std::path::PathBuf>,
-    ) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    let directory_name = path.file_name().and_then(|name| name.to_str());
-                    if matches!(
-                        directory_name,
-                        Some("target" | ".git" | ".agents" | ".codex")
-                    ) {
-                        continue;
-                    }
-                    visit_dirs(&path, require_src_component, source_files);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
-                    && path.file_name().and_then(|name| name.to_str()) != Some("tests.rs")
-                    && !path
-                        .components()
-                        .any(|component| component.as_os_str() == "tests")
-                    && (!require_src_component
-                        || path
-                            .components()
-                            .any(|component| component.as_os_str() == "src"))
-                {
-                    source_files.push(path);
-                }
-            }
-        }
-    }
-
-    if src_dir.exists() {
-        visit_dirs(src_dir, require_src_component, &mut source_files);
-    }
-    source_files
+/// A scan whose source walk hit a bound is reported as a finding, not as clean.
+fn incomplete_walk_warning(root: &Path, reason: &str, subject: &str) -> String {
+    format!(
+        "Source walk under '{}' is incomplete ({reason}); {subject} beyond it were not scanned",
+        root.display()
+    )
 }
 
 #[cfg(test)]
@@ -265,54 +255,43 @@ fn route_is_read_only(line: &str) -> bool {
 }
 
 /// Recursively scans Rust source files for `unsafe` blocks, functions, or implementations.
+///
+/// Symlinked files and directories are not followed; a walk that reaches its
+/// bound adds a finding instead of reporting a clean scan.
 pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
+    let sources = rust_sources(src_dir);
     let mut warnings = Vec::new();
-    let mut count = 0;
-
-    fn visit_dirs(dir: &Path, warnings: &mut Vec<String>, count: &mut usize) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    visit_dirs(&path, warnings, count);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
-                    && let Ok(content) = fs::read_to_string(&path)
-                {
-                    for (line_idx, line) in content.lines().enumerate() {
-                        let trimmed = line.trim();
-                        if trimmed.starts_with("//")
-                            || trimmed.starts_with("/*")
-                            || trimmed.starts_with('*')
-                        {
-                            continue;
-                        }
-                        if trimmed.contains("unsafe {")
-                            || trimmed.contains("unsafe fn")
-                            || trimmed.contains("unsafe impl")
-                            || trimmed.starts_with("unsafe ")
-                        {
-                            let msg = format!(
-                                "File '{}:{}': Unsafe Rust detected: `{}`",
-                                path.display(),
-                                line_idx + 1,
-                                trimmed
-                            );
-                            if !warnings.contains(&msg) {
-                                warnings.push(msg);
-                                *count += 1;
-                            }
-                        }
-                    }
+    if let Some(reason) = sources.incomplete {
+        warnings.push(incomplete_walk_warning(src_dir, &reason, "source files"));
+    }
+    for path in sources.files {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for (line_idx, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+                continue;
+            }
+            if trimmed.contains("unsafe {")
+                || trimmed.contains("unsafe fn")
+                || trimmed.contains("unsafe impl")
+                || trimmed.starts_with("unsafe ")
+            {
+                let msg = format!(
+                    "File '{}:{}': Unsafe Rust detected: `{}`",
+                    path.display(),
+                    line_idx + 1,
+                    trimmed
+                );
+                if !warnings.contains(&msg) {
+                    warnings.push(msg);
                 }
             }
         }
     }
 
-    if src_dir.exists() {
-        visit_dirs(src_dir, &mut warnings, &mut count);
-    }
-
-    (count, warnings)
+    (warnings.len(), warnings)
 }
 
 pub fn run_security_audit(
@@ -528,7 +507,7 @@ pub fn run_security_audit_with_exceptions(
     } else {
         Path::new(".")
     };
-    let idor_source_available = !collect_rust_source_files(idor_root).is_empty();
+    let idor_source_available = !collect_rust_source_files(idor_root).files.is_empty();
     let (idor_count, idor_warnings) = scan_idor_vulnerabilities(idor_root);
     if idor_mode || idor_count > 0 {
         println!(
@@ -842,6 +821,27 @@ get("/orders/{order_id}" => show_order),
 fn unrelated(_context: UserContext) {}
 "#;
         assert_eq!(findings(source).len(), 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn source_scans_do_not_follow_a_symlinked_directory_loop() {
+        let project = tempfile::tempdir().expect("temporary project");
+        let src = project.path().join("src");
+        fs::create_dir_all(&src).expect("source directory");
+        fs::write(
+            src.join("lib.rs"),
+            "pub unsafe fn unchecked() {}\nfn routes() { get(\"/users/:id\" => show); }\n",
+        )
+        .expect("source fixture");
+        // The old walk followed this link until the kernel's symlink bound and
+        // reported one copy of every finding per level.
+        std::os::unix::fs::symlink(".", src.join("loop")).expect("loop link");
+
+        let (unsafe_count, _) = scan_unsafe_code(&src);
+        assert_eq!(unsafe_count, 1);
+        let (idor_count, warnings) = scan_idor_vulnerabilities(&src);
+        assert_eq!(idor_count, 1, "{warnings:?}");
     }
 
     #[test]
