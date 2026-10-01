@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790836589281,
+  "lastUpdate": 1790847115305,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11841,6 +11841,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 260,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7eff1c310110ae1693fe60d5af9ada920dba892",
+          "message": "Merge pull request #369 from Rullst/fix/v13-review-follow-ups\n\nfeat(core,nexus,studio): .env-aware project settings, bounded queue previews and review follow-ups",
+          "timestamp": "2026-10-01T06:02:30-03:00",
+          "tree_id": "a08e7cc349fc0297859ef8ac5f8f21c46b392b41",
+          "url": "https://github.com/Rullst/Rullst/commit/e7eff1c310110ae1693fe60d5af9ada920dba892"
+        },
+        "date": 1790847114485,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1705,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 360,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 423,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
