@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790828514698,
+  "lastUpdate": 1790831953675,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11745,6 +11745,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 324,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27ead7f102189385a7b3f61acbe93fcf52d578b3",
+          "message": "Merge pull request #368 from Rullst/fix/v13-cli-blueprint-review-fixes\n\nfix(cli): portable starter migrations, protected ERP dashboard, bounded auth hashing and CSP-safe pages",
+          "timestamp": "2026-10-01T01:55:28-03:00",
+          "tree_id": "5cffdc81f297e4bcf99a8f1d65fab692d163abdd",
+          "url": "https://github.com/Rullst/Rullst/commit/27ead7f102189385a7b3f61acbe93fcf52d578b3"
+        },
+        "date": 1790831953136,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1629,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 358,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 451,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
