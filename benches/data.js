@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790820729338,
+  "lastUpdate": 1790827582718,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23367,6 +23367,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1140,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c80e38b3903c1897951a1a90a63fa1eaef08994f",
+          "message": "Merge pull request #367 from Rullst/chore/v13-remove-labs-runner\n\nchore(labs): remove rullst-labs-runner and document a bring-your-own runner contract",
+          "timestamp": "2026-10-01T01:01:47-03:00",
+          "tree_id": "efad69ab657347767cb34dbdbcbc4ff8203aaf72",
+          "url": "https://github.com/Rullst/Rullst/commit/c80e38b3903c1897951a1a90a63fa1eaef08994f"
+        },
+        "date": 1790827580969,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 573,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 747,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 512,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1740,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
