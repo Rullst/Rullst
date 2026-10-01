@@ -7,7 +7,15 @@
 const PRIVATE_KEY_MARKER: &str = "[DLP_BLOCKED_PRIVATE_KEY]";
 const AWS_ACCESS_KEY_MASK: &str = "AKIA****************";
 const PASSWORD_MASK: &str = "*****";
-const DATABASE_SCHEMES: [&str; 4] = ["postgres://", "postgresql://", "mysql://", "redis://"];
+/// `rediss://` is the TLS Redis form that Rullst requires for remote endpoints;
+/// it is not a match for `redis://` because the byte after `redis` differs.
+const DATABASE_SCHEMES: [&str; 5] = [
+    "postgres://",
+    "postgresql://",
+    "mysql://",
+    "redis://",
+    "rediss://",
+];
 
 /// Longest URL authority (`user:password@host:port`) inspected after a scheme.
 ///

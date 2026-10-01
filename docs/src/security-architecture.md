@@ -154,7 +154,7 @@ receives a denial before data or side effects are exposed.
 | Misconfiguration | Nonce-based CSP and a strict HTTP-header baseline. | Proxies and page content change the deployed policy; no scanner grade is guaranteed. |
 | Authentication abuse | Login jail, local limiter, optional atomic Redis limiter, timing helpers, TOTP, subject-bound recovery-code verifiers and WebAuthn integration. | Real Redis topology/failover, durable transactional recovery consumption and UX, RP/origin configuration, trusted peer identity, and capacity planning remain application concerns. |
 | Data integrity | HMAC audit records plus an opt-in bounded HMAC-chained local SIEM journal with named rotation keys. | Whole-tail rollback detection, independent checkpoints, multi-writer operation, key protection, retention and remote delivery require external storage and operations. |
-| Data leakage | Text-aware DLP, PII masking, and log redaction helpers. | Unsupported content types, encodings, streams, and oversize bodies follow explicit policy and must be tested. Core response masking buffers at most 2 MiB of identity-encoded text and scans it in linear time; it is a heuristic for emails and 13-19 digit card-like runs, not complete PII detection. |
+| Data leakage | Text-aware DLP, PII masking, and log redaction helpers. | Unsupported content types, encodings, streams, and oversize bodies follow explicit policy and must be tested. Core response masking buffers at most 2 MiB of identity-encoded text and scans it in linear time; it is a heuristic for emails and 13-19 digit card-like runs, not complete PII detection. JSON responses are masked only inside string values, so numbers such as millisecond timestamps and 64-bit IDs keep their digits and the body stays valid JSON; other textual responses, including JavaScript, are masked as plain text. An e-mail match needs an alphabetic top-level domain that is not a static-asset extension, so versioned package URLs (`htmx.org@2.0.4`) and density-suffixed asset names (`logo@2x.png`) are left unchanged. |
 | AI input risk | Prompt-injection heuristics and PII masking in the high-level AI client. | No heuristic can prove a prompt safe or guarantee detection of every secret. |
 
 This is a control mapping, not a claim of complete OWASP Top 10 coverage.
@@ -221,7 +221,11 @@ reject known suspicious patterns in supported URI, header, and bounded body data
 but application queries must still use binds and access control. Body media
 types are classified at least as broadly as axum's extractors: any ASCII case,
 parameters, a `json`/`xml` subtype or `+json`/`+xml` suffix, and any type that
-starts with `application/x-www-form-urlencoded`.
+starts with `application/x-www-form-urlencoded`. Core's WAF checks the
+percent-decoded request path for traversal signatures only (`../`, `..\`,
+`/etc/passwd`, `win.ini`), since routers decode path parameters; its SQL, XSS
+and command patterns apply to the query, the `Referer`, each cookie pair and
+bounded bodies.
 
 DLP modifies only supported textual responses whose body can be safely buffered
 within configured limits. Applications must test JSON, HTML, binary, compressed,
@@ -238,6 +242,12 @@ Audit records use an unambiguous canonical representation and a non-empty HMAC
 key. Verification must cover the ordered sequence, not just isolated records. A
 valid chain is tamper-evident; it cannot stop an attacker who can delete every
 record or steal the key. Store the log and key in separate protected systems.
+A new `AuditChain` starts at sequence 1 from the genesis predecessor, so a
+restarted writer must continue its persisted trail with the unpublished v13
+`AuditChain::try_resume`, passing the newest persisted record; that record's
+HMAC must verify. Exactly one writer may own a persisted chain, and deleting
+the newest records before a restart is detected only against an external
+checkpoint of the last sequence and hash.
 
 ## Supply-chain and compliance evidence
 

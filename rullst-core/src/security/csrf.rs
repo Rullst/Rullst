@@ -52,6 +52,12 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// state-changing requests must match the `rullst_csrf` cookie token with either the
 /// `X-CSRF-Token` header or form `_token` field.
 ///
+/// An `application/x-www-form-urlencoded` body is buffered (up to 1 MiB) to
+/// read `_token`. A `multipart/form-data` body, such as a file upload, is read
+/// only until its first `_token` field ends, at most 64 KiB, so that field
+/// must precede the file inputs; the whole body then reaches the handler
+/// unchanged.
+///
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
 /// [`crate::Server`] later composes the production security baseline around it.
@@ -140,11 +146,20 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
     let token = generate_csrf_token();
     req.extensions_mut().insert(CsrfToken(token.clone()));
     {
+        // Like the webhook exemption, fall back to the process-global
+        // configuration when no per-application `SecurityConfig` is installed.
         let same_site = req
             .extensions()
             .get::<crate::config::SecurityConfig>()
-            .map(|cfg| cfg.csrf_same_site.clone())
-            .unwrap_or_else(|| "Lax".to_string());
+            .map_or_else(
+                || {
+                    crate::config::RullstConfig::global()
+                        .security
+                        .csrf_same_site
+                        .clone()
+                },
+                |cfg| cfg.csrf_same_site.clone(),
+            );
         let secure_cookie = req
             .extensions()
             .get::<crate::config::Environment>()
@@ -258,6 +273,20 @@ async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
                 let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
                 return next.run(reconstructed_req).await;
             }
+        }
+    } else if let Some(boundary) = super::csrf_multipart::form_data_boundary(content_type) {
+        let boundary = boundary.to_owned();
+        let (mut parts, body) = req.into_parts();
+        let Ok((body_token, body)) = super::csrf_multipart::read_token(body, &boundary).await
+        else {
+            return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+        };
+        if let Some(token) = body_token
+            && token.len() == cookie_token.len()
+            && token.ct_eq(cookie_token.as_bytes()).into()
+        {
+            parts.extensions.insert(CsrfToken(cookie_token));
+            return next.run(Request::from_parts(parts, body)).await;
         }
     }
 

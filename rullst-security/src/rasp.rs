@@ -203,14 +203,15 @@ impl RaspInspector {
     }
 
     /// Inspects HTTP headers (User-Agent, Referer, Custom Headers) for injected attack payloads.
+    ///
+    /// Values are decoded lossily, so an obs-text byte (0x80-0xFF), which
+    /// hyper accepts but `HeaderValue::to_str` rejects, cannot hide a payload.
     pub fn inspect_headers(headers: &HeaderMap) -> bool {
         for (name, val) in headers {
             if name == "cookie" || name == "authorization" {
                 continue;
             }
-            if let Ok(v_str) = val.to_str()
-                && Self::inspect_text(v_str)
-            {
+            if Self::inspect_text(&String::from_utf8_lossy(val.as_bytes())) {
                 return true;
             }
         }

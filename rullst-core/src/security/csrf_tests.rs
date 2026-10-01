@@ -284,3 +284,104 @@ async fn non_ascii_unrelated_cookies_do_not_hide_the_csrf_cookie() {
         StatusCode::FORBIDDEN
     );
 }
+
+fn upload_form(token: &str, token_first: bool, file_len: usize) -> Vec<u8> {
+    let token_part = format!(
+        "--RullstForm\r\nContent-Disposition: form-data; name=\"_token\"\r\n\r\n{token}\r\n"
+    );
+    let mut file_part = b"--RullstForm\r\nContent-Disposition: form-data; name=\"avatar\"; filename=\"a.png\"\r\nContent-Type: image/png\r\n\r\n".to_vec();
+    file_part.extend(std::iter::repeat_n(b'p', file_len));
+    file_part.extend_from_slice(b"\r\n");
+    let mut body = Vec::new();
+    if token_first {
+        body.extend_from_slice(token_part.as_bytes());
+        body.extend_from_slice(&file_part);
+    } else {
+        body.extend_from_slice(&file_part);
+        body.extend_from_slice(token_part.as_bytes());
+    }
+    body.extend_from_slice(b"--RullstForm--\r\n");
+    body
+}
+
+fn upload_request(token: &str, body: Body) -> Request<Body> {
+    Request::post("/upload")
+        .header(header::COOKIE, format!("rullst_csrf={token}"))
+        .header(
+            header::CONTENT_TYPE,
+            "multipart/form-data; boundary=RullstForm",
+        )
+        .body(body)
+        .unwrap()
+}
+
+fn echo_app() -> Router {
+    Router::new()
+        .route(
+            "/upload",
+            any(|body: axum::body::Bytes| async move { body }),
+        )
+        .layer(axum::middleware::from_fn(csrf_middleware))
+}
+
+#[tokio::test]
+async fn multipart_forms_echo_the_token_and_keep_the_whole_body() {
+    let token = generate_csrf_token();
+    let body = upload_form(&token, true, 200_000);
+    let response = echo_app()
+        .oneshot(upload_request(&token, Body::from(body.clone())))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let echoed = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    assert!(echoed.as_ref() == body.as_slice());
+
+    // A body arriving in one-byte frames is found and replayed exactly.
+    let small = upload_form(&token, true, 16);
+    let frames = small
+        .iter()
+        .map(|byte| Ok::<_, std::io::Error>(axum::body::Bytes::from(vec![*byte])))
+        .collect::<Vec<_>>();
+    let response = echo_app()
+        .oneshot(upload_request(
+            &token,
+            Body::from_stream(futures_util::stream::iter(frames)),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let echoed = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .unwrap();
+    assert!(echoed.as_ref() == small.as_slice());
+}
+
+#[tokio::test]
+async fn multipart_forms_without_a_leading_matching_token_are_rejected() {
+    let token = generate_csrf_token();
+    let other = generate_csrf_token();
+    for body in [
+        upload_form(&other, true, 16),
+        upload_form(&token, false, 80 * 1024),
+        b"--RullstForm\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\nx\r\n--RullstForm--\r\n"
+            .to_vec(),
+        Vec::new(),
+    ] {
+        let response = echo_app()
+            .oneshot(upload_request(&token, Body::from(body)))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+    // A token after a small file part is still within the bounded prefix.
+    let response = echo_app()
+        .oneshot(upload_request(
+            &token,
+            Body::from(upload_form(&token, false, 1_024)),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+}

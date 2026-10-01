@@ -1014,7 +1014,8 @@ on `Server` exempts only exact write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
 verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
 size is bounded and WAF/secure headers remain composed. Wildcards and weak
-secrets fail at construction. Applications own ingress limits, replay storage,
+secrets fail at construction; a static bearer token needs 32–200 printable
+ASCII bytes with at least 8 distinct values. Applications own ingress limits, replay storage,
 certificate trust and authorization; an unverified proxy header is not mTLS.
 
 The current [release audit](v12-release-audit.md) reopens earlier readiness
@@ -1424,7 +1425,10 @@ the same server-authoritative controls.
   request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
   and preserves it after a valid state-changing request. Server-rendered forms
   must echo that value in `_token`; HTMX/JavaScript may instead send it through
-  `X-CSRF-Token`. Nested application and `Server` baseline composition is
+  `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
+  place its `_token` field before any file input: the middleware reads at most
+  the first 64 KiB of that body to find the field, compares it in constant
+  time and then passes the whole body on unchanged. Nested application and `Server` baseline composition is
   request-idempotent: exactly one CSRF layer owns token validation/cookie
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
@@ -2917,7 +2921,7 @@ sending.
 * **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
-* **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
+* **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Header values are decoded lossily in RASP and Core's WAF, so an obs-text byte (0x80-0xFF) that hyper accepts cannot hide the rest of a value. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
 * **Login Guard Tarpit:** `record_login_failure` returns progressive delay
   decisions and `record_login_failure_and_wait` applies them asynchronously;
   both share bounded, temporary in-memory jails keyed by a hashed identity.
