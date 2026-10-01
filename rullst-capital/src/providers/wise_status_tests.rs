@@ -16,6 +16,7 @@ async fn transfer_fixture(Path(id): Path<String>, headers: HeaderMap) -> Json<Va
         (_, "6") => serde_json::json!({"id": 999, "status": "outgoing_payment_sent"}),
         (_, "7") => serde_json::json!({"id": "7", "status": "processing"}),
         (_, "8") => serde_json::json!({"id": 8, "status": "funds_converted"}),
+        (_, "9") => serde_json::json!({"id": 9, "status": "waiting_recipient_input_to_proceed"}),
         _ => serde_json::json!({}),
     };
     Json(body)
@@ -50,6 +51,17 @@ async fn live_transfer_status_is_bound_to_the_transfer_and_never_guessed() {
     );
     assert_eq!(
         status_at(&base, "8").await.expect("converted transfer"),
+        PayoutStatus::Processing
+    );
+    // An email-recipient transfer waiting for bank details is still in flight.
+    assert_eq!(
+        transfer_state_at("fixture_wise_token", &base, "9")
+            .await
+            .expect("transfer waiting for its recipient"),
+        WiseTransferState::WaitingRecipientInput
+    );
+    assert_eq!(
+        status_at(&base, "9").await.expect("waiting transfer"),
         PayoutStatus::Processing
     );
     assert_eq!(

@@ -1,6 +1,7 @@
 use crate::{BrokerConfig, MessagingError, Result};
 use sqlx::{Executor, SqlitePool};
 
+use super::codec::{EnvelopeRow, decode_envelope};
 use super::storage::StorageProfile;
 use super::transaction::finish;
 use super::transaction::storage_error;
@@ -122,6 +123,7 @@ async fn prepare_storage_profile(
                     .map_err(|_| storage_error("read storage rotation keys"))?;
                     for marker in markers {
                         storage.ensure_key_available(&marker.0)?;
+                        verify_key_bytes(&mut connection, config, storage, &marker.0).await?;
                     }
                 }
                 if storage
@@ -150,6 +152,48 @@ async fn prepare_storage_profile(
     }
     .await;
     finish(connection, result, "finish storage profile").await
+}
+
+/// Opens one retained record sealed under `marker`'s key.
+///
+/// A key ID alone does not prove the key bytes: a prior key with the right ID
+/// but wrong bytes would pass, and every later receive whose oldest pending
+/// record uses it would fail and block its group. One record per key ID makes
+/// a wrong prior key fail at startup instead.
+async fn verify_key_bytes(
+    connection: &mut sqlx::SqliteConnection,
+    config: &BrokerConfig,
+    storage: &StorageProfile,
+    marker: &str,
+) -> Result<()> {
+    type Sample = (String, i64, String, String, String, String, Vec<u8>, i64);
+    let sample: Sample = sqlx::query_as(
+        "SELECT topic, sequence, message_id, event_kind, content_type, headers_json, payload, published_at_ms FROM rullst_messaging_messages WHERE namespace = ? AND headers_json = ? LIMIT 1",
+    )
+    .bind(config.namespace().as_str())
+    .bind(marker)
+    .fetch_one(&mut *connection)
+    .await
+    .map_err(|_| storage_error("read storage rotation record"))?;
+    let (topic, sequence, message_id, event_kind, content_type, headers_json, payload, published) =
+        sample;
+    let row: EnvelopeRow = (
+        message_id,
+        event_kind,
+        content_type,
+        headers_json,
+        payload,
+        published,
+    );
+    decode_envelope(
+        storage,
+        config.namespace(),
+        &topic,
+        sequence,
+        row,
+        config.max_payload_bytes(),
+    )
+    .map(|_| ())
 }
 
 fn as_i64(value: usize, context: &'static str) -> Result<i64> {

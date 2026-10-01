@@ -72,8 +72,19 @@ impl TrialExtension {
     }
 }
 
+/// Validates a provider ID that live adapters place in a URL path segment.
+///
+/// A segment made only of dots (`.`, `..`) is a URL dot segment that the URL
+/// parser removes, which would send the authenticated request to another
+/// provider endpoint, so it is rejected.
 pub(crate) fn validate_provider_subscription_id(value: &str) -> Result<(), CapitalError> {
-    validate_ascii_identifier("subscription ID", value, MAX_PROVIDER_ID_BYTES)
+    validate_ascii_identifier("subscription ID", value, MAX_PROVIDER_ID_BYTES)?;
+    if value.bytes().all(|byte| byte == b'.') {
+        return Err(CapitalError::SubscriptionError(
+            "subscription ID must contain a letter, digit, `_`, or `-`".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_coupon_code(value: &str) -> Result<CouponCode, CapitalError> {
@@ -114,6 +125,20 @@ fn trial_overflow_error() -> CapitalError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn provider_ids_cannot_be_url_dot_segments() {
+        for id in [".", "..", "..."] {
+            assert!(matches!(
+                validate_provider_subscription_id(id),
+                Err(CapitalError::SubscriptionError(_))
+            ));
+        }
+        for id in ["sub_1", "sub.1", ".sub", "sub..", "-", "_"] {
+            assert!(validate_provider_subscription_id(id).is_ok(), "{id}");
+        }
+        assert!(validate_provider_subscription_id("../42").is_err());
+    }
 
     #[test]
     fn coupon_and_trial_values_are_bounded_and_redacted() {

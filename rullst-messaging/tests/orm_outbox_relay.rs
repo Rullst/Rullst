@@ -172,6 +172,80 @@ async fn valid_claim_json_is_normalized_without_requiring_field_order() {
     assert_eq!(delivered, json!({"invoice_id": 42, "z_status": "issued"}));
 }
 
+fn claim(stream: &str, id: i64, payload_json: &str) -> rullst_orm::ClaimedOutboxEvent {
+    rullst_orm::ClaimedOutboxEvent {
+        id,
+        stream: stream.to_string(),
+        event_key: "order-42".to_string(),
+        event_kind: "order.created".to_string(),
+        payload_json: payload_json.to_string(),
+        attempts: 1,
+        claim_key: "claim-key".to_string(),
+        claim_expires_at_epoch: unix_now() + 60,
+    }
+}
+
+#[tokio::test]
+async fn streams_sharing_a_topic_keep_their_own_idempotency_scope() {
+    // Outbox event keys are unique per stream, while the broker deduplicates
+    // per topic: equal keys from two streams must stay two messages.
+    let broker = InMemoryBroker::new(
+        rullst_messaging::BrokerConfig::try_new("relay-stream-scope").expect("broker config"),
+    );
+    broker
+        .subscribe(
+            SubscriptionRequest::try_new("domain-events", "workers", StartPosition::Earliest)
+                .expect("subscription"),
+        )
+        .await
+        .expect("subscribe");
+    let tenant_a =
+        OrmOutboxRelay::try_new("tenant-a", "domain-events", broker.clone()).expect("relay a");
+    let tenant_b =
+        OrmOutboxRelay::try_new("tenant-b", "domain-events", broker.clone()).expect("relay b");
+    let created = r#"{"status":"created"}"#;
+    let first = tenant_a
+        .publish_claim(&claim("tenant-a", 1, created))
+        .await
+        .expect("tenant A publication");
+    let identical = tenant_b
+        .publish_claim(&claim("tenant-b", 2, created))
+        .await
+        .expect("tenant B publication with identical content");
+    assert!(!identical.is_duplicate());
+    assert_ne!(identical.id(), first.id());
+    // A different payload under the same key is not an idempotency conflict.
+    let tenant_c =
+        OrmOutboxRelay::try_new("tenant-c", "domain-events", broker.clone()).expect("relay c");
+    let different = tenant_c
+        .publish_claim(&claim("tenant-c", 3, r#"{"status":"paid"}"#))
+        .await
+        .expect("tenant C publication with different content");
+    assert!(!different.is_duplicate());
+    // The crash-window replay of one stream still deduplicates.
+    let replay = tenant_a
+        .publish_claim(&claim("tenant-a", 1, created))
+        .await
+        .expect("tenant A replay");
+    assert!(replay.is_duplicate());
+    assert_eq!(replay.id(), first.id());
+
+    let deliveries = broker
+        .receive(
+            ReceiveRequest::try_new(
+                "domain-events",
+                "workers",
+                "consumer-a",
+                10,
+                Duration::from_secs(30),
+            )
+            .expect("receive request"),
+        )
+        .await
+        .expect("receive relayed messages");
+    assert_eq!(deliveries.len(), 3);
+}
+
 fn sqlite_compatible_orm_profile() -> bool {
     let database = std::any::type_name::<rullst_orm::RullstDatabase>();
     database.contains("Any") || database.contains("Sqlite")

@@ -35,7 +35,7 @@ return mutate(function(timestamp)
                 if data[2] < 0 then error('group count corrupt') end
                 call('HSET', subscriptions, group, cjson.encode(data))
             end
-            call('ZREM', ready, seq)
+            call('ZREM', ready, member(seq))
             call('ZREM', done, seq)
             call('ZREM', dead, seq)
             call('HDEL', state, seq)

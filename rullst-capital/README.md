@@ -122,7 +122,10 @@ decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
 or undocumented state fails the provider response contract, and a
 `bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
 because `PayoutStatus` cannot express a returned or reversed payout; it is
-never reported as `Processing`. The additive v13 `get_transfer_state` returns
+never reported as `Processing`. A `waiting_recipient_input_to_proceed`
+transfer (a "send money to email" transfer waiting for the recipient's bank
+details) is in flight: the typed state is `WaitingRecipientInput` (v13) and
+the coarse status is `Processing`. The additive v13 `get_transfer_state` returns
 the typed `WiseTransferState` from the same bound read, and
 `with_sandbox_api()` sends reads to `https://api.sandbox.transferwise.tech`
 for sandbox tokens.
@@ -565,6 +568,14 @@ sent a fixed `total_count` of 12 for every plan period. Handle
 argument is recorded in the subscription `notes` only; the adapter does not
 send it as a callback or return URL. Offline fixtures need no count.
 
+Live `pause_subscription` sends Razorpay's documented
+`{"pause_at": "now"}` body and succeeds only when the response is the same
+subscription with status `paused`. Razorpay can pause only an `active`
+subscription and cancels an `authenticated` one instead; that outcome returns
+`SubscriptionError`. See the
+[pause reference](https://razorpay.com/docs/api/payments/subscriptions/pause-subscription/).
+Earlier releases sent an empty body and accepted any successful status.
+
 ---
 
 ## Outbound Provider Safety and Retry Evidence
@@ -678,7 +689,8 @@ before invoking either boundary.
 
 Use one `BillingSubject` for the authenticated tenant/workspace so every member
 consumes the same limit. `Billable::quota_request` derives the limit from the
-subscription owner's tier rather than a client payload. `QuotaGate` atomically
+subscription owner's tier rather than a client payload; a tier limit of zero
+returns `QuotaError::LimitExceeded`, like a used-up limit. `QuotaGate` atomically
 reserves before calling the application operation, skips exact idempotent
 replays and releases a fresh reservation when the callback returns an error.
 `QuotaExecution::Replay` means only that the key is already claimed: the first
@@ -694,6 +706,36 @@ relational create that must be atomic with accounting, open a transaction from
 that same transaction and commit once. See the
 [SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html#8-enforce-one-shared-workspace-quota-before-creation)
 for the complete flow.
+
+Subject kinds and IDs, features and event keys are case-sensitive on every
+backend, so tenants such as `aB3x` and `Ab3X` keep separate counters. New
+MySQL/MariaDB tables declare those columns `CHARACTER SET ascii COLLATE
+ascii_bin`. `prepare_schema` never alters an existing table: while a key column
+of either quota table still folds case, `prepare_schema` and every store
+operation return `QuotaError::StorageUnavailable`.
+
+#### Upgrading MySQL/MariaDB quota tables
+
+Tables created by an earlier release use the server's case-insensitive default
+collation, so keys that differ only by letter case shared one counter or claim.
+The migration cannot split rows merged that way; review subjects and event keys
+that differ only by case first. Stop quota writers, back up both tables, then
+convert the key columns:
+
+```sql
+ALTER TABLE rullst_capital_quota_counters
+  MODIFY subject_kind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY subject_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY feature VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+ALTER TABLE rullst_capital_quota_claims
+  MODIFY subject_kind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY subject_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY feature VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY event_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+```
+
+Any binary or case-sensitive (`_bin`/`_cs`) collation also passes the check.
+The MySQL 8.0 and MariaDB contract tests run this migration on legacy tables.
 
 Membership/authentication, tier persistence and webhook reconciliation,
 migrations, cleanup policy for abandoned standalone reservations, and
@@ -855,7 +897,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body without a checked timestamp, so an exact captured body verifies again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order their state changes in the application. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body without a checked timestamp, so an exact captured body verifies again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order their state changes in the application. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof. The default store behind `verify_webhook`, `verify_webhook_mock_local` and their Actix equivalents holds at most 10,000 proofs for 24 hours each, so one process admits about 10,000 verified deliveries per rolling day before it answers 503. For busier endpoints, mount `verify_webhook_with_state` with `InMemoryWebhookReplayStore::new(capacity, ttl)` (up to 1,000,000 proofs and 30 days) or a shared `SqlWebhookReplayStore`.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 

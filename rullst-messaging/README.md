@@ -101,7 +101,9 @@ metadata encryption.
 
 The first key encrypts new records; add at most seven prior decryption keys with
 `with_decryption_key`. Startup rejects a missing/wrong key, tampered profile or
-removal of a prior key while any retained record still references it. Rotation
+removal of a prior key while any retained record still references it; it opens
+one retained record per referenced key ID, so a prior key with the right ID but
+wrong bytes fails at startup instead of blocking later receives. Rotation
 does not rewrite old messages: ACK and purge them under the complete keyring
 before retiring that key. Plaintext and encrypted profiles never mix silently;
 migration requires an explicit new namespace/database and application-owned
@@ -117,8 +119,12 @@ The application first commits its domain mutation and outbox row in one ORM
 transaction. A supervised worker claims that row and passes it to an
 `OrmOutboxRelay` bound to one exact stream and broker topic.
 
-`publish_claim` validates the claim and publishes its JSON using the outbox
-`event_key` as the broker idempotency key. `relay_and_ack` then acknowledges the
+`publish_claim` validates the claim and publishes its JSON. The broker
+idempotency key is the lowercase hex SHA-256 of the stream, `/`, then the outbox
+`event_key`: the ORM makes event keys unique only within a stream, while a
+broker deduplicates per topic, so relays of different streams can share one
+topic without suppressing or conflicting with each other's events.
+`relay_and_ack` then acknowledges the
 exact ORM lease. These are necessarily two operations: if the process stops
 after publication, the lease expires and a later claim republishes the same
 content. The broker returns the original message as an exact replay, after

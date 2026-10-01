@@ -311,7 +311,10 @@ acting on money.
    constant-time verification for the exact signed bytes. Each provider's
    timestamp/replay policy and deployed secret lifecycle still require review.
    The default replay store is process-local; multi-instance deployments need a
-   durable shared idempotency boundary owned by the application.
+   durable shared idempotency boundary owned by the application. It holds at
+   most 10,000 proofs for 24 hours each and answers 503 when full rather than
+   evict an unexpired proof; size a store for `verify_webhook_with_state` when
+   one process verifies more than about 10,000 deliveries per day.
 3. **Typed parsing:** supported provider responses map into Rust enums and
    structs without runtime reflection. A typed response does not establish
    authorization, idempotency, or correctness of the upstream service.

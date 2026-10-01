@@ -349,6 +349,11 @@ pub trait Billable {
     /// Implement `Billable` on the subscription owner (for example a
     /// Workspace), derive `subject` from trusted tenant membership, and pass
     /// the result to a [`crate::QuotaStore`] before creating the resource.
+    ///
+    /// A tier limit of zero grants none of the feature: after validating the
+    /// other inputs this returns [`crate::QuotaError::LimitExceeded`] with
+    /// `limit: 0` and `used: 0` without consulting a store, like any other
+    /// denial. A feature without a tier limit is an `InvalidRequest`.
     fn quota_request(
         &self,
         subject: crate::BillingSubject,
@@ -364,6 +369,16 @@ pub trait Billable {
         let limit = u64::try_from(limit).map_err(|_| {
             crate::QuotaError::InvalidRequest("billable tier limit overflow".to_string())
         })?;
+        if limit == 0 {
+            // `QuotaRequest` requires a positive limit; validate everything
+            // else so a malformed request is still reported as invalid.
+            crate::QuotaRequest::try_new(subject, feature, event_key, units, 1)?;
+            return Err(crate::QuotaError::LimitExceeded {
+                used: 0,
+                requested: units,
+                limit: 0,
+            });
+        }
         crate::QuotaRequest::try_new(subject, feature, event_key, units, limit)
     }
 

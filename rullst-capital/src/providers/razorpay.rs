@@ -224,19 +224,8 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
-            crate::subscription::validate_provider_subscription_id(subscription_id)?;
-            let client = crate::providers::http_client()?;
-            crate::providers::send_http(
-                client
-                    .post(format!(
-                        "https://api.razorpay.com/v1/subscriptions/{}/pause",
-                        subscription_id
-                    ))
-                    .basic_auth(&self.key_id, Some(&self.key_secret)),
-                "razorpay",
-                "pause subscription",
-            )
-            .await?;
+            super::razorpay_subscription::pause(&self.key_id, &self.key_secret, subscription_id)
+                .await?;
         }
         Ok(())
     }

@@ -33,6 +33,7 @@ impl Billable for ProUser {
     fn tier_limit(&self, feature: &str) -> Option<usize> {
         match feature {
             "api_calls" => Some(1000),
+            "exports" => Some(0),
             _ => None,
         }
     }
@@ -74,6 +75,28 @@ async fn test_billable_defaults() {
         user.extend_trial(15).await,
         Err(CapitalError::SubscriptionError(_))
     ));
+}
+
+#[test]
+fn zero_tier_allowance_is_a_quota_denial_not_an_invalid_request() {
+    let pro = ProUser;
+    let workspace = crate::BillingSubject::try_new("workspace", "acme").expect("subject");
+    assert!(!pro.check_quota("exports", 0));
+    assert_eq!(
+        pro.quota_request(workspace.clone(), "exports", "export-1", 2),
+        Err(crate::QuotaError::LimitExceeded {
+            used: 0,
+            requested: 2,
+            limit: 0,
+        })
+    );
+    // Malformed input is still reported as invalid for a zero allowance.
+    for (event_key, units) in [("export-1", 0), ("bad key", 1)] {
+        assert!(matches!(
+            pro.quota_request(workspace.clone(), "exports", event_key, units),
+            Err(crate::QuotaError::InvalidRequest(_))
+        ));
+    }
 }
 
 #[tokio::test]
