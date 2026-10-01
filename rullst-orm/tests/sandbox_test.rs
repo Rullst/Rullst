@@ -73,3 +73,32 @@ async fn test_sandbox_isolation_part_2() {
     let users = SandboxUser::query().get().await.unwrap();
     assert!(users.iter().any(|u| u.name == "Bob"));
 }
+
+/// A sandboxed test may return `Result` and use `?`. Run only through
+/// `sandboxed_errors_reach_the_test_harness`, which expects its error.
+#[rullst_orm::test]
+#[ignore = "invoked by sandboxed_errors_reach_the_test_harness"]
+async fn failing_sandboxed_test() -> Result<(), rullst_orm::Error> {
+    init_db();
+    let _ = Schema::create("sandbox_users", |t: &mut Blueprint| {
+        t.id();
+        t.string("name").not_null();
+    })
+    .await;
+    let mut user = SandboxUser {
+        id: 0,
+        name: "Carol".to_string(),
+    };
+    user.save().await?;
+    Err(rullst_orm::Error::Validation(
+        "the sandboxed assertion failed".to_string(),
+    ))
+}
+
+#[test]
+fn sandboxed_errors_reach_the_test_harness() {
+    assert!(matches!(
+        failing_sandboxed_test(),
+        Err(rullst_orm::Error::Validation(message)) if message == "the sandboxed assertion failed"
+    ));
+}
