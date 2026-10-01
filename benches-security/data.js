@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790846992584,
+  "lastUpdate": 1790849842212,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13485,6 +13485,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79e2f9b0d25eba44b5292de204b07f06fd8d68fd",
+          "message": "Merge pull request #374 from Rullst/fix/v13-cli-ops-low-fixes\n\nfix(cli): bounded symlink-safe audit, protected diagram, RFC 1123 names and honest pkg/deploy exits",
+          "timestamp": "2026-10-01T06:54:43-03:00",
+          "tree_id": "570cc750f6c570495f96142d183730a50b9640dc",
+          "url": "https://github.com/Rullst/Rullst/commit/79e2f9b0d25eba44b5292de204b07f06fd8d68fd"
+        },
+        "date": 1790849841243,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5551,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 564,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 31,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
