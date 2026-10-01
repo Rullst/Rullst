@@ -146,3 +146,31 @@ async fn malformed_dotenv_fails_closed_without_echoing_it() {
     assert!(message.contains(".env"));
     assert!(!message.contains("secret-marker"));
 }
+
+#[cfg(feature = "mail-smtp")]
+#[tokio::test]
+async fn an_invalid_mail_port_is_a_configuration_error_not_port_25() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let _environment = isolated_environment();
+    let resolve = |port: Option<&str>| {
+        let dotenv = match port {
+            Some(port) => format!("MAIL_DRIVER=smtp\nMAIL_HOST=mock_smtp\nMAIL_PORT={port}\n"),
+            None => "MAIL_DRIVER=smtp\nMAIL_HOST=mock_smtp\n".to_string(),
+        };
+        async move {
+            let project = Project::new(&dotenv, None);
+            let settings = MailSettings::load_from(project.path()).await.unwrap();
+            Mail::resolve_driver_from(&settings).map(|_| ())
+        }
+    };
+    for port in ["65536", "587000", "0", "smtp", "-25", "25.0"] {
+        let error = resolve(Some(port)).await.unwrap_err();
+        assert!(
+            matches!(&error, MailError::ConfigError(text) if text.contains("MAIL_PORT") && !text.contains(port)),
+            "{port}: {error}"
+        );
+    }
+    for port in [Some("2525"), Some("465"), Some(""), None] {
+        resolve(port).await.unwrap();
+    }
+}

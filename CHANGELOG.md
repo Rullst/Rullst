@@ -324,6 +324,23 @@ A prepared version section does not establish that its tag or crates exist.
 - The host-specific `.cargo/config.toml` linker selection is excluded from Git
   and Docker builds.
 
+### Mail final-review fixes
+
+- Attachment inspection classifies markup the way browsers parse it (root
+  element after any prologue or DOCTYPE, namespace prefixes, SVG/XHTML
+  namespace URIs including character-reference spellings, DTD entities,
+  UTF-16), so namespaced SVG or XHTML labelled `application/xml` is rejected.
+- The homograph check resolves links with WHATWG URL parsing (tab/newline
+  removal, backslashes, `https:host`, scheme-relative, percent-encoded and
+  A-label hosts), and click tracking checks each destination as one link.
+- The `Mail` facade reuses its configured driver while settings are unchanged,
+  so managed-identity tokens and connection pools are shared, and an invalid
+  `MAIL_PORT` is a `ConfigError`.
+- SES requests carry 7-bit ASCII addresses (IDNA A-labels, RFC 2047 sender
+  names), and direct Resend schedules beyond 30 days fail before any request.
+- Tracking tokens sign the bare recipient address, and the derived plain-text
+  part keeps HTTP(S) link targets as `label <URL>`.
+
 ### Large module splits
 
 - Ten oversized production modules are split into focused submodules under the

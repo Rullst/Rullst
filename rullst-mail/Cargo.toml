@@ -40,6 +40,9 @@ base64 = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }
 secrecy = "0.10"
+# The URL parser's own IDNA implementation, used to inspect link hosts in
+# Unicode form (already in the graph through `url`).
+idna = "1.1.0"
 aws-sdk-sesv2 = { workspace = true, optional = true }
 # Types 1.7.0 broke Smithy JSON 0.63 and was yanked; 1.8 restores compatibility.
 # Keep this floor so SES consumers never resolve below the fixed 1.8 line.

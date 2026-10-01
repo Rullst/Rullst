@@ -74,3 +74,27 @@ async fn sendgrid_rejects_schedules_beyond_its_window_before_network() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn resend_rejects_schedules_beyond_its_window_before_network() {
+    let message = Message::new()
+        .to("user@example.com")
+        .from("sender@example.com")
+        .subject("Later")
+        .text("body")
+        .send_in(std::time::Duration::from_secs(31 * 86_400));
+    let outcome = ResendDriver::try_new("re_live_fixture")
+        .unwrap()
+        .send(&message)
+        .await;
+    assert!(
+        matches!(&outcome, Err(MailError::ConfigError(text)) if text.contains("30 days")),
+        "{outcome:?}"
+    );
+    // The offline fixture keeps longer schedules for assertions.
+    ResendDriver::try_new("mock_resend")
+        .unwrap()
+        .send(&message)
+        .await
+        .unwrap();
+}
