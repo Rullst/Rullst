@@ -500,6 +500,9 @@ Manages third-party community packages and extensions conforming to the `RullstP
   * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`.
   * `list`: Scans and lists all active `rullst-*` community extensions installed in your project.
 
+An unknown action, or `add` without a package name, fails with a non-zero exit
+status.
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
