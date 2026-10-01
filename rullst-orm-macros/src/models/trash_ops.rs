@@ -124,19 +124,25 @@ fn generate_force_delete(parsed: &ParsedModel) -> TokenStream {
     let load_observers = load_observers();
     let execute = execute_mutation();
     let effects = deleted_effects(parsed);
-    let audit = if parsed.auditable {
-        quote! {
-            rullst_orm::audit::log_audit_with_tx(
-                tx,
-                #table_name,
-                self.id,
-                "force_deleted",
-                Some(self.to_json()),
-                None
-            ).await?;
-        }
+    // Audit the persisted row, read locked before the DELETE, not the handle.
+    let (pre_image, audit) = if parsed.auditable {
+        let row = quote::format_ident!("erased_row");
+        (
+            super::row_lookup::locked_row(parsed, &row),
+            quote! {
+                let #row = #row.ok_or(rullst_orm::Error::RecordNotFound)?;
+                rullst_orm::audit::log_audit_with_tx(
+                    tx,
+                    #table_name,
+                    self.id,
+                    "force_deleted",
+                    Some(#row.to_json()),
+                    None
+                ).await?;
+            },
+        )
     } else {
-        quote! {}
+        (quote! {}, quote! {})
     };
     let force_delete_sql = format!("DELETE FROM {} WHERE id = ?{}", table_name, tenant.clause);
     let with_tx = quote::format_ident!("__rullst_force_delete_with_tx");
@@ -147,6 +153,7 @@ fn generate_force_delete(parsed: &ParsedModel) -> TokenStream {
             #load_observers
             let futures = observers.iter().map(|obs| obs.deleting(&*self));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
+            #pre_image
             let query = Self::__rullst_force_delete_sql(rullst_orm::Orm::driver()?);
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
@@ -261,25 +268,32 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
     let restored_row = super::row_lookup::locked_row(parsed, &quote::format_ident!("restored_row"));
     let load_observers = load_observers();
     let execute = execute_mutation();
-    let audit = if parsed.auditable {
-        quote! {
-            rullst_orm::audit::log_audit_with_tx(
-                tx,
-                #table_name,
-                self.id,
-                "restored",
-                Some(self.to_json()),
-                Some(restored.to_json())
-            ).await?;
-        }
+    // The old side is the trashed row read locked before the UPDATE.
+    let (pre_image, audit) = if parsed.auditable {
+        let row = quote::format_ident!("trashed_row");
+        (
+            super::row_lookup::locked_row(parsed, &row),
+            quote! {
+                let #row = #row.ok_or(rullst_orm::Error::RecordNotFound)?;
+                rullst_orm::audit::log_audit_with_tx(
+                    tx,
+                    #table_name,
+                    self.id,
+                    "restored",
+                    Some(#row.to_json()),
+                    Some(restored.to_json())
+                ).await?;
+            },
+        )
     } else {
-        quote! {}
+        (quote! {}, quote! {})
     };
     let effects = restored_effects(parsed);
     let with_tx = quote::format_ident!("__rullst_restore_with_tx");
     let entrypoint = transactional_entrypoint(&with_tx, "restore");
     let body = savepoint_body(
         quote! {
+            #pre_image
             let query = Self::__rullst_restore_sql(rullst_orm::Orm::driver()?);
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);

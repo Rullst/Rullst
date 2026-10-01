@@ -35,19 +35,31 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     } = tenant_predicate(parsed);
     let deleted_effects = deleted_effects(parsed);
 
-    let audit_after_delete_with_tx = if parsed.auditable {
-        quote! {
-            rullst_orm::audit::log_audit_with_tx(
-                tx,
-                #table_name,
-                self.id,
-                "deleted",
-                Some(self.to_json()),
-                None
-            ).await?;
-        }
+    // The audit entry records the persisted row the statement removes, read
+    // locked just before it, not the caller's possibly edited or stale handle.
+    let deleted_row = quote::format_ident!("deleted_row");
+    let (audit_pre_image, deleted_row_binding, audit_after_delete_with_tx) = if parsed.auditable {
+        (
+            super::row_lookup::locked_row(parsed, &deleted_row),
+            quote! { #deleted_row },
+            quote! {
+                let #deleted_row = #deleted_row.ok_or(rullst_orm::Error::RecordNotFound)?;
+                rullst_orm::audit::log_audit_with_tx(
+                    tx,
+                    #table_name,
+                    self.id,
+                    "deleted",
+                    Some(#deleted_row.to_json()),
+                    None
+                ).await?;
+            },
+        )
     } else {
-        quote! {}
+        (
+            quote! { let #deleted_row: Option<Self> = None; },
+            quote! { _ },
+            quote! {},
+        )
     };
 
     let delete_logic = if let Some(cfg) = soft_delete_config {
@@ -191,7 +203,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             let delete_result = operation_callbacks
                 .run(async {
                     let tx = &mut savepoint;
-                    self.delete_with_tx_internal(&mut **tx).await?;
+                    let #deleted_row_binding = self.delete_with_tx_internal(&mut *tx).await?;
                     #cascade_deletes_with_tx
                     #audit_after_delete_with_tx
                     Ok::<(), rullst_orm::Error>(())
@@ -212,9 +224,12 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }
 
-        async fn delete_with_tx_internal<'e, E>(&self, executor: E) -> Result<(), rullst_orm::Error>
-        where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
-        {
+        /// Runs the delete statement and its callbacks; returns the locked
+        /// pre-image of an auditable model.
+        async fn delete_with_tx_internal(
+            &self,
+            tx: &mut rullst_orm::db::Transaction<'_>,
+        ) -> Result<Option<Self>, rullst_orm::Error> {
             #tenant_guard
             #policy_check_delete
             #hook_before_delete
@@ -224,6 +239,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             };
             let futures = observers.iter().map(|obs| obs.deleting(&*self));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
+            #audit_pre_image
             #delete_logic
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
@@ -232,18 +248,18 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                 .bind(self.id) #tenant_binding;
             let timeout = rullst_orm::schema::get_query_timeout();
             let mutation_result = if let Some(t) = timeout {
-                tokio::time::timeout(t, exec.execute(executor))
+                tokio::time::timeout(t, exec.execute(&mut **tx))
                     .await
                     .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {
-                exec.execute(executor).await?
+                exec.execute(&mut **tx).await?
             };
             #tenant_rows_check
             let futures = observers.iter().map(|obs| obs.deleted(&*self));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             #hook_after_delete
             #deleted_effects
-            Ok(())
+            Ok(#deleted_row)
         }
     }
 }

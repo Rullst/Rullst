@@ -1888,8 +1888,11 @@ while portability and semantic review remain the model author's responsibility.
   both contexts from authenticated authority rather than client assertions.
   An auditable `save()` reads the pre-image of its diff inside its savepoint
   with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB, so a concurrent writer
-  cannot change the row between that read and the full-row `UPDATE`. That
-  read, the revision-restore lookup, the row `restore()` re-reads and the
+  cannot change the row between that read and the full-row `UPDATE`. The
+  old side of a `deleted`, `force_deleted` or `restored` entry is likewise
+  the persisted row read the same way just before the statement, not the
+  caller's possibly edited or stale handle. These reads, the
+  revision-restore lookup, the row `restore()` re-reads and the
   `belongs_to_many` pivot query run within `Orm::set_query_timeout`, like the
   other generated statements.
 * `create_audit_table` creates the v2 schema and adds its columns to a legacy
