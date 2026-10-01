@@ -2,6 +2,8 @@ const HMR_CLIENT_PATH: &str = "/_rullst/hmr-client.js";
 const MAX_HMR_BODY_BYTES: usize = 10 * 1024 * 1024;
 const HMR_CLIENT: &str = r#"(() => {
     'use strict';
+    if (window.__rullstHmr) return;
+    window.__rullstHmr = true;
     let retryDelayMs = 250;
     const connect = () => {
         const socketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -39,67 +41,90 @@ pub(crate) async fn hmr_client_script() -> axum::response::Response {
 }
 
 /// Intercepts development HTML responses and injects the local HMR client.
+///
+/// Only complete, uncompressed UTF-8 `text/html` documents are changed: HTMX
+/// fragment requests (`HX-Request: true`), `HEAD`, `206 Partial Content`,
+/// responses with a `Content-Encoding`, bodies above 10 MiB and non-UTF-8
+/// bodies pass through untouched. The injected script carries the request's
+/// CSP nonce, which inner security header middleware reuses, and a changed
+/// page drops its `ETag` and `Last-Modified` validators.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn inject_hmr_script(
-    req: axum::extract::Request,
+    mut req: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     use axum::body::HttpBody as _;
+    use axum::http::header;
+
+    // An HTMX swap belongs to a page whose client is already connected.
+    let fragment = req
+        .headers()
+        .get("hx-request")
+        .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"true"));
+    let head = req.method() == axum::http::Method::HEAD;
+    let nonce = crate::security::CspNonce::get_or_insert(req.extensions_mut());
 
     let res = next.run(req).await;
 
-    if let Some(content_type) = res.headers().get(axum::http::header::CONTENT_TYPE) {
-        if content_type.to_str().unwrap_or("").contains("text/html") {
-            let declared_too_large = res
-                .headers()
-                .get(axum::http::header::CONTENT_LENGTH)
-                .and_then(|value| value.to_str().ok())
-                .and_then(|value| value.parse::<u64>().ok())
-                .is_some_and(|length| length > MAX_HMR_BODY_BYTES as u64);
-            let body_is_bounded = res
-                .body()
-                .size_hint()
-                .upper()
-                .is_some_and(|length| length <= MAX_HMR_BODY_BYTES as u64);
-            if declared_too_large || !body_is_bounded {
-                return res;
-            }
-
-            let (mut parts, body) = res.into_parts();
-            if let Ok(bytes) = axum::body::to_bytes(body, MAX_HMR_BODY_BYTES).await {
-                let mut html = String::from_utf8_lossy(&bytes).to_string();
-
-                if !html.contains(HMR_CLIENT_PATH) {
-                    let script = format!(
-                        "\n<!-- Rullst authenticated local hot reload -->\n<script src=\"{HMR_CLIENT_PATH}\" defer></script>\n"
-                    );
-                    if let Some(idx) = html.rfind("</body>") {
-                        html.insert_str(idx, &script);
-                    } else {
-                        html.push_str(&script);
-                    }
-                }
-
-                parts.headers.remove(axum::http::header::CONTENT_LENGTH);
-                return axum::response::Response::from_parts(parts, axum::body::Body::from(html));
-            } else {
-                eprintln!(
-                    "Rullst HMR could not buffer a bounded development HTML response; returning an explicit error."
-                );
-                let mut response = axum::response::Response::new(axum::body::Body::from(
-                    "Rullst HMR could not read the development HTML response.",
-                ));
-                *response.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
-                response.headers_mut().insert(
-                    axum::http::header::CONTENT_TYPE,
-                    axum::http::HeaderValue::from_static("text/plain; charset=utf-8"),
-                );
-                return response;
-            }
-        }
+    let is_html = res
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .is_some_and(|mime| mime.trim().eq_ignore_ascii_case("text/html"));
+    if fragment
+        || head
+        || !is_html
+        || res.status() == axum::http::StatusCode::PARTIAL_CONTENT
+        || res.headers().contains_key(header::CONTENT_ENCODING)
+    {
+        return res;
+    }
+    let declared_too_large = res
+        .headers()
+        .get(header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<u64>().ok())
+        .is_some_and(|length| length > MAX_HMR_BODY_BYTES as u64);
+    let body_is_bounded = res
+        .body()
+        .size_hint()
+        .upper()
+        .is_some_and(|length| length <= MAX_HMR_BODY_BYTES as u64);
+    if declared_too_large || !body_is_bounded {
+        return res;
     }
 
-    res
+    let (mut parts, body) = res.into_parts();
+    let Ok(bytes) = axum::body::to_bytes(body, MAX_HMR_BODY_BYTES).await else {
+        crate::server::console::stderr_line(format_args!(
+            "Rullst HMR could not buffer a bounded development HTML response; returning an explicit error."
+        ));
+        let mut response = axum::response::Response::new(axum::body::Body::from(
+            "Rullst HMR could not read the development HTML response.",
+        ));
+        *response.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("text/plain; charset=utf-8"),
+        );
+        return response;
+    };
+    let Ok(mut html) = String::from_utf8(bytes.to_vec()) else {
+        return axum::response::Response::from_parts(parts, axum::body::Body::from(bytes));
+    };
+    if !html.contains(HMR_CLIENT_PATH) {
+        let script = format!(
+            "\n<!-- Rullst authenticated local hot reload -->\n<script src=\"{HMR_CLIENT_PATH}\" nonce=\"{}\" defer></script>\n",
+            nonce.as_str()
+        );
+        let position = html.rfind("</body>").unwrap_or(html.len());
+        html.insert_str(position, &script);
+        parts.headers.remove(header::CONTENT_LENGTH);
+        parts.headers.remove(header::ETAG);
+        parts.headers.remove(header::LAST_MODIFIED);
+    }
+    axum::response::Response::from_parts(parts, axum::body::Body::from(html))
 }
 
 /// Serves `.zst` compressed static assets when requested with matching `Accept-Encoding`.
@@ -361,3 +386,7 @@ mod tests {
         assert!(!response.headers().contains_key("content-encoding"));
     }
 }
+
+#[cfg(test)]
+#[path = "hmr_injection_tests.rs"]
+mod hmr_injection_tests;
