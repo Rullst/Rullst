@@ -1,8 +1,8 @@
 use super::support::{DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, success_response};
 use super::support::{http_client, read_json};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
-    StructuredOutputSchema,
+    AiError, AiGuardrails, AiProvider, ChatCompletion, JsonCapability, Message,
+    ProviderCapabilities, StructuredOutputSchema, TokenUsage,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -54,6 +54,17 @@ impl OllamaProvider {
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
+        self.send_chat_completion(body)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    /// The answer plus `prompt_eval_count`/`eval_count`
+    /// (<https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-chat-completion>).
+    async fn send_chat_completion(
+        &self,
+        body: serde_json::Value,
+    ) -> Result<ChatCompletion, AiError> {
         let response = http_client()?
             .post(endpoint(&self.host, "api/chat"))
             .timeout(self.request_timeout)
@@ -63,10 +74,11 @@ impl OllamaProvider {
             .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
-        json["message"]["content"]
+        let text = json["message"]["content"]
             .as_str()
             .map(str::to_string)
-            .ok_or_else(|| AiError::ApiError("Ollama returned no chat content".to_string()))
+            .ok_or_else(|| AiError::ApiError("Ollama returned no chat content".to_string()))?;
+        Ok(ChatCompletion::new(text, TokenUsage::from_ollama(&json)))
     }
 }
 
@@ -142,15 +154,18 @@ impl AiProvider for OllamaProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        self.chat_with_usage(messages)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    async fn chat_with_usage(&self, messages: &[Message]) -> Result<ChatCompletion, AiError> {
         let messages = prepare_messages(messages)?;
         if self.mode.is_mock() {
-            return Ok(mock::chat_response(
-                self.provider_name(),
-                &self.model,
-                &messages,
-            ));
+            let text = mock::chat_response(self.provider_name(), &self.model, &messages);
+            return Ok(ChatCompletion::new(text, None));
         }
-        self.send_chat_body(serde_json::json!({
+        self.send_chat_completion(serde_json::json!({
             "model": self.model,
             "messages": messages,
             "stream": false,

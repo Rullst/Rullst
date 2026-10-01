@@ -62,7 +62,9 @@ mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
 Markdown image beacons (inline or reference images with a remote or unclassifiable destination,
-read with CommonMark escapes and character references; raw HTML `<img>` is not inspected), and
+read with CommonMark escapes and character references and outside code spans and code blocks;
+an unmatched ASCII reference such as `vec![x]` is literal text; raw HTML `<img>` is not
+inspected), and
 invisible Unicode controls, including zero-width, bidirectional
 embedding/isolate, tag and other default-ignorable characters with no ordinary use in text. Soft
 hyphens, bidirectional marks and emoji variation selectors are removed before phrase matching
@@ -108,6 +110,13 @@ does not minimize arbitrary serialized data, retain a durable outbox, rotate
 keys, authorize operators or provide a SIEM receiver. Those remain explicit
 application/deployment responsibilities.
 
+## Token usage (v13)
+
+`AiProvider::chat_with_usage`, `ChatBuilder::send_with_usage` and
+`StreamSummary::usage()` expose the token counts a provider reports (input,
+output, total and cached input) from its documented response fields. Absent
+counts stay `None`; nothing is estimated or priced.
+
 ## Bounded streaming and cancellation
 
 `StreamingAiClient<P>` is a static-dispatch extension for genuinely
@@ -116,6 +125,10 @@ path only when the exact endpoint/model configuration opts into
 `with_streaming()`. It checks the prompt before I/O, requires
 `text/event-stream` and `[DONE]`, bounds the raw response, chunk count, each
 chunk and aggregate output, and rejects malformed or truncated events.
+
+Anthropic and Gemini stream through their native SSE protocols (v13) with the
+same bounds and cancellation; a truncated or withheld reply fails in both the
+streaming and non-streaming paths.
 
 `AiCancellation` is cloneable and aborts a supported request while it is
 waiting for headers or another body chunk. That drops the local request future;

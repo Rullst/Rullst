@@ -94,10 +94,33 @@ formatted or unformatted), card-like digit runs and email usernames are masked b
 transmission; alphanumeric CNPJs and other identifiers are not recognized. Markdown images are
 read the way CommonMark renders them, after backslash escapes and character references are decoded:
 an inline or reference image whose destination has a scheme or a `//` (or backslash) authority is
-blocked as `data_exfiltration`, as is an image the bounded reader cannot classify. A reference image
-without a matching definition is blocked only when the text also names a remote URL. Raw HTML
-`<img>` tags are not inspected. Like all heuristic filters, this is one boundary in a
+blocked as `data_exfiltration`, as is an image the bounded reader cannot classify, including a label
+whose end a code span, raw HTML or autolink could move by hiding a bracket. Images and
+link reference definitions inside code spans and closed fenced or indented code blocks are ignored,
+as CommonMark never renders them; code whose extent depends on an ambiguous layout (HTML blocks,
+list or quote containers, unclosed fences, multi-line spans) is still read. A reference image whose
+ASCII label matches no definition renders as literal text and is not blocked (so `vec![x]` next to
+a link passes); a non-ASCII label, which Unicode case folding could match to a definition, or an
+unterminated label is blocked when the text also names a remote URL. Raw HTML `<img>` tags are not
+inspected. Like all heuristic filters, this is one boundary in a
 defense-in-depth design; it is not a proof that arbitrary model output is safe.
+
+## Token usage (v13)
+
+`AiProvider::chat_with_usage` and `ChatBuilder::send_with_usage` return a
+`ChatCompletion`: the text plus an optional `TokenUsage` with input, output,
+total and cached-input token counts. Built-in providers read only their
+documented response fields: OpenAI and DeepSeek `usage` (`prompt_tokens`,
+`completion_tokens`, `total_tokens`, cached prompt tokens), Anthropic `usage`
+(input includes cache reads and writes), Gemini `usageMetadata` (thinking tokens
+count as output) and Ollama `prompt_eval_count`/`eval_count`; an OpenAI-compatible
+server's `usage` is read when it sends one. Missing counts stay `None`, offline
+mocks report none, and a custom provider reports none until it overrides the
+defaulted trait method. Streams report usage once through `AiStreamSink::usage`
+and `StreamSummary::usage()`. An OpenAI-compatible configuration requests it with
+`OpenAiCompatibleCapabilities::with_stream_usage()` (`stream_options.include_usage`),
+which only endpoints that accept that field (OpenAI, DeepSeek) should declare.
+Rullst does not price tokens.
 
 ## Bounded streaming and explicit cancellation
 
@@ -131,6 +154,14 @@ let summary = client
 # Ok(())
 # }
 ```
+
+`AnthropicProvider` and `GeminiProvider` also implement `StreamingAiProvider`
+with their native SSE protocols (v13): Anthropic's Messages events (requiring
+`message_stop`) and Gemini's `streamGenerateContent?alt=sse` (requiring a final
+`finishReason`). Both apply the same bounds, guardrails and cancellation, report
+usage at the end, and fail on a truncated or withheld reply exactly as their
+non-streaming paths do; Gemini's non-streaming path now also rejects
+`MAX_TOKENS` and safety-class finish reasons.
 
 Cancelling the cloneable signal races the request and every body read, dropping
 the local transport future. It does not prove that an upstream server stopped
@@ -276,8 +307,8 @@ ungrounded answer. Each passage is guarded on its own and the assembled prompt a
 that only the combined passages trigger returns `RagError::Generation` with the guardrail
 error, is audited as `ContextRejected` and never reaches the provider. The Markdown-image
 heuristic judges each image: a relative image such as `![logo](assets/logo.png)` next to an
-unrelated link is not treated as a beacon, while an undefined reference image such as
-`![logo][site-logo]` next to one is.
+unrelated link is not treated as a beacon, while `![logo][site-logo]` in one passage and its
+remote definition `[site-logo]: https://...` in another are.
 
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production

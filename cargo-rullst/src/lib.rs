@@ -10,6 +10,7 @@
     )
 )]
 
+mod ai;
 pub mod blueprints;
 pub mod cli;
 pub mod generators;
@@ -40,13 +41,16 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             .subcommand(generators::privacy::command())
             .subcommand(generators::api_contract::command())
             .subcommand(generators::deploy_doctor::command())
+            .subcommand(ai::command())
             .subcommand(tour::command())
             // Extend executable syntax without changing the published v12 enum.
             .mut_subcommand("omni", generators::desktop::release_command)
             .mut_subcommand("generate:ai-context", generators::ai_context::command)
             .mut_subcommand("new", generators::project::new_command)
             .get_matches_from(args);
-        if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
+        if let Some(assistant) = matches.subcommand_matches("ai") {
+            ai::run(assistant)?;
+        } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
         } else if let Some(api) = matches.subcommand_matches("generate:api") {
             generators::api_contract::run(api)?;

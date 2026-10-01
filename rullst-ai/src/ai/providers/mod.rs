@@ -11,6 +11,9 @@ pub mod openai;
 /// Capability-declared OpenAI-compatible local/cloud provider.
 pub mod openai_compatible;
 
+mod sse;
+#[cfg(test)]
+mod stream_tests;
 mod support;
 
 #[cfg(test)]
@@ -45,7 +48,15 @@ mod capability_tests {
     #[test]
     fn built_in_capability_contract_matches_the_implemented_transports() {
         assert_eq!(OpenAiProvider::new("").capabilities(), FULL_GENERATION);
-        assert_eq!(GeminiProvider::new("").capabilities(), FULL_GENERATION);
+        // Native SSE streaming with explicit cancellation (v13).
+        assert_eq!(
+            GeminiProvider::new("").capabilities(),
+            ProviderCapabilities {
+                streaming: true,
+                explicit_cancellation: true,
+                ..FULL_GENERATION
+            }
+        );
         assert_eq!(
             OllamaProvider::new("", "mock-model").capabilities(),
             FULL_GENERATION
@@ -69,6 +80,8 @@ mod capability_tests {
                 embeddings: false,
                 json: JsonCapability::PromptOnly,
                 json_schema: false,
+                streaming: true,
+                explicit_cancellation: true,
                 ..FULL_GENERATION
             }
         );

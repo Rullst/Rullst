@@ -2,8 +2,8 @@
 
 use super::support::{DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
-    StructuredOutputSchema,
+    AiError, AiGuardrails, AiProvider, ChatCompletion, Message, ProviderCapabilities,
+    StructuredOutputSchema, TokenUsage,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -13,98 +13,14 @@ use futures_util::StreamExt;
 use std::{fmt, time::Duration};
 use zeroize::Zeroizing;
 
+mod capabilities;
 mod config;
 mod stream;
+pub use capabilities::OpenAiCompatibleCapabilities;
 use config::{EndpointScope, validate_api_key, validate_base_url, validate_model};
 
 const MAX_IMAGE_BYTES: usize = 10 * 1_024 * 1_024;
 const MAX_RESPONSE_BYTES: usize = 2 * 1_024 * 1_024;
-
-/// Capabilities that one configured OpenAI-compatible endpoint/model pair
-/// claims to implement.
-///
-/// The conservative default enables text/chat only. Applications must enable
-/// optional request shapes only after verifying the exact server and model.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct OpenAiCompatibleCapabilities {
-    embeddings: bool,
-    vision: bool,
-    json_mode: bool,
-    json_schema: bool,
-    streaming: bool,
-}
-
-impl OpenAiCompatibleCapabilities {
-    /// Creates the conservative text/chat-only capability set.
-    #[must_use]
-    pub const fn chat_only() -> Self {
-        Self {
-            embeddings: false,
-            vision: false,
-            json_mode: false,
-            json_schema: false,
-            streaming: false,
-        }
-    }
-
-    /// Declares that the configured endpoint/model accepts `/embeddings`.
-    #[must_use]
-    pub const fn with_embeddings(mut self) -> Self {
-        self.embeddings = true;
-        self
-    }
-
-    /// Declares OpenAI-shaped image input support for the generation model.
-    #[must_use]
-    pub const fn with_vision(mut self) -> Self {
-        self.vision = true;
-        self
-    }
-
-    /// Declares native `json_object` response-mode support.
-    #[must_use]
-    pub const fn with_json_mode(mut self) -> Self {
-        self.json_mode = true;
-        self
-    }
-
-    /// Declares native `json_schema` response-mode support.
-    ///
-    /// Schema support also enables the weaker native JSON mode.
-    #[must_use]
-    pub const fn with_json_schema(mut self) -> Self {
-        self.json_mode = true;
-        self.json_schema = true;
-        self
-    }
-
-    /// Declares support for the OpenAI `text/event-stream` chat shape.
-    #[must_use]
-    pub const fn with_streaming(mut self) -> Self {
-        self.streaming = true;
-        self
-    }
-
-    fn provider_capabilities(self) -> ProviderCapabilities {
-        ProviderCapabilities {
-            text: true,
-            chat: true,
-            embeddings: self.embeddings,
-            vision: self.vision,
-            json: if self.json_mode {
-                JsonCapability::NativeMode
-            } else {
-                JsonCapability::Unsupported
-            },
-            json_schema: self.json_schema,
-            streaming: self.streaming,
-            tools: false,
-            request_timeout: true,
-            retries: false,
-            explicit_cancellation: self.streaming,
-        }
-    }
-}
 
 enum CompatibleAuthentication {
     None,
@@ -296,8 +212,22 @@ impl OpenAiCompatibleProvider {
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
+        self.send_chat_completion(body)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    /// The answer plus the `usage` object a compatible server may send.
+    async fn send_chat_completion(
+        &self,
+        body: serde_json::Value,
+    ) -> Result<ChatCompletion, AiError> {
         let json = self.request_json("chat/completions", body).await?;
-        super::support::openai_chat_content(&json, self.provider_name())
+        let text = super::support::openai_chat_content(&json, self.provider_name())?;
+        Ok(ChatCompletion::new(
+            text,
+            TokenUsage::from_openai(&json["usage"]),
+        ))
     }
 
     fn unsupported(&self, capability: &'static str) -> AiError {
@@ -338,15 +268,18 @@ impl AiProvider for OpenAiCompatibleProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        self.chat_with_usage(messages)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    async fn chat_with_usage(&self, messages: &[Message]) -> Result<ChatCompletion, AiError> {
         let messages = prepare_messages(messages)?;
         if self.mode.is_mock() {
-            return Ok(mock::chat_response(
-                self.provider_name(),
-                &self.model,
-                &messages,
-            ));
+            let text = mock::chat_response(self.provider_name(), &self.model, &messages);
+            return Ok(ChatCompletion::new(text, None));
         }
-        self.send_chat_body(serde_json::json!({
+        self.send_chat_completion(serde_json::json!({
             "model": self.model,
             "messages": messages,
             "stream": false,

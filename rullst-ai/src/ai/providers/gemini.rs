@@ -3,8 +3,8 @@ use super::support::{
 };
 use super::support::{http_client, joined_system_text, read_json};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
-    StructuredOutputSchema,
+    AiError, AiGuardrails, AiProvider, ChatCompletion, JsonCapability, Message,
+    ProviderCapabilities, StructuredOutputSchema, TokenUsage,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -95,6 +95,17 @@ impl GeminiProvider {
     }
 
     async fn generate(&self, body: serde_json::Value) -> Result<String, AiError> {
+        self.generate_completion(body)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    /// The answer plus `usageMetadata`
+    /// (<https://ai.google.dev/api/generate-content#UsageMetadata>).
+    async fn generate_completion(
+        &self,
+        body: serde_json::Value,
+    ) -> Result<ChatCompletion, AiError> {
         let response = http_client()?
             .post(endpoint(
                 &self.base_url,
@@ -108,12 +119,34 @@ impl GeminiProvider {
             .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
-        json["candidates"][0]["content"]["parts"]
+        reject_incomplete(&json["candidates"][0])?;
+        let text = json["candidates"][0]["content"]["parts"]
             .as_array()
             .and_then(|parts| parts.iter().find_map(|part| part["text"].as_str()))
             .map(str::to_string)
-            .ok_or_else(|| AiError::ApiError("Gemini returned no text content".to_string()))
+            .ok_or_else(|| AiError::ApiError("Gemini returned no text content".to_string()))?;
+        Ok(ChatCompletion::new(
+            text,
+            TokenUsage::from_gemini(&json["usageMetadata"]),
+        ))
     }
+}
+
+/// Rejects a candidate that stopped at the output token limit or whose
+/// content was withheld, so partial text is never returned as complete
+/// (`FinishReason`, <https://ai.google.dev/api/generate-content#FinishReason>).
+fn reject_incomplete(candidate: &serde_json::Value) -> Result<(), AiError> {
+    let (finish_reason, cause) = match candidate["finishReason"].as_str() {
+        Some(reason @ "MAX_TOKENS") => (reason, "the reply reached the output token limit"),
+        Some(
+            reason @ ("SAFETY" | "RECITATION" | "LANGUAGE" | "BLOCKLIST" | "PROHIBITED_CONTENT"
+            | "SPII" | "IMAGE_SAFETY"),
+        ) => (reason, "the provider stopped or withheld the reply"),
+        _ => return Ok(()),
+    };
+    Err(AiError::ApiError(format!(
+        "Gemini reply is incomplete: {cause} (finishReason {finish_reason})"
+    )))
 }
 
 #[async_trait]
@@ -130,11 +163,11 @@ impl AiProvider for GeminiProvider {
             vision: true,
             json: JsonCapability::NativeMode,
             json_schema: true,
-            streaming: false,
+            streaming: true,
             tools: false,
             request_timeout: true,
             retries: false,
-            explicit_cancellation: false,
+            explicit_cancellation: true,
         }
     }
 
@@ -143,15 +176,19 @@ impl AiProvider for GeminiProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        self.chat_with_usage(messages)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    async fn chat_with_usage(&self, messages: &[Message]) -> Result<ChatCompletion, AiError> {
         let messages = prepare_messages(messages)?;
         if self.mode.is_mock() {
-            return Ok(mock::chat_response(
-                self.provider_name(),
-                &self.model,
-                &messages,
-            ));
+            let text = mock::chat_response(self.provider_name(), &self.model, &messages);
+            return Ok(ChatCompletion::new(text, None));
         }
-        self.generate(Self::build_chat_payload(&messages)).await
+        self.generate_completion(Self::build_chat_payload(&messages))
+            .await
     }
 
     async fn prompt_with_image(&self, text: &str, image_bytes: &[u8]) -> Result<String, AiError> {
@@ -238,6 +275,9 @@ impl AiProvider for GeminiProvider {
         .await
     }
 }
+
+#[path = "gemini_stream.rs"]
+mod stream;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

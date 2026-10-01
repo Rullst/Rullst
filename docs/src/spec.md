@@ -3154,6 +3154,14 @@ sending.
 * **Prompt Injection Firewall:** Real-time token heuristics intercepting prompt exfiltration, instruction overrides (`DAN mode`), and delimiter injection attacks.
 * **Automated PII Masking:** Scrubs check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted), card-like digit runs and email usernames prior to outbound LLM dispatch. Alphanumeric CNPJs and other identifiers are not recognized.
 
+* **Token usage (v13):** `chat_with_usage`/`send_with_usage` return a
+  `ChatCompletion` with optional `TokenUsage` parsed only from documented
+  provider fields (OpenAI/DeepSeek `usage`, Anthropic `usage`, Gemini
+  `usageMetadata`, Ollama eval counts, compatible servers' `usage`). Streams
+  report it through `AiStreamSink::usage` and `StreamSummary::usage()`;
+  compatible configurations request it only with `with_stream_usage()`.
+  Missing counts are `None`, never estimated.
+
 ### 9.2. Bounded Streaming and Cancellation
 * `StreamingAiClient<P>` preserves static dispatch, reapplies the mandatory
   input guardrails and enforces at most 4,096 non-empty chunks, 64 KiB per
@@ -3161,6 +3169,13 @@ sending.
 * An OpenAI-compatible configuration may explicitly declare SSE streaming. The
   transport requires `text/event-stream`, bounded raw bytes, supported chat
   deltas and `[DONE]`; malformed, truncated or oversized streams fail closed.
+* Anthropic (Messages SSE, requiring `message_stop`) and Gemini
+  (`streamGenerateContent?alt=sse`, requiring a final `finishReason`) stream
+  natively (v13) under the same bounds and guardrails; unknown Anthropic events
+  are ignored and error events expose only their type. Truncated or withheld
+  replies (Anthropic `max_tokens`/`model_context_window_exceeded`/`refusal`,
+  Gemini `MAX_TOKENS` or safety-class reasons) fail in streaming and
+  non-streaming paths alike.
 * `AiCancellation` races the initial request and every streamed body read. It
   drops local transport work but does not prove upstream cancellation or stop
   provider billing. Non-compatible protocols and ordinary non-streaming calls
@@ -3461,6 +3476,48 @@ nullable nested arrays, duplicate queries/JSON keys and cancellation. The initia
 implementation passed hosted and installed-archive source acceptance in PR #221;
 final release admission remains separate. See the
 [supported profile](typed-api.md) for exact limits and application wiring.
+
+### 11.3. Terminal AI Assistant (v13 preview)
+
+`cargo rullst ai` sends every request through `rullst-ai`'s guarded clients:
+OpenAI, DeepSeek, a local OpenAI-compatible server (literal loopback IP only)
+and loopback Ollama stream over the bounded OpenAI-compatible SSE transport,
+Anthropic and Gemini over their native SSE streams, and other Ollama hosts use
+the guarded `AiClient`. Token counts are shown only when the provider reports
+them, with session totals; a cost estimate appears only at user-configured
+prices stored with the provider settings. An empty or `mock_*` credential, or no configuration,
+selects a deterministic offline assistant. A provider environment variable
+takes precedence over the user credentials file, which lives in the user
+configuration directory, is written atomically with owner-only permissions on
+Unix, is never followed through a link and is refused inside the current
+project or a git work tree. Keys never appear in output, errors or `Debug`.
+
+The model can only propose fenced `rullst-action` JSON objects, parsed with
+exact keys, types and sizes: `write_file`, `edit_file` (one exact match), an
+allowlisted `cargo rullst` command (`make:*`, `generate:*` except
+`generate:models`, `db:status`, `doctor` without `--fix`, `audit` without
+`--network`, `inspect`, and `db:migrate` only when the project environment
+resolves to development or test) and `cargo check`/`cargo test` with fixed
+flags. Outside a project the only command is `cargo rullst new <name>
+--default` with validated blueprint/database flags, creating a new directory
+in the current one; the session then continues inside it. `new` and
+`db:migrate` are always confirmed individually.
+Arguments follow a token grammar without `..` or absolute paths, and programs
+run without a shell, with standard input closed, bounded output and a deadline.
+Paths are relative to the nearest `Cargo.toml` directory; no component may be a
+symlink, `..`, `.git`, `target` or `.cargo`, and secret, key, lockfile and
+toolchain files are refused. Each action is previewed (diff or exact command)
+and confirmed; without an interactive terminal, under `CI` or `TERM=dumb`, or
+with `--dry-run`, actions are displayed and never executed. The first change of
+a session is preceded by a checkpoint commit built in a temporary index and
+stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and `target/`.
+
+Project context (inventory names and paths, project `AGENTS.md`), shared files
+and command output are delimited untrusted data, size-capped and guardrail
+checked; a match is withheld. The project context is its own system message.
+Terminal output escapes control characters. Live provider interoperability is
+not established by the offline test suite. See the
+[assistant guide](ai-assistant.md).
 
 ## 🔄 12. Assisted Framework Upgrade Contract
 
