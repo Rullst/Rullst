@@ -156,8 +156,10 @@ it; applications can also clear their view on logout or any disconnected state.
 | Snapshot | 64 KiB UTF-8 HTML; encoded response at most 512 KiB |
 | Socket buffers | 16 KiB read/write buffer targets; 1 MiB maximum write buffer |
 
-The server pings periodically and closes an unresponsive peer after more than
-three revalidation intervals. Domain callbacks must perform asynchronous,
+The server pings periodically and closes a peer that stays silent for more
+than three revalidation intervals of waiting. Time the server spends in its own
+callbacks and sends, when it does not read the socket, is not counted as the
+peer's silence. Domain callbacks must perform asynchronous,
 cancellation-safe work; a Tokio timeout cannot preempt blocking CPU work or prove
 that a canceled database operation rolled back. Limits bound this handler, not
 all process memory or aggregate users across replicas. Use ingress/per-account
