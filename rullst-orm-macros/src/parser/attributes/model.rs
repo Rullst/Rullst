@@ -24,12 +24,12 @@ impl ModelAttributes {
     pub fn parse(input: &DeriveInput) -> Result<Self, syn::Error> {
         let mut parsed = Self::new(format!("{}s", input.ident.to_string().to_lowercase()));
         let mut seen = HashSet::new();
-        for attribute in input
-            .attrs
-            .iter()
-            .filter(|attribute| attribute.path().is_ident("orm"))
-        {
-            attribute.parse_nested_meta(|meta| parsed.apply(meta, &mut seen))?;
+        for attribute in &input.attrs {
+            if attribute.path().is_ident("orm") {
+                attribute.parse_nested_meta(|meta| parsed.apply(meta, &mut seen))?;
+            } else if attribute.path().is_ident("sqlx") {
+                attribute.parse_nested_meta(|meta| apply_sqlx(&meta, &mut seen))?;
+            }
         }
         // The derived `<struct>s` name must be portable only when no explicit
         // `table` replaces it (a non-ASCII or 64-byte struct name, say).
@@ -130,6 +130,23 @@ impl ModelAttributes {
             _ => return Err(meta.error(format!("unsupported ORM model option `{key}`"))),
         }
         Ok(())
+    }
+}
+
+/// The application's SQLx `FromRow` also reads struct-level `#[sqlx(...)]`
+/// options. Only `default`, which fills missing columns without renaming any,
+/// keeps the decoded shape aligned with the generated SQL.
+fn apply_sqlx(
+    meta: &ParseNestedMeta<'_>,
+    seen: &mut HashSet<&'static str>,
+) -> Result<(), syn::Error> {
+    let key = path_name(meta)?;
+    match key.as_str() {
+        "default" => mark_once(seen, "sqlx_default", meta),
+        "rename_all" => Err(meta.error(
+            "#[sqlx(rename_all)] is not supported by #[derive(Orm)]; use matching persisted field names and types",
+        )),
+        _ => Err(meta.error(format!("unsupported SQLx model option `{key}`"))),
     }
 }
 
@@ -272,6 +289,43 @@ mod tests {
         };
         let parsed = crate::parser::parse(&default_name).expect("lowercase default index");
         assert_eq!(parsed.table_name, "scoutusers");
+    }
+
+    #[test]
+    fn container_sqlx_options_cannot_rename_decoded_columns() {
+        for (option, expected) in [
+            (
+                quote::quote!(rename_all = "camelCase"),
+                "#[sqlx(rename_all)]",
+            ),
+            (quote::quote!(transparent), "unsupported SQLx model option"),
+            (
+                quote::quote!(type_name = "account"),
+                "unsupported SQLx model option",
+            ),
+            (quote::quote!(no_pg_array), "unsupported SQLx model option"),
+        ] {
+            let input: syn::DeriveInput = syn::parse_quote! {
+                #[sqlx(#option)]
+                struct Account { id: i32, display_name: String }
+            };
+            let error = match crate::parser::parse(&input) {
+                Ok(_) => panic!("accepted #[sqlx({option})] on the model"),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains(expected), "{error}");
+        }
+        // A struct-level `default` changes no column name.
+        let input: syn::DeriveInput = syn::parse_quote! {
+            #[sqlx(default)]
+            struct Account { id: i32, display_name: String }
+        };
+        assert!(crate::parser::parse(&input).is_ok());
+        let duplicate: syn::DeriveInput = syn::parse_quote! {
+            #[sqlx(default, default)]
+            struct Account { id: i32 }
+        };
+        assert!(crate::parser::parse(&duplicate).is_err());
     }
 
     #[test]

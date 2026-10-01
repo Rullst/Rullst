@@ -136,6 +136,25 @@ A prepared version section does not establish that its tag or crates exist.
   (such entries never expire), and expiry on read no longer deletes a value
   written concurrently.
 
+### ORM derive final-review fixes
+
+- `only_trashed()` on a model without soft deletes fails with `Validation`
+  instead of treating every live row as trashed, so an "empty trash"
+  `only_trashed().delete_all()` can no longer delete the whole table.
+- Soft-delete `delete_all()` rejects `with_trashed()`/`only_trashed()` instead
+  of resetting the deletion time of rows already trashed.
+- The generated tenant and soft-delete predicates and the `chunk_by_id` cursor
+  are qualified with the model's table, so lazy `belongs_to_many` loads and
+  joins no longer fail with ambiguous columns.
+- `chunk()`/`chunk_by_id()` (and `_with_tx`) honour an explicit `limit(n)` as
+  a total cap and `offset(k)` as the start.
+- Eager `belongs_to_many` keeps the related query's order.
+- Relations keyed by nullable foreign keys (`Option<i32>`) compile and load,
+  with `None` matching no row.
+- Struct-level `#[sqlx(...)]` options other than `default` (for example
+  `rename_all`) fail compilation instead of letting `FromRow` drift from the
+  generated SQL.
+
 ### Portfolio blueprint escaping
 
 - The generated portfolio page escapes CMS values and renders only `http(s)`

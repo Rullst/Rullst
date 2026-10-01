@@ -103,8 +103,8 @@ async fn exists_subquery_keeps_the_mandatory_tenant_binding_first() {
 
     assert_eq!(
         sql,
-        "SELECT * FROM subquery_posts WHERE (tenant_id = $1) AND \
-         (EXISTS (SELECT * FROM subquery_comments WHERE (tenant_id = $2) AND \
+        "SELECT * FROM subquery_posts WHERE (subquery_posts.tenant_id = $1) AND \
+         (EXISTS (SELECT * FROM subquery_comments WHERE (subquery_comments.tenant_id = $2) AND \
          ((subquery_comments.post_id = subquery_posts.id) AND (status = $3)) LIMIT 1000)) \
          LIMIT 1000"
     );
@@ -153,17 +153,17 @@ async fn nested_ctes_joins_and_exists_number_every_marker_once() {
 
     assert_eq!(
         sql,
-        "WITH published AS (SELECT * FROM subquery_comments WHERE (tenant_id = $1) AND \
+        "WITH published AS (SELECT * FROM subquery_comments WHERE (subquery_comments.tenant_id = $1) AND \
          (status = $2) LIMIT 1000), flagged AS (WITH deepest AS (SELECT * FROM \
-         subquery_comments WHERE (tenant_id = $3) AND (status = $4) LIMIT 1000) SELECT * \
-         FROM subquery_comments WHERE (tenant_id = $5) AND (status = $6) LIMIT 1000) \
+         subquery_comments WHERE (subquery_comments.tenant_id = $3) AND (status = $4) LIMIT 1000) SELECT * \
+         FROM subquery_comments WHERE (subquery_comments.tenant_id = $5) AND (status = $6) LIMIT 1000) \
          SELECT * FROM subquery_posts INNER JOIN subquery_authors ON subquery_authors.id = \
-         subquery_posts.author_id AND subquery_authors.region = $7 WHERE (tenant_id = $8) AND \
-         ((title = $9) AND (EXISTS (SELECT * FROM subquery_comments WHERE (tenant_id = $10) \
+         subquery_posts.author_id AND subquery_authors.region = $7 WHERE (subquery_posts.tenant_id = $8) AND \
+         ((title = $9) AND (EXISTS (SELECT * FROM subquery_comments WHERE (subquery_comments.tenant_id = $10) \
          AND ((subquery_comments.post_id = subquery_posts.id) AND (EXISTS (SELECT * FROM \
-         subquery_comments WHERE (tenant_id = $11) AND (status = $12) LIMIT 1000)) AND \
+         subquery_comments WHERE (subquery_comments.tenant_id = $11) AND (status = $12) LIMIT 1000)) AND \
          (status = $13)) LIMIT 1000)) OR (EXISTS (SELECT * FROM subquery_comments WHERE \
-         (tenant_id = $14) AND (status = $15) LIMIT 1000))) LIMIT 1000"
+         (subquery_comments.tenant_id = $14) AND (status = $15) LIMIT 1000))) LIMIT 1000"
     );
     assert_eq!(
         described(&bindings),
