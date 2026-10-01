@@ -1,5 +1,6 @@
-use std::fs;
 use std::path::Path;
+
+use crate::generators::output_guard::write_output;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvidenceStatus {
@@ -59,6 +60,8 @@ fn row(report: &mut String, check: &str, status: &EvidenceStatus) {
     ));
 }
 
+/// Writes the evidence report, replacing a previous regular file but never
+/// following a symlink (the audited checkout may be untrusted).
 pub fn write_compliance_report(
     output: &Path,
     evidence: &ComplianceEvidence,
@@ -109,13 +112,14 @@ pub fn write_compliance_report(
     report.push_str("NO FINDINGS means only that the named bounded check completed without a finding. It is not a certification result.\n");
     report.push_str("NO FINDINGS OUTSIDE EXCEPTIONS means explicit advisory exceptions were supplied by the caller; those advisories remain unresolved and require separate governance.\n");
 
-    fs::write(output, report)?;
+    write_output(output, report.as_bytes(), true)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn report_never_fabricates_compliance_passes() {
@@ -137,6 +141,30 @@ mod tests {
         assert!(report.contains("NOT EVALUATED"));
         assert!(!report.contains("PASS"));
         fs::remove_file(output).expect("temporary report cleanup");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn report_is_never_written_through_a_committed_symlink() {
+        let directory = tempfile::tempdir().expect("temporary checkout");
+        let victim = directory.path().join("authorized_keys");
+        fs::write(&victim, "ssh-ed25519 fixture").expect("victim file");
+        let output = directory.path().join("SECURITY_COMPLIANCE.md");
+        std::os::unix::fs::symlink(&victim, &output).expect("committed symlink");
+        let evidence = ComplianceEvidence {
+            secret_scan: EvidenceStatus::NoFindings,
+            dependency_audit: EvidenceStatus::NoFindings,
+            unsafe_scan: EvidenceStatus::NoFindings,
+            idor_scan: EvidenceStatus::NoFindings,
+            sbom: EvidenceStatus::NotChecked("SBOM not requested"),
+            network_scan: EvidenceStatus::NotChecked("network scan not requested"),
+        };
+
+        assert!(write_compliance_report(&output, &evidence).is_err());
+        assert_eq!(
+            fs::read_to_string(&victim).expect("victim contents"),
+            "ssh-ed25519 fixture"
+        );
     }
 
     #[test]

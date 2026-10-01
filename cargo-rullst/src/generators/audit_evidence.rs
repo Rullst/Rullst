@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
 
+use crate::generators::output_guard::write_output;
+
 /// Generates a CycloneDX 1.5 SBOM from the packages recorded in Cargo.lock.
 pub fn generate_cyclonedx_sbom(
     lock_path: &Path,
@@ -78,7 +80,13 @@ fn generate_cyclonedx_sbom_at(
         },
         "components": components
     });
-    fs::write(output_path, serde_json::to_string_pretty(&sbom)?)?;
+    // Replace a previous SBOM, but never follow a symlink committed in the
+    // audited checkout.
+    write_output(
+        output_path,
+        serde_json::to_string_pretty(&sbom)?.as_bytes(),
+        true,
+    )?;
     Ok(count)
 }
 
@@ -263,6 +271,41 @@ mod tests {
             .trim_start_matches("urn:uuid:");
         uuid::Uuid::parse_str(serial).expect("valid UUID serial number");
         fs::remove_dir_all(directory).expect("temporary SBOM cleanup");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sbom_is_never_written_through_a_committed_symlink() {
+        let directory = tempfile::tempdir().expect("temporary checkout");
+        let lock = directory.path().join("Cargo.lock");
+        fs::write(
+            &lock,
+            "version = 4\n\n[[package]]\nname = \"demo\"\nversion = \"1.0.0\"\n",
+        )
+        .expect("temporary lockfile");
+        let victim = directory.path().join("bashrc");
+        fs::write(&victim, "export PATH").expect("victim file");
+        let output = directory.path().join("sbom-cyclonedx.json");
+        std::os::unix::fs::symlink(&victim, &output).expect("committed symlink");
+
+        assert!(
+            generate_cyclonedx_sbom_at(&lock, &directory.path().join("Cargo.toml"), &output)
+                .is_err()
+        );
+        assert_eq!(
+            fs::read_to_string(&victim).expect("victim contents"),
+            "export PATH"
+        );
+
+        fs::remove_file(&output).expect("remove symlink");
+        fs::write(&output, "previous SBOM").expect("previous regular SBOM");
+        generate_cyclonedx_sbom_at(&lock, &directory.path().join("Cargo.toml"), &output)
+            .expect("a previous regular SBOM is replaced");
+        assert!(
+            fs::read_to_string(&output)
+                .expect("new SBOM")
+                .contains("CycloneDX")
+        );
     }
 
     #[test]
