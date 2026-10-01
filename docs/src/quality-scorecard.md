@@ -107,7 +107,8 @@ interoperability and application entitlement policy remain outside that evidence
 Both withhold operations credit for ordinary-release archive acceptance, first
 registry registration and deployment recovery. Their current hosted gates must
 pass before the report can award the applicable dimensions. Labs remains outside
-the publication scorecard and retains its separate isolation acceptance.
+the publication scorecard. Its isolation acceptance was removed with the runner
+candidate; execution evidence now belongs to each application-owned runner.
 
 For every relevant change, retain the commit and workflow result, identify
 which gates and evidence changed, and report capability progress separately.

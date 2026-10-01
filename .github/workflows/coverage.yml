@@ -155,16 +155,6 @@ jobs:
       - name: Measure remote messaging, TLS and Redis restart contracts
         run: python3 .github/check-messaging-redis.py --coverage
 
-      - name: Provision the reviewed disposable Labs host
-        run: bash .github/provision-labs-host.sh
-
-      - name: Measure the trusted controller with real isolated workloads
-        run: |
-          python3 .github/test-labs-measurement.py
-          # Preserve identical controller/worker bytes and collect only host
-          # counters. No profiler state or output path enters the sandbox.
-          bash .github/run-labs-coverage.sh
-
       - name: Generate merged coverage report
         run: |
           cargo llvm-cov report --json --summary-only \
@@ -183,7 +173,6 @@ jobs:
           path: |
             coverage-summary.json
             coverage.txt
-            target/labs-coverage-evidence.json
           if-no-files-found: error
           retention-days: 30
 

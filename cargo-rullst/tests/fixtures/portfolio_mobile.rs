@@ -29,7 +29,7 @@ fn rendered_portfolio_covers_long_content_and_mobile_browser_when_requested() {
         name: long.clone(),
         category: long.clone(),
     };
-    let html = render(&profile, &[project], &[experience], &[skill]);
+    let html = render(&profile, &[project], &[experience], &[skill], "");
     assert!(html.contains(&long));
     assert!(html.contains("Projects Showcase"));
     assert!(html.contains("/nexus"));

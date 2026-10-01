@@ -41,17 +41,24 @@ application router. The exact route tree is an application decision; a typical
 mapping is:
 
 ```rust,ignore
-use rullst::{routes, routing::{get, post}};
+use rullst::{routes, routing::post, server::from_fn};
 use crate::controllers::auth_controller;
 
 let public_auth = routes![
     get("/login" => auth_controller::login_view),
-    post("/login" => auth_controller::login_submit),
     get("/register" => auth_controller::register_view),
-    post("/register" => auth_controller::register_submit),
     post("/logout" => auth_controller::logout),
-];
+]
+// Each credential submission runs Argon2id: budget it per client.
+.route("/login", post(auth_controller::login_submit)
+    .layer(from_fn(auth_controller::credential_rate_limit)))
+.route("/register", post(auth_controller::register_submit)
+    .layer(from_fn(auth_controller::credential_rate_limit)));
 ```
+
+`credential_rate_limit` allows ten submissions per minute for each connecting
+peer. Behind a reverse proxy, configure `[security] trusted_proxies` so clients
+do not share the proxy's budget.
 
 The generated form pages expect the Core CSRF and CSP-nonce extensions. Apply
 the canonical security baseline and place authenticated routes behind the
@@ -75,8 +82,10 @@ edge.
 
 ## What the scaffold currently enforces
 
-- Passwords are hashed with the asynchronous Argon2id helper; plaintext is not
-  written to the user model.
+- Passwords are hashed with Argon2id on Tokio's blocking pool; plaintext is not
+  written to the user model. At most four hashes or verifications run at once
+  (each holds about 19 MiB); a submission that waits two seconds without
+  capacity receives 503. Adjust `MAX_CONCURRENT_PASSWORD_WORK` to the host.
 - Registration accepts passwords from 12 through 72 bytes and normalizes email.
 - Login performs a dummy password verification for unknown users to reduce the
   obvious account-enumeration timing difference.

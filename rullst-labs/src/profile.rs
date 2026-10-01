@@ -8,6 +8,9 @@ pub enum ExecutionProfile {
     /// Explicit simulation, never a real grade/execution attestation.
     Simulation,
     /// Operator-selected candidate; actual per-job hardening is still mandatory.
+    /// The only profile whose signed receipts `complete` accepts. This crate
+    /// verifies neither the platform, the pinned tools nor any isolation; the
+    /// host-owned runner must enforce them.
     LinuxExperimental {
         tools: ToolIdentity,
         /// Pinned Ed25519 public key; the private seed belongs only to the

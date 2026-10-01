@@ -46,8 +46,8 @@ proxy its own lockout bucket. Never derive either from an untrusted forwarded
 header.
 
 `NexusAuthPolicy::protect_router` can apply the same administrator boundary to
-application-owned operational routes, as the ERP blueprint does for inventory
-mutations.
+application-owned operational routes, as the ERP blueprint does for its whole
+back office: the dashboard and the inventory mutations.
 
 ## Capability boundary
 

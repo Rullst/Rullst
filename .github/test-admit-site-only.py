@@ -36,7 +36,7 @@ def receipt():
 class ReceiptTests(unittest.TestCase):
     def test_accepts_the_exact_full_linux_inventory(self):
         run, jobs = receipt()
-        self.assertEqual(len(jobs["jobs"]), 26)
+        self.assertEqual(len(jobs["jobs"]), 25)
         POLICY.validate_receipt(run, jobs, SHA, "v13", NOW)
 
     def test_rejects_failed_active_diagnostic_foreign_or_wrong_revision_runs(self):

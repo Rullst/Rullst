@@ -89,64 +89,48 @@ source of truth until individual migrations are reviewed and validated.
 
 ### v13 roadmap package boundaries
 
-The [`rullst-labs`](rullst-labs-roadmap.md) library and separately
-deployed `rullst-labs-runner` are unpublished implementation candidates whose
-source admission passed in PR #228. Final release admission and independent
-isolation review remain outstanding. The named Linux execution journey and
-remaining patch-coverage gap have
-[recorded hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
-The former owns trusted, versioned orchestration and grading
-contracts; the latter owns isolated execution. Neither may become a default
-framework dependency, execute learner code inside the HTTP process, or require
-the application to expose a container control socket. A complete offensive CTF
-arena is external, separately governed deployment infrastructure even when it
-uses Rullst identity, challenge, score and receipt contracts.
+The [`rullst-labs`](rullst-labs-roadmap.md) library is an unpublished
+implementation candidate; final release admission remains outstanding. It is a
+**bring-your-own-runner** library: it owns trusted, versioned orchestration and
+grading contracts and never executes learner code. The separately deployed
+`rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi executor that passed
+source admission in PR #228, with
+[recorded hosted evidence](labs-first-profile.md#recorded-linux-acceptance))
+was removed from the workspace for 13.0; its source remains in git history.
+Applications deploy their own runner against the documented
+[controller contract](labs-runner-contract.md). Neither `rullst-labs` nor any
+runner may become a default framework dependency, execute learner code inside
+the HTTP process, or require the application to expose a container control
+socket. A complete offensive CTF arena is external, separately governed
+deployment infrastructure even when it uses Rullst identity, challenge, score
+and receipt contracts.
 
-The selected first Labs profile is a bounded Rust pure-function exercise,
-compiled with a pinned Rust toolchain to import-free WebAssembly and executed
-by a pinned Wasmi interpreter in a separate restricted Linux process. This is
-not a native Rullst server, Cargo dependency, WASI or arbitrary shell profile.
-`rullst-labs` must not depend on an executor or spawn submitted code. Its default
-surface is validated contracts; opt-in shared-local SQLite stores dedicated,
-encrypted job content with current application authorization, idempotent
-submission, cancellation, leased execution, retention and result reconciliation.
-It must not reuse the application's authentication/database secrets as job keys.
+Protocol version 1 defines one profile: a bounded Rust pure-function exercise
+(`solve(i64, i64) -> i64`) whose identifiers name a pinned Rust toolchain,
+import-free WebAssembly and a pinned Wasmi interpreter. This is not a native
+Rullst server, Cargo dependency, WASI or arbitrary shell profile.
+`rullst-labs` must not depend on an executor or spawn submitted code; the
+workspace boundary check rejects an execution-engine dependency in any member.
+Its default surface is validated contracts; opt-in shared-local SQLite stores
+dedicated, encrypted job content with current application authorization,
+idempotent submission, cancellation, leased execution, retention and result
+reconciliation. It must not reuse the application's authentication/database
+secrets as job keys. Keep both existing 90% line-coverage floors; `rullst-labs`
+remains in the framework-library aggregate.
 
-Coverage measures the trusted controller through the same real isolated
-acceptance journey, preserving identical controller/worker executable hashes.
-A CI-only LLVM runtime hook initializes profile output only when the trusted
-host supplies its explicit path. Workers retain the exact cleared environment
-and never initialize or export counters. No extra mounts, descriptors or output
-permissions may weaken isolation. Ordinary and instrumented acceptance are
-distinct evidence; the hook must never enter a distributed runner.
-Keep both existing 90% line-coverage floors and include the new v13 application
-libraries in the framework-library aggregate; the runner remains counted in
-the whole repository as a separate executable.
-Controller keys require protected root/controller-owned ancestors and owned
-private regular files. Validate the opened no-follow descriptor and exact key
-length; a prior path metadata check alone does not bind the bytes read.
-
-The independently deployed runner accesses only that dedicated job plane and
-runner-owned tools. It must never give submitted code the job database, signing
-keys, application secrets, inherited environment or control sockets. The first
-Linux backend requires delegated cgroups v2, an unprivileged namespace launcher,
-at most 32 job/probe groups enforced by the delegated root's kernel descendant
-limit, and recovery of authenticated expired/cancelled attempts before a new
-preflight needs an empty group. Recovery never releases source or grants a grade.
-New source still requires successful live preflight and a current lease, plus
-restricted mounts/egress, no-new-privileges, syscall restrictions, a fully enforced
-Landlock filesystem policy and bounded
-compiler/interpreter resources. Both processes require observed enforcement. The compiler and interpreter must enter separate
-Landlock domains before source is released. Landlock does not mediate a process's
-own anonymous pipes through `/proc`; compiler-to-interpreter descriptor access
-must instead fail through the domain/ptrace boundary. The compiler's standard
-input/output are null during compilation, with only bounded diagnostics retained.
-The syscall policy permits only the `FIONBIO` ioctl request needed for Rust's
-captured linker pipes; other ioctl requests and all socket creation remain denied.
-Observed isolation and resource enforcement are
-mandatory: accepted configuration properties or a successful launcher exit do
-not prove the required boundary. Unsupported local/hosted environments fail
-closed, without a less restrictive execution fallback.
+The application-owned runner's trusted controller accesses only that dedicated
+job plane, its receipt signing seed and runner-owned tools. It must never give
+submitted code the job database, signing keys, expected answers, application
+secrets, inherited environment, network or control sockets. Keep the content
+key and signing seed in owned private regular files under protected ancestors,
+and validate the opened no-follow descriptor and exact key length. Execution
+isolation, resource limits, observed enforcement and teardown are host
+responsibilities: `rullst-labs` binds pinned tool digests and verifies signed
+receipts but cannot check that isolation happened. Unsupported environments
+must fail closed without a less restrictive execution fallback. The removed
+candidate's [first-profile threat model](labs-first-profile.md) records one
+reviewed Linux design (delegated cgroups v2, unprivileged namespaces, seccomp,
+separate Landlock domains and observed probes) as a reference baseline.
 
 Only an integrity-bound result matching the current job/lease, tenant, learner,
 exercise, grader, toolchain, source and execution profile may become a grade.
@@ -157,10 +141,10 @@ execution evidence. Authorized course maintenance must expire queued submissions
 and remove their source without requiring a supported/available executor. It
 must not clear a running lease or infer teardown. Withdrawn exercise revisions
 may be removed only after every referencing job has been purged; immutable
-revision identifiers must not be reused after removal. See
-[the first-profile decision and threat model](labs-first-profile.md).
-Independent isolation review and the roadmap's adversarial acceptance remain
-required before any production-ready untrusted-code claim.
+revision identifiers must not be reused after removal.
+Independent isolation review of the deployed runner and the roadmap's
+adversarial acceptance remain required before any production-ready
+untrusted-code claim.
 
 ### v13 managed-video implementation boundary
 
