@@ -23,6 +23,12 @@ const LOGO_FRAME_DELAY_MILLIS: u64 = 26;
 const ANIMATION_FRAMES: [usize; 24] = [
     0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 13, 14, 15, 16, 16,
 ];
+/// Opening tagline; the version is the installed crate's, never a fixed major.
+const TAGLINE: &str = concat!(
+    "RULLST v",
+    env!("CARGO_PKG_VERSION"),
+    " // SECURE • FAST • EXPLICIT • AI-NATIVE • WEB-FIRST"
+);
 
 pub(super) fn print_neon_logo() -> std::io::Result<()> {
     let mut stdout = std::io::stdout();
@@ -48,10 +54,7 @@ pub(super) fn print_neon_logo() -> std::io::Result<()> {
         stdout,
         "\n  {}  {}",
         menu_icon("◆", (255, 60, 190)),
-        paint_256(
-            "RULLST v12 // SECURE • FAST • EXPLICIT • AI-NATIVE • WEB-FIRST",
-            51
-        )
+        paint_256(TAGLINE, 51)
     )?;
     writeln!(
         stdout,
@@ -202,6 +205,17 @@ fn visual_effects_for(colors: bool, reduced_motion: Option<&str>) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn opening_tagline_names_the_installed_crate_version() {
+        assert_eq!(
+            super::TAGLINE,
+            format!(
+                "RULLST v{} // SECURE • FAST • EXPLICIT • AI-NATIVE • WEB-FIRST",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
+    }
+
     #[test]
     fn opening_animation_keeps_all_frames_with_a_six_tenths_second_pacing() {
         assert_eq!(super::ANIMATION_FRAMES.len(), 24);

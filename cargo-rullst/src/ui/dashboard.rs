@@ -132,12 +132,12 @@ where
         8 => {
             return run(vec![program.to_string(), "make:k8s".to_string()]);
         }
-        9 => {
-            return run(vec![program.to_string(), "make:grpc".to_string()]);
-        }
-        10 => {
-            return run(vec![program.to_string(), "generate:models".to_string()]);
-        }
+        9 => (
+            "Enter gRPC service name (e.g. UserService):",
+            "make:grpc",
+            vec![],
+        ),
+        10 => return introspect_models(ui, program, run),
         _ => return Ok(()),
     };
 
@@ -145,6 +145,28 @@ where
     let mut args = vec![program.to_string(), action.to_string(), name];
     args.extend(extra_args);
     run(args)
+}
+
+/// `generate:models` requires `--driver` and `--url`; collect both first.
+fn introspect_models<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
+    const DRIVERS: [&str; 3] = ["sqlite", "postgres", "mysql"];
+    let choices = DRIVERS.map(str::to_string);
+    let Some(driver) = DRIVERS.get(ui.select("Choose the database driver:\n", &choices)?) else {
+        return Ok(());
+    };
+    let url = ui.input("Enter the database connection URL (e.g. sqlite://app.db):")?;
+    run(vec![
+        program.to_string(),
+        "generate:models".to_string(),
+        "--driver".to_string(),
+        (*driver).to_string(),
+        "--url".to_string(),
+        url,
+    ])
 }
 
 fn handle_database_operations<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>

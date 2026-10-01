@@ -269,3 +269,21 @@ fn parses_deterministic_omni_platforms_and_backend() {
             && app_version == "1.2.3"
     ));
 }
+
+#[test]
+fn invalid_pkg_invocations_fail_instead_of_exiting_successfully() {
+    // Both are rejected before the manifest is read, so no project is needed.
+    let missing_name = run_cli_command(&Commands::Pkg {
+        action: "add".to_string(),
+        name: None,
+    })
+    .expect_err("`pkg add` without a name must fail");
+    assert!(missing_name.to_string().contains("package name"));
+
+    let typo = run_cli_command(&Commands::Pkg {
+        action: "ad".to_string(),
+        name: Some("rullst-auth".to_string()),
+    })
+    .expect_err("an unknown pkg action must fail");
+    assert!(typo.to_string().contains("unknown pkg action 'ad'"));
+}

@@ -6,10 +6,14 @@ use std::path::Path;
 
 use crate::blueprints::k8s::*;
 use crate::generators::output_guard::{reject_existing, reject_symlink, write_new};
+use crate::generators::platform_name::{dns_label, package_name};
 
 /// Scaffolds Kubernetes manifest files into `k8s/` directory.
 pub fn generate_k8s_manifests() -> Result<(), Box<dyn std::error::Error>> {
-    let project_name = get_project_name().unwrap_or_else(|| "my-app".to_string());
+    // Object names, the image reference and the ingress host must be RFC 1123
+    // labels, which Cargo names such as `my_app` are not.
+    let project_name = package_name(Path::new("Cargo.toml"))
+        .map_or_else(|| "my-app".to_string(), |name| dns_label(&name));
     let target_dir = Path::new("k8s");
     let port = 3000;
     let manifests = [
@@ -56,19 +60,4 @@ pub fn generate_k8s_manifests() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     Ok(())
-}
-
-fn get_project_name() -> Option<String> {
-    let content = fs::read_to_string("Cargo.toml").ok()?;
-    for line in content.lines() {
-        if line.starts_with("name = ") {
-            return Some(
-                line.replace("name = ", "")
-                    .replace('"', "")
-                    .trim()
-                    .to_string(),
-            );
-        }
-    }
-    None
 }
