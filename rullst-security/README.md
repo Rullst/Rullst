@@ -83,7 +83,10 @@
   `text/*` (except `text/event-stream`), JSON, XML (`application/xml` and
   `+xml` types such as SOAP and Atom), YAML and `application/javascript`
   (with its `x-javascript`/`ecmascript` aliases) as textual, in any ASCII
-  case; other media types pass through unchanged. Every pass is
+  case; other media types pass through unchanged. A `206 Partial Content`
+  response that would need masking is replaced by a `502` with
+  `Cache-Control: no-store`, because a masked range no longer matches its
+  `Content-Range`; a clean range passes through unchanged. Every pass is
   linear in the body length. A URL password is recognized only inside the URL
   authority: credentials must be percent-encoded, and the authority ends at
   the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or control

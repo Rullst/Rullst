@@ -100,3 +100,48 @@ async fn binary_and_image_responses_still_pass_through_unchanged() {
         assert!(unchanged, "{content_type} must bypass DLP unchanged");
     }
 }
+
+#[tokio::test]
+async fn masked_partial_content_is_withheld_instead_of_losing_content_range() {
+    let response = through_dlp(
+        StatusCode::PARTIAL_CONTENT,
+        vec![
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CONTENT_RANGE, "bytes 0-36/5000"),
+            (header::ACCEPT_RANGES, "bytes"),
+        ],
+        "log line with AKIAIOSFODNN7EXAMPLE".to_string(),
+    )
+    .await;
+
+    // Never a 206 without Content-Range, and never the unmasked range.
+    assert_ne!(response.status(), StatusCode::PARTIAL_CONTENT);
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    assert!(response.headers().get(header::CONTENT_RANGE).is_none());
+    assert_eq!(
+        response.headers().get(header::CACHE_CONTROL),
+        Some(&HeaderValue::from_static("no-store"))
+    );
+    let text = body_text(response).await;
+    assert!(!text.contains("AKIAIOSFODNN7EXAMPLE"));
+}
+
+#[tokio::test]
+async fn clean_partial_content_keeps_its_range_metadata() {
+    let response = through_dlp(
+        StatusCode::PARTIAL_CONTENT,
+        vec![
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CONTENT_RANGE, "bytes 0-21/5000"),
+        ],
+        "an ordinary log line..".to_string(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+    assert_eq!(
+        response.headers().get(header::CONTENT_RANGE),
+        Some(&HeaderValue::from_static("bytes 0-21/5000"))
+    );
+    assert_eq!(body_text(response).await, "an ordinary log line..");
+}

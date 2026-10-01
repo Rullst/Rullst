@@ -78,7 +78,23 @@ fn remove_stale_representation_headers(headers: &mut HeaderMap, body_len: usize)
 }
 
 fn body_collection_failure() -> Response<Body> {
-    let mut response = Response::new(Body::from("response inspection failed"));
+    withheld_response("response inspection failed")
+}
+
+/// A masked range no longer matches the byte range its `Content-Range`
+/// names, and a single-part 206 without `Content-Range` is malformed
+/// (RFC 9110 15.3.7). Forwarding the unmasked range would leak the secret,
+/// so the partial response is withheld instead.
+fn partial_content_withheld() -> Response<Body> {
+    tracing::warn!(
+        target: "rullst_security::dlp",
+        "DLP withheld a 206 Partial Content response because masking would change its byte range"
+    );
+    withheld_response("partial response withheld by data loss prevention")
+}
+
+fn withheld_response(message: &'static str) -> Response<Body> {
+    let mut response = Response::new(Body::from(message));
     *response.status_mut() = StatusCode::BAD_GATEWAY;
     response.headers_mut().insert(
         header::CONTENT_TYPE,
@@ -187,6 +203,9 @@ where
 
             let (sanitized_bytes, was_modified) = mask_response_payload(&bytes);
             if was_modified {
+                if parts.status == StatusCode::PARTIAL_CONTENT {
+                    return Ok(partial_content_withheld());
+                }
                 remove_stale_representation_headers(&mut parts.headers, sanitized_bytes.len());
             }
 
