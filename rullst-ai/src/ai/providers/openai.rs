@@ -2,7 +2,7 @@ use super::support::{
     DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type, openai_chat_content,
     success_response,
 };
-use super::support::{http_client, read_json};
+use super::support::{http_client, read_json, reject_incomplete_choice};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -73,6 +73,7 @@ impl OpenAiProvider {
             .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
+        reject_incomplete_choice(&json, self.provider_name())?;
         openai_chat_content(&json, self.provider_name())
     }
 }
@@ -133,6 +134,9 @@ impl AiProvider for OpenAiProvider {
 
         let mime_type = image_mime_type(image_bytes)?;
         let image = base64::engine::general_purpose::STANDARD.encode(image_bytes);
+        // Like text requests, vision sends no output limit: the deprecated
+        // `max_tokens` is rejected by reasoning models, and a reply that stops
+        // at the model's own limit is reported by `finish_reason`.
         self.send_chat_body(serde_json::json!({
             "model": self.model,
             "messages": [{
@@ -144,7 +148,6 @@ impl AiProvider for OpenAiProvider {
                     }}
                 ]
             }],
-            "max_tokens": 1024,
         }))
         .await
     }

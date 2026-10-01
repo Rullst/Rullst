@@ -418,13 +418,18 @@ fn select_context(
     let mut sources = Vec::new();
     let mut remaining = config.max_context_chars;
 
+    // Every returned document is checked, including those after the budget
+    // is exhausted, so a retriever isolation bug is never reported as success.
+    if let Some(document) = documents
+        .iter()
+        .find(|document| document.tenant_id != tenant.tenant_id)
+    {
+        return Err(RagError::InvalidDocument(format!(
+            "document '{}' belongs to a different tenant",
+            document.id
+        )));
+    }
     for document in documents {
-        if document.tenant_id != tenant.tenant_id {
-            return Err(RagError::InvalidDocument(format!(
-                "document '{}' belongs to a different tenant",
-                document.id
-            )));
-        }
         if remaining == 0 {
             break;
         }

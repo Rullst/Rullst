@@ -27,6 +27,16 @@ endpoint directly; redirected prompts, credentials and bodies are not replayed.
 These are local transport invariants, not proof of provider availability,
 prompt-injection immunity or upstream request cancellation.
 
+Anthropic requests allow up to 16,000 output tokens unless
+`AnthropicProvider::with_max_tokens` sets another limit (the Messages API
+requires one, and adaptive thinking counts toward it; a longer reply may also
+need a longer `with_request_timeout`). A reply the API reports as
+cut short (`stop_reason` `max_tokens` or `model_context_window_exceeded`) or
+declined (`refusal`) returns `AiError::ApiError` instead of the partial text.
+`OpenAiProvider` sends no output limit on text or vision requests, so the
+model's own limit applies, and a reply whose `finish_reason` is `length` or
+`content_filter` likewise returns `AiError::ApiError`.
+
 `OpenAiCompatibleProvider` covers servers implementing the named OpenAI
 `/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
 vision, embeddings, JSON mode, and JSON Schema must be declared for the exact
@@ -81,9 +91,13 @@ zero-width, bidirectional embedding/isolate, tag and other default-ignorable cha
 ordinary use in text. Soft hyphens, bidirectional marks and emoji variation selectors are removed
 before phrase matching instead of being blocked. Check-digit-valid CPF/CNPJ numbers (canonical
 formatted or unformatted), card-like digit runs and email usernames are masked before outbound
-transmission; alphanumeric CNPJs and other identifiers are not recognized. Like all heuristic
-filters, this is one boundary in a defense-in-depth design; it is not a proof that arbitrary model
-output is safe.
+transmission; alphanumeric CNPJs and other identifiers are not recognized. Markdown images are
+read the way CommonMark renders them, after backslash escapes and character references are decoded:
+an inline or reference image whose destination has a scheme or a `//` (or backslash) authority is
+blocked as `data_exfiltration`, as is an image the bounded reader cannot classify. A reference image
+without a matching definition is blocked only when the text also names a remote URL. Raw HTML
+`<img>` tags are not inspected. Like all heuristic filters, this is one boundary in a
+defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
 ## Bounded streaming and explicit cancellation
 
@@ -261,8 +275,9 @@ same tenant tag. Empty retrieval fails with `RagError::NoContext` instead of gen
 ungrounded answer. Each passage is guarded on its own and the assembled prompt again; a block
 that only the combined passages trigger returns `RagError::Generation` with the guardrail
 error, is audited as `ContextRejected` and never reaches the provider. The Markdown-image
-heuristic judges each image: a relative inline image such as `![logo](assets/logo.png)` next
-to an unrelated link is not treated as a beacon.
+heuristic judges each image: a relative image such as `![logo](assets/logo.png)` next to an
+unrelated link is not treated as a beacon, while an undefined reference image such as
+`![logo][site-logo]` next to one is.
 
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production
@@ -416,7 +431,9 @@ live capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
 `DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
-it never probes localhost implicitly.
+it never probes localhost implicitly. `OLLAMA_HOST` (and the host given to `OllamaProvider::new`)
+is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
+port 11434 unless a port is named.
 
 ## JSON mode versus structured output
 

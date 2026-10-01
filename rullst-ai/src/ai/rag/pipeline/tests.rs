@@ -89,3 +89,36 @@ async fn separately_safe_documents_are_judged_together_without_false_beacons() {
     assert_eq!(outcome, RagAuditOutcome::ContextRejected);
     assert_eq!(prompts, 0);
 }
+
+#[tokio::test]
+async fn a_foreign_document_after_the_exhausted_budget_is_still_rejected() {
+    let tenant = TenantContext::try_new("tenant:docs").expect("tenant");
+    let foreign = TenantContext::try_new("tenant:other").expect("foreign tenant");
+    // The first passage alone exhausts the five-character context budget, so
+    // the loop used to stop at the next document before reaching doc-2.
+    let documents = vec![
+        RagDocument::try_new(&tenant, "doc-0", "first passage", 1.0).expect("doc"),
+        RagDocument::try_new(&tenant, "doc-1", "second passage", 0.8).expect("doc"),
+        RagDocument::try_new(&foreign, "doc-2", "foreign passage", 0.5).expect("doc"),
+    ];
+    let prompts = Arc::new(Mutex::new(0));
+    let audit = Arc::new(InMemoryRagAuditTrail::new(4).expect("audit"));
+    let pipeline = RagPipeline::new(
+        AiClient::new(CountingProvider {
+            prompts: Arc::clone(&prompts),
+        }),
+        FixtureRetriever { documents },
+        Arc::clone(&audit),
+    )
+    .with_config(RagConfig::try_new(3, 64, 5).expect("config"));
+    let result = pipeline.answer(&tenant, "How do I add a logo?").await;
+    assert!(
+        matches!(&result, Err(RagError::InvalidDocument(message)) if message.contains("doc-2")),
+        "unexpected result: {result:?}"
+    );
+    assert_eq!(
+        audit.entries().expect("audit")[0].event.outcome,
+        RagAuditOutcome::ContextRejected
+    );
+    assert_eq!(*prompts.lock().expect("prompt count"), 0);
+}

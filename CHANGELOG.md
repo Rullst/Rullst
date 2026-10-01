@@ -661,6 +661,23 @@ A prepared version section does not establish that its tag or crates exist.
   releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
   existing shells require an explicit application-owned dependency update.
 
+### AI final-review fixes
+
+- The Markdown image-beacon guardrail inspects every image even without a
+  literal `http(s)://` in the text, reads inline and reference images (with
+  their definitions anywhere in the text) the way CommonMark renders them,
+  including backslash escapes and character references, and treats
+  unclassifiable images as remote.
+- `RagPipeline` rejects a cross-tenant document even after the context budget
+  is used up.
+- `AnthropicProvider` requests up to 16,000 output tokens (configurable with
+  the new `with_max_tokens`) and reports a reply stopped by `max_tokens`,
+  `model_context_window_exceeded` or `refusal` as an error instead of returning
+  partial text. `OpenAiProvider` no longer caps vision replies at 1,024 tokens
+  and reports `finish_reason` `length` or `content_filter` as an error.
+- `OllamaProvider`/`AiClient::auto()` accept Ollama's scheme-less
+  `OLLAMA_HOST` form (`127.0.0.1:11434` means `http`, default port 11434).
+
 ### Auth, AI and IoT low-severity review fixes
 
 - Auth: the SQLite passkey and JWT revocation stores reject every in-memory or
