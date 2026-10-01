@@ -240,7 +240,7 @@ fn configured_port() -> io::Result<u16> {
 
 /// dotenvy's parse error quotes the unparsed remainder of the file, which can
 /// hold secrets, so a failure reports only the 1-based entry number.
-fn parse_dotenv(source: &[u8]) -> io::Result<std::collections::HashMap<String, String>> {
+pub(crate) fn parse_dotenv(source: &[u8]) -> io::Result<std::collections::HashMap<String, String>> {
     let mut values = std::collections::HashMap::new();
     for (index, entry) in dotenvy::from_read_iter(source).enumerate() {
         let (key, value) = entry.map_err(|error| {
@@ -257,7 +257,7 @@ fn parse_dotenv(source: &[u8]) -> io::Result<std::collections::HashMap<String, S
     Ok(values)
 }
 
-fn parse_rullst_toml(source: &str) -> io::Result<toml::Value> {
+pub(crate) fn parse_rullst_toml(source: &str) -> io::Result<toml::Value> {
     toml::from_str(source).map_err(|error| {
         io::Error::other(format!(
             "Rullst.toml is not valid TOML at {}",

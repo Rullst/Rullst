@@ -1,286 +1,212 @@
-//! Animated, terminal-native branding for the interactive command interface.
+//! The approved v13 opening: the ANSI Shadow "RULLST" wordmark in a diagonal
+//! blue → green → orange gradient, a ~0.7 s flowing animation on the first run
+//! of the day, and the bold slogan line with coloured keywords.
 
-use std::io::{IsTerminal, Write};
+use super::palette::{self, ColorDepth, Rgb, STOPS};
+use super::terminal::{KeyWait, RawInput, TerminalProfile};
+use std::io::{self, Write};
+use std::time::Duration;
 
-const LOGO: [&str; 6] = [
-    r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#,
-    r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#,
-    r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#,
-    r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#,
-    r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#,
-    r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#,
+const WORDMARK: [&str; 6] = [
+    "██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗",
+    "██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝",
+    "██████╔╝██║   ██║██║     ██║     ███████╗   ██║   ",
+    "██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   ",
+    "██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   ",
+    "╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   ",
 ];
+/// Every opening line starts at this margin.
+const MARGIN: &str = "  ";
+/// The palette flows across the word in 42 steps of 17 ms (~0.7 s).
+const STEPS: u32 = 42;
+const FRAME_DELAY: Duration = Duration::from_millis(17);
+/// The first frame is drawn before any delay with the palette almost a full
+/// cycle away from its final position.
+const START_PHASE: f64 = 0.999;
+const RESET: &str = "\x1b[0m";
+const BOLD: &str = "\x1b[1m";
 
-// Saturated ANSI-256 colors remain predictable on terminals that do not
-// implement 24-bit RGB faithfully. The opening pauses on complete blue, green,
-// and orange gradients before settling on the stable three-color signature.
-const BLUE_GRADIENT: [u8; 6] = [69, 63, 33, 27, 21, 20];
-const GREEN_GRADIENT: [u8; 6] = [118, 82, 46, 40, 34, 28];
-const ORANGE_GRADIENT: [u8; 6] = [215, 214, 208, 202, 166, 130];
-const FINAL_SIGNATURE: [u8; 6] = [33, 27, 46, 34, 215, 166];
-const PULSE_COLORS: [u8; 6] = FINAL_SIGNATURE;
-const LOGO_FRAME_DELAY_MILLIS: u64 = 26;
-const ANIMATION_FRAMES: [usize; 24] = [
-    0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 13, 14, 15, 16, 16,
-];
-/// Opening tagline; the version is the installed crate's, never a fixed major.
-const TAGLINE: &str = concat!(
+/// Plain, deterministic opening for pipes, CI, `TERM=dumb` and `NO_COLOR`.
+pub(super) const PLAIN_SLOGAN: &str = concat!(
     "RULLST v",
     env!("CARGO_PKG_VERSION"),
-    " // SECURE • FAST • EXPLICIT • AI-NATIVE • WEB-FIRST"
+    " · SECURE, FAST AND AI-NATIVE RUST FRAMEWORK"
 );
 
-pub(super) fn print_neon_logo() -> std::io::Result<()> {
-    let mut stdout = std::io::stdout();
-    let animation = if visual_effects_enabled() {
-        &ANIMATION_FRAMES[..]
-    } else {
-        &[16][..]
-    };
-    writeln!(stdout)?;
-    for (index, frame) in animation.iter().copied().enumerate() {
-        if index > 0 {
-            write!(stdout, "\x1B[{}A", LOGO.len())?;
-        }
-        for line in LOGO {
-            writeln!(stdout, "\r\x1B[2K{}", color_wave(line, frame))?;
-        }
-        stdout.flush()?;
-        if index + 1 < animation.len() {
-            std::thread::sleep(std::time::Duration::from_millis(LOGO_FRAME_DELAY_MILLIS));
-        }
-    }
-    writeln!(
-        stdout,
-        "\n  {}  {}",
-        menu_icon("◆", (255, 60, 190)),
-        paint_256(TAGLINE, 51)
-    )?;
-    writeln!(
-        stdout,
-        "  {}\n",
-        paint_256(
-            "THE FULL-STACK RUST TOOLKIT, BUILT WITHOUT RUNTIME MAGIC",
-            46
-        )
-    )?;
-    stdout.flush()
+const SLOGAN_GREY: Rgb = (150, 155, 175);
+/// `(text, colour, bold)`; only the separator is not bold.
+const SLOGAN: [(&str, Rgb, bool); 8] = [
+    (
+        concat!("v", env!("CARGO_PKG_VERSION")),
+        (240, 240, 248),
+        true,
+    ),
+    ("  ·  ", (110, 110, 130), false),
+    ("SECURE", STOPS[0], true),
+    (", ", SLOGAN_GREY, true),
+    ("FAST", STOPS[1], true),
+    (" AND ", SLOGAN_GREY, true),
+    ("AI-NATIVE", STOPS[2], true),
+    (" RUST FRAMEWORK", SLOGAN_GREY, true),
+];
+
+fn wordmark_width() -> usize {
+    WORDMARK
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0)
 }
 
-fn color_wave(line: &str, frame: usize) -> String {
-    color_wave_with_colors(line, frame, colors_enabled())
+/// The colour of the wordmark cell at `row`/`column` for an animation phase;
+/// phase `0` is the final diagonal gradient.
+fn cell_color(row: usize, column: usize, width: usize, phase: f64) -> Rgb {
+    let span = width.saturating_sub(3).max(1) as f64;
+    let position = (column as f64 + row as f64 * 0.6) / span;
+    palette::flowing(position.min(1.0), phase)
 }
 
-fn color_wave_with_colors(line: &str, frame: usize, colors: bool) -> String {
-    if !colors {
-        return line.to_string();
-    }
-    line.chars()
+fn wordmark_lines(phase: f64, depth: ColorDepth) -> Vec<String> {
+    let width = wordmark_width();
+    WORDMARK
+        .iter()
         .enumerate()
-        .map(|(column, character)| {
-            if character.is_whitespace() {
-                character.to_string()
-            } else {
-                let letter = match column {
-                    0..=8 => 0,
-                    9..=18 => 1,
-                    19..=26 => 2,
-                    27..=34 => 3,
-                    35..=42 => 4,
-                    _ => 5,
-                };
-                paint_256_with_colors(&character.to_string(), logo_color(frame, letter), colors)
+        .map(|(row, line)| {
+            let mut rendered = String::from(MARGIN);
+            let mut current = None;
+            for (column, character) in line.chars().enumerate() {
+                if character != ' ' && depth != ColorDepth::None {
+                    let color = cell_color(row, column, width, phase);
+                    // Equal neighbours share one escape sequence.
+                    let sequence = palette::foreground(color, depth);
+                    if current.as_ref() != Some(&sequence) {
+                        rendered.push_str(&sequence);
+                        current = Some(sequence);
+                    }
+                }
+                rendered.push(character);
             }
+            if current.is_some() {
+                rendered.push_str(RESET);
+            }
+            rendered
         })
         .collect()
 }
 
-fn logo_color(frame: usize, letter: usize) -> u8 {
-    if frame >= 16 {
-        FINAL_SIGNATURE[letter]
-    } else if frame <= 6 {
-        if letter < frame {
-            GREEN_GRADIENT[letter]
-        } else {
-            BLUE_GRADIENT[letter]
+fn slogan_line(depth: ColorDepth) -> String {
+    if depth == ColorDepth::None {
+        return format!("{MARGIN}{PLAIN_SLOGAN}");
+    }
+    let mut line = format!("{MARGIN} ");
+    for (text, color, bold) in SLOGAN {
+        if bold {
+            line.push_str(BOLD);
         }
-    } else if frame <= 12 {
-        if letter < frame - 6 {
-            ORANGE_GRADIENT[letter]
+        line.push_str(&palette::foreground(color, depth));
+        line.push_str(text);
+        line.push_str(RESET);
+    }
+    line
+}
+
+/// The full opening for one phase: the wordmark, a blank line and the slogan.
+fn frame_lines(phase: f64, depth: ColorDepth) -> Vec<String> {
+    let mut lines = wordmark_lines(phase, depth);
+    lines.push(String::new());
+    lines.push(slogan_line(depth));
+    lines
+}
+
+/// Animation phases after the first frame; the last one is exactly `0`.
+fn animation_phases() -> impl Iterator<Item = f64> {
+    (1..=STEPS).map(|step| {
+        if step == STEPS {
+            0.0
         } else {
-            GREEN_GRADIENT[letter]
+            1.0 - f64::from(step) / f64::from(STEPS)
         }
-    } else {
-        let blue_count = (frame - 12).min(2);
-        let green_count = frame.saturating_sub(14).min(2);
-        if letter < blue_count || (2..2 + green_count).contains(&letter) {
-            FINAL_SIGNATURE[letter]
-        } else {
-            ORANGE_GRADIENT[letter]
+    })
+}
+
+fn redraw(out: &mut impl Write, phase: f64, depth: ColorDepth) -> io::Result<()> {
+    let lines = frame_lines(phase, depth);
+    write!(out, "\x1b[{}A", lines.len())?;
+    for line in lines {
+        // Raw mode disables newline translation: return the carriage too.
+        write!(out, "\r\x1b[2K{line}\r\n")?;
+    }
+    out.flush()
+}
+
+/// Plays the flowing palette; `wait` sleeps one frame and reports keys. Any
+/// key jumps to the final frame, which is always the last thing drawn.
+fn play(
+    out: &mut impl Write,
+    depth: ColorDepth,
+    mut wait: impl FnMut(Duration) -> KeyWait,
+) -> io::Result<KeyWait> {
+    write!(out, "\r\n")?;
+    for line in frame_lines(START_PHASE, depth) {
+        write!(out, "\r\x1b[2K{line}\r\n")?;
+    }
+    out.flush()?;
+    for phase in animation_phases() {
+        match wait(FRAME_DELAY) {
+            KeyWait::Elapsed => redraw(out, phase, depth)?,
+            interrupted => {
+                redraw(out, 0.0, depth)?;
+                write!(out, "\r\n")?;
+                out.flush()?;
+                return Ok(interrupted);
+            }
         }
     }
+    write!(out, "\r\n")?;
+    out.flush()?;
+    Ok(KeyWait::Elapsed)
 }
 
-pub(super) fn play_launch_pulse() -> std::io::Result<()> {
-    let mut stdout = std::io::stdout();
-    if !visual_effects_enabled() {
-        writeln!(
-            stdout,
-            "  {} COMMAND INTERFACE READY",
-            menu_icon("◆", (65, 255, 170))
-        )?;
-        return stdout.flush();
+fn print_static(out: &mut impl Write, depth: ColorDepth) -> io::Result<()> {
+    if depth == ColorDepth::None {
+        writeln!(out, "{PLAIN_SLOGAN}")?;
+        writeln!(out)?;
+        return out.flush();
     }
-    for (index, frame) in ["◇", "◈", "◆", "◈", "◇", "◆"].into_iter().enumerate() {
-        let color = PULSE_COLORS[index % PULSE_COLORS.len()];
-        write!(
-            stdout,
-            "\r  {} {}",
-            paint_256(frame, color),
-            paint_256("RULLST // COMMAND INTERFACE", color)
-        )?;
-        stdout.flush()?;
-        std::thread::sleep(std::time::Duration::from_millis(130));
+    writeln!(out)?;
+    for line in frame_lines(0.0, depth) {
+        writeln!(out, "{line}")?;
     }
-    writeln!(
-        stdout,
-        "\r  {} {}                    ",
-        menu_icon("◆", (65, 255, 170)),
-        paint_256("COMMAND INTERFACE READY", 51)
-    )?;
-    stdout.flush()
+    writeln!(out)?;
+    out.flush()
 }
 
-pub(super) fn menu_icon(symbol: &str, color: (u8, u8, u8)) -> String {
-    paint_256_with_colors(symbol, nearest_ansi_256(color), colors_enabled())
-}
-
-fn paint_256(value: &str, color: u8) -> String {
-    paint_256_with_colors(value, color, colors_enabled())
-}
-
-fn paint_256_with_colors(value: &str, color: u8, colors: bool) -> String {
-    if colors {
-        format!("\x1b[38;5;{color}m{value}\x1b[0m")
-    } else {
-        value.to_string()
+/// Prints the opening for `profile`. It animates only on the first run of the
+/// day in a motion-capable terminal; Ctrl+C during the animation returns an
+/// `Interrupted` error after the terminal has been restored.
+pub(super) fn print_opening(profile: &TerminalProfile, out: &mut impl Write) -> io::Result<()> {
+    let animate = profile.motion
+        && super::opening_marker::marker_path().is_some_and(|path| {
+            super::opening_marker::claim_daily_animation(&path, &super::opening_marker::today())
+        });
+    if !animate {
+        return print_static(out, profile.color);
     }
-}
-
-const fn nearest_ansi_256((red, green, blue): (u8, u8, u8)) -> u8 {
-    if green > red.saturating_add(25) && green > blue.saturating_add(10) {
-        46
-    } else if red > 220 && green > 120 && blue < 120 {
-        208
-    } else if red > 180 && blue > 130 {
-        201
-    } else if blue > red.saturating_add(25) && green > 150 {
-        51
-    } else if blue > red.saturating_add(25) {
-        39
-    } else if red > 200 {
-        197
-    } else {
-        220
+    let Some(input) = RawInput::enable() else {
+        return print_static(out, profile.color);
+    };
+    let outcome = play(out, profile.color, |delay| input.wait(delay));
+    input.drain();
+    drop(input);
+    match outcome? {
+        KeyWait::Interrupt => Err(io::Error::new(
+            io::ErrorKind::Interrupted,
+            "read interrupted",
+        )),
+        KeyWait::Elapsed | KeyWait::Skip => Ok(()),
     }
-}
-
-fn colors_enabled() -> bool {
-    std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
-}
-
-fn visual_effects_enabled() -> bool {
-    visual_effects_for(
-        colors_enabled(),
-        std::env::var("RULLST_REDUCED_MOTION").ok().as_deref(),
-    )
-}
-
-fn visual_effects_for(colors: bool, reduced_motion: Option<&str>) -> bool {
-    colors
-        && !reduced_motion.is_some_and(|value| {
-            matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes")
-        })
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn opening_tagline_names_the_installed_crate_version() {
-        assert_eq!(
-            super::TAGLINE,
-            format!(
-                "RULLST v{} // SECURE • FAST • EXPLICIT • AI-NATIVE • WEB-FIRST",
-                env!("CARGO_PKG_VERSION")
-            )
-        );
-    }
-
-    #[test]
-    fn opening_animation_keeps_all_frames_with_a_six_tenths_second_pacing() {
-        assert_eq!(super::ANIMATION_FRAMES.len(), 24);
-        assert_eq!(super::LOGO_FRAME_DELAY_MILLIS, 26);
-        assert_eq!(
-            (super::ANIMATION_FRAMES.len() as u64 - 1) * super::LOGO_FRAME_DELAY_MILLIS,
-            598
-        );
-    }
-
-    #[test]
-    fn logo_visits_each_full_gradient_then_settles_on_signature() {
-        let blue = (0..6)
-            .map(|letter| super::logo_color(0, letter))
-            .collect::<Vec<_>>();
-        let green = (0..6)
-            .map(|letter| super::logo_color(6, letter))
-            .collect::<Vec<_>>();
-        let orange = (0..6)
-            .map(|letter| super::logo_color(12, letter))
-            .collect::<Vec<_>>();
-        let signature = (0..6)
-            .map(|letter| super::logo_color(16, letter))
-            .collect::<Vec<_>>();
-
-        assert_eq!(blue, super::BLUE_GRADIENT);
-        assert_eq!(green, super::GREEN_GRADIENT);
-        assert_eq!(orange, super::ORANGE_GRADIENT);
-        assert_eq!(signature, super::FINAL_SIGNATURE);
-
-        assert_eq!(super::logo_color(13, 0), super::FINAL_SIGNATURE[0]);
-        assert_eq!(super::logo_color(13, 1), super::ORANGE_GRADIENT[1]);
-        assert_eq!(super::logo_color(15, 2), super::FINAL_SIGNATURE[2]);
-        assert_eq!(super::logo_color(15, 4), super::ORANGE_GRADIENT[4]);
-    }
-
-    #[test]
-    fn terminal_color_rendering_and_reduced_motion_are_deterministic() {
-        let colored = super::color_wave_with_colors("A B", 0, true);
-        assert!(colored.contains("\x1b[38;5;69mA\x1b[0m"));
-        assert!(colored.contains(' '));
-        assert_eq!(super::color_wave_with_colors("A B", 0, false), "A B");
-        assert_eq!(
-            super::paint_256_with_colors("◆", 51, true),
-            "\x1b[38;5;51m◆\x1b[0m"
-        );
-        assert_eq!(super::paint_256_with_colors("◆", 51, false), "◆");
-
-        for (rgb, expected) in [
-            ((10, 80, 20), 46),
-            ((250, 180, 10), 208),
-            ((200, 40, 180), 201),
-            ((10, 180, 200), 51),
-            ((10, 40, 100), 39),
-            ((230, 20, 20), 197),
-            ((100, 100, 100), 220),
-        ] {
-            assert_eq!(super::nearest_ansi_256(rgb), expected);
-        }
-
-        assert!(super::visual_effects_for(true, None));
-        assert!(!super::visual_effects_for(false, None));
-        for value in ["1", "TRUE", "Yes"] {
-            assert!(!super::visual_effects_for(true, Some(value)));
-        }
-        assert!(super::visual_effects_for(true, Some("0")));
-    }
-}
+#[path = "dashboard_brand_tests.rs"]
+mod tests;
