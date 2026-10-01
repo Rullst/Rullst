@@ -128,6 +128,13 @@ impl Auth0Provider {
         self
     }
 
+    /// Replaces the provider's HTTP transport with a new direct `ReqwestClient` using
+    /// the method-aware retry policy of `ReqwestClient::new_with_retry` (at most 10
+    /// retries). Any client installed with `with_http_client`, including an explicit
+    /// corporate proxy, is discarded. With the `retry` feature, the proxy constructors
+    /// `ReqwestClient::try_with_proxy*` already apply that policy with three retries,
+    /// so pass the proxy client last instead of calling this method.
+    /// Only available with the `retry` feature.
     #[cfg(feature = "retry")]
     #[cfg_attr(mutants, mutants::skip)]
     pub fn with_retry(mut self, max_retries: u32) -> Self {
@@ -210,7 +217,7 @@ impl Provider for Auth0Provider {
                 .unwrap_or_default(),
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
-            email_verified: user_res["email_verified"].as_bool(),
+            email_verified: crate::user::email_verified_claim(&user_res["email_verified"]),
             raw_data: user_res,
             access_token: secrecy::SecretString::from(access_token.to_owned()),
             refresh_token: None,

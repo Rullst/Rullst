@@ -81,52 +81,52 @@ pub async fn render_table_rows(
     db_rows.into_iter().fold(
         String::with_capacity(2048),
         |mut out, row| {
-            let row_id: String = if let Ok(v) = row.try_get::<i64, _>(pk) {
-                v.to_string()
-            } else if let Ok(v) = row.try_get::<i32, _>(pk) {
-                v.to_string()
-            } else if let Ok(v) = row.try_get::<f64, _>(pk) {
-                (v as i64).to_string()
-            } else {
-                row.try_get::<String, _>(pk).unwrap_or_else(|_| "0".to_string())
-            };
-
             let cells = visible_fields.iter().fold(String::new(), |mut cells, f| {
-                let val_str: String = match &f.kind {
-                    FieldKind::Boolean => {
-                        let b = row.try_get::<bool, _>(f.name)
-                            .or_else(|_| row.try_get::<i64, _>(f.name).map(|v| v != 0))
-                            .unwrap_or(false);
-                        if b {
-                            "✅ Yes".to_string()
-                        } else {
-                            "❌ No".to_string()
-                        }
-                    }
-                    FieldKind::Number | FieldKind::ForeignKey { .. } => {
-                        if let Ok(v) = row.try_get::<i64, _>(f.name) {
-                            v.to_string()
-                        } else if let Ok(v) = row.try_get::<f64, _>(f.name) {
-                            v.to_string()
-                        } else if let Ok(v) = row.try_get::<i32, _>(f.name) {
-                            v.to_string()
-                        } else {
-                            "0".to_string()
-                        }
-                    }
+                let cell = match &f.kind {
                     // Password columns are not selected; never render them.
-                    FieldKind::Password => PASSWORD_MASK.to_string(),
-                    _ => row
-                        .try_get::<String, _>(f.name)
-                        .unwrap_or_else(|_| "-".to_string()),
+                    FieldKind::Password => Cell::Value(PASSWORD_MASK.to_string()),
+                    FieldKind::Boolean => decode_cell(&row, f.name, |row| {
+                        row.try_get::<bool, _>(f.name)
+                            .or_else(|_| row.try_get::<i64, _>(f.name).map(|v| v != 0))
+                            .ok()
+                            .map(|b| if b { "✅ Yes" } else { "❌ No" }.to_string())
+                    }),
+                    FieldKind::Number | FieldKind::ForeignKey { .. } => decode_cell(&row, f.name, |row| {
+                        row.try_get::<i64, _>(f.name)
+                            .map(|v| v.to_string())
+                            .or_else(|_| row.try_get::<f64, _>(f.name).map(|v| v.to_string()))
+                            .or_else(|_| row.try_get::<i32, _>(f.name).map(|v| v.to_string()))
+                            .ok()
+                    }),
+                    _ => Cell::Value(
+                        row.try_get::<String, _>(f.name)
+                            .unwrap_or_else(|_| "-".to_string()),
+                    ),
                 };
-
-                let clean_val = rullst_core::html::escape_str(&val_str);
-
-                let _ = std::fmt::Write::write_fmt(&mut cells, format_args!("<td class=\"nexus-td\">{}</td>", clean_val));
+                let _ = match cell {
+                    Cell::Value(value) => write!(
+                        cells,
+                        "<td class=\"nexus-td\">{}</td>",
+                        rullst_core::html::escape_str(&value)
+                    ),
+                    Cell::Missing(marker) => write!(
+                        cells,
+                        "<td class=\"nexus-td nexus-muted\">{marker}</td>"
+                    ),
+                };
                 cells
             });
 
+            // A row whose key is NULL or undecodable has no address, so it
+            // gets neither a batch checkbox nor edit/delete actions.
+            let Some(row_id) = decode_row_key(&row, pk) else {
+                let _ = write!(
+                    out,
+                    "<tr class=\"nexus-tr\"><td class=\"nexus-td\"></td>{cells}\
+                     <td class=\"nexus-td nexus-td-actions nexus-muted\">No usable key</td></tr>"
+                );
+                return out;
+            };
             let safe_row_id = rullst_core::html::escape_str(&row_id);
             let row_path = urlencoding::encode(&row_id);
             let checkbox_cell = format!("<td class=\"nexus-td text-center\"><input type=\"checkbox\" name=\"selected_ids\" value=\"{safe_row_id}\" class=\"nexus-batch-check\" /></td>");
@@ -137,7 +137,7 @@ pub async fn render_table_rows(
                  {cells}\
                  <td class=\"nexus-td nexus-td-actions\">\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
-                 hx-get=\"/nexus/table/{table_path}/{row_path}/edit\" \
+                 hx-get=\"/nexus/table/{table_path}/record/{row_path}/edit\" \
                  hx-target=\"#nexus-modal-body\">&#9999;&#65039;</button>\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" data-nexus-delete=\"true\" \
                  data-nexus-table=\"{}\" data-nexus-record=\"{safe_row_id}\">&#128465;&#65039;</button>\
@@ -147,6 +147,47 @@ pub async fn render_table_rows(
             out
         }
     )
+}
+
+/// A list cell: a decoded value, or a marker for NULL or undecodable data.
+enum Cell {
+    Value(String),
+    Missing(&'static str),
+}
+
+type ListRow = <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Row;
+
+/// Distinguishes SQL NULL and undecodable values from real ones instead of
+/// showing a fabricated `0` or `No`.
+fn decode_cell(row: &ListRow, column: &str, decode: impl Fn(&ListRow) -> Option<String>) -> Cell {
+    use rullst_orm::_sqlx::{Row, ValueRef};
+    match row.try_get_raw(column) {
+        Ok(raw) if raw.is_null() => Cell::Missing("NULL"),
+        Ok(_) => decode(row).map_or(Cell::Missing("unreadable"), Cell::Value),
+        Err(_) => Cell::Missing("unreadable"),
+    }
+}
+
+/// The record key of a listed row, or `None` when it is NULL or cannot be
+/// decoded exactly (a fractional or out-of-range floating-point key would
+/// otherwise point the actions at a different record).
+fn decode_row_key(row: &ListRow, pk: &str) -> Option<String> {
+    use rullst_orm::_sqlx::{Row, ValueRef};
+    if row.try_get_raw(pk).map_or(true, |raw| raw.is_null()) {
+        return None;
+    }
+    if let Ok(value) = row.try_get::<i64, _>(pk) {
+        return Some(value.to_string());
+    }
+    if let Ok(value) = row.try_get::<i32, _>(pk) {
+        return Some(value.to_string());
+    }
+    if let Ok(value) = row.try_get::<f64, _>(pk) {
+        // Exactly representable integers only; `as` saturates otherwise.
+        let integral = value.fract() == 0.0 && value.abs() < 9_007_199_254_740_992.0;
+        return integral.then(|| (value as i64).to_string());
+    }
+    row.try_get::<String, _>(pk).ok()
 }
 
 /// Renders the complete HTML table view container including search toolbar and pagination.
@@ -160,6 +201,40 @@ pub async fn render_table_view(
     order: Option<&str>,
     tenant_id: Option<&str>,
 ) -> String {
+    let view = TableView {
+        page,
+        q,
+        sort_by,
+        order,
+        tenant_id,
+        csrf_token: None,
+    };
+    table_view(entry, &view).await
+}
+
+/// Request state for one rendering of the table view.
+pub(crate) struct TableView<'a> {
+    pub(crate) page: u32,
+    pub(crate) q: &'a str,
+    pub(crate) sort_by: Option<&'a str>,
+    pub(crate) order: Option<&'a str>,
+    pub(crate) tenant_id: Option<&'a str>,
+    /// The request's double-submit token. The bulk-action form is a plain
+    /// browser POST that cannot send the `X-CSRF-Token` header, so it carries
+    /// the token as the `_token` field Core's CSRF middleware accepts.
+    pub(crate) csrf_token: Option<&'a str>,
+}
+
+/// Renders the table view for one request.
+pub(crate) async fn table_view(entry: &RegistryEntry, view: &TableView<'_>) -> String {
+    let TableView {
+        page,
+        q,
+        sort_by,
+        order,
+        tenant_id,
+        csrf_token,
+    } = *view;
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
 
     let th_cells = visible_fields.iter().fold(String::new(), |mut acc, f| {
@@ -204,6 +279,14 @@ pub async fn render_table_view(
     } else {
         ""
     };
+    let token_field = csrf_token
+        .map(|token| {
+            format!(
+                "<input type=\"hidden\" name=\"_token\" value=\"{}\" />",
+                rullst_core::html::escape_str(token)
+            )
+        })
+        .unwrap_or_default();
 
     let mut out = String::new();
     let _ = write!(
@@ -216,35 +299,44 @@ pub async fn render_table_view(
          &#43; New {safe_label}</button></div>"
     );
 
+    // The search box lives in its own GET form, so Enter searches instead of
+    // submitting the bulk form, and keeps the current sort. Live search
+    // swaps only the table region (rows, sort links and pagination rebuilt
+    // for the new query) so the input keeps focus and any newer keystrokes,
+    // and pushes the URL so a reload or a save refresh keeps the view.
+    let safe_q = rullst_core::html::escape_str(q);
+    let sort_inputs = [("sort_by", sort_by), ("order", order)]
+        .into_iter()
+        .filter_map(|(name, value)| {
+            value.map(|value| {
+                format!(
+                    "<input type=\"hidden\" name=\"{name}\" value=\"{}\" />",
+                    rullst_core::html::escape_str(value)
+                )
+            })
+        })
+        .collect::<String>();
+    let region_swap = "hx-target=\"#nexus-table-region\" hx-select=\"#nexus-table-region\" \
+         hx-swap=\"outerHTML\" hx-push-url=\"true\"";
     let _ = write!(
         out,
-        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\" \
-         data-nexus-confirm=\"Apply bulk action?\">\
-         <div class=\"nexus-toolbar\">\
-         <div class=\"nexus-search-wrap\">\
+        "<div class=\"nexus-toolbar\">\
+         <form class=\"nexus-search-wrap\" role=\"search\" method=\"GET\" action=\"/nexus/table/{table_path}\" \
+         hx-get=\"/nexus/table/{table_path}\" {region_swap}>\
          <span class=\"nexus-search-icon\">&#128269;</span>\
-         <input type=\"text\" class=\"nexus-search-input\" name=\"q\" value=\"{}\" placeholder=\"Search {safe_label}...\" \
-         hx-get=\"/nexus/table/{table_path}/search\" hx-trigger=\"keyup changed delay:300ms\" \
-         hx-target=\"#nexus-table-body\" hx-include=\"[name='q']\" />\
-         </div>\
-         <select name=\"action\" class=\"nexus-btn nexus-btn-ghost nexus-bulk-select\">\
+         <input type=\"text\" class=\"nexus-search-input\" id=\"nexus-search-{table_path}\" name=\"q\" \
+         value=\"{safe_q}\" placeholder=\"Search {safe_label}...\" aria-label=\"Search {safe_label}\" \
+         hx-get=\"/nexus/table/{table_path}\" hx-trigger=\"keyup changed delay:300ms\" \
+         hx-include=\"closest form\" {region_swap} />\
+         {sort_inputs}</form>\
+         <select name=\"action\" form=\"batch-form-{table_path}\" class=\"nexus-btn nexus-btn-ghost nexus-bulk-select\" \
+         aria-label=\"Bulk action\">\
          <option value=\"\">Bulk Actions</option>\
          <option value=\"delete\">Delete Selected</option>\
          {deactivate_option}\
          </select>\
-         <button type=\"submit\" class=\"nexus-btn nexus-btn-ghost\">Apply</button>\
-         </div>\
-         <div class=\"nexus-table-wrap\">\
-         <table class=\"nexus-table\">\
-         <thead><tr class=\"nexus-thead-row\">\
-         <th class=\"nexus-th nexus-th-check text-center\">\
-         <input type=\"checkbox\" data-nexus-select-all=\"true\" aria-label=\"Select all rows\" /></th>\
-         {th_cells}\
-         <th class=\"nexus-th nexus-th-actions\">Actions</th>\
-         </tr></thead>\
-         <tbody id=\"nexus-table-body\">{rows_html}</tbody>\
-         </table></div></form>",
-        rullst_core::html::escape_str(q)
+         <button type=\"submit\" form=\"batch-form-{table_path}\" class=\"nexus-btn nexus-btn-ghost\">Apply</button>\
+         </div>"
     );
 
     let query_param = urlencoding::encode(q);
@@ -257,7 +349,20 @@ pub async fn render_table_view(
 
     let _ = write!(
         out,
-        "<div class=\"nexus-pagination\">\
+        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\" \
+         data-nexus-confirm=\"Apply bulk action?\">{token_field}\
+         <div id=\"nexus-table-region\">\
+         <div class=\"nexus-table-wrap\">\
+         <table class=\"nexus-table\">\
+         <thead><tr class=\"nexus-thead-row\">\
+         <th class=\"nexus-th nexus-th-check text-center\">\
+         <input type=\"checkbox\" data-nexus-select-all=\"true\" aria-label=\"Select all rows\" /></th>\
+         {th_cells}\
+         <th class=\"nexus-th nexus-th-actions\">Actions</th>\
+         </tr></thead>\
+         <tbody id=\"nexus-table-body\">{rows_html}</tbody>\
+         </table></div>\
+         <div class=\"nexus-pagination\">\
          <div class=\"nexus-page-indicator\">Page {page}</div>\
          <div class=\"nexus-pagination-links\">\
          <a href=\"/nexus/table/{table_path}?page={prev_page}&amp;q={query_param}{sort_param}{order_param}\" \
@@ -266,7 +371,7 @@ pub async fn render_table_view(
          <a href=\"/nexus/table/{table_path}?page={next_page}&amp;q={query_param}{sort_param}{order_param}\" \
          class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{table_path}?page={next_page}&amp;q={query_param}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">Next &rarr;</a>\
-         </div></div>"
+         </div></div></div></form>"
     );
 
     out.push_str(

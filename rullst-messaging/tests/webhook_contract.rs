@@ -7,6 +7,9 @@ mod support;
 use server::Receiver;
 #[path = "webhook/failures.rs"]
 mod failures;
+#[path = "webhook/rotation.rs"]
+mod rotation;
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use support::*;
 
 #[tokio::test]
@@ -72,7 +75,7 @@ async fn receiver_deduplicates_exact_bytes_after_uncertain_http_acceptance() {
     );
     // Configuration/key drift cannot redirect retained messages.
     let other = WebhookDestination::loopback_test(format!("{}/changed", receiver.url)).unwrap();
-    assert!(
+    assert!(matches!(
         WebhookOutbox::open(
             &url,
             config(&namespace, other),
@@ -80,9 +83,37 @@ async fn receiver_deduplicates_exact_bytes_after_uncertain_http_acceptance() {
             storage(),
             clock.clone()
         )
-        .await
-        .is_err()
-    );
+        .await,
+        Err(WebhookError::Configuration)
+    ));
+    let other_key = WebhookSigningKey::new("fixture", URL_SAFE_NO_PAD.encode([38; 32])).unwrap();
+    assert!(matches!(
+        WebhookOutbox::open(
+            &url,
+            config(&namespace, receiver.destination()),
+            other_key,
+            storage(),
+            clock.clone()
+        )
+        .await,
+        Err(WebhookError::Configuration)
+    ));
+    for keyring in [
+        MessagingKeyring::new(MessagingStorageKey::try_new("storage", [72; 32]).unwrap()),
+        MessagingKeyring::new(MessagingStorageKey::try_new("other", [71; 32]).unwrap()),
+    ] {
+        assert!(matches!(
+            WebhookOutbox::open(
+                &url,
+                config(&namespace, receiver.destination()),
+                key(),
+                keyring,
+                clock.clone()
+            )
+            .await,
+            Err(WebhookError::Configuration)
+        ));
+    }
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(1)
         .connect(&url)

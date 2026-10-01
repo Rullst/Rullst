@@ -29,6 +29,11 @@ pub(super) async fn connect_pool(database_url: &str) -> Result<SqlitePool, Token
             "database must be file-backed",
         ));
     }
+    if overrides_file_semantics(database_url) {
+        return Err(TokenStoreError::InvalidConfiguration(
+            "database URL must not select a SQLite VFS or immutable mode",
+        ));
+    }
     reject_existing_unsafe_target(options.get_filename())?;
     SqlitePoolOptions::new()
         .max_connections(4)
@@ -137,22 +142,45 @@ pub(super) const fn corrupt(context: &'static str) -> TokenStoreError {
     TokenStoreError::CorruptStorage(context)
 }
 
-fn volatile_database_url(database_url: &str, filename: &Path) -> bool {
-    let filename = filename.as_os_str().to_string_lossy();
-    let memory_mode = database_url
+/// Splits a URL the way sqlx does: the scheme prefix is removed and the database part
+/// ends at the first `?`, whatever query string follows it.
+fn database_and_query(database_url: &str) -> (&str, &str) {
+    let without_scheme = database_url
+        .trim_start_matches("sqlite://")
+        .trim_start_matches("sqlite:");
+    without_scheme
         .split_once('?')
-        .map(|(_, query)| {
-            url::form_urlencoded::parse(query.as_bytes()).any(|(key, value)| {
-                key.eq_ignore_ascii_case("mode") && value.eq_ignore_ascii_case("memory")
-            })
-        })
-        .unwrap_or(false);
-    database_url.eq_ignore_ascii_case("sqlite::memory:")
-        || database_url.eq_ignore_ascii_case("sqlite://:memory:")
+        .unwrap_or((without_scheme, ""))
+}
+
+fn volatile_database_url(database_url: &str, filename: &Path) -> bool {
+    let (database, query) = database_and_query(database_url);
+    let memory_mode = url::form_urlencoded::parse(query.as_bytes()).any(|(key, value)| {
+        key.eq_ignore_ascii_case("mode") && value.eq_ignore_ascii_case("memory")
+    });
+    let filename = filename.as_os_str().to_string_lossy();
+    // SQLite interprets a `file:` filename as a URI with its own parameters.
+    let uri_target = filename
+        .get(..5)
+        .filter(|scheme| scheme.eq_ignore_ascii_case("file:"))
+        .and_then(|_| filename.get(5..));
+    database.eq_ignore_ascii_case(":memory:")
+        || memory_mode
         || filename.is_empty()
         || filename.eq_ignore_ascii_case(":memory:")
-        || filename.eq_ignore_ascii_case("file::memory:")
-        || memory_mode
+        || uri_target.is_some_and(|target| target.contains('?') || target.starts_with(":memory:"))
+}
+
+/// A `vfs` override can keep the database in RAM (`memdb`) or disable locking
+/// (`unix-none`), and `immutable` disables change detection between processes.
+fn overrides_file_semantics(database_url: &str) -> bool {
+    let (_, query) = database_and_query(database_url);
+    url::form_urlencoded::parse(query.as_bytes()).any(|(key, value)| {
+        key.eq_ignore_ascii_case("vfs")
+            || (key.eq_ignore_ascii_case("immutable")
+                && !value.eq_ignore_ascii_case("false")
+                && value != "0")
+    })
 }
 
 fn reject_existing_unsafe_target(path: &Path) -> Result<(), TokenStoreError> {

@@ -110,14 +110,16 @@ async fn prepare_storage_profile(
                     return Err(MessagingError::ConfigurationConflict);
                 }
                 let probe_key_id = storage.open_probe(namespace, &probe)?;
-                let markers: Vec<(String,)> = sqlx::query_as(
-                    "SELECT DISTINCT headers_json FROM rullst_messaging_messages WHERE namespace = ?",
-                )
-                .bind(namespace.as_str())
-                .fetch_all(&mut *connection)
-                .await
-                .map_err(|_| storage_error("read storage rotation keys"))?;
+                // Only encrypted rows hold a short key marker in `headers_json`;
+                // plaintext rows hold full headers, which must not be loaded here.
                 if storage.primary_key_id().is_some() {
+                    let markers: Vec<(String,)> = sqlx::query_as(
+                        "SELECT DISTINCT headers_json FROM rullst_messaging_messages WHERE namespace = ?",
+                    )
+                    .bind(namespace.as_str())
+                    .fetch_all(&mut *connection)
+                    .await
+                    .map_err(|_| storage_error("read storage rotation keys"))?;
                     for marker in markers {
                         storage.ensure_key_available(&marker.0)?;
                     }
