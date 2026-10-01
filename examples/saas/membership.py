@@ -10,9 +10,16 @@ import re
 import sqlite3
 
 
+def valid_tenant_id(tenant):
+    """Mirror Core's `validate_tenant_id`: one stored row that the server rejects
+    would make `TenantMembership::try_new` deny the user every tenant."""
+    return re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", tenant) is not None and tenant.strip(".") != ""
+
+
 def grant_membership(database, email, tenant):
-    if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", tenant):
-        raise ValueError("Tenant must contain 1-128 letters, digits, underscores, dots, colons or hyphens")
+    if not valid_tenant_id(tenant):
+        raise ValueError("Tenant must contain 1-128 letters, digits, underscores, dots, colons or "
+                         "hyphens and must not consist only of dots")
     # mode=rw refuses to create a new database when a path was mistyped.
     uri = Path(database).resolve().as_uri() + "?mode=rw"
     with closing(sqlite3.connect(uri, uri=True, timeout=5)) as db:
