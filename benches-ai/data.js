@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790849959863,
+  "lastUpdate": 1790854589458,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11937,6 +11937,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 428,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bf53101d9e49efb8d8be0fa4813c6ef252de422",
+          "message": "Merge pull request #377 from Rullst/fix/v13-final-edu-tail\n\nfix(edu): final-review fixes for supervision, media and labs",
+          "timestamp": "2026-10-01T08:11:59-03:00",
+          "tree_id": "b7446c9b3b1c3345753f0137e49e9478fa1dad15",
+          "url": "https://github.com/Rullst/Rullst/commit/5bf53101d9e49efb8d8be0fa4813c6ef252de422"
+        },
+        "date": 1790854588610,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1664,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 362,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 426,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
