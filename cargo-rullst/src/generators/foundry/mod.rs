@@ -2,6 +2,7 @@
 
 mod config;
 mod deploy;
+mod service;
 
 use crate::generators::is_rullst_project;
 use colored::*;
