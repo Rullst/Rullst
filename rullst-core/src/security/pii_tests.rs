@@ -257,3 +257,99 @@ fn textual_responses_are_recognized_in_any_ascii_case() {
     );
     assert!(!is_textual_response(&headers));
 }
+
+/// Runs one response through the PII middleware.
+async fn through_pii_layer(
+    status: axum::http::StatusCode,
+    headers: Vec<(axum::http::HeaderName, &'static str)>,
+    body: &'static str,
+) -> axum::response::Response {
+    use axum::http::{HeaderValue, Request};
+    use tower::ServiceExt;
+
+    let app = axum::Router::new()
+        .route(
+            "/range",
+            axum::routing::get(move || async move {
+                let mut response = axum::response::Response::new(axum::body::Body::from(body));
+                *response.status_mut() = status;
+                for (name, value) in headers {
+                    response
+                        .headers_mut()
+                        .insert(name, HeaderValue::from_static(value));
+                }
+                response
+            }),
+        )
+        .layer(axum::middleware::from_fn(super::pii_masking_middleware));
+    app.oneshot(
+        Request::get("/range")
+            .body(axum::body::Body::empty())
+            .expect("request"),
+    )
+    .await
+    .expect("response")
+}
+
+async fn response_text(response: axum::response::Response) -> String {
+    let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+        .await
+        .expect("body");
+    String::from_utf8(bytes.to_vec()).expect("UTF-8 body")
+}
+
+#[tokio::test]
+async fn masked_partial_content_is_withheld_instead_of_rewritten() {
+    use axum::http::{HeaderValue, StatusCode, header};
+
+    let response = through_pii_layer(
+        StatusCode::PARTIAL_CONTENT,
+        vec![
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CONTENT_RANGE, "bytes 100-129/5000"),
+            (header::ACCEPT_RANGES, "bytes"),
+        ],
+        "contact ana.silva@example.com.",
+    )
+    .await;
+
+    // Never a 206 whose body no longer matches its Content-Range, and never
+    // the unmasked range.
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    assert!(response.headers().get(header::CONTENT_RANGE).is_none());
+    assert_eq!(
+        response.headers().get(header::CACHE_CONTROL),
+        Some(&HeaderValue::from_static("no-store"))
+    );
+    assert!(!response_text(response).await.contains("ana.silva"));
+}
+
+#[tokio::test]
+async fn clean_partial_content_passes_through_untouched() {
+    use axum::http::{HeaderValue, StatusCode, header};
+
+    let response = through_pii_layer(
+        StatusCode::PARTIAL_CONTENT,
+        vec![
+            (header::CONTENT_TYPE, "application/json"),
+            (header::CONTENT_RANGE, "bytes 0-25/5000"),
+            (header::ETAG, "\"v1\""),
+        ],
+        r#"{"ts":1727712000000,"n":1}"#,
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+    assert_eq!(
+        response.headers().get(header::CONTENT_RANGE),
+        Some(&HeaderValue::from_static("bytes 0-25/5000"))
+    );
+    assert_eq!(
+        response.headers().get(header::ETAG),
+        Some(&HeaderValue::from_static("\"v1\""))
+    );
+    assert_eq!(
+        response_text(response).await,
+        r#"{"ts":1727712000000,"n":1}"#
+    );
+}

@@ -93,7 +93,23 @@ fn update_representation_headers(headers: &mut HeaderMap, body_len: usize) {
 }
 
 fn body_collection_failure() -> Response {
-    let mut response = Response::new(axum::body::Body::from("response masking failed"));
+    withheld_response("response masking failed")
+}
+
+/// A masked range no longer matches the byte range its `Content-Range`
+/// names, and a single-part 206 without `Content-Range` is malformed
+/// (RFC 9110 15.3.7). Forwarding the unmasked range would leak the value, so
+/// the partial response is withheld instead.
+fn partial_content_withheld() -> Response {
+    tracing::warn!(
+        target: "rullst_core::security::pii",
+        "PII masking withheld a 206 Partial Content response because masking would change its byte range"
+    );
+    withheld_response("partial response withheld by PII masking")
+}
+
+fn withheld_response(message: &'static str) -> Response {
+    let mut response = Response::new(axum::body::Body::from(message));
     *response.status_mut() = StatusCode::BAD_GATEWAY;
     response.headers_mut().insert(
         header::CONTENT_TYPE,
@@ -111,6 +127,11 @@ fn body_collection_failure() -> Response {
 /// inside string literals, after decoding their escapes, so JSON numbers and
 /// escape syntax are never rewritten and the body stays valid JSON. Other textual responses use [`mask_pii`] on the whole
 /// text.
+///
+/// A `206 Partial Content` response that masking would change is replaced by
+/// a `502 Bad Gateway` with `Cache-Control: no-store`, because a masked range
+/// no longer matches its `Content-Range`; a range that needs no masking
+/// passes through unchanged.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     let request_method = req.method().clone();
@@ -143,9 +164,13 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     } else {
         mask_pii(body_text)
     };
-    if masked_body.as_bytes() != bytes.as_ref() {
-        update_representation_headers(&mut parts.headers, masked_body.len());
+    if masked_body.as_bytes() == bytes.as_ref() {
+        return Response::from_parts(parts, axum::body::Body::from(bytes));
     }
+    if parts.status == StatusCode::PARTIAL_CONTENT {
+        return partial_content_withheld();
+    }
+    update_representation_headers(&mut parts.headers, masked_body.len());
 
     Response::from_parts(parts, axum::body::Body::from(masked_body))
 }
