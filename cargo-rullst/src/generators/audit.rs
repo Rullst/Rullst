@@ -6,6 +6,7 @@ use std::path::Path;
 use crate::generators::audit_compliance::{
     ComplianceEvidence, EvidenceStatus, write_compliance_report,
 };
+use crate::generators::audit_evidence::inspect_local_network_surface;
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
 use crate::generators::source_walk::{RustSources, rust_sources};
 
@@ -569,23 +570,33 @@ pub fn run_security_audit_with_exceptions(
             "  {} Scanning local network surface & interface bindings (RustScan mode)...",
             "[NETWORK]".bright_magenta()
         );
-        let (net_issues, net_reports) = scan_local_network_surface();
-        if net_reports.is_empty() {
+        let surface = inspect_local_network_surface();
+        if surface.observations.is_empty() && surface.incomplete.is_empty() {
             println!(
                 "  {} No open local listening ports detected.",
                 "[OK]".green()
             );
-        } else {
-            for report in &net_reports {
-                if report.contains("should be '127.0.0.1'") {
-                    println!("  {} {}", "[NETWORK WARNING]".yellow().bold(), report);
-                } else {
-                    println!("  {} {}", "[ACTIVE SERVICE]".bright_cyan(), report);
-                }
+        }
+        for report in &surface.observations {
+            if report.contains("should be '127.0.0.1'") {
+                println!("  {} {}", "[NETWORK WARNING]".yellow().bold(), report);
+            } else {
+                println!("  {} {}", "[ACTIVE SERVICE]".bright_cyan(), report);
             }
         }
-        issues_found += net_issues;
-        network_evidence = EvidenceStatus::Observed(net_reports.len());
+        for reason in &surface.incomplete {
+            println!(
+                "  {} Network check incomplete: {}",
+                "[ERROR]".red().bold(),
+                reason
+            );
+        }
+        issues_found += surface.findings + surface.incomplete.len();
+        network_evidence = if surface.incomplete.is_empty() {
+            EvidenceStatus::Observed(surface.observations.len())
+        } else {
+            EvidenceStatus::Error(surface.incomplete.join("; "))
+        };
     }
 
     if ai_mode {

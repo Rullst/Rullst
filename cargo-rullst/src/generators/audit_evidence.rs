@@ -117,8 +117,29 @@ fn push_component(
     components.push(component);
 }
 
+/// Bounded local network evidence from one `audit --network` run.
+pub(crate) struct NetworkSurface {
+    /// Bindings or listeners that accept non-loopback traffic.
+    pub(crate) findings: usize,
+    /// Open loopback ports followed by the finding descriptions.
+    pub(crate) observations: Vec<String>,
+    /// Parts of the inventory that could not run; the check is then incomplete.
+    pub(crate) incomplete: Vec<String>,
+}
+
 /// Records loopback listeners and source bindings that expose Studio publicly.
+///
+/// A part of the inventory that could not run (for example a missing `ss`) is
+/// counted and described as a finding, so callers fail closed.
 pub fn scan_local_network_surface() -> (usize, Vec<String>) {
+    let surface = inspect_local_network_surface();
+    let findings = surface.findings + surface.incomplete.len();
+    let mut observations = surface.observations;
+    observations.extend(surface.incomplete);
+    (findings, observations)
+}
+
+pub(crate) fn inspect_local_network_surface() -> NetworkSurface {
     use std::net::{SocketAddr, TcpStream};
     use std::time::Duration;
 
@@ -142,19 +163,26 @@ pub fn scan_local_network_surface() -> (usize, Vec<String>) {
     }
 
     let mut warnings = Vec::new();
-    inspect_bindings(Path::new("src"), &mut warnings);
+    let mut incomplete = Vec::new();
+    inspect_bindings(Path::new("src"), &mut warnings, &mut incomplete);
     inspect_environment_binding(Path::new(".env"), &mut warnings);
-    inspect_system_listeners(&mut warnings);
-    let finding_count = warnings.len();
+    if let Err(reason) = inspect_system_listeners(LISTENER_PROGRAM, &mut warnings) {
+        incomplete.push(reason);
+    }
+    let findings = warnings.len();
     observations.extend(warnings);
-    (finding_count, observations)
+    NetworkSurface {
+        findings,
+        observations,
+        incomplete,
+    }
 }
 
-fn inspect_bindings(directory: &Path, warnings: &mut Vec<String>) {
+fn inspect_bindings(directory: &Path, warnings: &mut Vec<String>, incomplete: &mut Vec<String>) {
     let sources = rust_sources(directory);
     if let Some(reason) = sources.incomplete {
-        warnings.push(format!(
-            "Source walk under '{}' is incomplete ({reason}); listener bindings beyond it were not scanned",
+        incomplete.push(format!(
+            "the source walk under '{}' is incomplete ({reason}); listener bindings beyond it were not scanned",
             directory.display()
         ));
     }
@@ -207,26 +235,46 @@ fn inspect_environment_binding(path: &Path, warnings: &mut Vec<String>) {
     }
 }
 
-fn inspect_system_listeners(warnings: &mut Vec<String>) {
-    let Ok(output) = std::process::Command::new("ss").args(["-ltnH"]).output() else {
-        return;
-    };
+/// Lists TCP listeners with iproute2's `ss`, available on Linux.
+const LISTENER_PROGRAM: &str = "ss";
+
+/// Adds a warning per listener bound to an unspecified address.
+///
+/// Returns why the inventory did not run, so a requested check that could not
+/// execute (macOS, Windows, or a Linux image without iproute2) is reported as
+/// incomplete instead of clean.
+fn inspect_system_listeners(program: &str, warnings: &mut Vec<String>) -> Result<(), String> {
+    let output = std::process::Command::new(program)
+        .args(["-ltnH"])
+        .output()
+        .map_err(|error| {
+            format!(
+                "the TCP listener inventory `{program} -ltnH` could not run ({error}); it requires iproute2's `ss`, which macOS and Windows do not provide"
+            )
+        })?;
     if !output.status.success() {
-        return;
+        return Err(format!(
+            "the TCP listener inventory `{program} -ltnH` failed ({})",
+            output.status
+        ));
     }
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let Some(address) = line.split_whitespace().nth(3) else {
-            continue;
-        };
-        if address.starts_with("0.0.0.0:")
-            || address.starts_with("[::]:")
-            || address.starts_with("*:")
-        {
-            warnings.push(format!(
+    warnings.extend(listener_warnings(&String::from_utf8_lossy(&output.stdout)));
+    Ok(())
+}
+
+fn listener_warnings(inventory: &str) -> Vec<String> {
+    inventory
+        .lines()
+        .filter_map(|line| line.split_whitespace().nth(3))
+        .filter(|address| {
+            address.starts_with("0.0.0.0:") || address.starts_with("[::]:") || address.starts_with("*:")
+        })
+        .map(|address| {
+            format!(
                 "Active TCP listener '{address}' accepts non-loopback traffic; review whether it should be '127.0.0.1'"
-            ));
-        }
-    }
+            )
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -307,6 +355,37 @@ mod tests {
                 .expect("new SBOM")
                 .contains("CycloneDX")
         );
+    }
+
+    #[test]
+    fn unavailable_listener_inventory_is_reported_instead_of_clean() {
+        let mut warnings = Vec::new();
+        let reason = inspect_system_listeners("rullst-missing-listener-inventory", &mut warnings)
+            .expect_err("a missing listener tool must not pass as an empty inventory");
+        assert!(reason.contains("could not run"), "{reason}");
+        assert!(warnings.is_empty());
+
+        #[cfg(unix)]
+        {
+            let failed = inspect_system_listeners("false", &mut warnings)
+                .expect_err("a failing listener tool must not pass");
+            assert!(failed.contains("failed"), "{failed}");
+        }
+    }
+
+    #[test]
+    fn listener_inventory_flags_only_unspecified_addresses() {
+        let warnings = listener_warnings(
+            "LISTEN 0 4096 127.0.0.1:5432 0.0.0.0:*\n\
+             LISTEN 0 4096 0.0.0.0:5555 0.0.0.0:*\n\
+             LISTEN 0 4096 [::]:3000 [::]:*\n\
+             LISTEN 0 4096 *:8080 *:*\n\
+             short line\n",
+        );
+        assert_eq!(warnings.len(), 3);
+        assert!(warnings[0].contains("0.0.0.0:5555"));
+        assert!(warnings[1].contains("[::]:3000"));
+        assert!(warnings[2].contains("*:8080"));
     }
 
     #[test]

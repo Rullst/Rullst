@@ -1108,7 +1108,7 @@ route, dependency, and local network patterns.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) with package SHA-256 checksums and license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
-  * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan.
+  * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
 
 The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
 follow symlinked files or directories and skip `target/` and `.git/`. A walk
