@@ -194,6 +194,50 @@ mod tests {
     }
 
     #[test]
+    fn indexed_string_columns_are_bounded_for_mysql() {
+        // MySQL/MariaDB reject an index on a TEXT column without a prefix
+        // length, and `string()`/`timestamps()` columns are TEXT.
+        let mut indexed_strings = 0;
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                for statement in source.split("CREATE ").skip(1) {
+                    let Some((_, definition)) = statement
+                        .split_once("INDEX ")
+                        .filter(|(kind, _)| kind.is_empty() || *kind == "UNIQUE ")
+                    else {
+                        continue;
+                    };
+                    let Some(columns) = definition
+                        .split_once('(')
+                        .and_then(|(_, columns)| columns.split_once(')'))
+                        .map(|(columns, _)| columns)
+                    else {
+                        continue;
+                    };
+                    for column in columns.split(',').map(str::trim) {
+                        assert!(
+                            !matches!(column, "created_at" | "updated_at"),
+                            "{blueprint}:{path} indexes TEXT timestamp {column}"
+                        );
+                        let declaration = format!("table.string(\"{column}\")");
+                        for line in source.lines().filter(|line| line.contains(&declaration)) {
+                            indexed_strings += 1;
+                            assert!(
+                                line.contains(".col_type = \"VARCHAR("),
+                                "{blueprint}:{path} indexes TEXT column {column}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            indexed_strings > 0,
+            "no indexed string column was inspected"
+        );
+    }
+
+    #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(
             "rullst-unknown-blueprint-{}",
