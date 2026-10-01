@@ -38,12 +38,6 @@ pub(super) fn starter(
     hot_reload: bool,
 ) -> Vec<(&'static str, String)> {
     full_manifest.retain(|(path, _)| RETAINED_FILES.contains(path));
-    if let Some((_, source)) = full_manifest
-        .iter_mut()
-        .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
-    {
-        *source = super::auth::identity_controller();
-    }
     if hot_reload {
         full_manifest.extend([
             ("src/lib.rs", routes::hot_lib_source()),
@@ -199,6 +193,18 @@ mod tests {
             )
         );
         assert!(service.contains(".bind(user_id).bind(idempotency_key).fetch_optional(pool)"));
+    }
+
+    #[test]
+    fn dashboard_describes_the_schoolless_starter() {
+        let manifest = manifest(false);
+        let pages = source(&manifest, "src/pages/auth.rs");
+        let controller = source(&manifest, "src/controllers/auth_controller.rs");
+        // v13 provisions no school, yet the dashboard claimed one.
+        assert!(!pages.to_lowercase().contains("school"));
+        assert!(!controller.to_lowercase().contains("school"));
+        assert!(pages.contains("Enroll in a course from the catalog"));
+        assert!(pages.contains("<a href=\"/\">Browse courses</a>"));
     }
 
     #[test]
