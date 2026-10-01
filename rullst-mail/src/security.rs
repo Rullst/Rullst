@@ -177,6 +177,9 @@ pub fn is_crlf_safe(header_value: &str) -> bool {
 pub fn scan_content_security(content: &str) -> Result<(), MailError> {
     let urls = extract_urls(content);
     for url in urls {
+        // Browsers decode character references in attribute values before
+        // navigating, so `https:&#9;//p&#x430;ypal.com` is checked decoded.
+        let url = crate::entities::decode(&url);
         if is_dangerous_scheme(&url) {
             return Err(MailError::SendError(format!(
                 "Outbound mail security violation: Dangerous URI scheme detected in link: '{}'",

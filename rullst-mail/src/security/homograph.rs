@@ -82,21 +82,80 @@ fn link_host(url: &str) -> (&str, &str) {
         .find(['/', '?', '#', '\\'])
         .unwrap_or(authority.len());
     let authority = &authority[..end];
-    let (user_info, host_port) = authority.rsplit_once('@').unwrap_or(("", authority));
-    let host = if host_port.starts_with('[') {
-        host_port
-            .find(']')
-            .map_or(host_port, |end| &host_port[..=end])
+    let (user_info, host) = authority.rsplit_once('@').unwrap_or(("", authority));
+    let host = if host.starts_with('[') {
+        host.find(']').map_or(host, |end| &host[..=end])
     } else {
-        host_port.split(':').next().unwrap_or(host_port)
+        host.split(':').next().unwrap_or(host)
     };
     (user_info, host)
 }
 
-/// Returns the inspected host when a link's host or user-info is a homograph.
-pub(super) fn homograph_link_host(url: &str) -> Option<&str> {
-    let (user_info, host) = link_host(url);
-    (is_homograph_domain(host) || is_homograph_domain(user_info)).then_some(host)
+/// A mail client resolves a relative reference against its page, typically
+/// an HTTP(S) webmail URL, where `//host`, `\\host` and `/\host` name a host.
+static RELATIVE_BASE: std::sync::LazyLock<Option<reqwest::Url>> =
+    std::sync::LazyLock::new(|| reqwest::Url::parse("https://mail.invalid/").ok());
+
+/// The `(user-info, host)` a browser navigates to, as the WHATWG URL parser
+/// (the `url` crate behind `reqwest::Url`) resolves the link: it removes tabs
+/// and newlines, treats `\` as `/` for special schemes, accepts
+/// `https:host` and `https:\\host`, and percent-decodes the host. The host
+/// is returned in Unicode form, so an A-label is inspected as its U-label.
+fn resolved_authority(url: &str) -> Option<(String, String)> {
+    let parsed = reqwest::Url::parse(url)
+        .ok()
+        .or_else(|| RELATIVE_BASE.as_ref()?.join(url).ok())?;
+    let host = percent_decode(parsed.domain()?);
+    let (host, _) = idna::domain_to_unicode(&host);
+    let mut user_info = percent_decode(parsed.username());
+    if let Some(password) = parsed.password() {
+        user_info.push(':');
+        user_info.push_str(&percent_decode(password));
+    }
+    Some((user_info, host))
+}
+
+/// Decodes `%XX` escapes; invalid UTF-8 becomes U+FFFD.
+fn percent_decode(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while let Some(&byte) = bytes.get(index) {
+        let escape = (byte == b'%')
+            .then(|| bytes.get(index + 1..index + 3))
+            .flatten()
+            .filter(|hex| hex.iter().all(u8::is_ascii_hexdigit))
+            .and_then(|hex| std::str::from_utf8(hex).ok())
+            .and_then(|hex| u8::from_str_radix(hex, 16).ok());
+        match escape {
+            Some(value) => {
+                decoded.push(value);
+                index += 3;
+            }
+            _ => {
+                decoded.push(byte);
+                index += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&decoded).into_owned()
+}
+
+/// Returns the inspected host when a decoded link's host or user-info is a
+/// homograph, both as the text reads and as a browser resolves it.
+pub(super) fn homograph_link_host(url: &str) -> Option<String> {
+    // Browsers remove every ASCII tab and newline before parsing a URL.
+    let url: String = url
+        .chars()
+        .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+        .collect();
+    let (user_info, host) = link_host(&url);
+    if is_homograph_domain(host) || is_homograph_domain(user_info) {
+        return Some(host.to_string());
+    }
+    resolved_authority(&url).and_then(|(user_info, host)| {
+        (is_homograph_domain(&host) || is_homograph_domain(&user_info)).then_some(host)
+    })
 }
 
 #[cfg(test)]
@@ -148,5 +207,48 @@ mod tests {
             .subject("Ενημέρωση")
             .text("Visit https://παράδειγμα.gr and https://example.com?q=привет");
         assert!(message.validate_security().is_ok());
+    }
+
+    #[test]
+    fn link_hosts_are_resolved_as_browsers_parse_them() {
+        let anchor = |href: &str| format!("<a href=\"{href}\">Account</a>");
+        for spoof in [
+            // WHATWG URL parsing drops tabs and newlines anywhere.
+            "https:&#9;//p&#x430;ypal.com/login",
+            "https:&Tab;//p&#x430;ypal.com/",
+            "https://p&#10;&#x430;ypal.com/",
+            // Special schemes treat `\` as `/` and need no slashes at all.
+            "https:\\\\p\u{0430}ypal.com/",
+            "HTTP:\\\\p\u{0430}ypal.com",
+            "https:/p\u{0430}ypal.com/",
+            "https:p\u{0430}ypal.com",
+            "https:\\\\p\u{0430}ypal.com@example.com/",
+            // Scheme-relative references resolved against an HTTP(S) page.
+            "\\\\p\u{0430}ypal.com/",
+            "/\\p\u{0430}ypal.com/",
+            // Hosts are percent-decoded, and an A-label is the same host.
+            "https://p%D0%B0ypal.com/",
+            "https://xn--pypal-4ve.com/",
+        ] {
+            let html = anchor(spoof);
+            let message = crate::Message::new().to("a@example.com").html(html.clone());
+            assert!(scan_content_security(&html).is_err(), "{spoof}");
+            assert!(
+                crate::DeliveryPipeline::prepare(&message).is_err(),
+                "{spoof}"
+            );
+        }
+        for legitimate in [
+            "https:&#9;//пример.com/",
+            "https://xn--e1afmkfd.xn--p1ai/",
+            "https:\\\\example.com\\каталог?q=привет",
+            "mailto:team@example.com",
+            "/путь?q=привет",
+        ] {
+            assert!(
+                scan_content_security(&anchor(legitimate)).is_ok(),
+                "{legitimate}"
+            );
+        }
     }
 }
