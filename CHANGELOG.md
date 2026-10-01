@@ -208,6 +208,19 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Core and Security range-response follow-ups
+
+- Core PII masking replaces a `206 Partial Content` response that masking
+  would change with a no-store `502`, instead of a 206 without
+  `Content-Range`; clean ranges pass through unchanged.
+- Core PII masking and `DlpResponseLayer` inspect `multipart/byteranges`
+  responses part by part and withhold them with a no-store `502` when a
+  textual part would be masked or the body cannot be read within bounds
+  (256 parts, 8 KiB of headers per part).
+- `DbFeatureDriver::enabled` is false for an A/B split flag, as in the Env,
+  TOML and Memory drivers; a SQLite-backed contract test covers all four and
+  now runs in CI.
+
 ### Trusted-proxy client resolution
 
 - Add `rullst_core::security::TrustedProxyLayer` and
