@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790868673913,
+  "lastUpdate": 1790870114208,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24069,6 +24069,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2378,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "827bf3286c4302fa729f30352ee1dd5350274aac",
+          "message": "Merge pull request #386 from Rullst/fix/v13-final-nexus-studio-tail\n\nfix(nexus,studio): final-review fixes for integer fields, hidden-column sorting, loopback/origin policy and AI reply sanitizing",
+          "timestamp": "2026-10-01T12:49:01-03:00",
+          "tree_id": "33c295eda132023023ddeeb3858aa75ef9826fe2",
+          "url": "https://github.com/Rullst/Rullst/commit/827bf3286c4302fa729f30352ee1dd5350274aac"
+        },
+        "date": 1790870111038,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 574,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 752,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 511,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1839,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
