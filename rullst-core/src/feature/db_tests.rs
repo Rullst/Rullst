@@ -129,3 +129,39 @@ fn a_negative_rollout_percentage_enables_nobody() {
         );
     }
 }
+
+#[test]
+fn an_ab_split_row_is_not_enabled_without_an_identifier() {
+    let driver = DbFeatureDriver::new();
+    for split in [
+        "a:10,b:10",
+        "enabled:50,control:50",
+        "control:50,enabled:50",
+    ] {
+        // No identifier means no variant assignment, as in the other drivers.
+        assert_eq!(
+            driver.evaluate(true, None, Some(split.to_string()), "split", None),
+            Some("disabled".to_string()),
+            "{split}"
+        );
+        for identifier in ["user-1", "user-2", "user-3"] {
+            let variants = parse_variants(split);
+            assert_eq!(
+                driver.evaluate(
+                    true,
+                    None,
+                    Some(split.to_string()),
+                    "split",
+                    Some(identifier)
+                ),
+                Some(split_variant(&variants, "split", identifier)),
+                "{split}/{identifier}"
+            );
+        }
+    }
+    // A variants value that holds no split keeps the plain flag semantics.
+    assert_eq!(
+        driver.evaluate(true, None, Some("[]".to_string()), "plain", None),
+        Some("enabled".to_string())
+    );
+}
