@@ -105,6 +105,23 @@ unterminated label is blocked when the text also names a remote URL. Raw HTML `<
 inspected. Like all heuristic filters, this is one boundary in a
 defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
+## Token usage (v13)
+
+`AiProvider::chat_with_usage` and `ChatBuilder::send_with_usage` return a
+`ChatCompletion`: the text plus an optional `TokenUsage` with input, output,
+total and cached-input token counts. Built-in providers read only their
+documented response fields: OpenAI and DeepSeek `usage` (`prompt_tokens`,
+`completion_tokens`, `total_tokens`, cached prompt tokens), Anthropic `usage`
+(input includes cache reads and writes), Gemini `usageMetadata` (thinking tokens
+count as output) and Ollama `prompt_eval_count`/`eval_count`; an OpenAI-compatible
+server's `usage` is read when it sends one. Missing counts stay `None`, offline
+mocks report none, and a custom provider reports none until it overrides the
+defaulted trait method. Streams report usage once through `AiStreamSink::usage`
+and `StreamSummary::usage()`. An OpenAI-compatible configuration requests it with
+`OpenAiCompatibleCapabilities::with_stream_usage()` (`stream_options.include_usage`),
+which only endpoints that accept that field (OpenAI, DeepSeek) should declare.
+Rullst does not price tokens.
+
 ## Bounded streaming and explicit cancellation
 
 `StreamingAiClient<P>` is a separate static-dispatch extension so the portable

@@ -1,7 +1,8 @@
 use super::support::{DEFAULT_REQUEST_TIMEOUT, endpoint, image_mime_type, success_response};
 use super::support::{http_client, joined_system_text, read_json};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
+    AiError, AiGuardrails, AiProvider, ChatCompletion, JsonCapability, Message,
+    ProviderCapabilities, TokenUsage,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -99,6 +100,13 @@ impl AnthropicProvider {
     }
 
     async fn send_body(&self, body: serde_json::Value) -> Result<String, AiError> {
+        self.send_completion(body)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    /// The answer plus `usage` (<https://docs.anthropic.com/en/api/messages>).
+    async fn send_completion(&self, body: serde_json::Value) -> Result<ChatCompletion, AiError> {
         let response = http_client()?
             .post(endpoint(&self.base_url, "messages"))
             .timeout(self.request_timeout)
@@ -111,7 +119,7 @@ impl AnthropicProvider {
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         reject_incomplete(&json, self.max_tokens)?;
-        json["content"]
+        let text = json["content"]
             .as_array()
             .and_then(|content| {
                 content.iter().find_map(|item| {
@@ -121,7 +129,11 @@ impl AnthropicProvider {
                 })
             })
             .map(str::to_string)
-            .ok_or_else(|| AiError::ApiError("Anthropic returned no text content".to_string()))
+            .ok_or_else(|| AiError::ApiError("Anthropic returned no text content".to_string()))?;
+        Ok(ChatCompletion::new(
+            text,
+            TokenUsage::from_anthropic(&json["usage"]),
+        ))
     }
 }
 
@@ -171,15 +183,19 @@ impl AiProvider for AnthropicProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        self.chat_with_usage(messages)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    async fn chat_with_usage(&self, messages: &[Message]) -> Result<ChatCompletion, AiError> {
         let messages = prepare_messages(messages)?;
         if self.mode.is_mock() {
-            return Ok(mock::chat_response(
-                self.provider_name(),
-                &self.model,
-                &messages,
-            ));
+            let text = mock::chat_response(self.provider_name(), &self.model, &messages);
+            return Ok(ChatCompletion::new(text, None));
         }
-        self.send_body(self.build_chat_payload(&messages)).await
+        self.send_completion(self.build_chat_payload(&messages))
+            .await
     }
 
     async fn prompt_with_image(&self, text: &str, image_bytes: &[u8]) -> Result<String, AiError> {

@@ -88,6 +88,20 @@ events and all configured byte/chunk overflows. The maximums are 4,096 chunks,
 Ollama ordinary payloads still select `stream: false`; other provider-specific
 streaming protocols remain unimplemented rather than being treated as OpenAI-compatible.
 
+### Token usage (v13)
+
+| Provider transport | Fields read | Streamed usage |
+| --- | --- | --- |
+| OpenAI | `usage.prompt_tokens`, `completion_tokens`, `total_tokens`, `prompt_tokens_details.cached_tokens` | through the OpenAI-compatible adapter with `with_stream_usage()` |
+| DeepSeek | as OpenAI, with `prompt_cache_hit_tokens` | as OpenAI |
+| Anthropic | `usage.input_tokens` + cache creation/read input tokens, `output_tokens` | no streaming transport |
+| Gemini | `usageMetadata.promptTokenCount`, `candidatesTokenCount` + `thoughtsTokenCount`, `totalTokenCount`, `cachedContentTokenCount` | no streaming transport |
+| Ollama | `prompt_eval_count`, `eval_count` | no streaming transport |
+| OpenAI-compatible | `usage` when the server sends it | final usage chunk when the server sends one; requested only with `with_stream_usage()` |
+
+Counts come only from these fields. A response without them reports `None`;
+Rullst never estimates tokens or prices them.
+
 ### Timeouts and cancellation
 
 Every built-in live transport applies a 30-second request deadline by default.

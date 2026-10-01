@@ -3154,6 +3154,14 @@ sending.
 * **Prompt Injection Firewall:** Real-time token heuristics intercepting prompt exfiltration, instruction overrides (`DAN mode`), and delimiter injection attacks.
 * **Automated PII Masking:** Scrubs check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted), card-like digit runs and email usernames prior to outbound LLM dispatch. Alphanumeric CNPJs and other identifiers are not recognized.
 
+* **Token usage (v13):** `chat_with_usage`/`send_with_usage` return a
+  `ChatCompletion` with optional `TokenUsage` parsed only from documented
+  provider fields (OpenAI/DeepSeek `usage`, Anthropic `usage`, Gemini
+  `usageMetadata`, Ollama eval counts, compatible servers' `usage`). Streams
+  report it through `AiStreamSink::usage` and `StreamSummary::usage()`;
+  compatible configurations request it only with `with_stream_usage()`.
+  Missing counts are `None`, never estimated.
+
 ### 9.2. Bounded Streaming and Cancellation
 * `StreamingAiClient<P>` preserves static dispatch, reapplies the mandatory
   input guardrails and enforces at most 4,096 non-empty chunks, 64 KiB per

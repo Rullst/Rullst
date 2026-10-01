@@ -4,8 +4,8 @@ use super::support::{
 };
 use super::support::{http_client, read_json, reject_incomplete_choice};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
-    StructuredOutputSchema,
+    AiError, AiGuardrails, AiProvider, ChatCompletion, JsonCapability, Message,
+    ProviderCapabilities, StructuredOutputSchema, TokenUsage,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -63,6 +63,17 @@ impl OpenAiProvider {
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
+        self.send_chat_completion(body)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    /// The answer plus `usage`
+    /// (<https://platform.openai.com/docs/api-reference/chat/object>).
+    async fn send_chat_completion(
+        &self,
+        body: serde_json::Value,
+    ) -> Result<ChatCompletion, AiError> {
         let response = http_client()?
             .post(endpoint(&self.base_url, "chat/completions"))
             .timeout(self.request_timeout)
@@ -74,7 +85,11 @@ impl OpenAiProvider {
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
         reject_incomplete_choice(&json, self.provider_name())?;
-        openai_chat_content(&json, self.provider_name())
+        let text = openai_chat_content(&json, self.provider_name())?;
+        Ok(ChatCompletion::new(
+            text,
+            TokenUsage::from_openai(&json["usage"]),
+        ))
     }
 }
 
@@ -105,16 +120,19 @@ impl AiProvider for OpenAiProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        self.chat_with_usage(messages)
+            .await
+            .map(ChatCompletion::into_text)
+    }
+
+    async fn chat_with_usage(&self, messages: &[Message]) -> Result<ChatCompletion, AiError> {
         let messages = prepare_messages(messages)?;
         if self.mode.is_mock() {
-            return Ok(mock::chat_response(
-                self.provider_name(),
-                &self.model,
-                &messages,
-            ));
+            let text = mock::chat_response(self.provider_name(), &self.model, &messages);
+            return Ok(ChatCompletion::new(text, None));
         }
 
-        self.send_chat_body(serde_json::json!({
+        self.send_chat_completion(serde_json::json!({
             "model": self.model,
             "messages": messages,
         }))

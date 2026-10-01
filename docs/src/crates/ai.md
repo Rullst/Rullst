@@ -110,6 +110,13 @@ does not minimize arbitrary serialized data, retain a durable outbox, rotate
 keys, authorize operators or provide a SIEM receiver. Those remain explicit
 application/deployment responsibilities.
 
+## Token usage (v13)
+
+`AiProvider::chat_with_usage`, `ChatBuilder::send_with_usage` and
+`StreamSummary::usage()` expose the token counts a provider reports (input,
+output, total and cached input) from its documented response fields. Absent
+counts stay `None`; nothing is estimated or priced.
+
 ## Bounded streaming and cancellation
 
 `StreamingAiClient<P>` is a static-dispatch extension for genuinely

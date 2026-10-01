@@ -11,6 +11,9 @@ pub mod openai;
 /// Capability-declared OpenAI-compatible local/cloud provider.
 pub mod openai_compatible;
 
+mod sse;
+#[cfg(test)]
+mod stream_tests;
 mod support;
 
 #[cfg(test)]
