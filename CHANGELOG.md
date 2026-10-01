@@ -131,6 +131,25 @@ A prepared version section does not establish that its tag or crates exist.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
 
+### ORM runtime final-review fixes
+
+- Remote Turso blob cells decode the unpadded base64 that libSQL server sends,
+  and Turso `rollback_last` refuses migrations whose recorded digest changed.
+- The Redis query-cache table index is a sorted set scored by entry expiry
+  (keys move to `rullst:orm:cache:v4:`); expired members are pruned and no
+  longer count toward the 10,000-key `PostCommit` cap.
+- On PostgreSQL, `Schema::create` and `drop_if_exists` lower-case the quoted
+  table name to match generated SQL.
+- Pre-v12 `SecretString` ciphertext also decrypts through
+  `RULLST_ENCRYPTION_KEYRING`.
+- The offline Redis mock breaks score ties like `ZREVRANGE`, SQLite file
+  preparation percent-decodes the DSN path, and auto-healing no longer suggests
+  `CREATE TABLE` for constraint or "already exists" errors.
+- New in v13: `deserialize_plaintext_secret` and
+  `deserialize_optional_plaintext_secret` reject serde envelopes in client
+  input, and `Migration::within_transaction()` applies a migration and its
+  record atomically where the database supports transactional DDL.
+
 ### Storage, uploads and macro hardening
 
 - `Storage::url` and `LocalDriver::url` percent-encode key segments, and the
