@@ -86,7 +86,13 @@
   case; other media types pass through unchanged. A `206 Partial Content`
   response that would need masking is replaced by a `502` with
   `Cache-Control: no-store`, because a masked range no longer matches its
-  `Content-Range`; a clean range passes through unchanged. Every pass is
+  `Content-Range`; a clean range passes through unchanged. A
+  `multipart/byteranges` response is split into its parts and each textual,
+  identity-encoded part is checked the same way; it is withheld when any part
+  would need masking or when it cannot be split exactly (an invalid boundary
+  or delimiter line, more than 256 parts, a part header block over 8 KiB or
+  no close delimiter). Each range is inspected on its own, so a secret split
+  across separately requested ranges is not recognized. Every pass is
   linear in the body length. A URL password is recognized only inside the URL
   authority: credentials must be percent-encoded, and the authority ends at
   the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or control

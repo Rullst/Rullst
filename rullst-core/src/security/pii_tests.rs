@@ -353,3 +353,76 @@ async fn clean_partial_content_passes_through_untouched() {
         r#"{"ts":1727712000000,"n":1}"#
     );
 }
+
+const BYTERANGES_TYPE: &str = "multipart/byteranges; boundary=3d6b6a416f9b5";
+
+#[tokio::test]
+async fn multipart_ranges_that_need_masking_are_withheld() {
+    use axum::http::{HeaderValue, StatusCode, header};
+
+    let response = through_pii_layer(
+        StatusCode::PARTIAL_CONTENT,
+        vec![(header::CONTENT_TYPE, BYTERANGES_TYPE)],
+        "--3d6b6a416f9b5\r\nContent-Type: text/plain\r\nContent-Range: bytes 0-4/90\r\n\r\nhello\r\n\
+         --3d6b6a416f9b5\r\nContent-Type: text/plain\r\nContent-Range: bytes 60-89/90\r\n\r\n\
+         contact ana.silva@example.com.\r\n--3d6b6a416f9b5--\r\n",
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    assert_eq!(
+        response.headers().get(header::CACHE_CONTROL),
+        Some(&HeaderValue::from_static("no-store"))
+    );
+    assert!(!response_text(response).await.contains("ana.silva"));
+}
+
+#[tokio::test]
+async fn clean_multipart_ranges_pass_through_byte_for_byte() {
+    use axum::http::{HeaderValue, StatusCode, header};
+
+    // A binary range is not inspected, as a binary response is not.
+    let body = "--3d6b6a416f9b5\r\nContent-Type: application/json\r\nContent-Range: bytes 0-19/900\r\n\r\n\
+                {\"ts\":1727712000000}\r\n--3d6b6a416f9b5\r\nContent-Type: application/octet-stream\r\n\
+                Content-Range: bytes 800-827/900\r\n\r\nana.silva@example.com.......\r\n--3d6b6a416f9b5--\r\n";
+    let response = through_pii_layer(
+        StatusCode::PARTIAL_CONTENT,
+        vec![(header::CONTENT_TYPE, BYTERANGES_TYPE)],
+        body,
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+    assert_eq!(
+        response.headers().get(header::CONTENT_TYPE),
+        Some(&HeaderValue::from_static(BYTERANGES_TYPE))
+    );
+    assert_eq!(response_text(response).await, body);
+}
+
+#[tokio::test]
+async fn unreadable_multipart_ranges_are_withheld() {
+    use axum::http::{StatusCode, header};
+
+    for (content_type, body) in [
+        // No close delimiter.
+        (
+            BYTERANGES_TYPE,
+            "--3d6b6a416f9b5\r\nContent-Type: text/plain\r\n\r\nana.silva@example.com",
+        ),
+        // No boundary.
+        (
+            "multipart/byteranges",
+            "--3d6b6a416f9b5\r\n\r\nclean\r\n--3d6b6a416f9b5--\r\n",
+        ),
+    ] {
+        let response = through_pii_layer(
+            StatusCode::PARTIAL_CONTENT,
+            vec![(header::CONTENT_TYPE, content_type)],
+            body,
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY, "{content_type}");
+        assert!(!response_text(response).await.contains("ana.silva"));
+    }
+}

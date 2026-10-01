@@ -23,16 +23,23 @@ pub(super) const fn card_mask_count(digit_count: usize) -> Option<usize> {
     }
 }
 
-fn is_textual_response(headers: &HeaderMap) -> bool {
-    use super::media_type::{essence, is_json, is_text, is_xml};
+#[path = "pii_byteranges.rs"]
+mod byteranges;
 
-    let Some(media_type) = headers
+fn content_type(headers: &HeaderMap) -> Option<&str> {
+    headers
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
-        .map(essence)
-    else {
-        return false;
-    };
+}
+
+fn is_textual_response(headers: &HeaderMap) -> bool {
+    content_type(headers)
+        .map(super::media_type::essence)
+        .is_some_and(is_textual_media_type)
+}
+
+fn is_textual_media_type(media_type: &str) -> bool {
+    use super::media_type::{is_json, is_text, is_xml};
 
     if media_type.eq_ignore_ascii_case("text/event-stream") {
         return false;
@@ -44,12 +51,20 @@ fn is_textual_response(headers: &HeaderMap) -> bool {
         || media_type.eq_ignore_ascii_case("application/javascript")
 }
 
-fn is_json_response(headers: &HeaderMap) -> bool {
-    headers
-        .get(header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
+fn is_byteranges_response(headers: &HeaderMap) -> bool {
+    content_type(headers)
         .map(super::media_type::essence)
-        .is_some_and(super::media_type::is_json)
+        .is_some_and(byteranges::is_byteranges)
+}
+
+/// Masks a body of a textual `media_type`: JSON only inside string literals,
+/// anything else as plain text.
+fn mask_text(media_type: &str, text: &str) -> String {
+    if super::media_type::is_json(media_type) {
+        mask_json_strings(text)
+    } else {
+        mask_pii(text)
+    }
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -103,7 +118,17 @@ fn body_collection_failure() -> Response {
 fn partial_content_withheld() -> Response {
     tracing::warn!(
         target: "rullst_core::security::pii",
-        "PII masking withheld a 206 Partial Content response because masking would change its byte range"
+        "PII masking withheld a partial response because masking would change its byte ranges"
+    );
+    withheld_response("partial response withheld by PII masking")
+}
+
+/// A `multipart/byteranges` body that cannot be split exactly cannot be
+/// inspected range by range, so it is withheld rather than forwarded.
+fn byteranges_unreadable() -> Response {
+    tracing::warn!(
+        target: "rullst_core::security::pii",
+        "PII masking withheld a multipart/byteranges response it could not read"
     );
     withheld_response("partial response withheld by PII masking")
 }
@@ -131,7 +156,13 @@ fn withheld_response(message: &'static str) -> Response {
 /// A `206 Partial Content` response that masking would change is replaced by
 /// a `502 Bad Gateway` with `Cache-Control: no-store`, because a masked range
 /// no longer matches its `Content-Range`; a range that needs no masking
-/// passes through unchanged.
+/// passes through unchanged. A `multipart/byteranges` body is checked part by
+/// part, each with the masker of its own media type, and withheld the same
+/// way when any range would be masked or when it cannot be split exactly
+/// (an invalid boundary or delimiter, more than 256 parts, a part header
+/// block over 8 KiB or no close delimiter). Each range is inspected on its
+/// own, so a value split across separately requested ranges, or a JSON range
+/// that starts inside a string literal, is not recognized.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     let request_method = req.method().clone();
@@ -143,7 +174,7 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
             response.status(),
             StatusCode::NO_CONTENT | StatusCode::NOT_MODIFIED
         )
-        || !is_textual_response(response.headers())
+        || !(is_textual_response(response.headers()) || is_byteranges_response(response.headers()))
         || !has_identity_encoding(response.headers())
         || !is_safely_bufferable(response.headers(), response.body())
     {
@@ -155,15 +186,19 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
         Ok(bytes) => bytes,
         Err(_) => return body_collection_failure(),
     };
+    let declared_type = content_type(&parts.headers).unwrap_or_default();
+    if is_byteranges_response(&parts.headers) {
+        return match byteranges::needs_masking(declared_type, &bytes) {
+            Ok(false) => Response::from_parts(parts, axum::body::Body::from(bytes)),
+            Ok(true) => partial_content_withheld(),
+            Err(byteranges::Malformed) => byteranges_unreadable(),
+        };
+    }
     let Ok(body_text) = std::str::from_utf8(&bytes) else {
         return Response::from_parts(parts, axum::body::Body::from(bytes));
     };
 
-    let masked_body = if is_json_response(&parts.headers) {
-        mask_json_strings(body_text)
-    } else {
-        mask_pii(body_text)
-    };
+    let masked_body = mask_text(super::media_type::essence(declared_type), body_text);
     if masked_body.as_bytes() == bytes.as_ref() {
         return Response::from_parts(parts, axum::body::Body::from(bytes));
     }

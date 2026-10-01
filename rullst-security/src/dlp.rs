@@ -14,21 +14,31 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
+mod byteranges;
 mod masking;
 
 pub(crate) use masking::{SegmentRewriter, mask_text};
 
 const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
+fn content_type(headers: &HeaderMap) -> Option<&str> {
+    headers.get(header::CONTENT_TYPE)?.to_str().ok()
+}
+
 fn textual_media_type(headers: &HeaderMap) -> Option<&str> {
-    let value = headers.get(header::CONTENT_TYPE)?.to_str().ok()?;
-    let media_type = crate::media_type::essence(value);
+    let media_type = crate::media_type::essence(content_type(headers)?);
+    is_textual_media_type(media_type).then_some(media_type)
+}
 
-    if media_type.eq_ignore_ascii_case("text/event-stream") {
-        return None;
-    }
+fn is_textual_media_type(media_type: &str) -> bool {
+    !media_type.eq_ignore_ascii_case("text/event-stream")
+        && crate::media_type::is_textual_response_body(media_type)
+}
 
-    crate::media_type::is_textual_response_body(media_type).then_some(media_type)
+fn is_byteranges_response(headers: &HeaderMap) -> bool {
+    content_type(headers)
+        .map(crate::media_type::essence)
+        .is_some_and(byteranges::is_byteranges)
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -88,7 +98,17 @@ fn body_collection_failure() -> Response<Body> {
 fn partial_content_withheld() -> Response<Body> {
     tracing::warn!(
         target: "rullst_security::dlp",
-        "DLP withheld a 206 Partial Content response because masking would change its byte range"
+        "DLP withheld a partial response because masking would change its byte ranges"
+    );
+    withheld_response("partial response withheld by data loss prevention")
+}
+
+/// A `multipart/byteranges` body that cannot be split exactly cannot be
+/// inspected range by range, so it is withheld rather than forwarded.
+fn byteranges_unreadable() -> Response<Body> {
+    tracing::warn!(
+        target: "rullst_security::dlp",
+        "DLP withheld a multipart/byteranges response it could not read"
     );
     withheld_response("partial response withheld by data loss prevention")
 }
@@ -128,21 +148,33 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
 
     match masking::mask_text(text) {
         Some(sanitized) => {
-            let store = SecurityStore::global();
-            store.inc_dlp_masked();
-
-            store.push_local_event(LiveSecurityEvent::local(
-                "DLP_SECRET_LEAK_PREVENTED",
-                "Neutralized secret credentials/key from outgoing HTTP response",
-                "unknown",
-            ));
+            record_prevented_leak();
             (sanitized.into_bytes(), true)
         }
         None => (input.to_vec(), false),
     }
 }
 
+fn record_prevented_leak() {
+    let store = SecurityStore::global();
+    store.inc_dlp_masked();
+
+    store.push_local_event(LiveSecurityEvent::local(
+        "DLP_SECRET_LEAK_PREVENTED",
+        "Neutralized secret credentials/key from outgoing HTTP response",
+        "unknown",
+    ));
+}
+
 /// Tower Layer for Data Loss Prevention (DLP) response interception.
+///
+/// A `206 Partial Content` response that masking would change is replaced by
+/// a `502 Bad Gateway` with `Cache-Control: no-store`, because a masked range
+/// no longer matches its `Content-Range`; a clean range passes through. A
+/// `multipart/byteranges` body is checked part by part and withheld the same
+/// way when any textual range would be masked or when it cannot be split
+/// exactly (an invalid boundary or delimiter, more than 256 parts, a part
+/// header block over 8 KiB or no close delimiter).
 #[derive(Clone, Default)]
 pub struct DlpResponseLayer;
 
@@ -180,6 +212,7 @@ where
 
         Box::pin(async move {
             let res = inner.call(req).await?;
+            let ranges = is_byteranges_response(res.headers());
 
             if request_method == Method::HEAD
                 || res.status().is_informational()
@@ -187,7 +220,7 @@ where
                     res.status(),
                     StatusCode::NO_CONTENT | StatusCode::NOT_MODIFIED
                 )
-                || textual_media_type(res.headers()).is_none()
+                || (textual_media_type(res.headers()).is_none() && !ranges)
                 || !has_identity_encoding(res.headers())
                 || !is_safely_bufferable(res.headers(), res.body())
             {
@@ -200,6 +233,17 @@ where
                 Ok(bytes) => bytes,
                 Err(_) => return Ok(body_collection_failure()),
             };
+            if ranges {
+                let declared_type = content_type(&parts.headers).unwrap_or_default();
+                return Ok(match byteranges::needs_masking(declared_type, &bytes) {
+                    Ok(false) => Response::from_parts(parts, Body::from(bytes)),
+                    Ok(true) => {
+                        record_prevented_leak();
+                        partial_content_withheld()
+                    }
+                    Err(byteranges::Malformed) => byteranges_unreadable(),
+                });
+            }
 
             let (sanitized_bytes, was_modified) = mask_response_payload(&bytes);
             if was_modified {
