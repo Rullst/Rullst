@@ -22,8 +22,9 @@ tenant-aware RAG pipeline.
 Unsupported capabilities return `AiError::UnsupportedCapability`; the client does not silently
 switch to an unrelated endpoint or represent a fixture as a live-provider result.
 
-Anthropic requests allow up to 16,000 output tokens (the Messages API requires a limit, and
-adaptive thinking counts toward it). A reply the API reports as cut short (`stop_reason`
+Anthropic requests allow up to 16,000 output tokens unless `AnthropicProvider::with_max_tokens`
+sets another limit (the Messages API requires one, and adaptive thinking counts toward it; a longer
+reply may also need a longer `with_request_timeout`). A reply the API reports as cut short (`stop_reason`
 `max_tokens` or `model_context_window_exceeded`) or declined (`refusal`) returns
 `AiError::ApiError` instead of the partial text.
 

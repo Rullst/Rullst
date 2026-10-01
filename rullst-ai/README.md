@@ -27,8 +27,10 @@ endpoint directly; redirected prompts, credentials and bodies are not replayed.
 These are local transport invariants, not proof of provider availability,
 prompt-injection immunity or upstream request cancellation.
 
-Anthropic requests allow up to 16,000 output tokens (the Messages API requires
-a limit, and adaptive thinking counts toward it). A reply the API reports as
+Anthropic requests allow up to 16,000 output tokens unless
+`AnthropicProvider::with_max_tokens` sets another limit (the Messages API
+requires one, and adaptive thinking counts toward it; a longer reply may also
+need a longer `with_request_timeout`). A reply the API reports as
 cut short (`stop_reason` `max_tokens` or `model_context_window_exceeded`) or
 declined (`refusal`) returns `AiError::ApiError` instead of the partial text.
 

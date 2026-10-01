@@ -9,8 +9,9 @@ use async_trait::async_trait;
 use base64::Engine;
 use std::time::Duration;
 
-/// Output-token limit sent with every request. The Messages API requires
-/// `max_tokens`, and adaptive thinking counts toward it.
+/// Output-token limit sent unless [`AnthropicProvider::with_max_tokens`] sets
+/// another. The Messages API requires `max_tokens`, and adaptive thinking
+/// counts toward it.
 const DEFAULT_MAX_TOKENS: u32 = 16_000;
 
 /// Anthropic Claude provider with deterministic offline behavior for empty or `mock_*` keys.
@@ -53,6 +54,17 @@ impl AnthropicProvider {
     /// Sets the deadline applied to every live Anthropic transport request.
     pub fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
         self.request_timeout = request_timeout;
+        self
+    }
+
+    /// Sets the most output tokens one reply may use (16,000 by default;
+    /// adaptive thinking counts toward it). Zero is raised to one, and the API
+    /// rejects a value above the model's own output limit. A reply that
+    /// reaches the limit fails with [`AiError::ApiError`] rather than returning
+    /// the partial text; a longer reply may also need a longer
+    /// [`Self::with_request_timeout`].
+    pub fn with_max_tokens(mut self, max_tokens: u32) -> Self {
+        self.max_tokens = max_tokens.max(1);
         self
     }
 
@@ -263,6 +275,22 @@ mod tests {
     fn requests_a_usable_default_output_limit() {
         let body = AnthropicProvider::new("live-key").build_chat_payload(&[Message::user("hi")]);
         assert_eq!(body["max_tokens"], 16_000);
+    }
+
+    #[test]
+    fn output_limit_is_configurable() {
+        let messages = [Message::user("hi")];
+        for (limit, expected) in [(512, 512), (64_000, 64_000), (0, 1)] {
+            let provider = AnthropicProvider::new("live-key").with_max_tokens(limit);
+            assert_eq!(
+                provider.build_chat_payload(&messages)["max_tokens"],
+                expected
+            );
+        }
+        let error = reject_incomplete(&serde_json::json!({"stop_reason": "max_tokens"}), 512)
+            .expect_err("truncated reply");
+        assert!(error.to_string().contains("512 output tokens"));
+        assert!(reject_incomplete(&serde_json::json!({"stop_reason": "end_turn"}), 512).is_ok());
     }
 
     #[tokio::test]
