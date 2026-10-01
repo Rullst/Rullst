@@ -34,7 +34,8 @@ static CREDENTIAL_LIMITER: LazyLock<rullst::RateLimiter> = LazyLock::new(|| {
 /// Route middleware for `POST /login` and `POST /register`. Each submission
 /// runs Argon2id, so it is budgeted per client before the handler runs. The
 /// budget is keyed by the connecting peer: behind a reverse proxy, configure
-/// `[security] trusted_proxies` so clients do not share the proxy's budget.
+/// `[security] trusted_proxies` so clients do not share the proxy's budget
+/// (`cargo rullst deploy --platform vps` does this for its Caddy proxy).
 pub async fn credential_rate_limit(request: Request, next: Next) -> Response {
     rullst::rate_limit_middleware(rullst::RateLimiter::clone(&CREDENTIAL_LIMITER), request, next)
         .await

@@ -47,6 +47,25 @@ cargo rullst deploy --platform=render
 cargo rullst deploy --platform=vps
 ```
 
+### Client addresses behind the proxy
+
+Every platform puts a reverse proxy in front of the application, so the socket
+peer of each request is the proxy. Rate limits, such as the SaaS and LMS
+starters' ten login/registration submissions per client per minute, would then
+treat every visitor as one client. `--platform=vps` pins its Caddy container to
+`172.31.250.10` (on the `172.31.250.0/24` network in
+`docker-compose.prod.yml`) and lists that address in `Rullst.toml`:
+
+```toml
+[security]
+trusted_proxies = ["172.31.250.10"]
+```
+
+Change both files together if that subnet overlaps a network on the host. For
+Fly.io, Railway and Render, list the networks their proxies connect from, as
+documented by the provider; the command prints a reminder while none is set.
+List only proxy networks: any host inside them can choose the client address.
+
 ### Container lifecycle boundary
 
 Projects created with `cargo rullst new --docker` receive a non-root runtime

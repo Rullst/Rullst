@@ -865,6 +865,13 @@ lowercase label as `make:k8s` (`my_app` becomes `my-app`), while the
 `Dockerfile` and Railway start command keep the package's binary name. An
 unknown `--platform` value is rejected before anything is written, including
 the `Dockerfile` the command otherwise scaffolds when it is missing.
+`--platform vps` pins the Caddy container to `172.31.250.10` on a
+`172.31.250.0/24` compose network and adds that address to `[security]
+trusted_proxies` in `Rullst.toml` (creating the file before a missing
+`Dockerfile` is scaffolded, so the image copies it), so rate limits see each
+client instead of Caddy. An existing `trusted_proxies` list is left unchanged
+with a warning. Fly.io, Railway and Render print a notice while `Rullst.toml`
+trusts no proxy, because their proxy networks are provider-specific.
 Credentials, migrations, availability, DNS/TLS and rollback remain operator
 responsibilities.
 
