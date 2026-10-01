@@ -91,9 +91,16 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                 let mut tx = rullst_orm::Orm::begin_transaction().await?;
                 let (candidate, callbacks) = match self.__rullst_apply_partial(&mut tx).await {
                     Ok(result) => result,
+                    // A failed rollback must not hide why the update failed.
                     Err(error) => {
-                        tx.rollback().await?;
-                        return Err(error);
+                        return match tx.rollback().await {
+                            Ok(()) => Err(error),
+                            Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                                "partial update failed: {}; rollback also failed: {}",
+                                error,
+                                rollback_error,
+                            ))),
+                        };
                     }
                 };
                 tx.commit().await?;
@@ -151,8 +158,14 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                 let candidate = match result {
                     Ok(candidate) => candidate,
                     Err(error) => {
-                        savepoint.rollback().await?;
-                        return Err(error);
+                        return match savepoint.rollback().await {
+                            Ok(()) => Err(error),
+                            Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                                "partial update failed: {}; savepoint rollback also failed: {}",
+                                error,
+                                rollback_error,
+                            ))),
+                        };
                     }
                 };
                 savepoint.commit().await?;
@@ -233,5 +246,19 @@ mod tests {
         assert!(builder.contains("save : Option < String >"));
         assert!(!builder.contains("pub fn save (mut self"));
         assert!(method.to_string().contains("__rullst_model : self"));
+    }
+
+    #[test]
+    fn failed_rollbacks_keep_the_partial_update_error() {
+        let input: DeriveInput = parse_quote! {
+            struct Lesson { id: i32, title: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let builder = super::generate_update_builder(&parsed).0.to_string();
+        assert!(builder.contains("\"partial update failed: {}; rollback also failed: {}\""));
+        assert!(
+            builder.contains("\"partial update failed: {}; savepoint rollback also failed: {}\"")
+        );
+        assert!(!builder.contains("rollback () . await ?"));
     }
 }

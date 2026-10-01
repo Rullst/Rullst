@@ -1942,7 +1942,8 @@ while portability and semantic review remain the model author's responsibility.
   A `PostCommit` failure does not undo a durable direct save. An ambiguous
   database commit error requires reconciliation rather than blind replay.
 * An empty builder remains a no-op. A failed policy, hook, SQL write or audit
-  rolls back the operation's savepoint and discards its pending effects. This
+  rolls back the operation's savepoint and discards its pending effects; if
+  that rollback fails too, the returned `DatabaseError` names both errors. This
   allows a managed outer transaction to catch that failure and continue.
   Strict post-commit timing requires `Orm::transaction` or the owned direct
   path; a raw SQLx transaction retains the documented observation limitation.
