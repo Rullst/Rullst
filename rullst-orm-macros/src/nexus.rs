@@ -41,7 +41,7 @@ const ORM_RELATIONS: &[&str] = &[
 
 /// Consumes the value of a shared `#[orm(...)]` option that Nexus does not
 /// read, so `key = value` and `key(...)` options of `#[derive(Orm)]` parse.
-fn skip_orm_option(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
+pub(crate) fn skip_orm_option(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
     if meta.input.peek(syn::Token![=]) {
         meta.value()?.parse::<syn::Expr>()?;
     } else if meta.input.peek(syn::token::Paren) {
