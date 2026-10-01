@@ -53,7 +53,9 @@ Call custom `AiProvider` implementations through `AiClient` when the application
 mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
-Markdown beacons, and invisible Unicode controls, including zero-width, bidirectional
+Markdown image beacons (inline or reference images with a remote or unclassifiable destination,
+read with CommonMark escapes and character references; raw HTML `<img>` is not inspected), and
+invisible Unicode controls, including zero-width, bidirectional
 embedding/isolate, tag and other default-ignorable characters with no ordinary use in text. Soft
 hyphens, bidirectional marks and emoji variation selectors are removed before phrase matching
 instead of being blocked. Check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted),

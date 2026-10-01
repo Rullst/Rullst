@@ -81,9 +81,13 @@ zero-width, bidirectional embedding/isolate, tag and other default-ignorable cha
 ordinary use in text. Soft hyphens, bidirectional marks and emoji variation selectors are removed
 before phrase matching instead of being blocked. Check-digit-valid CPF/CNPJ numbers (canonical
 formatted or unformatted), card-like digit runs and email usernames are masked before outbound
-transmission; alphanumeric CNPJs and other identifiers are not recognized. Like all heuristic
-filters, this is one boundary in a defense-in-depth design; it is not a proof that arbitrary model
-output is safe.
+transmission; alphanumeric CNPJs and other identifiers are not recognized. Markdown images are
+read the way CommonMark renders them, after backslash escapes and character references are decoded:
+an inline or reference image whose destination has a scheme or a `//` (or backslash) authority is
+blocked as `data_exfiltration`, as is an image the bounded reader cannot classify. A reference image
+without a matching definition is blocked only when the text also names a remote URL. Raw HTML
+`<img>` tags are not inspected. Like all heuristic filters, this is one boundary in a
+defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
 ## Bounded streaming and explicit cancellation
 
@@ -261,8 +265,9 @@ same tenant tag. Empty retrieval fails with `RagError::NoContext` instead of gen
 ungrounded answer. Each passage is guarded on its own and the assembled prompt again; a block
 that only the combined passages trigger returns `RagError::Generation` with the guardrail
 error, is audited as `ContextRejected` and never reaches the provider. The Markdown-image
-heuristic judges each image: a relative inline image such as `![logo](assets/logo.png)` next
-to an unrelated link is not treated as a beacon.
+heuristic judges each image: a relative image such as `![logo](assets/logo.png)` next to an
+unrelated link is not treated as a beacon, while an undefined reference image such as
+`![logo][site-logo]` next to one is.
 
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production
