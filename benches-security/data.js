@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790831828840,
+  "lastUpdate": 1790836494944,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13376,6 +13376,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8bc2ab74d49a419daa4a77d376ddc8178e0af27",
+          "message": "Merge pull request #371 from Rullst/refactor/v13-split-large-files\n\nrefactor: split ten oversized modules into focused submodules",
+          "timestamp": "2026-10-01T03:17:07-03:00",
+          "tree_id": "8b2f3d3c005ddffbf27826477414e651432fc14b",
+          "url": "https://github.com/Rullst/Rullst/commit/c8bc2ab74d49a419daa4a77d376ddc8178e0af27"
+        },
+        "date": 1790836494108,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2838,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 280,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 12,
             "range": "± 0",
             "unit": "ns/iter"
           }
