@@ -175,3 +175,29 @@ fn database_model_generation_keeps_existing_models_and_module_declarations() {
             .contains("pub id: i32")
     );
 }
+
+#[test]
+fn kubernetes_manifests_are_never_replaced_or_written_through_links() {
+    let project = Project::new();
+    project.succeeds(&["make:k8s"]);
+    let customized = "# customized registry and secrets\n";
+    fs::write(project.path("k8s/deployment.yaml"), customized).expect("custom manifest");
+    fs::remove_file(project.path("k8s/ingress.yaml")).expect("remove one manifest");
+    let refused = project.fails(&["make:k8s"]);
+    assert!(refused.contains("k8s/deployment.yaml"), "{refused}");
+    assert_unchanged(&project, "k8s/deployment.yaml", customized);
+    assert!(
+        !project.path("k8s/ingress.yaml").exists(),
+        "a refused run must not write any manifest"
+    );
+
+    #[cfg(unix)]
+    {
+        let linked = Project::new();
+        let outside = linked.path("outside");
+        fs::create_dir_all(&outside).expect("outside directory");
+        std::os::unix::fs::symlink(&outside, linked.path("k8s")).expect("k8s link");
+        assert!(linked.fails(&["make:k8s"]).contains("symlink"));
+        assert_eq!(fs::read_dir(&outside).expect("outside").count(), 0);
+    }
+}
