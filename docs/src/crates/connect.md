@@ -136,6 +136,12 @@ valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
 never calls userinfo. The returned `ConnectUser` carries the verified ID token
 in `access_token`; there is no provider access or refresh token in this flow.
 
+`OidcProvider` treats profile claims as optional (OIDC Core 5.1) in ID tokens
+and userinfo alike: without `name`, `ConnectUser::name` falls back to
+`given_name` and `family_name`, then `preferred_username`, then `nickname`, and
+is empty when none is present. The email address and subject are never used as
+a display name.
+
 ```rust,no_run
 use rullst_connect::prelude::{ConnectError, ConnectUser, GoogleProvider};
 

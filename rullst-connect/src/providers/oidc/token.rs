@@ -93,9 +93,11 @@ impl OidcProvider {
     ///
     /// The returned user carries the verified ID token in `access_token`; this
     /// flow yields no provider access or refresh token. The userinfo endpoint
-    /// is not called, and the token must contain a `name` claim. Mock
-    /// credentials return a deterministic offline identity when the `mock`
-    /// feature is enabled.
+    /// is not called. Profile claims are optional (OIDC Core 5.1): without
+    /// `name`, [`ConnectUser::name`] falls back to `given_name` and
+    /// `family_name`, then `preferred_username`, then `nickname`, and is empty
+    /// when none is present. Mock credentials return a deterministic offline
+    /// identity when the `mock` feature is enabled.
     pub async fn verify_id_token(
         &self,
         id_token: &str,
@@ -160,6 +162,33 @@ impl OidcProvider {
     }
 }
 
+/// Display name from the optional standard profile claims (OIDC Core 5.1):
+/// `name`, else `given_name` and `family_name` joined by a space, else
+/// `preferred_username`, else `nickname`, else an empty string. Blank values
+/// are skipped. `email` and `sub` are never used: a display name is often
+/// shown to other users, and both are available in their own fields.
+fn display_name(claims: &Value) -> String {
+    let claim = |key: &str| {
+        claims[key]
+            .as_str()
+            .filter(|value| !value.trim().is_empty())
+    };
+    if let Some(name) = claim("name") {
+        return name.to_owned();
+    }
+    let full_name = [claim("given_name"), claim("family_name")]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    if !full_name.is_empty() {
+        return full_name.join(" ");
+    }
+    claim("preferred_username")
+        .or_else(|| claim("nickname"))
+        .map(str::to_owned)
+        .unwrap_or_default()
+}
+
 fn user_from_id_token_claims(
     payload: Value,
     access_token: secrecy::SecretString,
@@ -169,10 +198,7 @@ fn user_from_id_token_claims(
             .as_str()
             .map(String::from)
             .ok_or_else(|| ConnectError::Provider("Missing sub in id_token".to_owned()))?,
-        name: payload["name"]
-            .as_str()
-            .map(String::from)
-            .ok_or_else(|| ConnectError::Provider("Missing name in id_token".to_owned()))?,
+        name: display_name(&payload),
         email: payload["email"].as_str().map(String::from),
         avatar_url: payload["picture"].as_str().map(String::from),
         email_verified: crate::user::email_verified_claim(&payload["email_verified"]),
@@ -246,9 +272,7 @@ impl Provider for OidcProvider {
             id: user_res["sub"].as_str().map(String::from).ok_or_else(|| {
                 crate::error::ConnectError::Provider("Missing sub in userinfo".to_owned())
             })?,
-            name: user_res["name"].as_str().map(String::from).ok_or_else(|| {
-                crate::error::ConnectError::Provider("Missing name in userinfo".to_owned())
-            })?,
+            name: display_name(&user_res),
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
             email_verified: crate::user::email_verified_claim(&user_res["email_verified"]),

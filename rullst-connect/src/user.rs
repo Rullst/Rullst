@@ -8,6 +8,11 @@ pub struct ConnectUser {
     pub id: String,
 
     /// The full name or display name of the user.
+    ///
+    /// Empty when the provider releases no usable profile claim. The generic
+    /// OIDC adapter uses `name`, then `given_name` and `family_name`, then
+    /// `preferred_username`, then `nickname`; it never substitutes the email
+    /// address or subject.
     pub name: String,
 
     /// The email address of the user, if available and granted.
