@@ -185,6 +185,12 @@ impl Storage {
     /// base path never appears in the URL. S3 uses the `amazonaws.com.cn`
     /// partition for `cn-*` regions and path-style URLs for bucket names that
     /// contain `.`, as the signed cloud client does.
+    ///
+    /// R2 returns [`StorageError::Unsupported`]: its S3 API endpoint
+    /// (`<account>.r2.cloudflarestorage.com`) authenticates every request, and
+    /// public objects are served only from an `r2.dev` subdomain or a custom
+    /// domain that the application configures with Cloudflare. Build that URL
+    /// in the application, or use a signed download with `storage-s3`.
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
         #[cfg(feature = "storage-s3")]
         if self.cloud.is_some() {
@@ -198,8 +204,10 @@ impl Storage {
             StorageDriver::S3 { bucket, region } => {
                 Ok(public_url::s3_object_url(bucket, region, &path))
             }
-            StorageDriver::R2 { bucket, account_id } => Ok(format!(
-                "https://{account_id}.r2.cloudflarestorage.com/{bucket}/{path}"
+            StorageDriver::R2 { .. } => Err(StorageError::Unsupported(
+                "Cloudflare R2 serves public objects only from an r2.dev or custom domain; \
+                 build that URL in the application or use a signed download"
+                    .to_string(),
             )),
         }
     }
@@ -411,10 +419,11 @@ mod tests {
             s3.url("courses/1/lesson.txt").unwrap(),
             "https://bucket.s3.sa-east-1.amazonaws.com/courses/1/lesson.txt"
         );
-        assert_eq!(
-            r2.url("courses/1/lesson.txt").unwrap(),
-            "https://account.r2.cloudflarestorage.com/bucket/courses/1/lesson.txt"
-        );
+        // R2's S3 API endpoint never serves anonymous reads.
+        assert!(matches!(
+            r2.url("courses/1/lesson.txt"),
+            Err(StorageError::Unsupported(_))
+        ));
     }
 
     #[tokio::test]

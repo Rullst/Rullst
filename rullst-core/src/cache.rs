@@ -116,11 +116,24 @@ struct CacheEntry {
 /// Supports TTL-based expiration. Expired entries are lazily cleaned on access;
 /// a read removes an expired key only while it still holds that expired value,
 /// so a concurrent refill of the same key is kept.
+///
+/// Other expired entries are reclaimed by a sweep of the whole store that one
+/// `get`, `put` or `inspect` runs after a number of operations equal to a
+/// quarter of the entries the previous sweep kept (at least 256). The sweep
+/// cost per operation therefore stays constant as the cache grows, and between
+/// sweeps the store holds at most that many entries more than the previous
+/// sweep kept. The sweeping operation still visits every entry, write-locking
+/// one shard at a time, so prefer Redis for caches with millions of keys.
 /// Perfect for single-instance deployments and development.
 pub struct MemoryDriver {
     store: DashMap<String, CacheEntry>,
     operations_since_cleanup: AtomicUsize,
+    /// Operations between sweeps, sized by the previous sweep.
+    cleanup_interval: AtomicUsize,
 }
+
+/// Fewest operations between two sweeps of a [`MemoryDriver`].
+const MIN_CLEANUP_INTERVAL_OPERATIONS: usize = 256;
 
 impl MemoryDriver {
     /// Create a new in-memory cache driver.
@@ -128,21 +141,38 @@ impl MemoryDriver {
         Self {
             store: DashMap::new(),
             operations_since_cleanup: AtomicUsize::new(0),
+            cleanup_interval: AtomicUsize::new(MIN_CLEANUP_INTERVAL_OPERATIONS),
         }
     }
 
     /// Reclaims expired entries opportunistically without spawning a task that
     /// could outlive the cache. Entries are also removed immediately when read.
+    ///
+    /// A sweep visits every entry, so the interval grows with the store to
+    /// keep the amortized cost per operation constant.
     fn cleanup_if_due(&self) {
-        const CLEANUP_INTERVAL_OPERATIONS: usize = 256;
-        let previous = self
+        let operations = self
             .operations_since_cleanup
-            .fetch_add(1, Ordering::Relaxed);
-        if previous > 0 && previous.is_multiple_of(CLEANUP_INTERVAL_OPERATIONS) {
-            let now = Instant::now();
-            self.store
-                .retain(|_, entry| entry.expires_at.is_none_or(|expires_at| now < expires_at));
+            .fetch_add(1, Ordering::Relaxed)
+            .wrapping_add(1);
+        if operations < self.cleanup_interval.load(Ordering::Relaxed) {
+            return;
         }
+        // Exactly one caller claims a due sweep by resetting the counter.
+        if self
+            .operations_since_cleanup
+            .compare_exchange(operations, 0, Ordering::Relaxed, Ordering::Relaxed)
+            .is_err()
+        {
+            return;
+        }
+        let now = Instant::now();
+        self.store
+            .retain(|_, entry| entry.expires_at.is_none_or(|expires_at| now < expires_at));
+        self.cleanup_interval.store(
+            (self.store.len() / 4).max(MIN_CLEANUP_INTERVAL_OPERATIONS),
+            Ordering::Relaxed,
+        );
     }
 
     fn get_sync(&self, key: &str) -> Option<Arc<String>> {

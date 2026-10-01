@@ -25,6 +25,9 @@ pub struct HotSwapService {
     pub(crate) limiter: Option<crate::resilience::RateLimiter>,
     pub(crate) lifecycle: Option<crate::lifecycle::ApplicationLifecycle>,
     pub(crate) trusted_proxy: Option<crate::security::TrustedProxyLayer>,
+    /// `Server::with_machine_endpoints` policy, authenticated in front of
+    /// every router generation as in the static development stack.
+    pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
 }
 
 impl HotSwapService {
@@ -230,6 +233,9 @@ impl Service<axum::extract::Request> for HotSwapService {
         );
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
+        }
+        if let Some(ref policy) = self.machine_endpoints {
+            router = crate::security::require_machine_authentication(router, policy.clone());
         }
         // Outermost, as in the static server stack.
         if let Some(ref layer) = self.trusted_proxy {

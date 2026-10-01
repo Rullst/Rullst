@@ -73,4 +73,93 @@ pub(super) async fn exercise() {
     ascending.sort_unstable();
     assert_eq!(chunked, ascending, "{driver}");
     assert_eq!(chunked.len(), 5, "{driver}");
+
+    bounded_traversals(driver).await;
+}
+
+/// Pages handed to the handler of an offset or keyset traversal.
+type Pages = Vec<Vec<i32>>;
+
+async fn offset_pages(query: ContractOffsetRowQueryBuilder, size: usize) -> Pages {
+    let mut pages = Vec::new();
+    query
+        .chunk(size, |rows| {
+            pages.push(rows.iter().map(|row| row.id).collect());
+            async {}
+        })
+        .await
+        .expect("bounded chunk");
+    pages
+}
+
+async fn keyset_pages(query: ContractOffsetRowQueryBuilder, size: usize) -> Pages {
+    let mut pages = Vec::new();
+    query
+        .chunk_by_id(size, |rows| {
+            pages.push(rows.iter().map(|row| row.id).collect());
+            async { Ok(()) }
+        })
+        .await
+        .expect("bounded chunk_by_id");
+    pages
+}
+
+/// An explicit `limit()` caps the rows a traversal hands to its handler and
+/// an explicit `offset()` is where it starts, instead of both being dropped.
+async fn bounded_traversals(driver: &str) {
+    let ids = ContractOffsetRow::query()
+        .order_by("id")
+        .pluck_i32("id")
+        .await
+        .expect("contract row ids");
+    assert_eq!(ids.len(), 5, "{driver}");
+    let pages = |bounds: &[std::ops::Range<usize>]| -> Pages {
+        bounds
+            .iter()
+            .map(|range| ids[range.clone()].to_vec())
+            .collect()
+    };
+    let query = ContractOffsetRow::query;
+    assert_eq!(
+        offset_pages(query().limit(3), 2).await,
+        pages(&[0..2, 2..3]),
+        "{driver}"
+    );
+    assert_eq!(
+        offset_pages(query().offset(1), 2).await,
+        pages(&[1..3, 3..5]),
+        "{driver}"
+    );
+    assert_eq!(
+        offset_pages(query().offset(1).limit(3), 2).await,
+        pages(&[1..3, 3..4]),
+        "{driver}"
+    );
+    assert_eq!(
+        offset_pages(query().order_by_desc("id").limit(2), 1).await,
+        [vec![ids[4]], vec![ids[3]]],
+        "{driver}"
+    );
+    assert!(
+        offset_pages(query().limit(0), 2).await.is_empty(),
+        "{driver}"
+    );
+    assert_eq!(
+        keyset_pages(query().limit(3), 2).await,
+        pages(&[0..2, 2..3]),
+        "{driver}"
+    );
+    assert_eq!(
+        keyset_pages(query().offset(2), 2).await,
+        pages(&[2..4, 4..5]),
+        "{driver}"
+    );
+    assert_eq!(
+        keyset_pages(query().offset(1).limit(2), 5).await,
+        [ids[1..3].to_vec()],
+        "{driver}"
+    );
+    // The implicit global row cap is not a caller bound.
+    assert_eq!(offset_pages(query(), 2).await.concat(), ids, "{driver}");
+    assert_eq!(keyset_pages(query(), 2).await.concat(), ids, "{driver}");
 }

@@ -175,6 +175,12 @@ fn has_dangerous_scheme(url: &str) -> bool {
         || scheme.starts_with("file:")
 }
 
+/// Whether one already decoded link passes the scheme and homograph checks
+/// as a whole, as a browser would resolve it.
+pub(crate) fn is_safe_link(url: &str) -> bool {
+    !has_dangerous_scheme(url) && !homograph::is_homograph_link(url)
+}
+
 /// Returns every `href` attribute value. The name is matched ASCII
 /// case-insensitively, whitespace may surround `=`, and the value may be
 /// double-quoted, single-quoted or unquoted, as HTML allows.
@@ -298,7 +304,7 @@ pub fn scan_content_security(content: &str) -> Result<(), MailError> {
             ));
         }
 
-        if homograph::homograph_link_host(&url).is_some() {
+        if homograph::is_homograph_link(&url) {
             return Err(MailError::SendError(
                 "Outbound mail security violation: a link host is a homograph spoofing attempt"
                     .to_string(),

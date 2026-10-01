@@ -2,8 +2,9 @@ use crate::parser::{ParsedModel, ParsedRelation};
 use proc_macro2::TokenStream;
 use quote::quote;
 
+mod eager;
 mod eager_assign;
-use eager_assign::generate_eager_load_assignment;
+mod lazy;
 
 /// The foreign-key field of a relation. An omitted `foreign_key` names the
 /// model on the other side of the key: a `belongs_to` key lives on this model
@@ -17,6 +18,63 @@ fn foreign_key_field(name: &syn::Ident, rel: &ParsedRelation) -> String {
         format!("{}_id", rel.rel_model.to_lowercase())
     } else {
         format!("{}_id", name.to_string().to_lowercase())
+    }
+}
+
+/// Reads a relation key field as `Option<key>`: a nullable key (`Option<T>`,
+/// a nullable foreign key) is unwrapped and any other key wrapped in `Some`.
+/// Loaders skip a `None` key, which, like SQL `NULL`, matches no row. The
+/// field type is known only after expansion, so the runtime helper selects
+/// the conversion by autoref dispatch.
+fn relation_key(field: TokenStream) -> TokenStream {
+    quote! {{
+        #[allow(unused_imports)]
+        use rullst_orm::__relation_key::{Nullable as _, Required as _};
+        (&rullst_orm::__relation_key::Key(&#field)).__rullst_relation_key()
+    }}
+}
+
+/// Identifiers shared by the lazy and eager loaders of one relation.
+struct RelationNames<'a> {
+    rel: &'a ParsedRelation,
+    method_name: syn::Ident,
+    rel_model_ident: syn::Ident,
+    rel_model_builder_ident: syn::Ident,
+    /// The foreign-key field (see [`foreign_key_field`]).
+    fk_ident: syn::Ident,
+    /// This model's matched key (`local_key`, default `id`).
+    lk_ident: syn::Ident,
+    /// The related model's matched key (`related_key`, default `id`).
+    pk_ident: syn::Ident,
+    morph_id_ident: syn::Ident,
+    morph_type_ident: syn::Ident,
+}
+
+impl<'a> RelationNames<'a> {
+    fn new(name: &syn::Ident, rel: &'a ParsedRelation) -> Self {
+        let or_id = |key: &str| {
+            if key.is_empty() {
+                "id".to_string()
+            } else {
+                key.to_string()
+            }
+        };
+        let morph_id = if rel.foreign_key.is_empty() {
+            format!("{}_id", rel.morph_name)
+        } else {
+            rel.foreign_key.clone()
+        };
+        Self {
+            rel,
+            method_name: quote::format_ident!("{}", rel.field_name),
+            rel_model_ident: syn::Ident::new(&rel.rel_model, rel.field_name.span()),
+            rel_model_builder_ident: quote::format_ident!("{}QueryBuilder", rel.rel_model),
+            fk_ident: quote::format_ident!("{}", foreign_key_field(name, rel)),
+            lk_ident: quote::format_ident!("{}", or_id(&rel.local_key)),
+            pk_ident: quote::format_ident!("{}", or_id(&rel.related_key)),
+            morph_id_ident: quote::format_ident!("{}", morph_id),
+            morph_type_ident: quote::format_ident!("{}_type", rel.morph_name),
+        }
     }
 }
 
@@ -34,22 +92,16 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
     let mut inits = vec![];
     let mut methods = vec![];
     let mut model_methods = vec![];
+    let mut eager_loads = vec![];
 
     let name = &parsed.name;
 
     for rel in &parsed.relations {
+        let names = RelationNames::new(name, rel);
         let field_name = &rel.field_name;
-        let rel_type = &rel.rel_type;
-        let rel_model = &rel.rel_model;
-        let foreign_key = &rel.foreign_key;
-        let local_key = &rel.local_key;
-        let related_key = &rel.related_key;
-        let pivot_table = &rel.pivot_table;
-        let morph_name = &rel.morph_name;
-
         let load_flag_ident = quote::format_ident!("load_{}", field_name);
         let filter_flag_ident = quote::format_ident!("filter_{}", field_name);
-        let rel_model_builder_ident = quote::format_ident!("{}QueryBuilder", rel_model);
+        let rel_model_builder_ident = &names.rel_model_builder_ident;
 
         flags.push(quote! {
             pub #load_flag_ident: bool,
@@ -75,426 +127,15 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
             }
         });
 
-        let rel_model_ident = syn::Ident::new(rel_model, field_name.span());
-        let method_name = quote::format_ident!("{}", field_name);
-        let method_name_constrained = quote::format_ident!("{}_constrained", field_name);
-        let fk_ident = quote::format_ident!("{}", foreign_key_field(name, rel));
-        let lk_ident = quote::format_ident!(
-            "{}",
-            if local_key.is_empty() {
-                "id".to_string()
-            } else {
-                local_key.clone()
-            }
-        );
-        let pk_ident = quote::format_ident!(
-            "{}",
-            if related_key.is_empty() {
-                "id".to_string()
-            } else {
-                related_key.clone()
-            }
-        );
-        let morph_id_ident = quote::format_ident!(
-            "{}",
-            if foreign_key.is_empty() {
-                format!("{}_id", morph_name)
-            } else {
-                foreign_key.clone()
-            }
-        );
-        let morph_type_ident = quote::format_ident!("{}_type", morph_name);
-
-        let lazy_load_check = quote! {
-            if rullst_orm::is_lazy_loading_prevented() {
-                return Err(rullst_orm::Error::Validation(format!(
-                    "StrictLazyLoading: attempted to lazily load relation '{}' on '{}' without eager loading",
-                    stringify!(#method_name),
-                    stringify!(#name),
-                )));
-            }
-        };
-
-        if rel_type == "has_many" {
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone()).get().await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone())
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.get().await
-                    })
-                }
-            });
-        } else if rel_type == "has_one" {
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone()).first().await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone())
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.first().await
-                    })
-                }
-            });
-        } else if rel_type == "belongs_to" {
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        #rel_model_ident::query().where_eq(stringify!(#pk_ident), self.#fk_ident.clone()).first().await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#pk_ident), self.#fk_ident.clone())
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.first().await
-                    })
-                }
-            });
-        } else if rel_type == "morph_many" {
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        #rel_model_ident::query()
-                            .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
-                            .get().await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let mut q = #rel_model_ident::query()
-                            .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.get().await
-                    })
-                }
-            });
-        } else if rel_type == "morph_one" {
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        #rel_model_ident::query()
-                            .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
-                            .first().await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let mut q = #rel_model_ident::query()
-                            .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.first().await
-                    })
-                }
-            });
-        } else if rel_type == "morph_to" {
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        if self.#morph_type_ident != stringify!(#rel_model_ident) {
-                            return Ok(None);
-                        }
-                        #rel_model_ident::query()
-                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone())
-                            .first()
-                            .await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        if self.#morph_type_ident != stringify!(#rel_model_ident) {
-                            return Ok(None);
-                        }
-                        let mut q = #rel_model_ident::query()
-                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone())
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.first().await
-                    })
-                }
-            });
-        } else if rel_type == "belongs_to_many" {
-            let pivot_fk = format!("{}.{}", pivot_table, foreign_key);
-            let pivot_rk = format!("{}.{}", pivot_table, related_key);
-            model_methods.push(quote! {
-                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let related_pk = format!("{}.{}", <#rel_model_ident as rullst_orm::RullstModel>::table_name(), "id");
-                        let select_raw = format!("{}.*", <#rel_model_ident as rullst_orm::RullstModel>::table_name());
-                        #rel_model_ident::query()
-                            .select_raw(&select_raw)
-                            .join(#pivot_table, &related_pk, "=", #pivot_rk)
-                            .where_eq(&#pivot_fk, self.#lk_ident.clone())
-                            .get().await
-                    })
-                }
-                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
-                    Box::pin(async move {
-                        #lazy_load_check
-                        let related_pk = format!("{}.{}", <#rel_model_ident as rullst_orm::RullstModel>::table_name(), "id");
-                        let select_raw = format!("{}.*", <#rel_model_ident as rullst_orm::RullstModel>::table_name());
-                        let mut q = #rel_model_ident::query()
-                            .select_raw(&select_raw)
-                            .join(#pivot_table, &related_pk, "=", #pivot_rk)
-                            .where_eq(&#pivot_fk, self.#lk_ident.clone())
-                            .__rullst_freeze_scope();
-                        q = modifier(q);
-                        q.get().await
-                    })
-                }
-            });
-        }
+        model_methods.push(lazy::generate(name, &names));
+        eager_loads.push(eager::generate(name, &names));
     }
-
-    let eager_loads_logic: Vec<_> = parsed.relations.iter().map(|rel| {
-        let field_name = &rel.field_name;
-        let rel_type = &rel.rel_type;
-        let rel_model = &rel.rel_model;
-        let foreign_key = &rel.foreign_key;
-        let local_key = &rel.local_key;
-        let related_key = &rel.related_key;
-        let morph_name = &rel.morph_name;
-        let pivot_table = &rel.pivot_table;
-
-        let load_flag = quote::format_ident!("load_{}", field_name);
-        let filter_flag = quote::format_ident!("filter_{}", field_name);
-        let method_name = quote::format_ident!("{}", field_name);
-
-        let rel_model_ident = syn::Ident::new(rel_model, field_name.span());
-        let fk_ident = quote::format_ident!("{}", foreign_key_field(name, rel));
-        let lk_ident = quote::format_ident!("{}", if local_key.is_empty() { "id".to_string() } else { local_key.clone() });
-        let pk_ident = quote::format_ident!("{}", if related_key.is_empty() { "id".to_string() } else { related_key.clone() });
-        let morph_id_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", morph_name) } else { foreign_key.clone() });
-
-        // One query serves every parent: exceeding the row cap fails instead of dropping rows.
-        let guarded_fetch = quote! {
-            let eager_limit = rullst_orm::__eager_limit::guard(&mut query.limit);
-            let all_related = Box::pin(query.get()).await?;
-            rullst_orm::__eager_limit::ensure_complete(all_related.len(), eager_limit, stringify!(#name), stringify!(#method_name))?;
-        };
-
-        let eager_load_assignment = match rel_type.as_str() {
-            "has_many" => generate_eager_load_assignment(name, true, &fk_ident, &lk_ident, &method_name),
-            "has_one" => generate_eager_load_assignment(name, false, &fk_ident, &lk_ident, &method_name),
-            "belongs_to" => generate_eager_load_assignment(name, false, &pk_ident, &fk_ident, &method_name),
-            "morph_many" => generate_eager_load_assignment(name, true, &morph_id_ident, &lk_ident, &method_name),
-            "morph_one" => generate_eager_load_assignment(name, false, &morph_id_ident, &lk_ident, &method_name),
-            _ => proc_macro2::TokenStream::new(),
-        };
-
-        if rel_type == "has_many" || rel_type == "has_one" {
-            quote! {
-                if self.#load_flag {
-                    let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();
-                    if !parent_ids.is_empty() {
-                        let mut query = #rel_model_ident::query().where_in(stringify!(#fk_ident), parent_ids).__rullst_freeze_scope();
-                        if let Some(ref filter) = self.#filter_flag {
-                            query = filter(query);
-                        }
-                        #guarded_fetch
-                        #eager_load_assignment
-                    }
-                }
-            }
-        } else if rel_type == "belongs_to" {
-            quote! {
-                if self.#load_flag {
-                    let parent_ids: Vec<_> = results.iter().map(|m| m.#fk_ident.clone()).collect();
-                    if !parent_ids.is_empty() {
-                        let mut query = #rel_model_ident::query().where_in(stringify!(#pk_ident), parent_ids).__rullst_freeze_scope();
-                        if let Some(ref filter) = self.#filter_flag {
-                            query = filter(query);
-                        }
-                        #guarded_fetch
-                        #eager_load_assignment
-                    }
-                }
-            }
-        } else if rel_type == "morph_to" {
-            let morph_type_ident = quote::format_ident!("{}_type", morph_name);
-            quote! {
-                if self.#load_flag {
-                    let target_ids: Vec<_> = results
-                        .iter()
-                        .filter(|model| model.#morph_type_ident == stringify!(#rel_model_ident))
-                        .map(|model| model.#morph_id_ident.clone())
-                        .collect();
-                    if !target_ids.is_empty() {
-                        let mut query = #rel_model_ident::query()
-                            .where_in(stringify!(#pk_ident), target_ids)
-                            .__rullst_freeze_scope();
-                        if let Some(ref filter) = self.#filter_flag {
-                            query = filter(query);
-                        }
-                        #guarded_fetch
-                        let related_by_id: std::collections::HashMap<_, _> = all_related
-                            .into_iter()
-                            .map(|related| (related.#pk_ident.clone(), related))
-                            .collect();
-                        for model in &mut results {
-                            model.#method_name = if model.#morph_type_ident == stringify!(#rel_model_ident) {
-                                related_by_id.get(&model.#morph_id_ident).cloned()
-                            } else {
-                                None
-                            };
-                        }
-                    }
-                }
-            }
-        } else {
-            let morph_type_ident = quote::format_ident!("{}_type", morph_name);
-
-            if rel_type == "morph_many" || rel_type == "morph_one" {
-                // Batch load: one query with WHERE morph_id IN (...) AND morph_type = 'Name'
-                // instead of issuing one relationship query per parent model.
-                quote! {
-                    if self.#load_flag {
-                        let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();
-                        if !parent_ids.is_empty() {
-                            let mut query = #rel_model_ident::query()
-                                .where_in(stringify!(#morph_id_ident), parent_ids)
-                                .where_eq(stringify!(#morph_type_ident), stringify!(#name))
-                                .__rullst_freeze_scope();
-                            if let Some(ref filter) = self.#filter_flag {
-                                query = filter(query);
-                            }
-                            #guarded_fetch
-                            #eager_load_assignment
-                        }
-                    }
-                }
-            } else {
-                // Batch load belongs_to_many: 2 queries for any collection size.
-                // Q1: SELECT parent_fk, related_fk FROM pivot WHERE parent_fk IN (...)
-                // Q2: SELECT * FROM related_table WHERE id IN (unique_related_ids)
-                // Then distribute in memory. No N+1.
-                quote! {
-                    if self.#load_flag {
-                        let parent_ids: Vec<i32> = results.iter().map(|m| m.#lk_ident).collect();
-                        if !parent_ids.is_empty() {
-                            let driver = rullst_orm::Orm::driver()?;
-                            // Q1: pivot table pairs
-                            rullst_orm::schema::validate_identifier(#foreign_key)?;
-                            rullst_orm::schema::validate_identifier(#related_key)?;
-                            rullst_orm::schema::validate_table_name(#pivot_table)?;
-                            let placeholders_str = if driver == "postgres" {
-                                let mut ph = String::with_capacity(parent_ids.len() * 4);
-                                for i in 1..=parent_ids.len() {
-                                    if i > 1 { ph.push_str(", "); }
-                                    ph.push('$');
-                                    ph.push_str(&i.to_string());
-                                }
-                                ph
-                            } else {
-                                let mut ph = String::with_capacity(parent_ids.len() * 3);
-                                for i in 0..parent_ids.len() {
-                                    if i > 0 { ph.push_str(", "); }
-                                    ph.push('?');
-                                }
-                                ph
-                            };
-                            let pivot_sql = format!(
-                                "SELECT {fk}, {rk} FROM {pt} WHERE {fk} IN ({ph})",
-                                fk = #foreign_key,
-                                rk = #related_key,
-                                pt = #pivot_table,
-                                ph = placeholders_str,
-                            );
-                            let mut pivot_query = rullst_orm::_sqlx::query_as::<_, (i32, i32)>(
-                                rullst_orm::_sqlx::AssertSqlSafe(pivot_sql.as_str())
-                            );
-                            for id in &parent_ids {
-                                pivot_query = pivot_query.bind(*id);
-                            }
-                            let pivot_pairs: Vec<(i32, i32)> = rullst_orm::dispatch_executor!(read_pool, |executor| {
-                                let fetch = pivot_query.fetch_all(executor);
-                                match rullst_orm::schema::get_query_timeout() {
-                                    Some(t) => tokio::time::timeout(t, fetch).await.map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))?.map_err(rullst_orm::Error::from),
-                                    None => fetch.await.map_err(rullst_orm::Error::from),
-                                }
-                            })?;
-
-                            // Build parent_id -> Vec<model> from pivot pairs
-                            let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
-                                std::collections::HashMap::with_capacity(results.len());
-                            if !pivot_pairs.is_empty() {
-                                // Deduplicate related IDs for Q2
-                                let mut related_ids: Vec<i32> = pivot_pairs.iter().map(|(_, rid)| *rid).collect();
-                                related_ids.sort_unstable();
-                                related_ids.dedup();
-
-                                let mut query = #rel_model_ident::query().where_in("id", related_ids).__rullst_freeze_scope();
-                                if let Some(ref filter) = self.#filter_flag {
-                                    query = filter(query);
-                                }
-                                #guarded_fetch
-
-                                // related_id -> model lookup
-                                let mut related_map: std::collections::HashMap<i32, #rel_model_ident> =
-                                    all_related.into_iter().map(|m| (m.id, m)).collect();
-
-                                for (parent_id, related_id) in &pivot_pairs {
-                                    if let Some(m) = related_map.get(related_id) {
-                                        parent_to_related
-                                            .entry(*parent_id)
-                                            .or_insert_with(Vec::new)
-                                            .push(m.clone());
-                                    }
-                                }
-                            }
-
-                            // Every parent is loaded: one without related rows gets
-                            // an empty list, and parents sharing a local key each
-                            // receive the group.
-                            for model in &mut results {
-                                model.#method_name = Some(
-                                    parent_to_related.get(&model.#lk_ident).cloned().unwrap_or_default()
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-    }).collect();
 
     GeneratedRelationships {
         flags,
         inits,
         methods,
         model_methods,
-        eager_loads: quote! { #(#eager_loads_logic)* },
+        eager_loads: quote! { #(#eager_loads)* },
     }
 }

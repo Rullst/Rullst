@@ -108,7 +108,7 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
             if let Some(tenant) = rullst_orm::tenant::get_tenant_id() {
                 let typed: Result<#tenant_type, _> = tenant.try_into();
                 match typed {
-                    Ok(tenant) => builder = builder.where_eq(#col, tenant),
+                    Ok(tenant) => builder = builder.__rullst_where_own(#col, "=", tenant),
                     Err(_) => builder.errors.push(rullst_orm::Error::Validation(format!(
                         "tenant context type does not match `{}.{}`",
                         #table_name,
@@ -200,7 +200,7 @@ mod tests {
             .expect("cascade constructor body")
             .0;
         assert!(!cascade.contains("approved"));
-        assert!(cascade.contains("where_eq (\"org\" , tenant)"));
+        assert!(cascade.contains("__rullst_where_own (\"org\" , \"=\" , tenant)"));
         assert!(cascade.contains("tenant context is required"));
     }
 
@@ -246,6 +246,9 @@ mod tests {
         assert!(generated.contains("let typed : Result < String , _ > = tenant . try_into ()"));
         assert!(generated.contains("tenant context type does not match"));
         assert!(!generated.contains("where_eq (\"org\" , tenant) ;"));
+        // Qualified by the builder, so a join cannot make the scope ambiguous.
+        assert!(generated.contains("builder . __rullst_where_own (\"org\" , \"=\" , tenant)"));
+        assert!(!generated.contains("where_eq (\"org\""));
     }
 
     #[test]
