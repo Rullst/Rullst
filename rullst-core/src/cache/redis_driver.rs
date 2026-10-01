@@ -5,6 +5,11 @@ use crate::redis_connection::{RedisConnection, SharedRedisConnection};
 use std::collections::BTreeSet;
 
 const MAX_SCAN_ROUNDS: usize = 64;
+/// Largest TTL sent with `SETEX`, about 146 million years. Redis rejects an
+/// expiry whose millisecond deadline would overflow, so a longer TTL is
+/// stored without expiry, as the memory driver does for TTLs its clock cannot
+/// represent.
+const MAX_EXPIRING_TTL_SECS: u64 = i64::MAX.unsigned_abs() / 1000 / 2;
 
 /// Cache driver backed by Redis.
 ///
@@ -57,25 +62,37 @@ impl CacheDriver for RedisDriver {
         Ok(result.map(Arc::new))
     }
 
+    /// A zero TTL stores an already-expired value: the key is removed, as the
+    /// memory driver never returns such an entry (Redis rejects `SETEX 0`).
     #[cfg_attr(mutants, mutants::skip)]
     async fn put(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> Result<(), CacheError> {
         let mut connection = self.connection().await?;
         let prefixed_key = self.prefixed_key(key);
-        if let Some(ttl) = ttl_secs {
-            redis::cmd("SETEX")
-                .arg(&prefixed_key)
-                .arg(ttl)
-                .arg(value)
-                .query_async::<()>(&mut connection)
-                .await
-                .map_err(|error| CacheError::Driver(format!("Redis SETEX failed: {error}")))?;
-        } else {
-            redis::cmd("SET")
-                .arg(&prefixed_key)
-                .arg(value)
-                .query_async::<()>(&mut connection)
-                .await
-                .map_err(|error| CacheError::Driver(format!("Redis SET failed: {error}")))?;
+        match ttl_secs {
+            Some(0) => {
+                redis::cmd("UNLINK")
+                    .arg(&prefixed_key)
+                    .query_async::<i64>(&mut connection)
+                    .await
+                    .map_err(|error| CacheError::Driver(format!("Redis UNLINK failed: {error}")))?;
+            }
+            Some(ttl) if ttl <= MAX_EXPIRING_TTL_SECS => {
+                redis::cmd("SETEX")
+                    .arg(&prefixed_key)
+                    .arg(ttl)
+                    .arg(value)
+                    .query_async::<()>(&mut connection)
+                    .await
+                    .map_err(|error| CacheError::Driver(format!("Redis SETEX failed: {error}")))?;
+            }
+            _ => {
+                redis::cmd("SET")
+                    .arg(&prefixed_key)
+                    .arg(value)
+                    .query_async::<()>(&mut connection)
+                    .await
+                    .map_err(|error| CacheError::Driver(format!("Redis SET failed: {error}")))?;
+            }
         }
         Ok(())
     }

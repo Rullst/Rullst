@@ -97,3 +97,46 @@ async fn redis_inspection_returns_bounded_metadata_and_never_values() {
         .await
         .expect("remove second fixture");
 }
+
+#[tokio::test]
+async fn redis_ttl_edges_behave_like_the_memory_driver() {
+    let Some(redis) = live_redis().await else {
+        return;
+    };
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("test clock")
+        .as_nanos();
+    let key = format!("ttl-edges-{unique}");
+    for cache in [
+        Cache::memory(),
+        Cache::redis(redis.url.clone()).expect("live Redis cache"),
+    ] {
+        cache.put(&key, "stale", None).await.expect("seed value");
+        // A zero TTL is an already-expired value that replaces the old one.
+        cache.put(&key, "fresh", Some(0)).await.expect("zero TTL");
+        assert_eq!(cache.get(&key).await.expect("read"), None);
+        let computed = cache
+            .remember(&key, 0, || async { Ok("computed".to_string()) })
+            .await
+            .expect("remember without caching");
+        assert_eq!(computed.as_str(), "computed");
+        assert!(!cache.has(&key).await.expect("exists"));
+
+        // A TTL beyond the clock's range is stored without expiry.
+        cache
+            .put(&key, "forever", Some(u64::MAX))
+            .await
+            .expect("huge TTL");
+        assert_eq!(
+            cache
+                .get(&key)
+                .await
+                .expect("read")
+                .as_deref()
+                .map(String::as_str),
+            Some("forever")
+        );
+        cache.forget(&key).await.expect("cleanup");
+    }
+}
