@@ -1,16 +1,25 @@
 //! The tenant-scoped `Post` model and the landing page that lists and stores it.
 
 use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
+use axum::http::StatusCode;
 use axum::{Extension, Form};
 use rullst::db::FromRow;
+use rullst::security::TenantContext;
 use rullst::{
     html,
-    response::{Html, IntoResponse, Redirect},
+    response::{Html, Redirect},
 };
+use rullst_orm::with_tenant;
 
 // --- Post Model & Active Record Query Builder ---
+/// A story owned by one tenant.
+///
+/// `tenant_column` makes every generated query fail closed outside
+/// `with_tenant(...)` and bind the active tenant inside it; `save()` stamps the
+/// active tenant. Handlers take the tenant from the membership-checked
+/// [`TenantContext`] that `TenantLayer` inserts, never from the raw header.
 #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
-#[orm(table = "posts", global_scope = "apply_tenant_scope")]
+#[orm(table = "posts", tenant_column = "tenant_id")]
 pub struct Post {
     pub id: i32,
     pub tenant_id: String,
@@ -65,14 +74,20 @@ impl rullst_nexus::NexusModel for Post {
     }
 }
 
-impl PostQueryBuilder {
-    pub fn apply_tenant_scope(self) -> Self {
-        if let Some(tid) = rullst::multitenant::current_tenant_id() {
-            self.where_eq("tenant_id", tid)
-        } else {
-            self
-        }
-    }
+/// Creates the SQLite `posts` table when it does not exist yet.
+pub async fn create_schema() -> Result<(), rullst_orm::Error> {
+    let pool = rullst_orm::Orm::pool()?;
+    rullst::db::sqlx::query(
+        "CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 #[derive(serde::Deserialize)]
@@ -115,13 +130,16 @@ fn render_post_list(posts: &[Post]) -> String {
 /// Server-rendered HTML landing page (`/`).
 pub async fn index(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
-) -> impl IntoResponse {
-    let posts = Post::all().await.unwrap_or_default();
+    Extension(tenant): Extension<TenantContext>,
+) -> Result<Html<String>, StatusCode> {
+    let posts = with_tenant(tenant.tenant_id.clone(), Post::all())
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     let nav = render_showcase_nav("/");
     let styles = render_shared_styles();
     let post_list_html = render_post_list(&posts);
 
-    Html(html! {
+    Ok(Html(html! {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
@@ -169,20 +187,24 @@ pub async fn index(
                 </div>
             </body>
         </html>
-    })
+    }))
 }
 
-/// Stores a new post via Active Record
-pub async fn store(Form(form): Form<CreatePostForm>) -> Redirect {
+/// Stores a new post via Active Record in the request's tenant.
+pub async fn store(
+    Extension(tenant): Extension<TenantContext>,
+    Form(form): Form<CreatePostForm>,
+) -> Result<Redirect, StatusCode> {
     if !form.title.trim().is_empty() && !form.body.trim().is_empty() {
         let mut post = Post {
             id: 0,
-            tenant_id: rullst::multitenant::current_tenant_id()
-                .unwrap_or_else(|| "community".to_string()),
+            tenant_id: tenant.tenant_id.clone(),
             title: form.title,
             body: form.body,
         };
-        let _ = post.save().await;
+        with_tenant(tenant.tenant_id.clone(), post.save())
+            .await
+            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     }
-    Redirect::to("/")
+    Ok(Redirect::to("/"))
 }

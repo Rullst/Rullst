@@ -7,6 +7,56 @@ use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
 use tower::ServiceExt;
 
+static DATABASE: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
+
+/// Opens one file-backed SQLite database per test process and creates the schema.
+async fn database() {
+    DATABASE
+        .get_or_init(|| async {
+            let path = std::env::temp_dir().join(format!(
+                "rullst-blog-example-tests-{}.db",
+                std::process::id()
+            ));
+            let _ = std::fs::remove_file(&path);
+            rullst_orm::Orm::init(&format!("sqlite://{}?mode=rwc", path.display()))
+                .await
+                .expect("test database");
+            crate::app::create_schema().await.expect("posts schema");
+        })
+        .await;
+}
+
+fn csrf_post(path: &str, tenant: &str, form: &str) -> Request<Body> {
+    let token = rullst::security::generate_csrf_token();
+    Request::post(path)
+        .header("X-Tenant-ID", tenant)
+        .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header(header::COOKIE, format!("rullst_csrf={token}"))
+        .body(Body::from(format!("{form}&_token={token}")))
+        .expect("form request")
+}
+
+async fn get_html(app: &axum::Router, path: &str, tenant: &str) -> (StatusCode, String) {
+    let response = app
+        .clone()
+        .oneshot(
+            Request::get(path)
+                .header("X-Tenant-ID", tenant)
+                .body(Body::empty())
+                .expect("GET request"),
+        )
+        .await
+        .expect("GET response");
+    let status = response.status();
+    let body = to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .expect("bounded HTML body");
+    (
+        status,
+        String::from_utf8(body.to_vec()).expect("UTF-8 HTML"),
+    )
+}
+
 fn test_router() -> rullst::Router {
     let nexus_auth = rullst_nexus::NexusAuthPolicy::basic(
         "integration-fixture-operator",
@@ -44,6 +94,7 @@ async fn honeypot_button_hits_the_real_deception_middleware() {
 
 #[tokio::test]
 async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
+    database().await;
     // `Server` applies the canonical production baseline around the app. Model
     // that composition here so the example never regresses to two divergent
     // CSRF cookies when it also mounts the middleware explicitly.
@@ -155,6 +206,7 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
 
 #[tokio::test]
 async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
+    database().await;
     let app = test_router().into_axum();
     for path in ["/editor", "/wasm-counter"] {
         let response = app
@@ -174,4 +226,50 @@ async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
     let html = std::str::from_utf8(&body).expect("UTF-8 HTML");
     assert!(!html.contains("/editor"));
     assert!(!html.contains("Wasm Island"));
+}
+
+#[tokio::test]
+async fn post_queries_fail_closed_outside_a_tenant_scope() {
+    database().await;
+    let error = crate::app::Post::all()
+        .await
+        .expect_err("an unscoped query must not return every tenant's rows");
+    assert!(error.to_string().contains("tenant context is required"));
+}
+
+#[tokio::test]
+async fn posts_and_repository_views_stay_inside_the_selected_tenant() {
+    database().await;
+    let app = test_router().into_axum();
+    let title = format!("Startup-only story {}", std::process::id());
+
+    let created = app
+        .clone()
+        .oneshot(csrf_post(
+            "/posts",
+            "tenant-startup",
+            &format!(
+                "title={}&body=Visible+to+the+startup+tenant",
+                title.replace(' ', "+")
+            ),
+        ))
+        .await
+        .expect("store response");
+    assert_eq!(created.status(), StatusCode::SEE_OTHER);
+
+    for path in ["/", "/posts/repository"] {
+        let (status, own) = get_html(&app, path, "tenant-startup").await;
+        assert_eq!(status, StatusCode::OK, "{path}");
+        assert!(own.contains(&title), "{path} must list the tenant's post");
+
+        let (status, other) = get_html(&app, path, "tenant-enterprise").await;
+        assert_eq!(status, StatusCode::OK, "{path}");
+        assert!(
+            !other.contains(&title),
+            "{path} leaked another tenant's post"
+        );
+    }
+
+    let (status, _) = get_html(&app, "/", "tenant-outside-membership").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
 }

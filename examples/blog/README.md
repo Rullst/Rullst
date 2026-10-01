@@ -7,11 +7,13 @@ or proof that every crate and feature is exercised.
 
 ## Demonstrated paths
 
-- `/`: server-rendered posts using the `html!` macro and ORM.
+- `/`: server-rendered posts using the `html!` macro and an ORM model whose
+  `tenant_column` fails closed outside the request's `TenantContext`.
 - `/live-feed` and `/_live`: server-driven WebSocket example.
 - `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
-- `/posts/repository`: parameterized repository queries.
+- `/posts/repository`: parameterized repository queries bound to the selected
+  tenant.
 - `/pricing`: `Billable` quotas, payment-adapter mock fixtures, and an unsigned,
   offline DPS XML preview. It never issues or signs an NFS-e.
 - `/security-demo`: bounded, instrumented security-control demonstrations. The

@@ -1,8 +1,11 @@
 //! Data Mapper & Repository Pattern demonstration for Rullst ORM.
 //! Shows decoupling between database schemas and domain aggregation models.
 
-use axum::response::{Html, IntoResponse};
+use axum::extract::Extension;
+use axum::http::StatusCode;
+use axum::response::Html;
 use rullst::html;
+use rullst::security::TenantContext;
 use rullst_orm::Orm;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
@@ -27,22 +30,27 @@ pub struct RawPostRecord {
     pub body: String,
 }
 
-/// Repository responsible for complex aggregations and cross-table mappings.
+/// Repository responsible for aggregations and raw read models.
+///
+/// These hand-written queries bypass the model's `tenant_column` scope, so
+/// every one binds the tenant from the request's [`TenantContext`] itself.
 pub struct PostRepository;
 
 impl PostRepository {
-    /// Aggregates author publishing metrics via parameterized SQLx query.
-    pub async fn get_author_analytics() -> Result<Vec<AuthorAnalytics>, rullst_orm::Error> {
+    /// Aggregates the tenant's publishing metrics via a parameterized SQLx query.
+    pub async fn get_tenant_analytics(
+        tenant_id: &str,
+    ) -> Result<Vec<AuthorAnalytics>, rullst_orm::Error> {
         let pool = Orm::pool()?;
         let rows = sqlx::query(
-            "SELECT 
-                COALESCE(tenant_id, 'community') as author_name,
-                COUNT(*) as total_posts,
-                SUM(LENGTH(body)) as total_bytes
+            "SELECT tenant_id AS author_name,
+                COUNT(*) AS total_posts,
+                SUM(LENGTH(body)) AS total_bytes
             FROM posts
-            GROUP BY tenant_id
-            ORDER BY total_posts DESC",
+            WHERE tenant_id = ?
+            GROUP BY tenant_id",
         )
+        .bind(tenant_id)
         .fetch_all(pool)
         .await?;
 
@@ -66,12 +74,17 @@ impl PostRepository {
         Ok(analytics)
     }
 
-    /// Fetches all raw posts across all tenants directly via Data Mapper SQLx query.
-    pub async fn get_all_raw_posts() -> Result<Vec<RawPostRecord>, rullst_orm::Error> {
+    /// Fetches the tenant's raw posts directly via a Data Mapper SQLx query.
+    pub async fn get_tenant_posts(
+        tenant_id: &str,
+    ) -> Result<Vec<RawPostRecord>, rullst_orm::Error> {
         let pool = Orm::pool()?;
-        let rows = sqlx::query("SELECT id, tenant_id, title, body FROM posts ORDER BY id DESC")
-            .fetch_all(pool)
-            .await?;
+        let rows = sqlx::query(
+            "SELECT id, tenant_id, title, body FROM posts WHERE tenant_id = ? ORDER BY id DESC",
+        )
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await?;
 
         let posts = rows
             .into_iter()
@@ -97,17 +110,19 @@ impl PostRepository {
 }
 
 /// Handler for the Repository ORM showcase route (`/posts/repository`).
-pub async fn repository_page() -> impl IntoResponse {
+pub async fn repository_page(
+    Extension(tenant): Extension<TenantContext>,
+) -> Result<Html<String>, StatusCode> {
     let nav = render_showcase_nav("/posts/repository");
     let styles = render_shared_styles();
 
-    let analytics = PostRepository::get_author_analytics()
+    let analytics = PostRepository::get_tenant_analytics(&tenant.tenant_id)
         .await
-        .unwrap_or_default();
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let all_posts = PostRepository::get_all_raw_posts()
+    let all_posts = PostRepository::get_tenant_posts(&tenant.tenant_id)
         .await
-        .unwrap_or_default();
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
 
     let rows_html: String = analytics
         .iter()
@@ -137,7 +152,7 @@ pub async fn repository_page() -> impl IntoResponse {
         })
         .collect();
 
-    Html(html! {
+    Ok(Html(html! {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
@@ -163,12 +178,12 @@ pub async fn repository_page() -> impl IntoResponse {
 
                         <div class="code-block" style="margin-bottom: 1.5rem;">
                             "// Rust Implementation in repository_demo.rs:\n"
-                            "let analytics = PostRepository::get_author_analytics().await?;\n"
-                            "let all_posts = PostRepository::get_all_raw_posts().await?;\n"
-                            "// -> Aggregates multi-tenant records without exposing underlying SQLx connection pool directly."
+                            "let analytics = PostRepository::get_tenant_analytics(&amp;tenant.tenant_id).await?;\n"
+                            "let posts = PostRepository::get_tenant_posts(&amp;tenant.tenant_id).await?;\n"
+                            "// -> Raw SQL bypasses the model's tenant scope, so each query binds the request's TenantContext."
                         </div>
 
-                        <h3 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.75rem;">"Domain Analytics by Author / Tenant"</h3>
+                        <h3 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.75rem;">"Domain Analytics for the Active Tenant"</h3>
                         <table style="width: 100%; border-collapse: collapse; text-align: left; background: #05070c; border-radius: 0.5rem; overflow: hidden; border: 1px solid #1e293b; margin-bottom: 2rem;">
                             <thead>
                                 <tr style="background: rgba(30, 41, 59, 0.8); border-bottom: 2px solid #334155; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase;">
@@ -183,7 +198,7 @@ pub async fn repository_page() -> impl IntoResponse {
                             </tbody>
                         </table>
 
-                        <h3 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.75rem;">"Live Database Records Stream (`posts` Table)"</h3>
+                        <h3 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.75rem;">"Tenant Records (`posts` Table)"</h3>
                         <table style="width: 100%; border-collapse: collapse; text-align: left; background: #05070c; border-radius: 0.5rem; overflow: hidden; border: 1px solid #1e293b;">
                             <thead>
                                 <tr style="background: rgba(30, 41, 59, 0.8); border-bottom: 2px solid #334155; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase;">
@@ -214,5 +229,5 @@ pub async fn repository_page() -> impl IntoResponse {
                 </div>
             </body>
         </html>
-    })
+    }))
 }

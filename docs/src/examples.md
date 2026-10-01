@@ -57,7 +57,10 @@ resource; it is not a duplicate checked-in copy of a generated application.
 The blog example inserts a static test-only `TenantMembership` before the tenant layer.
 The `X-Tenant-ID` header can select only one of those fixed memberships. This
 models the separation between an untrusted selector and trusted authenticated
-claims.
+claims. Handlers read the membership-checked `TenantContext` that `TenantLayer`
+inserts. The `Post` model declares `tenant_column`, so its generated queries fail
+closed outside `with_tenant(...)`; the hand-written repository SQL binds the same
+tenant itself.
 
 In a real application, authentication middleware must derive membership from a
 verified session or token. Never construct membership from the same client header

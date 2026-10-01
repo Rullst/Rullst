@@ -1,6 +1,6 @@
 #![allow(unexpected_cfgs)]
 #![cfg_attr(mutants, mutants::skip)]
-use rullst::{Server, multitenant};
+use rullst::Server;
 use rullst_blog_example::app::Post;
 use rullst_orm::Orm;
 
@@ -21,18 +21,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = rullst_blog_example::database::database_url().await?;
     Orm::init(&database_url).await?;
 
-    // Create table schema
+    rullst_blog_example::app::create_schema().await?;
     let pool = Orm::pool()?;
-    rullst::db::sqlx::query(
-        "CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tenant_id TEXT NOT NULL,
-            title TEXT NOT NULL,
-            body TEXT NOT NULL
-        )",
-    )
-    .execute(pool)
-    .await?;
 
     // Clean old startup/enterprise seeds if migrating
     let _ = rullst::db::sqlx::query(
@@ -42,8 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await;
 
     // Seed Sovereign SaaS Blog Posts
-    let _ = multitenant::TENANT_CONTEXT
-        .scope(std::cell::RefCell::new(Some("community".to_string())), async {
+    let _ = rullst_orm::with_tenant("community", async {
             // 1. Unified Welcome & Overview Post
             let welcome_exists = Post::query()
                 .where_eq("title", "Welcome to The Sovereign SaaS Blog & Publisher")
