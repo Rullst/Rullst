@@ -1,5 +1,7 @@
 use super::*;
 
+const DIGEST: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
 fn test_config(auto_https: &str) -> FoundryConfig {
     FoundryConfig {
         app_name: "demo".to_string(),
@@ -20,11 +22,11 @@ fn test_config(auto_https: &str) -> FoundryConfig {
 
 #[test]
 fn configuration_requires_a_preinstalled_caddy_and_blocks_reload_failure() {
-    let command = render_configure_command(&test_config("false"), "demo");
+    let command = render_configure_command(&test_config("false"), "demo", DIGEST);
     assert!(command.contains(":80 {"));
     assert!(command.contains("exit 1"));
     assert!(command.contains("caddy validate --config"));
-    assert!(command.contains("/tmp/rullst_demo.upload"));
+    assert!(command.contains("staged_binary=/opt/rullst/demo/incoming/demo.upload"));
     assert!(command.contains("mv -f /opt/rullst/demo/bin/demo.next /opt/rullst/demo/bin/demo"));
     assert!(command.contains("chmod 600 /opt/rullst/demo/config/.env.next"));
     assert!(command.contains("Caddyfile.previous"));
@@ -56,7 +58,7 @@ fn systemd_environment_values_are_quoted_and_escaped() {
     );
     let mut cfg = test_config("false");
     cfg.env_vars = vec![("EXAMPLE".to_string(), "space and \\\"quote".to_string())];
-    let command = render_configure_command(&cfg, "demo");
+    let command = render_configure_command(&cfg, "demo", DIGEST);
     assert!(command.contains(r#"EXAMPLE="space and \\\"quote""#));
 }
 
@@ -71,7 +73,7 @@ fn the_service_runs_as_a_dedicated_unprivileged_sandboxed_account() {
     assert!(provision.contains("chown -R -h rullst-demo:rullst-demo /opt/rullst/demo/data"));
     assert!(provision.contains("install -d -m 0700 /opt/rullst/demo/config"));
 
-    let command = render_configure_command(&test_config("false"), "demo");
+    let command = render_configure_command(&test_config("false"), "demo", DIGEST);
     for directive in [
         "User=rullst-demo",
         "Group=rullst-demo",
@@ -87,7 +89,7 @@ fn the_service_runs_as_a_dedicated_unprivileged_sandboxed_account() {
 
     let mut privileged = test_config("false");
     privileged.port = "80".to_string();
-    let privileged = render_configure_command(&privileged, "demo");
+    let privileged = render_configure_command(&privileged, "demo", DIGEST);
     assert!(privileged.contains("AmbientCapabilities=CAP_NET_BIND_SERVICE"));
 
     #[cfg(unix)]
@@ -105,4 +107,41 @@ fn the_service_runs_as_a_dedicated_unprivileged_sandboxed_account() {
             .unwrap();
         assert!(shell.wait().unwrap().success(), "invalid shell:\n{script}");
     }
+}
+
+#[test]
+fn uploads_are_staged_privately_and_verified_before_installation() {
+    let mut cfg = test_config("false");
+    cfg.user = "deployer".to_string();
+    let provision = render_provision_command(&cfg);
+    assert!(provision.contains("install -d -m 0700 -o deployer /opt/rullst/demo/incoming"));
+
+    let command = render_configure_command(&cfg, "demo", DIGEST);
+    assert!(!command.contains("/tmp/"));
+    let checks = [
+        "staged_binary=/opt/rullst/demo/incoming/demo.upload",
+        "test ! -L \"$staged_binary\"",
+        "test \"$(stat -c %u \"$staged_binary\")\" = \"$(id -u deployer)\"",
+        &format!("cut -d ' ' -f 1)\" = \"{DIGEST}\""),
+        "install -m 0755 \"$staged_binary\"",
+    ];
+    let mut previous = 0;
+    for check in checks {
+        let position = command
+            .find(check)
+            .unwrap_or_else(|| panic!("missing `{check}`"));
+        assert!(position >= previous, "`{check}` is out of order");
+        previous = position;
+    }
+}
+
+#[test]
+fn local_binary_digest_is_the_sha256_of_its_bytes() {
+    let directory = tempfile::tempdir().unwrap();
+    let binary = directory.path().join("demo");
+    fs::write(&binary, b"abc").unwrap();
+    assert_eq!(
+        local_binary_sha256(binary.to_str().unwrap()).unwrap(),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
 }

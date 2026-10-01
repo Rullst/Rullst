@@ -49,6 +49,10 @@ impl<C: Clock> SqliteLabs<C> {
                 Err(Error::NotFound)=>{
                     let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_exercises").fetch_one(&mut *tx.tx).await.map_err(storage)?;
                     if count>=i64::from(self.config.max_exercises) { return Err(Error::Capacity); }
+                    if let Some(limit)=self.config.tenant_exercises {
+                        let held:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_exercises WHERE tenant=?").bind(exercise.scope().tenant.as_str()).fetch_one(&mut *tx.tx).await.map_err(storage)?;
+                        if held>=i64::from(limit) { return Err(Error::Capacity); }
+                    }
                     let plaintext=zeroize::Zeroizing::new(serde_json::to_vec(&RegisteredExercise { exercise:exercise.clone(),enabled:true }).map_err(|_|Error::InvalidInput)?);
                     let content=self.key.seal(&self.exercise_aad(exercise.scope(),exercise.id(),exercise.revision())?, &plaintext)?;
                     sqlx::query("INSERT INTO labs_exercises (tenant,course,id,revision,digest,enabled,content) VALUES (?,?,?,?,?,1,?)")
