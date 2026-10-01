@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790870114208,
+  "lastUpdate": 1790870619889,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24123,6 +24123,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1839,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d730958b5800e65cc73bde02cda5607cbf4c9da2",
+          "message": "Merge pull request #384 from Rullst/fix/v13-final-capital-messaging-tail\n\nfix(capital,messaging): final-review fixes for MySQL quota keys, provider requests and stream-scoped outbox keys",
+          "timestamp": "2026-10-01T12:57:56-03:00",
+          "tree_id": "31d49c24213fad1b0acf2929a698475654d2a01f",
+          "url": "https://github.com/Rullst/Rullst/commit/d730958b5800e65cc73bde02cda5607cbf4c9da2"
+        },
+        "date": 1790870617964,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 596,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 767,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 505,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1809,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
