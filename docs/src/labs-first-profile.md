@@ -1,5 +1,14 @@
 # Labs first execution profile: decision and threat model
 
+> **Historical record.** The `rullst-labs-runner` implementation described here
+> was removed from the workspace for 13.0 (maintainer decision of 30 September
+> 2026); its source remains in git history, and its CI jobs and helper scripts
+> were removed with it. `rullst-labs` still defines the `rust-function-wasm-v1`
+> profile, but Rullst no longer ships an executor: applications bring their own
+> runner through the [controller contract](labs-runner-contract.md). Read the
+> requirements below as a reference baseline for such a runner, not as shipped
+> or currently tested software.
+
 Status: implementation decision for an **unpublished experimental candidate**.
 The named Linux journey has hosted evidence below; independent security review
 and production readiness are not claimed. The September 23 freeze and September 24–26 validation

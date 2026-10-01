@@ -47,12 +47,10 @@ case "${3:-}" in
     candidate=true
     ;;
   --v13-candidates)
-    for name in rullst-labs rullst-labs-runner; do
-      if jq -e --arg name "$name" 'index($name) != null' "$repository_root/.github/release-order.json" > /dev/null; then
-        echo "Remove Labs candidate mode after release admission." >&2
-        exit 1
-      fi
-    done
+    if jq -e 'index("rullst-labs") != null' "$repository_root/.github/release-order.json" > /dev/null; then
+      echo "Remove Labs candidate mode after release admission." >&2
+      exit 1
+    fi
     labs_candidate=true
     ;;
   *) echo "Unknown packaged-distribution mode." >&2; exit 1 ;;

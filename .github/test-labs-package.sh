@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Exercise extracted contracts and a separate application consumer. Student code
-# is never compiled here; real execution belongs to the mandatory isolation job.
+# is never compiled here; execution belongs to an application-owned runner.
 set -euo pipefail
 version="${1:?usage: test-labs-package.sh VERSION PACKAGE_DIR}"
 package_dir="$(cd "${2:?missing archive directory}" && pwd -P)"
@@ -13,7 +13,7 @@ from pathlib import Path
 archives, version, temporary, repository = sys.argv[1:]
 archives, temporary, repository = map(Path, (archives, temporary, repository))
 inventory = json.loads((repository / '.github/release-order.json').read_text())
-for package in ('rullst-labs', 'rullst-labs-runner'):
+for package in ('rullst-labs',):
     assert package not in inventory
     name = f'{package}-{version}'
     archive_path = archives / f'{name}.crate'
@@ -38,9 +38,6 @@ for package in ('rullst-labs', 'rullst-labs-runner'):
     assert manifest['package']['version'] == version and manifest['package']['publish'] is False
     assert (source / 'LICENSE').read_bytes() == (repository / 'LICENSE').read_bytes()
 labs = temporary / f'rullst-labs-{version}'
-runner = temporary / f'rullst-labs-runner-{version}'
-with (runner / 'Cargo.toml').open('a') as manifest:
-    manifest.write('\n[patch.crates-io]\nrullst-labs={path=' + json.dumps(str(labs)) + '}\n')
 consumer = temporary / 'consumer'
 (consumer / 'src').mkdir(parents=True)
 (consumer / 'Cargo.toml').write_text('[package]\nname="labs-archive-consumer"\nversion="0.0.0"\nedition="2024"\npublish=false\n[dependencies]\nrullst-labs={path=' + json.dumps(str(labs)) + ',default-features=false,features=["sqlite"]}\ntokio={version="1",features=["macros","rt"]}\nserde={version="1",features=["derive"]}\nserde_json="1"\nzeroize="1"\n')
@@ -49,9 +46,6 @@ consumer = temporary / 'consumer'
 PY
 cargo_bin="${CARGO:-cargo}"
 "$cargo_bin" test --manifest-path "$work_dir/rullst-labs-$version/Cargo.toml" --offline --locked --all-features
-# The candidate's explicit unpublished edge is resolved from this archive copy;
-# all registry dependencies must retain the packaged resolution.
-"$cargo_bin" test --manifest-path "$work_dir/rullst-labs-runner-$version/Cargo.toml" --offline --locked
 "$cargo_bin" build --manifest-path "$work_dir/consumer/Cargo.toml" --offline
 "$cargo_bin" metadata --manifest-path "$work_dir/consumer/Cargo.toml" --locked --offline --format-version 1 > "$work_dir/consumer-metadata.json"
 python3 - "$work_dir" <<'PY'
@@ -62,7 +56,7 @@ metadata = json.loads((work / 'consumer-metadata.json').read_text())
 for package in metadata['packages']:
     if package['source'] is None:
         assert Path(package['manifest_path']).is_relative_to(work)
-    assert package['name'] not in ('rullst-labs-runner', 'wasmi', 'seccompiler', 'landlock')
+    assert package['name'] not in ('rullst-labs-runner', 'wasmi', 'wasmtime', 'seccompiler', 'landlock')
 executable = Path(metadata['target_directory']) / 'debug/labs-archive-consumer'
 key = work / 'content-key'
 descriptor = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -85,4 +79,4 @@ assert responses[3]['ok']['state'] == 'Cancelled'
 assert 'expected' not in result.stdout and submission['source'] not in result.stdout
 print('Archive-only application submit, ownership and cancellation passed; no execution dependency.')
 PY
-printf 'Verified extracted Labs contracts, runner refusal and application consumer for %s.\n' "$version"
+printf 'Verified extracted Labs contracts and application consumer for %s.\n' "$version"

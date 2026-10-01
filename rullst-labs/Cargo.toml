@@ -33,3 +33,9 @@ tempfile = "3"
 [[example]]
 name = "course_app"
 required-features = ["sqlite"]
+
+# Non-executing controller sketch; `test = true` runs its tests with the crate's.
+[[example]]
+name = "byo_runner_controller"
+required-features = ["sqlite", "receipt-signing"]
+test = true

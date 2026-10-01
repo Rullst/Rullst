@@ -68,12 +68,6 @@ jobs:
             -D clippy::todo \
             -D clippy::unimplemented
 
-      - name: Run Clippy (Deny Panics) — isolated Labs controller and worker
-        run: >-
-          cargo clippy -p rullst-labs-runner --bins --all-features --
-          -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
-          -D clippy::todo -D clippy::unimplemented
-
       - name: Run Clippy (Deny Panics) — cargo-rullst production targets
         # `--lib --bins` covers the CLI engine and every shipped executable
         # without compiling `#[cfg(test)]` modules under the panic-deny lints.

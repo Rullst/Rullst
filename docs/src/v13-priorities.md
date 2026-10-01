@@ -87,7 +87,7 @@ does not select every research idea in its original wording.
 | M33 | Current-state SaaS entitlements | Access must reflect current account, tenant, plan and payment state; syntactic convenience comes later. |
 | M34 | One dependable TypeScript SDK profile | Maintain serialization and migration evidence; additional React/Dart/Swift targets require users and tests. |
 | M35 | Standard trace propagation/export and useful diagnosis | Build on existing OpenTelemetry collectors; a custom durable observability service is not a prerequisite. |
-| M40 | One bounded Academy Labs profile | Product value is concrete, but untrusted execution needs its outstanding independent isolation review. Keep the runner separate and unpublished until admitted; Labs need not block the rest of v13. |
+| M40 | One bounded Academy Labs profile | Product value is concrete, but untrusted execution needs independent isolation review. The runner candidate was removed from 13.0; applications bring their own runner through the documented contract. Labs need not block the rest of v13. |
 | M41 | Practical privacy and proportional age policies | Preserve minimal data, explicit decisions, consent and rights workflows. Supervision remains transparent and scoped; declarations/signals do not prove age, guardianship or cheating. |
 
 M4, M19, M27, M28 and M32 are the five already-implemented labels. The other
@@ -158,7 +158,7 @@ not merely writing the first implementation.
 | M15 — async delivery | Local/durable queues, retry/leases/outbox and Redis profile | Failure ordering, replay, shutdown and backend recovery. Finish one durable journey before broadening brokers. |
 | M17 — files/video | Private storage, multipart and Bunny browser/provider lifecycle | Upload interruption, signing/expiry, notifications, SDK and browser changes. Bound supported protocols and separate fixture evidence from live interoperability. |
 | M21 — native delivery | Desktop/mobile scaffolding and Android signing/artifact verification | SDK, OS, signing and device changes. Maintain current guarantees but defer broader device/offline promises without test resources. |
-| M40 — Labs | Trusted orchestration and separately isolated compiler/runner | Untrusted execution, OS/toolchain changes and independent review. Keep one narrow profile and a separate lifecycle; never trade containment for convenience. |
+| M40 — Labs | Trusted orchestration and the bring-your-own-runner contract | Contract stability, leases and grading. Execution, OS/toolchain changes and isolation review belong to the application-owned runner; keep one narrow profile and never trade containment for convenience. |
 | M41 — privacy/supervision | Age/consent/replay and transparent observation contracts | Sensitive state, retention, authorization and evolving product/legal requirements. Minimize data and keep application/jurisdiction obligations explicit; no automatic legal certification. |
 
 PQC, embedded hardware, autonomous production changes, generic replication and
@@ -187,7 +187,7 @@ automatically authorized implementation work.
 | S3 — reusable authorization test scenarios | A; M9/M12 | Offer a small application-test recipe or helper for anonymous/user/admin and two-tenant negative cases, using actual routes. Do not treat a static scanner as proof. |
 | S4 — resumable maintenance handoff | A; M1/M3/M12 | Keep a concise source-bound receipt of supported versions, unresolved findings, exact CI evidence, next commands and session/build cost. Reuse existing reports so later, less frequent sessions need not repeat the investigation. |
 | S5 — first-party facial age engine | B; M41 | Consider only with a suitable dataset, accuracy/bias and attack evaluation, capture/privacy controls, alternative paths and a long-term maintainer. Continue policy/attestation support independently. |
-| S6 — additional Labs languages | B; M40 | Add one demanded language only after the first profile's isolation review and operational acceptance, with separate toolchain/resource/threat tests. |
+| S6 — additional Labs languages | B; M40 | Add one demanded protocol profile only after a reviewed application-owned runner proves the first profile operationally, with separate toolchain/resource/threat tests. |
 | S7 — accessible, localized primary journeys | A; M5/M14 | Exercise keyboard focus, form errors, captions and translation/locale boundaries on the chosen auth, checkout and learning journeys. Reuse the existing LMS groundwork; automated checks do not establish universal accessibility or translation quality. |
 | S8 — per-tenant resource budgets | A; M10/M11/M15 | Define explicit quotas/backpressure for stored bytes, concurrent jobs, mail and AI usage, with atomic claims and visible rejection. Extend existing bounded contracts only where an application gap is demonstrated; no automatic provider-bill guarantee. |
 

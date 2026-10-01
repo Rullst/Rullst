@@ -95,7 +95,7 @@ homologated.
 | M37 | Reviewable one-click error-console patch workflow | 🟡 Still to implement — partial |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
 | M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
-| M40 | `rullst-labs` contracts and an isolated `rullst-labs-runner` | ⏳ Still to implement — separate v13 research/foundation; full offensive CTF arenas require external isolated infrastructure |
+| M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 Unpublished foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
 | M41 | Privacy controls and proportional age assurance | 🟡 Unpublished foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
 Planning labels checked on 20 September 2026: **5 implemented, 25 partial, and

@@ -1,21 +1,24 @@
-# Rullst Labs and isolated runner roadmap
+# Rullst Labs roadmap: bring your own runner
 
-> **Status:** v13 implementation candidate; the first-profile decision is recorded,
-> and [source admission passed in PR #228](labs-first-profile.md#recorded-linux-acceptance).
-> Final release admission and independent review remain outstanding. The recorded
-> patch-coverage gap remains a quality limitation. This document is not evidence that Rullst can
-> safely execute untrusted code in production.
+> **Status:** `rullst-labs` is a v13 implementation candidate; final release
+> admission remains outstanding. The separately deployed `rullst-labs-runner`
+> candidate passed [source admission in PR #228](labs-first-profile.md#recorded-linux-acceptance)
+> and was then **removed from the workspace for 13.0** (maintainer decision of
+> 30 September 2026); its source remains in git history. Applications bring
+> their own runner through the [controller contract](labs-runner-contract.md).
+> This document is not evidence that Rullst can safely execute untrusted code in
+> production.
 
 Rullst should make interactive programming exercises, deterministic graders and
 bounded learning games easier to build without placing untrusted code inside an
-application server. The proposed design deliberately separates the trusted
-control plane from the untrusted execution plane.
+application server. The design deliberately separates the trusted control plane
+(`rullst-labs`) from the untrusted execution plane, which is now owned and
+operated by the application.
 
 ## Package and deployment boundaries
 
-Both unpublished packages are implementation candidates in the Rullst monorepo so their contracts,
-compatibility tests, security reviews and versioning can evolve together. They
-must remain opt-in and must not become default dependencies of `rullst`.
+`rullst-labs` is an unpublished implementation candidate in the Rullst monorepo.
+It must remain opt-in and must not become a default dependency of `rullst`.
 
 ### `rullst-labs`
 
@@ -34,25 +37,41 @@ profile-independent contracts remain roadmap work. Its responsibilities are:
 It must never interpret raw shell strings, spawn learner code, grant execution
 permissions or treat an AI-generated assessment as authoritative evidence.
 
-### `rullst-labs-runner`
+### Application-owned runner
 
-`rullst-labs-runner` is a separately deployed binary/service for the untrusted
-execution plane. The singular name describes one runner service even when an
-installation operates many workers. The first Linux Rust/Wasmi implementation
-requires actual namespaces/cgroups/seccomp/Landlock enforcement. The named Linux
-journey and workspace/archive source admission passed in PR #228; final release
-admission and independent review remain outstanding. Its responsibilities are:
+The runner is a separately deployed program owned and operated by the
+application for the untrusted execution plane. Its trusted controller uses the
+`rullst-labs` job plane (`claim_next`, `lease_status`, `complete`,
+`abandon_attempt`, `cleanup_candidates`, `reconcile_cleanup`) and signs
+receipts; its isolated worker receives only bounded `WorkerInput` data. The
+[controller contract](labs-runner-contract.md) states the exact obligations and
+the non-executing `byo_runner_controller` example shows the controller flow.
+The runner's responsibilities are:
 
-- an authenticated, versioned and bounded request protocol;
-- queue leases, cancellation, retry, idempotency and stale-job recovery;
+- leased, cancellable work with stale-attempt fencing and recovery;
 - pinned images and toolchains, disposable workspaces and capped artifacts;
-- exact compile, test, lint and grader outcomes; and
-- signed or otherwise integrity-bound, privacy-minimized execution receipts.
+- actually enforced and observed isolation and resource limits;
+- exact, bounded worker outcomes for the trusted grader; and
+- signed, privacy-minimized execution and cleanup receipts.
 
 The runner must never be embedded in the HTTP application process. The
 application must not mount a Docker, Podman, containerd or Kubernetes control
 socket merely to operate it. Deployment credentials, host secrets and cloud
 metadata must be absent from the execution environment.
+
+### Removed `rullst-labs-runner` candidate
+
+The workspace contained an experimental `rullst-labs-runner`: a Linux x86-64
+controller that compiled the fixed Rust 1.96.0 profile to Wasm and interpreted
+it with Wasmi 2.0.0 under delegated cgroups v2, unprivileged namespaces,
+seccomp and separate Landlock domains. Its named Linux journey and
+workspace/archive source admission passed in PR #228. On 30 September 2026 the
+maintainer decided to remove it from the 13.0 workspace rather than publish it,
+consistent with the [maintenance-scope](v13-maintenance-scope.md) assessment of
+its very high security and operational burden. Its independent isolation review
+never took place, and it was never published. The source remains in git
+history, and the [first-profile record](labs-first-profile.md) preserves its
+design and evidence as a reference for application-owned runners.
 
 ## Isolation baseline
 
@@ -78,18 +97,20 @@ published. No backend may promise that arbitrary hostile code is risk-free.
 
 ## Backend progression
 
+These phases now describe what an application-owned runner must demonstrate;
+Rullst does not ship a backend for any of them.
+
 | Phase | Scope | Required evidence before promotion |
 | :--- | :--- | :--- |
 | 0 | Protocol, threat model, ADR, policy validation and offline mock | Contract, abuse-case and compatibility tests; no untrusted execution claim |
-| 1 | Restricted Wasm exercises; the selected first profile uses pinned Rust compilation and Wasmi in a separate restricted Linux process | Compiler and interpreter resource bounds, filesystem, environment, network, fuel/memory, output and recovery tested; WASI/component capabilities need their own later profile |
+| 1 | Restricted Wasm exercises; the protocol's first profile names pinned Rust compilation and Wasmi in a separate restricted Linux process | Compiler and interpreter resource bounds, filesystem, environment, network, fuel/memory, output and recovery tested; WASI/component capabilities need their own later profile |
 | 2 | Rootless OCI backend for workloads that require native toolchains | Pinned runtime choice, kernel hardening, resource-exhaustion and escape regressions |
 | 3 | Optional microVM or independently operated cloud sandbox tier | External operational evidence, image provenance, isolation review and incident procedures |
 
 The [first-profile decision](labs-first-profile.md) selects a bounded Rust
 pure-function journey; native Rullst server exercises remain outside it.
-The first supported language pack should be Rust/Rullst. Additional languages
-must reuse the same policy and receipt contracts instead of adding ad-hoc shell
-execution paths.
+Additional languages need a new `rullst-labs` protocol profile reusing the same
+policy and receipt contracts instead of adding ad-hoc shell execution paths.
 
 ## Learning and game scope
 
@@ -124,10 +145,11 @@ make a full offensive CTF safe.
 
 ## Acceptance gates
 
-Before either package can be described as production-ready for untrusted code:
+Before `rullst-labs` with any runner can be described as production-ready for
+untrusted code, the runner's operator must:
 
 - approve a threat model and architecture decision record;
-- obtain an independent security review of the selected isolation backend;
+- obtain an independent security review of the deployed isolation backend;
 - test fork/process, memory, CPU, disk and output exhaustion;
 - test path traversal, symlink races, environment leakage and artifact escapes;
 - test network denial, cloud-metadata denial and cross-tenant replay/isolation;
@@ -145,6 +167,11 @@ Before either package can be described as production-ready for untrusted code:
 - store, certification or platform guarantees that require external evidence.
 
 ## v13 usable journey target
+
+**Historical.** This target guided the removed runner candidate. Since its
+removal, the execution and isolation parts of steps 3 and 5 belong to the
+application-owned runner; the contract, grading, cancellation, recovery and
+retention parts remain in `rullst-labs`.
 
 On September 20 the owner prioritized completing Bunny Stream and then Labs
 before opening more optional implementation streams. Phase 0 remains necessary
@@ -189,26 +216,25 @@ must not be bundled into its claim.
 
 ## v13 delivery checklist
 
-Checked items describe the implemented first-profile candidate, not stable
-publication or production readiness. Broader schemas/backends retain their own
-acceptance requirements.
+Checked items describe implemented candidate work, not stable publication or
+production readiness. Broader schemas/backends retain their own acceptance
+requirements.
 
 - [x] Record the Phase 0 threat model and first-profile architecture decision.
 - [x] Implement bounded versioned exercise/request/worker/receipt types and decoding for the selected profile.
 - [x] Implement policy validation and an explicit simulation that cannot produce real execution evidence.
 - [x] Implement application-authorized shared-local SQLite transport, encrypted content, idempotency, fenced leases and cancellation.
-- [x] Exercise the pinned Rust-to-Wasm/Wasmi Linux profile against the named hosted execution and denial fixtures.
+- [x] Exercise the pinned Rust-to-Wasm/Wasmi Linux profile against the named hosted execution and denial fixtures (removed runner candidate, PR #228).
 - [x] Exercise tenant/learner denial, minimized results, terminal source removal and bounded retention.
-- [x] Document candidate host preparation, shared kernel capacity, protected keys and failure recovery.
 - [x] Pass workspace/platform and extracted-package source admission (PR #228).
-- [ ] Address the recorded non-required patch-coverage gap without weakening isolation.
-- [ ] Complete independent isolation review and final release/package admission.
-- [ ] Evaluate rootless OCI or microVM backends as separate later profiles.
+- [x] Remove the runner candidate from the 13.0 workspace; document the bring-your-own-runner [controller contract](labs-runner-contract.md) with a non-executing example controller.
+- [ ] Complete final release/package admission of `rullst-labs`.
+- [ ] Application-owned runners: independent isolation review of each deployed backend before any production hostile-code claim.
+- [ ] Evaluate rootless OCI or microVM profiles as separate later protocol work.
 - [ ] Add native Rust/Rullst application, general Cargo, test and lint language packs; the pure-function profile does not provide them.
 - [ ] Reconsider offensive CTF infrastructure only through its separately governed experimental deployment and review.
 
-The candidates belong to the Cargo workspace but remain `publish = false` and
-outside the release-order manifest until their separate admission requirements
-pass. If the runner's security or operational lifecycle later
-requires a separate repository, the versioned protocol must allow that move
-without coupling applications to its implementation.
+`rullst-labs` belongs to the Cargo workspace but remains `publish = false` and
+outside the release-order manifest until its separate admission requirements
+pass. The versioned protocol keeps applications independent of any particular
+runner implementation.
