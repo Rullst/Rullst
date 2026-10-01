@@ -23,7 +23,10 @@ cargo rullst dash
 ```
 
 There is no hot-reload question in the v12 wizard. Both commands supervise
-reloads automatically; use `cargo run` for ordinary execution.
+reloads automatically; use `cargo run` for ordinary execution. In v13 the
+dashboard also shows live requests/s, latency, errors and, when reported, ORM
+and queue figures, and `r` restarts the application without rebuilding (see the
+[CLI reference](../cli_reference.md#cargo-rullst-dash)).
 
 ## What a save does
 

@@ -1133,8 +1133,60 @@ input queues are bounded, ANSI control sequences are removed, terminal state is
 restored on error, and the owned application process is stopped and reaped when
 the dashboard exits.
 
-The layout adapts to narrower terminals and provides these keyboard controls:
+**Live metrics (v13).** Once a second the dashboard reads
+`GET /_rullst/dev-telemetry` from the application it started, on
+`127.0.0.1:<port>`, and shows only what the application reports:
 
+* requests per second over the last 10 s, from the application's exact request
+  counters, and 4xx/5xx totals since the process started;
+* errors: 5xx responses and their share of all requests over the last 60 s;
+* p50/p95 latency over the last 60 s and a p95-per-poll sparkline (up to two
+  minutes), computed from the individual requests the dashboard observed. They
+  are marked `sampled` when more requests arrived between two polls than the 64
+  newest the application returns;
+* the newest requests with status, method, duration and path (never the query
+  string);
+* ORM queries since start and slow ORM operations (at least 100 ms);
+* the pending jobs of a queue.
+
+Counters, latency samples and slow operations restart with every new process
+(a rebuild or `r`); the request list and the sparkline keep earlier entries.
+Histories are bounded: 120 sparkline points, 50 requests, 16 slow operations and at most
+4,096 latency samples. A response larger than 256 KiB, with another schema or
+with inconsistent counters is rejected, and control or bidirectional-formatting
+characters are replaced before anything reaches the terminal. A value the
+application does not report is shown as `not reported`, never as zero.
+
+The endpoint exists only in a debug build running in Development under
+`cargo rullst dev`/`dash`; see the
+[telemetry guide](telemetry-guide.md#development-dashboard-endpoint). When the
+application does not serve it, the metrics row is replaced by a **TELEMETRY NOT
+AVAILABLE** panel with these steps:
+
+1. Serve the application with `rullst::Server` from Rullst 13 or newer (the
+   generated starters do).
+2. Run a debug build in Development: leave `RULLST_ENV`/`APP_ENV` unset or set
+   `RULLST_ENV=development`.
+3. Press `r` (or save a file) to restart.
+
+| Value | Reported when | To enable it |
+| :--- | :--- | :--- |
+| Requests, latency, errors | The endpoint answers. | The steps above. |
+| ORM queries and slow operations | Rullst's default tracing subscriber is installed (`Server::run` installs it when the application has none) and keeps `rullst_orm` INFO spans. | Do not install another global subscriber first, and do not filter out `rullst_orm=info` with `RUST_LOG`. |
+| Queue pending | The application passes its queue to the server. | `Server::new(router).with_dev_queue(queue)` (accepts a `Queue` or an `Arc<Queue>`). |
+
+ORM queries count the outermost `rullst.orm.query` span of each ORM operation
+(model queries, saves, deletes and `Orm::raw`). One operation can run several
+SQL statements, and SQL executed directly through SQLx is not counted.
+
+Terminals at least 26 rows tall show the metrics row and terminals at least 105
+columns wide add the recent-requests panel; shorter terminals show a one-line
+summary in the header. The layout adapts to narrower terminals and provides
+these keyboard controls:
+
+* `r`: restart the application from the current build (no rebuild). It is
+  ignored while the application is still starting and reports when the
+  supervisor is busy, for example with a migration.
 * `o`: open the application.
 * `s`: probe the loopback Studio endpoint and open it only when reachable.
 * `d`: open existing Scalar docs. Missing files produce explicit
@@ -1142,7 +1194,12 @@ The layout adapts to narrower terminals and provides these keyboard controls:
 * `m`: run `db:migrate` asynchronously and report its real exit result.
 * `/`: search both log panes; `f` cycles all/warning+error/error filtering.
 * `Tab`: switch the focused log pane; arrows and Page Up/Page Down scroll it.
-* `c`: clear dashboard logs; `q` or `Esc`: exit.
+* `c`: clear dashboard logs.
+* `?`: keyboard and metrics help. Any key closes it; `q` still quits.
+* `q` or `Esc`: exit (`Esc` closes the help first).
+
+The footer lists `d` and `Tab` only on terminals at least 120 columns wide; the
+help always lists every key.
 
 The animated neon palette is enabled only for an interactive terminal. Set
 `RULLST_REDUCED_MOTION=1` to keep colors with static rendering, or `NO_COLOR=1`
@@ -1176,6 +1233,9 @@ legacy scaffolds can use their directly linked router; the supervisor removes
 
 See [Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.md)
 for limitations, failure recovery and the v13 architecture decision.
+
+`dev` keeps its plain output; at startup it prints one line suggesting
+`cargo rullst dash` for live requests, latency, errors and database metrics.
 
 * **Optional Flags:**
   * `--ts-sync`: Regenerates the TypeScript client SDK (`rullst-client.ts`, as `generate:ts` writes it from the routes in `src/main.rs` and `src/lib.rs`) after the initial build and after every successful rebuild. A failed generation is reported and the application keeps running.
