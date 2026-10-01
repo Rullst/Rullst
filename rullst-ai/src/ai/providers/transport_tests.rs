@@ -238,3 +238,45 @@ async fn ollama_accepts_its_own_scheme_less_host_form() {
     let request = server.await.unwrap().unwrap();
     assert!(String::from_utf8_lossy(&request).starts_with("POST /api/chat "));
 }
+
+#[tokio::test]
+async fn openai_reports_an_incomplete_reply_on_text_and_vision_paths() {
+    const PNG: &[u8] = b"\x89PNG\r\n\x1a\nfixture";
+    for finish_reason in ["length", "content_filter"] {
+        for vision in [false, true] {
+            let body = format!(
+                r#"{{"choices":[{{"message":{{"content":"partial"}},"finish_reason":"{finish_reason}"}}]}}"#
+            );
+            let (endpoint, server) = serve(success(&body)).await;
+            let provider = OpenAiProvider::new("fixture-api-key")
+                .with_base_url(endpoint)
+                .with_request_timeout(Duration::from_secs(3));
+            let result = if vision {
+                provider.prompt_with_image("describe", PNG).await
+            } else {
+                provider.prompt("hello").await
+            };
+            assert!(server.await.unwrap().is_some());
+            assert!(
+                matches!(&result, Err(crate::ai::AiError::ApiError(message)) if message.contains(finish_reason)),
+                "{finish_reason} (vision: {vision}) was returned as a complete reply"
+            );
+        }
+    }
+
+    // A complete vision reply is returned, and the request leaves the output
+    // limit to the model instead of sending the deprecated `max_tokens`.
+    let body = r#"{"choices":[{"message":{"content":"a chart"},"finish_reason":"stop"}]}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    let answer = OpenAiProvider::new("fixture-api-key")
+        .with_base_url(endpoint)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt_with_image("describe", PNG)
+        .await
+        .unwrap();
+    assert_eq!(answer, "a chart");
+    let request = server.await.unwrap().unwrap();
+    let request = String::from_utf8_lossy(&request);
+    assert!(request.contains("image_url"));
+    assert!(!request.contains("max_tokens"));
+}

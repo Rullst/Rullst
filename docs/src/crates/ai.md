@@ -26,7 +26,9 @@ Anthropic requests allow up to 16,000 output tokens unless `AnthropicProvider::w
 sets another limit (the Messages API requires one, and adaptive thinking counts toward it; a longer
 reply may also need a longer `with_request_timeout`). A reply the API reports as cut short (`stop_reason`
 `max_tokens` or `model_context_window_exceeded`) or declined (`refusal`) returns
-`AiError::ApiError` instead of the partial text.
+`AiError::ApiError` instead of the partial text. `OpenAiProvider` sends no output limit on text or
+vision requests, so the model's own limit applies, and a reply whose `finish_reason` is `length` or
+`content_filter` likewise returns `AiError::ApiError`.
 
 `OpenAiCompatibleProvider` covers servers implementing the named OpenAI
 `/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;

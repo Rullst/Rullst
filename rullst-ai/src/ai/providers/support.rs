@@ -97,6 +97,23 @@ pub(super) fn openai_chat_content(
         .ok_or_else(|| AiError::ApiError(format!("{provider} returned no message content")))
 }
 
+/// Rejects an OpenAI-style completion whose first choice stopped at the output
+/// token limit (`finish_reason` `length`) or had content withheld by a content
+/// filter (`content_filter`), so partial text is never returned as complete.
+pub(super) fn reject_incomplete_choice(
+    response: &serde_json::Value,
+    provider: &'static str,
+) -> Result<(), AiError> {
+    let (finish_reason, cause) = match response["choices"][0]["finish_reason"].as_str() {
+        Some(reason @ "length") => (reason, "the reply reached the output token limit"),
+        Some(reason @ "content_filter") => (reason, "a content filter withheld part of the reply"),
+        _ => return Ok(()),
+    };
+    Err(AiError::ApiError(format!(
+        "{provider} reply is incomplete: {cause} (finish_reason {finish_reason})"
+    )))
+}
+
 pub(super) fn embedding_values(
     values: Option<&Vec<serde_json::Value>>,
     provider: &'static str,
