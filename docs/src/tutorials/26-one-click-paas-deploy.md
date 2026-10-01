@@ -100,6 +100,10 @@ DATABASE_URL = "sqlite:///opt/rullst/my_rullst_app/data/db.sqlite"
 APP_KEY = "REPLACE_WITH_A_STRONG_RANDOM_KEY"
 ```
 
+Caddy proxies to the `[app] port` (3000 when omitted) and the health check
+probes it. Foundry passes that port to the service as `PORT`, so an `[env] PORT`
+must name the same port (when `[app] port` is omitted, `[env] PORT` selects it).
+
 ### Step 2: Run the reviewed deployment command
 
 ```bash

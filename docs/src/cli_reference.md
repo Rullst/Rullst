@@ -1182,7 +1182,10 @@ non-interactive `sudo`. Candidate files are staged under an application-specific
 `/opt/rullst/<app>/incoming` (mode `0700`, owned by the SSH user), and its
 owner and the SHA-256 of the local build are checked before it is installed.
 The Caddy configuration is validated, and `.previous` copies of replaced files
-are retained. The application runs as a dedicated
+are retained. The service environment file holds the `[env]` table plus
+`PORT`, the `[app] port` (default 3000) that Caddy proxies to and the health
+check probes, unless `[env]` sets `PORT` itself; an `[env] PORT` different from
+`[app] port` is rejected. The application runs as a dedicated
 `rullst-<app>` system account (created with `useradd`) under a sandboxed unit
 (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
 capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
