@@ -264,6 +264,25 @@ mod tests {
     }
 
     #[test]
+    fn auth_starters_keep_the_password_hash_out_of_model_json() {
+        // `to_json()` feeds audit rows and the post-commit Redis model events,
+        // and it omits only `#[orm(hidden)]` fields.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            if !matches!(blueprint, "lms" | "saas") {
+                continue;
+            }
+            let user = manifest
+                .iter()
+                .find_map(|(path, source)| (*path == "src/models/user.rs").then_some(source))
+                .unwrap_or_else(|| panic!("{blueprint} emits no User model"));
+            assert!(
+                user.contains("#[orm(hidden)]\n    pub password_hash: Option<String>,"),
+                "{blueprint}: password_hash must be #[orm(hidden)]"
+            );
+        }
+    }
+
+    #[test]
     fn content_blueprints_render_under_the_production_csp() {
         // Production headers send `style-src 'self' 'nonce-…'; font-src 'self';
         // img-src 'self' data:`, which blocks style attributes, nonce-less
