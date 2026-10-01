@@ -1,10 +1,4 @@
-//! The Blog starter's controller template.
-
-/// Reads posts through bounded, ordered queries: the index pages through the
-/// newest posts and a post is looked up by its slug, so neither depends on
-/// the ORM's default row cap. Database failures return `503`, not `404`.
-/// `robots.txt` and `sitemap.xml` use absolute URLs from `RULLST_PUBLIC_ORIGIN`.
-pub(super) const BLOG_CONTROLLER: &str = r##"use rullst::server::{Extension, IntoResponse, Path, Query, Response, StatusCode};
+use rullst::server::{Extension, IntoResponse, Path, Query, Response, StatusCode};
 use rullst::response::Html;
 use crate::models::post::Post;
 use crate::pages::blog;
@@ -152,4 +146,3 @@ mod tests {
         }
     }
 }
-"##;
