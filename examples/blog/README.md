@@ -7,12 +7,16 @@ or proof that every crate and feature is exercised.
 
 ## Demonstrated paths
 
-- `/`: server-rendered posts using the `html!` macro and ORM.
+- `/`: server-rendered posts using the `html!` macro and an ORM model whose
+  `tenant_column` fails closed outside the request's `TenantContext`. Stories
+  are bounded for a public deployment: titles up to 120 characters, bodies up
+  to 4,000, at most 100 per tenant and 64 KiB per form (422, 403 and 413
+  otherwise); the page lists the newest 20.
 - `/live-feed` and `/_live`: server-driven WebSocket example.
-- `/editor`: Wasm island mounting example.
 - `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
-- `/posts/repository`: parameterized repository queries.
+- `/posts/repository`: parameterized repository queries bound to the selected
+  tenant, listing its newest 20 posts with 160-character previews.
 - `/pricing`: `Billable` quotas, payment-adapter mock fixtures, and an unsigned,
   offline DPS XML preview. It never issues or signs an NFS-e.
 - `/security-demo`: bounded, instrumented security-control demonstrations. The
@@ -54,22 +58,28 @@ not work around CSRF by disabling either validation or secure cookie attributes.
 
 ## Local setup
 
-From the workspace root, create `examples/blog/.env` with an application key
-and database URL:
+Create `examples/blog/.env` with an application key:
 
 ```dotenv
 RULLST_ENV=development
 APP_KEY=replace-with-at-least-32-random-bytes
-DATABASE_URL=sqlite://blog.db
 RULLST_PUBLIC_ORIGIN=https://showcase.example.com
 ```
 
-Then run:
+Then run the showcase from its own directory, so `Server` reads this `.env` and
+`Rullst.toml`:
 
 ```bash
-touch examples/blog/blog.db
+cd examples/blog
 cargo run -p rullst-blog-example
 ```
+
+The binary creates the schema and seed posts in the same database that
+`Server`, Studio and the `db:*` Artisan commands use: the process
+`DATABASE_URL`, then `DATABASE_URL` from `.env`, then `[database].url` from
+`Rullst.toml` (`sqlite://blog.db?mode=rwc`, which creates `blog.db` on first
+start). A deployment's `DATABASE_URL`, such as the one in `Foundry.toml`, is
+therefore honored.
 
 Open `http://127.0.0.1:3000`, then use the Studio and Nexus buttons. Studio is
 served on `http://127.0.0.1:5555`; Nexus accepts only a verified loopback peer in
@@ -106,10 +116,18 @@ header.
 
 ## Security boundary
 
-The showcase loads third-party development assets and consequently uses a relaxed
-demo CSP for those pages. It is not the production header baseline. A deployed
-application should self-host or explicitly trust assets, use per-response nonces,
-and test the final CSP.
+Every page is served with Rullst's production header baseline: the nonce-based
+Content Security Policy, `X-Frame-Options: DENY` and
+`Cross-Origin-Embedder-Policy: require-corp`. The router mounts
+`headers_middleware` itself, so local development shows the policy that
+`Server` enforces in staging and production. The stylesheet, behavior module,
+logo, HTMX 1.9.12 with its WebSocket extension and Pico.css 2.1.1 are
+same-origin files embedded from `assets/` (provenance and digests are in
+`assets/vendor/README.md`). Pages use classes instead of inline `style`
+attributes and a delegated `data-action` module instead of inline event
+handlers, and `/omni` no longer frames the application. A router test renders
+every page and rejects inline styles, handlers, cross-origin subresources and
+frames. This shows the pages work under the policy; it is not a scanner grade.
 
 The `/wp-admin` button crosses the mounted deception middleware, records the
 socket peer as a local unsigned event, and returns `403`. The generic honeypot

@@ -7,7 +7,7 @@ use rullst::html;
 use rullst_ai::ai::cosine_similarity;
 use serde::Deserialize;
 
-use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
+use crate::showcase_nav::{render_head_assets, render_showcase_nav};
 
 #[derive(Deserialize, Default)]
 pub struct AiSearchQuery {
@@ -39,7 +39,7 @@ fn dummy_embed(text: &str) -> Vec<f32> {
 /// Handler for the AI & RAG showcase route (`/ai-assistant`).
 pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
     let nav = render_showcase_nav("/ai-assistant");
-    let styles = render_shared_styles();
+    let head_assets = render_head_assets();
 
     let user_query = query.q.unwrap_or_default();
     let mut search_results_html = String::new();
@@ -80,25 +80,29 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
             .iter()
             .map(|(title, snippet, score)| {
                 let score_pct = (score * 100.0).round();
-                let score_color = if score_pct > 50.0 { "#10b981" } else { "#64748b" };
+                let score_class = if score_pct > 50.0 {
+                    "score score-high"
+                } else {
+                    "score score-low"
+                };
                 html! {
-                    <div style="background: #05070c; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1.25rem; margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h4 style="color: #38bdf8; margin: 0;">{title}</h4>
-                            <span style={format!("font-size: 0.8rem; font-weight: 700; color: {};", score_color)}>
+                    <div class="search-result">
+                        <div class="search-result-header">
+                            <h4 class="search-result-title">{title}</h4>
+                            <span class={score_class}>
                                 {format!("Cosine Match: {:.0}%", score_pct)}
                             </span>
                         </div>
-                        <p style="color: #cbd5e1; font-size: 0.9rem; margin: 0.5rem 0 0 0;">{snippet}</p>
+                        <p class="search-result-snippet">{snippet}</p>
                     </div>
                 }
             })
             .collect();
 
         search_results_html = html! {
-            <div style="margin-top: 1.5rem;">
-                <h3 style="color: var(--text-main); font-size: 1.1rem; margin-bottom: 1rem;">
-                    "Semantic Vector Search Results for: " <span style="color: var(--accent-cyan);">{"\""}{&user_query}{"\""}</span>
+            <div class="results">
+                <h3 class="results-heading">
+                    "Semantic Vector Search Results for: " <span class="query-echo">{"\""}{&user_query}{"\""}</span>
                 </h3>
                 { rullst::html::RawHtml(items) }
             </div>
@@ -109,34 +113,34 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst AI - Provider-Agnostic Vector Semantic Search"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-                <style>{ rullst::html::RawHtml(styles) }</style>
+                { rullst::html::RawHtml(head_assets) }
             </head>
             <body>
                 { rullst::html::RawHtml(nav) }
                 <div class="container">
                     <div class="card">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div class="card-header">
                             <div>
                                 <h1 class="card-title">
                                     "AI RAG & Vector Semantic Search"
                                     <span class="feature-tag tag-ai">"rullst-ai"</span>
                                 </h1>
-                                <p style="color: var(--text-muted);">
+                                <p class="muted">
                                     "Provider-agnostic LLM integration (Gemini, Claude, OpenAI, DeepSeek, Ollama) with local Cosine Similarity vector indexing and built-in Prompt Injection defense."
                                 </p>
                             </div>
                         </div>
 
-                        <form method="get" action="/ai-assistant" style="margin-top: 1.5rem;">
-                            <div style="display: flex; gap: 0.75rem;">
+                        <form method="get" action="/ai-assistant" class="search-form">
+                            <div class="inline-form">
                                 <input
                                     type="text"
                                     name="q"
-                                    value={rullst::html::escape_str(&user_query)}
+                                    value={&user_query}
                                     placeholder="Search by meaning: e.g. 'security permissions', 'database multi-tenant', 'edge IoT'"
-                                    style="flex: 1; background: #05070c; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; font-size: 0.95rem;"
+                                    class="search-input"
                                 />
                                 <button type="submit" class="btn">"Semantic Search"</button>
                             </div>
@@ -147,7 +151,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
 
                     <div class="card">
                         <h2 class="card-title">"Prompt Injection Shield"</h2>
-                        <p style="color: var(--text-muted);">
+                        <p class="muted">
                             "Protects your backend AI models by filtering adversarial jailbreak attempts before sending prompts to LLMs."
                         </p>
                         <div class="code-block">
@@ -161,4 +165,25 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
             </body>
         </html>
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn search_box_value_is_escaped_exactly_once() {
+        let response = ai_page(Query(AiSearchQuery {
+            q: Some("R&D \"quoted\"".to_string()),
+        }))
+        .await
+        .into_response();
+        let body = axum::body::to_bytes(response.into_body(), 512 * 1024)
+            .await
+            .expect("bounded AI demo response");
+        let html = String::from_utf8(body.to_vec()).expect("AI demo is UTF-8 HTML");
+        assert!(html.contains("value=\"R&amp;D &quot;quoted&quot;\""));
+        assert!(!html.contains("&amp;amp;"));
+        assert!(!html.contains("&amp;quot;"));
+    }
 }
