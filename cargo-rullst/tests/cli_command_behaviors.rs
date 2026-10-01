@@ -476,6 +476,10 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
             "APP_KEY = \"fixture-secret-with-adequate-length\"",
         );
     fs::write(foundry_path, foundry).expect("configured Foundry manifest");
+    // The fake Cargo builds nothing; deploy hashes the binary before upload.
+    let release = fixture.root.join("target/release");
+    fs::create_dir_all(&release).expect("release directory");
+    fs::write(release.join("cli-fixture"), b"fixture binary").expect("release binary fixture");
     fixture.succeeds_with_path(&["foundry:deploy"], &tools);
 
     assert_files(
