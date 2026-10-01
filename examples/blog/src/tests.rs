@@ -273,3 +273,49 @@ async fn posts_and_repository_views_stay_inside_the_selected_tenant() {
     let (status, _) = get_html(&app, "/", "tenant-outside-membership").await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn seeding_is_idempotent_and_never_deletes_visitor_posts() {
+    use crate::app::{PATTERNS_TITLE, Post, SEED_TENANT, WELCOME_TITLE, seed_showcase_posts};
+    use rullst_orm::with_tenant;
+
+    database().await;
+    // Matches the title and body patterns the old startup cleanup deleted.
+    let lookalike = format!(
+        "Architecture Deep Dive: our migration {}",
+        std::process::id()
+    );
+    with_tenant("tenant-enterprise", async {
+        Post {
+            id: 0,
+            tenant_id: "tenant-enterprise".to_string(),
+            title: lookalike.clone(),
+            body: "Notes about Topcoat".to_string(),
+        }
+        .save()
+        .await
+    })
+    .await
+    .expect("visitor post");
+
+    seed_showcase_posts().await.expect("first start");
+    seed_showcase_posts().await.expect("restart");
+
+    for title in [WELCOME_TITLE, PATTERNS_TITLE] {
+        let seeded = with_tenant(SEED_TENANT, async {
+            Post::query().where_eq("title", title).count().await
+        })
+        .await
+        .expect("seed count");
+        assert_eq!(seeded, 1, "{title} must be seeded exactly once");
+    }
+    let kept = with_tenant("tenant-enterprise", async {
+        Post::query()
+            .where_eq("title", lookalike.as_str())
+            .count()
+            .await
+    })
+    .await
+    .expect("visitor post count");
+    assert_eq!(kept, 1);
+}
