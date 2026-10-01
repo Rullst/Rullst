@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790828246978,
+  "lastUpdate": 1790831621192,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13953,6 +13953,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4051,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27ead7f102189385a7b3f61acbe93fcf52d578b3",
+          "message": "Merge pull request #368 from Rullst/fix/v13-cli-blueprint-review-fixes\n\nfix(cli): portable starter migrations, protected ERP dashboard, bounded auth hashing and CSP-safe pages",
+          "timestamp": "2026-10-01T01:55:28-03:00",
+          "tree_id": "5cffdc81f297e4bcf99a8f1d65fab692d163abdd",
+          "url": "https://github.com/Rullst/Rullst/commit/27ead7f102189385a7b3f61acbe93fcf52d578b3"
+        },
+        "date": 1790831620698,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1048,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 834,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1919,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4557,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
