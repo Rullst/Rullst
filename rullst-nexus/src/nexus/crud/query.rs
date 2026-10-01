@@ -79,6 +79,16 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     }
 }
 
+/// Whether `field` is matched by the list search: a visible text, textarea,
+/// e-mail or URL column.
+pub(crate) fn is_searchable(field: &FieldMeta) -> bool {
+    !field.hidden
+        && matches!(
+            field.kind,
+            FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
+        )
+}
+
 /// Sanitizes an identifier name preventing SQL injection in dynamic DDL/DML.
 pub fn sanitize_identifier(name: &str) -> String {
     let mut res = String::with_capacity(64);
@@ -134,17 +144,15 @@ pub fn build_table_query(
         let text_fields: Vec<String> = entry
             .fields
             .iter()
-            .filter(|f| {
-                !f.hidden
-                    && matches!(
-                        f.kind,
-                        FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
-                    )
-            })
+            .filter(|f| is_searchable(f))
             .map(|f| sanitize_identifier(f.name))
             .collect();
 
-        if !text_fields.is_empty() {
+        if text_fields.is_empty() {
+            // No column can match the query, so no row is a search result;
+            // unfiltered rows must not be presented as matches.
+            predicates.push("1 = 0".to_string());
+        } else {
             let where_clauses: Vec<String> = text_fields
                 .iter()
                 .enumerate()
@@ -296,6 +304,31 @@ mod tests {
         assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
         assert!(!sql.contains("api_key"), "{sql}");
         assert!(sql.contains("ORDER BY id asc"), "{sql}");
+    }
+
+    #[test]
+    fn search_without_a_searchable_column_matches_nothing() {
+        let entry = RegistryEntry {
+            table: "orders",
+            label: "Orders",
+            icon: "O",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+                FieldMeta::new("total", "Total", FieldKind::Number),
+                FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+            ],
+        };
+        let visible = vec![&entry.fields[0], &entry.fields[1]];
+        let (sql, binds) = build_table_query(&entry, &visible, "refunded", 1, None, None, None);
+        assert!(sql.contains(" WHERE 1 = 0 ORDER BY"), "{sql}");
+        assert!(!sql.contains("note"), "{sql}");
+        assert!(binds.is_empty());
+
+        // An empty query still lists every row.
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, None);
+        assert!(!sql.contains("WHERE"), "{sql}");
     }
 
     #[test]

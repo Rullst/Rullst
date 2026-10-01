@@ -68,7 +68,9 @@ visible text, textarea, e-mail and URL columns. It is case-insensitive on
 PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
 collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
 page 1, rebuilds the sort and pagination links for the new query and records it
-in the URL, so saving a record refreshes the same view.
+in the URL, so saving a record refreshes the same view. A model without such a
+visible column shows no search box, and a search query sent to it lists no rows
+(with a note) instead of every row.
 
 The list sorts only by the record key and visible, non-`Password` columns. A
 `sort_by` naming a hidden or `Password` column orders by the key instead, so a
