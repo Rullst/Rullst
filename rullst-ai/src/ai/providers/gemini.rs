@@ -119,6 +119,7 @@ impl GeminiProvider {
             .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
         let json = read_json(response, self.provider_name()).await?;
+        reject_incomplete(&json["candidates"][0])?;
         let text = json["candidates"][0]["content"]["parts"]
             .as_array()
             .and_then(|parts| parts.iter().find_map(|part| part["text"].as_str()))
@@ -129,6 +130,23 @@ impl GeminiProvider {
             TokenUsage::from_gemini(&json["usageMetadata"]),
         ))
     }
+}
+
+/// Rejects a candidate that stopped at the output token limit or whose
+/// content was withheld, so partial text is never returned as complete
+/// (`FinishReason`, <https://ai.google.dev/api/generate-content#FinishReason>).
+fn reject_incomplete(candidate: &serde_json::Value) -> Result<(), AiError> {
+    let (finish_reason, cause) = match candidate["finishReason"].as_str() {
+        Some(reason @ "MAX_TOKENS") => (reason, "the reply reached the output token limit"),
+        Some(
+            reason @ ("SAFETY" | "RECITATION" | "LANGUAGE" | "BLOCKLIST" | "PROHIBITED_CONTENT"
+            | "SPII" | "IMAGE_SAFETY"),
+        ) => (reason, "the provider stopped or withheld the reply"),
+        _ => return Ok(()),
+    };
+    Err(AiError::ApiError(format!(
+        "Gemini reply is incomplete: {cause} (finishReason {finish_reason})"
+    )))
 }
 
 #[async_trait]
@@ -145,11 +163,11 @@ impl AiProvider for GeminiProvider {
             vision: true,
             json: JsonCapability::NativeMode,
             json_schema: true,
-            streaming: false,
+            streaming: true,
             tools: false,
             request_timeout: true,
             retries: false,
-            explicit_cancellation: false,
+            explicit_cancellation: true,
         }
     }
 
@@ -257,6 +275,9 @@ impl AiProvider for GeminiProvider {
         .await
     }
 }
+
+#[path = "gemini_stream.rs"]
+mod stream;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

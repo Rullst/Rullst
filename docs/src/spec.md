@@ -3169,6 +3169,13 @@ sending.
 * An OpenAI-compatible configuration may explicitly declare SSE streaming. The
   transport requires `text/event-stream`, bounded raw bytes, supported chat
   deltas and `[DONE]`; malformed, truncated or oversized streams fail closed.
+* Anthropic (Messages SSE, requiring `message_stop`) and Gemini
+  (`streamGenerateContent?alt=sse`, requiring a final `finishReason`) stream
+  natively (v13) under the same bounds and guardrails; unknown Anthropic events
+  are ignored and error events expose only their type. Truncated or withheld
+  replies (Anthropic `max_tokens`/`model_context_window_exceeded`/`refusal`,
+  Gemini `MAX_TOKENS` or safety-class reasons) fail in streaming and
+  non-streaming paths alike.
 * `AiCancellation` races the initial request and every streamed body read. It
   drops local transport work but does not prove upstream cancellation or stop
   provider billing. Non-compatible protocols and ordinary non-streaming calls

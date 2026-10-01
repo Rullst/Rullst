@@ -170,11 +170,11 @@ impl AiProvider for AnthropicProvider {
             vision: true,
             json: JsonCapability::PromptOnly,
             json_schema: false,
-            streaming: false,
+            streaming: true,
             tools: false,
             request_timeout: true,
             retries: false,
-            explicit_cancellation: false,
+            explicit_cancellation: true,
         }
     }
 
@@ -251,6 +251,9 @@ impl AiProvider for AnthropicProvider {
         .await
     }
 }
+
+#[path = "anthropic_stream.rs"]
+mod stream;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

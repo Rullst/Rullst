@@ -126,6 +126,10 @@ path only when the exact endpoint/model configuration opts into
 `text/event-stream` and `[DONE]`, bounds the raw response, chunk count, each
 chunk and aggregate output, and rejects malformed or truncated events.
 
+Anthropic and Gemini stream through their native SSE protocols (v13) with the
+same bounds and cancellation; a truncated or withheld reply fails in both the
+streaming and non-streaming paths.
+
 `AiCancellation` is cloneable and aborts a supported request while it is
 waiting for headers or another body chunk. That drops the local request future;
 it cannot prove that an upstream server stopped work or billing. The other

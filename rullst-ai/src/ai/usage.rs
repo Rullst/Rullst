@@ -84,6 +84,30 @@ impl TokenUsage {
         if self.is_empty() { None } else { Some(self) }
     }
 
+    /// Fields reported later replace earlier ones (streams report
+    /// cumulative counts).
+    #[must_use]
+    pub(crate) const fn updated_by(self, newer: Self) -> Self {
+        Self {
+            input_tokens: match newer.input_tokens {
+                Some(value) => Some(value),
+                None => self.input_tokens,
+            },
+            output_tokens: match newer.output_tokens {
+                Some(value) => Some(value),
+                None => self.output_tokens,
+            },
+            total_tokens: match newer.total_tokens {
+                Some(value) => Some(value),
+                None => self.total_tokens,
+            },
+            cached_input_tokens: match newer.cached_input_tokens {
+                Some(value) => Some(value),
+                None => self.cached_input_tokens,
+            },
+        }
+    }
+
     /// OpenAI Chat Completions `usage`: `prompt_tokens`,
     /// `completion_tokens`, `total_tokens` and
     /// `prompt_tokens_details.cached_tokens`
@@ -236,6 +260,10 @@ mod tests {
         assert_eq!(usage.input_tokens(), Some(60));
         assert_eq!(usage.cached_input_tokens(), Some(30));
         assert_eq!(usage.total_tokens(), Some(64));
+        let delta = TokenUsage::from_anthropic(&json!({"output_tokens": 9})).expect("delta");
+        let merged = usage.updated_by(delta);
+        assert_eq!(merged.output_tokens(), Some(9));
+        assert_eq!(merged.input_tokens(), Some(60));
     }
 
     #[test]

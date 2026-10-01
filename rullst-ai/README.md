@@ -155,6 +155,14 @@ let summary = client
 # }
 ```
 
+`AnthropicProvider` and `GeminiProvider` also implement `StreamingAiProvider`
+with their native SSE protocols (v13): Anthropic's Messages events (requiring
+`message_stop`) and Gemini's `streamGenerateContent?alt=sse` (requiring a final
+`finishReason`). Both apply the same bounds, guardrails and cancellation, report
+usage at the end, and fail on a truncated or withheld reply exactly as their
+non-streaming paths do; Gemini's non-streaming path now also rejects
+`MAX_TOKENS` and safety-class finish reasons.
+
 Cancelling the cloneable signal races the request and every body read, dropping
 the local transport future. It does not prove that an upstream server stopped
 generation or billing. Other built-in providers and ordinary non-streaming
