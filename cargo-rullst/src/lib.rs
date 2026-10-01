@@ -14,6 +14,7 @@ pub mod blueprints;
 pub mod cli;
 pub mod generators;
 pub mod pkg;
+mod tour;
 pub mod ui;
 mod update;
 
@@ -39,6 +40,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             .subcommand(generators::privacy::command())
             .subcommand(generators::api_contract::command())
             .subcommand(generators::deploy_doctor::command())
+            .subcommand(tour::command())
             // Extend executable syntax without changing the published v12 enum.
             .mut_subcommand("omni", generators::desktop::release_command)
             .mut_subcommand("generate:ai-context", generators::ai_context::command)
@@ -58,6 +60,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             generators::ai_context::refresh_after_scaffold();
         } else if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
+        } else if let Some(tour) = matches.subcommand_matches("tour") {
+            tour::run(tour)?;
         } else if matches
             .subcommand_matches("new")
             .is_some_and(|new| new.get_flag("dry_run"))
