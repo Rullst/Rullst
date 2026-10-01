@@ -246,3 +246,16 @@ async fn repl_commands_attach_files_and_refuse_protected_ones() {
     assert!(output.contains("Unknown command"));
     assert!(!output.contains("never reached"));
 }
+
+#[tokio::test]
+async fn rust_code_next_to_links_is_sent_unchanged() {
+    let goal = "Why does `routes![get(\"/\" => home)]` fail? See https://docs.rs";
+    let (_guard, root) = project(false);
+    let output = one_shot(Some(root), Mode::PlanOnly("test"), &[], goal).await;
+    assert!(!output.contains("Not sent"), "{output}");
+    // The offline assistant echoes the goal it received into its demo file.
+    assert!(
+        output.contains("+ Goal: Why does `routes![get(\"/\" => home)]` fail?"),
+        "{output}"
+    );
+}

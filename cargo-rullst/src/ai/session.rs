@@ -267,8 +267,6 @@ impl<'a, W: Write + Send> Session<'a, W> {
     }
 
     async fn turn(&mut self, goal: &str) {
-        let goal = prompt::defuse(goal);
-        let goal = goal.as_str();
         if let Some(threat) = AiGuardrails::inspect(goal).threat() {
             let message = format!(
                 "Not sent: your message matches the `{}` prompt-injection heuristic of the rullst-ai guardrails. Please rephrase it.",
@@ -383,13 +381,12 @@ impl<'a, W: Write + Send> Session<'a, W> {
             full.len()
         ));
         self.say(&usage);
-        let recorded = prompt::defuse(&full);
-        let recorded = match AiGuardrails::inspect(&recorded).threat() {
+        let recorded = match AiGuardrails::inspect(&full).threat() {
             Some(threat) => format!(
                 "[previous answer withheld from the conversation: it matched the `{}` heuristic]",
                 threat.code()
             ),
-            None => recorded,
+            None => full.clone(),
         };
         self.history.push(Message::assistant(recorded));
         Some(full)

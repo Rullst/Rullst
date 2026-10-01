@@ -121,23 +121,14 @@ pub(super) fn cap(text: &str, max: usize) -> String {
     )
 }
 
-/// Breaks Markdown image syntax (`![`) so outbound text can never render as
-/// an image beacon. Rust macros such as `vec![` stay valid as `vec! [`. The
-/// rullst-ai exfiltration heuristic otherwise rejects ordinary Rust code that
-/// also mentions a URL; this terminal never renders Markdown images.
-pub(super) fn defuse(text: &str) -> String {
-    text.replace("![", "! [")
-}
-
 /// Wraps untrusted text. A guardrail match withholds the content.
 pub(super) fn data(source: &str, text: &str, max: usize) -> String {
-    let text = defuse(text);
-    let body = match AiGuardrails::inspect(&text).threat() {
+    let body = match AiGuardrails::inspect(text).threat() {
         Some(threat) => format!(
             "[content withheld: it matched the `{}` prompt-injection heuristic]",
             threat.code()
         ),
-        None => neutralise(&cap(&text, max)),
+        None => neutralise(&cap(text, max)),
     };
     format!(
         "<untrusted-data source=\"{}\">\n{body}\n</untrusted-data>",

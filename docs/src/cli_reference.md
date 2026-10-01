@@ -1089,9 +1089,8 @@ cargo rullst ai disconnect             # delete the saved credentials file
   changes it offers to run `cargo check`.
 * **Untrusted data:** project context, shared files and command output are
   sent inside delimited `<untrusted-data>` blocks, size-capped and checked by
-  the rullst-ai guardrails (a match is withheld). Markdown image syntax is
-  broken up (`vec![` is sent as `vec! [`) because the guardrails treat image
-  links as exfiltration beacons.
+  the rullst-ai guardrails (a match is withheld). The project context is a
+  separate system message, so a match there cannot block the conversation.
 * **Usage:** after each answer the CLI shows the provider, the answer size and
   the elapsed time. The current `rullst-ai` transports do not report token
   usage, so no token count or cost estimate is shown.

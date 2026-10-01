@@ -117,9 +117,8 @@ repository the CLI asks before changing anything without a checkpoint.
 
 - Everything that comes from the project, shared files or command output is
   sent as delimited, size-capped untrusted data and checked by the `rullst-ai`
-  guardrails; matching content is withheld. Markdown image syntax is broken up
-  before sending (`vec![` becomes `vec! [`), because the guardrails treat image
-  links as data-exfiltration beacons.
+  guardrails; matching content is withheld and the rest of the conversation
+  continues.
 - Model output is printed with terminal control characters escaped, so an
   answer cannot rewrite your screen or clipboard.
 - Review every diff: an edit to `build.rs`, `Cargo.toml` or a test runs code on

@@ -3491,7 +3491,7 @@ stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and `target/`.
 
 Project context (inventory names and paths, project `AGENTS.md`), shared files
 and command output are delimited untrusted data, size-capped and guardrail
-checked; a match is withheld. Markdown image syntax is broken before sending.
+checked; a match is withheld. The project context is its own system message.
 Terminal output escapes control characters. Token usage and cost are not shown
 because the transports do not report usage. Live provider interoperability is
 not established by the offline test suite. See the
