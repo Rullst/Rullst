@@ -1,5 +1,6 @@
 mod help;
 mod metrics;
+mod wrap;
 
 use super::state::{App, FocusPane, LogLevel, ServerStatus, scroll_position};
 use ratatui::{
@@ -220,61 +221,65 @@ fn render_workspace(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: 
 
 fn render_app_logs(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
     let logs = app.app_logs();
-    let lines = logs
-        .iter()
-        .map(|entry| {
-            let (prefix, color) = match entry.level {
-                LogLevel::Info => ("  ", palette.text),
-                LogLevel::Warning => ("▲ ", palette.yellow),
-                LogLevel::Error => ("✕ ", palette.red),
-            };
-            Line::from(vec![
-                Span::styled(prefix, Style::default().fg(color)),
-                Span::styled(&entry.text, Style::default().fg(color)),
-            ])
-        })
-        .collect::<Vec<_>>();
+    let width = usize::from(area.width.saturating_sub(4));
+    let mut lines = Vec::new();
+    for entry in &logs {
+        let (prefix, color) = match entry.level {
+            LogLevel::Info => ("  ", palette.text),
+            LogLevel::Warning => ("▲ ", palette.yellow),
+            LogLevel::Error => ("✕ ", palette.red),
+        };
+        for (index, row) in wrap::wrap_text(&entry.text, width).into_iter().enumerate() {
+            lines.push(Line::from(vec![
+                Span::styled(
+                    if index == 0 { prefix } else { "  " },
+                    Style::default().fg(color),
+                ),
+                Span::styled(row, Style::default().fg(color)),
+            ]));
+        }
+    }
     let visible = area.height.saturating_sub(2) as usize;
     let scroll = scroll_position(lines.len(), visible, app.app_scroll_from_bottom);
     let focused = app.focus == FocusPane::Application;
     let title = format!(
         " APPLICATION LOGS  •  {}  •  {} shown ",
         app.filter.label(),
-        lines.len()
+        logs.len()
     );
     let panel = Paragraph::new(lines)
         .block(neon_block(&title, palette.blue, focused))
-        .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(panel, area);
 }
 
 fn render_system_logs(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
-    let logs = app.system_logs();
-    let lines = logs
-        .iter()
-        .map(|entry| {
-            let color = if entry.contains("failed") || entry.contains("Failed") {
-                palette.red
-            } else if entry.contains("complete") || entry.contains("ready") {
-                palette.green
-            } else if entry.contains("Running")
-                || entry.contains("Checking")
-                || entry.contains("API docs unavailable")
-            {
-                palette.yellow
-            } else {
-                palette.magenta
-            };
-            Line::from(Span::styled(*entry, Style::default().fg(color)))
-        })
-        .collect::<Vec<_>>();
+    let width = usize::from(area.width.saturating_sub(2));
+    let mut lines = Vec::new();
+    for entry in app.system_logs() {
+        let color = if entry.contains("failed") || entry.contains("Failed") {
+            palette.red
+        } else if entry.contains("complete") || entry.contains("ready") {
+            palette.green
+        } else if entry.contains("Running")
+            || entry.contains("Checking")
+            || entry.contains("API docs unavailable")
+        {
+            palette.yellow
+        } else {
+            palette.magenta
+        };
+        lines.extend(
+            wrap::wrap_text(entry, width)
+                .into_iter()
+                .map(|row| Line::from(Span::styled(row, Style::default().fg(color)))),
+        );
+    }
     let visible = area.height.saturating_sub(2) as usize;
     let scroll = scroll_position(lines.len(), visible, app.system_scroll_from_bottom);
     let focused = app.focus == FocusPane::System;
     let panel = Paragraph::new(lines)
         .block(neon_block(" SYSTEM & TASKS ", palette.magenta, focused))
-        .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(panel, area);
 }
