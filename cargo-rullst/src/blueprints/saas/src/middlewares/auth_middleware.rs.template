@@ -1,0 +1,38 @@
+use rullst::server::{
+    Request,
+    Next,
+    Response, Redirect, IntoResponse, StatusCode,
+};
+use crate::controllers::billing_controller::BillingIdentity;
+use crate::models::user::User;
+
+pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
+    let headers = req.headers();
+    if let Some(cookie) = rullst::auth::extract_session_cookie(headers) {
+        let app_key = match rullst::auth::get_app_key() {
+            Ok(key) => key,
+            Err(e) => {
+                eprintln!("Authentication middleware error: {}", e);
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
+        if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {
+            match User::find(user_id).await {
+                Ok(Some(user)) => {
+                    req.extensions_mut().insert(user_id);
+                    req.extensions_mut().insert(BillingIdentity {
+                        owner_id: user_id,
+                        email: user.email.trim().to_ascii_lowercase(),
+                    });
+                    return next.run(req).await;
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    eprintln!("Authentication user query failed: {error}");
+                    return StatusCode::SERVICE_UNAVAILABLE.into_response();
+                }
+            }
+        }
+    }
+    Redirect::to("/login").into_response()
+}
