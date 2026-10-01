@@ -93,7 +93,9 @@ The browser defaults to at most 1 GiB, accepted video MIME types, 1 MiB chunks,
 4096 HTTP requests, 30-second request/authorization waits and a 15-minute run.
 The host may lower the byte limit. It checks renewal identity/origin and omits
 cookies and library keys from provider requests. The server caps upload grants
-at 3600 seconds and current permission expiry. These client limits are **not
+at 3600 seconds and current permission expiry; the module refuses a grant that
+expires more than 3600 seconds plus a 300-second clock-skew allowance after its
+own clock. These client limits are **not
 cryptographic provider quotas**: a copied TUS bearer may be reusable until expiry.
 Configure library quotas; cancellation stops local transfer and needs a separate
 authorized deletion request to remove the remote asset. Ambiguous TUS creation
