@@ -53,7 +53,8 @@ async fn test_stripe_provider_methods() {
         )
         .await
         .unwrap();
-    assert!(url.contains("checkout.stripe.com"));
+    assert!(url.starts_with("https://mock.stripe.invalid/checkout/mock_session?plan="));
+    assert!(!url.contains("%40") && !url.contains("app.com"));
     assert!(url.contains("price_pro_month"));
     assert!(
         provider
@@ -72,7 +73,7 @@ async fn test_stripe_provider_methods() {
         .create_customer_portal("user@stripe.com", "https://app.com")
         .await
         .unwrap();
-    assert!(portal.contains("billing.stripe.com/p/session/mock_portal"));
+    assert_eq!(portal, "https://mock.stripe.invalid/portal/mock_portal");
     assert!(provider.create_customer_portal("", "url").await.is_err());
 
     assert!(provider.cancel_subscription("sub_str").await.is_ok());

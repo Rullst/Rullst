@@ -329,7 +329,13 @@ pub trait Billable {
         None
     }
 
-    /// Checks if a quota for a specific feature has been reached.
+    /// Returns `true` while `current_usage` is below this tier's limit for
+    /// `feature`, so one more unit is allowed.
+    ///
+    /// Returns `false` when the limit is reached or exceeded, or when the tier
+    /// defines no limit for the feature. Deny the action on `false`. This is a
+    /// local comparison; use [`Self::quota_request`] with a `QuotaStore` for
+    /// shared, concurrent enforcement.
     fn check_quota(&self, feature: &str, current_usage: usize) -> bool {
         if let Some(limit) = self.tier_limit(feature) {
             current_usage < limit

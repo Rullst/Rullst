@@ -160,7 +160,7 @@ pub mod response {
 
 // Re-export HTMX primitives for convenience
 #[cfg(not(target_arch = "wasm32"))]
-pub use htmx::{HtmxRequest, HtmxResponse, render_page};
+pub use htmx::{HtmxRequest, HtmxResponse, render_page, render_page_with_lang};
 #[cfg(not(target_arch = "wasm32"))]
 pub use lifecycle::{
     ApplicationLifecycle, ApplicationLifecycleError, ApplicationPhase, ReadinessSnapshot,

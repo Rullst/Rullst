@@ -64,7 +64,7 @@ impl FiscalCommandJournal {
         validate_observed_at(observed_at_unix_ms)?;
         let environment = JournalEnvironment::from_execution(environment)?;
         if environment != JournalEnvironment::from_api(request.environment()) {
-            return Err(FiscalJournalError::ResponseMismatch);
+            return Err(FiscalJournalError::EnvironmentMismatch);
         }
         let request_digest = evidence::request_fingerprint(request)?;
         let mut state = self.lock_and_refresh()?;
@@ -73,9 +73,6 @@ impl FiscalCommandJournal {
                 return Ok(receipt(existing, FiscalJournalDisposition::Replay));
             }
             return Err(FiscalJournalError::CommandConflict);
-        }
-        if state.file.records >= MAX_FISCAL_JOURNAL_RECORDS {
-            return Err(FiscalJournalError::RecordCapacityExceeded);
         }
         let sequence = next_sequence(state.file.records)?;
         let event = JournalEvent {
@@ -87,6 +84,7 @@ impl FiscalCommandJournal {
             observed_at_unix_ms,
             outcome: JournalOutcome::Prepared,
         };
+        reserve_terminal_capacity(&state, &event, self.max_bytes)?;
         format::append(&mut state.file, self.max_bytes, &self.key, &event)?;
         state.commands.insert(
             command_id,
@@ -108,16 +106,21 @@ impl FiscalCommandJournal {
     }
 
     /// Synchronizes one parsed terminal response using the current system time.
+    ///
+    /// The wall clock is not monotonic: if it stepped back below the
+    /// preparation time, the observation is recorded at the preparation time.
     pub fn record_response(
         &self,
         command_id: &str,
         request: &NfseIssueRequest,
         response: &NfseIssueResponse,
     ) -> Result<FiscalCommandReceipt, FiscalJournalError> {
-        self.record_response_at(command_id, request, response, unix_now_ms()?)
+        self.record_terminal(command_id, request, response, unix_now_ms()?, true)
     }
 
     /// Synchronizes one parsed terminal response with an explicit trusted time.
+    ///
+    /// A time before the command's preparation returns `ClockRegression`.
     pub fn record_response_at(
         &self,
         command_id: &str,
@@ -125,10 +128,26 @@ impl FiscalCommandJournal {
         response: &NfseIssueResponse,
         observed_at_unix_ms: i64,
     ) -> Result<FiscalCommandReceipt, FiscalJournalError> {
+        self.record_terminal(command_id, request, response, observed_at_unix_ms, false)
+    }
+
+    fn record_terminal(
+        &self,
+        command_id: &str,
+        request: &NfseIssueRequest,
+        response: &NfseIssueResponse,
+        observed_at_unix_ms: i64,
+        clamp_to_preparation: bool,
+    ) -> Result<FiscalCommandReceipt, FiscalJournalError> {
         validate_command_id(command_id)?;
         validate_observed_at(observed_at_unix_ms)?;
         let request_digest = evidence::request_fingerprint(request)?;
         let terminal = evidence::response_evidence(request, response)?;
+        // An HTTP 500 may follow an issued NFS-e (for example a lost 201 and a
+        // retry), so it must not become a final rejection.
+        if terminal.http_status == Some(500) {
+            return Err(FiscalJournalError::IndeterminateResponse);
+        }
         let mut state = self.lock_and_refresh()?;
         let existing = state
             .commands
@@ -146,9 +165,13 @@ impl FiscalCommandJournal {
             }
             return Err(FiscalJournalError::CommandConflict);
         }
-        if observed_at_unix_ms < existing.prepared_at_unix_ms {
-            return Err(FiscalJournalError::ResponseMismatch);
-        }
+        let observed_at_unix_ms = if observed_at_unix_ms >= existing.prepared_at_unix_ms {
+            observed_at_unix_ms
+        } else if clamp_to_preparation {
+            existing.prepared_at_unix_ms
+        } else {
+            return Err(FiscalJournalError::ClockRegression);
+        };
         if state.file.records >= MAX_FISCAL_JOURNAL_RECORDS {
             return Err(FiscalJournalError::RecordCapacityExceeded);
         }
@@ -248,6 +271,10 @@ impl FiscalCommandJournal {
     }
 
     /// Requires the current journal tip to equal an independently retained checkpoint.
+    ///
+    /// A crash after an append but before the new checkpoint is persisted makes
+    /// an intact journal fail this exact check; see
+    /// [`Self::verify_checkpoint_prefix`].
     pub fn verify_checkpoint(
         &self,
         expected: &FiscalJournalCheckpoint,
@@ -268,6 +295,34 @@ impl FiscalCommandJournal {
         Ok(())
     }
 
+    /// Verifies that an independently retained checkpoint is an authenticated
+    /// prefix of the current journal and returns how many events follow it.
+    ///
+    /// `Ok(0)` means the checkpoint is the exact tip. A positive count covers a
+    /// crash after an append was synchronized but before its new checkpoint
+    /// was persisted; truncation or substitution still returns
+    /// `CheckpointMismatch`. New in 13.0.
+    pub fn verify_checkpoint_prefix(
+        &self,
+        expected: &FiscalJournalCheckpoint,
+    ) -> Result<u64, FiscalJournalError> {
+        let mut state = self.lock_and_refresh()?;
+        let boundaries = format::chain_boundaries(&mut state.file, self.max_bytes, &self.key)?;
+        let (end_offset, tag) = usize::try_from(expected.sequence)
+            .ok()
+            .and_then(|index| boundaries.get(index))
+            .ok_or(FiscalJournalError::CheckpointMismatch)?;
+        let commitment_matches = hex::encode(tag)
+            .as_bytes()
+            .ct_eq(expected.commitment.as_bytes())
+            .unwrap_u8()
+            == 1;
+        if *end_offset != expected.end_offset || !commitment_matches {
+            return Err(FiscalJournalError::CheckpointMismatch);
+        }
+        Ok((state.file.records as u64).saturating_sub(expected.sequence))
+    }
+
     fn lock_and_refresh(
         &self,
     ) -> Result<std::sync::MutexGuard<'_, JournalState>, FiscalJournalError> {
@@ -279,4 +334,69 @@ impl FiscalCommandJournal {
         state.commands = build_index(&events)?;
         Ok(state)
     }
+}
+
+// A prepared command is transmitted after this call, so the journal must still
+// be able to record its terminal result and that of every other pending
+// command. Reject the preparation, before anything is sent, when the records or
+// bytes that those terminal events may need are not available.
+fn reserve_terminal_capacity(
+    state: &JournalState,
+    prepared: &JournalEvent,
+    max_bytes: u64,
+) -> Result<(), FiscalJournalError> {
+    let pending = state
+        .commands
+        .iter()
+        .filter(|(_, command)| command.status == FiscalCommandStatus::Prepared);
+    let (pending_count, pending_id_bytes) =
+        pending.fold((0_usize, 0_u64), |(count, bytes), (id, _)| {
+            (
+                count.saturating_add(1),
+                bytes.saturating_add(id.len() as u64),
+            )
+        });
+    // This preparation plus one terminal event for it and for each pending one.
+    if state
+        .file
+        .records
+        .saturating_add(pending_count)
+        .saturating_add(2)
+        > MAX_FISCAL_JOURNAL_RECORDS
+    {
+        return Err(FiscalJournalError::RecordCapacityExceeded);
+    }
+    let terminal_base = terminal_frame_bytes_without_id()?;
+    let terminals = terminal_base
+        .saturating_mul(pending_count.saturating_add(1) as u64)
+        .saturating_add(pending_id_bytes)
+        .saturating_add(prepared.command_id.len() as u64);
+    let required = state
+        .file
+        .bytes
+        .saturating_add(format::frame_bytes(prepared)?)
+        .saturating_add(terminals);
+    if required > max_bytes {
+        return Err(FiscalJournalError::CapacityExceeded);
+    }
+    Ok(())
+}
+
+// Largest terminal frame for an empty command ID. Command IDs never need JSON
+// escaping, so a command's terminal frame is at most this plus its ID length.
+fn terminal_frame_bytes_without_id() -> Result<u64, FiscalJournalError> {
+    let digest = "f".repeat(64);
+    format::frame_bytes(&JournalEvent {
+        schema_version: SCHEMA_VERSION,
+        sequence: u64::MAX,
+        command_id: String::new(),
+        environment: JournalEnvironment::Homologation,
+        request_digest: digest.clone(),
+        observed_at_unix_ms: i64::MAX,
+        outcome: JournalOutcome::Rejected {
+            result_digest: digest,
+            http_status: 500,
+            processed_at_unix_ms: i64::MAX,
+        },
+    })
 }

@@ -40,7 +40,7 @@ pub enum FiscalError {
         code: String,
         /// Bounded element/attribute path.
         path: String,
-        /// Bounded non-secret diagnostic.
+        /// Bounded diagnostic; instance values the validator quotes are redacted.
         message: String,
     },
 

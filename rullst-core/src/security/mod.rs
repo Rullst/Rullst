@@ -5,6 +5,7 @@
 
 mod baseline;
 mod csrf;
+mod csrf_multipart;
 mod headers;
 mod machine;
 mod media_type;

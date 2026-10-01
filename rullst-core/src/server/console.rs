@@ -28,13 +28,22 @@ fn write_line(output: &mut impl Write, line: Arguments<'_>) {
         .and_then(|()| output.write_all(b"\n"));
 }
 
-/// Records one completed request, except for the development HMR channel.
+/// Development polling paths that would otherwise log twice a second per
+/// open page.
+const UNLOGGED_DEVELOPMENT_PATHS: [&str; 2] = ["/_rullst/dev-generation", "/_rullst/dev-reload.js"];
+
+/// Records one completed request, except for the development HMR channel and
+/// the development reload poll.
 pub(crate) fn log_request(method: &str, path: &str, status: u16, elapsed_ms: f64) {
-    if !path.starts_with("/_rullst_hmr") {
+    if is_logged(path) {
         stdout_line(format_args!(
             "[HTTP] {method} {path} -> {status} ({elapsed_ms:.2} ms)"
         ));
     }
+}
+
+fn is_logged(path: &str) -> bool {
+    !path.starts_with("/_rullst_hmr") && !UNLOGGED_DEVELOPMENT_PATHS.contains(&path)
 }
 
 /// Access-log middleware for the static server.
@@ -50,6 +59,16 @@ pub(crate) async fn access_log_middleware(request: Request, next: Next) -> Respo
         start.elapsed().as_secs_f64() * 1000.0,
     );
     response
+}
+
+#[cfg(test)]
+#[test]
+fn development_polls_are_not_access_logged() {
+    assert!(!is_logged("/_rullst/dev-generation"));
+    assert!(!is_logged("/_rullst/dev-reload.js"));
+    assert!(!is_logged("/_rullst_hmr"));
+    assert!(is_logged("/orders"));
+    assert!(is_logged("/_rullst/dev-generation/extra"));
 }
 
 #[cfg(all(test, unix))]

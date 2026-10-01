@@ -18,12 +18,36 @@ static PREVIOUS_WINDOWS_CPU_SAMPLE: std::sync::LazyLock<
 > = std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
 
 /// Initializes the Radar boot time timestamp.
+///
+/// `Server` records it when it starts unless this was called earlier, so
+/// `uptime_seconds` measures process uptime rather than the time since the
+/// first snapshot.
 pub fn init_radar() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
     BOOT_TIME.store(now, Ordering::Relaxed);
+}
+
+/// Records the boot time once: an explicit earlier [`init_radar`] wins.
+pub(crate) fn init_radar_if_unset() {
+    record_boot_time_once(&BOOT_TIME);
+    std::sync::LazyLock::force(&BOOT_INSTANT);
+}
+
+/// Stores the current Unix time in `cell` unless it already holds one.
+pub(crate) fn record_boot_time_once(cell: &AtomicU64) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let _ = cell.compare_exchange(0, now, Ordering::Relaxed, Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn recorded_boot_time() -> u64 {
+    BOOT_TIME.load(Ordering::Relaxed)
 }
 
 /// Instantaneous telemetry snapshot data model.
@@ -88,7 +112,10 @@ impl RadarSnapshot {
     }
 }
 
-/// Reads real RSS memory consumption of the active process in Megabytes (Windows, Linux, macOS).
+/// Reads real RSS memory consumption of the active process in Megabytes.
+///
+/// Probes exist for Windows (working set) and Linux (`VmRSS`); every other
+/// platform, including macOS, returns `None`.
 pub fn get_process_memory_mb() -> Option<f64> {
     #[cfg(target_os = "windows")]
     {
@@ -153,13 +180,16 @@ fn parse_vm_rss_kib(status: &str) -> Option<u64> {
 
 /// Sums the aggregate `cpu` line of `/proc/stat` and counts its `cpuN` lines,
 /// the host CPUs that aggregate covers.
+///
+/// Only the first eight columns (`user` to `steal`) are summed: the kernel
+/// already counts `guest` and `guest_nice` inside `user` and `nice`.
 #[cfg(target_os = "linux")]
 fn parse_proc_stat(stat: &str) -> Option<(u64, usize)> {
     let mut aggregate = stat.lines().next()?.split_whitespace();
     if aggregate.next()? != "cpu" {
         return None;
     }
-    let total = aggregate.try_fold(0_u64, |total, value| {
+    let total = aggregate.take(8).try_fold(0_u64, |total, value| {
         value
             .parse::<u64>()
             .ok()
@@ -347,134 +377,5 @@ pub fn radar_metrics_router() -> Router {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use axum::body::Body;
-    use axum::http::{Request, StatusCode};
-    use tower::ServiceExt;
-
-    #[tokio::test]
-    async fn test_radar_prometheus_metrics_endpoint() {
-        init_radar();
-        let app = radar_metrics_router();
-
-        let req = Request::builder()
-            .uri("/metrics")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body_bytes = axum::body::to_bytes(response.into_body(), 10000)
-            .await
-            .unwrap();
-        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-        assert!(body_str.contains("rullst_uptime_seconds"));
-        if get_process_memory_mb().is_some() {
-            assert!(body_str.contains("rullst_memory_rss_bytes"));
-        }
-        if get_active_tasks_count().is_some() {
-            assert!(body_str.contains("rullst_tokio_active_tasks"));
-        }
-    }
-
-    #[test]
-    fn test_render_prometheus_metrics_all_fields() {
-        let snapshot = RadarSnapshot {
-            uptime_seconds: 120,
-            memory_rss_mb: Some(50.0),
-            cpu_usage_percent: Some(2.5),
-            active_tokio_tasks: Some(4),
-            tokio_latency_micros: Some(15),
-            timestamp: 1700000000,
-        };
-        let metrics = render_prometheus_metrics(&snapshot);
-        assert!(metrics.contains("rullst_uptime_seconds 120"));
-        assert!(metrics.contains("rullst_memory_rss_bytes 52428800"));
-        assert!(metrics.contains("rullst_cpu_usage_percent 2.50"));
-        assert!(metrics.contains("rullst_tokio_active_tasks 4"));
-        assert!(metrics.contains("rullst_tokio_latency_microseconds 15"));
-
-        let empty_snapshot = RadarSnapshot {
-            uptime_seconds: 60,
-            memory_rss_mb: None,
-            cpu_usage_percent: None,
-            active_tokio_tasks: None,
-            tokio_latency_micros: None,
-            timestamp: 1700000000,
-        };
-        let empty_metrics = render_prometheus_metrics(&empty_snapshot);
-        assert!(empty_metrics.contains("rullst_uptime_seconds 60"));
-        assert!(!empty_metrics.contains("rullst_memory_rss_bytes"));
-        assert!(!empty_metrics.contains("rullst_cpu_usage_percent"));
-        assert!(!empty_metrics.contains("rullst_tokio_active_tasks"));
-        assert!(!empty_metrics.contains("rullst_tokio_latency_microseconds"));
-    }
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn linux_probes_do_not_assume_page_size_or_cgroup_cpu_count() {
-        let status = "Name:\tapp\nVmHWM:\t  9000 kB\nVmRSS:\t   65536 kB\n";
-        assert_eq!(parse_vm_rss_kib(status), Some(65_536));
-        assert_eq!(parse_vm_rss_kib("Name:\tapp\n"), None);
-
-        let mut stat = String::from("cpu  3200 0 0 0 0 0 0 0 0 0\n");
-        for cpu in 0..32 {
-            stat.push_str(&format!("cpu{cpu} 100 0 0 0 0 0 0 0 0 0\n"));
-        }
-        stat.push_str("intr 1 2 3\nctxt 4\ncpufreq 5\n");
-        assert_eq!(parse_proc_stat(&stat), Some((3200, 32)));
-        assert_eq!(parse_proc_stat("intr 1\n"), None);
-
-        // Two CPUs saturated for one second on a 32-CPU host at 100 Hz.
-        assert_eq!(linux_cpu_percent(200, 3200, 32), Some(200.0));
-        assert_eq!(linux_cpu_percent(200, 0, 32), None);
-        assert_eq!(linux_cpu_percent(u64::MAX, 1, 2), Some(200.0));
-    }
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn linux_memory_probe_reads_this_process() {
-        assert!(get_linux_memory_mb().is_some_and(|mb| mb > 0.0));
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn windows_cpu_percentage_uses_process_time_delta_and_is_bounded() {
-        let percent =
-            calculate_windows_cpu_percent(2_500_000, std::time::Duration::from_secs(1), 8);
-        assert_eq!(percent, Some(25.0));
-
-        let bounded =
-            calculate_windows_cpu_percent(100_000_000, std::time::Duration::from_millis(1), 2);
-        assert_eq!(bounded, Some(200.0));
-        assert_eq!(
-            calculate_windows_cpu_percent(1, std::time::Duration::ZERO, 1),
-            None
-        );
-    }
-
-    #[cfg(target_os = "windows")]
-    #[tokio::test]
-    async fn windows_cpu_probe_produces_a_second_sample() {
-        let _ = RadarSnapshot::collect();
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        assert!(RadarSnapshot::collect().cpu_usage_percent.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_radar_snapshot_collect_and_api() {
-        init_radar();
-        let snapshot = RadarSnapshot::collect_async().await;
-        assert!(snapshot.memory_rss_mb.is_none_or(|memory| memory > 0.0));
-        assert!(snapshot.tokio_latency_micros.is_some());
-        assert!(snapshot.timestamp > 0);
-
-        let default_snapshot = RadarSnapshot::default();
-        assert!(default_snapshot.timestamp > 0);
-
-        let resp = api_radar_handler().await.into_response();
-        assert_eq!(resp.status(), StatusCode::OK);
-    }
-}
+#[path = "radar_tests.rs"]
+mod tests;

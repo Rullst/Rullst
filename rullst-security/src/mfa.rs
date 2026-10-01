@@ -58,14 +58,25 @@ pub fn decode_base32(b32: &str) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// Value returned by [`generate_totp_at_counter`] when no code can be computed.
+///
+/// It is outside the six-digit range, so neither its numeric value nor its
+/// zero-padded decimal form (`"4294967295"`) equals any submitted code.
+const NO_TOTP_CODE: u32 = u32::MAX;
+
 /// Computes an RFC 6238 6-digit TOTP code for a secret at a specific counter step.
+///
+/// For a secret shorter than [`MIN_TOTP_SECRET_BYTES`], or if the HMAC cannot
+/// be initialized, it returns `u32::MAX` instead of a code. That value is never
+/// a valid six-digit code, so a custom verifier comparing numbers or
+/// `format!("{:06}", ..)` strings fails closed instead of accepting `000000`.
 pub fn generate_totp_at_counter(secret_bytes: &[u8], counter: u64) -> u32 {
     if secret_bytes.len() < MIN_TOTP_SECRET_BYTES {
-        return 0;
+        return NO_TOTP_CODE;
     }
     let mut mac = match HmacSha1::new_from_slice(secret_bytes) {
         Ok(mac) => mac,
-        Err(_) => return 0,
+        Err(_) => return NO_TOTP_CODE,
     };
     mac.update(&counter.to_be_bytes());
     let result = mac.finalize().into_bytes();
@@ -277,6 +288,20 @@ mod tests {
         );
         assert!(uri.contains("issuer=Rullst%20%26%20Co"));
         assert!(!uri.contains("&amp;"));
+    }
+
+    #[test]
+    fn short_secrets_never_yield_a_valid_six_digit_code() {
+        // An 80-bit legacy secret must not produce the code "000000".
+        let short_secret = [7_u8; 10];
+        for counter in [0, 1, 58_000_000] {
+            let code = generate_totp_at_counter(&short_secret, counter);
+            assert!(code >= 1_000_000);
+            assert_ne!(format!("{code:06}"), "000000");
+            assert_ne!(format!("{code:06}").len(), 6);
+        }
+        let secret = [7_u8; MIN_TOTP_SECRET_BYTES];
+        assert!(generate_totp_at_counter(&secret, 1) < 1_000_000);
     }
 
     #[test]

@@ -15,12 +15,30 @@ pub struct StackFrame {
     pub function: String,
 }
 
+/// Path fragments of standard-library and Cargo dependency frames.
+const DEPENDENCY_FRAME_MARKERS: [&str; 6] = [
+    "/rustc/",
+    "\\rustc\\",
+    ".cargo/registry",
+    ".cargo/git",
+    ".cargo\\registry",
+    ".cargo\\git",
+];
+
 /// Parses the stack trace to find the developer's source file and line.
+///
+/// Accepts `at path:line` and the `at path:line:column` frames of a
+/// `std::backtrace::Backtrace` `Display`, and skips standard-library
+/// (`/rustc/...`) and Cargo registry or git dependency frames.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
     for line in bt_str.lines() {
         let trimmed = line.trim();
+        let dependency_frame = DEPENDENCY_FRAME_MARKERS
+            .iter()
+            .any(|marker| trimmed.contains(marker));
         if trimmed.contains("at ")
+            && !dependency_frame
             && (trimmed.contains("/src/")
                 || trimmed.contains("\\src\\")
                 || trimmed.contains("/examples/")
@@ -31,15 +49,28 @@ pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
             // Find the location after "at "
             if let Some(pos) = trimmed.find("at ") {
                 let path_part = &trimmed[pos + 3..];
-                if let Some((file, line_str)) = path_part.rsplit_once(':')
-                    && let Ok(line_num) = line_str.trim().parse::<u32>()
-                {
-                    return Some((file.trim().to_string(), line_num));
+                if let Some(location) = split_file_line(path_part) {
+                    return Some(location);
                 }
             }
         }
     }
     None
+}
+
+/// Splits `file:line:column` or `file:line` into the file and line.
+fn split_file_line(location: &str) -> Option<(String, u32)> {
+    let location = location.trim();
+    let numeric = |value: &str| value.parse::<u32>().ok();
+    if let Some((rest, column)) = location.rsplit_once(':')
+        && numeric(column).is_some()
+        && let Some((file, line)) = rest.rsplit_once(':')
+        && let Some(line) = numeric(line)
+    {
+        return Some((file.to_string(), line));
+    }
+    let (file, line) = location.rsplit_once(':')?;
+    Some((file.to_string(), numeric(line)?))
 }
 
 /// Reads a file and extracts surrounding context lines.

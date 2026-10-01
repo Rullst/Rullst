@@ -1,5 +1,5 @@
 use super::{
-    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode,
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
@@ -59,7 +59,7 @@ impl BillingProvider for PicPayProvider {
         &self,
         customer_email: &str,
         plan_id: &str,
-        redirect_url: &str,
+        _redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
             return Err(CapitalError::ConfigurationError(
@@ -73,12 +73,7 @@ impl BillingProvider for PicPayProvider {
         }
 
         if self.picpay_token.is_empty() || self.picpay_token.starts_with("mock_") {
-            return Ok(format!(
-                "https://app.picpay.com/checkout/mock_session?email={}&plan={}&return_url={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         Err(CapitalError::UnsupportedOperation(
@@ -86,16 +81,27 @@ impl BillingProvider for PicPayProvider {
         ))
     }
 
+    /// Authenticates the static `x-seller-token`, then normalizes only an
+    /// explicit `mock_*` seller-token fixture.
+    ///
+    /// PicPay's e-commerce callback carries only `referenceId` and
+    /// `authorizationId`, and the seller token does not authenticate the body.
+    /// A live callback therefore returns `UnsupportedOperation` until an
+    /// authoritative `GET /payments/{referenceId}/status` lookup bound to the
+    /// stored order, amount and currency is implemented.
     fn handle_webhook(
         &self,
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        let _ = self.webhook_verification_mode()?;
+        let mode = self.webhook_verification_mode()?;
         let seller_header = headers.get("x-seller-token").ok_or_else(|| {
             CapitalError::InvalidSignature("Missing x-seller-token header".to_string())
         })?;
         self.verify_token(seller_header)?;
+        if mode == WebhookVerificationMode::Real {
+            return Err(live_webhook_unavailable());
+        }
 
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
@@ -106,11 +112,8 @@ impl BillingProvider for PicPayProvider {
             .unwrap_or("")
             .to_string();
 
-        let customer_id = json["buyer"]["document"]
-            .as_str()
-            .or_else(|| json["buyer"]["email"].as_str())
-            .unwrap_or("")
-            .to_string();
+        // The buyer's CPF is personal data, never a customer identifier.
+        let customer_id = json["buyer"]["email"].as_str().unwrap_or("").to_string();
 
         let customer_email = json["buyer"]["email"].as_str().unwrap_or("").to_string();
         let plan_id = json["referenceId"]
@@ -147,10 +150,7 @@ impl BillingProvider for PicPayProvider {
 
         super::require_mock_operation(&self.picpay_token, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://picpay.com/portal?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -202,6 +202,12 @@ impl BillingProvider for PicPayProvider {
     }
 }
 
+fn live_webhook_unavailable() -> CapitalError {
+    CapitalError::UnsupportedOperation(
+        "PicPay live callbacks require an authoritative payment-status lookup bound to the stored order".into(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,7 +222,8 @@ mod tests {
             .create_checkout_session("user@picpay.com", "plan_mensal", "https://app.com/callback")
             .await
             .unwrap();
-        assert!(url.contains("picpay.com/checkout"));
+        assert!(url.starts_with("https://mock.picpay.invalid/checkout/mock_session?plan="));
+        assert!(!url.contains("%40") && !url.contains("callback") && !url.contains("app.com"));
         assert!(url.contains("plan_mensal"));
 
         // 2. Checkout validation
@@ -238,7 +245,7 @@ mod tests {
             .create_customer_portal("user@picpay.com", "https://app.com")
             .await
             .unwrap();
-        assert!(portal.contains("picpay.com/portal"));
+        assert_eq!(portal, "https://mock.picpay.invalid/portal/mock_portal");
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // 4. Cancel
@@ -273,19 +280,42 @@ mod tests {
             Err(CapitalError::ConfigurationError(_))
         ));
 
-        // 7. Handle webhook
+        // 7. Handle webhook: only the explicit mock seller token normalizes a body.
         let payload = br#"{"referenceId":"ref_pic_100","buyer":{"document":"12345678901","email":"user@picpay.com"},"status":"paid"}"#;
+        let fixture = PicPayProvider::new("mock_token", "mock_seller");
         let mut headers = HashMap::new();
-        headers.insert("x-seller-token".to_string(), "sec_seller123".to_string());
+        headers.insert("x-seller-token".to_string(), "mock_seller".to_string());
 
-        let event = provider.handle_webhook(payload, &headers).unwrap();
+        let event = fixture.handle_webhook(payload, &headers).unwrap();
         assert_eq!(event.subscription_id, "ref_pic_100");
         assert_eq!(event.customer_email, "user@picpay.com");
+        assert_eq!(event.customer_id, "user@picpay.com");
         assert_eq!(event.status, SubscriptionStatus::Active);
 
         // Webhook error paths
         let empty_headers = HashMap::new();
-        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
-        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
+        assert!(fixture.handle_webhook(payload, &empty_headers).is_err());
+        assert!(fixture.handle_webhook(b"invalid json", &headers).is_err());
+    }
+
+    #[test]
+    fn live_seller_token_cannot_turn_an_unsigned_body_into_state() {
+        let provider = PicPayProvider::new("live_token", "sec_seller123");
+        let mut headers = HashMap::new();
+        headers.insert("x-seller-token".to_string(), "sec_seller123".to_string());
+        for payload in [
+            &br#"{"referenceId":"order-42","status":"paid","buyer":{"email":"victim@example.com"}}"#[..],
+            &br#"{"referenceId":"order-42","authorizationId":"auth-1"}"#[..],
+        ] {
+            assert!(matches!(
+                provider.handle_webhook(payload, &headers),
+                Err(CapitalError::UnsupportedOperation(_))
+            ));
+        }
+        headers.insert("x-seller-token".to_string(), "wrong".to_string());
+        assert!(matches!(
+            provider.handle_webhook(b"{}", &headers),
+            Err(CapitalError::InvalidSignature(_))
+        ));
     }
 }

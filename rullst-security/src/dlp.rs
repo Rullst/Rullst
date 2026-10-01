@@ -96,8 +96,8 @@ fn body_collection_failure() -> Response<Body> {
 /// Masks complete PEM private-key blocks (`PRIVATE KEY`, `ENCRYPTED PRIVATE
 /// KEY`, `RSA`, `EC`, `DSA` and `OPENSSH PRIVATE KEY`, and `PGP PRIVATE KEY
 /// BLOCK`), 20-character AWS access-key IDs and
-/// the password in `postgres://`, `postgresql://`, `mysql://` and `redis://`
-/// URLs. Each pass is linear in the input length. A URL password is masked
+/// the password in `postgres://`, `postgresql://`, `mysql://`, `redis://` and
+/// `rediss://` URLs. Each pass is linear in the input length. A URL password is masked
 /// only when it appears inside the URL authority: credentials must be RFC 3986
 /// percent-encoded, and the authority ends at the first `/`, `?`, `#`,
 /// whitespace, quote, `<`, `>`, backtick or control character, or after
@@ -286,6 +286,19 @@ mod tests {
         let masked_str = String::from_utf8(masked).unwrap();
         assert!(masked_str.contains("mysql://root:*****@127.0.0.1:3306/db"));
         assert!(masked_str.contains("redis://default:*****@cache:6379"));
+    }
+
+    #[test]
+    fn tls_redis_urls_are_masked_in_responses_and_logs() {
+        let payload = br#"{"redis":"rediss://default:AbC123secret@eu1-cache.upstash.io:6379"}"#;
+        let (masked, was_modified) = mask_response_payload(payload);
+        assert!(was_modified);
+        assert_eq!(
+            String::from_utf8(masked).unwrap(),
+            r#"{"redis":"rediss://default:*****@eu1-cache.upstash.io:6379"}"#
+        );
+        let logged = crate::redact_secrets("connecting to rediss://default:AbC123secret@host:6380");
+        assert_eq!(logged, "connecting to rediss://default:*****@host:6380");
     }
 
     #[test]

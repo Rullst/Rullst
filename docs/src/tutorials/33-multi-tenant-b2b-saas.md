@@ -35,9 +35,15 @@ middleware order in-process.
 `TenantStrategy::Header` and `TenantStrategy::Parameter` are also available,
 but they remain untrusted selection hints. Query parameters additionally leak
 more easily through history, referrers and access logs. The built-in subdomain
-parser selects the first label only for hostnames with at least three labels;
-custom-domain ownership and trusted-proxy normalization remain application and
-deployment work.
+parser reads the `Host` header, or the HTTP/2 `:authority` when no `Host` is
+sent, and selects the first label only for hostnames with at least three
+labels; a `www` label is never a tenant. When the apex domain sits under a
+multi-label public suffix such as `.com.br` or `.co.uk`, set the unpublished
+v13 `TenantConfig::with_base_domain("escola.com.br")`: the tenant is then the
+label immediately to the left of that domain, and the apex itself uses
+`with_domain_fallback` (which only the subdomain strategy reads). Custom-domain
+ownership and trusted-proxy normalization remain application and deployment
+work.
 
 ## 2. Bind every database query
 

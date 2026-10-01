@@ -244,7 +244,9 @@ pub trait QuotaStore: Send + Sync {
 pub enum QuotaExecution<T> {
     /// This call reserved quota and executed the operation.
     Executed { value: T, grant: QuotaGrant },
-    /// This idempotency key was already reserved, so the operation was not repeated.
+    /// The key was already reserved, so this call did not run the operation.
+    /// Not proof of completion: the claim may belong to a call that is still
+    /// running (and may fail and release it) or was dropped without release.
     Replay(QuotaGrant),
 }
 
@@ -289,6 +291,8 @@ where
     /// This helper is safe against quota overrun but is not an atomic database
     /// transaction with arbitrary application storage. SQL applications that
     /// need that guarantee use `SqlQuotaStore::reserve_with_transaction`.
+    /// [`QuotaExecution::Replay`] only reports an existing claim, which may
+    /// belong to an in-flight or abandoned call rather than completed work.
     pub async fn execute<Operation, FutureResult, Value, Error>(
         &self,
         request: &QuotaRequest,

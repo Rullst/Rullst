@@ -129,7 +129,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         Extension(identity), Form(CheckoutForm {{ plan: "price_pro".into() }})
     ).await;
     assert_eq!(checkout.status(), StatusCode::SEE_OTHER);
-    assert!(checkout.headers()["location"].to_str()?.starts_with("https://checkout.stripe.com/"));
+    // Offline Stripe fixtures redirect to a reserved host, never checkout.stripe.com.
+    assert!(checkout.headers()["location"].to_str()?.starts_with("https://mock.stripe.invalid/checkout/"));
 
     let event = WebhookEvent {{
         subscription_id: "sub_contract".to_string(),

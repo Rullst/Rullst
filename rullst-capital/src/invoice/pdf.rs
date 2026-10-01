@@ -157,10 +157,16 @@ fn wrap_chars(value: &str, width: usize) -> Vec<String> {
 }
 
 fn format_money(amount_minor: u64, currency: &str) -> String {
+    let exponent = crate::currency::minor_unit_exponent(currency);
+    if exponent == 0 {
+        return format!("{amount_minor} {currency}");
+    }
+    let scale = 10_u64.pow(exponent);
     format!(
-        "{}.{:02} {currency}",
-        amount_minor / 100,
-        amount_minor % 100
+        "{}.{:0width$} {currency}",
+        amount_minor / scale,
+        amount_minor % scale,
+        width = exponent as usize
     )
 }
 
@@ -217,6 +223,14 @@ mod tests {
             total: 49.90,
             currency: "brl".to_string(),
         }
+    }
+
+    #[test]
+    fn money_uses_the_currency_minor_unit_exponent() {
+        assert_eq!(format_money(4_990, "BRL"), "49.90 BRL");
+        assert_eq!(format_money(2_500, "JPY"), "2500 JPY");
+        assert_eq!(format_money(12_340, "KWD"), "12.340 KWD");
+        assert_eq!(format_money(7, "KWD"), "0.007 KWD");
     }
 
     #[test]

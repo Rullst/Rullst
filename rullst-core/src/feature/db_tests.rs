@@ -108,3 +108,24 @@ async fn the_cache_holds_a_bounded_number_of_flag_names() {
     }
     assert_eq!(driver.cache.len(), MAX_CACHED_FLAGS);
 }
+
+#[test]
+fn a_negative_rollout_percentage_enables_nobody() {
+    assert_eq!(rollout_from_column(-1), 0);
+    assert_eq!(rollout_from_column(i32::MIN), 0);
+    assert_eq!(rollout_from_column(30), 30);
+
+    let driver = DbFeatureDriver::new();
+    for identifier in ["user-1", "user-2", "user-3", "user-4"] {
+        assert_eq!(
+            driver.evaluate(
+                true,
+                Some(rollout_from_column(-1)),
+                None,
+                "paused",
+                Some(identifier)
+            ),
+            Some("disabled".to_string())
+        );
+    }
+}

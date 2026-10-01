@@ -35,7 +35,14 @@ impl PolarCheckoutRequest {
                 "Polar checkout requires a product UUID and an opaque external customer ID".into(),
             ));
         }
-        crate::providers::validate_checkout_url("polar-redirect", &request.success)?;
+        // A bad application redirect is local configuration, not provider drift.
+        crate::providers::validate_checkout_url("polar-redirect", &request.success).map_err(
+            |_| {
+                CapitalError::ConfigurationError(
+                    "Polar checkout requires a bounded credential-free HTTPS success URL without a fragment".into(),
+                )
+            },
+        )?;
         Ok(request)
     }
 

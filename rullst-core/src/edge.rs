@@ -14,6 +14,11 @@ pub struct EdgeRequest {
     pub method: String,
     /// Request URL path (e.g., "/users").
     pub path: String,
+    /// Raw query string after `?`, still percent-encoded (e.g. `q=rust&page=2`),
+    /// or `None` when the URL has no `?`.
+    ///
+    /// Unpublished v13 API.
+    pub query: Option<String>,
     /// Collection of request headers.
     pub headers: HashMap<String, String>,
     /// Raw request body in bytes.
@@ -26,6 +31,7 @@ impl EdgeRequest {
         Self {
             method: method.into(),
             path: path.into(),
+            query: None,
             headers: HashMap::new(),
             body: Vec::new(),
         }
@@ -195,6 +201,7 @@ where
                 let edge_req = EdgeRequest {
                     method: method.to_string(),
                     path: uri.path().to_string(),
+                    query: uri.query().map(str::to_string),
                     headers,
                     body: body.to_vec(),
                 };
@@ -294,6 +301,36 @@ mod tests {
             .unwrap();
         assert_eq!(response.status(), 200);
         assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test]
+    #[allow(clippy::unwrap_used)]
+    async fn emulator_forwards_the_query_string() {
+        use tower::ServiceExt;
+
+        let router = emulator_router(|req: EdgeRequest| async move {
+            EdgeResponse::new(200).with_body(format!("{} {:?}", req.path, req.query).into())
+        });
+        for (uri, expected) in [
+            ("/search?q=rust&page=2", r#"/search Some("q=rust&page=2")"#),
+            ("/search", "/search None"),
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    axum::http::Request::get(uri)
+                        .body(axum::body::Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            let body = axum::body::to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap();
+            assert_eq!(&body[..], expected.as_bytes(), "{uri}");
+        }
+        assert_eq!(EdgeRequest::new("GET", "/").query, None);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

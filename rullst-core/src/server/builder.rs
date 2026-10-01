@@ -227,6 +227,15 @@ impl Server {
     }
 
     /// Start the HTTP server on the specified port
+    ///
+    /// The listen host comes from `HOST`, then the legacy `RULLST_HOST` (the
+    /// process environment first, then `.env`), defaulting to `127.0.0.1`, or
+    /// `0.0.0.0` in staging and production. It must be an IP address (IPv6
+    /// with or without brackets, such as `::` or `[::1]`) or `localhost`,
+    /// which binds `127.0.0.1`. Other host names are rejected with
+    /// [`ServerError::InvalidAddress`] instead of being resolved, so a shell
+    /// that exports `HOST` as the machine name (tcsh does) cannot silently
+    /// bind a LAN interface; set `HOST` explicitly in that case.
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self, port: u16) -> Result<(), ServerError> {
         self.run_with_shutdown(port, shutdown_signal()).await
@@ -256,12 +265,22 @@ impl Server {
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
+        // Uptime counts from process start-up, not from the first probe.
+        crate::health::init_health_boot_time_if_unset();
+        crate::radar::init_radar_if_unset();
         let dotenv = Self::load_dotenv_values().await?;
         #[cfg(feature = "orm")]
         crate::artisan::runner::intercept_artisan_command(None, self.db_url.as_deref()).await;
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;
+        // `RullstConfig::environment` reports the same environment.
+        crate::config::record_project_environment_selector(
+            dotenv
+                .get("RULLST_ENV")
+                .or_else(|| dotenv.get("APP_ENV"))
+                .cloned(),
+        );
         self.resolve_trusted_proxy(&app_config.security)?;
 
         self.init_database(&app_config, &dotenv).await?;
@@ -416,13 +435,10 @@ impl Server {
         };
         let port = env_port.or(configured_port).unwrap_or(fallback_port);
 
-        let addr: SocketAddr =
-            format!("{host_str}:{port}")
-                .parse()
-                .map_err(|_| ServerError::InvalidAddress {
-                    host: host_str,
-                    port,
-                })?;
+        let addr = listen_address(&host_str, port).ok_or(ServerError::InvalidAddress {
+            host: host_str,
+            port,
+        })?;
 
         if development_console_enabled(cfg!(debug_assertions), environment)
             && addr.ip().is_unspecified()
@@ -539,6 +555,21 @@ impl Server {
         mark_lifecycle_stopped(lifecycle.as_ref());
         result
     }
+}
+
+/// The socket address for a `HOST` value: `host:port` as before, a bare IPv6
+/// address such as `::`, or `localhost` (`127.0.0.1`). Host names are never
+/// resolved.
+fn listen_address(host: &str, port: u16) -> Option<SocketAddr> {
+    if let Ok(address) = format!("{host}:{port}").parse() {
+        return Some(address);
+    }
+    if host.eq_ignore_ascii_case("localhost") {
+        return Some(SocketAddr::from(([127, 0, 0, 1], port)));
+    }
+    host.parse::<std::net::IpAddr>()
+        .ok()
+        .map(|ip| SocketAddr::new(ip, port))
 }
 
 /// Reads an optional process environment variable for database URL resolution.

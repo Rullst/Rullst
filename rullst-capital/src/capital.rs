@@ -25,7 +25,7 @@ mod tests {
             .await
             .unwrap();
         assert!(url.contains("mock_session"));
-        assert!(url.contains("test%40user.com"));
+        assert!(!url.contains("user.com"));
     }
 
     #[tokio::test]
@@ -38,7 +38,7 @@ mod tests {
             .await
             .unwrap();
         assert!(url.contains("mock_session"));
-        assert!(url.contains("test%40user.com"));
+        assert!(!url.contains("user.com"));
     }
 
     #[tokio::test]
@@ -55,7 +55,8 @@ mod tests {
             .await
             .unwrap();
         assert!(url.contains("mock_session"));
-        assert!(url.contains("user%40empresa.com.br"));
+        assert!(url.starts_with("https://mock.infinitepay.invalid/"));
+        assert!(!url.contains("empresa") && !url.contains("meusaas"));
     }
 
     #[tokio::test]

@@ -111,3 +111,36 @@ fn a_full_map_evicts_the_least_recently_used_buckets() {
     assert!(!limiter.check_and_consume("client-15"));
     assert!(!limiter.check_and_consume("newcomer"));
 }
+
+#[test]
+fn long_keys_are_stored_as_bounded_digests() {
+    let limiter = RateLimiter::new(RateLimitConfig::per_hour(1.0));
+    let token_a = format!("Bearer {}", "a".repeat(64 * 1024));
+    let token_b = format!("Bearer {}", "b".repeat(64 * 1024));
+
+    assert!(limiter.check_and_consume(&token_a));
+    assert!(
+        !limiter.check_and_consume(&token_a),
+        "same key, same bucket"
+    );
+    assert!(
+        limiter.check_and_consume(&token_b),
+        "distinct keys stay distinct"
+    );
+    assert!(limiter.check_and_consume("short-key"));
+    assert!(limiter.buckets.contains_key("short-key"));
+    assert!(
+        limiter
+            .buckets
+            .iter()
+            .all(|entry| entry.key().len() <= buckets::MAX_VERBATIM_KEY_BYTES),
+        "a stored key exceeded the bound"
+    );
+
+    // A verbatim key cannot impersonate another key's digest form.
+    let digest_form = buckets::bounded_bucket_key(&token_a).into_owned();
+    assert_ne!(
+        buckets::bounded_bucket_key(&digest_form),
+        digest_form.as_str()
+    );
+}

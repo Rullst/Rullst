@@ -197,6 +197,16 @@ fn policy_rejects_wildcards_duplicates_and_weak_credentials() {
     }
     assert!(MachineEndpoint::bearer(Method::GET, "/machine", TOKEN).is_err());
     assert!(MachineEndpoint::bearer(Method::POST, "/machine", "short").is_err());
+    // Weak secrets fail at construction, including long low-diversity ones.
+    for weak in ["a".repeat(32), "abcd".repeat(8), "0123456".repeat(5)] {
+        assert!(matches!(
+            MachineEndpoint::bearer(Method::POST, "/machine", weak),
+            Err(MachineEndpointError::InvalidCredential)
+        ));
+    }
+    assert!(
+        MachineEndpoint::bearer(Method::POST, "/machine", "0123456789abcdef".repeat(2)).is_ok()
+    );
     assert!(
         MachineEndpointPolicy::new(vec![
             MachineEndpoint::bearer(Method::POST, "/machine", TOKEN).unwrap(),

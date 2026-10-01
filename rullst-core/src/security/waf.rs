@@ -22,10 +22,6 @@ static MALICIOUS_PATTERNS: &[&str] = &[
     "onload=",
     "onerror=",
     "document.cookie", // XSS
-    "../",
-    "..\\",
-    "/etc/passwd",
-    "win.ini", // Path Traversal
     "; ls",
     "&& cat",
     "| bash",
@@ -34,6 +30,10 @@ static MALICIOUS_PATTERNS: &[&str] = &[
     "curl ",
     "ping -c", // Command Injection
 ];
+
+/// Path-traversal signatures, checked in the query, headers, bodies and the
+/// percent-decoded request path.
+static PATH_TRAVERSAL_PATTERNS: &[&str] = &["../", "..\\", "/etc/passwd", "win.ini"];
 
 fn plain_response(status: StatusCode, message: &'static str) -> Response {
     let mut response = Response::new(Body::from(message));
@@ -118,7 +118,20 @@ fn contains_malicious_pattern(payload: &str) -> bool {
     let payload_lower = payload_decoded.to_lowercase();
     MALICIOUS_PATTERNS
         .iter()
+        .chain(PATH_TRAVERSAL_PATTERNS)
         .any(|pattern| payload_lower.contains(pattern))
+}
+
+/// Whether the percent-decoded request path carries a traversal signature.
+///
+/// Routers decode path parameters, so `/files/..%2f..%2fetc%2fpasswd` reaches
+/// a `{name}` handler as `../../etc/passwd`. Only the traversal group applies
+/// to the path: SQL and command keywords are ordinary in slugs and file names.
+fn path_contains_traversal(path: &str) -> bool {
+    let decoded = url_decode(path).to_lowercase();
+    PATH_TRAVERSAL_PATTERNS
+        .iter()
+        .any(|pattern| decoded.contains(pattern))
 }
 
 async fn inspect_and_restore_body(req: Request) -> Result<Request, Box<Response>> {
@@ -165,11 +178,13 @@ async fn inspect_and_restore_body(req: Request) -> Result<Request, Box<Response>
 
 /// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
 pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
-    // 1. Inspect User-Agent for known bots or scrapers
+    // 1. Inspect User-Agent for known bots or scrapers. Header values are
+    // decoded lossily: an obs-text byte (0x80-0xFF) that `to_str` rejects must
+    // not hide the rest of the value from inspection.
     if let Some(ua) = req
         .headers()
         .get(header::USER_AGENT)
-        .and_then(|v| v.to_str().ok())
+        .map(|value| String::from_utf8_lossy(value.as_bytes()))
     {
         let ua_lower = ua.to_lowercase();
         let suspicious_agents = req
@@ -193,19 +208,33 @@ pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
         }
     }
 
-    // 2. Inspect query parameters and selected headers for common attack vectors.
+    // 2. Inspect the path, query parameters and selected headers for common
+    // attack vectors.
+    if path_contains_traversal(req.uri().path()) {
+        return forbidden_response();
+    }
     if let Some(query) = req.uri().query() {
         if contains_malicious_pattern(query) {
             return forbidden_response();
         }
     }
 
-    for header_name in [header::REFERER, header::COOKIE] {
-        if let Some(payload) = req
-            .headers()
-            .get(header_name)
-            .and_then(|value| value.to_str().ok())
-            && contains_malicious_pattern(payload)
+    if let Some(referer) = req
+        .headers()
+        .get(header::REFERER)
+        .map(|value| String::from_utf8_lossy(value.as_bytes()))
+        && contains_malicious_pattern(&referer)
+    {
+        return forbidden_response();
+    }
+
+    // Each cookie pair is inspected on its own: the `; ` pair separator is
+    // header syntax, so the `; ls` command pattern must not match a later
+    // cookie whose name starts with `ls`.
+    for cookies in req.headers().get_all(header::COOKIE) {
+        if String::from_utf8_lossy(cookies.as_bytes())
+            .split(';')
+            .any(|pair| contains_malicious_pattern(pair.trim()))
         {
             return forbidden_response();
         }
@@ -227,6 +256,85 @@ mod tests {
     use super::*;
     use axum::{Router, body::Bytes, http::Request, routing::post};
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn encoded_traversal_in_the_path_is_blocked() {
+        let app = Router::new()
+            .fallback(|| async { "file" })
+            .layer(axum::middleware::from_fn(waf_middleware));
+        for (path, expected) in [
+            ("/files/..%2f..%2fetc%2fpasswd", StatusCode::FORBIDDEN),
+            ("/files/..%5C..%5Cwindows%5Cwin.ini", StatusCode::FORBIDDEN),
+            ("/files/%2E%2E%2Fsecret", StatusCode::FORBIDDEN),
+            ("/files/report.pdf", StatusCode::OK),
+            ("/search/union%20select%20deals", StatusCode::OK),
+            ("/releases/v1..v2", StatusCode::OK),
+        ] {
+            let request = Request::get(path).body(Body::empty()).unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                expected,
+                "{path}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn cookie_pair_separators_are_not_command_injection() {
+        let app = Router::new()
+            .route("/items", post(|body: Bytes| async move { body }))
+            .route_layer(axum::middleware::from_fn(waf_middleware));
+        for (case, (cookie, expected)) in [
+            ("rullst_csrf=abc; lsid=1", StatusCode::OK),
+            ("a=1;ls_session=2; LSKEY=3", StatusCode::OK),
+            ("a=1; b=../../etc/passwd", StatusCode::FORBIDDEN),
+            ("theme=dark; q=%3Cscript%3E", StatusCode::FORBIDDEN),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let request = Request::post("/items")
+                .header(header::COOKIE, cookie)
+                .body(Body::empty())
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                expected,
+                "case {case}"
+            );
+        }
+        let split_header = Request::post("/items")
+            .header(header::COOKIE, "a=1")
+            .header(header::COOKIE, "b=<script>")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            app.oneshot(split_header).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+
+    #[tokio::test]
+    async fn obs_text_bytes_cannot_hide_inspected_header_values() {
+        let app = Router::new()
+            .route("/items", post(|body: Bytes| async move { body }))
+            .route_layer(axum::middleware::from_fn(waf_middleware));
+        for (name, value) in [
+            (header::REFERER, &b"https://x.example/?q=<script>\xff"[..]),
+            (header::COOKIE, &b"q=../../etc/passwd\xff"[..]),
+            (header::USER_AGENT, &b"GPTBot/1.0 \xff"[..]),
+        ] {
+            let request = Request::post("/items")
+                .header(name.clone(), HeaderValue::from_bytes(value).unwrap())
+                .body(Body::empty())
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::FORBIDDEN,
+                "{name}"
+            );
+        }
+    }
 
     #[tokio::test]
     async fn case_and_suffix_variants_cannot_skip_body_inspection() {

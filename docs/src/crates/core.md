@@ -103,10 +103,10 @@ delay keeps the claiming worker out of a hot loop, and it still reports
 stays pending and is re-offered every five seconds instead of being failed.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
-`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`/`422`
-JSON) for other clients, but an HTMX request receives its escaped HTML
-fragment with `200 OK` and an `X-Rullst-Validation-Status: 400|422` header,
-because htmx swaps only successful responses by default.
+`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`, `413`,
+`415` or `422` JSON) for other clients, but an HTMX request receives its
+escaped HTML fragment with `200 OK` and an `X-Rullst-Validation-Status` header
+carrying that status, because htmx swaps only successful responses by default.
 `Scheduler::task` takes a POSIX five-field expression (`minute hour
 day-of-month month day-of-week`) evaluated in UTC. Day-of-week accepts 0-7
 (0 and 7 are Sunday, 1 is Monday) and names, so `0 9 * * 1-5` runs Monday to
@@ -154,7 +154,8 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
-  process uptime. Unsupported probes return `None`. On Linux, RSS comes from
+  process uptime. Unsupported probes return `None`: RSS and CPU have probes
+  on Linux and Windows only, so macOS reports neither. On Linux, RSS comes from
   `VmRSS` in `/proc/self/status` (correct on 16/64 KiB page kernels), and CPU
   percent is process CPU time over wall time: the host-wide `/proc/stat` delta
   is scaled by its host CPU count, not by the cgroup-limited
@@ -162,7 +163,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   about 200%.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
-  reports process availability and uptime. The opt-in
+  reports process availability and uptime. `Server` records the health and
+  Radar uptime origin when it starts, unless `init_health_boot_time` or
+  `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
   times out its own dependency checks.
@@ -186,10 +189,14 @@ exercises this boundary through a real proxy; full hosted admission remains pend
 - **Bounded token-bucket rate limiter:** `RateLimiter` keys IPv4 peers per
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
-  that cap; state is process-local, not a distributed limit. When attached to
+  that cap; a key longer than 128 bytes (for example from a custom extractor
+  returning a token header) is stored as its SHA-256 digest, so the map stays
+  bounded in bytes too. State is process-local, not a distributed limit. When attached to
   `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
   and `/ready` probes through, so load shedding or an exhausted bucket cannot
-  fail a liveness probe.
+  fail a liveness probe. In a debug Development server with `cargo rullst dev`
+  reloading, its `/_rullst/dev-generation` poll and `/_rullst/dev-reload.js`
+  also bypass both and are not access-logged.
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.
   Only a socket peer inside the listed networks may report the client through
@@ -209,8 +216,18 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   Earlier releases used `std`'s unspecified `DefaultHasher`, so upgrading
   reassigns users to buckets once; percentages and variant weights are kept.
   `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
-  so concurrent evaluations never see a flag as unset mid-reload, and a
-  `[features] # comment` header is recognized.
+  so concurrent evaluations never see a flag as unset mid-reload. It reads
+  `[features]` with a TOML parser, so quoted flag names (`"checkout.v2"`),
+  `# ` inside strings and any valid header spelling work, and dotted keys or
+  `[features.<group>]` tables become dotted flag names; a file that is not
+  valid TOML falls back to the earlier line reader. When an A/B split's weights
+  sum to less than 100, an identifier outside them gets the variant
+  `"disabled"` from the driver that defines the flag; it no longer falls
+  through to a lower-priority driver's split. The unpublished v13
+  `FeatureManager::overrides()` returns the first-priority
+  `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global
+  `feature::manager()` when it uses the default pipeline), so programmatic
+  overrides reach it.
 - **Shared project settings (internal, v13):** `server::ProjectSettings` and
   `server::read_project_setting` resolve a setting from the process
   environment first and then the project's `.env`, which never overrides the

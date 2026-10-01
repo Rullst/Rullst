@@ -46,7 +46,10 @@ networks.
 
 `AuditChain` signs canonical, length-delimited records with HMAC and can verify
 record integrity and sequence continuity. It detects modifications only when the
-key is protected and the complete sequence is retained.
+key is protected and the complete sequence is retained. A writer that restarts
+must resume from the newest persisted record with `AuditChain::try_resume`
+(unpublished v13); a fresh chain restarts at genesis and the retained trail no
+longer verifies as one sequence. One writer must own each persisted chain.
 
 The dashboard must display `Unavailable` until an audit source and continuity
 verifier are actually connected. It must never infer “verified” merely because an

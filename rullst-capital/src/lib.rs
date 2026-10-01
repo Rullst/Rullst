@@ -2,6 +2,7 @@ pub mod billable;
 pub mod capital;
 pub mod charge;
 pub mod checkout;
+mod currency;
 pub mod customer;
 pub mod dashboard;
 pub mod entitlements;

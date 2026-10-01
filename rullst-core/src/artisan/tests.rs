@@ -346,3 +346,20 @@ async fn server_intercepted_database_commands_fail_without_a_registry() {
         assert!(error.to_string().contains("rullst::artisan!"));
     }
 }
+
+#[tokio::test]
+async fn studio_reports_a_port_that_is_already_in_use() {
+    let occupied = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = occupied.local_addr().unwrap();
+    let error = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        crate::artisan::studio_server::serve_studio_at(address),
+    )
+    .await
+    .expect("a failed bind returns instead of serving")
+    .unwrap_err();
+    assert_eq!(error.kind(), std::io::ErrorKind::AddrInUse);
+
+    let message = ArtisanError::Studio(error).to_string();
+    assert!(message.contains("could not serve"), "{message}");
+}

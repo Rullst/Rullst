@@ -44,6 +44,14 @@ fn is_textual_response(headers: &HeaderMap) -> bool {
         || media_type.eq_ignore_ascii_case("application/javascript")
 }
 
+fn is_json_response(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(super::media_type::essence)
+        .is_some_and(super::media_type::is_json)
+}
+
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
     headers
         .get(header::CONTENT_ENCODING)
@@ -98,6 +106,11 @@ fn body_collection_failure() -> Response {
 }
 
 /// Automatic PII (Personally Identifiable Information) masking middleware for response payloads.
+///
+/// JSON responses (any `json` subtype or `+json` suffix) are masked only
+/// inside string literals, so JSON numbers are never rewritten and the body
+/// stays valid JSON. Other textual responses use [`mask_pii`] on the whole
+/// text.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     let request_method = req.method().clone();
@@ -125,7 +138,11 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
         return Response::from_parts(parts, axum::body::Body::from(bytes));
     };
 
-    let masked_body = mask_pii(body_text);
+    let masked_body = if is_json_response(&parts.headers) {
+        mask_json_strings(body_text)
+    } else {
+        mask_pii(body_text)
+    };
     if masked_body.as_bytes() != bytes.as_ref() {
         update_representation_headers(&mut parts.headers, masked_body.len());
     }
@@ -195,7 +212,36 @@ fn mask_card_numbers(chars: &mut [char]) {
     }
 }
 
+/// Static-asset extensions that follow `@` in versioned or density-suffixed
+/// file names (`logo@2x.png`) but are not top-level domains.
+const ASSET_EXTENSIONS: [&str; 22] = [
+    "avif", "bmp", "cjs", "css", "eot", "gif", "htm", "html", "ico", "jpeg", "jpg", "js", "json",
+    "map", "mjs", "otf", "png", "svg", "ttf", "wasm", "webp", "woff",
+];
+
+/// Whether the text after `@` ends in an e-mail top-level domain: at least two
+/// letters (or a `xn--` IDN label) that are not a static-asset extension.
+/// Package versions (`htmx.org@2.0.4`) and asset names (`logo@2x.png`)
+/// therefore do not look like addresses.
+fn has_email_domain(domain: &[char]) -> bool {
+    let trimmed_len = domain.len() - domain.iter().rev().take_while(|c| **c == '.').count();
+    let domain = &domain[..trimmed_len];
+    let Some(dot) = domain.iter().rposition(|c| *c == '.') else {
+        return false;
+    };
+    let tld: String = domain[dot + 1..]
+        .iter()
+        .map(char::to_ascii_lowercase)
+        .collect();
+    let alphabetic = tld.chars().count() >= 2 && tld.chars().all(char::is_alphabetic);
+    (alphabetic || tld.starts_with("xn--")) && !ASSET_EXTENSIONS.contains(&tld.as_str())
+}
+
 /// Helper function to perform lightweight regex-free PII masking for emails and credit card numbers.
+///
+/// An e-mail needs a local part of at least two characters and a dotted domain
+/// ending in an alphabetic top-level domain that is not a static-asset
+/// extension, so `htmx.org@2.0.4` and `logo@2x.png` are left unchanged.
 ///
 /// Card masking treats ASCII digits separated by at most two consecutive
 /// spaces or hyphens as one run. A run of 13 to 19 digits keeps only its last
@@ -204,7 +250,47 @@ fn mask_card_numbers(chars: &mut [char]) {
 #[cfg_attr(mutants, mutants::skip)]
 pub fn mask_pii(text: &str) -> String {
     let mut chars: Vec<char> = text.chars().collect();
-    mask_card_numbers(&mut chars);
+    mask_chars(&mut chars);
+    chars.into_iter().collect()
+}
+
+/// Masks PII only inside the string literals of a JSON document.
+///
+/// Numbers, `true`/`false`/`null` and structural characters are never
+/// rewritten, so a millisecond timestamp or a 64-bit ID stays a valid JSON
+/// number instead of becoming `*********0000`. Each string is masked on its
+/// own, and the scan is linear in the number of characters. Invalid JSON is
+/// scanned the same way; an unterminated string runs to the end.
+fn mask_json_strings(text: &str) -> String {
+    let mut chars: Vec<char> = text.chars().collect();
+    let mut index = 0;
+    while index < chars.len() {
+        if chars[index] != '"' {
+            index += 1;
+            continue;
+        }
+        let start = index + 1;
+        let mut end = start;
+        let mut escaped = false;
+        while let Some(&c) = chars.get(end) {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                break;
+            }
+            end += 1;
+        }
+        mask_chars(&mut chars[start..end]);
+        index = end + 1;
+    }
+    chars.into_iter().collect()
+}
+
+/// Applies the card and e-mail passes to one span of characters.
+fn mask_chars(chars: &mut [char]) {
+    mask_card_numbers(chars);
 
     let mut idx = 0;
     while idx < chars.len() {
@@ -235,7 +321,11 @@ pub fn mask_pii(text: &str) -> String {
 
             let username_len = idx - start;
             let domain_len = end - (idx + 1);
-            if username_len > 1 && domain_len > 3 && dot_seen {
+            if username_len > 1
+                && domain_len > 3
+                && dot_seen
+                && has_email_domain(&chars[idx + 1..end])
+            {
                 for item in chars.iter_mut().take(idx).skip(start + 1) {
                     *item = '*';
                 }
@@ -245,168 +335,8 @@ pub fn mask_pii(text: &str) -> String {
         }
         idx += 1;
     }
-
-    chars.into_iter().collect()
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{card_mask_count, is_textual_response, mask_card_numbers, mask_pii};
-    use std::time::{Duration, Instant};
-
-    /// The former per-position rescan, kept as a differential oracle for the
-    /// masking result. It is quadratic on long runs; only call it on short input.
-    fn legacy_mask_card_numbers(chars: &mut [char]) {
-        let mut i = 0;
-        while i < chars.len() {
-            if chars[i].is_ascii_digit() {
-                let mut digit_indices = vec![i];
-                let mut j = i + 1;
-                let mut non_digits = 0;
-                while j < chars.len() && non_digits < 3 {
-                    let c = chars[j];
-                    if c.is_ascii_digit() {
-                        digit_indices.push(j);
-                        non_digits = 0;
-                    } else if c == ' ' || c == '-' {
-                        non_digits += 1;
-                    } else {
-                        break;
-                    }
-                    j += 1;
-                }
-                if let Some(mask_count) = card_mask_count(digit_indices.len()) {
-                    for index in digit_indices.iter().take(mask_count) {
-                        chars[*index] = '*';
-                    }
-                    i = j;
-                    continue;
-                }
-            }
-            i += 1;
-        }
-    }
-
-    fn assert_matches_legacy(input: &str) {
-        let mut expected: Vec<char> = input.chars().collect();
-        legacy_mask_card_numbers(&mut expected);
-        let mut actual: Vec<char> = input.chars().collect();
-        mask_card_numbers(&mut actual);
-        assert_eq!(
-            actual.iter().collect::<String>(),
-            expected.iter().collect::<String>(),
-            "input: {input:?}"
-        );
-    }
-
-    #[test]
-    fn long_digit_runs_keep_legacy_trailing_window_masking() {
-        for (input, expected) in [
-            ("1234567890123456789", "***************6789"),
-            ("12345678901234567890", "1***************7890"),
-            ("1234567890123456789012345", "123456***************2345"),
-            ("x12345678901234567890123 y", "x1234***************0123 y"),
-            (
-                "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1",
-                "1 1 * * * * * * * * * * * * * * * 1 1 1 1",
-            ),
-            (
-                "1-2-3-4-5-6-7-8-9-0-1-2-3-4-5-6-7-8-9-0-1-2",
-                "1-2-3-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-9-0-1-2",
-            ),
-            (
-                "1234  5678 1234 5678 9999 1111",
-                "1234  5*** **** **** **** 1111",
-            ),
-            (
-                "1234   5678123456789999 1111",
-                "1234   5*************** 1111",
-            ),
-        ] {
-            assert_eq!(mask_pii(input), expected, "input: {input:?}");
-        }
-    }
-
-    #[test]
-    fn linear_card_scan_matches_legacy_rescan() {
-        for digits in 1..=45 {
-            for separator in ["", " ", "-", "  ", "- ", "   ", "x"] {
-                let run = vec!["7"; digits].join(separator);
-                assert_matches_legacy(&run);
-                assert_matches_legacy(&format!("a{run}  -12 34@b.co"));
-            }
-        }
-
-        let alphabet: Vec<char> = "01234567890123456789012345678901234567  --- x@.*"
-            .chars()
-            .collect();
-        let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
-        for _ in 0..3_000 {
-            state ^= state << 13;
-            state ^= state >> 7;
-            state ^= state << 17;
-            let len = (state % 64) as usize;
-            let input: String = (0..len)
-                .map(|_| {
-                    state ^= state << 13;
-                    state ^= state >> 7;
-                    state ^= state << 17;
-                    alphabet[(state % alphabet.len() as u64) as usize]
-                })
-                .collect();
-            assert_matches_legacy(&input);
-        }
-    }
-
-    #[test]
-    fn over_long_digit_runs_are_masked_in_linear_time() {
-        // Linear scanning finishes in milliseconds. The former per-position
-        // rescan performs roughly n^2 / 2 steps (about 2 * 10^10 here) plus one
-        // allocation per start position, which takes minutes.
-        let started = Instant::now();
-
-        let digits = "7".repeat(200_000);
-        let masked = mask_pii(&digits);
-        assert_eq!(masked.len(), digits.len());
-        assert_eq!(&masked[..199_981], &digits[..199_981]);
-        assert_eq!(&masked[199_981..], "***************7777");
-
-        let spaced = "1 ".repeat(100_000);
-        let masked = mask_pii(&spaced);
-        assert_eq!(masked.len(), spaced.len());
-        let tail_start = spaced.len() - 38;
-        assert_eq!(&masked[..tail_start], &spaced[..tail_start]);
-        assert_eq!(
-            &masked[tail_start..],
-            format!("{}1 1 1 1 ", "* ".repeat(15))
-        );
-
-        assert!(
-            started.elapsed() < Duration::from_secs(5),
-            "masking 400,000 characters took {:?}",
-            started.elapsed()
-        );
-    }
-
-    #[test]
-    fn textual_responses_are_recognized_in_any_ascii_case() {
-        use axum::http::{HeaderMap, HeaderValue, header};
-        for media_type in [
-            "application/problem+JSON",
-            "Application/Vnd.Api+Json; charset=utf-8",
-            "APPLICATION/JSON",
-            "Application/Atom+XML",
-            "Text/HTML",
-        ] {
-            let mut headers = HeaderMap::new();
-            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(media_type));
-            assert!(is_textual_response(&headers), "{media_type}");
-        }
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("Text/Event-Stream"),
-        );
-        assert!(!is_textual_response(&headers));
-    }
-}
+#[path = "pii_tests.rs"]
+mod tests;

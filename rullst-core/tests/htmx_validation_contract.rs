@@ -52,7 +52,7 @@ async fn htmx_validation_fragments_are_swappable_and_labelled() {
 
     let response = submit("username=abc", "text/plain", true).await;
     assert!(htmx_swaps(response.status()), "{}", response.status());
-    assert_eq!(response.headers()["x-rullst-validation-status"], "400");
+    assert_eq!(response.headers()["x-rullst-validation-status"], "415");
 }
 
 #[tokio::test]
@@ -66,7 +66,7 @@ async fn non_htmx_clients_keep_rest_status_codes() {
     );
 
     let response = submit("username=abc", "text/plain", false).await;
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 
     let response = submit("username=abc", "application/x-www-form-urlencoded", true).await;
     assert_eq!(response.status(), StatusCode::OK);

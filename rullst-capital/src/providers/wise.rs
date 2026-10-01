@@ -303,17 +303,6 @@ fn fixture_error(reason: &str) -> CapitalError {
     CapitalError::PayloadParseError(format!("Wise fixture: {reason}"))
 }
 
-// ISO 4217 minor-unit exponent; currencies not listed use two decimals.
-fn currency_exponent(currency: &str) -> usize {
-    match currency {
-        "BIF" | "CLP" | "DJF" | "GNF" | "ISK" | "JPY" | "KMF" | "KRW" | "PYG" | "RWF" | "UGX"
-        | "UYI" | "VND" | "VUV" | "XAF" | "XOF" | "XPF" => 0,
-        "BHD" | "IQD" | "JOD" | "KWD" | "LYD" | "OMR" | "TND" => 3,
-        "CLF" | "UYW" => 4,
-        _ => 2,
-    }
-}
-
 // Scales an exact decimal amount to minor units without floating-point
 // arithmetic. JSON numbers are read from their shortest round-trip decimal
 // text; negative, exponent, over-precise, zero and overflowing values fail.
@@ -323,7 +312,7 @@ fn fixture_minor_units(value: &Value, currency: &str) -> Result<u64, CapitalErro
         Value::String(text) => text.clone(),
         _ => return Err(fixture_error("missing or invalid amount")),
     };
-    let exponent = currency_exponent(currency);
+    let exponent = crate::currency::minor_unit_exponent(currency) as usize;
     let (whole, fraction) = match text.split_once('.') {
         Some((whole, fraction)) if !fraction.is_empty() => (whole, fraction),
         Some(_) => return Err(fixture_error("missing or invalid amount")),

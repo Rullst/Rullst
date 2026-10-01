@@ -74,6 +74,12 @@ impl Container {
 
 /// Axum extractor for dependencies managed by Rullst DI Container.
 ///
+/// The dependency is resolved from an `Extension<Arc<Container>>` and, when
+/// no container is present or the container lacks `T`, from an
+/// `Extension<Arc<T>>`. A missing dependency is a `500` whose body is a fixed
+/// message; the type name is logged on the `rullst::di` target instead of
+/// being returned to the client.
+///
 /// Usage in route handlers:
 /// ```rust,no_run
 /// use axum::Json;
@@ -109,22 +115,28 @@ where
     type Rejection = (StatusCode, String);
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        if let Some(container) = parts.extensions.get::<Arc<Container>>() {
-            match container.resolve::<T>() {
-                Ok(service) => Ok(Inject(service)),
-                Err(err) => Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())),
-            }
-        } else if let Some(service) = parts.extensions.get::<Arc<T>>() {
-            Ok(Inject(service.clone()))
-        } else {
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!(
-                    "Rullst DI Container or Extension for type '{}' not found in request state",
-                    std::any::type_name::<T>()
-                ),
-            ))
+        let resolved = parts
+            .extensions
+            .get::<Arc<Container>>()
+            .map(|container| container.resolve::<T>());
+        let error = match resolved {
+            Some(Ok(service)) => return Ok(Inject(service)),
+            Some(Err(error)) => error.to_string(),
+            None => "no DI container in the request extensions".to_string(),
+        };
+        if let Some(service) = parts.extensions.get::<Arc<T>>() {
+            return Ok(Inject(service.clone()));
         }
+        tracing::error!(
+            target: "rullst::di",
+            dependency = std::any::type_name::<T>(),
+            %error,
+            "dependency injection failed: neither the container nor an Extension<Arc<T>> provides it"
+        );
+        Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "A required server dependency is not available.".to_string(),
+        ))
     }
 }
 
@@ -191,8 +203,39 @@ mod tests {
             panic!("missing dependency must fail closed");
         };
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(message.contains(std::any::type_name::<DatabaseService>()));
+        assert!(
+            !message.contains("DatabaseService"),
+            "internal type path returned"
+        );
         assert!(!message.contains("sqlite://"));
+    }
+
+    #[tokio::test]
+    async fn an_extension_is_used_when_the_container_lacks_the_type() {
+        let mut parts = Request::new(()).into_parts().0;
+        parts.extensions.insert(Arc::new(Container::new()));
+        let direct = Arc::new(DatabaseService {
+            connection_string: "sqlite://extension".to_string(),
+        });
+        parts.extensions.insert(direct.clone());
+
+        let injected = Inject::<DatabaseService>::from_request_parts(&mut parts, &())
+            .await
+            .expect("Extension<Arc<T>> fallback");
+        assert!(Arc::ptr_eq(&injected.0, &direct));
+
+        let mut container_only = Request::new(()).into_parts().0;
+        container_only.extensions.insert(Arc::new(Container::new()));
+        let Err((status, message)) =
+            Inject::<UserService>::from_request_parts(&mut container_only, &()).await
+        else {
+            panic!("missing dependency must fail closed");
+        };
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(
+            !message.contains("UserService"),
+            "internal type path returned"
+        );
     }
 
     #[test]

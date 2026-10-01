@@ -40,23 +40,41 @@ const SCRIPT: &str = r#"(() => {
 })();
 "#;
 
+/// Path every open development page polls for the current generation.
+const GENERATION_PATH: &str = "/_rullst/dev-generation";
+
+/// Whether [`mount`] adds the reload routes for these inputs.
+pub(super) fn is_enabled(development: bool, generation: Option<&str>) -> bool {
+    cfg!(debug_assertions) && development && generation.is_some_and(is_valid_generation)
+}
+
+fn is_valid_generation(value: &str) -> bool {
+    value.len() == 32
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+/// A `GET`/`HEAD` of the reload script or the generation poll.
+pub(super) fn is_reload_request(request: &Request) -> bool {
+    matches!(
+        *request.method(),
+        axum::http::Method::GET | axum::http::Method::HEAD
+    ) && matches!(request.uri().path(), GENERATION_PATH | PATH)
+}
+
 pub(super) fn mount(router: Router, development: bool, generation: Option<String>) -> Router {
-    if !cfg!(debug_assertions) || !development {
+    if !is_enabled(development, generation.as_deref()) {
         return router;
     }
-    let Some(generation) = generation.filter(|value| {
-        value.len() == 32
-            && value
-                .bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-    }) else {
+    let Some(generation) = generation else {
         return router;
     };
     let generation: Arc<str> = Arc::from(generation);
     let probe = generation.clone();
     router
         .route(
-            "/_rullst/dev-generation",
+            GENERATION_PATH,
             get(move || {
                 let probe = probe.clone();
                 async move {

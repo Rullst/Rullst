@@ -154,7 +154,8 @@ impl RateLimiter {
 /// Each `(client_ip, max_requests, window_duration)` combination has its own
 /// budget: callers that use different policies for the same key neither share
 /// a count nor reset each other's window. All policies share the global
-/// 16,384-entry capacity, so prefer one [`RateLimiter`] instance per policy.
+/// 16,384-entry capacity, and each entry is reclaimed once its own policy's
+/// window has ended. Prefer one [`RateLimiter`] instance per policy.
 pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Duration) -> bool {
     is_rate_limited_in(
         global_rate_limit_store(),
@@ -186,6 +187,29 @@ impl StoreKey {
             ),
         }
     }
+
+    /// Window after which the entry stored under `entry_key` has expired.
+    ///
+    /// A shared store holds entries of several policies, so each one expires
+    /// after the window encoded in its own key. Keys that do not carry a
+    /// policy (a single-policy store, or an entry inserted directly into the
+    /// public global store) fall back to the longest window seen.
+    fn entry_window(self, entry_key: &str, longest_window: Duration) -> Duration {
+        match self {
+            Self::Client => longest_window,
+            Self::ClientAndPolicy => policy_window(entry_key).unwrap_or(longest_window),
+        }
+    }
+}
+
+/// Parses the window of a `{max_requests}/{nanos}ns/{client}` key.
+fn policy_window(entry_key: &str) -> Option<Duration> {
+    let (_, policy_and_client) = entry_key.split_once('/')?;
+    let (nanos, _) = policy_and_client.split_once("ns/")?;
+    let nanos = nanos.parse::<u128>().ok()?;
+    let secs = u64::try_from(nanos / 1_000_000_000).ok()?;
+    let subsec = u32::try_from(nanos % 1_000_000_000).ok()?;
+    Some(Duration::new(secs, subsec))
 }
 
 fn is_rate_limited_in(
@@ -213,10 +237,12 @@ fn is_rate_limited_in(
     if now.saturating_duration_since(admission.last_cleanup)
         >= admission.longest_window.min(Duration::from_secs(1))
     {
-        // The legacy global API can serve differing windows; never expire
-        // another caller's longer active window using this request's policy.
-        store.retain(|_, (start, _)| {
-            now.saturating_duration_since(*start) < admission.longest_window
+        // The legacy global API can serve differing windows. Each entry
+        // expires after its own policy's window, so short-window entries do not
+        // occupy capacity for the longest window any caller has used.
+        let longest_window = admission.longest_window;
+        store.retain(|key, (start, _)| {
+            now.saturating_duration_since(*start) < store_key.entry_window(key, longest_window)
         });
         admission.last_cleanup = now;
     }

@@ -5,7 +5,9 @@ use std::cell::RefCell;
 /// Strategy used to extract the active tenant ID from an incoming request.
 pub enum TenantStrategy {
     /// Select a tenant from the request host subdomain (e.g. `tenant.example.com`).
-    /// The selection is accepted only when authenticated membership allows it.
+    /// The host is the `Host` header or, when it is absent (HTTP/2), the
+    /// request `:authority`; a `www` label is not a tenant. The selection is
+    /// accepted only when authenticated membership allows it.
     Subdomain,
     /// Select a tenant from a custom HTTP header. The header is an untrusted
     /// hint and is accepted only when authenticated membership allows it.
@@ -35,8 +37,20 @@ pub struct TenantConfig {
     pub header_name: String,
     /// The name of the query parameter (used only with `TenantStrategy::Parameter`).
     pub parameter_name: String,
-    /// Fallback tenant ID to use when subdomain/header resolution fails or is absent.
+    /// Tenant ID requested by the `Subdomain` strategy when the request host
+    /// has no tenant subdomain or no host is present. It is still accepted
+    /// only when authenticated membership allows it. The `Header` and
+    /// `Parameter` strategies ignore it: without their input they use the
+    /// membership's default tenant.
     pub domain_fallback: Option<String>,
+    /// Domain the `Subdomain` strategy strips from the host, such as
+    /// `escola.com.br` or `example.co.uk`. When set, the tenant is the label
+    /// immediately to its left (`acme.escola.com.br` and
+    /// `www.acme.escola.com.br` both select `acme`), while the domain itself,
+    /// `www.` plus the domain and hosts outside it have no tenant subdomain.
+    /// When unset, the first label of a host with at least three labels is
+    /// the tenant. Unpublished v13 API.
+    pub base_domain: Option<String>,
 }
 
 impl TenantConfig {
@@ -44,12 +58,14 @@ impl TenantConfig {
     /// - Header Name: X-Tenant-ID
     /// - Parameter Name: tenant_id
     /// - Domain Fallback: None
+    /// - Base Domain: None
     pub fn new(strategy: TenantStrategy) -> Self {
         Self {
             strategy,
             header_name: "X-Tenant-ID".to_string(),
             parameter_name: "tenant_id".to_string(),
             domain_fallback: None,
+            base_domain: None,
         }
     }
 
@@ -65,9 +81,19 @@ impl TenantConfig {
         self
     }
 
-    /// Set a fallback tenant ID when domain extraction fails in Subdomain strategy.
+    /// Set the tenant ID the `Subdomain` strategy requests when the host has no
+    /// tenant subdomain. Other strategies ignore it.
     pub fn with_domain_fallback<S: Into<String>>(mut self, fallback: S) -> Self {
         self.domain_fallback = Some(fallback.into());
+        self
+    }
+
+    /// Set the domain the `Subdomain` strategy strips from the host (see
+    /// [`TenantConfig::base_domain`]). Required when the application's apex
+    /// is under a multi-label public suffix such as `.com.br`. Unpublished v13
+    /// API.
+    pub fn with_base_domain<S: Into<String>>(mut self, domain: S) -> Self {
+        self.base_domain = Some(domain.into());
         self
     }
 }
@@ -91,19 +117,60 @@ pub fn set_tenant_id(tenant_id: Option<String>) {
     });
 }
 
-/// Helper function to extract subdomain from Host header
-fn extract_subdomain(host: &str) -> Option<String> {
+/// Target host of a request: the `Host` header or, when it is absent (as in
+/// HTTP/2, where hyper exposes `:authority` only through the URI), the URI
+/// authority's host. A present `Host` header always takes precedence.
+fn request_host<B>(req: &axum::http::Request<B>) -> Option<&str> {
+    match req.headers().get(axum::http::header::HOST) {
+        Some(value) => value.to_str().ok(),
+        None => req.uri().authority().map(|authority| authority.host()),
+    }
+}
+
+/// Extracts the tenant subdomain from a request host.
+///
+/// Without a base domain, the first label of a host with at least three
+/// labels is the tenant (`tenant1.example.com` -> `tenant1`). With one, the
+/// tenant is the label immediately to the left of it. IP addresses, shorter
+/// hosts, hosts outside the base domain and a `www` label have no tenant
+/// subdomain, so `domain_fallback` applies. An empty label (a malformed host
+/// such as `.example.com`) is returned as an empty request, which membership
+/// selection rejects.
+fn extract_subdomain(host: &str, base_domain: Option<&str>) -> Option<String> {
     let host_only = host.split(':').next()?;
     if host_only.parse::<std::net::IpAddr>().is_ok() {
         return None;
     }
-    let parts: Vec<&str> = host_only.split('.').collect();
-    if parts.len() >= 3 {
-        // e.g. tenant1.example.com -> tenant1
-        Some(parts[0].to_string())
-    } else {
-        None
+    let label = match base_domain {
+        Some(base_domain) => {
+            let host_only = host_only.strip_suffix('.').unwrap_or(host_only);
+            let base_domain = base_domain.trim_matches('.');
+            let prefix_len = host_only.len().checked_sub(base_domain.len() + 1)?;
+            let suffix = host_only.get(prefix_len..)?;
+            if base_domain.is_empty()
+                || !suffix.starts_with('.')
+                || !suffix[1..].eq_ignore_ascii_case(base_domain)
+            {
+                return None;
+            }
+            host_only.get(..prefix_len)?.rsplit('.').next()?
+        }
+        None => {
+            let parts: Vec<&str> = host_only.split('.').collect();
+            if parts.len() < 3 {
+                return None;
+            }
+            parts[0]
+        }
+    };
+    // A `www` label means "no tenant subdomain". An empty label comes from a
+    // malformed host such as `.example.com`; it is returned as a requested
+    // (empty) tenant so membership selection rejects it instead of falling
+    // back to the caller's default tenant.
+    if label.eq_ignore_ascii_case("www") {
+        return None;
     }
+    Some(label.to_string())
 }
 
 /// The declarative custom Tower Layer for tenant identification
@@ -177,18 +244,9 @@ where
                     .get(&config.header_name)
                     .and_then(|v| v.to_str().ok())
                     .map(|s| s.to_string()),
-                TenantStrategy::Subdomain => req
-                    .headers()
-                    .get(axum::http::header::HOST)
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|host| {
-                        let sub = extract_subdomain(host);
-                        if sub.is_none() {
-                            config.domain_fallback.clone()
-                        } else {
-                            sub
-                        }
-                    }),
+                TenantStrategy::Subdomain => request_host(&req)
+                    .and_then(|host| extract_subdomain(host, config.base_domain.as_deref()))
+                    .or_else(|| config.domain_fallback.clone()),
                 TenantStrategy::Parameter => {
                     let query = req.uri().query().unwrap_or("");
                     serde_urlencoded::from_str::<std::collections::HashMap<String, String>>(query)
@@ -227,202 +285,5 @@ pub fn tenant_layer(config: TenantConfig) -> TenantLayer {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_subdomain() {
-        assert_eq!(
-            extract_subdomain("tenant1.example.com"),
-            Some("tenant1".to_string())
-        );
-        assert_eq!(
-            extract_subdomain("tenant-a.app.co.uk"),
-            Some("tenant-a".to_string())
-        );
-        assert_eq!(extract_subdomain("localhost:3000"), None);
-        assert_eq!(extract_subdomain("127.0.0.1"), None);
-    }
-
-    #[test]
-    fn test_tenant_config_builder() {
-        let config = TenantConfig::new(TenantStrategy::Header)
-            .with_header_name("X-Custom-Tenant")
-            .with_parameter_name("t_id")
-            .with_domain_fallback("default");
-
-        assert_eq!(config.strategy, TenantStrategy::Header);
-        assert_eq!(config.header_name, "X-Custom-Tenant");
-        assert_eq!(config.parameter_name, "t_id");
-        assert_eq!(config.domain_fallback, Some("default".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_task_local_storage() {
-        let cell = RefCell::new(Some("tenant123".to_string()));
-
-        TENANT_CONTEXT
-            .scope(cell, async {
-                assert_eq!(current_tenant_id(), Some("tenant123".to_string()));
-
-                // Set dynamic value mid-request
-                set_tenant_id(Some("super-tenant".to_string()));
-                assert_eq!(current_tenant_id(), Some("super-tenant".to_string()));
-
-                set_tenant_id(None);
-                assert_eq!(current_tenant_id(), None);
-            })
-            .await;
-
-        // Outside scope, it should return None
-        assert_eq!(current_tenant_id(), None);
-    }
-    #[tokio::test]
-    async fn test_current_tenant_id_uninitialized() {
-        assert_eq!(current_tenant_id(), None);
-    }
-
-    #[tokio::test]
-    async fn test_current_tenant_id_initialized() {
-        let cell = RefCell::new(Some("tenant-456".to_string()));
-        TENANT_CONTEXT
-            .scope(cell, async {
-                assert_eq!(current_tenant_id(), Some("tenant-456".to_string()));
-            })
-            .await;
-    }
-
-    #[tokio::test]
-    async fn test_tenant_layer_header_and_query() {
-        use axum::body::Body;
-        use axum::http::{Request, StatusCode};
-        use axum::response::IntoResponse;
-        use axum::routing::get;
-        use tower::ServiceExt;
-
-        async fn handler() -> impl IntoResponse {
-            let tenant = current_tenant_id().unwrap_or_else(|| "none".to_string());
-            (StatusCode::OK, tenant)
-        }
-
-        // 1. Header strategy
-        let config_header = TenantConfig::new(TenantStrategy::Header);
-        let app_header = axum::Router::new()
-            .route("/test", get(handler))
-            .layer(tenant_layer(config_header))
-            .layer(axum::Extension(
-                crate::security::TenantMembership::try_new(["acme-corp"]).unwrap(),
-            ));
-
-        let req = Request::builder()
-            .uri("/test")
-            .header("X-Tenant-ID", "acme-corp")
-            .body(Body::empty())
-            .unwrap();
-
-        let resp = app_header.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 1000).await.unwrap();
-        assert_eq!(String::from_utf8(body.to_vec()).unwrap(), "acme-corp");
-
-        // 2. Query param strategy
-        let config_param = TenantConfig::new(TenantStrategy::Parameter);
-        let app_param = axum::Router::new()
-            .route("/test", get(handler))
-            .layer(tenant_layer(config_param))
-            .layer(axum::Extension(
-                crate::security::TenantMembership::try_new(["beta-inc"]).unwrap(),
-            ));
-
-        let req_param = Request::builder()
-            .uri("/test?tenant_id=beta-inc")
-            .body(Body::empty())
-            .unwrap();
-
-        let resp_param = app_param.oneshot(req_param).await.unwrap();
-        assert_eq!(resp_param.status(), StatusCode::OK);
-        let body_param = axum::body::to_bytes(resp_param.into_body(), 1000)
-            .await
-            .unwrap();
-        assert_eq!(String::from_utf8(body_param.to_vec()).unwrap(), "beta-inc");
-
-        // A client cannot switch to a tenant absent from authenticated claims.
-        let config_rejected = TenantConfig::new(TenantStrategy::Header);
-        let rejected_app = axum::Router::new()
-            .route("/test", get(handler))
-            .layer(tenant_layer(config_rejected))
-            .layer(axum::Extension(
-                crate::security::TenantMembership::try_new(["acme-corp"]).unwrap(),
-            ));
-        let rejected = rejected_app
-            .oneshot(
-                Request::builder()
-                    .uri("/test")
-                    .header("X-Tenant-ID", "other-tenant")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(rejected.status(), StatusCode::FORBIDDEN);
-    }
-
-    /// Inner service that accepts a call only on the instance that was
-    /// readied, like tower's `ConcurrencyLimit`, `RateLimit` and `Buffer`.
-    #[derive(Default)]
-    struct ReadiedOnly {
-        ready: bool,
-    }
-
-    impl Clone for ReadiedOnly {
-        fn clone(&self) -> Self {
-            Self::default()
-        }
-    }
-
-    impl tower_service::Service<axum::http::Request<axum::body::Body>> for ReadiedOnly {
-        type Response = axum::http::Response<axum::body::Body>;
-        type Error = &'static str;
-        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
-
-        fn poll_ready(
-            &mut self,
-            _cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Result<(), Self::Error>> {
-            self.ready = true;
-            std::task::Poll::Ready(Ok(()))
-        }
-
-        fn call(&mut self, _req: axum::http::Request<axum::body::Body>) -> Self::Future {
-            let readied = std::mem::take(&mut self.ready);
-            std::future::ready(if readied {
-                Ok(axum::http::Response::new(axum::body::Body::empty()))
-            } else {
-                Err("called without poll_ready")
-            })
-        }
-    }
-
-    #[tokio::test]
-    async fn tenant_service_calls_the_inner_service_it_readied() {
-        use tower::ServiceExt;
-        use tower_layer::Layer;
-
-        let service =
-            tenant_layer(TenantConfig::new(TenantStrategy::Header)).layer(ReadiedOnly::default());
-        let mut request = axum::http::Request::builder()
-            .uri("/")
-            .header("X-Tenant-ID", "acme-corp")
-            .body(axum::body::Body::empty())
-            .unwrap();
-        request
-            .extensions_mut()
-            .insert(crate::security::TenantMembership::try_new(["acme-corp"]).unwrap());
-
-        let status = service
-            .oneshot(request)
-            .await
-            .map(|response| response.status());
-        assert_eq!(status, Ok(axum::http::StatusCode::OK));
-    }
-}
+#[path = "multitenant_tests.rs"]
+mod tests;

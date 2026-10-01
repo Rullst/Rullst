@@ -87,14 +87,16 @@ impl Storage {
 impl TenantStorage {
     /// Reads metadata inside this authenticated tenant's namespace.
     pub async fn metadata(&self, relative_path: &str) -> Result<ObjectMetadata, StorageError> {
-        self.storage
-            .metadata(&self.object_key(relative_path)?)
-            .await
+        let key = self.object_key(relative_path)?;
+        self.confine_local_root(false).await?;
+        self.storage.metadata(&key).await
     }
 
     /// Deletes only inside this tenant's namespace after application authorization.
     pub async fn delete(&self, relative_path: &str) -> Result<(), StorageError> {
-        self.storage.delete(&self.object_key(relative_path)?).await
+        let key = self.object_key(relative_path)?;
+        self.confine_local_root(false).await?;
+        self.storage.delete(&key).await
     }
 
     /// Issues a private bearer download confined to this tenant's namespace.

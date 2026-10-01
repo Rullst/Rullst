@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use dashmap::DashMap;
 
 use super::driver::FeatureDriver;
-use super::resolvers::{calculate_hash_bucket, resolve_variant};
+use super::resolvers::{calculate_hash_bucket, split_variant};
 
 // ─── Memory Driver ──────────────────────────────────────────────────────────
 
@@ -97,8 +97,7 @@ impl FeatureDriver for MemoryFeatureDriver {
             return Some("disabled".to_string());
         }
         if let Some(ref variants) = rule.variants {
-            let bucket = calculate_hash_bucket(flag, identifier);
-            return resolve_variant(variants, bucket);
+            return Some(split_variant(variants, flag, identifier));
         }
         if let Some(pct) = rule.rollout_percentage {
             let bucket = calculate_hash_bucket(flag, identifier);

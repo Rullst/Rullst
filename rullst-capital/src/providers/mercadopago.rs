@@ -1,5 +1,5 @@
 use super::{
-    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode,
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
@@ -71,7 +71,7 @@ impl BillingProvider for MercadoPagoProvider {
         &self,
         customer_email: &str,
         plan_id: &str,
-        redirect_url: &str,
+        _redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
             return Err(CapitalError::ConfigurationError(
@@ -85,12 +85,7 @@ impl BillingProvider for MercadoPagoProvider {
         }
 
         if self.access_token.is_empty() || self.access_token.starts_with("mock_") {
-            return Ok(format!(
-                "https://www.mercadopago.com/checkout/preferences/mock_session?email={}&plan={}&back_url={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         Err(CapitalError::UnsupportedOperation(
@@ -173,10 +168,7 @@ impl BillingProvider for MercadoPagoProvider {
 
         super::require_mock_operation(&self.access_token, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://www.mercadopago.com/subscriptions?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -291,7 +283,8 @@ mod tests {
             .create_checkout_session("user@mp.com", "plan_mp", "https://app.com/success")
             .await
             .unwrap();
-        assert!(url.contains("mercadopago.com/checkout/preferences"));
+        assert!(url.starts_with("https://mock.mercadopago.invalid/checkout/mock_session?plan="));
+        assert!(!url.contains("%40") && !url.contains("callback") && !url.contains("app.com"));
         assert!(url.contains("plan_mp"));
 
         // 2. Checkout validation
@@ -313,7 +306,10 @@ mod tests {
             .create_customer_portal("user@mp.com", "https://app.com")
             .await
             .unwrap();
-        assert!(portal.contains("mercadopago.com/subscriptions"));
+        assert_eq!(
+            portal,
+            "https://mock.mercadopago.invalid/portal/mock_portal"
+        );
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // 4. Subscription actions

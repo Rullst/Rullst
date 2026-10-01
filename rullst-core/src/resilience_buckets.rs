@@ -1,12 +1,15 @@
 //! Bounded bucket retention and peer keying for [`RateLimiter`].
 
 use super::{RateLimiter, refill_token_count};
+use std::borrow::Cow;
 use std::net::IpAddr;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 /// Maximum number of keys a limiter tracks (roughly 10 MB of buckets).
 pub(super) const MAX_RATE_LIMIT_BUCKETS: usize = 100_000;
+/// Longest key a bucket stores verbatim; longer keys are digested.
+pub(super) const MAX_VERBATIM_KEY_BYTES: usize = 128;
 /// New keys between opportunistic sweeps of refilled buckets.
 const REFILLED_SWEEP_INTERVAL: usize = 4_096;
 
@@ -85,4 +88,22 @@ pub(super) fn peer_rate_limit_key(ip: IpAddr) -> String {
             format!("{a:x}:{b:x}:{c:x}:{d:x}::/64")
         }
     }
+}
+
+/// The map key for an extractor's `key`: the key itself when it is at most
+/// [`MAX_VERBATIM_KEY_BYTES`] long, else `"\0sha256:"` and its hex SHA-256.
+/// A key starting with NUL is always digested, so a verbatim key can never
+/// equal another key's digest form.
+pub(super) fn bounded_bucket_key(key: &str) -> Cow<'_, str> {
+    if key.len() <= MAX_VERBATIM_KEY_BYTES && !key.starts_with('\0') {
+        return Cow::Borrowed(key);
+    }
+    let digest = ring::digest::digest(&ring::digest::SHA256, key.as_bytes());
+    let mut bounded = String::with_capacity(8 + 64);
+    bounded.push_str("\0sha256:");
+    for byte in digest.as_ref() {
+        bounded.push(char::from(b"0123456789abcdef"[usize::from(byte >> 4)]));
+        bounded.push(char::from(b"0123456789abcdef"[usize::from(byte & 0x0f)]));
+    }
+    Cow::Owned(bounded)
 }
