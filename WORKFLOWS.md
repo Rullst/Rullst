@@ -59,7 +59,7 @@ to the candidate's release line, including the source policy of reused runs.
 Format and Clippy continue to give feedback on draft pull requests. A ready pull
 request to `main` runs the fast Linux gate: the `workspace` and `cli-standard`
 shards, MSRV, strict database features, Redis/S3 contracts, generated access,
-facade composition, AI evals and Labs isolation. Line coverage, SemVer and
+facade composition and AI evals. Line coverage, SemVer and
 CodeQL skip pull requests to `main`. The resulting `main` push runs every Linux
 shard, public feature boundaries, the threat-model minimum, coverage, SemVer and
 CodeQL. A nightly scheduled run (05:30 UTC) executes the complete
@@ -697,7 +697,7 @@ The separate `admit-site-only.py` / `plan-ci-scope.sh` path can avoid repeating
 Rust CI only for a **development `main` or transitional `v13` push** whose committed changes exclusively touch
 `docs/home_template.html`, `docs/site.css` or `docs/site.js`. It requires the
 immediately preceding commit to have a successful full Linux push CI in this
-repository within 72 hours, on the same branch, with all 26 expected runtime jobs completed
+repository within 72 hours, on the same branch, with all 25 expected runtime jobs completed
 successfully. Run/attempt/source/repository/branch identity and the entire job
 inventory are checked. A skipped runtime job, unknown job, failure, missing
 history, unavailable API, changed policy, symlink, mode change or stale receipt

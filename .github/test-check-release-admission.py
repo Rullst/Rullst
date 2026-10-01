@@ -141,11 +141,14 @@ class ReleaseAdmissionTests(unittest.TestCase):
                     )
                 )
 
-    def test_release_cannot_omit_or_skip_actual_labs_isolation(self) -> None:
+    def test_release_cannot_omit_or_skip_the_packaged_labs_consumer(self) -> None:
         policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
         _, requirements = MODULE.validate_policy(policy)
         required = next(item.required_jobs for item in requirements if item.workflow == "ci.yml")
-        labs = "Isolated Labs acceptance (Linux)"
+        # The runner candidate and its isolated job were removed from 13.0; a
+        # stale requirement would make every release unadmittable.
+        self.assertNotIn("Isolated Labs acceptance (Linux)", required)
+        labs = "Packaged distribution and installed CLI"
         self.assertIn(labs, required)
         others = [{"name": name, "conclusion": "success"} for name in required if name != labs]
         for outcome in ("missing", "skipped", "failure", "cancelled", None, "success"):

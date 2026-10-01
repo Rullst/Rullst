@@ -9,13 +9,11 @@ mapfile -t crates < <(jq -r '.[]' .github/release-order.json)
 case "${3:-}" in
   "") ;;
   --v13-candidates)
-    for candidate in rullst-labs rullst-labs-runner; do
-      if jq -e --arg name "$candidate" 'index($name) != null' .github/release-order.json > /dev/null; then
-        echo "Remove candidate mode after release admission." >&2
-        exit 1
-      fi
-      crates+=("$candidate")
-    done
+    if jq -e 'index("rullst-labs") != null' .github/release-order.json > /dev/null; then
+      echo "Remove candidate mode after release admission." >&2
+      exit 1
+    fi
+    crates+=(rullst-labs)
     ;;
   --supervision-candidate)
     if jq -e 'index("rullst-supervision") != null' .github/release-order.json > /dev/null; then
