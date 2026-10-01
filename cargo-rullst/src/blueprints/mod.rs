@@ -238,6 +238,32 @@ mod tests {
     }
 
     #[test]
+    fn credential_submissions_are_rate_limited_in_auth_starters() {
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            if !matches!(blueprint, "lms" | "saas") {
+                continue;
+            }
+            let routers = manifest
+                .iter()
+                .filter(|(path, _)| matches!(*path, "src/main.rs" | "src/lib.rs"))
+                .map(|(_, source)| source.as_str())
+                .collect::<String>();
+            for (path, handler) in [("/login", "login_submit"), ("/register", "register_submit")] {
+                assert!(
+                    routers.contains(&format!(
+                        ".route(\"{path}\", rullst::routing::post(controllers::auth_controller::{handler})\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))"
+                    )),
+                    "{blueprint}: {path} submissions must be rate limited"
+                );
+                assert!(
+                    !routers.contains(&format!("post(\"{path}\" =>")),
+                    "{blueprint}: unthrottled {path} route"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(
             "rullst-unknown-blueprint-{}",
