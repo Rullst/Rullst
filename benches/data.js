@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790865483092,
+  "lastUpdate": 1790866652689,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23907,6 +23907,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1812,
             "range": "± 57",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f85f31a41cd4c8cec6f3e0b91be86fba888a53e0",
+          "message": "Merge pull request #382 from Rullst/fix/v13-final-orm-tail\n\nfix(orm): final-review fixes for Turso blobs, query-cache index, schema quoting and secrets",
+          "timestamp": "2026-10-01T11:47:29-03:00",
+          "tree_id": "ad74598ec8981479b4513639a82dab9ede786996",
+          "url": "https://github.com/Rullst/Rullst/commit/f85f31a41cd4c8cec6f3e0b91be86fba888a53e0"
+        },
+        "date": 1790866650360,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 757,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1007,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 643,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2305,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
