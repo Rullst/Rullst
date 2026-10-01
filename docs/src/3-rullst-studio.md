@@ -92,7 +92,10 @@ overhead.
   characters before it reaches Studio (key columns keep up to 16 KiB for row
   actions, and a longer key makes its row read-only), and search terms are
   limited to 256 bytes. Search matches the displayed columns (at most 256),
-  and the record count uses the same predicate.
+  and the record count uses the same predicate. A SQL NULL shows an italic
+  `NULL` marker; a present value Studio cannot decode as text, a number or a
+  Boolean (for example a BLOB that is not UTF-8) shows an amber `unreadable`
+  marker instead, and a stored text `NULL` is shown as an ordinary value.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is

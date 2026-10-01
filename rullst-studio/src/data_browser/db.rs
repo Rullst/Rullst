@@ -4,11 +4,11 @@ use serde::Deserialize;
 use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
+use super::cells::{cell_html, decode_cell};
 pub(crate) use super::identifiers::qualified_table_name;
 pub use super::identifiers::{
     build_search_clause, is_safe_identifier, quote_table_name, sanitize_identifier,
 };
-use super::limits::display_cell;
 pub use super::pool::{ensure_pool_initialized, resolve_db_url};
 pub use super::search::count_table_rows;
 
@@ -147,32 +147,14 @@ pub fn escape_html_attr(s: &str) -> String {
         .replace('\'', "&#x27;")
 }
 
-/// Helper to decode any SQL Column value to String
+/// Decodes one column value as text: `NULL` for SQL NULL, the value when it
+/// decodes as text, an integer, a float or a Boolean, and `unreadable` for a
+/// present value no such codec decodes (for example a BLOB that is not UTF-8).
 pub fn get_any_value_as_string(
     row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row,
     index: usize,
 ) -> String {
-    if let Ok(val) = row.try_get::<String, _>(index) {
-        val
-    } else if let Ok(val) = row.try_get::<i64, _>(index) {
-        val.to_string()
-    } else if let Ok(val) = row.try_get::<i32, _>(index) {
-        val.to_string()
-    } else if let Ok(val) = row.try_get::<f64, _>(index) {
-        val.to_string()
-    } else if let Ok(val) = row.try_get::<bool, _>(index) {
-        val.to_string()
-    } else if let Ok(Some(val)) = row.try_get::<Option<String>, _>(index) {
-        val
-    } else if let Ok(Some(val)) = row.try_get::<Option<i64>, _>(index) {
-        val.to_string()
-    } else if let Ok(Some(val)) = row.try_get::<Option<i32>, _>(index) {
-        val.to_string()
-    } else if let Ok(Some(val)) = row.try_get::<Option<bool>, _>(index) {
-        val.to_string()
-    } else {
-        "NULL".to_string()
-    }
+    decode_cell(row, index).into_text()
 }
 
 /// Dynamic SQLite schema tables finder
@@ -355,19 +337,7 @@ pub fn build_rows_html(
         |mut rows_html, row| {
             rows_html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
             for i in 0..col_names.len() {
-                let cell_val = get_any_value_as_string(row, i);
-                let is_null = cell_val == "NULL";
-                let text_class = if is_null {
-                    "text-slate-600 font-mono italic"
-                } else {
-                    "text-slate-300"
-                };
-                let _ = write!(
-                    rows_html,
-                    "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
-                    text_class,
-                    escape_html_attr(&display_cell(&cell_val))
-                );
+                rows_html.push_str(&cell_html(&decode_cell(row, i)));
             }
             rows_html.push_str("</tr>");
             rows_html

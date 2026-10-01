@@ -173,6 +173,10 @@ actions, and a longer key makes its row read-only. Search terms are limited to
 256 bytes and match the displayed columns (at most 256); the record count uses
 the same predicate.
 
+The table view marks SQL NULL as `NULL` and a present value it cannot decode as
+text, a number or a Boolean (such as a non-UTF-8 BLOB) as `unreadable`, so a
+filled column is never reported as NULL.
+
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys; on PostgreSQL they cover the `public` schema, which every data
 statement names explicitly. SQL values are parameterized; only text, signed integer, finite
