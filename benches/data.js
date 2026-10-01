@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790812816884,
+  "lastUpdate": 1790813930509,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23043,6 +23043,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1825,
             "range": "± 60",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c6b8266f577ebe90ba211157290a324ec45ebc07",
+          "message": "Merge pull request #362 from Rullst/fix/v13-connect-messaging-low-fixes\n\nfix(connect,messaging): low-severity retry, error typing, discovery, store URL and key-rotation fixes",
+          "timestamp": "2026-09-30T21:11:20-03:00",
+          "tree_id": "ad5c1330fe825410a71774e8d434d4ab62326f4d",
+          "url": "https://github.com/Rullst/Rullst/commit/c6b8266f577ebe90ba211157290a324ec45ebc07"
+        },
+        "date": 1790813928247,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 765,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 991,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 629,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2324,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
