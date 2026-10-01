@@ -165,6 +165,25 @@ A prepared version section does not establish that its tag or crates exist.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
 
+### ORM runtime final-review fixes
+
+- Remote Turso blob cells decode the unpadded base64 that libSQL server sends,
+  and Turso `rollback_last` refuses migrations whose recorded digest changed.
+- The Redis query-cache table index is a sorted set scored by entry expiry
+  (keys move to `rullst:orm:cache:v4:`); expired members are pruned and no
+  longer count toward the 10,000-key `PostCommit` cap.
+- On PostgreSQL, `Schema::create` and `drop_if_exists` lower-case the quoted
+  table name to match generated SQL.
+- Pre-v12 `SecretString` ciphertext also decrypts through
+  `RULLST_ENCRYPTION_KEYRING`.
+- The offline Redis mock breaks score ties like `ZREVRANGE`, SQLite file
+  preparation percent-decodes the DSN path, and auto-healing no longer suggests
+  `CREATE TABLE` for constraint or "already exists" errors.
+- New in v13: `deserialize_plaintext_secret` and
+  `deserialize_optional_plaintext_secret` reject serde envelopes in client
+  input, and `Migration::within_transaction()` applies a migration and its
+  record atomically where the database supports transactional DDL.
+
 ### Storage, uploads and macro hardening
 
 - `Storage::url` and `LocalDriver::url` percent-encode key segments, and the
@@ -226,6 +245,19 @@ A prepared version section does not establish that its tag or crates exist.
 - S3/R2 SigV4 request paths percent-encode the bucket and every key segment
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
+
+### Core and Security range-response follow-ups
+
+- Core PII masking replaces a `206 Partial Content` response that masking
+  would change with a no-store `502`, instead of a 206 without
+  `Content-Range`; clean ranges pass through unchanged.
+- Core PII masking and `DlpResponseLayer` inspect `multipart/byteranges`
+  responses part by part and withhold them with a no-store `502` when a
+  textual part would be masked or the body cannot be read within bounds
+  (256 parts, 8 KiB of headers per part).
+- `DbFeatureDriver::enabled` is false for an A/B split flag, as in the Env,
+  TOML and Memory drivers; a SQLite-backed contract test covers all four and
+  now runs in CI.
 
 ### Trusted-proxy client resolution
 
@@ -290,6 +322,23 @@ A prepared version section does not establish that its tag or crates exist.
   on serde_json features, configuration or keyring drift returns
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
+
+### Generated starter low-severity fixes
+
+- LMS progress idempotency keys are unique per learner, and ERP orders reserve
+  stock atomically in one transaction and report 404/409/422/503 instead of
+  redirecting.
+- Blog and ERP page their reads and compute ERP totals in SQL instead of
+  loading `Model::all()`, and every starter mounts `/health` and `/ready`.
+- Blank and ERP pages declare `lang="en"`, and the LMS dashboard no longer
+  mentions a demo school.
+- Strict-database projects disable `rullst-orm`'s default drivers, and the
+  interactive wizard keeps `--api`.
+- `.dockerignore` mirrors `.gitignore`, the Kubernetes Ingress has a TLS
+  section, and k8s and Buildah names are lowercase RFC 1123 labels.
+- `cargo rullst dev` removes outdated `.br`/`.zst` siblings, and Omni prints
+  and detects its launch line, streams the app's output and runs Cargo for its
+  backend only in debug builds.
 
 ### Facade and examples low-severity fixes
 
@@ -575,6 +624,25 @@ A prepared version section does not establish that its tag or crates exist.
   or trailing-dot aliases.
 - PII masking keeps JSON numbers valid and leaves versioned CDN URLs and `@2x`
   asset names alone.
+
+### Security and Connect final-review fixes
+
+- `DlpResponseLayer` masks XML (`application/xml`, `+xml`), YAML and
+  `application/javascript` responses, and withholds a `206 Partial Content`
+  response that would need masking with a `no-store` 502 instead of emitting a
+  206 without `Content-Range`.
+- `redact_secrets` counts masked log records only as log redactions, so they no
+  longer inflate "DLP Leaks Blocked" or flood the live event feed.
+- RASP no longer rejects the stock PowerShell `User-Agent` product token, while
+  PowerShell execution syntax still blocks.
+- Honeypot bans with a TTL beyond the monotonic clock are enforced, and
+  honeypot telemetry records only bans that were stored, keyed by the
+  configured trap path.
+- `OidcProvider` accepts ID tokens and userinfo responses without the optional
+  `name` claim (falling back to `given_name`/`family_name`,
+  `preferred_username` or `nickname`), and verifies ID tokens without `kid`
+  when the issuer's JWK Set holds exactly one key that fits the token's
+  asymmetric algorithm.
 
 ### Security second-pass review fixes
 

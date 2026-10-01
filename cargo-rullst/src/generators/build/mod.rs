@@ -1,5 +1,6 @@
 // src/generators/build/mod.rs — Build pipeline: upgrade, Wasm Islands, and production binary.
 
+pub(crate) mod precompressed;
 mod production;
 mod upgrade;
 mod wasm;

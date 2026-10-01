@@ -1,11 +1,13 @@
 use std::{collections::BTreeMap, time::Duration};
 
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use futures::StreamExt;
 use reqwest::{Client, Url, redirect::Policy};
 use serde::{Deserialize, Serialize};
 
 use super::{PolyglotError, TursoQueryLimit, TursoRow, TursoStatement, TursoValue};
+
+mod value;
+use value::WireValue;
 
 const MAX_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
 
@@ -322,52 +324,6 @@ impl WireStatement {
             sql: sql.to_owned(),
             args: Vec::new(),
             want_rows: false,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum WireValue {
-    Null,
-    Integer { value: String },
-    Float { value: f64 },
-    Text { value: String },
-    Blob { base64: String },
-}
-
-impl From<TursoValue> for WireValue {
-    fn from(value: TursoValue) -> Self {
-        match value {
-            TursoValue::Null => Self::Null,
-            TursoValue::Integer(value) => Self::Integer {
-                value: value.to_string(),
-            },
-            TursoValue::Real(value) => Self::Float { value },
-            TursoValue::Text(value) => Self::Text { value },
-            TursoValue::Blob(value) => Self::Blob {
-                base64: BASE64.encode(value),
-            },
-        }
-    }
-}
-
-impl TryFrom<WireValue> for TursoValue {
-    type Error = PolyglotError;
-
-    fn try_from(value: WireValue) -> Result<Self, Self::Error> {
-        match value {
-            WireValue::Null => Ok(Self::Null),
-            WireValue::Integer { value } => value
-                .parse()
-                .map(Self::Integer)
-                .map_err(PolyglotError::serialization),
-            WireValue::Float { value } => Ok(Self::Real(value)),
-            WireValue::Text { value } => Ok(Self::Text(value)),
-            WireValue::Blob { base64 } => BASE64
-                .decode(base64)
-                .map(Self::Blob)
-                .map_err(PolyglotError::serialization),
         }
     }
 }

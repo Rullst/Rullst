@@ -96,12 +96,14 @@ pub async fn record_progress(
     authorize_lesson(context, user_id, lesson_id).await?;
     let pool = rullst::db::Orm::pool()?;
     let driver = rullst::db::Orm::driver()?;
+    // Keys are unique per learner, so another learner's submission can never
+    // claim, replay or block this learner's key.
     let replay_sql = match driver {
-        "postgres" => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE event_key = $1",
-        _ => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE event_key = ?",
+        "postgres" => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE subject_user_id = $1 AND event_key = $2",
+        _ => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE subject_user_id = ? AND event_key = ?",
     };
     if let Some(replay) = rullst::db::sqlx::query_as::<_, (i32, i32, i32)>(replay_sql)
-        .bind(idempotency_key).fetch_optional(pool).await
+        .bind(user_id).bind(idempotency_key).fetch_optional(pool).await
         .map_err(|error| LearningError::Database(error.into()))?
     {
         if replay != (user_id, lesson_id, progress_percent) {

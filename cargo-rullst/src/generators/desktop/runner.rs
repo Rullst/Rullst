@@ -6,6 +6,13 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::Stdio;
 
+/// Line the generated Omni runtime prints right before it opens its window.
+pub(crate) const LAUNCH_MARKER: &str = "Launching Omni interface...";
+/// The marker of shells generated before the Omni rename.
+const LEGACY_LAUNCH_MARKER: &str = "Launching Tauri interface...";
+/// Output lines held back while the spinner runs; the rest is streamed.
+const MAX_HELD_LINES: usize = 200;
+
 struct ChildGuard(std::process::Child);
 impl Drop for ChildGuard {
     fn drop(&mut self) {
@@ -55,33 +62,53 @@ fn run_desktop(omni_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         .spawn()?;
 
     let stdout = child.stdout.take().ok_or("Failed to open stdout")?;
-
-    let launched = with_spinner(
-        "🚀 Soon the Omni window will automatically open...",
-        move || {
-            let reader = BufReader::new(stdout);
-            let mut ok = false;
-            for l in reader.lines().map_while(Result::ok) {
-                if l.contains("Launching Omni interface...")
-                    || l.contains("Launching Tauri interface...")
-                {
-                    ok = true;
-                    break;
-                }
+    let (sender, lines) = std::sync::mpsc::channel();
+    let reader = std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if sender.send(line).is_err() {
+                break;
             }
-            ok
-        },
-    );
+        }
+    });
 
+    let (launched, held) = with_spinner(
+        "🚀 Soon the Omni window will automatically open...",
+        || wait_for_launch(lines.iter()),
+    );
+    for line in held {
+        println!("{line}");
+    }
     if launched {
         println!("{}", "✅ Omni window launched successfully!".green().bold());
     }
+    // The shell and the backend it manages keep logging for their lifetime.
+    for line in lines.iter() {
+        println!("{line}");
+    }
+    let _ = reader.join();
 
     let status = child.wait()?;
     if !status.success() {
         std::process::exit(1);
     }
     Ok(())
+}
+
+/// Reads output until the launch marker, the end of the output or
+/// `MAX_HELD_LINES`, and returns whether the window launched plus the lines
+/// read before it, so the spinner never swallows the application's logs.
+fn wait_for_launch(lines: impl Iterator<Item = String>) -> (bool, Vec<String>) {
+    let mut held = Vec::new();
+    for line in lines {
+        if line.contains(LAUNCH_MARKER) || line.contains(LEGACY_LAUNCH_MARKER) {
+            return (true, held);
+        }
+        held.push(line);
+        if held.len() >= MAX_HELD_LINES {
+            break;
+        }
+    }
+    (false, held)
 }
 
 fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -186,4 +213,41 @@ pub fn get_tauri_command(
         "Tauri CLI is unavailable; run `npm install` in omni-app or install a reviewed cargo-tauri version"
             .into(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn lines(source: &[&str]) -> impl Iterator<Item = String> {
+        source
+            .iter()
+            .map(|line| (*line).to_string())
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    #[test]
+    fn launch_detection_stops_at_the_marker_and_keeps_earlier_output() {
+        let mut output = lines(&["backend: serving on 3000", LAUNCH_MARKER, "after launch"]);
+        let (launched, held) = wait_for_launch(&mut output);
+        assert!(launched);
+        assert_eq!(held, ["backend: serving on 3000"]);
+        // The rest is left for the caller to stream.
+        assert_eq!(output.collect::<Vec<_>>(), ["after launch"]);
+
+        assert!(wait_for_launch(lines(&[LEGACY_LAUNCH_MARKER])).0);
+    }
+
+    #[test]
+    fn launch_detection_without_a_marker_is_bounded() {
+        let (launched, held) = wait_for_launch(lines(&["only", "logs"]));
+        assert!(!launched);
+        assert_eq!(held, ["only", "logs"]);
+
+        let mut endless = std::iter::repeat_with(|| "log".to_string());
+        let (launched, held) = wait_for_launch(&mut endless);
+        assert!(!launched);
+        assert_eq!(held.len(), MAX_HELD_LINES);
+    }
 }

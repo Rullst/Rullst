@@ -1,11 +1,11 @@
 __FE_IMPORTS__use rullst::{routes, Router, response::{Html, IntoResponse}, server::Extension};
-use rullst::htmx::{HtmxRequest, render_page};
+use rullst::htmx::{HtmxRequest, render_page_with_lang};
 
 __MIGRATIONS_MOD_DECLARATION____CLIENT_MODULES__
 
 __DB_MODEL_CODE__
 
-// Main route: uses hybrid SSR with render_page
+// Main route: uses hybrid SSR with render_page_with_lang
 pub async fn home(
     htmx: HtmxRequest,
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
@@ -48,7 +48,8 @@ __DB_STATUS_CODE__
         </div>
     };
 
-    render_page(&htmx, "Welcome to Rullst", content)
+    // The page is written in English; plain `render_page` declares Portuguese.
+    render_page_with_lang(&htmx, "en", "Welcome to Rullst", content)
 }
 
 // State for counter
@@ -81,6 +82,8 @@ pub fn router() -> Router {
     ]
     .merge_axum(rpc::increment_counter_rpc_router().into_axum())
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
 }
 

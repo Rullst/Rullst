@@ -1,7 +1,7 @@
 //! Bounded secret-pattern redaction helper for application-owned log pipelines.
 
 use crate::{
-    dlp::{SegmentRewriter, mask_response_payload},
+    dlp::{SegmentRewriter, mask_text},
     telemetry::SecurityStore,
 };
 
@@ -23,10 +23,12 @@ pub fn redact_secrets(input: &str) -> String {
         return "[REDACTED_OVERSIZED_LOG_RECORD]".to_string();
     }
 
-    let (dlp_masked, dlp_modified) = mask_response_payload(input.as_bytes());
-    let mut result = String::from_utf8(dlp_masked)
-        .unwrap_or_else(|_| "[REDACTED_INVALID_LOG_RECORD]".to_string());
-    let mut redacted = dlp_modified;
+    // The DLP patterns are applied without response-DLP telemetry: a masked
+    // log record counts only as a log redaction, never as a blocked response.
+    let (mut result, mut redacted) = match mask_text(input) {
+        Some(masked) => (masked, true),
+        None => (input.to_owned(), false),
+    };
     for key in [
         "password",
         "passwd",

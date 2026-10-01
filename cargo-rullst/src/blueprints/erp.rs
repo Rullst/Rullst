@@ -133,4 +133,57 @@ mod tests {
         assert!(library.iter().any(|(path, source)| *path == "src/lib.rs"
             && source.contains("fn back_office_dashboard_is_not_public()")));
     }
+
+    #[test]
+    fn orders_reserve_stock_atomically_and_report_failures() {
+        let manifest = file_manifest("erp_app", false, "Active Record", "Zero-Bundle HTMX");
+        let controller = manifest
+            .iter()
+            .find_map(|(path, source)| {
+                (*path == "src/controllers/erp_controller.rs").then_some(source.as_str())
+            })
+            .unwrap_or_default();
+        // A read/compare/write let concurrent orders oversell, a negative
+        // quantity added stock, and discarded save errors still redirected.
+        assert!(!controller.contains("let _ = "));
+        assert!(!controller.contains("stock -= payload.quantity"));
+        assert!(!controller.contains("stock += 1"));
+        assert!(controller.contains("WHERE id = ? AND stock >= ?\""));
+        assert!(controller.contains("WHERE id = $2 AND stock >= $3\""));
+        assert!(controller.contains("WHERE id = ? AND stock < ?\""));
+        assert!(controller.contains(".begin().await?"));
+        assert!(controller.contains("transaction.commit().await?"));
+        assert!(controller.contains("!(1..=MAX_ORDER_QUANTITY).contains(&payload.quantity)"));
+        assert!(
+            controller.contains(
+                "Ok(StockChange::UnknownProduct) => return rejected(StatusCode::NOT_FOUND"
+            )
+        );
+        assert!(controller.contains("Err(error) => unavailable(error)"));
+    }
+
+    #[test]
+    fn dashboard_totals_cover_every_row_and_lists_are_bounded() {
+        let manifest = file_manifest("erp_app", false, "Active Record", "Zero-Bundle HTMX");
+        let source = |name: &str| {
+            manifest
+                .iter()
+                .find_map(|(path, source)| (*path == name).then_some(source.as_str()))
+                .unwrap_or_default()
+        };
+        let controller = source("src/controllers/erp_controller.rs");
+        let page = source("src/pages/erp.rs");
+        // `all()` stops at the ORM's 1000-row cap with no ORDER BY, so totals
+        // froze and recent orders showed the oldest rows; errors became zeros.
+        assert!(!controller.contains("::all()"));
+        assert!(!controller.contains("unwrap_or_default()"));
+        assert!(controller.contains("SELECT SUM(total_price) FROM orders WHERE status = 'Paid'"));
+        assert!(controller.contains("orders: Order::query().count().await?"));
+        assert!(controller.contains("Product::query().where_lt(\"stock\", 6).count().await?"));
+        assert!(controller.contains(".order_by(\"id\").paginate(page, PRODUCTS_PER_PAGE)"));
+        assert!(controller.contains(".order_by_desc(\"id\").limit(RECENT_ORDERS)"));
+        assert!(!page.contains("orders.len()"));
+        assert!(!page.contains(".sum()"));
+        assert!(page.contains("summary.revenue"));
+    }
 }

@@ -79,7 +79,20 @@
 - **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask
   complete PEM private-key blocks (PKCS#8 plain or encrypted, RSA, EC, DSA,
   OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`/`rediss`
-  URL passwords in bounded textual responses (at most 2 MiB). Every pass is
+  URL passwords in bounded textual responses (at most 2 MiB). The layer treats
+  `text/*` (except `text/event-stream`), JSON, XML (`application/xml` and
+  `+xml` types such as SOAP and Atom), YAML and `application/javascript`
+  (with its `x-javascript`/`ecmascript` aliases) as textual, in any ASCII
+  case; other media types pass through unchanged. A `206 Partial Content`
+  response that would need masking is replaced by a `502` with
+  `Cache-Control: no-store`, because a masked range no longer matches its
+  `Content-Range`; a clean range passes through unchanged. A
+  `multipart/byteranges` response is split into its parts and each textual,
+  identity-encoded part is checked the same way; it is withheld when any part
+  would need masking or when it cannot be split exactly (an invalid boundary
+  or delimiter line, more than 256 parts, a part header block over 8 KiB or
+  no close delimiter). Each range is inspected on its own, so a secret split
+  across separately requested ranges is not recognized. Every pass is
   linear in the body length. A URL password is recognized only inside the URL
   authority: credentials must be percent-encoded, and the authority ends at
   the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or control
@@ -97,7 +110,10 @@
   value is redacted to the end of its line, so later cookies and credentials
   containing spaces are covered; only a recognized authentication scheme such
   as `Bearer`, `Basic`, `Digest` or `Token` is kept. Records over
-  64 KiB are replaced wholesale by an oversized-record marker. The host must
+  64 KiB are replaced wholesale by an oversized-record marker. A redacted
+  record increments only the log-redaction counter; it is never counted or
+  announced as a blocked HTTP response (`dlp_secrets_masked`,
+  `DLP_SECRET_LEAK_PREVENTED`). The host must
   invoke it before emitting untrusted log fields; pattern matching is not a
   guarantee that arbitrary sensitive content can be recognized.
 - **SRI:** Generate escaped SHA-384 tags from bytes or bounded local JS/CSS

@@ -38,12 +38,6 @@ pub(super) fn starter(
     hot_reload: bool,
 ) -> Vec<(&'static str, String)> {
     full_manifest.retain(|(path, _)| RETAINED_FILES.contains(path));
-    if let Some((_, source)) = full_manifest
-        .iter_mut()
-        .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
-    {
-        *source = super::auth::identity_controller();
-    }
     if hot_reload {
         full_manifest.extend([
             ("src/lib.rs", routes::hot_lib_source()),
@@ -176,6 +170,41 @@ mod tests {
                 "fn each_render_and_requested_percentage_records_its_own_progress_event()"
             )
         );
+    }
+
+    #[test]
+    fn progress_idempotency_keys_are_scoped_to_their_learner() {
+        let manifest = manifest(false);
+        let service = source(&manifest, "src/services/learning_service.rs");
+        let migration = source(
+            &manifest,
+            "src/migrations/m20260827000000_add_learning_access.rs",
+        );
+        // A key unique across all learners let one learner submit another's
+        // key first and turn every later save of the victim into a 409.
+        assert!(migration.contains("ON lesson_progress_events(subject_user_id, event_key)\""));
+        assert!(!migration.contains("ON lesson_progress_events(event_key)"));
+        assert!(service.contains(
+            "FROM lesson_progress_events WHERE subject_user_id = $1 AND event_key = $2\""
+        ));
+        assert!(
+            service.contains(
+                "FROM lesson_progress_events WHERE subject_user_id = ? AND event_key = ?\""
+            )
+        );
+        assert!(service.contains(".bind(user_id).bind(idempotency_key).fetch_optional(pool)"));
+    }
+
+    #[test]
+    fn dashboard_describes_the_schoolless_starter() {
+        let manifest = manifest(false);
+        let pages = source(&manifest, "src/pages/auth.rs");
+        let controller = source(&manifest, "src/controllers/auth_controller.rs");
+        // v13 provisions no school, yet the dashboard claimed one.
+        assert!(!pages.to_lowercase().contains("school"));
+        assert!(!controller.to_lowercase().contains("school"));
+        assert!(pages.contains("Enroll in a course from the catalog"));
+        assert!(pages.contains("<a href=\"/\">Browse courses</a>"));
     }
 
     #[test]

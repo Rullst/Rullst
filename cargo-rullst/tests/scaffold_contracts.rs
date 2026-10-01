@@ -186,6 +186,12 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 ) && rust_sources.contains("run_studio(5555)"),
                                 "{case}: Studio must be a debug-build-only local service"
                             );
+                            // `make:k8s`, `deploy` and `foundry:deploy` probe these routes.
+                            assert!(
+                                rust_sources
+                                    .contains(".merge_axum(rullst::health::health_router())"),
+                                "{case}: starter must answer the /health and /ready probes"
+                            );
 
                             let cargo_toml = build_cargo_toml(
                                 "matrix-app",
@@ -315,6 +321,36 @@ fn blank_html_profiles_emit_a_same_origin_stylesheet() {
                 .filter(|(path, _)| path.ends_with(".rs"))
                 .any(|(_, source)| source.contains("rullst-starter__title"))
         );
+    }
+}
+
+#[test]
+fn english_starter_pages_declare_english() {
+    for spec in BLUEPRINTS {
+        for hot_reload in [false, true] {
+            let sources = manifest_for(
+                spec,
+                false,
+                hot_reload,
+                true,
+                "Active Record",
+                "Zero-Bundle HTMX",
+            )
+            .into_iter()
+            .filter(|(path, _)| path.ends_with(".rs"))
+            .map(|(_, source)| source)
+            .collect::<Vec<_>>()
+            .join("\n");
+            // `render_page` and the ERP page declared Portuguese on English UI.
+            assert!(!sources.contains("pt-BR"), "{}", spec.key);
+            assert!(!sources.contains("render_page(&htmx"), "{}", spec.key);
+            if spec.id == BLANK_BLUEPRINT_ID {
+                assert!(sources.contains("render_page_with_lang(&htmx, \"en\", "));
+            }
+            if spec.id == ERP_BLUEPRINT_ID {
+                assert!(sources.contains("<html lang=\"en\" class=\"dark\">"));
+            }
+        }
     }
 }
 

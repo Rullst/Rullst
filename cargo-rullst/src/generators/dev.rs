@@ -58,6 +58,7 @@ async fn supervise(
     mut commands: mpsc::Receiver<DevCommand>,
 ) -> io::Result<()> {
     let (mut watcher, mut changes) = watcher::watch_project(Path::new("."))?;
+    remove_stale_precompressed_assets(dashboard, &logs);
     report(&logs, dashboard, "Building the application...".into());
     let executable = build::compile().await?;
     let mut running = process::Application::prepare(&executable)?;
@@ -106,6 +107,7 @@ async fn supervise(
                     report(&logs, dashboard, format!("Could not refresh directory watches; current application kept running. Save again to retry: {error}"));
                     continue;
                 }
+                remove_stale_precompressed_assets(dashboard, &logs);
                 report(&logs, dashboard, "Change detected; rebuilding before restart...".into());
                 let started = std::time::Instant::now();
                 let executable = match build::compile().await {
@@ -133,6 +135,33 @@ async fn supervise(
                 report(&logs, dashboard, format!("Reload attempt finished in {:.0} ms. In-memory state resets; migrations after startup are explicit.", started.elapsed().as_secs_f64() * 1000.0));
             }
         }
+    }
+}
+
+/// Drops `.br`/`.zst` siblings from an earlier `cargo rullst build` that are
+/// older than their asset, because the server would keep serving them in
+/// place of the edited file. Failures are reported, never fatal.
+fn remove_stale_precompressed_assets(dashboard: bool, logs: &mpsc::Sender<LogMsg>) {
+    let static_dir = Path::new("static");
+    if !static_dir.is_dir() {
+        return;
+    }
+    match crate::generators::build::precompressed::remove_stale_siblings(static_dir) {
+        Ok(0) => {}
+        Ok(removed) => report(
+            logs,
+            dashboard,
+            format!(
+                "Removed {removed} pre-compressed static file(s) older than their source; run `cargo rullst build` to regenerate them."
+            ),
+        ),
+        Err(error) => report(
+            logs,
+            dashboard,
+            format!(
+                "Could not remove outdated pre-compressed static files; edited assets may be shadowed: {error}"
+            ),
+        ),
     }
 }
 

@@ -63,6 +63,26 @@ fn disk_dsn_still_prepares_the_backing_file() {
     }
 }
 
+/// SQLx percent-decodes the DSN path, so the prepared file must be the
+/// decoded path SQLx opens, never a stray file named after the encoding.
+#[test]
+fn percent_encoded_dsn_prepares_the_decoded_path() {
+    let directory = unique_database_path("encoded dir");
+    let database_path = directory.join("app db.sqlite");
+    let encoded = format!("{}/app%20db.sqlite", directory.display()).replace(' ', "%20");
+    let dsn = format!("sqlite://{encoded}");
+
+    Orm::validate_dsn(&dsn);
+
+    let stray = std::path::PathBuf::from(&encoded);
+    assert!(database_path.is_file(), "the decoded path must be prepared");
+    assert!(
+        !stray.exists(),
+        "no file may be created under the encoded name"
+    );
+    std::fs::remove_dir_all(directory).expect("temporary SQLite directory should be removable");
+}
+
 #[test]
 fn read_only_and_read_write_dsns_never_create_a_missing_database() {
     for mode in ["ro", "rw", "RW"] {

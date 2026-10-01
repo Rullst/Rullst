@@ -67,7 +67,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔏 **Encrypted token snapshots**: Versioned AES-256-GCM envelopes bind a
   refresh generation to one trusted provider/account pair and an explicit key
   rotation ID before application-owned persistence.
-- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds per JWKS URL, after rejecting malformed `kid` values without I/O), and bounded stale-if-error behavior.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds per JWKS URL, after rejecting malformed `kid` values without I/O), and bounded stale-if-error behavior. `OidcProvider` verifies an ID token without `kid` only against a single-key JWK Set whose key fits the token's asymmetric `alg` (OIDC Core 10.1); other sets fail closed.
 - 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
@@ -135,6 +135,12 @@ it or, for Google, to a configured native presenter),
 valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
 never calls userinfo. The returned `ConnectUser` carries the verified ID token
 in `access_token`; there is no provider access or refresh token in this flow.
+
+`OidcProvider` treats profile claims as optional (OIDC Core 5.1) in ID tokens
+and userinfo alike: without `name`, `ConnectUser::name` falls back to
+`given_name` and `family_name`, then `preferred_username`, then `nickname`, and
+is empty when none is present. The email address and subject are never used as
+a display name.
 
 ```rust,no_run
 use rullst_connect::prelude::{ConnectError, ConnectUser, GoogleProvider};

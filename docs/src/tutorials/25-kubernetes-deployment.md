@@ -19,14 +19,29 @@ run when any of those files already exists, so move customized manifests aside
 to regenerate them, and review the diff.
 
 Resource names, the image and the ingress host use the `[package]` name as a
-lowercase RFC 1123 label, so a package named `my_app` becomes `my-app`. Replace
-the placeholder `image: <name>:latest` with an immutable registry reference
-(preferably a digest). The generated ConfigMap contains non-secret
+lowercase RFC 1123 label, so a package named `my_app` becomes `my-app`;
+`--buildah` tags its image with the same name. Replace the placeholder
+`image: <name>:latest` with an immutable registry reference (preferably a
+digest). The generated ConfigMap contains non-secret
 settings only; use a Kubernetes Secret/external secret manager for credentials.
+
+The Ingress selects `ingressClassName: nginx` and has a `tls` section, so
+cert-manager's ingress-shim asks the `letsencrypt-prod` ClusterIssuer for a
+certificate and stores it in the `<project>-tls` Secret. Replace the placeholder
+`<project>.local` host in both `tls.hosts` and `rules` with a public DNS name you
+control (an ACME issuer cannot certify `.local`), and create the issuer or
+change the annotation. Without TLS, the production configuration's Secure
+session cookies, HSTS and Nexus Basic Auth over verified TLS do not work.
 
 ---
 
 ## Step 2: Mount lifecycle-aware health routes
+
+Projects created by `cargo rullst new` already merge
+`rullst::health::health_router()` into their router, so the generated probes
+answer from the first deployment: `/health` and `/ready` both return `200` while
+the process serves requests. To report startup, dependency and drain state on
+`/ready` instead, replace that merge with the lifecycle-aware router:
 
 ```rust,no_run
 use rullst::{ApplicationLifecycle, Router, Server};

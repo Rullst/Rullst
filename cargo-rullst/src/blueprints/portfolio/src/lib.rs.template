@@ -18,7 +18,10 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
 
     Ok(routes![
         get("/" => controllers::portfolio_controller::index),
-    ].nest_axum("/nexus", nexus))
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus))
 }
 
 #[unsafe(no_mangle)]
