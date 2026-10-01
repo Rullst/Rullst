@@ -239,6 +239,21 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Facade and examples low-severity fixes
+
+- The `rullst` facade guards its native-only re-exports on wasm32, and the
+  wasm matrix checks the default and generated-app feature sets.
+- The blog showcase selects its database like `Server` and Artisan, scopes
+  posts with fail-closed `tenant_column` and `TenantContext`, bounds story
+  writes and listings, seeds without deleting visitor posts, and renders every
+  page under the unrelaxed production CSP with same-origin, vendored HTMX and
+  Pico.css assets.
+- The blog's non-working Wasm island page, stale Tauri shell and Dioxus
+  `omni-app` were removed, double HTML escaping was fixed and the examples
+  guide no longer claims Tera.
+- The SaaS example answers 422 for note bodies with control characters, and
+  its membership command rejects dot-only tenants.
+
 ### CLI generator low-severity fixes
 
 - `make:live`, `make:scalar` and `eject` import async-trait and Axum through the

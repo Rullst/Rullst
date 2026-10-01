@@ -51,11 +51,25 @@ struct Input {
 }
 
 impl Input {
+    /// Accepts 1-256 bytes of text. Control characters other than tab and line
+    /// breaks are rejected: SQLite's `length()` stops at a NUL, so such a body
+    /// would otherwise pass this check and then fail the table's CHECK.
     fn validate(&self) -> Result<(), StatusCode> {
-        if self.body.is_empty() || self.body.len() > 256 {
+        let control = |c: char| c.is_control() && !matches!(c, '\t' | '\n' | '\r');
+        if self.body.is_empty() || self.body.len() > 256 || self.body.chars().any(control) {
             return Err(StatusCode::UNPROCESSABLE_ENTITY);
         }
         Ok(())
+    }
+}
+
+/// A CHECK violation is a rejected input (422), not an unavailable database.
+fn write_error(error: sqlx::Error) -> StatusCode {
+    match error {
+        sqlx::Error::Database(database) if database.is_check_violation() => {
+            StatusCode::UNPROCESSABLE_ENTITY
+        }
+        _ => StatusCode::SERVICE_UNAVAILABLE,
     }
 }
 
@@ -112,7 +126,7 @@ async fn create(
     .bind(input.body)
     .fetch_one(pool)
     .await
-    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    .map_err(write_error)?;
     Ok((StatusCode::CREATED, Json(note)))
 }
 
@@ -142,7 +156,7 @@ async fn update(
     .bind(user_id)
     .execute(pool)
     .await
-    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    .map_err(write_error)?;
     if result.rows_affected() != 1 {
         return Err(StatusCode::NOT_FOUND);
     }

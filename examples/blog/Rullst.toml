@@ -1,2 +1,2 @@
 [database]
-url = "sqlite://blog.db"
+url = "sqlite://blog.db?mode=rwc"

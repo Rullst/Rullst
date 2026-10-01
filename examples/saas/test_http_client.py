@@ -86,10 +86,14 @@ class MembershipContract(unittest.TestCase):
             for email in ("missing@example.invalid", "' OR 1=1 --"):
                 with self.assertRaises(ValueError):
                     grant_membership(database, email, "org-b")
-            with self.assertRaises(ValueError):
-                grant_membership(database, "alice@example.invalid", "org a")
+            # Core's tenant validation rejects these; storing one would deny every tenant.
+            for tenant in ("org a", ".", "..", "...", "", "a" * 129):
+                with self.assertRaises(ValueError):
+                    grant_membership(database, "alice@example.invalid", tenant)
+            grant_membership(database, "alice@example.invalid", ".org:b_1")
             with closing(sqlite3.connect(database)) as db:
-                self.assertEqual(db.execute("SELECT * FROM journey_memberships").fetchall(), [(1, "org-a")])
+                self.assertEqual(db.execute("SELECT * FROM journey_memberships ORDER BY tenant_id").fetchall(),
+                                 [(1, ".org:b_1"), (1, "org-a")])
 
     def test_mistyped_database_path_does_not_create_an_empty_database(self):
         with tempfile.TemporaryDirectory() as directory:
