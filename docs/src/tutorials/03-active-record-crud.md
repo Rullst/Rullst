@@ -152,5 +152,7 @@ permanently. Both check the tenant and the policy (`can_restore` /
   `Orm` models.
 - Creation uses a normal Rust struct, not a JSON map.
 - CRUD errors are returned as `rullst_orm::Error`; a missing row is `Ok(None)`.
+  Saving or deleting a handle whose row was deleted meanwhile returns
+  `RecordNotFound` instead of silently succeeding.
 - Use a caller-owned transaction and the generated `*_with_tx` methods when a
   business operation must commit multiple writes atomically.

@@ -239,7 +239,12 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
 
     let tenant = tenant_predicate(parsed);
     let tenant_binding = &tenant.binding;
-    let tenant_rows_check = &tenant.rows_check;
+    // A missing row is a documented no-op, checked before this tenant check.
+    let tenant_rows_check = if parsed.tenant_column.is_empty() {
+        quote! {}
+    } else {
+        tenant.rows_check.clone()
+    };
     let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") || cfg.value.is_empty() {
         format!("{} = NULL", cfg.column)
     } else {
@@ -279,11 +284,12 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
             let exec = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
                 .bind(self.id) #tenant_binding;
             #execute
-            #tenant_rows_check
             if mutation_result.rows_affected() == 0 {
                 // No such row: nothing was restored, so no effect is emitted.
+                // A tenant model reaches this only after its tenant guard.
                 return Ok(());
             }
+            #tenant_rows_check
             // Observers, audit, events and Scout receive the persisted row.
             let lookup = if driver == "postgres" {
                 rullst_orm::replace_placeholders(#restored_row_sql)

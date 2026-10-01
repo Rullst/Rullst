@@ -7,6 +7,7 @@
 mod aggregate_counts;
 mod bulk_delete;
 mod column_types;
+mod missing_rows;
 mod nested_transaction;
 mod offset_paging;
 mod soft_delete_lifecycle;
@@ -21,4 +22,5 @@ pub async fn exercise() {
     column_types::exercise().await;
     aggregate_counts::exercise().await;
     offset_paging::exercise().await;
+    missing_rows::exercise().await;
 }

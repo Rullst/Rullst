@@ -1999,6 +1999,15 @@ while portability and semantic review remain the model author's responsibility.
   Redis `updated`/`saved` events, `committed(Updated)`, Scout re-index). It
   runs no save hooks or `saving`/`updating` observers because it writes only
   the soft-delete column, and restoring a missing row is a no-op.
+* A `save()` update, `delete()` or `force_delete()` whose by-ID statement
+  matches no row (for example a row deleted since its handle was loaded)
+  fails with `RecordNotFound`, or with the tenant-scope `Validation` error on
+  a tenant model, instead of reporting success; it rolls its savepoint back,
+  so no post-mutation observer, hook, audit entry or post-commit effect runs.
+  `restore()` of a missing row remains a no-op, also on tenant models. When
+  the COMMIT of a direct `save()` (or the savepoint release of `save_with_tx`)
+  fails, the handle's `id` is restored like on any other failure, so a retry
+  inserts again; an ambiguous commit error still needs reconciliation.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed

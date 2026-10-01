@@ -309,6 +309,13 @@ and `saved` observers, writes a `restored` audit entry and registers the update
 effects of `save()`, including a Scout re-index. Their `can_force_delete` and
 `can_restore` policies run before the transaction, as before.
 
+A `save()` update, `delete()` or `force_delete()` that matches no row (the row
+was deleted after the handle was loaded) returns `RecordNotFound` (the
+tenant-scope `Validation` error on tenant models) and runs no later observer,
+audit or post-commit effect; restoring a missing row is a no-op. If the COMMIT
+of a direct `save()` fails, the handle keeps its previous `id`, so retrying the
+save inserts the row again.
+
 Only `delete()`, `restore()` and `force_delete()` change the soft-delete marker
 of an existing row. `save()` leaves that column out of its `UPDATE` (an
 `INSERT` still writes it), so saving a handle loaded before `delete()` edits

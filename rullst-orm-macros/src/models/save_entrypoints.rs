@@ -46,7 +46,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                         ))),
                     };
                 }
-                transaction.commit().await?;
+                // A failed COMMIT persisted nothing: keep the handle new so a
+                // retry inserts instead of updating a row that never existed.
+                if let Err(commit_error) = transaction.commit().await {
+                    self.id = original_id;
+                    return Err(rullst_orm::Error::from(commit_error));
+                }
                 post_commit.commit().await
             }
 
@@ -83,7 +88,10 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                         ))),
                     };
                 }
-                savepoint.commit().await?;
+                if let Err(release_error) = savepoint.commit().await {
+                    self.id = original_id;
+                    return Err(rullst_orm::Error::from(release_error));
+                }
                 operation_callbacks.promote_to_parent().await?;
                 Ok(())
             }
@@ -155,7 +163,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                     ))),
                 };
             }
-            transaction.commit().await?;
+            // A failed COMMIT persisted nothing: keep the handle new so a
+            // retry inserts instead of updating a row that never existed.
+            if let Err(commit_error) = transaction.commit().await {
+                self.id = original_id;
+                return Err(rullst_orm::Error::from(commit_error));
+            }
             post_commit.commit().await
         }
 
@@ -202,7 +215,10 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                     ))),
                 };
             }
-            savepoint.commit().await?;
+            if let Err(release_error) = savepoint.commit().await {
+                self.id = original_id;
+                return Err(rullst_orm::Error::from(release_error));
+            }
             operation_callbacks.promote_to_parent().await?;
             Ok(())
         }

@@ -114,6 +114,8 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     } else {
         quote! {}
     };
+    // An UPDATE that matches no row (a row deleted since it was loaded) must
+    // not report a successful save or run the update observers and effects.
     let update_tenant_result_check = if !parsed.tenant_column.is_empty() {
         quote! {
             if update_result.rows_affected() != 1 {
@@ -123,7 +125,11 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             }
         }
     } else {
-        quote! {}
+        quote! {
+            if update_result.rows_affected() == 0 {
+                return Err(rullst_orm::Error::RecordNotFound);
+            }
+        }
     };
 
     let save_entrypoints = save_entrypoints::generate(parsed);

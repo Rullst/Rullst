@@ -41,7 +41,8 @@ pub(super) fn tenant_guard(parsed: &ParsedModel) -> TokenStream {
 }
 
 /// The tenant predicate of a by-ID mutation: its SQL suffix, its binding and
-/// the check that exactly one row in the tenant was affected.
+/// the check that the statement affected its row: exactly one row in the
+/// tenant, or (without a tenant column) any row, else `RecordNotFound`.
 pub(super) struct TenantPredicate {
     pub(super) clause: String,
     pub(super) binding: TokenStream,
@@ -53,7 +54,11 @@ pub(super) fn tenant_predicate(parsed: &ParsedModel) -> TenantPredicate {
         return TenantPredicate {
             clause: String::new(),
             binding: quote! {},
-            rows_check: quote! {},
+            rows_check: quote! {
+                if mutation_result.rows_affected() == 0 {
+                    return Err(rullst_orm::Error::RecordNotFound);
+                }
+            },
         };
     }
     let col_ident = syn::Ident::new(&parsed.tenant_column, parsed.name.span());

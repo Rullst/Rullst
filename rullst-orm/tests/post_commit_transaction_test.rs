@@ -27,6 +27,14 @@ impl PostCommitModelObserver for CommitObserver {
     }
 }
 
+/// A child row whose deferred foreign key is checked only at COMMIT.
+#[derive(Debug, Clone, rullst_orm::FromRow, rullst_orm::Orm)]
+#[orm(table = "deferred_children")]
+struct DeferredChild {
+    pub id: i32,
+    pub parent_id: i32,
+}
+
 #[tokio::test]
 async fn managed_transactions_run_effects_only_after_a_successful_commit() {
     let database_path = std::env::temp_dir().join(format!(
@@ -218,6 +226,40 @@ async fn managed_transactions_run_effects_only_after_a_successful_commit() {
             .as_slice(),
         &[ModelOperation::Created, ModelOperation::Created]
     );
+
+    // A COMMIT that fails (here a deferred foreign key) persisted nothing:
+    // save() leaves the handle new, so a retry inserts instead of updating a
+    // row that never existed.
+    let pool = Orm::pool().expect("ORM should be initialized");
+    sqlx::query("CREATE TABLE deferred_parents (id INTEGER PRIMARY KEY)")
+        .execute(pool)
+        .await
+        .expect("create deferred parent table");
+    sqlx::query(
+        "CREATE TABLE deferred_children (id INTEGER PRIMARY KEY, parent_id INTEGER NOT NULL \
+         REFERENCES deferred_parents(id) DEFERRABLE INITIALLY DEFERRED)",
+    )
+    .execute(pool)
+    .await
+    .expect("create deferred child table");
+    let mut orphan = DeferredChild {
+        id: 0,
+        parent_id: 404,
+    };
+    let rejected = orphan.save().await;
+    assert!(rejected.is_err(), "the deferred check fails the commit");
+    assert_eq!(orphan.id, 0, "a failed commit keeps the handle new");
+    sqlx::query("INSERT INTO deferred_parents (id) VALUES (404)")
+        .execute(pool)
+        .await
+        .expect("insert the missing parent");
+    orphan.save().await.expect("retry inserts the child");
+    assert!(orphan.id > 0);
+    let children: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM deferred_children")
+        .fetch_one(pool)
+        .await
+        .expect("count children");
+    assert_eq!(children.0, 1);
 
     let _ = std::fs::remove_file(database_path);
 }
