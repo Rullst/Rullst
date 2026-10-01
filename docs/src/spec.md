@@ -2065,9 +2065,12 @@ while portability and semantic review remain the model author's responsibility.
   reads. `Orm::init_redis_with_namespace(url, application_namespace)` is the
   recommended initializer when a Redis database is shared; the compatibility
   `init_redis(url)` initializer uses the literal namespace `default`.
-* Versioned SHA-256 cache keys bind the validated application namespace, an
-  opaque digest of the active tenant scope when present, table, generated SQL,
-  and typed bindings. Raw tenant identifiers are not emitted in keys.
+* Versioned SHA-256 cache keys bind the validated application namespace, a
+  partition, table, generated SQL, and typed bindings. A model with a
+  `tenant_column` partitions its entries by an opaque digest of the active
+  tenant scope (`global` outside `with_tenant`); any other model keeps one
+  `global` copy whatever tenant scope its reads run in. Raw tenant
+  identifiers are not emitted in keys.
 * Generated reads always bypass Redis inside explicit and task-scoped database
   transactions, so cached state cannot replace the transaction's own view.
   `remember(0)` is invalid. Outside transactions, explicitly requesting cache
@@ -2084,10 +2087,14 @@ while portability and semantic review remain the model author's responsibility.
   generated cache write also records its key in a per-namespace/tenant/table
   Redis set in the same `EVAL` script, extending that set's TTL to the longest
   entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the tenant/table active at the write only after
-  commit (the tenant is captured when the callback is registered, so a
+  operations invalidate the table's `global` partition and, for a
+  tenant-scoped model, the partition of the tenant active at the write, only
+  after commit (the tenant is captured when the callback is registered, so a
   `with_tenant` scope that ended inside the transaction closure still has its
-  keys removed) by popping that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  keys removed). An `unscoped()` read of a tenant-scoped model inside another
+  tenant's `with_tenant` scope is cached in that scope's partition and is not
+  refreshed by other tenants' writes before its TTL. Invalidation pops each
+  index in batches of 500 and `UNLINK`s its keys (at most 10,000 per
   write); they never `SCAN` the Redis keyspace, so their cost does not grow
   with unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the

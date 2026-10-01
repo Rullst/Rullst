@@ -152,11 +152,13 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   compatibility and orders its pages by the primary key unless the query
   sets `order_by`.
 - **Transaction-Aware Redis Query Cache**: `.remember(seconds)` uses a
-  versioned SHA-256 key bound to the application namespace, active tenant,
+  versioned SHA-256 key bound to the application namespace, the active tenant
+  (for a model with a `tenant_column`; other models share one global entry),
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
-  Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  tenant active at the write and its table only after commit (even when that
+  Generated model saves/deletes/restores/force-deletes invalidate the table's
+  global keys and, for a tenant-scoped model, those of the tenant active at
+  the write, only after commit (even when that
   `with_tenant` scope ended before the commit) through a per-table key index,
   never a keyspace `SCAN`, so write latency does not grow with unrelated keys
   in a shared Redis database; cluster/failover evidence remains outside the

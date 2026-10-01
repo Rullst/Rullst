@@ -23,6 +23,14 @@ struct QueryCacheLiveSecret {
 }
 
 #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "query_cache_live_tenant_records", tenant_column = "tenant_id")]
+struct QueryCacheLiveTenantRecord {
+    pub id: i32,
+    pub tenant_id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
 #[orm(table = "query_cache_live_vault")]
 struct QueryCacheLiveVault {
     pub id: i32,
@@ -295,6 +303,7 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .await
         .expect("remove isolated live cache key");
     exercise_tenant_scoped_invalidation(&mut redis).await;
+    exercise_global_model_partition(&mut redis).await;
     exercise_secret_string_cache(&mut redis).await;
     exercise_undecodable_entries_fail_open(&mut redis).await;
     let _ = std::fs::remove_file(database_path);
@@ -306,28 +315,47 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
 async fn exercise_tenant_scoped_invalidation(
     redis: &mut rullst_orm::_redis::aio::ConnectionManager,
 ) {
-    let tenant_query = || QueryCacheLiveRecord::query().where_id(1).limit(1);
+    Schema::create(
+        "query_cache_live_tenant_records",
+        |table: &mut Blueprint| {
+            table.id();
+            table.string("tenant_id").not_null();
+            table.string("name").not_null();
+        },
+    )
+    .await
+    .expect("create live tenant cache table");
+    let mut record = QueryCacheLiveTenantRecord {
+        id: 0,
+        tenant_id: String::new(),
+        name: "tenant original".to_string(),
+    };
+    rullst_orm::with_tenant("acme", record.save())
+        .await
+        .expect("insert tenant fixture");
+    let id = record.id;
+    let tenant_query = move || QueryCacheLiveTenantRecord::query().where_id(id).limit(1);
     let tenant_key = rullst_orm::with_tenant("acme", async {
         let query = tenant_query();
         rullst_orm::query_cache::query_key(
-            "query_cache_live_records",
+            "query_cache_live_tenant_records",
             &query.to_sql(),
-            &query.bindings,
+            &rullst_orm::schema::SubqueryBuilder::ordered_bindings(&query),
         )
     })
     .await
     .expect("derive tenant cache key");
-    rullst_orm::with_tenant("acme", tenant_query().remember(30).first())
+    rullst_orm::with_tenant("acme", async { tenant_query().remember(30).first().await })
         .await
         .expect("populate tenant cache")
         .expect("fixture should exist");
     assert!(redis.exists::<_, bool>(&tenant_key).await.unwrap());
 
-    Orm::transaction(|_| {
+    Orm::transaction(move |_| {
         Box::pin(async move {
             rullst_orm::with_tenant("acme", async move {
-                let mut row = QueryCacheLiveRecord::find(1).await?.ok_or_else(|| {
-                    rullst_orm::Error::DatabaseError("live cache fixture disappeared".to_string())
+                let mut row = QueryCacheLiveTenantRecord::find(id).await?.ok_or_else(|| {
+                    rullst_orm::Error::DatabaseError("live tenant fixture disappeared".to_string())
                 })?;
                 row.name = "tenant scoped".to_string();
                 row.save().await
@@ -341,15 +369,61 @@ async fn exercise_tenant_scoped_invalidation(
         !redis.exists::<_, bool>(&tenant_key).await.unwrap(),
         "the commit must invalidate the writing tenant's keys"
     );
-    let fresh = rullst_orm::with_tenant("acme", tenant_query().remember(30).first())
-        .await
-        .expect("read tenant cache after commit")
-        .expect("fixture should exist");
+    let fresh =
+        rullst_orm::with_tenant("acme", async { tenant_query().remember(30).first().await })
+            .await
+            .expect("read tenant cache after commit")
+            .expect("fixture should exist");
     assert_eq!(fresh.name, "tenant scoped");
     let _: usize = redis
         .del(&tenant_key)
         .await
         .expect("remove isolated tenant cache key");
+}
+
+/// A model without a tenant column caches one global copy whatever tenant
+/// scope its reads run in, so a write from any scope invalidates it.
+async fn exercise_global_model_partition(redis: &mut rullst_orm::_redis::aio::ConnectionManager) {
+    let mut plan = QueryCacheLiveRecord {
+        id: 0,
+        name: "plan v1".to_string(),
+    };
+    plan.save().await.expect("insert global fixture");
+    let id = plan.id;
+    let plan_query = move || QueryCacheLiveRecord::query().where_id(id).limit(1);
+    let query = plan_query();
+    let global_key = rullst_orm::query_cache::query_key(
+        "query_cache_live_records",
+        &query.to_sql(),
+        &query.bindings,
+    )
+    .expect("derive global cache key");
+    for tenant in ["tenant-a", "tenant-b"] {
+        let cached = rullst_orm::with_tenant(tenant, plan_query().remember(30).first())
+            .await
+            .expect("read global model inside a tenant scope")
+            .expect("global fixture should exist");
+        assert_eq!(cached.name, "plan v1");
+        assert!(
+            redis.exists::<_, bool>(&global_key).await.unwrap(),
+            "a model without a tenant column must cache in the global partition"
+        );
+    }
+
+    plan.name = "plan v2".to_string();
+    plan.save()
+        .await
+        .expect("update global fixture outside any tenant");
+    assert!(!redis.exists::<_, bool>(&global_key).await.unwrap());
+    let fresh = rullst_orm::with_tenant("tenant-a", plan_query().remember(30).first())
+        .await
+        .expect("read after the global write")
+        .expect("global fixture should exist");
+    assert_eq!(fresh.name, "plan v2");
+    let _: usize = redis
+        .del(&global_key)
+        .await
+        .expect("remove isolated global cache key");
 }
 
 /// Cached `SecretString` values are ciphertext in Redis and still decrypt to

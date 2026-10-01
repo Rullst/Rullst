@@ -7,6 +7,7 @@ use quote::quote;
 pub fn generate_cache_read(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
+    let tenant_scoped = !parsed.tenant_column.is_empty();
     let decrypt_model = if parsed.encrypted_fields.is_empty() {
         quote! {}
     } else {
@@ -15,9 +16,12 @@ pub fn generate_cache_read(parsed: &ParsedModel) -> TokenStream {
     let redis_cfg = crate::feature_gates::redis();
     quote! {
         #redis_cfg
+        // Only a tenant-scoped model partitions its entries by tenant; the
+        // writes of any other model invalidate its single global copy.
         let cache_key = if _allow_cache && self.remember_ttl.is_some() {
-            Some(rullst_orm::query_cache::query_key(
+            Some(rullst_orm::query_cache::query_key_for_model(
                 #table_name,
+                #tenant_scoped,
                 &query_str,
                 &query_bindings,
             )?)

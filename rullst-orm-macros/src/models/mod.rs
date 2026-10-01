@@ -47,6 +47,7 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
     let (update_builder_struct, update_builder_method) = generate_update_builder(parsed);
     let redis_methods = generate_redis_hash_methods(parsed);
     let ai_methods = generate_ai_methods(parsed);
+    let tenant_scoped = !parsed.tenant_column.is_empty();
     let decrypt_encrypted_fields = parsed.encrypted_fields.iter().map(|field| {
         let field_name = &field.name;
         let column_name = field_name.to_string();
@@ -84,6 +85,10 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
         }
 
         impl #name {
+            /// Whether generated query-cache entries are partitioned by tenant.
+            #[doc(hidden)]
+            pub const __RULLST_TENANT_SCOPED_CACHE: bool = #tenant_scoped;
+
             #(#relationship_methods)*
 
             fn __rullst_decrypt_encrypted_fields(&mut self) -> Result<(), rullst_orm::Error> {

@@ -47,10 +47,27 @@ pub(crate) fn validate_namespace(namespace: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Builds the versioned key used by generated `.remember(...)` queries.
+/// Builds the versioned key of a `.remember(...)` query in the active tenant
+/// scope's partition (`global` outside `with_tenant`).
 pub fn query_key(table: &str, query: &str, bindings: &[RullstValue]) -> Result<String, Error> {
     let namespace = Orm::redis_cache_namespace()?;
     let tenant = crate::tenant::get_tenant_id();
+    build_key(namespace, tenant.as_ref(), table, query, bindings)
+}
+
+/// Builds the key of a generated `.remember(...)` read. Only a model with a
+/// tenant column partitions its entries by the active tenant; any other model
+/// keeps one `global` copy whatever `with_tenant` scope is active, so a write
+/// from any scope invalidates it.
+#[doc(hidden)]
+pub fn query_key_for_model(
+    table: &str,
+    tenant_scoped: bool,
+    query: &str,
+    bindings: &[RullstValue],
+) -> Result<String, Error> {
+    let namespace = Orm::redis_cache_namespace()?;
+    let tenant = tenant_scoped.then(crate::tenant::get_tenant_id).flatten();
     build_key(namespace, tenant.as_ref(), table, query, bindings)
 }
 
@@ -146,33 +163,63 @@ pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Re
 /// stay indexed for the next write and otherwise expire through their TTL, as
 /// do entries written by earlier versions that were never indexed.
 pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
-    use crate::_redis::AsyncCommands;
-
     let Ok(namespace) = Orm::redis_cache_namespace() else {
         return Ok(0);
     };
     let tenant = crate::tenant::get_tenant_id();
-    let index = index_key(namespace, tenant.as_ref(), table)?;
+    drain_indexes(&[index_key(namespace, tenant.as_ref(), table)?]).await
+}
+
+/// Invalidates a written model's cached reads after commit: the `global`
+/// partition (every read of a model without a tenant column, and `unscoped()`
+/// reads outside `with_tenant`) and, when `tenant` is the writing tenant of a
+/// tenant-scoped model, that tenant's partition. The per-write key cap of
+/// [`invalidate_table`] covers both partitions.
+#[doc(hidden)]
+pub async fn invalidate_model_table(
+    table: &str,
+    tenant: Option<RullstValue>,
+) -> Result<usize, Error> {
+    let Ok(namespace) = Orm::redis_cache_namespace() else {
+        return Ok(0);
+    };
+    let mut indexes = vec![index_key(namespace, None, table)?];
+    if let Some(tenant) = tenant.as_ref() {
+        indexes.push(index_key(namespace, Some(tenant), table)?);
+    }
+    drain_indexes(&indexes).await
+}
+
+/// Pops and unlinks the entries of each index in batches, at most
+/// `MAX_INVALIDATION_KEYS` in total; entries beyond the cap stay indexed.
+async fn drain_indexes(indexes: &[String]) -> Result<usize, Error> {
+    use crate::_redis::AsyncCommands;
+
     let mut connection = Orm::redis_manager()?;
     let mut deleted = 0_usize;
-    while deleted < MAX_INVALIDATION_KEYS {
-        let removed: usize = crate::_redis::cmd("EVAL")
-            .arg(INVALIDATE_SCRIPT)
-            .arg(1)
-            .arg(&index)
-            .arg(INVALIDATION_BATCH)
-            .query_async(&mut connection)
-            .await?;
-        deleted += removed;
-        if removed < INVALIDATION_BATCH {
-            return Ok(deleted);
+    for index in indexes {
+        loop {
+            if deleted >= MAX_INVALIDATION_KEYS {
+                let remaining: usize = connection.scard(index).await?;
+                if remaining > 0 {
+                    return Err(Error::CacheError(format!(
+                        "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys; the rest expire by TTL"
+                    )));
+                }
+                break;
+            }
+            let removed: usize = crate::_redis::cmd("EVAL")
+                .arg(INVALIDATE_SCRIPT)
+                .arg(1)
+                .arg(index)
+                .arg(INVALIDATION_BATCH)
+                .query_async(&mut connection)
+                .await?;
+            deleted += removed;
+            if removed < INVALIDATION_BATCH {
+                break;
+            }
         }
-    }
-    let remaining: usize = connection.scard(&index).await?;
-    if remaining > 0 {
-        return Err(Error::CacheError(format!(
-            "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys; the rest expire by TTL"
-        )));
     }
     Ok(deleted)
 }
