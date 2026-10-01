@@ -28,8 +28,7 @@ fn textual_media_type(headers: &HeaderMap) -> Option<&str> {
         return None;
     }
 
-    (crate::media_type::is_text(media_type) || crate::media_type::is_json(media_type))
-        .then_some(media_type)
+    crate::media_type::is_textual_response_body(media_type).then_some(media_type)
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -213,8 +212,21 @@ mod tests {
             ("Application/Problem+Json; charset=utf-8", true),
             ("APPLICATION/JSON", true),
             ("Text/HTML", true),
+            ("Application/XML", true),
+            ("application/soap+xml; charset=utf-8", true),
+            ("application/atom+xml", true),
+            ("Application/JavaScript", true),
+            ("application/x-javascript", true),
+            ("application/ecmascript", true),
+            ("text/javascript", true),
+            ("application/yaml", true),
+            ("application/x-yaml", true),
+            ("application/vnd.oai.openapi+yaml", true),
             ("Text/Event-Stream", false),
             ("application/octet-stream", false),
+            ("application/xmlx", false),
+            ("application/wasm", false),
+            ("image/svg", false),
         ] {
             let mut headers = HeaderMap::new();
             headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(media_type));
