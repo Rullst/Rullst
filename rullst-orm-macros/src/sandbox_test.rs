@@ -38,15 +38,21 @@ pub(crate) fn expand(input_fn: &syn::ItemFn) -> TokenStream {
             let tx = ::rullst_orm::Orm::begin_transaction().await.expect("Failed to begin sandbox transaction");
             let tx_arc = ::std::sync::Arc::new(::tokio::sync::Mutex::new(Some(tx)));
 
-            // Scope the transaction globally for this tokio task
-            let __rullst_test_result = ::rullst_orm::CURRENT_TX
-                .scope(tx_arc.clone(), __rullst_test_body())
+            // Scope the transaction globally for this tokio task. Its
+            // post-commit callbacks are collected like those of
+            // `Orm::transaction`, instead of running while a mutation still
+            // holds the transaction; the sandbox never commits, so they are
+            // discarded with the scope, as a rollback discards them.
+            let __rullst_post_commit = ::rullst_orm::post_commit::PostCommitScope::new();
+            let __rullst_test_result = __rullst_post_commit
+                .run(::rullst_orm::CURRENT_TX.scope(tx_arc.clone(), __rullst_test_body()))
                 .await;
 
             // Automatic Rollback
             if let Some(tx) = tx_arc.lock().await.take() {
                 let _ = tx.rollback().await;
             }
+            drop(__rullst_post_commit);
             __rullst_test_result
         }
     }
@@ -77,5 +83,18 @@ mod tests {
                 .trim_end()
                 .ends_with("__rullst_test_result }")
         );
+    }
+
+    #[test]
+    fn runs_the_body_under_a_post_commit_scope_that_is_never_committed() {
+        let input: syn::ItemFn = parse_quote! {
+            async fn sandboxed() {}
+        };
+        let expanded = super::expand(&input).to_string();
+        assert!(
+            expanded.contains("__rullst_post_commit . run (:: rullst_orm :: CURRENT_TX . scope")
+        );
+        assert!(expanded.contains("drop (__rullst_post_commit)"));
+        assert!(!expanded.contains("__rullst_post_commit . commit"));
     }
 }

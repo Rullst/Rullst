@@ -1988,7 +1988,9 @@ while portability and semantic review remain the model author's responsibility.
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
   managed transaction is active, `after_commit` executes immediately for an
-  already committed/autocommit operation.
+  already committed/autocommit operation. `#[rullst_orm::test]` runs its body
+  in such a scope too and never commits it, so the observers, cache, Redis
+  and Scout effects of sandboxed writes are discarded with the rollback.
 * Generated observers retain synchronous lifecycle callbacks such as
   `creating`, `created`, and `saved` for mutation validation. The separate
   `committed(ModelCommittedEvent)` callback receives an owned snapshot after
