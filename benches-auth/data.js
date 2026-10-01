@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790871230560,
+  "lastUpdate": 1790882394003,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14337,6 +14337,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4082,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "43552fadc4d8947dae6cc4b00f4946ee0264c4dc",
+          "message": "Merge pull request #387 from Rullst/feat/v13-cli-opening-home\n\nfeat(cli): approved v13 opening and context-aware home",
+          "timestamp": "2026-10-01T16:00:05-03:00",
+          "tree_id": "aeac8f796bde4441dc62500dbcc09d44ea8f0be7",
+          "url": "https://github.com/Rullst/Rullst/commit/43552fadc4d8947dae6cc4b00f4946ee0264c4dc"
+        },
+        "date": 1790882392975,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1081,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 871,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1944,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 5041,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
