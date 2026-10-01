@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790811397719,
+  "lastUpdate": 1790814625875,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13761,6 +13761,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4028,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c6b8266f577ebe90ba211157290a324ec45ebc07",
+          "message": "Merge pull request #362 from Rullst/fix/v13-connect-messaging-low-fixes\n\nfix(connect,messaging): low-severity retry, error typing, discovery, store URL and key-rotation fixes",
+          "timestamp": "2026-09-30T21:11:20-03:00",
+          "tree_id": "ad5c1330fe825410a71774e8d434d4ab62326f4d",
+          "url": "https://github.com/Rullst/Rullst/commit/c6b8266f577ebe90ba211157290a324ec45ebc07"
+        },
+        "date": 1790814625244,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1056,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 865,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1956,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4997,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
