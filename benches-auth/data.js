@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790882394003,
+  "lastUpdate": 1790885522928,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14385,6 +14385,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 5041,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27e6047f2348dd5ba6587dfbab9169fd104ff4d8",
+          "message": "Merge pull request #389 from Rullst/fix/v13-cli-r2-generators\n\nfix(cli): second-round generator fixes for introspection, typed auto-migrations, auth facade and name validation",
+          "timestamp": "2026-10-01T16:51:06-03:00",
+          "tree_id": "28abeeae312fefe4afbe90eebd3a0678bd9440d2",
+          "url": "https://github.com/Rullst/Rullst/commit/27e6047f2348dd5ba6587dfbab9169fd104ff4d8"
+        },
+        "date": 1790885521754,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 979,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 779,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1814,
+            "range": "± 62",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2783,
+            "range": "± 95",
             "unit": "ns/iter"
           }
         ]
