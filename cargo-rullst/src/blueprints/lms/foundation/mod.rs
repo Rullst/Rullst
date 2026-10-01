@@ -179,6 +179,29 @@ mod tests {
     }
 
     #[test]
+    fn progress_idempotency_keys_are_scoped_to_their_learner() {
+        let manifest = manifest(false);
+        let service = source(&manifest, "src/services/learning_service.rs");
+        let migration = source(
+            &manifest,
+            "src/migrations/m20260827000000_add_learning_access.rs",
+        );
+        // A key unique across all learners let one learner submit another's
+        // key first and turn every later save of the victim into a 409.
+        assert!(migration.contains("ON lesson_progress_events(subject_user_id, event_key)\""));
+        assert!(!migration.contains("ON lesson_progress_events(event_key)"));
+        assert!(service.contains(
+            "FROM lesson_progress_events WHERE subject_user_id = $1 AND event_key = $2\""
+        ));
+        assert!(
+            service.contains(
+                "FROM lesson_progress_events WHERE subject_user_id = ? AND event_key = ?\""
+            )
+        );
+        assert!(service.contains(".bind(user_id).bind(idempotency_key).fetch_optional(pool)"));
+    }
+
+    #[test]
     fn hot_reload_exports_the_router_library() {
         let manifest = manifest(true);
         assert!(
