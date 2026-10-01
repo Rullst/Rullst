@@ -9,7 +9,7 @@ return mutate(function(timestamp)
     local stored = call('HGET', state, seq)
     if not stored then error('lease state missing') end
     local data = cjson.decode(stored)
-    if data[2] ~= token or number(call('ZSCORE', ready, seq)) ~= number(data[3]) then
+    if data[2] ~= token or number(call('ZSCORE', ready, member(seq))) ~= number(data[3]) then
         error('lease binding corrupt')
     end
     local expired = number(data[3]) <= timestamp
@@ -23,7 +23,7 @@ return mutate(function(timestamp)
         data[2], data[3] = '', 0
         call('HSET', state, seq, cjson.encode(data))
         local available = timestamp + (expired and 0 or delay)
-        call('ZADD', ready, available, seq)
+        call('ZADD', ready, available, member(seq))
         if expired then return {'expired'} end
         return {'ok', 'retry', text(available)}
     end

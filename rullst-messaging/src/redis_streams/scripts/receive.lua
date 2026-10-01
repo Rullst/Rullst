@@ -5,7 +5,8 @@ return mutate(function(timestamp)
     local candidates = call('ZRANGEBYSCORE', ready, '-inf', timestamp, 'LIMIT', 0, limit)
     local response = {'ok'}
     local bytes = 0
-    for _, seq in ipairs(candidates) do
+    for _, entry in ipairs(candidates) do
+        local seq = sequence_of(entry)
         local stored = call('HGET', state, seq)
         local data = stored and cjson.decode(stored) or {0, '', 0, '', 0}
         local attempts = number(data[1])
@@ -21,7 +22,7 @@ return mutate(function(timestamp)
             local attempt = attempts + 1
             call('HSET', state, seq, cjson.encode({attempt, token, text(expires), '', 0}))
             call('HSET', tokens, token, cjson.encode({group, seq}))
-            call('ZADD', ready, expires, seq)
+            call('ZADD', ready, expires, entry)
             response[#response + 1] = {wire, attempt, text(expires), token}
             bytes = bytes + #wire
         end

@@ -86,6 +86,7 @@ def main():
                      "actual_redis_latest_retry_purge_and_bounded_capacity",
                      "faults::missing_state_and_partial_mutations_fail_closed",
                      "faults::wrong_credentials_timeout_and_clock_regression_never_fall_back",
+                     "ordering::same_time_entries_are_delivered_in_sequence_order",
                      "tls::verified_tls_rejects_untrusted_roots_and_wrong_hostnames",
                      "outbox::remote_outbox_replay_converges_after_publish_before_ack",
                      "bounds::byte_retention_reply_batches_and_expired_attempts_are_bounded"]:

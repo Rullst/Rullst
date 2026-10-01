@@ -29,7 +29,7 @@ return mutate(function(timestamp)
         local data = group_guard(group)
         if not data then error('subscription missing') end
         local ready = group_keys(group)
-        call('ZADD', ready, timestamp, seq)
+        call('ZADD', ready, timestamp, member(seq))
         data[2] = number(data[2]) + 1
         call('HSET', subscriptions, group, cjson.encode(data))
     end

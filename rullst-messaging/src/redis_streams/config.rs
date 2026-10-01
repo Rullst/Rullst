@@ -198,7 +198,7 @@ impl RedisBrokerConfig {
 
     pub(super) fn signature(&self) -> String {
         format!(
-            "rullst.redis-streams.v1:{}:{}:{}:{}:{}",
+            "rullst.redis-streams.v2:{}:{}:{}:{}:{}",
             self.generation,
             self.broker.max_retained_messages(),
             self.broker.max_subscriptions(),

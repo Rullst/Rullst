@@ -20,6 +20,11 @@ local function number(value)
     return result
 end
 local function text(value) return string.format('%.0f', value) end
+-- Each group's ready index stores fixed-width decimal sequences, so entries
+-- with the same score (the same available time) sort in sequence order
+-- instead of as text ('10' before '9').
+local function member(seq) return string.format('%016.0f', number(seq)) end
+local function sequence_of(entry) return text(number(entry)) end
 local function now()
     local value = call('TIME')
     return number(number(value[1]) * 1000 + math.floor(number(value[2]) / 1000))
@@ -78,7 +83,7 @@ end
 local function finish_delivery(group, seq, state_data, failure, timestamp)
     local ready, state, done, dead = group_keys(group)
     if state_data[2] ~= '' then call('HDEL', tokens, state_data[2]) end
-    call('ZREM', ready, seq)
+    call('ZREM', ready, member(seq))
     state_data[2] = ''
     state_data[3] = 0
     state_data[4] = failure

@@ -43,6 +43,9 @@ missing state. Never respond to a startup error by automatically provisioning a
 replacement. Keep the deployment generation stable across process restarts;
 restoring a backup requires explicit reconciliation, not a new random generation
 on every startup. Changing generation or limits for retained state fails.
+The stored state format is part of that check: a namespace provisioned by an
+earlier v13 development build (format v1) fails with `ConfigurationConflict`.
+Drain it with that build, then provision a new namespace or generation.
 
 Credentials are explicit and separate from the URL. Only database zero is
 supported. URL credentials, fragments, query options and insecure TLS overrides
@@ -89,8 +92,10 @@ cannot claim the same live lease. Delivery remains **at least once**: an externa
 effect can succeed before its ACK fails. Deduplicate effects using the stable
 message ID or a domain key. Retain deduplication state long enough for the
 application's retry/recovery horizon; republishing after terminal purge creates
-a new message. Delayed retries and competing consumers do not promise global or
-strict FIFO processing order.
+a new message. Messages that become available at the same time, for example
+every retained message of a new earliest group, are claimed in publication
+order. Delayed retries and competing consumers do not promise global or strict
+FIFO processing order.
 
 ## Limits and failure handling
 
