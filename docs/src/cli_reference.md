@@ -941,8 +941,8 @@ Runs bounded source/configuration checks and can invoke installed dependency
 scanners. Static findings require human review and are not a penetration test or
 compliance certification.
 * **Flags:**
-  * `--ai`: Enables AI Sentinel suggestions for threat mitigation.
-  * `--compliance`: Generates an evidence-oriented control report with `PASS`, `FAIL`, `SKIPPED`, or `NOT_EVALUATED`; it does not confer SOC 2 or ISO 27001 certification.
+  * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
+  * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and does not confer SOC 2 or ISO 27001 certification.
   * `--idor`: Fails on parameterized routes without an adjacent `// rullst-access: public|owner|role|admin — reason` classification and the recognized guard required by non-public classifications. `public` is accepted only for recognized GET routes. This bounded heuristic cannot prove domain authorization correctness.
 
 ### `cargo rullst eject [--force] [--output <path>]`
@@ -1102,11 +1102,11 @@ require their official SDK/toolchain and a reachable backend.
 Executes bounded automated checks across recognized source, configuration,
 route, dependency, and local network patterns.
 * **Optional Flags:**
-  * `--ai`: Enables autonomous AI Sentinel analysis with risk assessment and proactive remediation advice.
-  * `--compliance`: Generates an evidence-oriented control report; it is not a SOC 2, ISO 27001, or transport certification.
+  * `--ai`: Prints fixed, rule-based remediation suggestions; no AI model or network service is called.
+  * `--compliance`: Generates the evidence report described above (no `PASS` results); it is not a SOC 2, ISO 27001, or transport certification.
   * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
-  * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) with package SHA-256 checksums and license metadata.
+  * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
 
