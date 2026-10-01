@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790844968727,
+  "lastUpdate": 1790846018901,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23583,6 +23583,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2300,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7eff1c310110ae1693fe60d5af9ada920dba892",
+          "message": "Merge pull request #369 from Rullst/fix/v13-review-follow-ups\n\nfeat(core,nexus,studio): .env-aware project settings, bounded queue previews and review follow-ups",
+          "timestamp": "2026-10-01T06:02:30-03:00",
+          "tree_id": "a08e7cc349fc0297859ef8ac5f8f21c46b392b41",
+          "url": "https://github.com/Rullst/Rullst/commit/e7eff1c310110ae1693fe60d5af9ada920dba892"
+        },
+        "date": 1790846016504,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 734,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 992,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 591,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2376,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
