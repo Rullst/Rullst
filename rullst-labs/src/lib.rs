@@ -1,5 +1,7 @@
 //! Trusted exercise and grading contracts. This crate never executes learner code.
-//! The first Linux runner and durable integration remain implementation work.
+//! Bring your own runner: an application-owned, separately deployed and isolated
+//! runner claims leased jobs and returns signed receipts. See the controller
+//! contract in the Rullst book and the non-executing `byo_runner_controller` example.
 #![forbid(unsafe_code)]
 
 mod authorization;
