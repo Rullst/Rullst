@@ -182,8 +182,23 @@ impl<C: Clock> SqliteMedia<C> {
         self.pool.close().await;
     }
 }
-pub(super) fn storage(_: sqlx::Error) -> Error {
-    Error::Storage
+/// A lock or connection wait past its timeout is contention, not damage: the
+/// statement committed nothing, so it maps to `Busy` for a bounded retry.
+pub(super) fn storage(error: sqlx::Error) -> Error {
+    let contended = match &error {
+        sqlx::Error::PoolTimedOut => true,
+        // SQLITE_BUSY (5) and SQLITE_LOCKED (6), with any extended code.
+        sqlx::Error::Database(error) => error
+            .code()
+            .and_then(|code| code.parse::<i32>().ok())
+            .is_some_and(|code| matches!(code & 0xff, 5 | 6)),
+        _ => false,
+    };
+    if contended {
+        Error::Busy
+    } else {
+        Error::Storage
+    }
 }
 fn resolved(path: &Path) -> Result<PathBuf, Error> {
     let name = path
