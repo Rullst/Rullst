@@ -18,7 +18,9 @@ Nexus fails closed: `try_build()` requires an explicit validated access policy.
 The generated-app helper permits credential-free access only in debug builds and
 only for a loopback peer proven by Axum `ConnectInfo`. Release builds require
 `NEXUS_ADMIN_USERNAME` and a unique `NEXUS_ADMIN_PASSWORD` of at least 16
-characters.
+characters, each read from the process environment or else the working
+directory's `.env` (never loaded into the process environment). A malformed or
+unreadable `.env` fails with `NexusBuildError::InvalidDotenv`.
 
 ```rust
 use rullst_nexus::{Nexus, NexusAuthPolicy};

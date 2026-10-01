@@ -212,12 +212,16 @@ impl NexusAuthPolicy {
         NexusBasicAuth::new(username, password).map(Self::Basic)
     }
 
-    /// Loads and validates Basic Auth credentials from the process environment or `.env`.
+    /// Loads and validates Basic Auth credentials from the process environment,
+    /// then the working directory's `.env`.
     ///
     /// The required variables are [`NEXUS_ADMIN_USERNAME_ENV`] and
-    /// [`NEXUS_ADMIN_PASSWORD_ENV`]. No username or password fallback is provided.
+    /// [`NEXUS_ADMIN_PASSWORD_ENV`], each resolved with
+    /// [`rullst_core::config::project_setting`]: `.env` never overrides the
+    /// process environment and is never loaded into it, and an unreadable or
+    /// malformed `.env` is [`NexusBuildError::InvalidDotenv`]. No username or
+    /// password fallback is provided.
     pub fn basic_from_env() -> Result<Self, NexusBuildError> {
-        let _ = dotenvy::dotenv();
         let username = required_environment_variable(NEXUS_ADMIN_USERNAME_ENV)?;
         let password = required_environment_variable(NEXUS_ADMIN_PASSWORD_ENV)?;
         Self::basic(username, password)

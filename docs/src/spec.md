@@ -1436,7 +1436,8 @@ the same server-authoritative controls.
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded
   into it. An unreadable or malformed `.env` is a `ConfigError` that never
-  contains file content.
+  contains file content. Nexus `basic_from_env` reads its administrator
+  credentials through it.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
@@ -3296,7 +3297,7 @@ sending.
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
 * **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.
-* Generated applications may use `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds accept only a peer address verified as loopback through `ConnectInfo`, while release builds require validated Basic Auth credentials from the environment. Missing peer metadata is denied, and an environment mode flag cannot enable unauthenticated release access.
+* Generated applications may use `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds accept only a peer address verified as loopback through `ConnectInfo`, while release builds require validated Basic Auth credentials from the process environment, then `./.env` (`config::project_setting`; an unreadable or malformed `.env` is `NexusBuildError::InvalidDotenv`). Missing peer metadata is denied, and an environment mode flag cannot enable unauthenticated release access.
 * Basic Auth counts only presented Basic credentials that fail, per client bucket (IPv4 address or IPv6 /64 of the `ConnectInfo` peer); a credential-less `401` challenge is not a failure. A locked bucket receives `429` without credential evaluation, except for a browser holding the per-process `rullst_nexus_known_client` cookie issued on a previous success. Behind a shared reverse proxy, Core's `TrustedProxyLayer` (`Server::trusted_proxies`) configured with only the proxy's networks supplies the resolved client as `ConnectInfo`, isolating clients.
 * Basic Auth requires TLS evidence: the application-inserted `NexusVerifiedTls` marker, or a `ClientAddr` whose `forwarded_proto()` is HTTPS, which only the trusted-proxy layer can produce and only with `trust_forwarded_proto(true)`. A request URI or forwarding header alone is never TLS evidence.
 * A model may explicitly declare one text `tenant` column. Nexus then obtains the scope only from a trusted Core `TenantContext`, injects it on create, includes it in every built-in read/mutation/batch predicate, and denies a missing context. Models without that metadata remain global administrator models. Authentication and tenant-membership resolution remain host contracts.

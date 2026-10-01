@@ -174,8 +174,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Set unique values for `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`; the password must contain
-at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, which the Basic Auth
+Set unique values for `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` in the process environment
+or the project's `.env`; the password must contain at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, which the Basic Auth
 guard requires so a forged forwarding header cannot choose the rate-limit identity.
 The Basic Auth guard also requires `NexusVerifiedTls` from trusted transport
 integration; an `https` request URI or a forwarding header alone never proves TLS.
