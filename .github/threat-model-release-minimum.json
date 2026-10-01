@@ -296,7 +296,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "realtime::tests::identical_channels_are_isolated_by_authenticated_tenant_context",
-      "source": "rullst-core/src/realtime.rs",
+      "source": "rullst-core/src/realtime_tests.rs",
       "marker": "TM-TENANT-04"
     },
     {
