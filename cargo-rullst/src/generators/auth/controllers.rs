@@ -1,5 +1,6 @@
 // cargo-rullst/src/generators/auth/controllers.rs — Auth controllers generator.
 
+use crate::generators::{output_guard::write_new, register_mod_ast};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -39,39 +40,21 @@ pub(crate) fn render_auth_controller(registration_hook: Option<&str>) -> String 
 pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     let middlewares_dir = Path::new("src/middlewares");
     fs::create_dir_all(middlewares_dir)?;
-    fs::write(
-        middlewares_dir.join("auth_middleware.rs"),
-        AUTH_MIDDLEWARE_TEMPLATE,
+    write_new(
+        &middlewares_dir.join("auth_middleware.rs"),
+        AUTH_MIDDLEWARE_TEMPLATE.as_bytes(),
     )?;
     println!("{}", "  ✨ Created 'auth_middleware' middleware.".green());
-
-    let mod_middlewares_path = middlewares_dir.join("mod.rs");
-    if !mod_middlewares_path.exists() {
-        fs::write(&mod_middlewares_path, "")?;
-    }
-    let mut mod_middlewares_content = fs::read_to_string(&mod_middlewares_path)?;
-    if !mod_middlewares_content.contains("pub mod auth_middleware;") {
-        mod_middlewares_content.push_str("pub mod auth_middleware;\n");
-        fs::write(&mod_middlewares_path, mod_middlewares_content)?;
-    }
+    register_mod_ast(&middlewares_dir.join("mod.rs"), "auth_middleware")?;
 
     let controllers_dir = Path::new("src/controllers");
     fs::create_dir_all(controllers_dir)?;
-    fs::write(
-        controllers_dir.join("auth_controller.rs"),
-        render_auth_controller(None),
+    write_new(
+        &controllers_dir.join("auth_controller.rs"),
+        render_auth_controller(None).as_bytes(),
     )?;
     println!("{}", "  ✨ Created 'auth_controller' controller.".green());
-
-    let mod_controllers_path = controllers_dir.join("mod.rs");
-    if !mod_controllers_path.exists() {
-        fs::write(&mod_controllers_path, "")?;
-    }
-    let mut mod_controllers_content = fs::read_to_string(&mod_controllers_path)?;
-    if !mod_controllers_content.contains("pub mod auth_controller;") {
-        mod_controllers_content.push_str("pub mod auth_controller;\n");
-        fs::write(&mod_controllers_path, mod_controllers_content)?;
-    }
+    register_mod_ast(&controllers_dir.join("mod.rs"), "auth_controller")?;
 
     Ok(())
 }

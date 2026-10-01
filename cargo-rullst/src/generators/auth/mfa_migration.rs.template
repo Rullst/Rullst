@@ -1,0 +1,24 @@
+use rullst::db::async_trait;
+use rullst::db::schema::{Migration, Schema};
+use rullst::db::{Orm, sqlx};
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "__MIGRATION_NAME__"
+    }
+
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
+        // One factor per account; `last_accepted_step` fences TOTP replays.
+        sqlx::query("CREATE TABLE user_mfa_factors (user_id BIGINT NOT NULL PRIMARY KEY, secret VARCHAR(64) NOT NULL, confirmed INTEGER NOT NULL DEFAULT 0, last_accepted_step BIGINT)")
+            .execute(Orm::pool()?)
+            .await?;
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("user_mfa_factors").await
+    }
+}

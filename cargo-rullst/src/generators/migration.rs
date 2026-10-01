@@ -284,99 +284,18 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let mut up_queries = Vec::new();
-        let mut down_queries = Vec::new();
-
-        for ast_table in &ast_tables {
-            let tname = &ast_table.table_name;
-            if !db_schema.contains_key(tname) {
-                let mut up_sql = format!(
-                    "        Schema::create(\"{}\", |table| {{\n            table.id();\n",
-                    tname
-                );
-                for field in &ast_table.fields {
-                    if field.name == "id"
-                        || field.name == "created_at"
-                        || field.name == "updated_at"
-                    {
-                        continue;
-                    }
-                    up_sql.push_str(&format!("            table.string(\"{}\");\n", field.name));
-                }
-                up_sql.push_str("            table.timestamps();\n        }}).await?;\n");
-                up_queries.push(up_sql);
-
-                down_queries.push(format!(
-                    "        Schema::drop_if_exists(\"{}\").await?;\n",
-                    tname
-                ));
-            } else if let Some(db_cols) = db_schema.get(tname) {
-                for field in &ast_table.fields {
-                    if !db_cols.contains(&field.name) {
-                        up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
-                        down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
-                    }
-                }
-            }
-        }
-
-        for (db_tname, db_cols) in &db_schema {
-            if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
-                for db_col in db_cols {
-                    if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
-                        continue;
-                    }
-                    if !ast_table.fields.iter().any(|f| &f.name == db_col) {
-                        up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col));
-                    }
-                }
-            } else {
-                up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname));
-            }
-        }
-
-        if up_queries.is_empty() {
-            println!("{}", "? Database is already in sync with AST!".green());
-            return Ok(());
-        }
-
         let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
         let file_stem = format!("m{}_{}", timestamp, "auto_sync");
+        let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema) else {
+            println!("{}", "? Database is already in sync with AST!".green());
+            return Ok(());
+        };
 
         let migrations_dir = Path::new("src/migrations");
         if !migrations_dir.exists() {
             fs::create_dir_all(migrations_dir)?;
         }
         let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
-
-        let up_body = up_queries.join("\n");
-        let down_body = down_queries.join("\n");
-
-        let template = format!(
-            r#"use rullst_orm::schema::{{Schema, Migration}};
-use rullst_orm::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {{
-    fn name(&self) -> &'static str {{
-        "{}"
-    }}
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
-{}
-        Ok(())
-    }}
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-{}
-        Ok(())
-    }}
-}}
-"#,
-            file_stem, up_body, down_body
-        );
 
         fs::write(&migration_path, template)?;
         println!(
@@ -400,6 +319,94 @@ impl Migration for MigrationImpl {{
     Ok(())
 }
 
+/// Renders the reviewable auto-sync migration, or `None` when nothing differs.
+pub(crate) fn render_auto_migration(
+    file_stem: &str,
+    ast_tables: &[super::schema_diff::ParsedTable],
+    db_schema: &std::collections::HashMap<String, Vec<String>>,
+) -> Option<String> {
+    let mut up_queries = Vec::new();
+    let mut down_queries = Vec::new();
+
+    for ast_table in ast_tables {
+        let tname = &ast_table.table_name;
+        if !db_schema.contains_key(tname) {
+            let mut up_sql = format!(
+                "        Schema::create(\"{}\", |table| {{\n            table.id();\n",
+                tname
+            );
+            for field in &ast_table.fields {
+                if field.name == "id" || field.name == "created_at" || field.name == "updated_at" {
+                    continue;
+                }
+                up_sql.push_str(&format!("            table.string(\"{}\");\n", field.name));
+            }
+            // A plain literal: `format!` escaping does not apply to `push_str`.
+            up_sql.push_str("            table.timestamps();\n        }).await?;\n");
+            up_queries.push(up_sql);
+
+            down_queries.push(format!(
+                "        Schema::drop_if_exists(\"{}\").await?;\n",
+                tname
+            ));
+        } else if let Some(db_cols) = db_schema.get(tname) {
+            for field in &ast_table.fields {
+                if !db_cols.contains(&field.name) {
+                    up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
+                    down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
+                }
+            }
+        }
+    }
+
+    for (db_tname, db_cols) in db_schema {
+        if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
+            for db_col in db_cols {
+                if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
+                    continue;
+                }
+                if !ast_table.fields.iter().any(|f| &f.name == db_col) {
+                    up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col));
+                }
+            }
+        } else {
+            up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname));
+        }
+    }
+
+    if up_queries.is_empty() {
+        return None;
+    }
+    let up_body = up_queries.join("\n");
+    let down_body = down_queries.join("\n");
+
+    Some(format!(
+        r#"use rullst_orm::schema::{{Schema, Migration}};
+use rullst_orm::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {{
+    fn name(&self) -> &'static str {{
+        "{}"
+    }}
+
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+{}
+        Ok(())
+    }}
+
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
+{}
+        Ok(())
+    }}
+}}
+"#,
+        file_stem, up_body, down_body
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -416,5 +423,33 @@ mod tests {
         assert!(source.contains("DROP TABLE widgets"));
         assert!(!source.contains("unwrap("));
         syn::parse_file(&source).expect("generated Turso migration should parse");
+    }
+
+    #[test]
+    fn auto_migration_for_a_new_table_parses_with_balanced_braces() {
+        use super::super::schema_diff::{ParsedField, ParsedTable};
+        let field = |name: &str| ParsedField {
+            name: name.to_string(),
+            rust_type: "String".to_string(),
+            is_option: false,
+        };
+        let tables = vec![ParsedTable {
+            table_name: "posts".to_string(),
+            struct_name: "Post".to_string(),
+            fields: vec![field("id"), field("title"), field("created_at")],
+        }];
+        let source = render_auto_migration(
+            "m20261001000000_auto_sync",
+            &tables,
+            &std::collections::HashMap::new(),
+        )
+        .expect("a missing table produces a migration");
+        assert!(source.contains("Schema::create(\"posts\", |table| {"));
+        assert!(source.contains("        }).await?;"));
+        assert!(!source.contains("}})"));
+        syn::parse_file(&source).expect("generated auto migration should parse");
+        assert!(
+            render_auto_migration("m0_auto_sync", &[], &std::collections::HashMap::new()).is_none()
+        );
     }
 }

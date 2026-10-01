@@ -1,6 +1,7 @@
 // src/generators/foundry/deploy.rs — SSH deployment pipeline steps.
 
 use super::config::FoundryConfig;
+use super::service;
 use colored::*;
 use std::fs;
 use std::io::Write;
@@ -145,10 +146,12 @@ fn render_provision_command(cfg: &FoundryConfig) -> String {
 command -v curl > /dev/null 2>&1
 command -v systemctl > /dev/null 2>&1
 command -v caddy > /dev/null 2>&1
-install -d -m 0755 /opt/rullst /opt/rullst/{app_name} /opt/rullst/{app_name}/data /opt/rullst/{app_name}/bin /var/log/caddy
+install -d -m 0755 /opt/rullst /opt/rullst/{app_name} /opt/rullst/{app_name}/bin /var/log/caddy
 install -d -m 0700 /opt/rullst/{app_name}/config
+{account_setup}
 echo "✅ Server environment ready.""#,
-        app_name = cfg.app_name
+        app_name = cfg.app_name,
+        account_setup = service::render_account_setup(cfg)
     )
 }
 
@@ -308,6 +311,7 @@ Type=simple
 ExecStart=/opt/rullst/{app_name}/bin/{bin_name}
 WorkingDirectory=/opt/rullst/{app_name}/data
 EnvironmentFile=/opt/rullst/{app_name}/config/.env
+{hardening}
 Restart=always
 RestartSec=5
 
@@ -342,6 +346,7 @@ echo "✅ Services configured and started."
 "#,
         env_lines = env_lines,
         caddy_site = caddy_site,
+        hardening = service::render_unit_hardening(cfg),
         bin_name = bin_name,
         app_name = cfg.app_name
     )

@@ -5,6 +5,8 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
+use super::output_guard::{reject_existing, reject_symlink, write_new, write_output};
+
 #[derive(Debug, thiserror::Error)]
 pub enum IntrospectionError {
     #[error("unsupported database driver `{0}`; use sqlite, postgres, or mysql")]
@@ -68,26 +70,84 @@ pub async fn generate_models_from_db(
 
     // Complete metadata, identifier and code-generation validation before the
     // first filesystem mutation so one unsupported table cannot leave a
-    // partially generated model directory.
+    // partially generated model directory. Existing model files are never
+    // replaced, and an existing mod.rs keeps its declarations.
     let output_path = Path::new(output);
+    let model_paths = table_plans
+        .iter()
+        .map(|table| output_path.join(format!("{}.rs", table.module_name)))
+        .collect::<Vec<_>>();
+    reject_existing(
+        "model files",
+        &model_paths,
+        "; move them aside or choose another --output directory",
+    )?;
+    let mod_path = output_path.join("mod.rs");
+    let modules = table_plans
+        .iter()
+        .map(|table| table.module_name.as_str())
+        .collect::<Vec<_>>();
+    let module_index = merged_module_index(&mod_path, &modules)?;
+
     fs::create_dir_all(output_path)?;
-    for (table, struct_code) in generated_models {
-        let file_path = output_path.join(format!("{}.rs", table.module_name));
-        fs::write(&file_path, struct_code)?;
+    for ((table, struct_code), file_path) in generated_models.into_iter().zip(&model_paths) {
+        write_new(file_path, struct_code.as_bytes())?;
         println!(
             "Generated model for table `{}` at {:?}",
             table.database_name, file_path
         );
     }
-
-    let modules = table_plans
-        .iter()
-        .map(|table| format!("pub mod {};", table.module_name))
-        .collect::<Vec<_>>()
-        .join("\n");
-    fs::write(output_path.join("mod.rs"), modules)?;
+    if let Some(module_index) = module_index {
+        write_output(&mod_path, module_index.as_bytes(), true)?;
+    }
     println!("Generation complete!");
     Ok(())
+}
+
+/// Returns `mod.rs` with any missing `pub mod` declarations appended, keeping
+/// existing content, or `None` when every module is already declared.
+fn merged_module_index(
+    path: &Path,
+    modules: &[&str],
+) -> Result<Option<String>, IntrospectionError> {
+    reject_symlink(path)?;
+    let existing = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
+    let declared = syn::parse_file(&existing)
+        .map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "refusing to edit {} because it is not valid Rust",
+                    path.display()
+                ),
+            )
+        })?
+        .items
+        .into_iter()
+        .filter_map(|item| match item {
+            syn::Item::Mod(module) => Some(module.ident.to_string()),
+            _ => None,
+        })
+        .collect::<HashSet<_>>();
+    let missing = modules
+        .iter()
+        .filter(|module| !declared.contains(**module))
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        return Ok(None);
+    }
+    let mut merged = existing;
+    if !merged.is_empty() && !merged.ends_with('\n') {
+        merged.push('\n');
+    }
+    for module in missing {
+        merged.push_str(&format!("pub mod {module};\n"));
+    }
+    Ok(Some(merged))
 }
 
 async fn get_sqlite_tables(connection: &mut AnyConnection) -> Result<Vec<String>, sqlx::Error> {

@@ -239,6 +239,24 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### CLI generator and operations review fixes
+
+- CLI generators no longer overwrite application files: `make:k8s`,
+  `dockerize`, `nixify`, `generate:buildah`, `generate:models` and
+  `cargo rullst auth` fail before writing when a target already exists, never
+  write through a symlink, and `generate:models` adds to an existing `mod.rs`
+  instead of replacing it.
+- `make:model -m` and `make:resource` no longer add a second create-table
+  migration, and `make:migration:auto` output compiles again.
+- `cargo rullst auth` enables the `auth` feature, registers its modules and
+  rejects Turso-primary projects.
+- `make:mfa` keeps TOTP secrets on the server, ties them to the signed-in
+  account and accepts each code only once.
+- `deploy` exits non-zero when `flyctl deploy` or `railway up` fails, and
+  `update project verify` keeps unrelated `Cargo.lock` pins.
+- Project-copy commands ignore a project's `rust-toolchain` file.
+- Foundry runs services as a dedicated sandboxed system user instead of root.
+
 ### Generated starter review fixes
 
 - Blog, ERP and Portfolio migrations no longer use SQLite-only

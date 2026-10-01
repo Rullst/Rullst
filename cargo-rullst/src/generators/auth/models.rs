@@ -1,6 +1,8 @@
 // cargo-rullst/src/generators/auth/models.rs — Migration and User model generator.
 
-use crate::generators::migration::regenerate_migrations_mod;
+use crate::generators::{
+    migration::regenerate_migrations_mod, output_guard::write_new, register_mod_ast,
+};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -13,7 +15,10 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
     let timestamp = now.format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_create_users_table", timestamp);
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
-    fs::write(&migration_path, user_migration_source(&file_stem))?;
+    write_new(
+        &migration_path,
+        user_migration_source(&file_stem).as_bytes(),
+    )?;
     println!("{}", "  ✨ Created 'users' table migration.".green());
 
     regenerate_migrations_mod()?;
@@ -46,22 +51,9 @@ impl User {
     }
 }
 "##;
-    fs::write(&model_path, model_template)?;
+    write_new(&model_path, model_template.as_bytes())?;
     println!("{}", "  ✨ Created 'User' model.".green());
-
-    let mod_models_path = models_dir.join("mod.rs");
-    if !mod_models_path.exists() {
-        fs::write(&mod_models_path, "")?;
-    }
-    let mut mod_models_content = fs::read_to_string(&mod_models_path)?;
-    let mut modified = false;
-    if !mod_models_content.contains("pub mod user;") {
-        mod_models_content.push_str("pub mod user;\n");
-        modified = true;
-    }
-    if modified {
-        fs::write(&mod_models_path, mod_models_content)?;
-    }
+    register_mod_ast(&models_dir.join("mod.rs"), "user")?;
 
     Ok(())
 }

@@ -40,6 +40,7 @@ pub mod middleware;
 pub mod migration;
 pub mod model;
 pub mod openapi;
+pub(crate) mod output_guard;
 pub(crate) mod privacy;
 pub mod project;
 pub mod resource;
