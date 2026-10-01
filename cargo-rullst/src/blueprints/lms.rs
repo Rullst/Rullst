@@ -212,9 +212,13 @@ impl NexusModel for Lesson {
             FieldMeta { name: "course_id", label: "Course", kind: FieldKind::ForeignKey { table: "courses", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "module_id", label: "Module", kind: FieldKind::ForeignKey { table: "course_modules", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "media_kind", label: "Media Kind", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "media_url", label: "Media URL", kind: FieldKind::Url, hidden: false, readonly: false },
-            FieldMeta { name: "captions_url", label: "Captions URL", kind: FieldKind::Url, hidden: false, readonly: false },
+            // The player plays exactly these kinds.
+            FieldMeta { name: "media_kind", label: "Media Kind", kind: FieldKind::Enum { options: vec!["video", "audio"] }, hidden: false, readonly: false },
+            // Text, not Url: the player accepts HTTPS or same-origin paths such
+            // as the seeded `/static/media/*.vtt` captions, which the CSP and
+            // `<track>` need, while Nexus `Url` fields require an absolute URL.
+            FieldMeta { name: "media_url", label: "Media URL (https:// or /path)", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "captions_url", label: "Captions URL (https:// or /path)", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "transcript", label: "Transcript", kind: FieldKind::Textarea, hidden: false, readonly: false },
             FieldMeta { name: "language_tag", label: "Language", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "duration", label: "Duration (mins)", kind: FieldKind::Number, hidden: false, readonly: false },
@@ -225,4 +229,45 @@ impl NexusModel for Lesson {
     manifest.push(("src/models/lesson.rs", lesson_model.to_string()));
 
     foundation::starter(manifest, project_name_safe, hot_reload)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::file_manifest;
+
+    fn source<'a>(manifest: &'a [(&'static str, String)], name: &str) -> &'a str {
+        manifest
+            .iter()
+            .find(|(path, _)| *path == name)
+            .map(|(_, source)| source.as_str())
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn nexus_accepts_the_lesson_media_values_the_player_plays() {
+        let manifest = file_manifest("demo", false, "Active Record", "Zero-Bundle HTMX");
+        let lesson = source(&manifest, "src/models/lesson.rs");
+        let migration = source(
+            &manifest,
+            "src/migrations/m20260601000000_create_lms_tables.rs",
+        );
+        // Nexus `Url` fields require an absolute URL, so the seeded same-origin
+        // captions made every seeded video lesson uneditable.
+        assert!(migration.contains("'/static/media/memory-safety.en.vtt'"));
+        for field in ["media_url", "captions_url"] {
+            let meta = lesson
+                .lines()
+                .find(|line| line.contains(&format!("name: \"{field}\"")))
+                .unwrap_or_default();
+            assert!(meta.contains("kind: FieldKind::Text,"), "{field}: {meta}");
+        }
+        assert!(lesson.contains(
+            "name: \"media_kind\", label: \"Media Kind\", kind: FieldKind::Enum { options: vec![\"video\", \"audio\"] }"
+        ));
+        let controller = source(&manifest, "src/controllers/learning_controller.rs");
+        assert!(!controller.contains("Err(_) => StatusCode::SERVICE_UNAVAILABLE"));
+        assert!(
+            controller.contains("eprintln!(\"Lesson {lesson_id} cannot be played: {error:?}\");")
+        );
+    }
 }
