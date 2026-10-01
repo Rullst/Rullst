@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "allowed_internal_dependencies": [
+    { "from": "cargo-rullst", "to": "rullst-ai", "optional": false },
     { "from": "cargo-rullst", "to": "rullst-core", "optional": false },
     { "from": "rullst", "to": "rullst-ai", "optional": true },
     { "from": "rullst", "to": "rullst-auth", "optional": true },

@@ -1,0 +1,98 @@
+use rullst::db::schema::{Schema, Migration};
+use rullst::db::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "m20260601000000_create_lms_tables"
+    }
+
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+        Schema::create("categories", |table| {
+            table.id();
+            table.string("name").not_null();
+            table.timestamps();
+        }).await?;
+        Schema::create("courses", |table| {
+            table.id();
+            table.integer("category_id").not_null();
+            table.string("title").not_null();
+            table.string("description").not_null();
+            table.string("thumbnail").not_null();
+            table.timestamps();
+        }).await?;
+        Schema::create("course_modules", |table| {
+            table.id();
+            table.integer("course_id").not_null();
+            table.string("title").not_null();
+            table.integer("position").not_null();
+            table.string("status").not_null();
+            table.timestamps();
+        }).await?;
+        Schema::create("lessons", |table| {
+            table.id();
+            table.integer("course_id").not_null();
+            table.integer("module_id").not_null();
+            table.string("title").not_null();
+            table.string("media_kind").not_null();
+            table.string("media_url").not_null();
+            table.string("captions_url").not_null();
+            table.string("transcript").not_null();
+            table.string("language_tag").not_null();
+            table.integer("duration").not_null(); // in minutes
+            table.timestamps();
+        }).await?;
+        let pool = rullst::db::Orm::pool()?;
+        rullst::db::sqlx::query(
+            "INSERT INTO categories (id, name) VALUES
+             (1, 'Backend & Systems'),
+             (2, 'Web Development')"
+        ).execute(pool).await?;
+        rullst::db::sqlx::query(
+            "INSERT INTO courses (id, category_id, title, description, thumbnail) VALUES
+             (1, 1, 'Rust Advanced Systems Programming', 'Master threads, concurrency, async, and high-performance design.', 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?q=80&w=300'),
+             (2, 2, 'Zero to Hero: Web Apps with Rullst', 'Build clean, high-performance web applications using Rust.', 'https://images.unsplash.com/photo-1547082299-de196ea013d6?q=80&w=300')"
+        ).execute(pool).await?;
+        rullst::db::sqlx::query(
+            "INSERT INTO course_modules (id, course_id, title, position, status) VALUES
+             (1, 1, 'Safe Systems Foundations', 1, 'published'),
+             (2, 2, 'Rullst Web Foundations', 1, 'published')"
+        ).execute(pool).await?;
+        // Seed Lessons
+        rullst::db::sqlx::query(
+            "INSERT INTO lessons (id, course_id, module_id, title, media_kind, media_url, captions_url, transcript, language_tag, duration) VALUES
+             (1, 1, 1, 'Introduction to Memory Safety', 'video', 'https://www.w3schools.com/html/mov_bbb.mp4', '/static/media/memory-safety.en.vtt', 'Rust ownership keeps one clear owner for each value and releases the value when that owner leaves scope.', 'en', 15),
+             (2, 1, 1, 'Deep Dive into Smart Pointers', 'audio', 'https://www.w3schools.com/html/horse.ogg', '', 'Smart pointers combine pointer behavior with metadata and ownership rules enforced by their types.', 'en', 25),
+             (3, 2, 2, 'Setting up your first Rullst Project', 'video', 'https://www.w3schools.com/html/mov_bbb.mp4', '/static/media/first-project.en.vtt', 'Create a project, inspect the generated files, run migrations and keep the server as the authority.', 'en', 10),
+             (4, 2, 2, 'Building Interactive UIs with HTMX', 'audio', 'https://www.w3schools.com/html/horse.ogg', '', 'HTMX can request server-rendered fragments while Rust keeps validation and authorization on the server.', 'en', 20)"
+        ).execute(pool).await?;
+
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('categories', 'id'), (SELECT MAX(id) FROM categories))",
+                "SELECT setval(pg_get_serial_sequence('courses', 'id'), (SELECT MAX(id) FROM courses))",
+                "SELECT setval(pg_get_serial_sequence('course_modules', 'id'), (SELECT MAX(id) FROM course_modules))",
+                "SELECT setval(pg_get_serial_sequence('lessons', 'id'), (SELECT MAX(id) FROM lessons))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+        Schema::drop_if_exists("lessons").await?;
+        Schema::drop_if_exists("course_modules").await?;
+        Schema::drop_if_exists("courses").await?;
+        Schema::drop_if_exists("categories").await?;
+        Ok(())
+    }
+}

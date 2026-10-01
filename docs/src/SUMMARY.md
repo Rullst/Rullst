@@ -91,6 +91,7 @@
 
 - [Preparing Applications for v13](migration-v13.md)
 - [Generated Project Instructions & Context](project-context.md)
+- [Terminal AI Assistant](ai-assistant.md)
 - [Schema-First Rust & TypeScript APIs](typed-api.md)
 - [Active Sessions and Remote Logout](session-management.md)
   - [Email login](email-login.md)

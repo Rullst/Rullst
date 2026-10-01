@@ -318,8 +318,9 @@ on the v12 maintenance line without waiting for all v13 capabilities.
 
 Provider files above are under `rullst-capital/src/`. The shared billing
 template is under `cargo-rullst/src/generators/` and feeds both SaaS and
-`make:billing`; fixes must cover both. The SaaS schema is in
-`cargo-rullst/src/blueprints/saas/models.rs`, with separate SQLx and Turso
+`make:billing`; fixes must cover both. The SaaS schema is assembled by
+`cargo-rullst/src/blueprints/saas/models.rs` from the templates under
+`cargo-rullst/src/blueprints/saas/src/`, with separate SQLx and Turso
 generator templates that also require review.
 
 The Nexus resolver mismatch is broader than Groq: detection advertises

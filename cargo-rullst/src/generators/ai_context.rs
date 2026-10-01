@@ -105,6 +105,13 @@ pub fn check_ai_context(base_path: Option<&Path>) -> Result<(), ContextError> {
     Ok(())
 }
 
+/// Computes the bounded `rullst.project-context.v1` JSON inventory without
+/// writing files, for in-process consumers such as `cargo rullst ai`.
+pub(crate) fn inventory_json(base: &Path) -> Result<String, ContextError> {
+    let root = fs::canonicalize(base)?;
+    outputs(&root).map(|(_, json, _)| json)
+}
+
 fn generate(base: &Path) -> Result<(), ContextError> {
     // Canonicalize the selected root once (including macOS's /var alias), then
     // reject links beneath it. The caller owns this trusted workspace directory.
