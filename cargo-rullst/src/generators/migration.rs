@@ -324,7 +324,22 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
         let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
         let file_stem = format!("m{}_{}", timestamp, "auto_sync");
         let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema) else {
-            println!("{}", "? Database is already in sync with AST!".green());
+            let destructive = destructive_differences(&ast_tables, &db_schema);
+            if destructive.is_empty() {
+                println!("{}", "? Database is already in sync with AST!".green());
+            } else {
+                println!(
+                    "{}",
+                    "No additive changes. These database objects have no model; drop them only in a reviewed `cargo rullst make:migration`:"
+                        .yellow()
+                );
+                for (table, column) in destructive {
+                    match column {
+                        Some(column) => println!("  - column {table}.{column}"),
+                        None => println!("  - table {table}"),
+                    }
+                }
+            }
             return Ok(());
         };
 
@@ -356,7 +371,46 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Renders the reviewable auto-sync migration, or `None` when nothing differs.
+/// Tables owned by the ORM migration runner (`migrations`) or other Rullst
+/// subsystems (`rullst_*`); they never have a model and are never proposed
+/// for dropping.
+fn is_framework_table(table: &str) -> bool {
+    table == "migrations"
+        || table.starts_with("rullst_")
+        || table.starts_with("_rullst_")
+        || table.starts_with("sqlite_")
+}
+
+/// Application tables (`None`) and columns that exist only in the database,
+/// sorted for deterministic output.
+pub(crate) fn destructive_differences(
+    ast_tables: &[super::schema_diff::ParsedTable],
+    db_schema: &std::collections::HashMap<String, Vec<String>>,
+) -> Vec<(String, Option<String>)> {
+    let mut differences = Vec::new();
+    for (db_tname, db_cols) in db_schema {
+        if is_framework_table(db_tname) {
+            continue;
+        }
+        if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
+            for db_col in db_cols {
+                if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
+                    continue;
+                }
+                if !ast_table.fields.iter().any(|f| &f.name == db_col) {
+                    differences.push((db_tname.clone(), Some(db_col.clone())));
+                }
+            }
+        } else {
+            differences.push((db_tname.clone(), None));
+        }
+    }
+    differences.sort();
+    differences
+}
+
+/// Renders the reviewable auto-sync migration, or `None` when there is no
+/// additive change (destructive differences alone are reported separately).
 pub(crate) fn render_auto_migration(
     file_stem: &str,
     ast_tables: &[super::schema_diff::ParsedTable],
@@ -396,23 +450,16 @@ pub(crate) fn render_auto_migration(
         }
     }
 
-    for (db_tname, db_cols) in db_schema {
-        if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
-            for db_col in db_cols {
-                if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
-                    continue;
-                }
-                if !ast_table.fields.iter().any(|f| &f.name == db_col) {
-                    up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col));
-                }
-            }
-        } else {
-            up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname));
-        }
-    }
-
+    // Commented-out drops alone are not a migration: they would be registered
+    // and "applied" as a no-op on every run.
     if up_queries.is_empty() {
         return None;
+    }
+    for (db_tname, column) in destructive_differences(ast_tables, db_schema) {
+        up_queries.push(match column {
+            Some(db_col) => format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col),
+            None => format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname),
+        });
     }
     let up_body = up_queries.join("\n");
     let down_body = down_queries.join("\n");
@@ -445,69 +492,5 @@ impl Migration for MigrationImpl {{
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn turso_migration_template_is_reversible_and_panic_free() {
-        let source = render_migration(
-            "m20260829000000_create_widgets",
-            "widgets",
-            ProjectOrmBackend::Turso,
-        );
-        assert!(source.contains("TursoMigration::new"));
-        assert!(source.contains("CREATE TABLE widgets"));
-        assert!(source.contains("DROP TABLE widgets"));
-        assert!(!source.contains("unwrap("));
-        syn::parse_file(&source).expect("generated Turso migration should parse");
-    }
-
-    #[test]
-    fn migration_names_keep_leading_m_and_reject_invalid_module_names() {
-        assert_eq!(
-            migration_snake_name("modify_users_email").unwrap(),
-            "modify_users_email"
-        );
-        assert_eq!(
-            migration_snake_name("Migrate-Legacy-Data").unwrap(),
-            "migrate_legacy_data"
-        );
-        for invalid in ["add_index.v2", "", "drop table", "café"] {
-            assert!(
-                migration_snake_name(invalid).is_err(),
-                "{invalid} must be rejected"
-            );
-        }
-        assert!(is_migration_module_name("m20261001000000_modify_users"));
-        assert!(!is_migration_module_name("m20261001000000_add_index.v2"));
-        assert!(!is_migration_module_name("match"));
-    }
-
-    #[test]
-    fn auto_migration_for_a_new_table_parses_with_balanced_braces() {
-        use super::super::schema_diff::{ParsedField, ParsedTable};
-        let field = |name: &str| ParsedField {
-            name: name.to_string(),
-            rust_type: "String".to_string(),
-            is_option: false,
-        };
-        let tables = vec![ParsedTable {
-            table_name: "posts".to_string(),
-            struct_name: "Post".to_string(),
-            fields: vec![field("id"), field("title"), field("created_at")],
-        }];
-        let source = render_auto_migration(
-            "m20261001000000_auto_sync",
-            &tables,
-            &std::collections::HashMap::new(),
-        )
-        .expect("a missing table produces a migration");
-        assert!(source.contains("Schema::create(\"posts\", |table| {"));
-        assert!(source.contains("        }).await?;"));
-        assert!(!source.contains("}})"));
-        syn::parse_file(&source).expect("generated auto migration should parse");
-        assert!(
-            render_auto_migration("m0_auto_sync", &[], &std::collections::HashMap::new()).is_none()
-        );
-    }
-}
+#[path = "migration_tests.rs"]
+mod tests;

@@ -593,6 +593,13 @@ fallible typed migration registry. The name is lowercased with `-` mapped to
 `add_index.v2`, are rejected. Regenerating `src/migrations/mod.rs` fails, naming
 the file, when an `m*.rs` file there is not a valid Rust module name.
 
+`cargo rullst make:migration:auto` (SQLite `DATABASE_URL` in `.env` only)
+compares the `#[derive(Orm)]` models under `src/` with the database. It ignores
+framework tables (`migrations` and `rullst_*`) and writes a migration only for
+additive changes (new tables or columns), with drops of model-less tables or
+columns included as commented-out code for review. When only such destructive
+differences remain, it lists them and writes no migration.
+
 ### `cargo rullst make:billing`
 Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
