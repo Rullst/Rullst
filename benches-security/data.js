@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790869565764,
+  "lastUpdate": 1790871388258,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13646,6 +13646,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d730958b5800e65cc73bde02cda5607cbf4c9da2",
+          "message": "Merge pull request #384 from Rullst/fix/v13-final-capital-messaging-tail\n\nfix(capital,messaging): final-review fixes for MySQL quota keys, provider requests and stream-scoped outbox keys",
+          "timestamp": "2026-10-01T12:57:56-03:00",
+          "tree_id": "31d49c24213fad1b0acf2929a698475654d2a01f",
+          "url": "https://github.com/Rullst/Rullst/commit/d730958b5800e65cc73bde02cda5607cbf4c9da2"
+        },
+        "date": 1790871387553,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4082,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 554,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 21,
             "range": "± 0",
             "unit": "ns/iter"
           }
