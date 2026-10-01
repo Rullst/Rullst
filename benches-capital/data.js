@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790885950165,
+  "lastUpdate": 1790888069778,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10520,6 +10520,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "72728c5651e0951a7c3fd12f6df5fee038cd1564",
+          "message": "Merge pull request #390 from Rullst/fix/v13-cli-r2-ops\n\nfix(cli): second-round audit and operations fixes (cfg(test)-aware IDOR scan, no silent downgrade, loopback Foundry service)",
+          "timestamp": "2026-10-01T17:30:47-03:00",
+          "tree_id": "ae04eab0f2f106ebebdd63fef9877d484d54c5cd",
+          "url": "https://github.com/Rullst/Rullst/commit/72728c5651e0951a7c3fd12f6df5fee038cd1564"
+        },
+        "date": 1790888069061,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           },
