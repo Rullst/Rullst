@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790887901390,
+  "lastUpdate": 1790891991285,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13851,6 +13851,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_role",
             "value": 14,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0498febc53a5ccf38f08022fc33221de65c9cd67",
+          "message": "Merge pull request #392 from Rullst/feat/v13-cli-ai-chat\n\nfeat(cli,ai): cargo rullst ai terminal assistant with token usage and native Anthropic/Gemini streaming",
+          "timestamp": "2026-10-01T18:36:11-03:00",
+          "tree_id": "d0967dd5233401aac50d20a04aecbce27bbac784",
+          "url": "https://github.com/Rullst/Rullst/commit/0498febc53a5ccf38f08022fc33221de65c9cd67"
+        },
+        "date": 1790891990483,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5427,
+            "range": "± 114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 687,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
