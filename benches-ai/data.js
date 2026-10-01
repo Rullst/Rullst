@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790831953675,
+  "lastUpdate": 1790836589281,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11793,6 +11793,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 451,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8bc2ab74d49a419daa4a77d376ddc8178e0af27",
+          "message": "Merge pull request #371 from Rullst/refactor/v13-split-large-files\n\nrefactor: split ten oversized modules into focused submodules",
+          "timestamp": "2026-10-01T03:17:07-03:00",
+          "tree_id": "8b2f3d3c005ddffbf27826477414e651432fc14b",
+          "url": "https://github.com/Rullst/Rullst/commit/c8bc2ab74d49a419daa4a77d376ddc8178e0af27"
+        },
+        "date": 1790836588459,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 944,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 169,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 260,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
