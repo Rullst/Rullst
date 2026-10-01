@@ -173,6 +173,14 @@ fields, ambient resource detection and explicit SDK headers keep their separate
 policy; they do not acquire the minimized profile automatically. Install the
 owned pipeline above when its privacy and lifecycle controls are required.
 
+Because legacy spans keep their attributes and events, the legacy exporter
+sends at most 64 spans per request unless `OTEL_BSP_MAX_EXPORT_BATCH_SIZE` sets
+another size, so batches stay under the shared 1 MiB request limit. Unlike the
+minimized profile it honours `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`. Its
+counters are not exposed, so a dropped batch (oversized, rejected or failed) is
+reported on stderr at most once a minute with the number of further failures,
+never with the endpoint or span data.
+
 The [protocol tests](../../rullst-core/tests/distributed_tracing/protocol.rs)
 decode real protobuf exports and exercise stripped fields, parent relationships,
 queue saturation, malformed/oversized/chunked/partial replies, redirects and

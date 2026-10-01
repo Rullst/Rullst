@@ -55,17 +55,26 @@
 - **Fenced Queue Leases:** SQLite and Redis complete, fail or requeue a claimed
   job only under the attempt number `pop` returned, so a stale worker whose
   lease was recovered and claimed again cannot finish the newer claim.
+  Retrying a failed job keeps its attempt counter, so the fence also holds
+  across manual retries.
 - **Queue-wide Stalled-lease Recovery:** each worker periodically requeues
   stalled processing leases, including other workers' leases. Workers record
   their own `stalled_after` with each SQLite/Redis claim (v13
   `QueueDriver::pop_with_lease`), and recovery honours it; for claims without
   a lease every worker sharing a queue needs a `stalled_after` longer than the
-  longest `job_timeout` among them. SQLite and Redis fail a
+  longest `job_timeout` among them. Redis measures every lease's age with its
+  own server time, so a worker host's clock skew cannot shift recovery.
+  SQLite and Redis fail a
   job whose fifth lease stalls (for example because it keeps crashing its
   worker) instead of requeuing it forever.
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
   name hands the claim back with a five-second delay (SQLite and Redis) instead
-  of failing it, so a worker that registered that name can run it.
+  of failing it, so a worker that registered that name can run it. From the
+  720th claim attempt (at least an hour of hand-backs) the job is failed with
+  `HandlerNotFound` instead, so a job no worker handles becomes visible and
+  purgeable; since a retry keeps the attempt counter, deploy a handler before
+  retrying it. `dispatch` and `dispatch_at` reject empty job names and names
+  longer than 256 bytes.
 - **Bounded Redis Failure State:** Failed jobs and dead letters are each
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.

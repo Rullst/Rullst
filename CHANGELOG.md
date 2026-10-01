@@ -239,6 +239,27 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Core state low-severity review fixes
+
+- SQLite queue claims follow due-time order, so due scheduled or handed-back
+  jobs are no longer starved by later immediate jobs; `retry_failed_job` keeps
+  the attempt counter so stale workers stay fenced; claims made without a
+  lease are never recovered before `stalled_after`.
+- Redis queue lease age uses Redis server time, and queue commands wait up to
+  10 s for a reply instead of 500 ms.
+- A job no worker can handle fails with `HandlerNotFound` at its 720th claim
+  attempt, `dispatch`/`dispatch_at` reject empty or over-256-byte names, and
+  `Worker::run` and `Scheduler::start` reject zero timeouts
+  (`SchedulerError::InvalidConfiguration`).
+- Redis cache: a zero TTL removes the key, and a TTL beyond Redis's range is
+  stored without expiry, matching the memory driver.
+- `PresenceTracker` counts connections per user, and `Channel::new` clamps
+  capacity to 1–65,536.
+- The Traffic Shield database probe gives up at `max_db_latency`, Live
+  recovery no longer counts its own callback time as peer silence, and the
+  legacy `init_telemetry` sends 64-span batches, honours the proxy variables
+  and reports dropped batches.
+
 ### Core runtime low-severity review fixes
 
 - Validated extractors return 413 or 415 for oversized or wrongly typed bodies,

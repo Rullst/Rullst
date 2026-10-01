@@ -211,6 +211,29 @@ async fn malformed_commands_and_slow_callbacks_never_execute_unbounded_work() {
 }
 
 #[tokio::test]
+async fn slow_server_work_is_not_counted_as_peer_silence() {
+    // A 200 ms revalidation closes a peer silent for over 600 ms, while a
+    // callback may take up to a second.
+    let server = Server::with_timing(
+        "sqlite::memory:",
+        0,
+        Duration::from_secs(1),
+        Duration::from_millis(200),
+    )
+    .await;
+    let mut socket = connect(&server, app::TEACHER).await;
+    snapshot(&mut socket, "0", "recovered").await;
+    // The 700 ms apply keeps the server from reading the socket, which is not
+    // the responsive peer's silence.
+    action(&mut socket, "0", "slow-increment").await;
+    snapshot(&mut socket, "1", "applied").await;
+    action(&mut socket, "1", "increment").await;
+    snapshot(&mut socket, "2", "applied").await;
+    socket.close(None).await.ok();
+    server.stop().await;
+}
+
+#[tokio::test]
 async fn shared_admission_and_idle_peer_deadline_release_capacity() {
     let server = Server::with_limits("sqlite::memory:", 0, 1, 32, Duration::from_secs(10)).await;
     let mut silent = connect(&server, app::TEACHER).await;

@@ -871,7 +871,8 @@ mod tests_additional {
                 .await
                 .unwrap();
         assert_eq!(status, "pending");
-        assert_eq!(attempts, 0);
+        // The attempt counter fences claims, so a retry keeps it.
+        assert_eq!(attempts, 3);
         assert!(error.is_none());
     }
 

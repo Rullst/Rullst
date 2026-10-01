@@ -14,10 +14,16 @@ pub mod redis_driver {
     use crate::redis_connection::{RedisConnection, SharedRedisConnection};
     use async_trait::async_trait;
     use serde::Deserialize;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime};
 
     mod inspection;
     mod transitions;
+
+    /// How long a queue command or script may take before the client gives
+    /// up. A claim whose reply times out has still been applied by Redis, and
+    /// its job then waits for stalled-lease recovery, so this is far longer
+    /// than the 500 ms redis-rs default that ordinary latency spikes exceed.
+    const RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
     /// Failed jobs and dead letters each retained by default (newest kept).
     pub const DEFAULT_FAILURE_RETENTION: usize = 10_000;
@@ -37,6 +43,7 @@ pub mod redis_driver {
     ///
     /// Operations share one lazily opened multiplexed connection. If it breaks,
     /// the failing operation returns its error and the next one reconnects.
+    /// Each command waits up to 10 seconds for its reply.
     ///
     /// Failed jobs (with their payloads) and dead letters are retained up to
     /// [`DEFAULT_FAILURE_RETENTION`] each; the oldest are evicted atomically
@@ -144,7 +151,7 @@ pub mod redis_driver {
                 failed_index_key: format!("{queue_key}:failed:index"),
                 dead_letter_key: format!("{queue_key}:dead-letter"),
                 queue_key,
-                shared: SharedRedisConnection::new(client),
+                shared: SharedRedisConnection::with_response_timeout(client, RESPONSE_TIMEOUT),
                 failed_retention: DEFAULT_FAILURE_RETENTION,
                 dead_letter_retention: DEFAULT_FAILURE_RETENTION,
                 max_stalled_leases: super::super::DEFAULT_MAX_STALLED_LEASES,
@@ -342,10 +349,9 @@ pub mod redis_driver {
         }
 
         async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|error| QueueError::Driver(format!("System clock error: {error}")))?;
-            let cutoff = now.as_millis().saturating_sub(stale_after.as_millis());
+            // The script subtracts this age from Redis server time, the clock
+            // that scored each claim, so worker clock skew cannot shift it.
+            let stale_after_ms = stale_after.as_millis().to_string();
             let mut connection = self.connection().await?;
             redis::cmd("EVAL")
                 .arg(RECOVER_SCRIPT)
@@ -356,7 +362,7 @@ pub mod redis_driver {
                 .arg(&self.dead_letter_key)
                 .arg(&self.failed_key)
                 .arg(&self.failed_index_key)
-                .arg(cutoff.to_string())
+                .arg(stale_after_ms)
                 .arg(self.dead_letter_retention)
                 .arg(self.max_stalled_leases)
                 .arg(format!(
@@ -380,7 +386,7 @@ pub mod redis_driver {
         }
 
         /// Moves a failed job to the tail of the pending list, keeping its
-        /// attempt counter (SQLite resets it).
+        /// attempt counter (as SQLite does) so older leases stay fenced.
         async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
             self.retry_failed(job_id).await
         }
