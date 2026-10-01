@@ -1,9 +1,45 @@
 //! Payment Gateways Catalog and Configuration Metadata for Rullst Capital.
 //! Defines payment-adapter metadata with environment credential detection.
 
-/// Whether a provider credential is set in the process environment or `./.env`.
-fn configured(name: &str) -> bool {
-    matches!(rullst::config::project_setting(name), Ok(Some(_)))
+use std::sync::OnceLock;
+
+/// The credential variable whose presence marks each gateway as configured.
+const CREDENTIAL_VARIABLES: [(&str, &str); 11] = [
+    ("stripe", "STRIPE_SECRET_KEY"),
+    ("lemonsqueezy", "LEMONSQUEEZY_API_KEY"),
+    ("infinitepay", "INFINITEPAY_API_KEY"),
+    ("polar", "POLAR_ACCESS_TOKEN"),
+    ("paddle", "PADDLE_API_KEY"),
+    ("alipay", "ALIPAY_APP_ID"),
+    ("mercadopago", "MERCADOPAGO_ACCESS_TOKEN"),
+    ("razorpay", "RAZORPAY_KEY_ID"),
+    ("coinbase", "COINBASE_COMMERCE_API_KEY"),
+    ("picpay", "PICPAY_TOKEN"),
+    ("wise", "WISE_API_TOKEN"),
+];
+
+/// Ids of the gateways whose credential variable `is_set` reports, asking
+/// once per variable.
+fn resolve_configured(mut is_set: impl FnMut(&str) -> bool) -> Vec<&'static str> {
+    CREDENTIAL_VARIABLES
+        .iter()
+        .filter(|(_, variable)| is_set(variable))
+        .map(|(id, _)| *id)
+        .collect()
+}
+
+/// Ids of the gateways with a credential in the process environment or
+/// `./.env` (the `Server` precedence), resolved once per process.
+///
+/// `project_setting` reads and parses `./.env` synchronously for each variable
+/// the process environment lacks, so the pricing pages must not call it per
+/// request. The router resolves this at start-up; credentials added later
+/// appear after a restart.
+pub fn configured_gateway_ids() -> &'static [&'static str] {
+    static CONFIGURED: OnceLock<Vec<&'static str>> = OnceLock::new();
+    CONFIGURED.get_or_init(|| {
+        resolve_configured(|name| matches!(rullst::config::project_setting(name), Ok(Some(_))))
+    })
 }
 
 /// Metadata model for a supported Payment / Payout Gateway.
@@ -20,24 +56,11 @@ pub struct GatewayInfo {
 }
 
 impl GatewayInfo {
-    /// Returns true when an expected credential variable exists.
+    /// Returns true when an expected credential variable existed at start-up.
     ///
     /// Presence does not validate the credential or prove that every adapter capability is live.
     pub fn is_configured(&self) -> bool {
-        match self.id {
-            "stripe" => configured("STRIPE_SECRET_KEY"),
-            "lemonsqueezy" => configured("LEMONSQUEEZY_API_KEY"),
-            "infinitepay" => configured("INFINITEPAY_API_KEY"),
-            "polar" => configured("POLAR_ACCESS_TOKEN"),
-            "paddle" => configured("PADDLE_API_KEY"),
-            "alipay" => configured("ALIPAY_APP_ID"),
-            "mercadopago" => configured("MERCADOPAGO_ACCESS_TOKEN"),
-            "razorpay" => configured("RAZORPAY_KEY_ID"),
-            "coinbase" => configured("COINBASE_COMMERCE_API_KEY"),
-            "picpay" => configured("PICPAY_TOKEN"),
-            "wise" => configured("WISE_API_TOKEN"),
-            _ => false,
-        }
+        configured_gateway_ids().contains(&self.id)
     }
 
     /// Returns a credential-presence or offline-demo status label and CSS badge.
@@ -248,8 +271,37 @@ pub async fn simulate_provider_checkout(
 
 #[cfg(test)]
 mod tests {
-    use super::{all_gateways, simulate_provider_checkout};
+    use super::{
+        CREDENTIAL_VARIABLES, all_gateways, configured_gateway_ids, resolve_configured,
+        simulate_provider_checkout,
+    };
     use std::collections::HashSet;
+
+    #[test]
+    fn credential_presence_is_resolved_once_per_variable_and_cached() {
+        let mut lookups = Vec::new();
+        let configured = resolve_configured(|name| {
+            lookups.push(name.to_owned());
+            matches!(name, "STRIPE_SECRET_KEY" | "WISE_API_TOKEN")
+        });
+        assert_eq!(configured, ["stripe", "wise"]);
+        assert_eq!(lookups.len(), all_gateways().len());
+        assert_eq!(lookups.iter().collect::<HashSet<_>>().len(), lookups.len());
+        for gateway in all_gateways() {
+            assert!(
+                CREDENTIAL_VARIABLES.iter().any(|(id, _)| *id == gateway.id),
+                "{} has no credential variable",
+                gateway.id
+            );
+        }
+
+        // Every page render shares the start-up snapshot instead of reading
+        // `./.env` again.
+        assert!(std::ptr::eq(
+            configured_gateway_ids(),
+            configured_gateway_ids()
+        ));
+    }
 
     #[tokio::test]
     async fn every_catalogue_action_returns_bounded_offline_output() {

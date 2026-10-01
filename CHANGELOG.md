@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Facade and examples second-round fixes
+
+- The blog showcase registers `Post` with Nexus as tenant-scoped
+  (`nexus_tenant_column`), so `/nexus` lists and changes only the request
+  tenant's posts and never accepts a submitted `tenant_id`; its pricing,
+  billing and checkout pages read provider credential presence once at start-up
+  instead of re-reading `.env` on every request.
+- The feature matrix lists the umbrella defaults correctly (`orm`,
+  `drivers-all`, `queue-sqlite`), states that `orm` alone selects no SQLx
+  driver and documents every umbrella feature; `check-feature-boundaries.sh`
+  keeps that table in step with `rullst/Cargo.toml`.
+- The facade server test asserts the real production stack (secure headers,
+  CSRF, WAF), and the empty `jules_tests` were removed.
+
 ### CLI opening and context-aware home
 
 - `cargo rullst` without a subcommand opens with the v13 wordmark (24-bit or
