@@ -14,7 +14,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
         .register::<models::order::Order>()
         .try_build()?;
 
+    // The whole back office shares the Nexus administrator policy, including the
+    // dashboard that lists every order's customer and the revenue totals:
+    // loopback-only in debug builds, Basic Auth over verified TLS in release.
     let admin_routes = routes![
+        get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
         // rullst-access: admin — protected by admin_access.protect_router below.
         post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
@@ -22,13 +26,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
     ];
     let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
 
-    Ok(routes![
-        get("/" => controllers::erp_controller::index),
-    ]
-    .merge_axum(admin_routes)
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus))
+    Ok(Router::new()
+        .merge_axum(admin_routes)
+        .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+        .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+        .nest_axum("/nexus", nexus))
 }
 
 #[unsafe(no_mangle)]
@@ -41,4 +43,27 @@ pub extern "C" fn rullst_router_init() -> *mut Router {
         }
     };
     Box::into_raw(Box::new(router))
+}
+
+// A debug build uses the loopback-only policy; a release build needs the
+// NEXUS_ADMIN_* credentials before the router can be constructed.
+#[cfg(all(test, debug_assertions))]
+mod tests {
+    use rullst::web::axum::body::Body;
+    use rullst::web::axum::extract::ConnectInfo;
+    use rullst::web::axum::http::{Request, StatusCode};
+    use rullst::web::tower::ServiceExt;
+
+    #[tokio::test]
+    async fn back_office_dashboard_is_not_public() {
+        let router = super::router().expect("ERP router").into_axum();
+        let remote_peer = std::net::SocketAddr::from(([192, 0, 2, 10], 41_000));
+        let request = Request::builder()
+            .uri("/")
+            .extension(ConnectInfo(remote_peer))
+            .body(Body::empty())
+            .expect("dashboard request");
+        let response = router.oneshot(request).await.expect("dashboard response");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
 }
