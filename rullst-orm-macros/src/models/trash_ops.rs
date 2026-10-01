@@ -250,9 +250,13 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
     } else {
         format!("{} = {}", cfg.column, cfg.value)
     };
+    // Only a trashed row is restored; restoring a live row is a no-op.
     let restore_sql = format!(
-        "UPDATE {} SET {} WHERE id = ?{}",
-        table_name, set_clause, tenant.clause
+        "UPDATE {} SET {} WHERE id = ? AND {}{}",
+        table_name,
+        set_clause,
+        crate::builder::soft_delete_where_clause(cfg, true),
+        tenant.clause
     );
     let restored_row_sql = format!("SELECT * FROM {} WHERE id = ?{}", table_name, tenant.clause);
     let load_observers = load_observers();
@@ -285,8 +289,8 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
                 .bind(self.id) #tenant_binding;
             #execute
             if mutation_result.rows_affected() == 0 {
-                // No such row: nothing was restored, so no effect is emitted.
-                // A tenant model reaches this only after its tenant guard.
+                // No such trashed row: nothing was restored, so no effect is
+                // emitted. A tenant model reaches this only after its guard.
                 return Ok(());
             }
             #tenant_rows_check
@@ -324,7 +328,7 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
         /// cache, Redis `updated`/`saved` events, `committed(Updated)` and
         /// Scout re-index effects. Save hooks and the `saving`/`updating`
         /// observers are not run: they receive a mutable model whose changes
-        /// restore() would not persist. A missing row is a no-op.
+        /// restore() would not persist. A missing or live row is a no-op.
         #instrument
         pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
             rullst_orm::__transaction_access::ensure_allowed()?;

@@ -1998,7 +1998,10 @@ while portability and semantic review remain the model author's responsibility.
   with it and registers the update effects of `save()` (cache invalidation,
   Redis `updated`/`saved` events, `committed(Updated)`, Scout re-index). It
   runs no save hooks or `saving`/`updating` observers because it writes only
-  the soft-delete column, and restoring a missing row is a no-op.
+  the soft-delete column. Its `UPDATE` matches only a trashed row, so
+  restoring a missing or live row is a no-op; likewise the soft-delete
+  `UPDATE` of `delete()` matches only a live row, so deleting a trashed row
+  again keeps its deletion time and fails like a missing row.
 * A `save()` update, `delete()` or `force_delete()` whose by-ID statement
   matches no row (for example a row deleted since its handle was loaded)
   fails with `RecordNotFound`, or with the tenant-scope `Validation` error on

@@ -78,6 +78,16 @@ pub(super) async fn exercise() {
             deleted_at: None,
         };
         card.save().await.expect("insert tenant card");
+        // restore() of a live row and a second delete() change nothing.
+        card.restore()
+            .await
+            .unwrap_or_else(|error| panic!("{driver} restore() of a live row: {error}"));
+        card.delete().await.expect("soft delete tenant card");
+        let again = card.delete().await;
+        assert!(
+            matches!(again, Err(Error::Validation(_))),
+            "{driver} delete() of a trashed row: {again:?}"
+        );
         let handle = card.clone();
         card.force_delete().await.expect("force delete tenant card");
         handle

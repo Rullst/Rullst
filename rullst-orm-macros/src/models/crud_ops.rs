@@ -309,14 +309,19 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             cfg.delval.clone()
         };
         let set_clause = format!("{} = {}", cfg.column, delval_expr);
-        let set_clause_lit = set_clause;
+        // Only a live row is soft-deleted: deleting a trashed row again
+        // must not re-stamp its deletion time or repeat its effects.
+        let live = crate::builder::soft_delete_where_clause(cfg, false);
+        let sql = format!(
+            "UPDATE {} SET {} WHERE id = ? AND {}{}",
+            table_name, set_clause, live, tenant_where_clause
+        );
         quote! {
             let driver = rullst_orm::Orm::driver()?;
             let query = if driver == "postgres" {
-                let base = format!("UPDATE {} SET {} WHERE id = ?{}", #table_name, #set_clause_lit, #tenant_where_clause);
-                rullst_orm::replace_placeholders(&base)
+                rullst_orm::replace_placeholders(#sql)
             } else {
-                format!("UPDATE {} SET {} WHERE id = ?{}", #table_name, #set_clause_lit, #tenant_where_clause)
+                #sql.to_string()
             };
         }
     } else {

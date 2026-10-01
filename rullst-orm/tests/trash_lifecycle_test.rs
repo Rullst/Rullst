@@ -293,6 +293,30 @@ async fn restore_and_force_delete_run_the_mutation_lifecycle() {
     assert_eq!(erased_audit.0, "force_deleted");
     assert!(erased_audit.1.is_some() && erased_audit.2.is_none());
 
+    // delete() of a trashed row and restore() of a live row match no row:
+    // the deletion time, audit trail and post-commit effects stay as they were.
+    let twice = create("deleted twice", &context).await;
+    with_audit_context(context.clone(), twice.delete())
+        .await
+        .expect("first soft delete");
+    let stamped = row_state(twice.id).await;
+    let audits = audit_events(twice.id).await.len();
+    take(&log);
+    let again = with_audit_context(context.clone(), twice.delete()).await;
+    assert!(matches!(again, Err(Error::RecordNotFound)), "{again:?}");
+    assert_eq!(row_state(twice.id).await, stamped);
+    assert_eq!(audit_events(twice.id).await.len(), audits);
+    let id = twice.id;
+    assert_eq!(take(&log), vec![format!("deleting:{id}")]);
+    let live = create("never deleted", &context).await;
+    take(&log);
+    with_audit_context(context.clone(), live.restore())
+        .await
+        .expect("restoring a live row is a no-op");
+    assert_eq!(row_state(live.id).await, Some(None));
+    assert_eq!(audit_events(live.id).await.len(), 1, "only the creation");
+    assert!(take(&log).is_empty());
+
     Orm::pool().unwrap().close().await;
     let _ = std::fs::remove_file(database_path);
 }

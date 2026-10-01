@@ -142,7 +142,9 @@ permanently. Both check the tenant and the policy (`can_restore` /
   invalidates the cache, publishes the Redis `updated`/`saved` events, calls
   `committed(Updated)` and re-indexes the Scout document. The save hooks and
   the `saving`/`updating` observers are not called, because restore writes
-  only the soft-delete column. Restoring a missing row is a no-op.
+  only the soft-delete column. Restoring a missing or live row is a no-op,
+  and deleting an already trashed row again fails without changing its
+  deletion time.
 
 ---
 
