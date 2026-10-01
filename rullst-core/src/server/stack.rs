@@ -47,7 +47,7 @@ impl Server {
         let dev_reload = super::dev_reload::is_enabled(is_dev, generation.as_deref());
         app = super::dev_reload::mount(app, is_dev, generation.clone());
         // Mounted after the reload layer, which would otherwise wrap it.
-        app = super::dev_telemetry::mount(app, is_dev, generation, None);
+        app = super::dev_telemetry::mount(app, is_dev, generation, self.dev_queue);
 
         app = app.layer(axum::middleware::from_fn(
             super::console::access_log_middleware,
