@@ -1,9 +1,13 @@
 #[path = "parser/attributes.rs"]
 mod attributes;
+#[path = "parser/field_types.rs"]
+mod field_types;
 
 use attributes::{FieldAttributes, ModelAttributes};
 #[cfg(test)]
 use attributes::{split_top_level, strip_outer_call, validate_relation_attribute};
+use field_types::encrypted_field_kind;
+pub(crate) use field_types::is_secret_string_type;
 use syn::{Data, DeriveInput, Fields};
 
 pub struct ParsedModel {
@@ -104,54 +108,6 @@ pub enum EncryptedFieldKind {
 pub struct ParsedEncryptedField {
     pub name: syn::Ident,
     pub kind: EncryptedFieldKind,
-}
-
-fn encrypted_field_kind(field_type: &syn::Type) -> Option<EncryptedFieldKind> {
-    let syn::Type::Path(type_path) = field_type else {
-        return None;
-    };
-    let segment = type_path.path.segments.last()?;
-    if segment.ident == "String" && matches!(segment.arguments, syn::PathArguments::None) {
-        return Some(EncryptedFieldKind::String);
-    }
-    if segment.ident != "Option" {
-        return None;
-    }
-    let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
-        return None;
-    };
-    if arguments.args.len() != 1 {
-        return None;
-    }
-    let syn::GenericArgument::Type(syn::Type::Path(inner_path)) = &arguments.args[0] else {
-        return None;
-    };
-    let inner = inner_path.path.segments.last()?;
-    (inner.ident == "String" && matches!(inner.arguments, syn::PathArguments::None))
-        .then_some(EncryptedFieldKind::OptionalString)
-}
-
-/// Recognizes `SecretString` and `Option<SecretString>` by the last path segment.
-pub(crate) fn is_secret_string_type(field_type: &syn::Type) -> bool {
-    let syn::Type::Path(type_path) = field_type else {
-        return false;
-    };
-    let Some(segment) = type_path.path.segments.last() else {
-        return false;
-    };
-    match (&segment.arguments, segment.ident == "Option") {
-        (syn::PathArguments::None, false) => segment.ident == "SecretString",
-        (syn::PathArguments::AngleBracketed(arguments), true) => {
-            matches!(arguments.args.first(), Some(syn::GenericArgument::Type(inner))
-                if arguments.args.len() == 1 && !is_option(inner) && is_secret_string_type(inner))
-        }
-        _ => false,
-    }
-}
-
-fn is_option(field_type: &syn::Type) -> bool {
-    matches!(field_type, syn::Type::Path(path)
-        if path.path.segments.last().is_some_and(|segment| segment.ident == "Option"))
 }
 
 pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
