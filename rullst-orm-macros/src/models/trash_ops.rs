@@ -258,7 +258,7 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
         crate::builder::soft_delete_where_clause(cfg, true),
         tenant.clause
     );
-    let restored_row_sql = format!("SELECT * FROM {} WHERE id = ?{}", table_name, tenant.clause);
+    let restored_row = super::row_lookup::locked_row(parsed, &quote::format_ident!("restored_row"));
     let load_observers = load_observers();
     let execute = execute_mutation();
     let audit = if parsed.auditable {
@@ -280,8 +280,7 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
     let entrypoint = transactional_entrypoint(&with_tx, "restore");
     let body = savepoint_body(
         quote! {
-            let driver = rullst_orm::Orm::driver()?;
-            let query = Self::__rullst_restore_sql(driver);
+            let query = Self::__rullst_restore_sql(rullst_orm::Orm::driver()?);
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
             }
@@ -295,19 +294,8 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
             }
             #tenant_rows_check
             // Observers, audit, events and Scout receive the persisted row.
-            let lookup = if driver == "postgres" {
-                rullst_orm::replace_placeholders(#restored_row_sql)
-            } else {
-                #restored_row_sql.to_string()
-            };
-            let lookup_query = rullst_orm::_sqlx::query_as::<_, Self>(
-                rullst_orm::_sqlx::AssertSqlSafe(lookup.as_str())
-            ).bind(self.id) #tenant_binding;
-            let mut restored = lookup_query
-                .fetch_optional(&mut **tx)
-                .await?
-                .ok_or(rullst_orm::Error::RecordNotFound)?;
-            restored.__rullst_decrypt_encrypted_fields()?;
+            #restored_row
+            let restored = restored_row.ok_or(rullst_orm::Error::RecordNotFound)?;
             #load_observers
             let futures = observers.iter().map(|obs| obs.updated(&restored));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
@@ -417,5 +405,27 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }).await?;
         #scout_update
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn restore_reads_the_restored_row_under_the_query_timeout() {
+        let input: DeriveInput = parse_quote! {
+            struct Note { id: i32, deleted_at: Option<String> }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate(&parsed).to_string();
+        let reread = generated
+            .split_once("let restored_row")
+            .expect("restored row lookup")
+            .1
+            .split_once("let restored =")
+            .expect("restored row binding")
+            .0;
+        assert!(reread.contains("get_query_timeout"));
     }
 }

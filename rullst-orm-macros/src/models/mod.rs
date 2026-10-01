@@ -5,6 +5,7 @@ pub mod json_ops;
 mod mutation_parts;
 pub mod query_ops;
 pub mod redis_ops;
+mod row_lookup;
 mod save_entrypoints;
 mod trash_ops;
 pub mod update_builder;

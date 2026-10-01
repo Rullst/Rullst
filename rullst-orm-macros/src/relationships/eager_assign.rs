@@ -120,4 +120,29 @@ mod tests {
         assert!(many.contains("unwrap_or_default"));
         assert!(many.contains("Some (Vec :: new ())"));
     }
+
+    #[test]
+    fn belongs_to_many_pivot_query_honours_the_query_timeout() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct Course {
+                id: i32,
+                #[sqlx(default, skip)]
+                #[orm(belongs_to_many = "Tag", pivot_table = "course_tags")]
+                tags: Option<Vec<Tag>>,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let eager = crate::relationships::generate(&parsed)
+            .eager_loads
+            .to_string();
+        let pivot = eager
+            .split_once("pivot_query . fetch_all (executor)")
+            .expect("pivot query")
+            .1;
+        assert!(
+            pivot
+                .trim_start()
+                .starts_with("; match rullst_orm :: schema :: get_query_timeout ()")
+        );
+    }
 }

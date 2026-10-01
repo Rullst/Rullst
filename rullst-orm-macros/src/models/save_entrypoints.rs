@@ -109,8 +109,9 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         };
     }
 
-    let lookup = audit_lookup(parsed);
-    let revision_lookup = revision_lookup(parsed);
+    let pre_image = super::row_lookup::locked_row(parsed, &quote::format_ident!("old_row"));
+    let revision_lookup =
+        super::row_lookup::locked_row(parsed, &quote::format_ident!("current_row"));
     // save() never writes the soft-delete marker, so the audited post-state
     // (and the handle) take the stored marker instead of a stale one.
     let soft_delete_sync = parsed.soft_delete_column().map(|column| {
@@ -121,7 +122,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             }
         }
     });
-    let before_tx = audit_before_tx(&lookup, soft_delete_sync);
+    let before_tx = audit_before_tx(&pre_image, soft_delete_sync);
     let after_tx = audit_after_tx(table_name);
     let restored_after_fetch =
         super::update_builder::after_fetch_hook(parsed, &quote::format_ident!("restored"));
@@ -299,13 +300,8 @@ fn revision_restore(
                     )
                     .await?;
 
-                    let driver = rullst_orm::Orm::driver()?;
                     #lookup
-                    let mut current_model = q
-                        .fetch_optional(&mut **tx)
-                        .await?
-                        .ok_or(rullst_orm::Error::RecordNotFound)?;
-                    current_model.__rullst_decrypt_encrypted_fields()?;
+                    let current_model = current_row.ok_or(rullst_orm::Error::RecordNotFound)?;
                     let current_json = current_model.__rullst_cache_json_value()?;
                     let restored_json = rullst_orm::audit::apply_reverse_patch(
                         current_json,
@@ -398,80 +394,16 @@ fn policy_checks(parsed: &ParsedModel) -> (TokenStream, TokenStream) {
     )
 }
 
-fn audit_lookup(parsed: &ParsedModel) -> TokenStream {
-    let name = &parsed.name;
-    let table_name = &parsed.table_name;
-    if parsed.tenant_column.is_empty() {
-        return quote! {
-            let query = if driver == "postgres" {
-                format!("SELECT * FROM {} WHERE id = $1", #table_name)
-            } else {
-                format!("SELECT * FROM {} WHERE id = ?", #table_name)
-            };
-            let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-                .bind(self.id);
-        };
-    }
-
-    let column = syn::Ident::new(&parsed.tenant_column, name.span());
-    let column_name = &parsed.tenant_column;
+/// Reads the audit pre-image locked, so a concurrent writer cannot change the
+/// row between this read and the full-row UPDATE that the diff describes.
+fn audit_before_tx(pre_image: &TokenStream, soft_delete_sync: Option<TokenStream>) -> TokenStream {
     quote! {
-        let query = if driver == "postgres" {
-            format!("SELECT * FROM {} WHERE id = $1 AND {} = $2", #table_name, #column_name)
-        } else {
-            format!("SELECT * FROM {} WHERE id = ? AND {} = ?", #table_name, #column_name)
-        };
-        let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-            .bind(self.id)
-            .bind(self.#column.clone());
-    }
-}
-
-fn revision_lookup(parsed: &ParsedModel) -> TokenStream {
-    let name = &parsed.name;
-    let table_name = &parsed.table_name;
-    if parsed.tenant_column.is_empty() {
-        return quote! {
-            let query = if driver == "postgres" {
-                format!("SELECT * FROM {} WHERE id = $1 FOR UPDATE", #table_name)
-            } else if driver == "mysql" {
-                format!("SELECT * FROM {} WHERE id = ? FOR UPDATE", #table_name)
-            } else {
-                format!("SELECT * FROM {} WHERE id = ?", #table_name)
-            };
-            let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-                .bind(self.id);
-        };
-    }
-
-    let column = syn::Ident::new(&parsed.tenant_column, name.span());
-    let column_name = &parsed.tenant_column;
-    quote! {
-        let query = if driver == "postgres" {
-            format!("SELECT * FROM {} WHERE id = $1 AND {} = $2 FOR UPDATE", #table_name, #column_name)
-        } else if driver == "mysql" {
-            format!("SELECT * FROM {} WHERE id = ? AND {} = ? FOR UPDATE", #table_name, #column_name)
-        } else {
-            format!("SELECT * FROM {} WHERE id = ? AND {} = ?", #table_name, #column_name)
-        };
-        let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-            .bind(self.id)
-            .bind(self.#column.clone());
-    }
-}
-
-fn audit_before_tx(lookup: &TokenStream, soft_delete_sync: Option<TokenStream>) -> TokenStream {
-    quote! {
-        let mut old_model_for_audit = if !is_new {
-            let driver = rullst_orm::Orm::driver()?;
-            #lookup
-            q.fetch_optional(&mut **tx).await?
-        } else {
+        let old_model_for_audit = if is_new {
             None
+        } else {
+            #pre_image
+            old_row
         };
-        if let Some(old_model) = old_model_for_audit.as_mut() {
-            old_model.__rullst_decrypt_encrypted_fields()?;
-        }
         #soft_delete_sync
     }
 }
@@ -499,5 +431,36 @@ fn audit_after_tx(table_name: &str) -> TokenStream {
                 &redacted_changes,
             ).await?;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn auditable_save_locks_its_pre_image_before_the_update() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "lessons", auditable)]
+            struct Lesson { id: i32, title: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate(&parsed).to_string();
+        let save = generated
+            .split_once("pub async fn save_with_tx")
+            .expect("save_with_tx")
+            .1;
+        let before_write = save
+            .split_once("save_with_tx_internal")
+            .expect("full-row write")
+            .0;
+        assert!(before_write.contains("WHERE id = ? FOR UPDATE"));
+        assert!(before_write.contains("get_query_timeout"));
+        let restore = generated
+            .split_once("pub async fn restore_revision_with_tx")
+            .expect("restore_revision_with_tx")
+            .1;
+        assert!(restore.contains("WHERE id = ? FOR UPDATE"));
+        assert!(restore.contains("get_query_timeout"));
     }
 }

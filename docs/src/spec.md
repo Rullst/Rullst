@@ -1886,6 +1886,12 @@ while portability and semantic review remain the model author's responsibility.
   optional correlation identifier and derives its typed tenant key from the
   active `with_tenant(...)` scope. The host remains responsible for deriving
   both contexts from authenticated authority rather than client assertions.
+  An auditable `save()` reads the pre-image of its diff inside its savepoint
+  with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB, so a concurrent writer
+  cannot change the row between that read and the full-row `UPDATE`. That
+  read, the revision-restore lookup, the row `restore()` re-reads and the
+  `belongs_to_many` pivot query run within `Orm::set_query_timeout`, like the
+  other generated statements.
 * `create_audit_table` creates the v2 schema and adds its columns to a legacy
   table without presenting legacy rows as v2 evidence. On MySQL/MariaDB a new
   table (or a newly added `restore_patch` column) stores `old_values`,

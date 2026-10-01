@@ -438,7 +438,11 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 pivot_query = pivot_query.bind(*id);
                             }
                             let pivot_pairs: Vec<(i32, i32)> = rullst_orm::dispatch_executor!(read_pool, |executor| {
-                                pivot_query.fetch_all(executor).await
+                                let fetch = pivot_query.fetch_all(executor);
+                                match rullst_orm::schema::get_query_timeout() {
+                                    Some(t) => tokio::time::timeout(t, fetch).await.map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))?.map_err(rullst_orm::Error::from),
+                                    None => fetch.await.map_err(rullst_orm::Error::from),
+                                }
                             })?;
 
                             // Build parent_id -> Vec<model> from pivot pairs
