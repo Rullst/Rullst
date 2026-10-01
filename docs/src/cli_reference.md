@@ -1222,8 +1222,12 @@ route, dependency, and local network patterns.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
 
-The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
-follow symlinked files or directories and skip `target/` and `.git/`. A walk
+In a package directory, the unsafe and IDOR/BOLA scans cover its `src` and the
+`src` of every workspace member below it, as listed by `cargo metadata`; in a
+directory without `src`, such as a virtual workspace root, the IDOR/BOLA scan
+walks every `src` tree below it. The source scans (unsafe syntax, IDOR/BOLA
+routes and listener bindings) do not follow symlinked files or directories and
+skip `target/` and `.git/`. A walk
 stops at 64 directory levels or 250,000 entries; reaching either bound is
 reported as a finding, so the scan fails as incomplete instead of passing. The
 route and listener scans skip each top-level `#[cfg(test)]` item (such as
