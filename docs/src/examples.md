@@ -75,12 +75,14 @@ capability, pricing, tax treatment, or regional availability.
 ## Running locally
 
 ```bash
-touch examples/blog/blog.db
+cd examples/blog
 cargo run -p rullst-blog-example
 ```
 
-Before local startup, configure `APP_KEY` and `DATABASE_URL` as documented in the
-example README. The debug build needs no Nexus password, but verifies the socket
+Before local startup, configure `APP_KEY` in `examples/blog/.env` as documented
+in the example README. The showcase selects its database like `Server` and the
+Artisan commands (`DATABASE_URL`, `.env`, then `Rullst.toml`), so `DATABASE_URL`
+is optional locally and honored in deployments. The debug build needs no Nexus password, but verifies the socket
 peer as loopback. A release build does not start Studio and refuses to construct
 Nexus without validated `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`
 values. Studio is local developer tooling; keep it on a trusted interface.

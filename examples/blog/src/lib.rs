@@ -4,6 +4,8 @@
 
 pub mod ai_demo;
 pub mod billing_demo;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod database;
 pub mod omni_demo;
 pub mod pico_demo;
 #[cfg(not(target_arch = "wasm32"))]

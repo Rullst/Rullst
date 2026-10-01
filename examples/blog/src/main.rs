@@ -16,8 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Initialize SQLite database
-    Orm::init("sqlite://blog.db").await?;
+    // Select the database exactly as `Server` and the Artisan commands do
+    // (DATABASE_URL, then `.env`, then `Rullst.toml`), so all three share it.
+    let database_url = rullst_blog_example::database::database_url().await?;
+    Orm::init(&database_url).await?;
 
     // Create table schema
     let pool = Orm::pool()?;
@@ -94,6 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let router = rullst_blog_example::router()?;
         Server::new(router)
     };
+
+    let server = server.with_db(database_url);
 
     println!("🚀 Rullst Sovereign SaaS Showcase running at http://127.0.0.1:3000");
     #[cfg(debug_assertions)]

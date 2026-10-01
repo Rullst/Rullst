@@ -53,22 +53,28 @@ not work around CSRF by disabling either validation or secure cookie attributes.
 
 ## Local setup
 
-From the workspace root, create `examples/blog/.env` with an application key
-and database URL:
+Create `examples/blog/.env` with an application key:
 
 ```dotenv
 RULLST_ENV=development
 APP_KEY=replace-with-at-least-32-random-bytes
-DATABASE_URL=sqlite://blog.db
 RULLST_PUBLIC_ORIGIN=https://showcase.example.com
 ```
 
-Then run:
+Then run the showcase from its own directory, so `Server` reads this `.env` and
+`Rullst.toml`:
 
 ```bash
-touch examples/blog/blog.db
+cd examples/blog
 cargo run -p rullst-blog-example
 ```
+
+The binary creates the schema and seed posts in the same database that
+`Server`, Studio and the `db:*` Artisan commands use: the process
+`DATABASE_URL`, then `DATABASE_URL` from `.env`, then `[database].url` from
+`Rullst.toml` (`sqlite://blog.db?mode=rwc`, which creates `blog.db` on first
+start). A deployment's `DATABASE_URL`, such as the one in `Foundry.toml`, is
+therefore honored.
 
 Open `http://127.0.0.1:3000`, then use the Studio and Nexus buttons. Studio is
 served on `http://127.0.0.1:5555`; Nexus accepts only a verified loopback peer in
