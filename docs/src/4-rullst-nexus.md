@@ -163,7 +163,8 @@ let router = router.nest_axum("/nexus", nexus);
 ```
 
 The helper is intentionally asymmetric: debug builds allow only requests whose
-`ConnectInfo` peer is loopback; release builds load and validate
+`ConnectInfo` peer is loopback (an IPv4-mapped peer such as `::ffff:127.0.0.1`,
+which a dual-stack `::` listener reports for IPv4 clients, counts as IPv4); release builds load and validate
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` from the process environment,
 then the working directory's `.env`. Missing connection metadata
 is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-free access on in a release

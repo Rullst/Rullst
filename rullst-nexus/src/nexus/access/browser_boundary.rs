@@ -46,7 +46,7 @@ fn local_authority(request: &Request) -> Option<Authority> {
     (host.eq_ignore_ascii_case("localhost")
         || ip
             .parse::<std::net::IpAddr>()
-            .is_ok_and(|ip| ip.is_loopback()))
+            .is_ok_and(|ip| ip.to_canonical().is_loopback()))
     .then_some(authority)
 }
 
@@ -88,6 +88,16 @@ mod tests {
         for (host, origin, expected) in [
             ("localhost:3000", "http://localhost:3000", true),
             ("[::1]:3000", "http://[::1]:3000", true),
+            (
+                "[::ffff:127.0.0.1]:3000",
+                "http://[::ffff:127.0.0.1]:3000",
+                true,
+            ),
+            (
+                "[::ffff:192.0.2.1]:3000",
+                "http://[::ffff:192.0.2.1]:3000",
+                false,
+            ),
             ("localhost:80", "http://localhost", true),
             (
                 "localhost.evil.example",

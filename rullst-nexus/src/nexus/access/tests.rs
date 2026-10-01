@@ -194,6 +194,27 @@ async fn loopback_access_allows_local_peer_and_denies_every_other_source() {
 }
 
 #[tokio::test]
+async fn loopback_access_canonicalizes_ipv4_mapped_peers() {
+    let app = loopback_test_router();
+    // A dual-stack listener reports an IPv4 client as `::ffff:a.b.c.d`.
+    for (peer, expected) in [
+        ("[::ffff:127.0.0.1]:41000", StatusCode::OK),
+        ("[::ffff:127.0.0.2]:41000", StatusCode::OK),
+        ("[::ffff:192.0.2.10]:41000", StatusCode::FORBIDDEN),
+        ("[::ffff:10.0.0.1]:41000", StatusCode::FORBIDDEN),
+        ("[::ffff:0.0.0.0]:41000", StatusCode::FORBIDDEN),
+        ("[2001:db8::1]:41000", StatusCode::FORBIDDEN),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(request_from(Some(peer)))
+            .await
+            .expect("router response");
+        assert_eq!(response.status(), expected, "{peer}");
+    }
+}
+
+#[tokio::test]
 async fn protect_router_enforces_the_admin_boundary_on_application_routes() {
     let policy = NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only());
     let result = policy

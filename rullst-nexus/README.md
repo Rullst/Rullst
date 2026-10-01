@@ -201,7 +201,8 @@ header. The `NexusVerifiedTls` path keeps working unchanged.
 
 For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
-loopback socket peer, an unambiguous local `Host` authority, and a matching
+loopback socket peer (an IPv4-mapped peer such as `::ffff:127.0.0.1`, which a dual-stack `::`
+listener reports for IPv4 clients, counts as IPv4), an unambiguous local `Host` authority, and a matching
 `Origin` for unsafe methods, and is rejected in release builds. Non-browser
 clients can read without `Origin`; local mutation requests must supply their
 matching origin explicitly (for example, `Origin: http://localhost:3000` with
