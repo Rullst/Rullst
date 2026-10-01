@@ -1157,7 +1157,9 @@ Injects infrastructure files into a pre-existing project (similar to the flags
 used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
 absent) and `nixify` writes `flake.nix` and `.envrc`. Both commands, like
 `generate:buildah` for `build_buildah.sh`, refuse to replace an existing file;
-move a customized file aside to regenerate its template.
+move a customized file aside to regenerate its template. The Dockerfile's binary
+and the Buildah image are named after `[package].name`, read with a TOML parser
+(`app` when `Cargo.toml` has no package name).
 
 ### `cargo rullst foundry:init`
 Generates the `Foundry.toml` deployment manifest at the project root containing
