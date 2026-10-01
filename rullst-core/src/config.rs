@@ -411,6 +411,26 @@ fn is_serialized_origin(origin: &str, uri: &http::Uri) -> bool {
 
 static GLOBAL_CONFIG: std::sync::OnceLock<RullstConfig> = std::sync::OnceLock::new();
 
+/// `RULLST_ENV` (else `APP_ENV`) from the `.env` the last started `Server`
+/// read, which `Server` places between the process variables and `[app].env`.
+static PROJECT_ENVIRONMENT_SELECTOR: std::sync::RwLock<Option<String>> =
+    std::sync::RwLock::new(None);
+
+/// Records the `.env` environment selector of a starting `Server`.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub(crate) fn record_project_environment_selector(selector: Option<String>) {
+    *PROJECT_ENVIRONMENT_SELECTOR
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = selector;
+}
+
+fn project_environment_selector() -> Option<String> {
+    PROJECT_ENVIRONMENT_SELECTOR
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
 impl RullstConfig {
     /// Gets the global configuration reference, initializing it with default values if not set.
     pub fn global() -> &'static RullstConfig {
@@ -457,8 +477,22 @@ impl RullstConfig {
     }
 
     /// Resolves the validated runtime environment for this configuration.
+    ///
+    /// The precedence is the process `RULLST_ENV`, then the process `APP_ENV`,
+    /// then — once a [`crate::Server`] has started in this process —
+    /// `RULLST_ENV` or `APP_ENV` from the `.env` file it read, then
+    /// `[app].env`. This is the environment the `Server` enforces. Before a
+    /// `Server` starts (or without one) no `.env` is consulted, exactly like
+    /// [`Environment::detect`], which itself never reads `.env`.
     pub fn environment(&self) -> Result<Environment, ConfigError> {
-        Environment::detect(self.app.env.as_deref())
+        let selector = project_environment_selector();
+        let rullst_env = read_environment_variable("RULLST_ENV")?;
+        let app_env = read_environment_variable("APP_ENV")?;
+        Environment::resolve(
+            rullst_env.as_deref(),
+            app_env.as_deref(),
+            selector.as_deref().or(self.app.env.as_deref()),
+        )
     }
 
     /// Loads and parses the configuration from a TOML file.

@@ -262,6 +262,13 @@ impl Server {
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;
+        // `RullstConfig::environment` reports the same environment.
+        crate::config::record_project_environment_selector(
+            dotenv
+                .get("RULLST_ENV")
+                .or_else(|| dotenv.get("APP_ENV"))
+                .cloned(),
+        );
         self.resolve_trusted_proxy(&app_config.security)?;
 
         self.init_database(&app_config, &dotenv).await?;

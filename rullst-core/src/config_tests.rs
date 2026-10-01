@@ -249,3 +249,36 @@ fn empty_user_agent_blocklist_entries_are_rejected() {
     config.user_agent_blocklist = Vec::new();
     assert!(config.validate().is_ok());
 }
+
+#[tokio::test]
+async fn environment_includes_the_dotenv_selector_a_server_read() {
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let saved: Vec<_> = ["RULLST_ENV", "APP_ENV"]
+        .into_iter()
+        .map(|key| (key, std::env::var_os(key)))
+        .collect();
+    unsafe {
+        std::env::remove_var("RULLST_ENV");
+        std::env::remove_var("APP_ENV");
+    }
+    let mut config = RullstConfig::new();
+    config.app.env = Some("test".to_string());
+
+    assert_eq!(config.environment().unwrap(), Environment::Test);
+    record_project_environment_selector(Some("production".to_string()));
+    assert_eq!(config.environment().unwrap(), Environment::Production);
+    unsafe { std::env::set_var("APP_ENV", "staging") };
+    assert_eq!(config.environment().unwrap(), Environment::Staging);
+    record_project_environment_selector(None);
+    unsafe { std::env::remove_var("APP_ENV") };
+    assert_eq!(config.environment().unwrap(), Environment::Test);
+
+    for (key, value) in saved {
+        unsafe {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+}
