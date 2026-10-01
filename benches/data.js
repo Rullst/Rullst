@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790817484637,
+  "lastUpdate": 1790818046946,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23259,6 +23259,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2290,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f790903399442605c09c489fefee90d0715ba6f4",
+          "message": "Merge pull request #359 from Rullst/fix/v13-security-low-fixes\n\nfix(security,core): low-severity WAF, CSWSH, redaction, CSRF, tenancy and PII review fixes",
+          "timestamp": "2026-09-30T22:21:57-03:00",
+          "tree_id": "3ff10dd5394f4381ccff5fbf7ab0580b3e5df7b2",
+          "url": "https://github.com/Rullst/Rullst/commit/f790903399442605c09c489fefee90d0715ba6f4"
+        },
+        "date": 1790818045051,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 730,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 996,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 620,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2305,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
