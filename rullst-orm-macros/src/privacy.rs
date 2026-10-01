@@ -10,6 +10,7 @@ pub fn derive_personal_data_impl(input: TokenStream) -> TokenStream {
     // Collect the struct fields to inspect privacy tags
     let mut debug_fields = quote! {};
     let mut encrypted_fields = Vec::new();
+    let mut personal_fields = Vec::new();
     let mut has_encrypted_data = false;
 
     if let Data::Struct(data_struct) = input.data
@@ -35,6 +36,7 @@ pub fn derive_personal_data_impl(input: TokenStream) -> TokenStream {
             if has_privacy {
                 has_encrypted_data = true;
                 encrypted_fields.push(field_name.to_string());
+                personal_fields.push(field_name.to_string());
                 // If it's sensitive, mask the output in standard log/debug
                 debug_fields = quote! {
                     #debug_fields
@@ -72,6 +74,10 @@ pub fn derive_personal_data_impl(input: TokenStream) -> TokenStream {
                     has_encrypted_data: #has_encrypted_data,
                     encrypted_fields: vec![ #( #encrypted_fields_tokens ),* ],
                 }
+            }
+
+            fn personal_fields() -> Vec<&'static str> {
+                vec![ #( #personal_fields ),* ]
             }
         }
     };

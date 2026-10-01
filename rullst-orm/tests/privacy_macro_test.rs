@@ -22,10 +22,13 @@ fn test_personal_data_compliance_schema() {
     assert_eq!(report.encrypted_fields.len(), 1);
     assert_eq!(report.encrypted_fields[0], "ssn");
 
+    assert_eq!(UserData::personal_fields(), vec!["ssn"]);
+
     let report2 = PublicData::compliance_schema();
     assert_eq!(report2.table_name, "publicdata");
     assert!(!report2.has_encrypted_data);
     assert!(report2.encrypted_fields.is_empty());
+    assert!(PublicData::personal_fields().is_empty());
 }
 
 #[test]

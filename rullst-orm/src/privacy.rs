@@ -62,6 +62,13 @@ pub struct PrivacyReport {
 
 pub trait ComplianceModel {
     fn compliance_schema() -> PrivacyReport;
+
+    /// The fields the application declared as personal data with
+    /// `#[privacy]` on `#[derive(PersonalData)]`; empty by default.
+    /// Unpublished v13 API.
+    fn personal_fields() -> Vec<&'static str> {
+        Vec::new()
+    }
 }
 
 /// Strongly-typed error domain for Rullst ORM privacy and column encryption.
