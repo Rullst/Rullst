@@ -59,6 +59,23 @@ fn the_application_listens_on_the_port_caddy_and_the_probe_use() {
 }
 
 #[test]
+fn the_application_listens_only_on_loopback_unless_host_is_configured() {
+    // The old environment had no HOST, and production binds 0.0.0.0, which
+    // exposed the plain-HTTP port beside Caddy.
+    let command = render_configure_command(&test_config("true"), "demo", DIGEST);
+    assert!(command.contains("\nHOST=\"127.0.0.1\"\n"));
+    assert!(command.contains("reverse_proxy localhost:3000"));
+
+    for key in ["HOST", "RULLST_HOST"] {
+        let mut cfg = test_config("true");
+        cfg.env_vars.push((key.to_string(), "::".to_string()));
+        let command = render_configure_command(&cfg, "demo", DIGEST);
+        assert!(!command.contains("127.0.0.1"), "{key}");
+        assert!(command.contains(&format!("{key}=\"::\"")), "{key}");
+    }
+}
+
+#[test]
 fn provisioning_requires_reviewed_tools_and_uses_an_app_specific_root() {
     let command = render_provision_command(&test_config("false"));
     assert!(command.contains("command -v curl"));

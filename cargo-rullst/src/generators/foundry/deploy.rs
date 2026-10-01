@@ -309,6 +309,11 @@ fn render_configure_command(cfg: &FoundryConfig, bin_name: &str, binary_sha256: 
         .iter()
         .map(|(key, value)| format!("{key}=\"{}\"", escape_systemd_env_value(value)))
         .collect::<Vec<_>>();
+    // Only Caddy (and the local probe) needs the plain-HTTP port; production
+    // would otherwise bind 0.0.0.0. HOST or RULLST_HOST in [env] overrides it.
+    if cfg.env_value("HOST").is_none() && cfg.env_value("RULLST_HOST").is_none() {
+        env_lines.push("HOST=\"127.0.0.1\"".to_string());
+    }
     // The unit runs from data/ without the project's Rullst.toml, so the port
     // Caddy proxies to must reach the application through its environment.
     if cfg.env_value("PORT").is_none() {

@@ -60,6 +60,8 @@ auto_https = true
 # Environment variables loaded by the systemd service at runtime.
 # Add your application secrets here (they will NOT be committed if you gitignore Foundry.toml).
 RULLST_ENV = "production"
+# HOST defaults to 127.0.0.1 so that only Caddy reaches the plain-HTTP port.
+# HOST = "127.0.0.1"
 APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
 DATABASE_URL = "sqlite:///opt/rullst/{project_name}/data/db.sqlite"
 # STRIPE_SECRET_KEY = ""

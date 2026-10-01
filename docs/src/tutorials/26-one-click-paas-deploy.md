@@ -103,6 +103,9 @@ APP_KEY = "REPLACE_WITH_A_STRONG_RANDOM_KEY"
 Caddy proxies to the `[app] port` (3000 when omitted) and the health check
 probes it. Foundry passes that port to the service as `PORT`, so an `[env] PORT`
 must name the same port (when `[app] port` is omitted, `[env] PORT` selects it).
+Unless `[env]` sets `HOST` (or `RULLST_HOST`), Foundry also sets
+`HOST="127.0.0.1"`, so the application's plain-HTTP port is reachable only
+through Caddy on the server; set `HOST` only to expose it deliberately.
 
 ### Step 2: Run the reviewed deployment command
 
