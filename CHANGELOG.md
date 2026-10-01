@@ -450,6 +450,26 @@ A prepared version section does not establish that its tag or crates exist.
   legacy `init_telemetry` sends 64-span batches, honours the proxy variables
   and reports dropped batches.
 
+### Nexus and Studio final-review fixes
+
+- The Nexus list no longer sorts by hidden columns, and a search on a model
+  without a visible text-like field lists no rows instead of every row.
+- The debug loopback policies of Nexus, Studio and the Core error console
+  accept IPv4-mapped loopback peers. Nexus accepts `Origin: null` only with
+  `Sec-Fetch-Site: same-origin` and stamps `Referrer-Policy: same-origin` when
+  the app sets none.
+- Nexus validation errors are plain text, and the panel shows HTML error
+  bodies as text. Required audit records the primary key an administrator
+  entered on create. Local date-times are stored in the `CURRENT_TIMESTAMP`
+  text form.
+- The new `FieldKind::Integer { min, max }`, which `#[derive(Nexus)]` emits for
+  Rust integer fields, rejects fractions and out-of-range values; `FieldKind`
+  is now `#[non_exhaustive]`.
+- AI assistant replies can no longer contain resource-loading elements such
+  as `img`.
+- Studio's table view marks values it cannot decode as `unreadable` instead of
+  `NULL`.
+
 ### Core runtime low-severity review fixes
 
 - Validated extractors return 413 or 415 for oversized or wrongly typed bodies,
