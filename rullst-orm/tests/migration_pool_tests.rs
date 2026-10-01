@@ -1,5 +1,7 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
+mod support;
+
 use async_trait::async_trait;
 use rullst_orm::schema::migration::{Migration, run_artisan_with_args};
 use rullst_orm::{Error, Orm, Seeder};
@@ -270,6 +272,9 @@ async fn test_migration_and_pool_suite() {
     )
     .await;
     assert!(res.is_ok());
+
+    // 9b. Opt-in transactional migrations record atomically.
+    support::migrations::exercise_transactional_migrations().await;
 
     // 10. Unknown command
     let res = run_artisan_with_args(

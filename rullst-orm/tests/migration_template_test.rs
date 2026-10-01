@@ -12,3 +12,8 @@ use rullst_orm::schema::Migration;
 fn generated_migration_template_compiles_in_an_application_crate() {
     assert_eq!(generated::MigrationImpl.name(), "m{timestamp}_{name}");
 }
+
+#[test]
+fn generated_migrations_record_atomically() {
+    assert!(generated::MigrationImpl.within_transaction());
+}
