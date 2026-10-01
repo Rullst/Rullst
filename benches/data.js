@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790887019470,
+  "lastUpdate": 1790891031581,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24393,6 +24393,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2431,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0498febc53a5ccf38f08022fc33221de65c9cd67",
+          "message": "Merge pull request #392 from Rullst/feat/v13-cli-ai-chat\n\nfeat(cli,ai): cargo rullst ai terminal assistant with token usage and native Anthropic/Gemini streaming",
+          "timestamp": "2026-10-01T18:36:11-03:00",
+          "tree_id": "d0967dd5233401aac50d20a04aecbce27bbac784",
+          "url": "https://github.com/Rullst/Rullst/commit/0498febc53a5ccf38f08022fc33221de65c9cd67"
+        },
+        "date": 1790891028997,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 772,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1014,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 621,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2424,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
