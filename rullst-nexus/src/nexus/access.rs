@@ -56,6 +56,9 @@ pub enum NexusBuildError {
     MissingCredential { variable: &'static str },
     /// A required Nexus credential contains invalid Unicode.
     InvalidCredentialEncoding { variable: &'static str },
+    /// A required Nexus credential is absent from the process environment and
+    /// the project's `.env` file is unreadable or malformed. Unpublished v13.
+    InvalidDotenv { variable: &'static str },
     /// Unauthenticated local access is never available in release builds.
     LocalAccessRequiresDebugBuild,
     /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
@@ -94,6 +97,10 @@ impl fmt::Display for NexusBuildError {
             Self::InvalidCredentialEncoding { variable } => write!(
                 formatter,
                 "Nexus requires {variable} to contain valid Unicode"
+            ),
+            Self::InvalidDotenv { variable } => write!(
+                formatter,
+                "Nexus could not read {variable}: the project .env file is unreadable or malformed"
             ),
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
                 "Nexus loopback-only access is restricted to debug builds; configure an authenticated policy for release builds",
