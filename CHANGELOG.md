@@ -239,6 +239,21 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Labs: bring your own runner
+
+- The unpublished experimental `rullst-labs-runner` candidate (a Linux
+  Rust-to-Wasm/Wasmi executor) was removed from the 13.0 workspace; its source
+  remains in git history. Its isolation acceptance job, coverage measurement,
+  Wasm fixture and helper scripts were removed, and release admission no longer
+  requires "Isolated Labs acceptance (Linux)".
+- `rullst-labs` is unchanged and still never executes learner code. The new
+  controller contract (`docs/src/labs-runner-contract.md`) describes how an
+  application-owned, separately deployed runner claims leased jobs, reports
+  Ed25519-signed receipts and handles cancellation, recovery and retention, and
+  the non-executing `byo_runner_controller` example demonstrates that flow.
+- The Labs boundary check rejects any runner crate and any workspace dependency
+  on an execution engine.
+
 ### Core state low-severity review fixes
 
 - SQLite queue claims follow due-time order, so due scheduled or handed-back
