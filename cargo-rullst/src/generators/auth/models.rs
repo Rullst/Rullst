@@ -15,7 +15,10 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
     let timestamp = now.format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_create_users_table", timestamp);
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
-    write_new(&migration_path, user_migration_source(&file_stem).as_bytes())?;
+    write_new(
+        &migration_path,
+        user_migration_source(&file_stem).as_bytes(),
+    )?;
     println!("{}", "  ✨ Created 'users' table migration.".green());
 
     regenerate_migrations_mod()?;
