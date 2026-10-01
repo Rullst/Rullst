@@ -91,10 +91,13 @@ cargo rullst new operations-portal --default --blueprint erp \
   --ai --redis --skip-initial-migration
 ```
 
-Generated SQLx applications disable the umbrella dependency's default features
-and select exactly one strict primary profile (`strict-sqlite`,
-`strict-postgres`, or `strict-mysql`; MariaDB uses the MySQL protocol). This
-prevents an implicit SQLite default from masking the chosen backend.
+Generated SQLx applications disable the default features of both the umbrella
+`rullst` dependency and the direct `rullst-orm` dependency, and select exactly
+one strict primary profile (`strict-sqlite`, `strict-postgres`, or
+`strict-mysql`; MariaDB uses the MySQL protocol). This prevents an implicit
+SQLite default from masking the chosen backend and keeps the other drivers,
+including bundled SQLite, out of the build. Turso-primary and database-free
+profiles keep `rullst-orm`'s default drivers for its `AnyPool`.
 
 #### Generated-project verification boundary
 

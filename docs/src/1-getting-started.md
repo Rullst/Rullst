@@ -248,9 +248,10 @@ cargo rullst new learning_portal --default --blueprint lms \
 
 For a blank application with no primary relational database, use the explicit
 `--no-database` flag. It cannot be combined with `--database`.
-Generated SQLx profiles disable Rullst's umbrella defaults and select exactly
-one strict relational backend, so a chosen PostgreSQL/MySQL/MariaDB profile is
-not accidentally compiled through an implicit SQLite default.
+Generated SQLx profiles disable the default features of Rullst's umbrella and
+`rullst-orm` dependencies and select exactly one strict relational backend, so
+a chosen PostgreSQL/MySQL/MariaDB profile is not accidentally compiled through
+an implicit SQLite default.
 
 To create a Turso-primary API using the current bounded blank starter:
 
