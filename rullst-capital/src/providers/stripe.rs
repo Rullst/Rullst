@@ -163,12 +163,7 @@ impl BillingProvider for StripeProvider {
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://checkout.stripe.com/pay/mock_session?email={}&plan={}&redirect={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         let client = crate::providers::http_client()?;
@@ -221,7 +216,7 @@ impl BillingProvider for StripeProvider {
     async fn create_customer_portal(
         &self,
         customer_email: &str,
-        return_url: &str,
+        _return_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
             return Err(CapitalError::ConfigurationError(
@@ -230,19 +225,12 @@ impl BillingProvider for StripeProvider {
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://billing.stripe.com/p/session/mock_portal?email={}&return_url={}",
-                url_encode(customer_email),
-                url_encode(return_url)
-            ));
+            return Ok(super::fixture::portal_url(self.name()));
         }
 
         super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://billing.stripe.com/p/session/portal?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {

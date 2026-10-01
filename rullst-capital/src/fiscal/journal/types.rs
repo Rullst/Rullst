@@ -64,6 +64,19 @@ pub enum FiscalJournalError {
     },
     #[error("fiscal journal event encoding failed")]
     Encoding,
+    /// The selected environment differs from the `tpAmb` signed in the DPS.
+    /// Earlier releases reported this as `ResponseMismatch`. New in 13.0.
+    #[error("fiscal command environment does not match the signed DPS tpAmb")]
+    EnvironmentMismatch,
+    /// An explicit observation time precedes the command's preparation.
+    /// Earlier releases reported this as `ResponseMismatch`. New in 13.0.
+    #[error("fiscal command observation time precedes its preparation")]
+    ClockRegression,
+    /// The authority's answer (HTTP 500) does not settle the command, so it
+    /// stays pending for reconciliation instead of becoming a final
+    /// rejection. New in 13.0.
+    #[error("fiscal authority response is indeterminate; the command remains pending")]
+    IndeterminateResponse,
 }
 
 /// A named 256-bit HMAC key used to authenticate a local fiscal journal.
@@ -188,7 +201,12 @@ impl FiscalPendingCommand {
         self.environment
     }
 
-    /// Returns the lowercase SHA-256 digest of the deterministic signed request envelope.
+    /// Returns the lowercase SHA-256 digest of the signed request envelope.
+    ///
+    /// Rebuild the request for recovery with
+    /// `NfseIssueRequest::try_from_dps_xml_gzip_base64` from the stored
+    /// `dpsXmlGZipB64`; recompressing the XML with another deflate backend can
+    /// change this digest.
     pub fn request_digest(&self) -> &str {
         &self.request_digest
     }

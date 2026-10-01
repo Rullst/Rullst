@@ -1,6 +1,6 @@
 use super::{
     BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, WebhookEvent, WebhookVerificationMode,
-    ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature, webhook_mode_from_secret,
+    ensure_fresh_timestamp, verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
@@ -155,7 +155,7 @@ impl BillingProvider for PaddleProvider {
         &self,
         customer_email: &str,
         plan_id: &str,
-        redirect_url: &str,
+        _redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
             return Err(CapitalError::ConfigurationError(
@@ -169,12 +169,7 @@ impl BillingProvider for PaddleProvider {
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://checkout.paddle.com/pay/mock_session?email={}&price_id={}&return_url={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         Err(CapitalError::UnsupportedOperation(
@@ -209,10 +204,7 @@ impl BillingProvider for PaddleProvider {
 
         super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://paddle.com/portal?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -305,7 +297,8 @@ mod tests {
             )
             .await
             .unwrap();
-        assert!(url.contains("checkout.paddle.com"));
+        assert!(url.starts_with("https://mock.paddle.invalid/checkout/mock_session?plan="));
+        assert!(!url.contains("%40") && !url.contains("app.com"));
         assert!(url.contains("pri_pro_plan"));
 
         // 2. Checkout validation
@@ -327,7 +320,7 @@ mod tests {
             .create_customer_portal("customer@paddle.com", "https://app.com")
             .await
             .unwrap();
-        assert!(portal.contains("paddle.com/portal"));
+        assert_eq!(portal, "https://mock.paddle.invalid/portal/mock_portal");
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // 4. Subscription actions

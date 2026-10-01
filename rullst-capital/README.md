@@ -58,15 +58,19 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
 | **Razorpay** | Billing | Plan checkout adapter with an explicit `with_subscription_total_count` billing term (v13) and signed-webhook foundation; completion is reported as `Canceled`. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
-| **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
-| **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
+| **Coinbase Commerce** | Billing | Signed one-off charge notifications (no subscription period; plan and customer metadata required); live plan-only checkout is unsupported without authoritative pricing. |
+| **PicPay** | Billing | Offline checkout and callback fixtures; live plan-only checkout and seller-token-only callbacks are unsupported without authoritative pricing and status lookup. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
 | **Wise** | Payout | Transfer-status read bound to the requested transfer, typed state read, sandbox API option and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
 live credentials. Their deterministic empty/`mock_*` examples are offline
-fixtures, not authenticated portal sessions. Live usage reporting through the
+fixtures, not authenticated portal sessions.
+Legacy checkout and portal fixtures use reserved `https://mock.<provider>.invalid/`
+hosts and carry only the plan ID, never the customer email or return URL, so a
+deployment started without credentials cannot send a browser or personal data
+to a real provider domain. Live usage reporting through the
 legacy uniform method is also unsupported for Paddle, Polar, Mercado Pago and
 Razorpay; use the separate reviewed Stripe/Lemon Squeezy metered contracts when
 applicable. InfinitePay, PicPay and Coinbase cancellation, plus Polar pause,
@@ -391,7 +395,12 @@ durable provisioning and attempts, signed Checkout/subscription event handling,
 atomic completion and revision-fenced reconciliation. Hosts calling the low-level
 adapter directly must supply those same application boundaries. Do not retry an old key indefinitely: Stripe may discard idempotency
 records after its retention period. An unknown outcome requires reconciliation,
-not a newly generated attempt key. See Stripe's
+not a newly generated attempt key. The recovery reads (`verify_account`,
+`retrieve_bound_customer`, `find_bound_customer`, `retrieve_checkout` and
+`find_checkout`) return `ConfigurationError` for malformed local IDs or a
+live/test mode that differs from the key, and `UnsupportedOperation` for empty
+or `mock_*` keys, which have no offline recovery fixture. Only a provider
+response that fails its bindings is a contract mismatch. See Stripe's
 [checkout contract](https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-03-31.basil)
 and [idempotency semantics](https://docs.stripe.com/api/idempotent_requests).
 The legacy email-based trait method remains available for source compatibility;
@@ -672,6 +681,10 @@ consumes the same limit. `Billable::quota_request` derives the limit from the
 subscription owner's tier rather than a client payload. `QuotaGate` atomically
 reserves before calling the application operation, skips exact idempotent
 replays and releases a fresh reservation when the callback returns an error.
+`QuotaExecution::Replay` means only that the key is already claimed: the first
+call may still be running and later fail and release it, or may have been
+dropped without releasing it. Do not report a replay as completed work without
+checking the application's own record.
 
 The always-available `InMemoryQuotaStore` is deterministic and process-local.
 With `quota-sql`, `SqlQuotaStore` persists a unique event claim and conditionally
@@ -787,7 +800,9 @@ has a rolling deduplication guarantee. Empty or `mock_*` keys return a stable
 ### Payment-Bound Invoice Delivery
 
 `Invoice::bind_succeeded_charge` accepts only final `Succeeded` evidence with
-an exact recipient, minor-unit amount and currency match. The resulting
+an exact recipient, minor-unit amount and currency match. Invoice amounts are
+scaled by the currency's ISO 4217 exponent, so `total: 2500.0` in JPY binds a
+2,500-yen receipt and `12.34` KWD binds a 12,340 minor-unit receipt. The resulting
 `PaidInvoice` can be rendered as escaped HTML or a bounded A4 PDF. Mail's opt-in
 `PaidInvoiceDelivery` bridge attaches both formats, runs mandatory pre-flight
 and sends through the configured facade, a tenant route or an explicit static
@@ -811,6 +826,13 @@ fn configure_billing() -> Result<(), std::env::VarError> {
 }
 ```
 
+The global billing and payout providers can be set once per process: a later
+`init_provider`/`init_payout_provider` call is ignored and the first provider
+stays active. The v13 `try_init_provider` and `try_init_payout_provider` return
+`ConfigurationError` in that case, so a live configuration cannot be silently
+shadowed by an earlier mock. Middleware can also take an explicit provider
+through `WebhookMiddlewareState::production_with_provider`.
+
 ### Creating Checkout Sessions
 
 ```rust
@@ -833,7 +855,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body without a checked timestamp, so an exact captured body verifies again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order their state changes in the application. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
@@ -879,7 +901,10 @@ setup is explicit, active claims are never evicted to make room, configuration
 drift/corruption/storage failure fail closed, and the same backend can be
 passed to `WebhookMiddlewareState` through `Arc`. TTL decisions use the
 database clock inside the claim transaction so process clock skew cannot expire
-another node's proof early.
+another node's proof early. An in-memory SQLite URL (`sqlite::memory:` or
+`mode=memory`) keeps its single pooled connection for the pool's lifetime, as
+`SqlQuotaStore` does, because a replacement connection would open an empty
+database; its claims are still lost on restart.
 
 That middleware path records the payload before calling the handler, so it is
 a replay firewall rather than an exactly-once delivery protocol. A crash after
@@ -904,10 +929,13 @@ an outbox, idempotent consumers, and reconciliation.
 The local pipeline now implements a bounded ordinary-service DPS 1.01 builder,
 checksum-pinned validation against official production/restricted XSD sources,
 PKCS#12 RSA-SHA256 XMLDSig with inclusive C14N 1.0, independent local
-signature verification, deterministic GZip/Base64 issuance JSON, bounded
+signature verification, deterministic (per build) GZip/Base64 issuance JSON, bounded
 signed-authorization and structured-rejection parsing, and rustls mTLS client
 construction. The signed request now carries its parsed `tpAmb`, so a caller
-cannot reinterpret a homologation DPS as production (or the reverse).
+cannot reinterpret a homologation DPS as production (or the reverse). An
+authorized NFS-e may embed the submitted signed DPS: its signature is allowed
+only inside `infNFSe/DPS`, and the authority's single root signature is the one
+verified. That signed embedded DPS must carry the submitted DPS Id and `tpAmb`.
 Certificate bytes, passphrases, and derived PEM are redacted and zeroized where
 owned by Rullst.
 The production profile applies one exact, documented in-memory compatibility
@@ -920,10 +948,31 @@ synchronously records one `prepared` command and one bound `authorized` or
 `rejected` terminal result, suppresses exact replays, rejects command-key
 conflicts, and recovers unresolved descriptors after restart. A named 256-bit
 HMAC key authenticates the header and a chain of at most 4,096 frames/16 MiB;
+a preparation is refused unless room remains for the terminal result of it and
+of every other pending command;
 an independently retained exact-tip checkpoint detects valid-prefix
-truncation. The file contains only the opaque application command ID,
+truncation, and the v13 `verify_checkpoint_prefix` accepts a retained
+checkpoint that is an authenticated prefix of the chain (returning how many
+events follow it) so a crash before the new checkpoint was saved is not
+mistaken for tampering. Creating a journal also syncs its parent directory on Unix. A power
+loss during an append can leave an unacknowledged torn final frame, which
+`try_open` rejects as `CorruptRecord` until an operator restores a backup or
+truncates after the last complete frame. The file contains only the opaque application command ID,
 request/result digests, environment, state, and bounded timestamps—not XML,
 access keys, certificate material, provider bodies, or processing messages.
+An HTTP 500 answer returns `IndeterminateResponse` and leaves the command
+pending, because the NFS-e may have been issued; a recorded rejection is final,
+so reconcile a rejection of a retransmitted DPS (for example "DPS already
+exists") by consultation before recording it.
+Persist each request's `dps_xml_gzip_base64()` and rebuild it after a restart
+with the v13 `NfseIssueRequest::try_from_dps_xml_gzip_base64`: recompressing
+the signed XML is reproducible only within one deflate backend, and a build
+whose dependencies select another deflate backend would compute a different
+request digest and conflict with the pending command.
+`record_response` records a wall-clock step backwards as the preparation time,
+while `record_response_at` with an earlier explicit time returns
+`ClockRegression`; a selected environment that differs from the signed `tpAmb`
+returns `EnvironmentMismatch` (both v13).
 
 This is preparation for homologation, not live issuance. `Homologation` and
 `Production` still return `FiscalError::Unsupported` without network I/O until

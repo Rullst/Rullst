@@ -78,7 +78,7 @@ async fn test_stripe_provider_mock_checkout() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
-    assert!(url.contains("test%40test.com"));
+    assert!(!url.contains("test%40test.com"));
     assert!(url.contains("plan_123"));
 }
 
@@ -152,7 +152,7 @@ async fn test_lemonsqueezy_provider_mock_checkout() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
-    assert!(url.contains("test%40test.com"));
+    assert!(!url.contains("test%40test.com"));
     assert!(url.contains("variant_1"));
 }
 

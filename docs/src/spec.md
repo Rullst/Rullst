@@ -2350,7 +2350,9 @@ public error. Rullst deliberately does not retry billing mutations: callers may
 retry a transient or rate-limited result only when that exact operation has a
 persisted provider-forwarded idempotency key and a reconciliation policy.
 Returned checkout locations are accepted only as bounded, absolute,
-credential-free HTTPS URLs. Stripe's documented opaque hosted-URL fragment is
+credential-free HTTPS URLs. Offline legacy checkout and portal fixtures use
+reserved `mock.<provider>.invalid` hosts and omit the customer email and
+return URL. Stripe's documented opaque hosted-URL fragment is
 preserved; other adapters reject fragments. Provider/account sandbox acceptance
 remains external evidence.
 
@@ -2637,7 +2639,9 @@ opt-in `quota-sql` feature supplies `SqlQuotaStore` for SQLite, PostgreSQL,
 MySQL and MariaDB. Its conditional counter update and unique event claim prevent
 concurrent members from exceeding the same limit. Exact retries return a replay
 grant without consuming or executing again; a key reused with different units
-or limit fails closed. `QuotaGate::execute` blocks the callback before an
+or limit fails closed. A replay proves only that the key is claimed, not that
+the guarded work finished: the claim may belong to an in-flight call that later
+fails and releases it, or to an abandoned call. `QuotaGate::execute` blocks the callback before an
 over-limit creation and compensates an ordinary callback error.
 
 The convenience gate cannot make two unrelated storage systems atomic. A
@@ -2652,8 +2656,11 @@ explicit application work.
 
 `Invoice::generate_html` remains the source-compatible escaped HTML renderer.
 Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
-accepts only bounded finite positive values with at most two decimal places,
-converts them to integer minor units, and requires the exact item sum.
+accepts only bounded finite positive values with no more decimals than the
+currency's ISO 4217 minor unit (none for JPY, three for KWD, two by default),
+converts them to integer minor units of that currency, and requires the exact
+item sum. HTML and PDF amounts use the same number of decimals, so the minor
+units match a provider receipt for zero- and three-decimal currencies too.
 
 The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its
 embedded Helvetica subset supports WinAnsi text; other scripts require a
@@ -2678,6 +2685,21 @@ sending.
   explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
   not evidence that the provider signs that protocol. Enabling live processing
   requires order/merchant/amount binding and provider reconciliation first.
+* PicPay's legacy `handle_webhook` checks the static `x-seller-token` in
+  constant time, but that token does not authenticate the body and PicPay's
+  callback carries only reference and authorization IDs. A live delivery with
+  the correct token returns `UnsupportedOperation` instead of trusting a body
+  `status`; enabling it requires an authoritative payment-status lookup bound to
+  the stored order, amount and currency. The explicit `mock_*` fixture never
+  uses the buyer's CPF as `customer_id`.
+* Coinbase Commerce `charge:confirmed`, `charge:resolved` and `charge:failed`
+  are one-off charge notifications, not subscription snapshots: the bounded
+  charge ID fills `subscription_id` and `ends_at` is always `None`, because the
+  charge's `expires_at` is its payment window. A confirmed or resolved charge
+  requires the application's `metadata.customer_id` and `metadata.plan_id`
+  instead of defaulting them. The adapter does not bind the settled
+  `pricing`/`payments` amount and currency; the host must match them to its own
+  order before granting access.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,
@@ -2762,6 +2784,13 @@ sending.
 * Timestamped protocols enforce a bounded freshness window. The default replay
   store is bounded and process-local and fails closed instead of evicting an
   unexpired proof when full.
+* Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body, and their
+  adapters check no delivery timestamp (provider retries can span hours or
+  days). An exact captured body therefore verifies again after its replay claim
+  expires (24 hours by default, at most 30 days) or, with the process-local
+  store, after a restart. Hosts must record the provider's event or
+  subscription state durably and reject stale or repeated transitions instead
+  of relying on the replay window alone.
 * The opt-in `webhook-sql` store shares bounded payload-digest or semantic-event
   claims across processes on SQLite, PostgreSQL, MySQL, and MariaDB. Its schema
   profile is immutable, claims serialize through one configuration lock, expiry
@@ -2867,11 +2896,11 @@ sending.
   never the duplicate-payment or ownership boundary.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
-* 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.
-* 🟢 **`[Implemented / Bounded]` Pinned Schema Validation:** Production profile `v1.01-20260209` and restricted profile `v1.01-20260727` carry immutable archive/file SHA-256 values. `NfseDpsSchemaValidator` reads only the expected bounded files and resolves imports from an in-memory catalogue; it never downloads schemas or follows instance hints.
+* 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only; it escapes every interpolated value, always declares homologation (`tpAmb` 2) with a `+00:00` `dhEmi`, uses the official `opSimpNac`/`regApTribSN` and `tribISSQN`/`tpRetISSQN` codes, and builds a zero-padded 45-character Id when none is supplied.
+* 🟢 **`[Implemented / Bounded]` Pinned Schema Validation:** Production profile `v1.01-20260209` and restricted profile `v1.01-20260727` carry immutable archive/file SHA-256 values. `NfseDpsSchemaValidator` reads only the expected bounded files and resolves imports from an in-memory catalogue; it never downloads schemas or follows instance hints. `validate` first requires the official `DPS` root with `versao="1.01"` and no `xsi:type`, because the compiled set would otherwise assess any global declaration (such as `ds:Signature`) or an `xsi:type` root as valid.
 * 🟢 **`[Implemented / Bounded]` Local XMLDSig and mTLS Preparation:** `sign_dps_xml` parses a protected PKCS#12 A1 container, rejects malformed/duplicate/already-signed envelopes and emits an enveloped inclusive-C14N 1.0 RSA-SHA256 signature over the unique `infDPS/@Id`. The matching certificate chain is embedded and tested with independent local verification. The same container can construct a rustls mTLS identity/client with HTTPS-only, no redirects, and bounded timeouts.
-* 🟢 **`[Implemented / Bounded]` Offline SEFIN Issuance Codec:** `NfseIssueRequest` accepts only one structurally bound and cryptographically valid embedded DPS XMLDSig, emits deterministic GZip/Base64 inside the exact `dpsXmlGZipB64` JSON object, and parses at most four MiB. HTTP 201 can become `Authorized` only when environment, submitted DPS ID, 50-digit access key, `infNFSe/@Id` and the embedded NFS-e XMLDSig agree; HTTP 400/403/500 become a separate bounded `Rejected` variant. Unknown fields, malformed JSON/XML/Base64/GZip, duplicate/confused IDs, invalid signatures and decompression amplification fail closed. Embedded-signature validity does not establish ICP-Brasil trust or emitter ownership.
-* 🟢 **`[Implemented / Bounded]` Local Fiscal Command Journal:** The `nfse` feature exposes a single-active-writer `FiscalCommandJournal` that accepts only a homologation/production command whose selected environment equals the signed `infDPS/tpAmb`. It synchronously records a prepared command before any caller-owned transport and then one bound authorized or rejected terminal result. Exact command/request/result replays do not append; key reuse with different material, invalid transitions, external file growth, quota exhaustion, wrong keys, symlinks, corruption and durability uncertainty fail closed. The append-only v1 file is bounded to 16 MiB and 4,096 events, uses a named 256-bit HMAC key and chains every frame to the prior tag. It stores the caller's opaque command ID, request/result digests, environment, state and bounded times, never the DPS/NFS-e XML, access key, certificate, response body or processing messages. `pending()` recovers minimized unresolved descriptors after restart. A serializable exact-tip checkpoint can detect valid-prefix truncation only when retained independently. The host owns a non-PII command namespace, key custody/rotation, a trusted directory, one active writer, secure storage of the actual request, checkpoint persistence, backup/retention, authority reconciliation and retry policy; this journal does not transmit, retry, prove cross-system exactly-once or establish tax authorization.
+* 🟢 **`[Implemented / Bounded]` Offline SEFIN Issuance Codec:** `NfseIssueRequest` accepts only one structurally bound and cryptographically valid embedded DPS XMLDSig, emits deterministic GZip/Base64 inside the exact `dpsXmlGZipB64` JSON object, and parses at most four MiB. The compressed bytes are deterministic only for one deflate backend of the GZip library, which Cargo feature unification can change between builds, so recovery rebuilds a request from its stored value with the v13 `try_from_dps_xml_gzip_base64`, keeping the journal's request digest stable. HTTP 201 can become `Authorized` only when environment, submitted DPS ID, 50-digit access key, `infNFSe/@Id` and the embedded NFS-e XMLDSig agree; HTTP 400/403/500 become a separate bounded `Rejected` variant. Inside the signed `infNFSe`, the embedded DPS must carry the submitted `infDPS/@Id` and the requested `tpAmb`, so the unsigned JSON `idDps`/`tipoAmbiente` alone cannot bind another invoice or environment. The authority's signature must be the single direct child of the `NFSe` root and is selected explicitly for verification; the only other signature accepted is the submitted DPS's own inside `infNFSe/DPS`, which the authority's digest covers and which is not verified again. Unknown fields, malformed JSON/XML/Base64/GZip, duplicate/confused IDs, invalid signatures and decompression amplification fail closed. Embedded-signature validity does not establish ICP-Brasil trust or emitter ownership.
+* 🟢 **`[Implemented / Bounded]` Local Fiscal Command Journal:** The `nfse` feature exposes a single-active-writer `FiscalCommandJournal` that accepts only a homologation/production command whose selected environment equals the signed `infDPS/tpAmb`. It synchronously records a prepared command before any caller-owned transport and then one bound authorized or rejected terminal result. An HTTP 500 answer is indeterminate: recording it returns `IndeterminateResponse` and the command stays in `pending()`. A recorded rejection is final, so a rejection that answers a retransmission after an uncertain outcome (for example a duplicate-DPS error) must be reconciled by consultation before it is recorded. Exact command/request/result replays do not append; key reuse with different material, invalid transitions, external file growth, quota exhaustion, wrong keys, symlinks, corruption and durability uncertainty fail closed. A preparation is refused unless the remaining records and bytes can still hold a worst-case terminal event for it and for every other pending command. Creating a journal syncs the new file and, on Unix, its parent directory. A crash during an append can leave an unacknowledged final frame without its terminator; `try_open` then fails closed with `CorruptRecord`, and restoring a backup or truncating after the last complete frame is an audited operator action, never automatic. The append-only v1 file is bounded to 16 MiB and 4,096 events, uses a named 256-bit HMAC key and chains every frame to the prior tag. It stores the caller's opaque command ID, request/result digests, environment, state and bounded times, never the DPS/NFS-e XML, access key, certificate, response body or processing messages. `pending()` recovers minimized unresolved descriptors after restart. A serializable exact-tip checkpoint can detect valid-prefix truncation only when retained independently. The v13 `verify_checkpoint_prefix` accepts a retained checkpoint that is an authenticated prefix of the current chain and returns how many events follow it, so a crash between a synchronized append and persisting its checkpoint is distinguishable from truncation or substitution. The host owns a non-PII command namespace, key custody/rotation, a trusted directory, one active writer, secure storage of the actual request, checkpoint persistence, backup/retention, authority reconciliation and retry policy; this journal does not transmit, retry, prove cross-system exactly-once or establish tax authorization.
 * 🟡 **`[Simulado]` Offline Mock Environment:** `NfseEnvironment::Mock` produces deterministic test fixtures for local sandboxing.
 * 🔵 **`[Roadmap / External Evidence]` Official SEFIN Homologation & Production:** `Homologation` and `Production` validate credentials and then return `FiscalError::Unsupported` without network I/O. Enabling transmission requires emitter-certificate/ICP-Brasil lifecycle checks, deployment of the local journal plus authoritative request/outbox and reconciliation storage, retained protocol fixtures, real restricted-environment tests with an authorized contributor and municipality, independent review, and successful official homologation.
 

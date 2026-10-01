@@ -49,6 +49,7 @@ pub(super) fn open(
             .map_err(|error| io_failure("initialize", &error))?;
         file.sync_data()
             .map_err(|error| io_failure("initialize sync", &error))?;
+        sync_parent_directory(path)?;
         return Ok((
             JournalFileState {
                 file,
@@ -61,7 +62,7 @@ pub(super) fn open(
         ));
     }
 
-    let (bytes, events, last_tag) = decode_file(&mut file, max_bytes, key)?;
+    let (bytes, events, last_tag) = decode_file(&mut file, max_bytes, key, None)?;
     Ok((
         JournalFileState {
             file,
@@ -90,11 +91,27 @@ pub(super) fn verify_and_read(
     if length != state.bytes {
         return Err(FiscalJournalError::ExternalModification);
     }
-    let (bytes, events, last_tag) = decode_file(&mut state.file, max_bytes, key)?;
+    let (bytes, events, last_tag) = decode_file(&mut state.file, max_bytes, key, None)?;
     if bytes != state.bytes || events.len() != state.records || last_tag != state.last_tag {
         return Err(FiscalJournalError::ExternalModification);
     }
     Ok(events)
+}
+
+/// Returns `(end_offset, tag)` after the header (index 0) and after each
+/// authenticated frame, so a retained checkpoint can be matched to a prefix.
+pub(super) fn chain_boundaries(
+    state: &mut JournalFileState,
+    max_bytes: u64,
+    key: &FiscalJournalKey,
+) -> Result<Vec<(u64, [u8; 32])>, FiscalJournalError> {
+    let mut boundaries = Vec::with_capacity(state.records.saturating_add(1));
+    let (bytes, events, last_tag) =
+        decode_file(&mut state.file, max_bytes, key, Some(&mut boundaries))?;
+    if bytes != state.bytes || events.len() != state.records || last_tag != state.last_tag {
+        return Err(FiscalJournalError::ExternalModification);
+    }
+    Ok(boundaries)
 }
 
 pub(super) fn append(
@@ -130,7 +147,13 @@ pub(super) fn append(
     frame.extend_from_slice(&payload);
     frame.push(b'\n');
     let previous_bytes = state.bytes;
-    if let Err(error) = state.file.write_all(&frame) {
+    // Unix appends through O_APPEND; elsewhere the explicit offset places the
+    // frame at the authenticated end, including after a recovery truncation.
+    if let Err(error) = state
+        .file
+        .seek(SeekFrom::Start(previous_bytes))
+        .and_then(|_| state.file.write_all(&frame))
+    {
         return recover_partial_write(state, previous_bytes, &error);
     }
     state.bytes = final_bytes;
@@ -143,11 +166,24 @@ pub(super) fn append(
     Ok(())
 }
 
+/// Returns the exact encoded size of one frame for this event.
+pub(super) fn frame_bytes(event: &JournalEvent) -> Result<u64, FiscalJournalError> {
+    let payload = serde_json::to_vec(event).map_err(|_| FiscalJournalError::Encoding)?;
+    FRAME_PREFIX_BYTES
+        .checked_add(payload.len())
+        .and_then(|length| length.checked_add(1))
+        .and_then(|length| u64::try_from(length).ok())
+        .ok_or(FiscalJournalError::RecordTooLarge)
+}
+
+type DecodedFile = (u64, Vec<JournalEvent>, [u8; 32]);
+
 fn decode_file(
     file: &mut File,
     max_bytes: u64,
     key: &FiscalJournalKey,
-) -> Result<(u64, Vec<JournalEvent>, [u8; 32]), FiscalJournalError> {
+    mut boundaries: Option<&mut Vec<(u64, [u8; 32])>>,
+) -> Result<DecodedFile, FiscalJournalError> {
     let length = file
         .metadata()
         .map_err(|error| io_failure("metadata", &error))?
@@ -176,6 +212,9 @@ fn decode_file(
     let mut cursor = header_end
         .checked_add(1)
         .ok_or_else(|| corrupt(0, "invalid header offset"))?;
+    if let Some(boundaries) = boundaries.as_deref_mut() {
+        boundaries.push((cursor as u64, previous_tag));
+    }
     let mut events = Vec::new();
     while cursor < bytes.len() {
         if events.len() >= super::MAX_FISCAL_JOURNAL_RECORDS {
@@ -194,6 +233,9 @@ fn decode_file(
         cursor = end
             .checked_add(1)
             .ok_or_else(|| corrupt(events.len(), "invalid frame offset"))?;
+        if let Some(boundaries) = boundaries.as_deref_mut() {
+            boundaries.push((cursor as u64, tag));
+        }
     }
     Ok((length, events, previous_tag))
 }
@@ -272,15 +314,44 @@ fn decode_tag(bytes: &[u8], record: usize) -> Result<[u8; 32], FiscalJournalErro
 
 fn open_file(path: &Path) -> Result<File, FiscalJournalError> {
     let mut options = OpenOptions::new();
-    options.read(true).append(true).create(true);
+    // Full write access, not an append-only handle: Windows withholds
+    // FILE_WRITE_DATA from append handles, and partial-write recovery needs it
+    // to truncate the file. Unix keeps append semantics through O_APPEND.
+    options.read(true).write(true).create(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt as _;
-        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+        options
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_APPEND);
     }
     options
         .open(path)
         .map_err(|error| io_failure("open", &error))
+}
+
+// A new file's directory entry is durable only after its directory is synced;
+// otherwise a crash could drop a journal whose prepared records were acknowledged.
+#[cfg(unix)]
+fn sync_parent_directory(path: &Path) -> Result<(), FiscalJournalError> {
+    File::open(parent_directory(path))
+        .and_then(|directory| directory.sync_all())
+        .map_err(|error| io_failure("directory sync", &error))
+}
+
+// Windows cannot open a directory as a `File` for syncing; NTFS journals the
+// directory entry of a created file.
+#[cfg(not(unix))]
+fn sync_parent_directory(_path: &Path) -> Result<(), FiscalJournalError> {
+    Ok(())
+}
+
+#[cfg(any(unix, test))]
+fn parent_directory(path: &Path) -> &Path {
+    match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    }
 }
 
 fn validate_target(path: &Path) -> Result<(), FiscalJournalError> {
@@ -317,5 +388,70 @@ fn io_failure(operation: &'static str, error: &io::Error) -> FiscalJournalError 
     FiscalJournalError::Io {
         operation,
         kind: error.kind(),
+    }
+}
+
+#[cfg(test)]
+mod file_tests {
+    use super::super::{JournalEnvironment, JournalOutcome};
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    #[test]
+    fn a_bare_file_name_syncs_the_working_directory() {
+        assert_eq!(
+            parent_directory(Path::new("fiscal.journal")),
+            Path::new(".")
+        );
+        assert_eq!(
+            parent_directory(Path::new("/var/lib/app/fiscal.journal")),
+            Path::new("/var/lib/app")
+        );
+    }
+
+    #[test]
+    fn partial_write_recovery_truncates_and_later_appends_stay_valid() {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let path = std::env::temp_dir().join(format!(
+            "rullst-capital-nfse-recovery-{}-{}.journal",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let key = FiscalJournalKey::try_new("recovery", [3_u8; 32]).expect("key");
+        let (mut state, _) = open(&path, 4_096, &key).expect("new journal");
+        let previous = state.bytes;
+        state
+            .file
+            .write_all(b"torn-frame")
+            .expect("simulate a torn write");
+        let error = io::Error::other("disk full");
+        assert!(matches!(
+            recover_partial_write(&mut state, previous, &error),
+            Err(FiscalJournalError::Io {
+                operation: "append",
+                ..
+            })
+        ));
+        assert!(state.healthy, "recovery must truncate on every platform");
+        assert_eq!(std::fs::metadata(&path).expect("metadata").len(), previous);
+
+        let event = JournalEvent {
+            schema_version: super::super::SCHEMA_VERSION,
+            sequence: 1,
+            command_id: "invoice:recovered".to_string(),
+            environment: JournalEnvironment::Homologation,
+            request_digest: "a".repeat(64),
+            observed_at_unix_ms: 1,
+            outcome: JournalOutcome::Prepared,
+        };
+        append(&mut state, 4_096, &key, &event).expect("append after recovery");
+        assert_eq!(
+            verify_and_read(&mut state, 4_096, &key)
+                .expect("read")
+                .len(),
+            1
+        );
+        drop(state);
+        let _cleanup = std::fs::remove_file(&path);
     }
 }

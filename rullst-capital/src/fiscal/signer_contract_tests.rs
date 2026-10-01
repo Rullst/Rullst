@@ -113,12 +113,36 @@ fn invalid_certificate_signature_and_pem_helpers_fail_closed_and_remain_bounded(
     ));
 
     let mut pem = String::new();
-    append_pem_block(&mut pem, "FIXTURE", &[7; 65]);
+    append_pem_block(&mut pem, "FIXTURE", &[7; 65]).unwrap();
     let lines = pem.lines().collect::<Vec<_>>();
     assert_eq!(lines[0], "-----BEGIN FIXTURE-----");
     assert_eq!(lines[1].len(), 64);
     assert_eq!(lines[2].len(), 24);
     assert_eq!(lines[3], "-----END FIXTURE-----");
+
+    // The identity buffer is sized exactly, so writing key material never
+    // reallocates and leaves an unzeroized copy behind.
+    for sizes in [&[65_usize, 1_200][..], &[48], &[1, 2, 3, 4_096]] {
+        let ders = sizes
+            .iter()
+            .map(|size| vec![9_u8; *size])
+            .collect::<Vec<_>>();
+        let blocks = ders
+            .iter()
+            .enumerate()
+            .map(|(index, der)| {
+                let label = if index == 0 {
+                    "PRIVATE KEY"
+                } else {
+                    "CERTIFICATE"
+                };
+                (label, der.as_slice())
+            })
+            .collect::<Vec<_>>();
+        let pem = encode_pem_blocks(&blocks).unwrap();
+        assert_eq!(pem.len(), pem.capacity());
+        assert_eq!(pem.matches("-----BEGIN ").count(), sizes.len());
+    }
 
     let mapped = signing_error("bounded", &"x".repeat(1_000));
     assert!(matches!(

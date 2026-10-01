@@ -11,6 +11,14 @@ use crate::fiscal::dps::escape_xml;
 use crate::fiscal::models::{FiscalCustomer, FiscalEmitter, FiscalError, TaxRegime};
 
 const MAX_MONEY_CENTS: u64 = 99_999_999_999_999_999;
+/// `verAplic` for generated DPS documents: the crate's major.minor version,
+/// well inside the 20-character TSVerAplic limit.
+pub(crate) const APPLICATION_VERSION: &str = concat!(
+    "Rullst-",
+    env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR")
+);
 
 /// ISSQN treatment declared for the service.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,7 +207,7 @@ pub fn build_dps_xml_v1_01(
         .unwrap_or_default();
 
     let xml = format!(
-        "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{id}\"><tpAmb>{environment_code}</tpAmb><dhEmi>{issued_at}</dhEmi><verAplic>Rullst-12.0</verAplic><serie>{series}</serie><nDPS>{number}</nDPS><dCompet>{competence}</dCompet><tpEmit>1</tpEmit><cLocEmi>{emitter_city}</cLocEmi><prest><CNPJ>{emitter_document}</CNPJ><IM>{municipal_registration}</IM><xNome>{emitter_name}</xNome><regTrib><opSimpNac>{simple_status}</opSimpNac>{assessment_xml}<regEspTrib>0</regEspTrib></regTrib></prest><toma><{customer_tag}>{customer_document}</{customer_tag}><xNome>{customer_name}</xNome><email>{customer_email}</email></toma><serv><locPrest><cLocPrestacao>{service_city}</cLocPrestacao></locPrest><cServ><cTribNac>{service_code}</cTribNac><xDescServ>{description}</xDescServ></cServ></serv><valores><vServPrest><vServ>{amount}</vServ></vServPrest><trib><tribMun><tribISSQN>{taxation}</tribISSQN><tpRetISSQN>{retention}</tpRetISSQN>{rate_xml}</tribMun><totTrib><indTotTrib>0</indTotTrib></totTrib></trib></valores></infDPS></DPS>",
+        "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{id}\"><tpAmb>{environment_code}</tpAmb><dhEmi>{issued_at}</dhEmi><verAplic>{APPLICATION_VERSION}</verAplic><serie>{series}</serie><nDPS>{number}</nDPS><dCompet>{competence}</dCompet><tpEmit>1</tpEmit><cLocEmi>{emitter_city}</cLocEmi><prest><CNPJ>{emitter_document}</CNPJ><IM>{municipal_registration}</IM><xNome>{emitter_name}</xNome><regTrib><opSimpNac>{simple_status}</opSimpNac>{assessment_xml}<regEspTrib>0</regEspTrib></regTrib></prest><toma><{customer_tag}>{customer_document}</{customer_tag}><xNome>{customer_name}</xNome><email>{customer_email}</email></toma><serv><locPrest><cLocPrestacao>{service_city}</cLocPrestacao></locPrest><cServ><cTribNac>{service_code}</cTribNac><xDescServ>{description}</xDescServ></cServ></serv><valores><vServPrest><vServ>{amount}</vServ></vServPrest><trib><tribMun><tribISSQN>{taxation}</tribISSQN><tpRetISSQN>{retention}</tpRetISSQN>{rate_xml}</tribMun><totTrib><indTotTrib>0</indTotTrib></totTrib></trib></valores></infDPS></DPS>",
         id = dps.id,
         issued_at = dps.issued_at.format("%Y-%m-%dT%H:%M:%S+00:00"),
         series = dps.series,
@@ -225,7 +233,7 @@ pub fn build_dps_xml_v1_01(
     Ok(xml)
 }
 
-fn tax_regime_codes(regime: TaxRegime) -> (u8, Option<u8>) {
+pub(crate) fn tax_regime_codes(regime: TaxRegime) -> (u8, Option<u8>) {
     match regime {
         TaxRegime::RegimeNormal => (1, None),
         TaxRegime::SimplesNacional => (3, Some(1)),
@@ -399,6 +407,12 @@ mod tests {
 
         assert!(xml.contains("versao=\"1.01\""));
         assert!(xml.contains("<tpAmb>2</tpAmb>"));
+        assert!(xml.contains(&format!(
+            "<verAplic>Rullst-{}.{}</verAplic>",
+            env!("CARGO_PKG_VERSION_MAJOR"),
+            env!("CARGO_PKG_VERSION_MINOR")
+        )));
+        assert!(APPLICATION_VERSION.len() <= 20);
         assert!(xml.contains("<locPrest><cLocPrestacao>3550308"));
         assert!(xml.contains("<cTribNac>010301</cTribNac>"));
         assert!(xml.contains("<vServ>123.45</vServ>"));

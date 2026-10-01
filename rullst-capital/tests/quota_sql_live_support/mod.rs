@@ -50,6 +50,7 @@ pub async fn exercise_sql_quota(database_url: &str, backend: SqlQuotaBackend) {
     assert_eq!(store.usage(&workspace, "projects").await.unwrap(), 0);
 
     exercise_concurrency(&store).await;
+    exercise_concurrent_release(&store).await;
 }
 
 #[cfg(feature = "webhook-sql")]
@@ -229,6 +230,48 @@ pub async fn exercise_sql_webhook_replay(database_url: &str, backend: SqlWebhook
             "native ORM pool differs from this provider; the dedicated Any-pool matrix covers its inbox"
         );
     }
+}
+
+// Two releases of one grant: the second reads the claim before the first
+// commits, then waits on its row lock and deletes nothing. That is an
+// already-released grant, not inconsistent storage.
+async fn exercise_concurrent_release(store: &SqlQuotaStore) {
+    let workspace = BillingSubject::try_new("workspace", "live-release").expect("subject");
+    let request = QuotaRequest::try_new(workspace.clone(), "projects", "release-race-1", 1, 3)
+        .expect("request");
+    let grant = store.reserve(&request).await.expect("reservation");
+    let mut first = store
+        .pool()
+        .begin()
+        .await
+        .expect("first release transaction");
+    assert!(
+        store
+            .release_with_transaction(&mut first, &grant)
+            .await
+            .expect("first release")
+    );
+    let second_store = store.clone();
+    let second_grant = grant.clone();
+    let second = tokio::spawn(async move {
+        let mut transaction = second_store
+            .pool()
+            .begin()
+            .await
+            .map_err(|_| QuotaError::StorageUnavailable)?;
+        let released = second_store
+            .release_with_transaction(&mut transaction, &second_grant)
+            .await;
+        transaction
+            .commit()
+            .await
+            .map_err(|_| QuotaError::StorageUnavailable)?;
+        released
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    first.commit().await.expect("first release commit");
+    assert_eq!(second.await.expect("second release task"), Ok(false));
+    assert_eq!(store.usage(&workspace, "projects").await.unwrap(), 0);
 }
 
 async fn exercise_concurrency(store: &SqlQuotaStore) {
