@@ -160,6 +160,10 @@ mod tests {
             )
         );
         assert!(controller.contains("Err(error) => unavailable(error)"));
+        // A byte count refused non-ASCII text the 255-character form accepted.
+        assert!(!controller.contains("value.len() <= MAX_TEXT_BYTES"));
+        assert!(controller.contains("value.encode_utf16().count() <= MAX_TEXT_UNITS"));
+        assert!(controller.contains("fn text_limits_count_what_the_form_counts()"));
     }
 
     #[test]

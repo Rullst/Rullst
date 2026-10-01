@@ -15,8 +15,9 @@ const MAX_ORDER_QUANTITY: i32 = 10_000;
 const MAX_STOCK: i32 = 1_000_000;
 /// The largest unit price a product may have.
 const MAX_PRICE: f64 = 1_000_000.0;
-/// The longest name, SKU or customer name, in bytes.
-const MAX_TEXT_BYTES: usize = 255;
+/// The longest name, SKU or customer name, in UTF-16 code units: what the
+/// forms' `maxlength="255"` counts, so text the form accepts is not refused.
+const MAX_TEXT_UNITS: usize = 255;
 /// Products listed on each dashboard page.
 const PRODUCTS_PER_PAGE: usize = 50;
 /// Orders listed under "Recent Orders", newest first.
@@ -85,10 +86,11 @@ fn rejected(status: StatusCode, message: &'static str) -> Response {
     (status, message).into_response()
 }
 
-/// Trimmed text of 1 to `MAX_TEXT_BYTES` bytes.
+/// Trimmed text of 1 to `MAX_TEXT_UNITS` characters, counted like the form.
 fn bounded_text(value: &str) -> Option<String> {
     let value = value.trim();
-    (!value.is_empty() && value.len() <= MAX_TEXT_BYTES).then(|| value.to_string())
+    (!value.is_empty() && value.encode_utf16().count() <= MAX_TEXT_UNITS)
+        .then(|| value.to_string())
 }
 
 #[derive(Deserialize)]
@@ -256,5 +258,21 @@ pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> Response {
         Ok(OrderOutcome::InsufficientStock) => rejected(StatusCode::CONFLICT, "Not enough stock for this order"),
         Ok(OrderOutcome::UnknownProduct) => rejected(StatusCode::NOT_FOUND, "Product not found"),
         Err(error) => unavailable(error),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn text_limits_count_what_the_form_counts() {
+        // 255 accented letters are 510 bytes but satisfy maxlength="255".
+        assert_eq!(bounded_text(&"é".repeat(255)), Some("é".repeat(255)));
+        assert_eq!(bounded_text(&"é".repeat(256)), None);
+        // Browsers count a character outside the BMP as two units.
+        assert!(bounded_text(&"🦀".repeat(127)).is_some());
+        assert!(bounded_text(&"🦀".repeat(128)).is_none());
+        assert_eq!(bounded_text("  "), None);
     }
 }
