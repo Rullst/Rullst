@@ -1,6 +1,7 @@
 pub mod ai_ops;
 pub mod column_enum;
 pub mod crud_ops;
+pub mod delete_ops;
 pub mod json_ops;
 mod mutation_parts;
 pub mod query_ops;
@@ -16,7 +17,8 @@ use quote::quote;
 
 pub use ai_ops::generate_ai_methods;
 pub use column_enum::generate_column_enum;
-pub use crud_ops::{generate_delete_methods, generate_save_method};
+pub use crud_ops::generate_save_method;
+pub use delete_ops::generate_delete_methods;
 pub use json_ops::generate_json_methods;
 pub use query_ops::{generate_query_methods, generate_search_method};
 pub use redis_ops::generate_redis_hash_methods;
