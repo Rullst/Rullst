@@ -234,7 +234,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `"disabled"` from the driver that defines the flag; it no longer falls
   through to a lower-priority driver's split. Every driver evaluates an A/B
   flag for an identifier to its variant name, so `enabled_for` is true only
-  for identifiers assigned a variant named `"enabled"`; gate code on
+  for identifiers assigned a variant named `"enabled"`, and `enabled` (no
+  identifier) is false for an A/B flag in every driver, including a
+  `DbFeatureDriver` row without a rollout percentage; gate code on
   `variant`. The unpublished v13
   `FeatureManager::overrides()` returns the first-priority
   `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global

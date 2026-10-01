@@ -542,13 +542,22 @@ authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted onl
 both the issuer and endpoint use the same exact loopback origin. `userinfo_endpoint` is
 optional, as OIDC Discovery only recommends it: when it is absent, ID-token sign-in and
 `verify_id_token` still work, while `get_user_from_token` and code exchanges that return no
-`id_token` fail with `ConnectError::InvalidConfiguration`. JWKS entries are refreshed
+`id_token` fail with `ConnectError::InvalidConfiguration`. Profile claims are optional
+(OIDC Core 5.1): without `name`, `ConnectUser::name` falls back to `given_name` and
+`family_name`, then `preferred_username`, then `nickname`, and is empty when none is
+present; the email address and subject are never used as a display name. JWKS entries are refreshed
 after their TTL and when a token presents an unknown `kid`. Because the `kid` is
 unverified input, a forced refresh of a fresh set happens at most once per 30 seconds per
 JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes
 are coalesced, and a `kid` that is empty, longer than 256 bytes or not printable ASCII is
 rejected before any I/O. Stale keys are used after a refresh error only within a bounded
-age and only when the requested `kid` already exists in the cached set.
+age and only when the requested `kid` already exists in the cached set. As OIDC Core 10.1
+permits, `OidcProvider` also verifies an ID token without `kid` when the issuer's JWK Set
+holds exactly one key and that key fits the token: a signature key (`use` absent or `sig`,
+`key_ops` absent or including `verify`) whose declared `alg`, key type and curve match the
+asymmetric header `alg`. Any other set, or a symmetric `alg`, fails closed. Without a `kid`,
+no unknown key can force a refresh, so a rotated single key is picked up when the cached
+set expires.
 
 ## 🧑‍💻 Full Example with Axum
 

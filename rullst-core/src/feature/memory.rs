@@ -54,8 +54,7 @@ impl MemoryFeatureDriver {
     ///
     /// Read the assignment with `variant`. As in the Env, TOML and DB drivers,
     /// `enabled_for` is true only for identifiers assigned a variant named
-    /// `"enabled"`; as in the Env and TOML drivers, `enabled` (no identifier)
-    /// is false.
+    /// `"enabled"`, and `enabled` (no identifier) is false.
     pub fn override_variants(&self, flag: &str, variants: Vec<(String, u32)>) {
         self.rules.insert(
             flag.to_string(),

@@ -246,6 +246,19 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Core and Security range-response follow-ups
+
+- Core PII masking replaces a `206 Partial Content` response that masking
+  would change with a no-store `502`, instead of a 206 without
+  `Content-Range`; clean ranges pass through unchanged.
+- Core PII masking and `DlpResponseLayer` inspect `multipart/byteranges`
+  responses part by part and withhold them with a no-store `502` when a
+  textual part would be masked or the body cannot be read within bounds
+  (256 parts, 8 KiB of headers per part).
+- `DbFeatureDriver::enabled` is false for an A/B split flag, as in the Env,
+  TOML and Memory drivers; a SQLite-backed contract test covers all four and
+  now runs in CI.
+
 ### Trusted-proxy client resolution
 
 - Add `rullst_core::security::TrustedProxyLayer` and
@@ -593,6 +606,25 @@ A prepared version section does not establish that its tag or crates exist.
   or trailing-dot aliases.
 - PII masking keeps JSON numbers valid and leaves versioned CDN URLs and `@2x`
   asset names alone.
+
+### Security and Connect final-review fixes
+
+- `DlpResponseLayer` masks XML (`application/xml`, `+xml`), YAML and
+  `application/javascript` responses, and withholds a `206 Partial Content`
+  response that would need masking with a `no-store` 502 instead of emitting a
+  206 without `Content-Range`.
+- `redact_secrets` counts masked log records only as log redactions, so they no
+  longer inflate "DLP Leaks Blocked" or flood the live event feed.
+- RASP no longer rejects the stock PowerShell `User-Agent` product token, while
+  PowerShell execution syntax still blocks.
+- Honeypot bans with a TTL beyond the monotonic clock are enforced, and
+  honeypot telemetry records only bans that were stored, keyed by the
+  configured trap path.
+- `OidcProvider` accepts ID tokens and userinfo responses without the optional
+  `name` claim (falling back to `given_name`/`family_name`,
+  `preferred_username` or `nickname`), and verifies ID tokens without `kid`
+  when the issuer's JWK Set holds exactly one key that fits the token's
+  asymmetric algorithm.
 
 ### Security second-pass review fixes
 

@@ -85,7 +85,9 @@ impl OidcProvider {
     /// token from this issuer for this `client_id` and sent it to your server.
     /// Unlike [`Provider::get_user_from_token`], the result is bound to this
     /// application: the signature is verified through the discovered, rotating
-    /// JWKS (RS256/384/512, ES256/384 or EdDSA), `iss` must equal the
+    /// JWKS (RS256/384/512, ES256/384 or EdDSA; a token without `kid` only
+    /// when the JWK Set holds exactly one key usable for its algorithm, as
+    /// OIDC Core 10.1 permits), `iss` must equal the
     /// discovered issuer exactly, `aud` exactly this `client_id`, `azp` (when
     /// present) this `client_id`, and `exp`, `iat` and `nonce` must be valid.
     /// Generate `expected_nonce` on the server for this sign-in attempt, let
@@ -93,9 +95,11 @@ impl OidcProvider {
     ///
     /// The returned user carries the verified ID token in `access_token`; this
     /// flow yields no provider access or refresh token. The userinfo endpoint
-    /// is not called, and the token must contain a `name` claim. Mock
-    /// credentials return a deterministic offline identity when the `mock`
-    /// feature is enabled.
+    /// is not called. Profile claims are optional (OIDC Core 5.1): without
+    /// `name`, [`ConnectUser::name`] falls back to `given_name` and
+    /// `family_name`, then `preferred_username`, then `nickname`, and is empty
+    /// when none is present. Mock credentials return a deterministic offline
+    /// identity when the `mock` feature is enabled.
     pub async fn verify_id_token(
         &self,
         id_token: &str,
@@ -113,6 +117,11 @@ impl OidcProvider {
 
     /// Verifies an ID token's signature through the discovered JWKS, then its
     /// exact issuer, audience, `azp`, lifetime and, when supplied, nonce.
+    ///
+    /// The key is selected by `kid`. A token without `kid` must use an
+    /// asymmetric algorithm and is verified only against a single-key set
+    /// whose key fits that algorithm; rotating such a key takes effect when
+    /// the cached set expires, because no unknown `kid` can force a refresh.
     pub(crate) async fn verify_id_token_claims(
         &self,
         id_token: &str,
@@ -121,29 +130,28 @@ impl OidcProvider {
         let header = jsonwebtoken::decode_header(id_token).map_err(|e| {
             ConnectError::Provider(format!("Failed to decode OIDC id_token header: {}", e))
         })?;
-        let kid = header.kid.as_ref().ok_or_else(|| {
-            ConnectError::Provider("Missing 'kid' header in OIDC id_token".to_owned())
-        })?;
-        let jwks = self.get_jwks_for_kid(kid).await?;
-        let jwk = jwks.find(kid).ok_or_else(|| {
-            ConnectError::Provider(format!("OIDC JWK with key ID '{}' not found", kid))
-        })?;
+        let jwks;
+        let jwk = match header.kid.as_deref() {
+            Some(kid) => {
+                jwks = self.get_jwks_for_kid(kid).await?;
+                jwks.find(kid).ok_or_else(|| {
+                    ConnectError::Provider(format!("OIDC JWK with key ID '{}' not found", kid))
+                })?
+            }
+            // OIDC Core 10.1: `kid` may be omitted only for a single-key set.
+            None => {
+                let alg = asymmetric_algorithm(header.alg)?;
+                jwks = self
+                    .jwks_cache
+                    .get(&self.jwks_uri, self.http_client.as_ref())
+                    .await?;
+                super::kidless::sole_verification_key(&jwks, alg)?
+            }
+        };
         let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(|e| {
             ConnectError::Provider(format!("Failed to build OIDC decoding key from JWK: {}", e))
         })?;
-        let alg = match header.alg {
-            jsonwebtoken::Algorithm::RS256
-            | jsonwebtoken::Algorithm::RS384
-            | jsonwebtoken::Algorithm::RS512
-            | jsonwebtoken::Algorithm::ES256
-            | jsonwebtoken::Algorithm::ES384
-            | jsonwebtoken::Algorithm::EdDSA => header.alg,
-            _ => {
-                return Err(ConnectError::Provider(
-                    "OIDC token header specifies an insecure or symmetric algorithm".to_string(),
-                ));
-            }
-        };
+        let alg = asymmetric_algorithm(header.alg)?;
         let validation =
             crate::provider::id_token::validation(alg, &self.client_id, &[&self.issuer]);
 
@@ -160,6 +168,50 @@ impl OidcProvider {
     }
 }
 
+/// Accepts only the asymmetric signature algorithms OIDC issuers publish keys for.
+fn asymmetric_algorithm(
+    alg: jsonwebtoken::Algorithm,
+) -> Result<jsonwebtoken::Algorithm, ConnectError> {
+    match alg {
+        jsonwebtoken::Algorithm::RS256
+        | jsonwebtoken::Algorithm::RS384
+        | jsonwebtoken::Algorithm::RS512
+        | jsonwebtoken::Algorithm::ES256
+        | jsonwebtoken::Algorithm::ES384
+        | jsonwebtoken::Algorithm::EdDSA => Ok(alg),
+        _ => Err(ConnectError::Provider(
+            "OIDC token header specifies an insecure or symmetric algorithm".to_string(),
+        )),
+    }
+}
+
+/// Display name from the optional standard profile claims (OIDC Core 5.1):
+/// `name`, else `given_name` and `family_name` joined by a space, else
+/// `preferred_username`, else `nickname`, else an empty string. Blank values
+/// are skipped. `email` and `sub` are never used: a display name is often
+/// shown to other users, and both are available in their own fields.
+fn display_name(claims: &Value) -> String {
+    let claim = |key: &str| {
+        claims[key]
+            .as_str()
+            .filter(|value| !value.trim().is_empty())
+    };
+    if let Some(name) = claim("name") {
+        return name.to_owned();
+    }
+    let full_name = [claim("given_name"), claim("family_name")]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    if !full_name.is_empty() {
+        return full_name.join(" ");
+    }
+    claim("preferred_username")
+        .or_else(|| claim("nickname"))
+        .map(str::to_owned)
+        .unwrap_or_default()
+}
+
 fn user_from_id_token_claims(
     payload: Value,
     access_token: secrecy::SecretString,
@@ -169,10 +221,7 @@ fn user_from_id_token_claims(
             .as_str()
             .map(String::from)
             .ok_or_else(|| ConnectError::Provider("Missing sub in id_token".to_owned()))?,
-        name: payload["name"]
-            .as_str()
-            .map(String::from)
-            .ok_or_else(|| ConnectError::Provider("Missing name in id_token".to_owned()))?,
+        name: display_name(&payload),
         email: payload["email"].as_str().map(String::from),
         avatar_url: payload["picture"].as_str().map(String::from),
         email_verified: crate::user::email_verified_claim(&payload["email_verified"]),
@@ -246,9 +295,7 @@ impl Provider for OidcProvider {
             id: user_res["sub"].as_str().map(String::from).ok_or_else(|| {
                 crate::error::ConnectError::Provider("Missing sub in userinfo".to_owned())
             })?,
-            name: user_res["name"].as_str().map(String::from).ok_or_else(|| {
-                crate::error::ConnectError::Provider("Missing name in userinfo".to_owned())
-            })?,
+            name: display_name(&user_res),
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
             email_verified: crate::user::email_verified_claim(&user_res["email_verified"]),

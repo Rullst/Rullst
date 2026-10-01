@@ -14,22 +14,31 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
+mod byteranges;
 mod masking;
 
-pub(crate) use masking::SegmentRewriter;
+pub(crate) use masking::{SegmentRewriter, mask_text};
 
 const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
+fn content_type(headers: &HeaderMap) -> Option<&str> {
+    headers.get(header::CONTENT_TYPE)?.to_str().ok()
+}
+
 fn textual_media_type(headers: &HeaderMap) -> Option<&str> {
-    let value = headers.get(header::CONTENT_TYPE)?.to_str().ok()?;
-    let media_type = crate::media_type::essence(value);
+    let media_type = crate::media_type::essence(content_type(headers)?);
+    is_textual_media_type(media_type).then_some(media_type)
+}
 
-    if media_type.eq_ignore_ascii_case("text/event-stream") {
-        return None;
-    }
+fn is_textual_media_type(media_type: &str) -> bool {
+    !media_type.eq_ignore_ascii_case("text/event-stream")
+        && crate::media_type::is_textual_response_body(media_type)
+}
 
-    (crate::media_type::is_text(media_type) || crate::media_type::is_json(media_type))
-        .then_some(media_type)
+fn is_byteranges_response(headers: &HeaderMap) -> bool {
+    content_type(headers)
+        .map(crate::media_type::essence)
+        .is_some_and(byteranges::is_byteranges)
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -79,7 +88,33 @@ fn remove_stale_representation_headers(headers: &mut HeaderMap, body_len: usize)
 }
 
 fn body_collection_failure() -> Response<Body> {
-    let mut response = Response::new(Body::from("response inspection failed"));
+    withheld_response("response inspection failed")
+}
+
+/// A masked range no longer matches the byte range its `Content-Range`
+/// names, and a single-part 206 without `Content-Range` is malformed
+/// (RFC 9110 15.3.7). Forwarding the unmasked range would leak the secret,
+/// so the partial response is withheld instead.
+fn partial_content_withheld() -> Response<Body> {
+    tracing::warn!(
+        target: "rullst_security::dlp",
+        "DLP withheld a partial response because masking would change its byte ranges"
+    );
+    withheld_response("partial response withheld by data loss prevention")
+}
+
+/// A `multipart/byteranges` body that cannot be split exactly cannot be
+/// inspected range by range, so it is withheld rather than forwarded.
+fn byteranges_unreadable() -> Response<Body> {
+    tracing::warn!(
+        target: "rullst_security::dlp",
+        "DLP withheld a multipart/byteranges response it could not read"
+    );
+    withheld_response("partial response withheld by data loss prevention")
+}
+
+fn withheld_response(message: &'static str) -> Response<Body> {
+    let mut response = Response::new(Body::from(message));
     *response.status_mut() = StatusCode::BAD_GATEWAY;
     response.headers_mut().insert(
         header::CONTENT_TYPE,
@@ -113,21 +148,33 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
 
     match masking::mask_text(text) {
         Some(sanitized) => {
-            let store = SecurityStore::global();
-            store.inc_dlp_masked();
-
-            store.push_local_event(LiveSecurityEvent::local(
-                "DLP_SECRET_LEAK_PREVENTED",
-                "Neutralized secret credentials/key from outgoing HTTP response",
-                "unknown",
-            ));
+            record_prevented_leak();
             (sanitized.into_bytes(), true)
         }
         None => (input.to_vec(), false),
     }
 }
 
+fn record_prevented_leak() {
+    let store = SecurityStore::global();
+    store.inc_dlp_masked();
+
+    store.push_local_event(LiveSecurityEvent::local(
+        "DLP_SECRET_LEAK_PREVENTED",
+        "Neutralized secret credentials/key from outgoing HTTP response",
+        "unknown",
+    ));
+}
+
 /// Tower Layer for Data Loss Prevention (DLP) response interception.
+///
+/// A `206 Partial Content` response that masking would change is replaced by
+/// a `502 Bad Gateway` with `Cache-Control: no-store`, because a masked range
+/// no longer matches its `Content-Range`; a clean range passes through. A
+/// `multipart/byteranges` body is checked part by part and withheld the same
+/// way when any textual range would be masked or when it cannot be split
+/// exactly (an invalid boundary or delimiter, more than 256 parts, a part
+/// header block over 8 KiB or no close delimiter).
 #[derive(Clone, Default)]
 pub struct DlpResponseLayer;
 
@@ -165,6 +212,7 @@ where
 
         Box::pin(async move {
             let res = inner.call(req).await?;
+            let ranges = is_byteranges_response(res.headers());
 
             if request_method == Method::HEAD
                 || res.status().is_informational()
@@ -172,7 +220,7 @@ where
                     res.status(),
                     StatusCode::NO_CONTENT | StatusCode::NOT_MODIFIED
                 )
-                || textual_media_type(res.headers()).is_none()
+                || (textual_media_type(res.headers()).is_none() && !ranges)
                 || !has_identity_encoding(res.headers())
                 || !is_safely_bufferable(res.headers(), res.body())
             {
@@ -185,9 +233,23 @@ where
                 Ok(bytes) => bytes,
                 Err(_) => return Ok(body_collection_failure()),
             };
+            if ranges {
+                let declared_type = content_type(&parts.headers).unwrap_or_default();
+                return Ok(match byteranges::needs_masking(declared_type, &bytes) {
+                    Ok(false) => Response::from_parts(parts, Body::from(bytes)),
+                    Ok(true) => {
+                        record_prevented_leak();
+                        partial_content_withheld()
+                    }
+                    Err(byteranges::Malformed) => byteranges_unreadable(),
+                });
+            }
 
             let (sanitized_bytes, was_modified) = mask_response_payload(&bytes);
             if was_modified {
+                if parts.status == StatusCode::PARTIAL_CONTENT {
+                    return Ok(partial_content_withheld());
+                }
                 remove_stale_representation_headers(&mut parts.headers, sanitized_bytes.len());
             }
 
@@ -203,246 +265,7 @@ pub type DlpLayer = DlpResponseLayer;
 pub type DlpService<S> = DlpResponseService<S>;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn textual_media_types_are_recognized_in_any_ascii_case() {
-        for (media_type, textual) in [
-            ("application/vnd.api+JSON", true),
-            ("Application/Problem+Json; charset=utf-8", true),
-            ("APPLICATION/JSON", true),
-            ("Text/HTML", true),
-            ("Text/Event-Stream", false),
-            ("application/octet-stream", false),
-        ] {
-            let mut headers = HeaderMap::new();
-            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(media_type));
-            assert_eq!(
-                textual_media_type(&headers).is_some(),
-                textual,
-                "{media_type}"
-            );
-        }
-    }
-
-    #[test]
-    fn test_mask_private_key() {
-        let payload = b"Error: key was -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY----- in config";
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(was_modified);
-        let masked_str = String::from_utf8(masked).unwrap();
-        assert!(masked_str.contains("[DLP_BLOCKED_PRIVATE_KEY]"));
-        assert!(!masked_str.contains("BEGIN RSA PRIVATE KEY"));
-    }
-
-    #[test]
-    fn test_mask_database_url() {
-        let payload =
-            b"{\"db\": \"postgres://admin:super_secret_password_123@localhost:5432/app\"}";
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(was_modified);
-        let masked_str = String::from_utf8(masked).unwrap();
-        assert!(masked_str.contains("postgres://admin:*****@localhost:5432/app"));
-        assert!(!masked_str.contains("super_secret_password_123"));
-    }
-
-    #[test]
-    fn test_clean_payload_untouched() {
-        let payload = b"{\"message\": \"Hello Rullst!\", \"status\": 200}";
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(!was_modified);
-        assert_eq!(masked, payload);
-    }
-
-    #[test]
-    fn invalid_utf8_and_incomplete_pem_are_not_corrupted() {
-        let binary = b"\xff\xfeAKIAIOSFODNN7EXAMPLE";
-        let (masked, was_modified) = mask_response_payload(binary);
-        assert!(!was_modified);
-        assert_eq!(masked, binary);
-
-        let incomplete = b"prefix -----BEGIN PRIVATE KEY----- unfinished payload";
-        let (masked, was_modified) = mask_response_payload(incomplete);
-        assert!(!was_modified);
-        assert_eq!(masked, incomplete);
-    }
-
-    #[test]
-    fn test_mask_aws_access_key() {
-        let payload = b"{\"aws_key\": \"AKIAIOSFODNN7EXAMPLE\"}";
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(was_modified);
-        let masked_str = String::from_utf8(masked).unwrap();
-        assert!(masked_str.contains("AKIA****************"));
-        assert!(!masked_str.contains("AKIAIOSFODNN7EXAMPLE"));
-    }
-
-    #[test]
-    fn test_mask_mysql_and_redis_urls() {
-        let payload = b"mysql://root:my_secret_sql_pass@127.0.0.1:3306/db and redis://default:redis_auth_token@cache:6379";
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(was_modified);
-        let masked_str = String::from_utf8(masked).unwrap();
-        assert!(masked_str.contains("mysql://root:*****@127.0.0.1:3306/db"));
-        assert!(masked_str.contains("redis://default:*****@cache:6379"));
-    }
-
-    #[test]
-    fn tls_redis_urls_are_masked_in_responses_and_logs() {
-        let payload = br#"{"redis":"rediss://default:AbC123secret@eu1-cache.upstash.io:6379"}"#;
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(was_modified);
-        assert_eq!(
-            String::from_utf8(masked).unwrap(),
-            r#"{"redis":"rediss://default:*****@eu1-cache.upstash.io:6379"}"#
-        );
-        let logged = crate::redact_secrets("connecting to rediss://default:AbC123secret@host:6380");
-        assert_eq!(logged, "connecting to rediss://default:*****@host:6380");
-    }
-
-    #[test]
-    fn test_mask_multiple_keys_and_dsns() {
-        let payload = br#"{"keys": ["AKIA1111111111111111", "AKIA2222222222222222"], "dbs": ["postgres://u1:p1@h1:5432/d1", "postgres://u2:p2@h2:5432/d2"]}"#;
-        let (masked, was_modified) = mask_response_payload(payload);
-        assert!(was_modified);
-        let masked_str = String::from_utf8(masked).unwrap();
-        assert!(!masked_str.contains("AKIA1111111111111111"));
-        assert!(!masked_str.contains("AKIA2222222222222222"));
-        assert!(!masked_str.contains(":p1@"));
-        assert!(!masked_str.contains(":p2@"));
-        assert!(masked_str.contains("postgres://u1:*****@h1:5432/d1"));
-        assert!(masked_str.contains("postgres://u2:*****@h2:5432/d2"));
-    }
-
-    #[test]
-    fn database_url_masking_preserves_unicode_boundaries_after_shortening() {
-        // A fuzzing reproducer placed the stale, pre-redaction cursor inside this NBSP.
-        let payload = "redis://user:abcdefghijklmnopqrst@abcdefghijklmn\u{a0}z";
-        let (masked, was_modified) = mask_response_payload(payload.as_bytes());
-
-        assert!(was_modified);
-        assert_eq!(
-            String::from_utf8(masked).unwrap(),
-            "redis://user:*****@abcdefghijklmn\u{a0}z"
-        );
-    }
-
-    #[test]
-    fn already_masked_database_urls_remain_stable_during_other_redactions() {
-        let payload = b"AKIAIOSFODNN7EXAMPLE redis://user:*****@cache.internal:6379/session";
-        let (masked, was_modified) = mask_response_payload(payload);
-
-        assert!(was_modified);
-        assert_eq!(
-            String::from_utf8(masked).unwrap(),
-            "AKIA**************** redis://user:*****@cache.internal:6379/session"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_dlp_layer_middleware() {
-        use axum::http::{Request, StatusCode, header};
-        use axum::response::IntoResponse;
-        use axum::routing::get;
-        use tower::ServiceExt;
-
-        async fn secret_handler() -> impl IntoResponse {
-            let mut response = (
-                StatusCode::OK,
-                "Config leaked: postgres://user:secret123@db:5432/main",
-            )
-                .into_response();
-            response
-                .headers_mut()
-                .insert(header::ETAG, HeaderValue::from_static("\"old-validator\""));
-            response
-        }
-
-        async fn binary_handler() -> Response<Body> {
-            let payload = b"\xffpostgres://user:secret123@db:5432/main".to_vec();
-            let mut response = Response::new(Body::from(payload));
-            response.headers_mut().insert(
-                header::CONTENT_TYPE,
-                HeaderValue::from_static("application/octet-stream"),
-            );
-            response
-        }
-
-        async fn event_stream_handler() -> Response<Body> {
-            let mut response = Response::new(Body::from(
-                "data: postgres://user:secret123@db:5432/main\n\n",
-            ));
-            response.headers_mut().insert(
-                header::CONTENT_TYPE,
-                HeaderValue::from_static("text/event-stream"),
-            );
-            response
-        }
-
-        async fn oversized_handler() -> Response<Body> {
-            let mut payload = vec![b'a'; MAX_BUFFERED_RESPONSE_BYTES as usize + 1];
-            payload.extend_from_slice(b"postgres://user:secret123@db:5432/main");
-            let mut response = Response::new(Body::from(payload));
-            response.headers_mut().insert(
-                header::CONTENT_TYPE,
-                HeaderValue::from_static("text/plain; charset=utf-8"),
-            );
-            response
-        }
-
-        let app = axum::Router::new()
-            .route("/secret", get(secret_handler))
-            .route("/binary", get(binary_handler))
-            .route("/events", get(event_stream_handler))
-            .route("/oversized", get(oversized_handler))
-            .layer(DlpResponseLayer);
-
-        let req = Request::builder()
-            .uri("/secret")
-            .body(Body::empty())
-            .unwrap();
-
-        let resp = app.clone().oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(resp.headers().get(header::ETAG).is_none());
-        let declared_length = resp
-            .headers()
-            .get(header::CONTENT_LENGTH)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .parse::<usize>()
-            .unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 10000).await.unwrap();
-        assert_eq!(declared_length, body.len());
-        let body_str = String::from_utf8(body.to_vec()).unwrap();
-        assert!(body_str.contains("postgres://user:*****@db:5432/main"));
-        assert!(!body_str.contains("secret123"));
-
-        for (path, limit) in [
-            ("/binary", 10_000usize),
-            ("/events", 10_000usize),
-            ("/oversized", MAX_BUFFERED_RESPONSE_BYTES as usize + 10_000),
-        ] {
-            let response = app
-                .clone()
-                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
-                .await
-                .unwrap();
-            assert_eq!(response.status(), StatusCode::OK);
-            let bytes = axum::body::to_bytes(response.into_body(), limit)
-                .await
-                .unwrap();
-            assert!(
-                bytes
-                    .windows(b"secret123".len())
-                    .any(|window| window == b"secret123"),
-                "{path} must bypass DLP without truncation"
-            );
-        }
-    }
-}
+mod tests;
 
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
