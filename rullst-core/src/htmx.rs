@@ -17,6 +17,11 @@ pub struct HtmxRequest {
     /// The ID of the target element if sent by HTMX (`HX-Target`).
     pub target: Option<String>,
     /// The user response inputted into the prompt if sent by HTMX (`HX-Prompt`).
+    ///
+    /// Like `trigger`, `target` and `current_url`, it is decoded as htmx sent
+    /// it: Latin-1 bytes, or percent-encoded UTF-8 when htmx adds
+    /// `HX-Prompt-URI-AutoEncoded: true`, so answers such as `José` or `日本`
+    /// arrive intact.
     pub prompt: Option<String>,
     /// The browser's active URL when the request was initiated (`HX-Current-URL`).
     pub current_url: Option<String>,
@@ -37,29 +42,10 @@ where
             .map(|v| v == "true")
             .unwrap_or(false);
 
-        let trigger = parts
-            .headers
-            .get("HX-Trigger")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
-
-        let target = parts
-            .headers
-            .get("HX-Target")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
-
-        let prompt = parts
-            .headers
-            .get("HX-Prompt")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
-
-        let current_url = parts
-            .headers
-            .get("HX-Current-URL")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
+        let trigger = htmx_header(&parts.headers, "HX-Trigger");
+        let target = htmx_header(&parts.headers, "HX-Target");
+        let prompt = htmx_header(&parts.headers, "HX-Prompt");
+        let current_url = htmx_header(&parts.headers, "HX-Current-URL");
 
         let csp_nonce = parts.extensions.get::<crate::security::CspNonce>().cloned();
 
@@ -72,6 +58,51 @@ where
             csp_nonce,
         })
     }
+}
+
+/// Reads a header as htmx's browser client sent it.
+///
+/// `XMLHttpRequest` sends a value made of code points up to U+00FF as one
+/// byte per character (Latin-1), so `José` arrives as non-ASCII bytes that
+/// `HeaderValue::to_str` rejects. Any other value makes htmx resend it
+/// `encodeURIComponent`-encoded and add `<name>-URI-AutoEncoded: true`, in
+/// which case it is percent-decoded as UTF-8. A value that does not decode
+/// is `None`.
+fn htmx_header(headers: &axum::http::HeaderMap, name: &str) -> Option<String> {
+    let value = headers.get(name)?;
+    let encoded = headers
+        .get(format!("{name}-URI-AutoEncoded"))
+        .is_some_and(|flag| flag.as_bytes().eq_ignore_ascii_case(b"true"));
+    if encoded {
+        percent_decode_utf8(value.as_bytes())
+    } else {
+        Some(
+            value
+                .as_bytes()
+                .iter()
+                .map(|&byte| char::from(byte))
+                .collect(),
+        )
+    }
+}
+
+/// Decodes `%XX` escapes, requiring the result to be UTF-8.
+fn percent_decode_utf8(bytes: &[u8]) -> Option<String> {
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while let Some(&byte) = bytes.get(index) {
+        if byte == b'%' {
+            let hex = bytes
+                .get(index + 1..index + 3)
+                .filter(|hex| hex.iter().all(u8::is_ascii_hexdigit))?;
+            decoded.push(u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok()?);
+            index += 3;
+        } else {
+            decoded.push(byte);
+            index += 1;
+        }
+    }
+    String::from_utf8(decoded).ok()
 }
 
 /// A highly ergonomic, builder-style HTMX responder to set dynamic headers in client side.
@@ -341,6 +372,44 @@ mod tests {
                 .0
                 .contains("<title>&lt;script&gt;alert(1)&lt;/script&gt;</title>")
         );
+    }
+
+    #[tokio::test]
+    async fn prompt_answers_outside_ascii_are_decoded() {
+        let mut latin1 = axum::http::HeaderMap::new();
+        latin1.insert(
+            "HX-Prompt",
+            HeaderValue::from_bytes(b"Jos\xe9 Concei\xe7\xe3o").unwrap(),
+        );
+        assert_eq!(
+            htmx_header(&latin1, "HX-Prompt").as_deref(),
+            Some("José Conceição")
+        );
+
+        let request = Request::builder()
+            .header("HX-Prompt", "%E6%97%A5%E6%9C%AC%20%E2%82%AC")
+            .header("HX-Prompt-URI-AutoEncoded", "true")
+            .header("HX-Target", "plain-id")
+            .body(())
+            .unwrap();
+        let (mut parts, _) = request.into_parts();
+        let htmx = HtmxRequest::from_request_parts(&mut parts, &())
+            .await
+            .unwrap();
+        assert_eq!(htmx.prompt.as_deref(), Some("日本 €"));
+        assert_eq!(htmx.target.as_deref(), Some("plain-id"));
+
+        let mut malformed = axum::http::HeaderMap::new();
+        malformed.insert("HX-Prompt", HeaderValue::from_static("%E6%9"));
+        malformed.insert(
+            "HX-Prompt-URI-AutoEncoded",
+            HeaderValue::from_static("true"),
+        );
+        assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
+        malformed.insert("HX-Prompt", HeaderValue::from_static("%+f"));
+        assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
+        malformed.insert("HX-Prompt", HeaderValue::from_static("%FF"));
+        assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
     }
 
     #[tokio::test]
