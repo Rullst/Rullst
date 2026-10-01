@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790818903598,
+  "lastUpdate": 1790821618485,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11649,6 +11649,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 434,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef865d4f63fde2c26a8e731361d584d61f86cb7f",
+          "message": "Merge pull request #366 from Rullst/fix/v13-orm-macros-low-fixes-b\n\nfix(orm-macros,nexus): low-severity model mutation, audit, test harness and Nexus derive fixes",
+          "timestamp": "2026-09-30T23:06:40-03:00",
+          "tree_id": "bcf141e16969db4d483a806972d2e7838db1e7d2",
+          "url": "https://github.com/Rullst/Rullst/commit/ef865d4f63fde2c26a8e731361d584d61f86cb7f"
+        },
+        "date": 1790821617757,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1006,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 161,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 264,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
