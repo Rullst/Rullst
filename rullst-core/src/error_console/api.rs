@@ -156,21 +156,32 @@ pub async fn handle_autofix(
     }
 }
 
-/// POST endpoint that triggers database migration execution from the Ignition Error Console.
+/// POST endpoint for the console's migration button.
+///
+/// The console has no access to the application's migration registry, so it
+/// never runs migrations: it answers `501 Not Implemented` with
+/// `success: false` and asks for `cargo rullst db:migrate`. A non-loopback
+/// peer receives `403`.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn handle_run_migrations(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
     if !addr.ip().is_loopback() {
-        return Json(serde_json::json!({
-            "success": false,
-            "error": "Access denied: endpoint only accessible from localhost"
-        }));
+        return (
+            axum::http::StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
+                "success": false,
+                "error": "Access denied: endpoint only accessible from localhost"
+            })),
+        );
     }
-    Json(serde_json::json!({
-        "success": true,
-        "message": "Database migration requested. Run `cargo rullst db:migrate` or use Rullst Studio to apply pending SQL migrations."
-    }))
+    (
+        axum::http::StatusCode::NOT_IMPLEMENTED,
+        Json(serde_json::json!({
+            "success": false,
+            "error": "The error console cannot run migrations. Run `cargo rullst db:migrate` to apply pending SQL migrations."
+        })),
+    )
 }
 
 #[cfg_attr(mutants, mutants::skip)]
@@ -185,7 +196,7 @@ async fn perform_autofix(
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
-    use super::{ExplainQuery, handle_explain};
+    use super::{ExplainQuery, handle_explain, handle_run_migrations};
     use axum::{
         body::to_bytes,
         extract::{ConnectInfo, Query},
@@ -243,5 +254,19 @@ mod tests {
             unsupported.contains("only .rs and .toml"),
             "unexpected response: {unsupported}"
         );
+    }
+
+    #[tokio::test]
+    async fn migration_button_never_reports_a_fabricated_success() {
+        for (peer, status) in [("127.0.0.1:43000", 501), ("192.0.2.30:43000", 403)] {
+            let response =
+                handle_run_migrations(ConnectInfo(peer.parse::<SocketAddr>().expect("peer")))
+                    .await
+                    .into_response();
+            assert_eq!(response.status().as_u16(), status, "{peer}");
+            let body = to_bytes(response.into_body(), 4096).await.expect("body");
+            let json: serde_json::Value = serde_json::from_slice(&body).expect("JSON body");
+            assert_eq!(json["success"], false, "{peer}");
+        }
     }
 }
