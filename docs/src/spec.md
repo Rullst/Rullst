@@ -1553,10 +1553,13 @@ segment except the unreserved `A-Z a-z 0-9 - . _ ~`, so `#`, `?`, `%`, spaces
 and non-ASCII characters stay part of the object key. Local storage returns the
 root-relative `/storage/<key>` path whatever its base directory, so the
 filesystem path is never disclosed; the application must serve that directory
-at `/storage` (Rullst does not mount it). Unconfigured S3/R2 drivers return the
-provider's unsigned object URL; S3 follows the cloud client's endpoint rules
-(`amazonaws.com.cn` for `cn-*` regions, path style for dotted bucket names). A
-configured private backend rejects `url()` and requires a signed download.
+at `/storage` (Rullst does not mount it). An unconfigured S3 driver returns the
+provider's unsigned object URL, following the cloud client's endpoint rules
+(`amazonaws.com.cn` for `cn-*` regions, path style for dotted bucket names). An
+R2 driver returns `StorageError::Unsupported`: R2's S3 API endpoint never serves
+anonymous reads, and its public `r2.dev` or custom domain is application-owned
+Cloudflare configuration. A configured private backend rejects `url()` and
+requires a signed download.
 
 ---
 
