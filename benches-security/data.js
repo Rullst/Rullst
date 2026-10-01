@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790821522235,
+  "lastUpdate": 1790828414616,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13268,6 +13268,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c80e38b3903c1897951a1a90a63fa1eaef08994f",
+          "message": "Merge pull request #367 from Rullst/chore/v13-remove-labs-runner\n\nchore(labs): remove rullst-labs-runner and document a bring-your-own runner contract",
+          "timestamp": "2026-10-01T01:01:47-03:00",
+          "tree_id": "efad69ab657347767cb34dbdbcbc4ff8203aaf72",
+          "url": "https://github.com/Rullst/Rullst/commit/c80e38b3903c1897951a1a90a63fa1eaef08994f"
+        },
+        "date": 1790828413997,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4054,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 479,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           }
