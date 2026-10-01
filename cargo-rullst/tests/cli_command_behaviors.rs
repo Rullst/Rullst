@@ -378,6 +378,17 @@ fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
     ] {
         fixture.succeeds(&["inspect", target]);
     }
+    // Without a project-provided snapshot, the schema comes from the models.
+    fs::remove_file(fixture.root.join("rullst-schema.json")).expect("remove schema snapshot");
+    fs::write(
+        fixture.root.join("src/models/person.rs"),
+        "#[derive(Orm)]\n#[orm(soft_delete, table_name = \"people\")]\npub struct Person {\n    pub id: i64,\n    pub nickname: Option<String>,\n}\n",
+    )
+    .expect("ORM model fixture");
+    let schema = fixture.succeeds(&["inspect", "schema"]);
+    assert!(schema.contains("\"table\": \"people\""), "{schema}");
+    assert!(schema.contains("\"optional\": true"), "{schema}");
+    assert!(!schema.contains("not found"), "{schema}");
 
     fixture.succeeds(&["dockerize"]);
     fixture.succeeds(&["generate:buildah"]);
@@ -493,6 +504,10 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
             "APP_KEY = \"fixture-secret-with-adequate-length\"",
         );
     fs::write(foundry_path, foundry).expect("configured Foundry manifest");
+    // The fake Cargo builds nothing; deploy hashes the binary before upload.
+    let release = fixture.root.join("target/release");
+    fs::create_dir_all(&release).expect("release directory");
+    fs::write(release.join("cli-fixture"), b"fixture binary").expect("release binary fixture");
     fixture.succeeds_with_path(&["foundry:deploy"], &tools);
 
     assert_files(

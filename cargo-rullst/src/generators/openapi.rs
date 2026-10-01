@@ -20,10 +20,15 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
     }
 
     let content = fs::read_to_string(controller_path).ok()?;
+    description_from_source(&content, &action)
+}
+
+/// Returns the Rustdoc summary of `pub async fn <action>` in a controller source.
+fn description_from_source(content: &str, action: &str) -> Option<String> {
     let lines: Vec<&str> = content.lines().collect();
 
     for (i, line) in lines.iter().enumerate() {
-        if line.contains(&format!("pub async fn {}", action)) {
+        if declares_handler(line, action) {
             let mut comments = Vec::new();
             let mut j = i;
             while j > 0 {
@@ -45,6 +50,18 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Whether `line` declares exactly `pub async fn <action>`, not a function
+/// whose name merely starts with it (`show` must not match `show_archived`).
+fn declares_handler(line: &str, action: &str) -> bool {
+    let needle = format!("pub async fn {action}");
+    line.match_indices(&needle).any(|(start, _)| {
+        line[start + needle.len()..]
+            .chars()
+            .next()
+            .is_some_and(|next| next == '(' || next == '<' || next.is_whitespace())
+    })
 }
 
 pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
@@ -192,6 +209,24 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn handler_descriptions_match_the_exact_function_name() {
+        let source = "/// Lists archived posts\npub async fn show_archived() {}\n\n/// Shows one post\npub async fn show(id: i64) {}\n/// Generic index\npub async fn index<T>() {}\n";
+        assert_eq!(
+            description_from_source(source, "show").as_deref(),
+            Some("Shows one post")
+        );
+        assert_eq!(
+            description_from_source(source, "show_archived").as_deref(),
+            Some("Lists archived posts")
+        );
+        assert_eq!(
+            description_from_source(source, "index").as_deref(),
+            Some("Generic index")
+        );
+        assert_eq!(description_from_source(source, "sho"), None);
+    }
 
     #[test]
     fn test_extract_description_from_handler() {

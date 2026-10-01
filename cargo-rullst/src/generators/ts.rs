@@ -24,14 +24,41 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    let main_path = Path::new("src/main.rs");
-    if !main_path.exists() {
-        println!("{}", "❌ Error: File src/main.rs not found.".red());
+    // Hot-reload projects declare routes in src/lib.rs (as generate:openapi reads).
+    let mut route_sources = String::new();
+    for source in ["src/main.rs", "src/lib.rs"] {
+        if Path::new(source).exists() {
+            route_sources.push_str(&fs::read_to_string(source)?);
+            route_sources.push('\n');
+        }
+    }
+    if route_sources.is_empty() {
+        println!(
+            "{}",
+            "❌ Error: Neither src/main.rs nor src/lib.rs found.".red()
+        );
         std::process::exit(1);
     }
 
-    let main_content = fs::read_to_string(main_path)?;
+    let ts_output = render_ts_sdk(&route_sources)?;
 
+    let output_path = Path::new("rullst-client.ts");
+    fs::write(output_path, ts_output)?;
+
+    println!(
+        "{}",
+        format!(
+            "✨ TypeScript SDK successfully generated at '{}'!",
+            output_path.display()
+        )
+        .green()
+        .bold()
+    );
+    Ok(())
+}
+
+/// Renders the TypeScript client for the `routes!` declarations in `source`.
+fn render_ts_sdk(source: &str) -> Result<String, regex::Error> {
     // Parses Axum get/post/put/delete routing patterns
     let route_regex = regex::Regex::new(
         r#"(get|post|put|delete|patch|options|head)\s*\(\s*"([^"]+)"\s*=>\s*([\w_:]+)\s*\)"#,
@@ -61,7 +88,7 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
     ts_output.push_str("        return res.json() as Promise<T>;\n");
     ts_output.push_str("    }\n\n");
 
-    for cap in route_regex.captures_iter(&main_content) {
+    for cap in route_regex.captures_iter(source) {
         let method = cap[1].to_lowercase();
         let path = cap[2].to_string();
         let handler_path = cap[3].to_string();
@@ -72,14 +99,22 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let mut path_args = Vec::new();
-        let mut js_path = path.clone();
-
-        for segment in path.split('/') {
-            if let Some(arg_name) = segment.strip_prefix(':') {
-                path_args.push(format!("{}: string | number", arg_name));
-                js_path = js_path.replace(segment, &format!("${{{}}}", arg_name));
-            }
-        }
+        let js_path = path
+            .split('/')
+            .map(|segment| match path_parameter(segment) {
+                Some((name, wildcard)) => {
+                    path_args.push(format!("{name}: string | number"));
+                    if wildcard {
+                        // Keep the separators of a `{*rest}` capture.
+                        format!("${{String({name}).split('/').map(encodeURIComponent).join('/')}}")
+                    } else {
+                        format!("${{encodeURIComponent({name})}}")
+                    }
+                }
+                None => segment.to_string(),
+            })
+            .collect::<Vec<_>>()
+            .join("/");
 
         let has_body = method == "post" || method == "put" || method == "patch";
         if has_body {
@@ -108,18 +143,75 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     ts_output.push_str("}\n");
+    Ok(ts_output)
+}
 
-    let output_path = Path::new("rullst-client.ts");
-    fs::write(output_path, ts_output)?;
+/// Returns the TypeScript argument name of an axum 0.8 `{name}`/`{*name}`
+/// capture (or a legacy `:name` segment) and whether it is a wildcard.
+fn path_parameter(segment: &str) -> Option<(String, bool)> {
+    let (raw, wildcard) = if let Some(inner) = segment
+        .strip_prefix('{')
+        .and_then(|value| value.strip_suffix('}'))
+    {
+        match inner.strip_prefix('*') {
+            Some(rest) => (rest, true),
+            None => (inner, false),
+        }
+    } else {
+        (segment.strip_prefix(':')?, false)
+    };
+    let mut name: String = raw
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if name.is_empty() {
+        return None;
+    }
+    if name.starts_with(|c: char| c.is_ascii_digit()) {
+        name.insert(0, '_');
+    }
+    Some((name, wildcard))
+}
 
-    println!(
-        "{}",
-        format!(
-            "✨ TypeScript SDK successfully generated at '{}'!",
-            output_path.display()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn braced_and_wildcard_captures_become_encoded_arguments() {
+        let sdk = render_ts_sdk(
+            r#"routes![
+                get("/courses/{id}" => controllers::lms_controller::show_course),
+                get("/files/{*path}" => controllers::files::download),
+                put("/users/:id" => controllers::users::update),
+            ]"#,
         )
-        .green()
-        .bold()
-    );
-    Ok(())
+        .unwrap();
+        assert!(sdk.contains("public async lms_controller_show_course(id: string | number)"));
+        assert!(sdk.contains("`/courses/${encodeURIComponent(id)}`"));
+        assert!(!sdk.contains("/courses/{id}"));
+        assert!(sdk.contains("public async files_download(path: string | number)"));
+        assert!(
+            sdk.contains("`/files/${String(path).split('/').map(encodeURIComponent).join('/')}`")
+        );
+        assert!(sdk.contains("public async users_update(id: string | number, body: any)"));
+        assert!(sdk.contains("`/users/${encodeURIComponent(id)}`, body"));
+    }
+
+    #[test]
+    fn literal_segments_are_not_treated_as_parameters() {
+        assert_eq!(path_parameter("courses"), None);
+        assert_eq!(path_parameter("{}"), None);
+        assert_eq!(
+            path_parameter("{user-id}"),
+            Some(("user_id".to_string(), false))
+        );
+        assert_eq!(path_parameter("{*rest}"), Some(("rest".to_string(), true)));
+    }
 }
