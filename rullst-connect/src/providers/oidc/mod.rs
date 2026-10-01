@@ -1,4 +1,5 @@
 pub mod discovery;
+mod kidless;
 pub mod token;
 
 #[cfg(test)]

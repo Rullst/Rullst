@@ -551,7 +551,13 @@ unverified input, a forced refresh of a fresh set happens at most once per 30 se
 JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes
 are coalesced, and a `kid` that is empty, longer than 256 bytes or not printable ASCII is
 rejected before any I/O. Stale keys are used after a refresh error only within a bounded
-age and only when the requested `kid` already exists in the cached set.
+age and only when the requested `kid` already exists in the cached set. As OIDC Core 10.1
+permits, `OidcProvider` also verifies an ID token without `kid` when the issuer's JWK Set
+holds exactly one key and that key fits the token: a signature key (`use` absent or `sig`,
+`key_ops` absent or including `verify`) whose declared `alg`, key type and curve match the
+asymmetric header `alg`. Any other set, or a symmetric `alg`, fails closed. Without a `kid`,
+no unknown key can force a refresh, so a rotated single key is picked up when the cached
+set expires.
 
 ## 🧑‍💻 Full Example with Axum
 

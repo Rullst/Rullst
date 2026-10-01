@@ -85,7 +85,9 @@ impl OidcProvider {
     /// token from this issuer for this `client_id` and sent it to your server.
     /// Unlike [`Provider::get_user_from_token`], the result is bound to this
     /// application: the signature is verified through the discovered, rotating
-    /// JWKS (RS256/384/512, ES256/384 or EdDSA), `iss` must equal the
+    /// JWKS (RS256/384/512, ES256/384 or EdDSA; a token without `kid` only
+    /// when the JWK Set holds exactly one key usable for its algorithm, as
+    /// OIDC Core 10.1 permits), `iss` must equal the
     /// discovered issuer exactly, `aud` exactly this `client_id`, `azp` (when
     /// present) this `client_id`, and `exp`, `iat` and `nonce` must be valid.
     /// Generate `expected_nonce` on the server for this sign-in attempt, let
@@ -115,6 +117,11 @@ impl OidcProvider {
 
     /// Verifies an ID token's signature through the discovered JWKS, then its
     /// exact issuer, audience, `azp`, lifetime and, when supplied, nonce.
+    ///
+    /// The key is selected by `kid`. A token without `kid` must use an
+    /// asymmetric algorithm and is verified only against a single-key set
+    /// whose key fits that algorithm; rotating such a key takes effect when
+    /// the cached set expires, because no unknown `kid` can force a refresh.
     pub(crate) async fn verify_id_token_claims(
         &self,
         id_token: &str,
@@ -123,29 +130,28 @@ impl OidcProvider {
         let header = jsonwebtoken::decode_header(id_token).map_err(|e| {
             ConnectError::Provider(format!("Failed to decode OIDC id_token header: {}", e))
         })?;
-        let kid = header.kid.as_ref().ok_or_else(|| {
-            ConnectError::Provider("Missing 'kid' header in OIDC id_token".to_owned())
-        })?;
-        let jwks = self.get_jwks_for_kid(kid).await?;
-        let jwk = jwks.find(kid).ok_or_else(|| {
-            ConnectError::Provider(format!("OIDC JWK with key ID '{}' not found", kid))
-        })?;
+        let jwks;
+        let jwk = match header.kid.as_deref() {
+            Some(kid) => {
+                jwks = self.get_jwks_for_kid(kid).await?;
+                jwks.find(kid).ok_or_else(|| {
+                    ConnectError::Provider(format!("OIDC JWK with key ID '{}' not found", kid))
+                })?
+            }
+            // OIDC Core 10.1: `kid` may be omitted only for a single-key set.
+            None => {
+                let alg = asymmetric_algorithm(header.alg)?;
+                jwks = self
+                    .jwks_cache
+                    .get(&self.jwks_uri, self.http_client.as_ref())
+                    .await?;
+                super::kidless::sole_verification_key(&jwks, alg)?
+            }
+        };
         let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(|e| {
             ConnectError::Provider(format!("Failed to build OIDC decoding key from JWK: {}", e))
         })?;
-        let alg = match header.alg {
-            jsonwebtoken::Algorithm::RS256
-            | jsonwebtoken::Algorithm::RS384
-            | jsonwebtoken::Algorithm::RS512
-            | jsonwebtoken::Algorithm::ES256
-            | jsonwebtoken::Algorithm::ES384
-            | jsonwebtoken::Algorithm::EdDSA => header.alg,
-            _ => {
-                return Err(ConnectError::Provider(
-                    "OIDC token header specifies an insecure or symmetric algorithm".to_string(),
-                ));
-            }
-        };
+        let alg = asymmetric_algorithm(header.alg)?;
         let validation =
             crate::provider::id_token::validation(alg, &self.client_id, &[&self.issuer]);
 
@@ -159,6 +165,23 @@ impl OidcProvider {
             .claims;
         crate::provider::id_token::validate_claims(&claims, &self.client_id, expected_nonce)?;
         Ok(claims)
+    }
+}
+
+/// Accepts only the asymmetric signature algorithms OIDC issuers publish keys for.
+fn asymmetric_algorithm(
+    alg: jsonwebtoken::Algorithm,
+) -> Result<jsonwebtoken::Algorithm, ConnectError> {
+    match alg {
+        jsonwebtoken::Algorithm::RS256
+        | jsonwebtoken::Algorithm::RS384
+        | jsonwebtoken::Algorithm::RS512
+        | jsonwebtoken::Algorithm::ES256
+        | jsonwebtoken::Algorithm::ES384
+        | jsonwebtoken::Algorithm::EdDSA => Ok(alg),
+        _ => Err(ConnectError::Provider(
+            "OIDC token header specifies an insecure or symmetric algorithm".to_string(),
+        )),
     }
 }
 
