@@ -972,8 +972,11 @@ symlink, so move it aside to regenerate the diagram.
 ### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
 Connects to an existing database and generates reviewable starter structs from
 the tables and columns visible in SQLite or the current PostgreSQL/MySQL schema.
-Table lookups are parameterized and SQL identifiers are allowlisted. Table
-module names are normalized, while collisions and database columns that would
+Table lookups are parameterized and SQL identifiers are allowlisted.
+PostgreSQL and MySQL metadata columns are cast to text and aliased, so
+PostgreSQL 12+ `sql_identifier` columns and MySQL 8 upper-case labels are read
+portably; a missing or undecodable metadata column fails with an error rather
+than a panic. Table module names are normalized, while collisions and database columns that would
 require an unsupported ORM field remapping fail before the output directory is
 written. Existing model files are never replaced: if any `<table>.rs` target
 already exists, the command fails before writing anything. An existing

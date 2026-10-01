@@ -148,3 +148,112 @@ async fn sqlite_column_lookup_binds_unusual_table_names() {
     assert!(columns[0].not_null);
     assert_eq!(columns[1].name, "account-id");
 }
+
+#[test]
+fn postgres_and_mysql_metadata_columns_are_cast_and_aliased() {
+    // PostgreSQL 12+ `sql_identifier` (a domain over `name`) cannot be decoded
+    // by the Any driver, and MySQL 8 labels unaliased columns in upper case.
+    for (sql, cast) in [
+        (POSTGRES_TABLES_SQL, "TEXT"),
+        (POSTGRES_COLUMNS_SQL, "TEXT"),
+        (MYSQL_TABLES_SQL, "CHAR"),
+        (MYSQL_COLUMNS_SQL, "CHAR"),
+    ] {
+        let select_list = sql
+            .split_once(" FROM ")
+            .map(|(select, _)| select)
+            .expect("metadata query has a FROM clause");
+        let columns: &[&str] = if sql.contains("information_schema.columns") {
+            &["column_name", "data_type", "is_nullable"]
+        } else {
+            &["table_name"]
+        };
+        let expressions = select_list
+            .trim_start_matches("SELECT ")
+            .split(", ")
+            .map(str::trim)
+            .collect::<Vec<_>>();
+        assert_eq!(expressions.len(), columns.len(), "{sql}");
+        for (expression, column) in expressions.iter().zip(columns) {
+            let source = if cast == "CHAR" {
+                column.to_ascii_uppercase()
+            } else {
+                (*column).to_string()
+            };
+            assert_eq!(
+                *expression,
+                format!("CAST({source} AS {cast}) AS {column}"),
+                "{sql}"
+            );
+        }
+    }
+    assert!(POSTGRES_COLUMNS_SQL.contains("table_name = $1"));
+    assert!(MYSQL_COLUMNS_SQL.contains("table_name = ?"));
+}
+
+#[tokio::test]
+async fn metadata_rows_with_unexpected_labels_or_types_are_errors_not_panics() {
+    sqlx::any::install_default_drivers();
+    let mut connection = AnyConnection::connect("sqlite::memory:")
+        .await
+        .expect("SQLite should connect");
+
+    let aliased = sqlx::query(
+        "SELECT 'id' AS column_name, 'int' AS data_type, 'NO' AS is_nullable \
+         UNION ALL SELECT 'note', 'text', 'YES'",
+    )
+    .fetch_all(&mut connection)
+    .await
+    .expect("aliased metadata rows");
+    assert_eq!(
+        map_information_schema_columns(&aliased).expect("aliased rows map"),
+        [
+            ColumnInfo {
+                name: "id".to_string(),
+                data_type: "int".to_string(),
+                not_null: true,
+            },
+            ColumnInfo {
+                name: "note".to_string(),
+                data_type: "text".to_string(),
+                not_null: false,
+            },
+        ]
+    );
+
+    // The labels MySQL 8 returns without aliases: previously `Row::get` panicked.
+    let upper_case =
+        sqlx::query("SELECT 'id' AS COLUMN_NAME, 'int' AS DATA_TYPE, 'NO' AS IS_NULLABLE")
+            .fetch_all(&mut connection)
+            .await
+            .expect("upper-case metadata rows");
+    assert!(matches!(
+        map_information_schema_columns(&upper_case),
+        Err(sqlx::Error::ColumnNotFound(_))
+    ));
+    let upper_tables = sqlx::query("SELECT 'users' AS TABLE_NAME")
+        .fetch_all(&mut connection)
+        .await
+        .expect("upper-case table rows");
+    assert!(matches!(
+        string_column(&upper_tables, "table_name"),
+        Err(sqlx::Error::ColumnNotFound(_))
+    ));
+    let wrong_type = sqlx::query("SELECT 7 AS table_name")
+        .fetch_all(&mut connection)
+        .await
+        .expect("integer table rows");
+    assert!(matches!(
+        string_column(&wrong_type, "table_name"),
+        Err(sqlx::Error::ColumnDecode { .. })
+    ));
+    // The error surfaces through the command's typed error.
+    let error = IntrospectionError::from(
+        string_column(&upper_tables, "table_name").expect_err("missing label"),
+    );
+    assert!(
+        error
+            .to_string()
+            .starts_with("database introspection failed")
+    );
+}
