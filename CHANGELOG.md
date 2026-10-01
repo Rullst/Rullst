@@ -215,6 +215,30 @@ A prepared version section does not establish that its tag or crates exist.
 - Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
   `deploy:doctor` reviews configured networks (threat case `CORE-03`).
 
+### Connect and messaging low-severity review fixes
+
+- Connect: with `retry`, single-use token, device-poll and revocation POSTs are
+  retried only on HTTP 429, never after timeouts, resets or 5xx.
+- Connect: OAuth errors returned with HTTP 200 (GitHub token and device poll)
+  are `ConnectError::ProviderApiError { code, message }`, so pollers can match
+  `authorization_pending` and `slow_down`; code that matched the old `Token`
+  text must switch variants.
+- Connect: OIDC discovery accepts IdPs without `userinfo_endpoint`, and
+  `OidcProvider::discover_with_client` routes discovery through an explicit
+  proxy client.
+- Connect: Discord profiles without an id are rejected, `ConnectUser`
+  round-trips through serde, provider `email_verified` claims are parsed, OIDC
+  spans no longer record the nonce and the SQLite token store rejects
+  in-memory, `vfs` and `immutable` URLs.
+- Messaging: durable SQLite rejects every in-memory spelling plus
+  `vfs`/`immutable`, a plaintext reopen no longer loads all headers and
+  `InMemoryBroker` samples time after taking its lock.
+- Messaging webhooks and recurring publications: control records and bindings
+  follow the primary storage key, the webhook binding layout no longer depends
+  on serde_json features, configuration or keyring drift returns
+  `Configuration`, one short lease no longer fails a claim batch and
+  `retry_failed` reports a committed reset as success.
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or

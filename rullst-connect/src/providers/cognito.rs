@@ -201,7 +201,7 @@ impl Provider for CognitoProvider {
                 .unwrap_or_default(),
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
-            email_verified: None,
+            email_verified: crate::user::email_verified_claim(&user_res["email_verified"]),
             raw_data: user_res,
             access_token: secrecy::SecretString::from(access_token.to_string()),
             refresh_token: None,
@@ -346,6 +346,7 @@ mod tests {
                 "sub": "user_123",
                 "name": "Test User",
                 "email": "test@example.com",
+                "email_verified": "true",
                 "picture": "https://avatar.url"
             }),
         }));
@@ -357,6 +358,7 @@ mod tests {
             })
             .await
             .unwrap();
+        assert_eq!(user.email_verified, Some(true));
 
         assert_eq!(user.id, "user_123");
         assert_eq!(user.name, "Test User");

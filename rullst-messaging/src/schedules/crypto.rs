@@ -82,6 +82,14 @@ pub(super) fn open(
         .map(Zeroizing::new)
         .map_err(|_| RecurringError::Encryption)
 }
+/// Returns the key ID recorded in a sealed value, without decrypting it.
+pub(super) fn sealed_key_id(value: &[u8]) -> Option<&str> {
+    if value.get(..8) != Some(MAGIC.as_slice()) {
+        return None;
+    }
+    let length = usize::from(*value.get(8)?);
+    std::str::from_utf8(value.get(9..9 + length)?).ok()
+}
 fn aad(namespace: &str, purpose: &str, identity: &str, key_id: &str) -> Vec<u8> {
     let mut value = Vec::new();
     for field in [
@@ -185,6 +193,11 @@ mod tests {
             .with_decryption_key(MessagingStorageKey::try_new("old", [7; 32]).unwrap())
             .unwrap();
         assert!(open(&rotated, "school", "occurrence", "one", &encrypted).is_ok());
+        assert_eq!(sealed_key_id(&encrypted), Some("old"));
+        let resealed = seal(&rotated, "school", "occurrence", "one", b"private").unwrap();
+        assert_eq!(sealed_key_id(&resealed), Some("new"));
+        assert_eq!(sealed_key_id(&encrypted[..9]), None);
+        assert_eq!(sealed_key_id(b"not sealed"), None);
         assert!(
             seal(
                 &ring,

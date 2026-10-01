@@ -1,10 +1,14 @@
 mod offline;
 pub mod request_builder;
 pub mod reqwest_client;
+#[cfg(all(feature = "retry", not(miri)))]
+mod retry;
 pub mod traits;
 
 #[cfg(test)]
 mod bounded_error_tests;
+#[cfg(all(test, feature = "retry", not(miri)))]
+mod retry_tests;
 #[cfg(test)]
 mod tests;
 

@@ -93,6 +93,10 @@ pub struct SqliteTokenSnapshotStore {
 
 impl SqliteTokenSnapshotStore {
     /// Opens or creates a file-backed store with a persisted entry ceiling.
+    ///
+    /// In-memory databases in any spelling (`:memory:` with or without a query
+    /// string, `mode=memory`, SQLite `file:` URIs) and URLs that select a `vfs`
+    /// or `immutable` mode are rejected as invalid configuration.
     pub async fn connect(
         database_url: impl Into<String>,
         max_entries: usize,

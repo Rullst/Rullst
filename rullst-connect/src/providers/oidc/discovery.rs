@@ -23,6 +23,10 @@ pub struct OidcProvider {
 
     pub authorization_endpoint: String,
     pub token_endpoint: String,
+    /// The discovered userinfo endpoint. OpenID Connect Discovery only
+    /// recommends it, so it is empty when the provider does not publish one;
+    /// `get_user_from_token` and code exchanges without an `id_token` then
+    /// fail with [`ConnectError::InvalidConfiguration`].
     pub userinfo_endpoint: String,
     pub(crate) jwks_uri: String,
     /// The discovered `issuer`, exactly as published by the provider. ID
@@ -43,8 +47,15 @@ impl OidcProvider {
         Self::discover_with_client(issuer_url, client_id, client_secret, redirect_url, client).await
     }
 
-    /// Performs discovery with an injected client.
-    pub(crate) async fn discover_with_client(
+    /// Discovers and validates OIDC metadata through an explicit HTTP client.
+    ///
+    /// Use this with [`crate::client::ReqwestClient::try_with_proxy`] (or a
+    /// test transport) so the discovery request, JWKS and token calls all use
+    /// the same transport; [`Self::discover`] fetches metadata with the default
+    /// client and its ambient proxy settings. Empty or `mock_*` credentials
+    /// construct deterministic local metadata and never use `client`.
+    /// Unpublished v13 API.
+    pub async fn discover_with_client(
         issuer_url: impl Into<String>,
         client_id: impl Into<String>,
         client_secret: impl Into<String>,
@@ -100,7 +111,8 @@ impl OidcProvider {
         let token_endpoint =
             validated_endpoint(&metadata, "token_endpoint", &discovered_issuer_url)?;
         let userinfo_endpoint =
-            validated_endpoint(&metadata, "userinfo_endpoint", &discovered_issuer_url)?;
+            optional_endpoint(&metadata, "userinfo_endpoint", &discovered_issuer_url)?
+                .unwrap_or_default();
         let jwks_uri = validated_endpoint(&metadata, "jwks_uri", &discovered_issuer_url)?;
         let client_authentication = token_endpoint_authentication(&metadata);
 
@@ -202,6 +214,19 @@ fn validated_endpoint(
     let value = required_string(metadata, field)?;
     crate::configuration::validate_discovery_endpoint(field, &value, issuer)
         .map(|url| url.to_string())
+}
+
+/// Validates an endpoint that OIDC Discovery marks RECOMMENDED: an absent or
+/// `null` value is accepted, but a published value must be valid.
+fn optional_endpoint(
+    metadata: &Value,
+    field: &'static str,
+    issuer: &url::Url,
+) -> Result<Option<String>, ConnectError> {
+    match metadata.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(_) => validated_endpoint(metadata, field, issuer).map(Some),
+    }
 }
 
 fn mock_metadata(issuer: &str) -> Value {

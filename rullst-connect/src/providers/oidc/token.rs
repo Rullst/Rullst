@@ -18,7 +18,7 @@ impl OidcProvider {
             .await
     }
 
-    #[tracing::instrument(skip(self, form_data))]
+    #[tracing::instrument(skip_all, fields(has_nonce = expected_nonce.is_some()))]
     pub(crate) async fn get_user_from_form(
         &self,
         form_data: &(impl serde::Serialize + Sync),
@@ -175,7 +175,7 @@ fn user_from_id_token_claims(
             .ok_or_else(|| ConnectError::Provider("Missing name in id_token".to_owned()))?,
         email: payload["email"].as_str().map(String::from),
         avatar_url: payload["picture"].as_str().map(String::from),
-        email_verified: payload["email_verified"].as_bool(),
+        email_verified: crate::user::email_verified_claim(&payload["email_verified"]),
         raw_data: payload,
         access_token,
         refresh_token: None,
@@ -226,6 +226,12 @@ impl Provider for OidcProvider {
 
     #[tracing::instrument(skip(self, access_token))]
     async fn get_user_from_token(&self, access_token: &str) -> Result<ConnectUser, ConnectError> {
+        if self.userinfo_endpoint.is_empty() {
+            return Err(ConnectError::InvalidConfiguration {
+                field: "userinfo_endpoint",
+                reason: "the OIDC provider does not publish a userinfo endpoint".to_owned(),
+            });
+        }
         let user_res = self
             .http_client
             .get(&self.userinfo_endpoint)
@@ -245,7 +251,7 @@ impl Provider for OidcProvider {
             })?,
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
-            email_verified: user_res["email_verified"].as_bool(),
+            email_verified: crate::user::email_verified_claim(&user_res["email_verified"]),
             raw_data: user_res,
             access_token: secrecy::SecretString::from(access_token.to_owned()),
             refresh_token: None,

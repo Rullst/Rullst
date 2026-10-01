@@ -81,10 +81,13 @@ Every materialized occurrence has a fixed delivery window starting at creation,
 including caught-up work. The default is one day, with a seven-day maximum.
 Leases default to 60 seconds, configurable from 1–300 seconds; the delivery
 window must accommodate two configured leases. A claim fences earlier workers
-with a fresh random capability and revision. Automatic publication failures
+with a fresh random capability and revision. A lease near the end of its
+delivery window is shortened to that window; a lease that has already expired
+when the claim commits is not returned (its occurrence expires or is reclaimed
+normally) and no longer fails the rest of the batch. Automatic publication failures
 back off exponentially and stop after ten attempts or delivery-window expiry.
 `retry_failed` starts a new explicit operator attempt budget within the **original**
-window. It cannot revive published, cancelled, expired or purged occurrences.
+window and reports success once that reset is committed. It cannot revive published, cancelled, expired or purged occurrences.
 
 A relay checks the live lease immediately before publication. Repeated attempts
 use exactly the same message and purpose-separated idempotency key. Broker
@@ -105,9 +108,15 @@ once external delivery. Select the same broker namespace on every retry.
 Definitions and occurrence content use AES-256-GCM with explicit rotation keys,
 bound to namespace, purpose and generation/occurrence identity. Configuration
 has an authenticated encrypted binding; key/configuration drift fails closed.
-Retain old keys as long as records need them; automatic re-encryption is not
-included. Debug output omits content, headers and lease credentials. Metadata
-names are server-owned configuration and should not contain personal data.
+Retain old keys as long as records need them; automatic re-encryption of
+definitions and occurrences is not included. The namespace configuration binding
+is re-sealed under the current primary key by the first operation after a
+rotation, so the key present at initialization is not needed for it afterwards.
+Definitions and retained occurrence content sealed under a key still need it
+whenever they are read (ticks, relays and re-creating the same schedule name),
+and a keyring holds at most eight keys. Debug output omits content, headers and
+lease credentials. Metadata names are server-owned configuration and should not
+contain personal data.
 
 PostgreSQL must use permanent tables, fsync, full-page writes, synchronous commits
 and a writable primary. Remote connections require verified TLS. All operations

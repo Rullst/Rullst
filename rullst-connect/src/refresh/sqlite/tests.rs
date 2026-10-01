@@ -205,6 +205,52 @@ async fn quota_configuration_and_disk_content_are_bounded() {
 }
 
 #[tokio::test]
+async fn in_memory_urls_with_query_strings_are_not_file_backed() {
+    for database_url in [
+        "sqlite::memory:?cache=shared",
+        "sqlite://:memory:?cache=private",
+        "sqlite::memory:?mode=rwc",
+        "sqlite:%3Amemory%3A",
+        "sqlite:file::memory:",
+        "sqlite:file:tokens.sqlite%3Fmode=memory",
+    ] {
+        assert!(
+            matches!(
+                SqliteTokenSnapshotStore::connect(database_url, 1).await,
+                Err(TokenStoreError::InvalidConfiguration(
+                    "database must be file-backed"
+                ))
+            ),
+            "accepted {database_url}"
+        );
+    }
+    let path = temporary_database("vfs");
+    let url = database_url(&path);
+    for query in [
+        "vfs=memdb",
+        "vfs=unix-none",
+        "immutable=1",
+        "immutable=true",
+    ] {
+        assert!(matches!(
+            SqliteTokenSnapshotStore::connect(&format!("{url}?{query}"), 1).await,
+            Err(TokenStoreError::InvalidConfiguration(
+                "database URL must not select a SQLite VFS or immutable mode"
+            ))
+        ));
+    }
+    assert!(
+        !path.exists(),
+        "a rejected URL must not create the database"
+    );
+    let store = SqliteTokenSnapshotStore::connect(&format!("{url}?mode=rwc&immutable=0"), 1)
+        .await
+        .expect("an explicit file-backed URL is accepted");
+    store.close().await;
+    remove_database(&path);
+}
+
+#[tokio::test]
 async fn wrong_keys_and_corrupt_database_rows_fail_closed() {
     let path = temporary_database("corrupt");
     let url = database_url(&path);

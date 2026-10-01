@@ -271,11 +271,11 @@ async fn test_fetch_access_token_error() {
         .unwrap_err();
 
     match err {
-        ConnectError::Token(msg) => {
-            assert!(msg.contains("invalid_request"));
-            assert!(msg.contains("Test error"));
+        ConnectError::ProviderApiError { code, message } => {
+            assert_eq!(code, "invalid_request");
+            assert!(message.contains("Test error"));
         }
-        _ => panic!("Expected ConnectError::Token"),
+        _ => panic!("Expected ConnectError::ProviderApiError"),
     }
 }
 
@@ -311,11 +311,11 @@ async fn test_fetch_refresh_token_error() {
     .unwrap_err();
 
     match err {
-        ConnectError::Token(msg) => {
-            assert!(msg.contains("invalid_request"));
-            assert!(msg.contains("Test error"));
+        ConnectError::ProviderApiError { code, message } => {
+            assert_eq!(code, "invalid_request");
+            assert!(message.contains("Test error"));
         }
-        _ => panic!("Expected ConnectError::Token"),
+        _ => panic!("Expected ConnectError::ProviderApiError"),
     }
 }
 

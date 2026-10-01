@@ -5,10 +5,16 @@ use rullst_connect::ConnectError;
 use rullst_connect::client::{HttpClient, HttpRequest, ReqwestClient};
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 fn start_proxy_fixture() -> (String, mpsc::Receiver<String>, std::thread::JoinHandle<()>) {
+    start_proxy_fixture_with(r#"{"ok":true}"#.to_string())
+}
+
+fn start_proxy_fixture_with(
+    body: String,
+) -> (String, mpsc::Receiver<String>, std::thread::JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind proxy fixture");
     let address = listener.local_addr().expect("proxy fixture address");
     let (request_sender, request_receiver) = mpsc::channel();
@@ -29,10 +35,12 @@ fn start_proxy_fixture() -> (String, mpsc::Receiver<String>, std::thread::JoinHa
         request_sender
             .send(String::from_utf8(request).expect("ASCII proxy request"))
             .expect("send captured request");
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
         socket
-            .write_all(
-                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\nConnection: close\r\n\r\n{\"ok\":true}",
-            )
+            .write_all(response.as_bytes())
             .expect("write proxy response");
     });
     (format!("http://{address}"), request_receiver, handle)
@@ -64,6 +72,41 @@ async fn explicit_authenticated_proxy_routes_request_and_sends_basic_auth() {
         .to_ascii_lowercase();
     assert!(request.starts_with("get http://origin.example.invalid/oauth/token http/1.1\r\n"));
     assert!(request.contains("proxy-authorization: basic chjvehlfdxnlcjpwcm94ev9wyxnz\r\n"));
+    fixture.join().expect("proxy fixture");
+}
+
+#[tokio::test]
+async fn oidc_discovery_uses_the_injected_proxy_client() {
+    // Nothing listens on the issuer's port, so only the explicit proxy can answer.
+    let issuer = "http://127.0.0.1:9";
+    let metadata = serde_json::json!({
+        "issuer": issuer,
+        "authorization_endpoint": format!("{issuer}/authorize"),
+        "token_endpoint": format!("{issuer}/token"),
+        "jwks_uri": format!("{issuer}/jwks")
+    });
+    let (proxy_url, captured, fixture) = start_proxy_fixture_with(metadata.to_string());
+    let proxy = ReqwestClient::try_with_proxy(&proxy_url).expect("valid loopback proxy");
+
+    let provider = rullst_connect::providers::OidcProvider::discover_with_client(
+        issuer,
+        "client-id",
+        "client-secret",
+        "http://127.0.0.1:3000/callback",
+        Arc::new(proxy),
+    )
+    .await
+    .expect("discovery through the explicit proxy");
+
+    assert_eq!(provider.issuer, issuer);
+    assert_eq!(provider.token_endpoint, format!("{issuer}/token"));
+    let request = captured
+        .recv_timeout(Duration::from_secs(5))
+        .expect("captured proxy request")
+        .to_ascii_lowercase();
+    assert!(
+        request.starts_with("get http://127.0.0.1:9/.well-known/openid-configuration http/1.1\r\n")
+    );
     fixture.join().expect("proxy fixture");
 }
 

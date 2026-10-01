@@ -89,7 +89,14 @@ Official support for 11 core providers:
 
 1. **Google**
 2. **GitHub**
-3. **Microsoft / Azure AD**
+3. **Microsoft / Azure AD** (uses the multi-tenant `common` authority, so any
+   Entra tenant and personal Microsoft accounts can sign in, and returns no
+   tenant ID; `email` is Graph `mail` or, failing that, `userPrincipalName`,
+   which tenant administrators control and which may not be a mailbox, so
+   `email_verified` is `None`. Never link accounts or grant tenant access on
+   it; for a single tenant use `OidcProvider` with the
+   `https://login.microsoftonline.com/<tenant-id>/v2.0` issuer, whose ID
+   tokens bind that tenant)
 4. **Apple** (Sign in with Apple)
 5. **Auth0**
 6. **AWS Cognito**
@@ -252,6 +259,14 @@ fn github_through_corporate_proxy(
 }
 ```
 
+With the `retry` feature, a provider's `with_retry` replaces its transport with
+a new direct client, so call it before `with_http_client`, or not at all: the
+proxy constructors already apply the bounded retry policy.
+
+`OidcProvider::discover` fetches its metadata before `with_http_client` can
+apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
+(unpublished v13 API); discovery, JWKS and token calls then share it.
+
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
 credentials, path, query, or fragment. Authenticated non-loopback proxies must
 use HTTPS. The configured client uses only that explicit proxy; PAC/WPAD,
@@ -384,7 +399,18 @@ validation fails: provider adapters then return
 `ConnectError::RefreshIncomplete`, whose `IssuedTokens` carry the new tokens
 to direct `Provider::refresh_token` callers, and the session keeps the
 rotation and returns the underlying error. Persist the snapshot after such a
-failure too. Use `access_token_at` in deterministic workers/tests. Seal
+failure too.
+
+Do not cancel `access_token()` while it refreshes. The provider call runs
+inside the caller's future, so dropping that future (a client disconnect, a
+`tower` timeout layer or `tokio::select!`) after the provider accepted the grant
+discards its response: a provider that rotates or consumes refresh tokens has
+then spent the credential this session still holds, and the next refresh fails
+with `invalid_grant` (Auth0 rotation may also revoke the token family). Drive
+refreshes from a task that is not cancelled with the request, or treat such an
+`invalid_grant` as a reauthentication signal.
+
+Use `access_token_at` in deterministic workers/tests. Seal
 `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
 dedicated application store:
 

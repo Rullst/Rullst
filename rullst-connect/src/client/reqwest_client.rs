@@ -11,7 +11,7 @@ pub struct ReqwestClient {
     #[cfg(not(feature = "retry"))]
     client: Result<reqwest::Client, String>,
     #[cfg(feature = "retry")]
-    client: Result<reqwest_middleware::ClientWithMiddleware, String>,
+    client: Result<super::retry::RetryingClients, String>,
 }
 
 #[cfg(miri)]
@@ -19,6 +19,9 @@ pub struct ReqwestClient {}
 
 impl ReqwestClient {
     /// Creates the default client with redirects disabled and a bounded request timeout.
+    ///
+    /// With the `retry` feature it retries up to three times under the
+    /// method-aware policy documented on `new_with_retry`.
     pub fn new() -> Self {
         #[cfg(miri)]
         {
@@ -79,7 +82,13 @@ impl ReqwestClient {
     }
 
     #[cfg(feature = "retry")]
-    /// Creates a client with an explicit bounded transient-retry policy.
+    /// Creates a client with an explicit bounded retry policy (at most 10 retries).
+    ///
+    /// GET, HEAD and OPTIONS requests are retried after timeouts, connection
+    /// failures, 5xx, 408 and 429 responses. Other methods, such as token,
+    /// device-poll and revocation POSTs that carry a single-use code or
+    /// refresh token, are retried only after an HTTP 429 rejection, never after
+    /// a transport failure the provider may already have processed.
     pub fn new_with_retry(max_retries: u32) -> Self {
         #[cfg(miri)]
         {
@@ -105,14 +114,8 @@ impl ReqwestClient {
     ) -> Self {
         #[cfg(feature = "retry")]
         {
-            let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
-                .build_with_max_retries(max_retries.min(10));
             let client = reqwest_client.map(|reqwest_client| {
-                reqwest_middleware::ClientBuilder::new(reqwest_client)
-                    .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
-                        retry_policy,
-                    ))
-                    .build()
+                super::retry::RetryingClients::new(reqwest_client, max_retries)
             });
             Self { client }
         }
@@ -198,7 +201,7 @@ impl HttpClient for ReqwestClient {
                         reason: reason.clone(),
                     }
                 })?;
-                let mut builder = client.request(method, &req.url);
+                let mut builder = client.for_method(&method).request(method, &req.url);
 
                 if !req.headers.is_empty() {
                     builder = builder.headers(req.headers);
