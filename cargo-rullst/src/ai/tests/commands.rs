@@ -1,4 +1,5 @@
 use super::*;
+use crate::ai::process::{Capture, run};
 
 fn args(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
@@ -34,6 +35,15 @@ fn allowlisted_scaffolds_and_diagnostics_validate() {
             format!("cargo rullst {}", command.join(" "))
         );
     }
+    // Migrations are allowed here; the caller also requires a development
+    // project and an individual confirmation.
+    let migrate = validate_rullst(args(&["db:migrate"])).unwrap();
+    assert!(migrate.always_confirm() && !migrate.mutates());
+    assert!(
+        !validate_rullst(args(&["make:model", "Post"]))
+            .unwrap()
+            .always_confirm()
+    );
     assert!(
         validate_rullst(args(&["make:model", "Post"]))
             .unwrap()
@@ -87,7 +97,6 @@ fn dangerous_or_unknown_commands_are_refused() {
         "dev",
         "eject",
         "hook:install",
-        "db:migrate",
         "db:rollback",
         "db:seed",
         "generate:models",

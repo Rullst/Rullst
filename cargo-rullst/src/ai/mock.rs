@@ -2,9 +2,11 @@
 //!
 //! Selected when no provider is configured or the credential is empty or
 //! `mock_*`. It runs through the same guarded `StreamingAiClient` as live
-//! providers and answers a goal with a fixed two-step plan (create a demo
-//! file, then edit it), so the plan, diff, confirmation and checkpoint paths
-//! can be exercised without network access or credentials.
+//! providers. Inside a project it answers a goal with a fixed two-step plan
+//! (create a demo file, then edit it); outside one it first proposes
+//! `cargo rullst new rullst-ai-demo` and continues inside the new project.
+//! The plan, diff, confirmation and checkpoint paths can therefore be
+//! exercised without network access or credentials.
 
 use async_trait::async_trait;
 use rullst_ai::{
@@ -16,6 +18,8 @@ use rullst_ai::{
 pub(super) const RESULTS_MARKER: &str = "[action results]";
 /// The demo file the offline plan creates.
 pub(super) const DEMO_FILE: &str = "rullst-ai-demo.md";
+/// The project the offline plan creates outside a project.
+pub(super) const DEMO_PROJECT: &str = "rullst-ai-demo";
 
 #[derive(Debug, Default)]
 pub(super) struct MockAssistant;
@@ -35,21 +39,21 @@ fn goal_of(message: &str) -> String {
     short
 }
 
-/// The deterministic reply for a conversation.
-pub(super) fn reply(messages: &[Message]) -> String {
-    let last = messages
-        .iter()
-        .rev()
-        .find(|message| message.role == "user")
-        .map_or("", |message| message.content.as_str());
-    // Results arrive on their own; a new goal may carry earlier results first.
-    if last.starts_with(RESULTS_MARKER) && !last.contains("\n\nGoal:\n") {
-        return "Offline mock assistant: I received the results of the reviewed actions. \
-A connected model would now continue toward the goal or summarize the change; \
-the demo plan is complete.\n"
-            .to_string();
-    }
-    let goal = goal_of(last);
+fn in_project(messages: &[Message]) -> bool {
+    messages.iter().any(|message| {
+        message.role == "system" && message.content.starts_with(super::prompt::CONTEXT_HEADING)
+    })
+}
+
+fn is_results(message: &str) -> bool {
+    message.starts_with(RESULTS_MARKER) && !message.contains("\n\nGoal:\n")
+}
+
+const INTRO: &str = "Offline mock assistant: no AI provider is connected, so this deterministic \
+demo shows how `cargo rullst ai` proposes, previews and applies changes. Run \
+`cargo rullst ai connect` to use a real model.";
+
+fn demo_file_plan(goal: &str) -> String {
     let content = format!("# Rullst AI demo\n\nGoal: {goal}\n\nStatus: planned\n");
     let write = serde_json::json!({
         "action": "write_file",
@@ -63,12 +67,54 @@ the demo plan is complete.\n"
         "replace": "Status: reviewed",
     });
     format!(
-        "Offline mock assistant: no AI provider is connected, so this deterministic demo \
-shows how `cargo rullst ai` proposes, previews and applies changes. Run \
-`cargo rullst ai connect` to use a real model.\n\n\
-Plan:\n1. Create `{DEMO_FILE}` describing the goal.\n2. Mark it as reviewed.\n\n\
+        "{INTRO}\n\nPlan:\n1. Create `{DEMO_FILE}` describing the goal.\n2. Mark it as reviewed.\n\n\
 ```rullst-action\n{write}\n```\n\n```rullst-action\n{edit}\n```\n"
     )
+}
+
+fn new_project_plan() -> String {
+    let new = serde_json::json!({
+        "action": "run_rullst",
+        "args": ["new", DEMO_PROJECT, "--default", "--blueprint", "blank", "--skip-initial-migration"],
+    });
+    format!(
+        "{INTRO}\n\nYou are outside a Rust project, so the first step is creating one.\n\n\
+Plan:\n1. Create the `{DEMO_PROJECT}` project from the blank blueprint.\n\
+2. Continue inside it with a first reviewed change.\n\n```rullst-action\n{new}\n```\n"
+    )
+}
+
+/// The deterministic reply for a conversation.
+pub(super) fn reply(messages: &[Message]) -> String {
+    let users: Vec<&str> = messages
+        .iter()
+        .filter(|message| message.role == "user")
+        .map(|message| message.content.as_str())
+        .collect();
+    let last = users.last().copied().unwrap_or("");
+    if is_results(last) {
+        let created = last.contains(&format!("new {DEMO_PROJECT} "))
+            && last.contains("exit status 0")
+            && in_project(messages);
+        if !created {
+            return "Offline mock assistant: I received the results of the reviewed actions. \
+A connected model would now continue toward the goal or summarize the change; \
+the demo plan is complete.\n"
+                .to_string();
+        }
+        // The project exists now: plan the first change for the original goal.
+        let goal = users
+            .iter()
+            .rev()
+            .find(|message| !is_results(message))
+            .map_or_else(String::new, |message| goal_of(message));
+        return demo_file_plan(&goal);
+    }
+    if in_project(messages) {
+        demo_file_plan(&goal_of(last))
+    } else {
+        new_project_plan()
+    }
 }
 
 #[async_trait]
@@ -130,12 +176,17 @@ mod tests {
     use super::*;
     use crate::ai::protocol::{Action, parse};
 
+    fn context() -> Message {
+        Message::system(format!(
+            "{}\n\nproject inventory",
+            super::super::prompt::CONTEXT_HEADING
+        ))
+    }
+
     #[test]
-    fn a_goal_yields_a_parseable_two_step_plan() {
-        let text = reply(&[
-            Message::system("primer"),
-            Message::user("Add a \"posts\" page\nwith `html!`"),
-        ]);
+    fn a_goal_in_a_project_yields_a_parseable_two_step_plan() {
+        let goal = Message::user("Add a \"posts\" page\nwith `html!`");
+        let text = reply(&[Message::system("primer"), context(), goal.clone()]);
         let actions: Vec<Action> = parse(&text).into_iter().map(Result::unwrap).collect();
         assert_eq!(actions.len(), 2);
         let Action::WriteFile { path, content } = &actions[0] else {
@@ -145,15 +196,52 @@ mod tests {
         assert!(content.contains("Goal: Add a \"posts\" page with `html!`"));
         assert!(matches!(&actions[1], Action::EditFile { find, .. } if find == "Status: planned"));
         // Deterministic.
+        assert_eq!(text, reply(&[context(), goal]));
+    }
+
+    #[test]
+    fn outside_a_project_the_plan_starts_with_a_new_project() {
+        let text = reply(&[Message::system("primer"), Message::user("build a shop")]);
+        let actions: Vec<Action> = parse(&text).into_iter().map(Result::unwrap).collect();
         assert_eq!(
-            text,
-            reply(&[Message::user("Add a \"posts\" page\nwith `html!`")])
+            actions,
+            vec![Action::RunRullst {
+                args: [
+                    "new",
+                    DEMO_PROJECT,
+                    "--default",
+                    "--blueprint",
+                    "blank",
+                    "--skip-initial-migration"
+                ]
+                .map(str::to_string)
+                .to_vec()
+            }]
         );
+        // Once the project exists (its context is present), the original goal
+        // continues there.
+        let results = format!(
+            "{RESULTS_MARKER}\n1. cargo rullst new {DEMO_PROJECT} --default: exit status 0"
+        );
+        let text = reply(&[
+            Message::system("primer"),
+            context(),
+            Message::user("build a shop"),
+            Message::assistant("plan"),
+            Message::user(results.clone()),
+        ]);
+        let actions = parse(&text);
+        assert_eq!(actions.len(), 2);
+        assert!(text.contains("Goal: build a shop"));
+        // Without the new context the results only end the plan.
+        let text = reply(&[Message::user("build a shop"), Message::user(results)]);
+        assert!(parse(&text).is_empty());
     }
 
     #[test]
     fn results_end_the_plan_without_further_actions() {
         let text = reply(&[
+            context(),
             Message::user("goal"),
             Message::assistant("plan"),
             Message::user(format!("{RESULTS_MARKER}\n1. ok")),

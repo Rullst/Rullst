@@ -23,14 +23,17 @@ mod commands;
 mod connect;
 mod credentials;
 mod diff;
+mod environment;
 mod input;
 mod mock;
 mod paths;
+mod process;
 mod prompt;
 mod protocol;
 mod provider;
 mod session;
 mod term;
+mod usage;
 
 use session::{Mode, Session, Settings};
 use term::{Style, TermEnv, sanitize};
@@ -58,13 +61,14 @@ impl std::fmt::Debug for AiCliError {
     }
 }
 
-const PROVIDERS: [&str; 6] = [
+const PROVIDERS: [&str; 7] = [
     "openai",
     "anthropic",
     "claude",
     "gemini",
     "deepseek",
     "ollama",
+    "local",
 ];
 
 fn provider_arg() -> Arg {
@@ -72,7 +76,7 @@ fn provider_arg() -> Arg {
         .long("provider")
         .value_name("PROVIDER")
         .value_parser(PROVIDERS)
-        .help("openai, anthropic (claude), gemini, deepseek or ollama")
+        .help("openai, anthropic (claude), gemini, deepseek, ollama or local (OpenAI-compatible server)")
 }
 
 fn model_arg() -> Arg {
@@ -114,14 +118,37 @@ pub(crate) fn command() -> Command {
                     Arg::new("api-key-stdin")
                         .long("api-key-stdin")
                         .action(ArgAction::SetTrue)
-                        .conflicts_with("host")
+                        .conflicts_with_all(["host", "base-url"])
                         .help("Read the API key from the first line of standard input"),
                 )
                 .arg(
                     Arg::new("host")
                         .long("host")
                         .value_name("URL")
+                        .conflicts_with("base-url")
                         .help("Ollama host (default http://127.0.0.1:11434)"),
+                )
+                .arg(
+                    Arg::new("base-url")
+                        .long("base-url")
+                        .value_name("URL")
+                        .help("Local OpenAI-compatible server on a loopback IP (default http://127.0.0.1:1234/v1)"),
+                )
+                .arg(
+                    Arg::new("input-price-per-mtok")
+                        .long("input-price-per-mtok")
+                        .value_name("PRICE")
+                        .value_parser(clap::value_parser!(f64))
+                        .requires("output-price-per-mtok")
+                        .help("Your price per million input tokens, used only for a labelled cost estimate"),
+                )
+                .arg(
+                    Arg::new("output-price-per-mtok")
+                        .long("output-price-per-mtok")
+                        .value_name("PRICE")
+                        .value_parser(clap::value_parser!(f64))
+                        .requires("input-price-per-mtok")
+                        .help("Your price per million output tokens, used only for a labelled cost estimate"),
                 ),
         )
         .subcommand(Command::new("disconnect").about("Delete the saved AI credentials file"))
@@ -190,12 +217,16 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
     let (backend, description) = backend::Backend::build(&resolved)
         .map_err(|error| AiCliError::Provider(sanitize(&error.to_string())))?;
     let notice = if description.offline {
-        Some("No provider is connected: a deterministic offline assistant answers. Run `cargo rullst ai connect` to use a model.".to_string())
+        Some(
+            "No provider is connected: a deterministic offline assistant answers. Run `cargo rullst ai connect` to use a model."
+                .to_string(),
+        )
     } else if description.streaming {
         None
     } else {
         Some(
-            "This provider's rullst-ai transport answers at once instead of streaming.".to_string(),
+            "This Ollama host is not a loopback address, so answers arrive at once instead of streaming."
+                .to_string(),
         )
     };
     let mode = if matches.get_flag("dry-run") {
@@ -208,6 +239,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
     let goal = matches
         .get_many::<String>("goal")
         .map(|words| words.map(String::as_str).collect::<Vec<_>>().join(" "));
+    let cwd = std::env::current_dir()?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -224,6 +256,8 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
             style,
             mode,
             root,
+            cwd,
+            prices: resolved.prices,
         };
         let mut session = Session::new(&backend, settings, std::io::stdout(), input);
         match goal {

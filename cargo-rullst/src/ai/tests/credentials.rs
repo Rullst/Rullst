@@ -1,4 +1,5 @@
 use super::*;
+use crate::ai::provider::{DEFAULT_LOCAL_BASE_URL, DEFAULT_OLLAMA_HOST};
 use std::collections::HashMap;
 
 fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
@@ -14,6 +15,7 @@ fn stored(provider: Provider, model: Option<&str>, secret: Option<&str>) -> Stor
         provider,
         model: model.map(str::to_string),
         secret: secret.map(Secret::new),
+        prices: None,
     }
 }
 
@@ -107,6 +109,53 @@ fn nothing_configured_or_mock_keys_select_the_offline_assistant() {
     assert_eq!(resolved.secret.expose(), DEFAULT_OLLAMA_HOST);
     assert_eq!(resolved.source, KeySource::Default);
     assert!(!resolved.mock);
+
+    // A local OpenAI-compatible server defaults to LM Studio's endpoint.
+    let resolved = resolve(Some(Provider::Local), None, None, env(&[])).unwrap();
+    assert_eq!(resolved.secret.expose(), DEFAULT_LOCAL_BASE_URL);
+    assert_eq!(resolved.model, "local-model");
+    let resolved = resolve(
+        None,
+        None,
+        None,
+        env(&[("RULLST_AI_BASE_URL", "http://127.0.0.1:8080/v1")]),
+    )
+    .unwrap();
+    assert_eq!(resolved.provider, Some(Provider::Local));
+}
+
+#[test]
+fn prices_are_optional_paired_bounded_and_provider_specific() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join(FILE);
+    let mut original = stored(Provider::OpenAi, Some("gpt-x"), Some("sk-x"));
+    original.prices = Prices::new(2.5, 10.0);
+    save(&path, &original).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(text.contains("input_price_per_mtok = 2.5"), "{text}");
+    let loaded = load(&path).unwrap().unwrap().stored;
+    assert_eq!(loaded, original);
+    let resolved = resolve(None, None, Some(&loaded), env(&[])).unwrap();
+    assert_eq!(resolved.prices, Prices::new(2.5, 10.0));
+    let estimate = resolved.prices.unwrap().estimate(1_000_000, 500_000);
+    assert!((estimate - 7.5).abs() < 1e-9);
+    // Prices saved for one provider do not price another.
+    let other = resolve(Some(Provider::Gemini), None, Some(&loaded), env(&[])).unwrap();
+    assert_eq!(other.prices, None);
+
+    for body in [
+        "version = 1\nprovider = \"openai\"\ninput_price_per_mtok = 1.0\n",
+        "version = 1\nprovider = \"openai\"\ninput_price_per_mtok = -1.0\noutput_price_per_mtok = 1.0\n",
+        "version = 1\nprovider = \"openai\"\ninput_price_per_mtok = nan\noutput_price_per_mtok = 1.0\n",
+    ] {
+        fs::write(&path, body).unwrap();
+        assert!(
+            matches!(load(&path), Err(CredentialError::Invalid(_))),
+            "{body}"
+        );
+    }
+    assert!(Prices::new(f64::INFINITY, 1.0).is_none());
+    assert!(Prices::new(1.0, 100_001.0).is_none());
 }
 
 #[test]

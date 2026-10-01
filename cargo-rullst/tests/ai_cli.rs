@@ -6,14 +6,17 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-const PROVIDER_VARIABLES: [&str; 7] = [
+const PROVIDER_VARIABLES: [&str; 10] = [
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "GEMINI_API_KEY",
     "DEEPSEEK_API_KEY",
     "OLLAMA_HOST",
+    "RULLST_AI_BASE_URL",
     "RULLST_AI_MODEL",
     "OPENAI_BASE_URL",
+    "RULLST_ENV",
+    "APP_ENV",
 ];
 
 struct Sandbox {
@@ -235,4 +238,87 @@ fn scripted_chat_turns_are_plan_only_and_end_at_eof() {
     );
     assert!(stdout.contains("Attached src/main.rs"));
     assert!(!sandbox.project.join("rullst-ai-demo.md").exists());
+}
+
+#[test]
+fn local_servers_and_user_prices_are_stored_and_reported() {
+    let sandbox = Sandbox::new();
+    let output = sandbox.run(
+        &sandbox.home,
+        &[
+            "ai",
+            "connect",
+            "--provider",
+            "local",
+            "--base-url",
+            "http://127.0.0.1:8080/v1",
+            "--model",
+            "qwen2.5-coder",
+            "--input-price-per-mtok",
+            "0.5",
+            "--output-price-per-mtok",
+            "1.5",
+        ],
+        "",
+        &[],
+    );
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(text(&output).contains("Cost estimates use your prices"));
+    let status = sandbox.run(&sandbox.project, &["ai", "status", "--json"], "", &[]);
+    let report: serde_json::Value = serde_json::from_slice(&status.stdout).unwrap();
+    assert_eq!(report["provider"], "local");
+    assert_eq!(report["model"], "qwen2.5-coder");
+    assert_eq!(report["streaming"], true);
+    assert_eq!(report["offline_mock"], false);
+    assert_eq!(report["input_price_per_mtok"], 0.5);
+    assert_eq!(report["output_price_per_mtok"], 1.5);
+
+    let remote = sandbox.run(
+        &sandbox.home,
+        &[
+            "ai",
+            "connect",
+            "--provider",
+            "local",
+            "--base-url",
+            "http://192.168.0.2:8080/v1",
+        ],
+        "",
+        &[],
+    );
+    assert!(!remote.status.success());
+    assert!(text(&remote).contains("loopback"), "{}", text(&remote));
+
+    let unpaired = sandbox.run(
+        &sandbox.home,
+        &[
+            "ai",
+            "connect",
+            "--provider",
+            "openai",
+            "--input-price-per-mtok",
+            "1",
+        ],
+        "",
+        &[],
+    );
+    assert!(!unpaired.status.success(), "prices are configured in pairs");
+}
+
+#[test]
+fn outside_a_project_the_plan_proposes_a_new_project_without_creating_it() {
+    let sandbox = Sandbox::new();
+    let empty = sandbox.home.join("workspace");
+    fs::create_dir_all(&empty).unwrap();
+    let output = sandbox.run(&empty, &["ai", "build a shop"], "", &[]);
+    assert!(output.status.success(), "{}", text(&output));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains(
+            "$ cargo rullst new rullst-ai-demo --default --blueprint blank --skip-initial-migration"
+        ),
+        "{stdout}"
+    );
+    assert!(stdout.contains("Plan only"));
+    assert!(!empty.join("rullst-ai-demo").exists());
 }

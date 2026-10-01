@@ -8,11 +8,13 @@
 use super::actions::{self, Overlay, Prepared};
 use super::backend::Backend;
 use super::checkpoint::{self, Checkpoint};
+use super::credentials::Prices;
 use super::input::{Input, Line, interrupt};
 use super::mock::RESULTS_MARKER;
 use super::prompt::{self, data};
 use super::protocol::{self, DisplayFilter};
 use super::term::{Style, sanitize};
+use super::usage::UsageTotals;
 use rullst_ai::{AiCancellation, AiError, AiGuardrails, Message};
 use std::io::Write;
 use std::path::PathBuf;
@@ -49,8 +51,12 @@ pub(super) struct Settings {
     pub notice: Option<String>,
     pub style: Style,
     pub mode: Mode,
-    /// Canonical project root; `None` disables actions.
+    /// Canonical project root; `None` allows only `cargo rullst new`.
     pub root: Option<PathBuf>,
+    /// Where `cargo rullst new` creates a project outside one.
+    pub cwd: PathBuf,
+    /// User-configured prices for cost estimates.
+    pub prices: Option<Prices>,
 }
 
 pub(super) struct Session<'a, W: Write + Send> {
@@ -62,6 +68,9 @@ pub(super) struct Session<'a, W: Write + Send> {
     style: Style,
     mode: Mode,
     root: Option<PathBuf>,
+    cwd: PathBuf,
+    prices: Option<Prices>,
+    usage: UsageTotals,
     system: Message,
     /// Project context as a separate system message (inspected on its own).
     context: Option<Message>,
@@ -88,6 +97,8 @@ impl<'a, W: Write + Send> Session<'a, W> {
             style,
             mode,
             root,
+            cwd,
+            prices,
         } = settings;
         let context = root
             .as_deref()
@@ -103,6 +114,9 @@ impl<'a, W: Write + Send> Session<'a, W> {
             system: Message::system(prompt::system_prompt(root.is_some())),
             context,
             root,
+            cwd,
+            prices,
+            usage: UsageTotals::default(),
             history: Vec::new(),
             attachments: Vec::new(),
             notes: Vec::new(),
@@ -133,7 +147,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
                         .map_or_else(String::new, |name| name.to_string_lossy().into_owned())
                 )
             ),
-            None => "no project (actions disabled)".to_string(),
+            None => "no project (only `cargo rullst new` is available)".to_string(),
         };
         let line = format!("{title} · {label} · {project}");
         self.say(&line);
@@ -153,6 +167,31 @@ impl<'a, W: Write + Send> Session<'a, W> {
     pub(super) async fn one_shot(&mut self, goal: &str) {
         self.banner();
         self.turn(goal).await;
+        self.finish();
+    }
+
+    /// Prints the session usage, when any answer reported it.
+    fn finish(&mut self) {
+        if let Some(summary) = self.usage.summary() {
+            let summary = self.style.dim(&summary);
+            self.say(&summary);
+        }
+    }
+
+    /// Continues the session inside a project the assistant just created.
+    fn enter_project(&mut self, root: PathBuf) {
+        let name = root
+            .file_name()
+            .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
+        self.system = Message::system(prompt::system_prompt(true));
+        self.context = Some(Message::system(prompt::project_context(&root)));
+        self.root = Some(root);
+        self.checkpoint = CheckpointState::Pending;
+        let notice = self.style.green(&format!(
+            "Now working in the new project {}; paths are relative to it.",
+            sanitize(&name)
+        ));
+        self.say(&notice);
     }
 
     /// Reads goals until end of input or `/exit`.
@@ -188,6 +227,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
                 }
             }
         }
+        self.finish();
     }
 
     /// Handles a slash command; `false` ends the session.
@@ -356,29 +396,32 @@ impl<'a, W: Write + Send> Session<'a, W> {
         if !full.ends_with('\n') {
             let _ = writeln!(self.out);
         }
-        if let Err(error) = result {
-            let message = match error {
-                AiError::Cancelled => "[cancelled]".to_string(),
-                AiError::BlockedByFirewall(code) => {
-                    format!("[blocked by the rullst-ai guardrails: {}]", sanitize(&code))
+        let reported = match result {
+            Ok(usage) => usage,
+            Err(error) => {
+                let message = match error {
+                    AiError::Cancelled => "[cancelled]".to_string(),
+                    AiError::BlockedByFirewall(code) => {
+                        format!("[blocked by the rullst-ai guardrails: {}]", sanitize(&code))
+                    }
+                    other => format!("[provider error: {}]", sanitize(&other.to_string())),
+                };
+                let message = style.red(&message);
+                self.say(&message);
+                if let Some(unanswered) = self.history.pop()
+                    && unanswered.content.starts_with(RESULTS_MARKER)
+                {
+                    // Keep executed results for the next turn instead of losing them.
+                    self.notes.push(unanswered.content);
                 }
-                other => format!("[provider error: {}]", sanitize(&other.to_string())),
-            };
-            let message = style.red(&message);
-            self.say(&message);
-            if let Some(unanswered) = self.history.pop()
-                && unanswered.content.starts_with(RESULTS_MARKER)
-            {
-                // Keep executed results for the next turn instead of losing them.
-                self.notes.push(unanswered.content);
+                return None;
             }
-            return None;
-        }
+        };
         let elapsed = started.elapsed().as_secs_f64();
+        let tokens = self.usage.record(reported, self.prices);
         let usage = style.dim(&format!(
-            "[{} · {} bytes · {elapsed:.1}s]",
-            sanitize(&self.label),
-            full.len()
+            "[{} · {tokens} · {elapsed:.1}s]",
+            sanitize(&self.label)
         ));
         self.say(&usage);
         let recorded = match AiGuardrails::inspect(&full).threat() {
@@ -406,7 +449,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
             return;
         };
         let prepared = Prepared::Command(invocation);
-        let applied = actions::apply(&prepared, &root, &mut self.out, self.style);
+        let applied = actions::apply(&prepared, Some(&root), &mut self.out, self.style);
         let mut note = format!("cargo check after the last changes: {}", applied.result);
         if let Some(output) = applied.output.filter(|_| !applied.success) {
             note.push('\n');

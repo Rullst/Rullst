@@ -1,6 +1,6 @@
 use super::*;
 use crate::ai::backend::Backend;
-use crate::ai::mock::{DEMO_FILE, MockAssistant};
+use crate::ai::mock::{DEMO_FILE, DEMO_PROJECT, MockAssistant};
 use rullst_ai::StreamingAiClient;
 use std::fs;
 use std::path::Path;
@@ -9,12 +9,15 @@ use std::process::Command;
 const PLAIN: Style = Style { color: false };
 
 fn settings(mode: Mode, root: Option<PathBuf>) -> Settings {
+    let cwd = root.clone().unwrap_or_else(std::env::temp_dir);
     Settings {
         label: "offline mock".to_string(),
         notice: Some("offline notice".to_string()),
         style: PLAIN,
         mode,
         root,
+        cwd,
+        prices: None,
     }
 }
 
@@ -199,14 +202,58 @@ async fn guardrail_matches_are_not_sent() {
 }
 
 #[tokio::test]
-async fn outside_a_project_actions_are_rejected() {
-    let output = one_shot(None, Mode::Execute, &[], "demo").await;
-    assert!(output.contains("no project (actions disabled)"));
+async fn outside_a_project_the_assistant_proposes_a_new_project() {
+    let directory = tempfile::tempdir().unwrap();
+    let backend = mock();
+    let mut options = settings(Mode::PlanOnly("test"), None);
+    options.cwd = directory.path().to_path_buf();
+    let mut session = Session::new(&backend, options, Vec::new(), Input::script(&[]));
+    session.one_shot("build a shop").await;
+    let output = String::from_utf8(session.into_output()).unwrap();
+    assert!(output.contains("no project (only `cargo rullst new` is available)"));
     assert!(
-        output.contains("unavailable outside a Rust project"),
+        output.contains(&format!(
+            "$ cargo rullst new {DEMO_PROJECT} --default --blueprint blank --skip-initial-migration"
+        )),
         "{output}"
     );
-    assert!(!output.contains("Apply?"));
+    assert!(output.contains("(not executed)"));
+    assert!(!directory.path().join(DEMO_PROJECT).exists());
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_confirmed_new_project_becomes_the_session_project() {
+    use std::os::unix::fs::PermissionsExt;
+    let directory = tempfile::tempdir().unwrap();
+    let cwd = fs::canonicalize(directory.path()).unwrap();
+    let fake = cwd.join("fake-rullst");
+    fs::write(
+        &fake,
+        "#!/bin/sh\nmkdir -p \"$2/src\" && printf '[package]\\nname = \"%s\"\\nversion = \"0.1.0\"\\nedition = \"2024\"\\n' \"$2\" > \"$2/Cargo.toml\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
+    crate::ai::commands::TEST_RULLST_PROGRAM.with(|program| *program.borrow_mut() = Some(fake));
+    let backend = mock();
+    let mut options = settings(Mode::Execute, None);
+    options.cwd = cwd.clone();
+    // new, write, continue without a checkpoint, edit, no cargo check.
+    let input = Input::script(&["y", "y", "y", "y", "n"]);
+    let mut session = Session::new(&backend, options, Vec::new(), input);
+    session.one_shot("build a shop").await;
+    crate::ai::commands::TEST_RULLST_PROGRAM.with(|program| *program.borrow_mut() = None);
+    let output = String::from_utf8(session.into_output()).unwrap();
+    assert!(
+        output.contains("Now working in the new project rullst-ai-demo"),
+        "{output}"
+    );
+    let demo = cwd.join(DEMO_PROJECT).join(DEMO_FILE);
+    assert_eq!(
+        fs::read_to_string(demo).unwrap(),
+        "# Rullst AI demo\n\nGoal: build a shop\n\nStatus: reviewed\n"
+    );
+    assert!(output.contains("No git checkpoint"));
 }
 
 #[tokio::test]
@@ -258,4 +305,80 @@ async fn rust_code_next_to_links_is_sent_unchanged() {
         output.contains("+ Goal: Why does `routes![get(\"/\" => home)]` fail?"),
         "{output}"
     );
+}
+
+/// One SSE response from a loopback OpenAI-compatible fixture.
+fn serve_stream(body: &'static str) -> String {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+            .unwrap();
+        let mut request = Vec::new();
+        let mut buffer = [0_u8; 8192];
+        while let Ok(read) = stream.read(&mut buffer) {
+            if read == 0 {
+                break;
+            }
+            request.extend_from_slice(&buffer[..read]);
+            let text = String::from_utf8_lossy(&request).to_ascii_lowercase();
+            if let Some((head, body)) = text.split_once("\r\n\r\n") {
+                let length = head
+                    .lines()
+                    .find_map(|line| line.strip_prefix("content-length: "))
+                    .and_then(|value| value.trim().parse::<usize>().ok())
+                    .unwrap_or(0);
+                if body.len() >= length {
+                    break;
+                }
+            }
+        }
+        let _ = write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+    });
+    format!("http://{address}/v1")
+}
+
+#[tokio::test]
+async fn reported_usage_is_shown_per_answer_and_per_session() {
+    use rullst_ai::providers::openai_compatible::{
+        OpenAiCompatibleCapabilities, OpenAiCompatibleProvider,
+    };
+    let url = serve_stream(concat!(
+        "data: {\"choices\":[{\"delta\":{\"content\":\"Use make:model.\"}}]}\n\n",
+        "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":1500,\"completion_tokens\":250,\"total_tokens\":1750}}\n\n",
+        "data: [DONE]\n\n"
+    ));
+    let provider = OpenAiCompatibleProvider::try_local(url, "fixture")
+        .unwrap()
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_stream_usage());
+    let backend = Backend::Compatible(StreamingAiClient::new(provider));
+    let mut options = settings(Mode::PlanOnly("test"), None);
+    options.prices = crate::ai::credentials::Prices::new(2.0, 8.0);
+    let mut session = Session::new(&backend, options, Vec::new(), Input::script(&[]));
+    session.one_shot("How do I add a model?").await;
+    let output = String::from_utf8(session.into_output()).unwrap();
+    assert!(output.contains("Use make:model."), "{output}");
+    assert!(
+        output.contains("1,500 in · 250 out tokens · ≈ 0.0050 est. at your prices"),
+        "{output}"
+    );
+    assert!(
+        output.contains("Session usage: 1,500 in · 250 out tokens over 1 answer(s)"),
+        "{output}"
+    );
+}
+
+#[tokio::test]
+async fn unreported_usage_is_never_invented() {
+    let (_guard, root) = project(false);
+    let output = one_shot(Some(root), Mode::PlanOnly("test"), &[], "demo").await;
+    assert!(output.contains("usage not reported"), "{output}");
+    assert!(!output.contains("Session usage"));
 }

@@ -1,19 +1,15 @@
 //! The only processes the assistant may start: an allowlisted `cargo rullst`
-//! subcommand, `cargo check` or `cargo test`. Programs are executed directly
-//! (never through a shell) with arguments that pass a strict token grammar,
-//! standard input closed, bounded captured output and a deadline.
+//! subcommand, `cargo check` or `cargo test`. Arguments pass a strict token
+//! grammar; [`super::process`] runs them without a shell.
 
-use std::io::Read;
-use std::path::Path;
-use std::process::{Command, Stdio};
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-/// `cargo rullst` subcommands the assistant may propose. Deliberately absent:
-/// deploy, foundry:*, upgrade, update, pkg, new, dev, dash, studio, build*,
-/// omni, eject, hook:install, db:migrate/rollback/seed, auth and
+/// `cargo rullst` subcommands the assistant may propose inside a project.
+/// Deliberately absent: deploy, foundry:*, upgrade, update, pkg, dev, dash,
+/// studio, build*, omni, eject, hook:install, db:rollback/seed, auth and
 /// generate:models (which would route a database connection string through
-/// the model).
+/// the model). `new` is validated separately by [`validate_new`], and
+/// `db:migrate` is further limited to development projects by the caller.
 pub(super) const RULLST_ALLOWLIST: &[&str] = &[
     "make:controller",
     "make:model",
@@ -46,6 +42,7 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
     "generate:api",
     "generate:buildah",
     "db:status",
+    "db:migrate",
     "doctor",
     "audit",
     "inspect",
@@ -173,6 +170,79 @@ pub(super) fn validate_rullst(args: Vec<String>) -> Result<Invocation, CommandEr
     })
 }
 
+const NEW_FLAGS: &[&str] = &[
+    "--default",
+    "--api",
+    "--ai",
+    "--redis",
+    "--no-database",
+    "--skip-initial-migration",
+];
+const BLUEPRINTS: &[&str] = &["blank", "lms", "saas", "blog", "portfolio", "erp"];
+const DATABASES: &[&str] = &["sqlite", "postgres", "mysql", "mariadb", "turso"];
+
+/// A project name the CLI accepts: a lowercase package name.
+pub(super) fn valid_project_name(name: &str) -> bool {
+    let mut bytes = name.bytes();
+    bytes.next().is_some_and(|first| first.is_ascii_lowercase())
+        && name.len() <= 64
+        && bytes.all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+        })
+}
+
+/// Validates `cargo rullst new <name> [flags]`, used only outside a project.
+/// `--default` is added when missing so generation never prompts; blueprint
+/// and database values must be ones the CLI accepts.
+pub(super) fn validate_new(args: Vec<String>) -> Result<(Invocation, String), CommandError> {
+    if args.len() < 2 || args.len() > MAX_ARGS + 1 || args[0] != "new" {
+        return Err(CommandError::Arity);
+    }
+    let name = args[1].clone();
+    if !valid_project_name(&name) {
+        return Err(CommandError::Argument(truncate(&name)));
+    }
+    let mut checked = vec!["new".to_string(), name.clone()];
+    let mut iter = args[2..].iter();
+    while let Some(argument) = iter.next() {
+        let (flag, inline) = match argument.split_once('=') {
+            Some((flag, value)) => (flag, Some(value.to_string())),
+            None => (argument.as_str(), None),
+        };
+        let values = match flag {
+            "--blueprint" => BLUEPRINTS,
+            "--database" => DATABASES,
+            flag if NEW_FLAGS.contains(&flag) && inline.is_none() => {
+                checked.push(flag.to_string());
+                continue;
+            }
+            _ => return Err(CommandError::Argument(truncate(argument))),
+        };
+        let value = match inline {
+            Some(value) => value,
+            None => iter
+                .next()
+                .cloned()
+                .ok_or_else(|| CommandError::Argument(flag.to_string()))?,
+        };
+        if !values.contains(&value.as_str()) {
+            return Err(CommandError::Argument(truncate(&value)));
+        }
+        checked.push(flag.to_string());
+        checked.push(value);
+    }
+    if !checked.iter().any(|argument| argument == "--default") {
+        checked.insert(2, "--default".to_string());
+    }
+    Ok((
+        Invocation {
+            kind: CommandKind::Rullst,
+            args: checked,
+        },
+        name,
+    ))
+}
+
 /// Validates `cargo check|test <args>`. `test` accepts one test-name filter
 /// and `--test <name>`; nothing may redirect the manifest, target directory,
 /// configuration or toolchain.
@@ -237,12 +307,22 @@ impl Invocation {
         format!("{program} {}", self.args.join(" "))
     }
 
+    fn subcommand(&self) -> Option<&str> {
+        self.args.first().map(String::as_str)
+    }
+
+    /// Commands confirmed one by one even after "all": they create a project
+    /// or change a database, which no git checkpoint can undo.
+    pub(super) fn always_confirm(&self) -> bool {
+        self.kind == CommandKind::Rullst && matches!(self.subcommand(), Some("new" | "db:migrate"))
+    }
+
     /// Whether the command may write project files (and so needs a checkpoint).
     pub(super) fn mutates(&self) -> bool {
         match self.kind {
             CommandKind::Cargo => false,
-            CommandKind::Rullst => match self.args.first().map(String::as_str) {
-                Some("db:status" | "doctor" | "inspect") => false,
+            CommandKind::Rullst => match self.subcommand() {
+                Some("db:status" | "doctor" | "inspect" | "new" | "db:migrate") => false,
                 Some("audit") => self
                     .args
                     .iter()
@@ -252,14 +332,22 @@ impl Invocation {
         }
     }
 
-    fn deadline(&self) -> Duration {
+    pub(super) fn deadline(&self) -> Duration {
         match self.kind {
+            // Scaffolding a project or migrating may build the application.
+            CommandKind::Rullst if self.always_confirm() => Duration::from_secs(30 * 60),
             CommandKind::Rullst => Duration::from_secs(5 * 60),
             CommandKind::Cargo => Duration::from_secs(30 * 60),
         }
     }
 
-    fn program(&self) -> std::io::Result<std::path::PathBuf> {
+    pub(super) fn program(&self) -> std::io::Result<std::path::PathBuf> {
+        #[cfg(test)]
+        if let Some(program) = TEST_RULLST_PROGRAM.with(|program| program.borrow().clone())
+            && self.kind == CommandKind::Rullst
+        {
+            return Ok(program);
+        }
         match self.kind {
             CommandKind::Rullst => std::env::current_exe(),
             // Cargo sets `CARGO` for subcommands; otherwise use the PATH entry.
@@ -271,135 +359,12 @@ impl Invocation {
     }
 }
 
-/// Head and tail of a stream, bounded regardless of its length.
-#[derive(Default)]
-pub(super) struct Capture {
-    head: Vec<u8>,
-    tail: std::collections::VecDeque<u8>,
-    omitted: usize,
-}
-
-const HEAD_BYTES: usize = 6 * 1024;
-const TAIL_BYTES: usize = 10 * 1024;
-
-impl Capture {
-    pub(super) fn push(&mut self, bytes: &[u8]) {
-        for &byte in bytes {
-            if self.head.len() < HEAD_BYTES {
-                self.head.push(byte);
-            } else {
-                self.tail.push_back(byte);
-                if self.tail.len() > TAIL_BYTES {
-                    self.tail.pop_front();
-                    self.omitted += 1;
-                }
-            }
-        }
-    }
-
-    pub(super) fn text(&self) -> String {
-        let mut text = String::from_utf8_lossy(&self.head).into_owned();
-        if self.omitted > 0 {
-            text.push_str(&format!("\n… {} bytes omitted …\n", self.omitted));
-        }
-        let tail: Vec<u8> = self.tail.iter().copied().collect();
-        text.push_str(&String::from_utf8_lossy(&tail));
-        text
-    }
-}
-
-/// The outcome of one executed command.
-pub(super) struct Outcome {
-    pub success: bool,
-    pub status: String,
-    pub output: String,
-}
-
-fn spawn_reader<R: Read + Send + 'static>(
-    stream: R,
-    sender: mpsc::Sender<Vec<u8>>,
-) -> std::thread::JoinHandle<()> {
-    std::thread::spawn(move || {
-        let mut reader = std::io::BufReader::new(stream);
-        let mut line = Vec::new();
-        loop {
-            line.clear();
-            match std::io::BufRead::read_until(&mut reader, b'\n', &mut line) {
-                Ok(0) | Err(_) => break,
-                Ok(_) => {
-                    if sender.send(line.clone()).is_err() {
-                        break;
-                    }
-                }
-            }
-        }
-    })
-}
-
-/// Runs `invocation` in `root`, forwarding output lines to `on_line` as they
-/// arrive. The child's stdin is closed so it can never wait for input.
-pub(super) fn run(
-    invocation: &Invocation,
-    root: &Path,
-    mut on_line: impl FnMut(&str),
-) -> std::io::Result<Outcome> {
-    let mut child = Command::new(invocation.program()?)
-        .args(&invocation.args)
-        .current_dir(root)
-        .env("CARGO_TERM_COLOR", "never")
-        .env("NO_COLOR", "1")
-        .env("RULLST_UPDATE_CHECK", "0")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
-    let mut readers = Vec::new();
-    if let Some(stdout) = child.stdout.take() {
-        readers.push(spawn_reader(stdout, sender.clone()));
-    }
-    if let Some(stderr) = child.stderr.take() {
-        readers.push(spawn_reader(stderr, sender.clone()));
-    }
-    drop(sender);
-    let deadline = Instant::now() + invocation.deadline();
-    let mut capture = Capture::default();
-    let mut timed_out = false;
-    loop {
-        match receiver.recv_timeout(Duration::from_millis(100)) {
-            Ok(line) => {
-                capture.push(&line);
-                on_line(String::from_utf8_lossy(&line).trim_end_matches(['\n', '\r']));
-            }
-            Err(mpsc::RecvTimeoutError::Disconnected) => break,
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
-        }
-        if Instant::now() > deadline {
-            timed_out = true;
-            let _ = child.kill();
-            break;
-        }
-    }
-    let status = child.wait()?;
-    // After a timeout a grandchild may still hold the pipes; do not wait for it.
-    if !timed_out {
-        for reader in readers {
-            let _ = reader.join();
-        }
-    }
-    let status_text = if timed_out {
-        "stopped after the time limit".to_string()
-    } else {
-        match status.code() {
-            Some(code) => format!("exit status {code}"),
-            None => "terminated by a signal".to_string(),
-        }
-    };
-    Ok(Outcome {
-        success: status.success() && !timed_out,
-        status: status_text,
-        output: capture.text(),
-    })
+#[cfg(test)]
+thread_local! {
+    /// A stand-in for the CLI binary in unit tests, where the current
+    /// executable is the test harness.
+    pub(super) static TEST_RULLST_PROGRAM: std::cell::RefCell<Option<std::path::PathBuf>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 #[cfg(test)]

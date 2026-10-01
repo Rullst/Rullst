@@ -26,6 +26,12 @@ pub(super) enum Prepared {
         new: String,
     },
     Command(Invocation),
+    /// `cargo rullst new`, run in `parent` to create `directory`.
+    NewProject {
+        invocation: Invocation,
+        parent: PathBuf,
+        directory: PathBuf,
+    },
 }
 
 impl Prepared {
@@ -34,6 +40,16 @@ impl Prepared {
         match self {
             Self::File { .. } => true,
             Self::Command(invocation) => invocation.mutates(),
+            Self::NewProject { .. } => false,
+        }
+    }
+
+    /// Confirmed on its own even after "all" for the turn.
+    pub(super) fn always_confirm(&self) -> bool {
+        match self {
+            Self::File { .. } => false,
+            Self::Command(invocation) => invocation.always_confirm(),
+            Self::NewProject { .. } => true,
         }
     }
 
@@ -48,7 +64,7 @@ impl Prepared {
                 target, old: None, ..
             } => format!("create {}", target.display),
             Self::File { target, .. } => format!("update {}", target.display),
-            Self::Command(invocation) => invocation.display(),
+            Self::Command(invocation) | Self::NewProject { invocation, .. } => invocation.display(),
         }
     }
 }
@@ -73,13 +89,41 @@ fn current(target: &ProjectPath, overlay: &Overlay) -> Result<Option<String>, St
     }
 }
 
-/// Validates one proposal against the project root.
+/// `cargo rullst new` outside a project, creating a directory in `cwd` that
+/// must not exist yet.
+fn prepare_new(args: &[String], root: Option<&Path>, cwd: &Path) -> Result<Prepared, String> {
+    if root.is_some() {
+        return Err("`new` is only available outside a project".to_string());
+    }
+    let (invocation, name) =
+        commands::validate_new(args.to_vec()).map_err(|error| error.to_string())?;
+    let directory = cwd.join(&name);
+    if std::fs::symlink_metadata(&directory).is_ok() {
+        return Err(format!("`{name}` already exists in the current directory"));
+    }
+    Ok(Prepared::NewProject {
+        invocation,
+        parent: cwd.to_path_buf(),
+        directory,
+    })
+}
+
+/// Validates one proposal against the project root (or, for `new`, the
+/// current directory outside a project).
 pub(super) fn prepare(
     action: &Action,
     root: Option<&Path>,
+    cwd: &Path,
     overlay: &Overlay,
 ) -> Result<Prepared, String> {
-    let root = root.ok_or("file and command actions are unavailable outside a Rust project")?;
+    if let Action::RunRullst { args } = action
+        && args.first().map(String::as_str) == Some("new")
+    {
+        return prepare_new(args, root, cwd);
+    }
+    let root = root.ok_or(
+        "file and command actions are unavailable outside a Rust project; propose `new` first",
+    )?;
     match action {
         Action::WriteFile { path, content } => {
             let target = paths::resolve(root, path).map_err(|error| error.to_string())?;
@@ -116,9 +160,14 @@ pub(super) fn prepare(
                 new,
             })
         }
-        Action::RunRullst { args } => commands::validate_rullst(args.clone())
-            .map(Prepared::Command)
-            .map_err(|error| error.to_string()),
+        Action::RunRullst { args } => {
+            let invocation =
+                commands::validate_rullst(args.clone()).map_err(|error| error.to_string())?;
+            if args.first().map(String::as_str) == Some("db:migrate") {
+                super::environment::ensure_migration_allowed(root)?;
+            }
+            Ok(Prepared::Command(invocation))
+        }
         Action::Cargo { args } => commands::validate_cargo(args.clone())
             .map(Prepared::Command)
             .map_err(|error| error.to_string()),
@@ -156,10 +205,30 @@ pub(super) fn preview(prepared: &Prepared, index: usize, total: usize, style: St
             output.push('\n');
             output.push_str(&style.cyan(&format!("  $ {}", invocation.display())));
             output.push('\n');
-            if invocation.mutates() {
+            if invocation.always_confirm() {
+                output.push_str(&style.yellow(
+                    "  ! changes the development database; a git checkpoint cannot undo it",
+                ));
+                output.push('\n');
+            } else if invocation.mutates() {
                 output.push_str(&style.dim("  (may create or change project files)"));
                 output.push('\n');
             }
+        }
+        Prepared::NewProject {
+            invocation,
+            directory,
+            ..
+        } => {
+            output.push_str(&style.bold(&format!(
+                "[{index}/{total}] create project {}",
+                sanitize(&directory.display().to_string())
+            )));
+            output.push('\n');
+            output.push_str(&style.cyan(&format!("  $ {}", invocation.display())));
+            output.push('\n');
+            output.push_str(&style.dim("  (the session continues inside the new project)"));
+            output.push('\n');
         }
     }
     output
@@ -210,74 +279,113 @@ pub(super) struct Applied {
     /// Short result for the model (command output is attached separately).
     pub result: String,
     pub output: Option<String>,
+    /// The project a successful `new` created.
+    pub new_root: Option<PathBuf>,
 }
 
-/// Applies an operation, streaming command output to `out`.
-pub(super) fn apply<W: Write>(
-    prepared: &Prepared,
-    root: &Path,
+fn failed(message: String) -> Applied {
+    Applied {
+        success: false,
+        result: message,
+        output: None,
+        new_root: None,
+    }
+}
+
+/// Runs a command in `directory`, streaming at most 400 output lines.
+fn run_command<W: Write>(
+    invocation: &Invocation,
+    directory: &Path,
     out: &mut W,
     style: Style,
 ) -> Applied {
+    let mut shown = 0usize;
+    let result = super::process::run(invocation, directory, |line| {
+        shown += 1;
+        if shown <= 400 {
+            let _ = writeln!(out, "  {}", style.dim(&sanitize(line)));
+        } else if shown == 401 {
+            let _ = writeln!(out, "  {}", style.dim("… further output hidden"));
+        }
+    });
+    match result {
+        Ok(outcome) => {
+            let mark = if outcome.success {
+                style.green(&format!("✓ {}", outcome.status))
+            } else {
+                style.red(&format!("✗ {}", outcome.status))
+            };
+            let _ = writeln!(out, "  {mark}");
+            Applied {
+                success: outcome.success,
+                result: outcome.status,
+                output: Some(outcome.output),
+                new_root: None,
+            }
+        }
+        Err(error) => {
+            let message = format!("could not start: {error}");
+            let _ = writeln!(out, "  {}", style.red(&format!("✗ {message}")));
+            failed(message)
+        }
+    }
+}
+
+/// Applies an operation, streaming command output to `out`. File changes
+/// and project commands need the project `root`.
+pub(super) fn apply<W: Write>(
+    prepared: &Prepared,
+    root: Option<&Path>,
+    out: &mut W,
+    style: Style,
+) -> Applied {
+    let needs_root = || failed("no project is open".to_string());
     match prepared {
-        Prepared::File { target, old, new } => match write_file(root, target, new) {
-            Ok(()) => {
-                let lines = new.lines().count();
-                let verb = if old.is_some() { "updated" } else { "created" };
-                let _ = writeln!(
-                    out,
-                    "  {}",
-                    style.green(&format!("✓ {verb} {}", target.display))
-                );
-                Applied {
-                    success: true,
-                    result: format!("{verb} ({lines} lines)"),
-                    output: None,
-                }
-            }
-            Err(error) => {
-                let _ = writeln!(out, "  {}", style.red(&format!("✗ {error}")));
-                Applied {
-                    success: false,
-                    result: format!("failed: {error}"),
-                    output: None,
-                }
-            }
-        },
-        Prepared::Command(invocation) => {
-            let mut shown = 0usize;
-            let result = commands::run(invocation, root, |line| {
-                shown += 1;
-                if shown <= 400 {
-                    let _ = writeln!(out, "  {}", style.dim(&sanitize(line)));
-                } else if shown == 401 {
-                    let _ = writeln!(out, "  {}", style.dim("… further output hidden"));
-                }
-            });
-            match result {
-                Ok(outcome) => {
-                    let mark = if outcome.success {
-                        style.green(&format!("✓ {}", outcome.status))
-                    } else {
-                        style.red(&format!("✗ {}", outcome.status))
-                    };
-                    let _ = writeln!(out, "  {mark}");
+        Prepared::File { target, old, new } => {
+            let Some(root) = root else {
+                return needs_root();
+            };
+            match write_file(root, target, new) {
+                Ok(()) => {
+                    let lines = new.lines().count();
+                    let verb = if old.is_some() { "updated" } else { "created" };
+                    let _ = writeln!(
+                        out,
+                        "  {}",
+                        style.green(&format!("✓ {verb} {}", target.display))
+                    );
                     Applied {
-                        success: outcome.success,
-                        result: outcome.status,
-                        output: Some(outcome.output),
+                        success: true,
+                        result: format!("{verb} ({lines} lines)"),
+                        output: None,
+                        new_root: None,
                     }
                 }
                 Err(error) => {
-                    let message = format!("could not start: {error}");
-                    let _ = writeln!(out, "  {}", style.red(&format!("✗ {message}")));
-                    Applied {
-                        success: false,
-                        result: message,
-                        output: None,
-                    }
+                    let _ = writeln!(out, "  {}", style.red(&format!("✗ {error}")));
+                    failed(format!("failed: {error}"))
                 }
             }
+        }
+        Prepared::Command(invocation) => match root {
+            Some(root) => run_command(invocation, root, out, style),
+            None => needs_root(),
+        },
+        Prepared::NewProject {
+            invocation,
+            parent,
+            directory,
+        } => {
+            let mut applied = run_command(invocation, parent, out, style);
+            let created = std::fs::symlink_metadata(directory.join("Cargo.toml"))
+                .is_ok_and(|metadata| metadata.is_file());
+            if applied.success && created {
+                applied.new_root = std::fs::canonicalize(directory).ok();
+            } else if applied.success {
+                applied.success = false;
+                applied.result = "the command succeeded but created no Cargo.toml".to_string();
+            }
+            applied
         }
     }
 }

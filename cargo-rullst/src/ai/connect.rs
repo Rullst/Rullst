@@ -1,8 +1,8 @@
 //! `cargo rullst ai connect | disconnect | status`.
 
 use super::AiCliError;
-use super::credentials::{self, KeySource, Secret, Stored};
-use super::provider::{DEFAULT_OLLAMA_HOST, DETECTION_ORDER, Provider, valid_model, valid_secret};
+use super::credentials::{self, KeySource, Prices, Secret, Stored};
+use super::provider::{DETECTION_ORDER, Provider, is_mock_credential, valid_model, valid_secret};
 use super::term::{Style, TermEnv};
 use clap::ArgMatches;
 use dialoguer::theme::{ColorfulTheme, SimpleTheme, Theme};
@@ -16,7 +16,7 @@ fn prompt_error(error: dialoguer::Error) -> AiCliError {
 fn ask_provider(theme: &impl Theme) -> Result<Provider, AiCliError> {
     let labels: Vec<&str> = DETECTION_ORDER
         .iter()
-        .map(|provider| provider.label())
+        .map(|provider| provider.choice())
         .collect();
     let index = dialoguer::Select::with_theme(theme)
         .with_prompt("AI provider")
@@ -60,6 +60,64 @@ struct Answers {
     provider: Provider,
     model: Option<String>,
     secret: Option<String>,
+    prices: Option<Prices>,
+}
+
+fn ask_price(theme: &impl Theme, prompt: &str) -> Result<f64, AiCliError> {
+    dialoguer::Input::<f64>::with_theme(theme)
+        .with_prompt(prompt)
+        .interact_text()
+        .map_err(prompt_error)
+}
+
+/// Prices from the flags, or asked for interactively (optional).
+fn gather_prices(
+    matches: &ArgMatches,
+    interactive: bool,
+    theme: &impl Theme,
+) -> Result<Option<Prices>, AiCliError> {
+    let invalid = || {
+        AiCliError::Usage("prices must be numbers between 0 and 100000 per million tokens".into())
+    };
+    match (
+        matches.get_one::<f64>("input-price-per-mtok"),
+        matches.get_one::<f64>("output-price-per-mtok"),
+    ) {
+        (Some(input), Some(output)) => Prices::new(*input, *output).map(Some).ok_or_else(invalid),
+        _ if interactive => {
+            let wanted = dialoguer::Confirm::with_theme(theme)
+                .with_prompt("Show cost estimates using your own per-million-token prices?")
+                .default(false)
+                .interact()
+                .map_err(prompt_error)?;
+            if !wanted {
+                return Ok(None);
+            }
+            let input = ask_price(theme, "Price per million input tokens")?;
+            let output = ask_price(theme, "Price per million output tokens")?;
+            Prices::new(input, output).map(Some).ok_or_else(invalid)
+        }
+        _ => Ok(None),
+    }
+}
+
+/// The endpoint for Ollama or a local server.
+fn gather_endpoint(
+    matches: &ArgMatches,
+    provider: Provider,
+    interactive: bool,
+    theme: &impl Theme,
+) -> Result<String, AiCliError> {
+    let (flag, prompt) = match provider {
+        Provider::Local => ("base-url", "Server base URL (literal loopback IP)"),
+        _ => ("host", "Ollama host"),
+    };
+    let default = provider.default_endpoint().unwrap_or_default();
+    Ok(match matches.get_one::<String>(flag) {
+        Some(value) => value.trim().to_string(),
+        None if interactive => ask_text(theme, prompt, default)?.trim().to_string(),
+        None => default.to_string(),
+    })
 }
 
 fn gather(
@@ -81,7 +139,12 @@ fn gather(
     let model = match matches.get_one::<String>("model") {
         Some(model) => Some(model.trim().to_string()),
         None if interactive => {
-            let model = ask_text(theme, "Model", provider.default_model())?;
+            let prompt = if provider == Provider::Local {
+                "Model name exactly as the server lists it"
+            } else {
+                "Model"
+            };
+            let model = ask_text(theme, prompt, provider.default_model())?;
             let model = model.trim().to_string();
             (model != provider.default_model()).then_some(model)
         }
@@ -105,11 +168,7 @@ fn gather(
             None
         }
     } else {
-        match matches.get_one::<String>("host") {
-            Some(host) => Some(host.trim().to_string()),
-            None if interactive => Some(ask_text(theme, "Ollama host", DEFAULT_OLLAMA_HOST)?),
-            None => Some(DEFAULT_OLLAMA_HOST.to_string()),
-        }
+        Some(gather_endpoint(matches, provider, interactive, theme)?)
     };
     if secret
         .as_deref()
@@ -118,13 +177,26 @@ fn gather(
         return Err(AiCliError::Usage(if provider.uses_api_key() {
             "the API key must be one printable token without spaces (8 KiB at most)".to_string()
         } else {
-            "the Ollama host must be one token without spaces".to_string()
+            "the endpoint must be one token without spaces".to_string()
         }));
     }
+    if provider == Provider::Local
+        && let Some(url) = secret.as_deref().filter(|url| !is_mock_credential(url))
+    {
+        let model = model.as_deref().unwrap_or(provider.default_model());
+        super::backend::local_provider(url, model).map_err(|_| {
+            AiCliError::Usage(
+                "the local server URL must be http(s) on a literal loopback IP, such as http://127.0.0.1:1234/v1"
+                    .to_string(),
+            )
+        })?;
+    }
+    let prices = gather_prices(matches, interactive, theme)?;
     Ok(Answers {
         provider,
         model,
         secret: secret.map(|secret| secret.trim().to_string()),
+        prices,
     })
 }
 
@@ -141,11 +213,13 @@ pub(super) fn connect(matches: &ArgMatches, env: &TermEnv, style: Style) -> Resu
         provider,
         model,
         secret,
+        prices,
     } = answers;
     let stored = Stored {
         provider,
         model: model.clone(),
         secret: secret.clone().map(Secret::new),
+        prices,
     };
     credentials::save(&path, &stored)?;
     let model = model.unwrap_or_else(|| format!("{} (default)", provider.default_model()));
@@ -171,6 +245,12 @@ pub(super) fn connect(matches: &ArgMatches, env: &TermEnv, style: Style) -> Resu
         println!(
             "  {} is set in this environment and takes precedence over the saved value.",
             provider.env_var()
+        );
+    }
+    if let Some(prices) = prices {
+        println!(
+            "  Cost estimates use your prices: {} input / {} output per million tokens.",
+            prices.input_per_mtok, prices.output_per_mtok
         );
     }
     println!("  Start chatting with `cargo rullst ai`.");
@@ -217,11 +297,15 @@ pub(super) fn status(matches: &ArgMatches, style: Style) -> Result<(), AiCliErro
     let source = match &resolved.source {
         KeySource::Env(name) => format!("environment ({name})"),
         KeySource::File => "credentials file".to_string(),
-        KeySource::Default => "default local host".to_string(),
+        KeySource::Default => "default local endpoint".to_string(),
         KeySource::Missing => "none".to_string(),
     };
     let provider = resolved.provider.map_or("none", Provider::id);
-    let streaming = resolved.provider.is_some_and(Provider::streams) && !resolved.mock;
+    // Building the transport sends nothing; it shows how answers arrive.
+    let transport = super::backend::Backend::build(&resolved).map(|(_, description)| description);
+    let streaming = transport
+        .as_ref()
+        .is_ok_and(|description| description.streaming);
     let file = path.as_ref().map(|path| path.display().to_string());
     if matches.get_flag("json") {
         let report = serde_json::json!({
@@ -235,6 +319,9 @@ pub(super) fn status(matches: &ArgMatches, style: Style) -> Result<(), AiCliErro
             "credentials_file": file,
             "credentials_file_present": loaded.is_some(),
             "insecure_permissions": loaded.as_ref().is_some_and(|loaded| loaded.insecure_permissions),
+            "configuration_valid": transport.is_ok(),
+            "input_price_per_mtok": resolved.prices.map(|prices| prices.input_per_mtok),
+            "output_price_per_mtok": resolved.prices.map(|prices| prices.output_per_mtok),
         });
         println!("{report}");
         return Ok(());
@@ -250,6 +337,11 @@ pub(super) fn status(matches: &ArgMatches, style: Style) -> Result<(), AiCliErro
     println!("  credential:  {source}");
     if resolved.mock {
         println!("  mode:        offline mock (no network)");
+    } else if transport.is_err() {
+        println!(
+            "  mode:        {}",
+            style.red("invalid configuration (a local server needs a loopback IP URL)")
+        );
     } else {
         let delivery = if streaming {
             "streaming"
@@ -257,6 +349,12 @@ pub(super) fn status(matches: &ArgMatches, style: Style) -> Result<(), AiCliErro
             "complete answers"
         };
         println!("  mode:        live · {delivery}");
+    }
+    if let Some(prices) = resolved.prices {
+        println!(
+            "  prices:      {} input / {} output per million tokens (yours; estimates only)",
+            prices.input_per_mtok, prices.output_per_mtok
+        );
     }
     match (&file, &loaded) {
         (Some(file), Some(_)) => println!("  stored in:   {file}"),

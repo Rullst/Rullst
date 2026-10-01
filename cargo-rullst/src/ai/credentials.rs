@@ -6,9 +6,7 @@
 //! mode 0600 inside a 0700 directory on Unix and is never followed through a
 //! symlink. Keys are never printed, logged or included in error messages.
 
-use super::provider::{
-    DEFAULT_OLLAMA_HOST, DETECTION_ORDER, Provider, is_mock_credential, valid_model, valid_secret,
-};
+use super::provider::{DETECTION_ORDER, Provider, is_mock_credential, valid_model, valid_secret};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
 use std::fs;
@@ -75,15 +73,45 @@ struct StoredFile {
     api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     host: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    input_price_per_mtok: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output_price_per_mtok: Option<f64>,
+}
+
+/// User-configured prices per million tokens, used only for a labelled
+/// cost estimate. Rullst ships no price table.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct Prices {
+    pub input_per_mtok: f64,
+    pub output_per_mtok: f64,
+}
+
+impl Prices {
+    /// Both prices, finite and between 0 and 100,000 per million tokens.
+    pub(super) fn new(input_per_mtok: f64, output_per_mtok: f64) -> Option<Self> {
+        let valid = |price: f64| price.is_finite() && (0.0..=100_000.0).contains(&price);
+        (valid(input_per_mtok) && valid(output_per_mtok)).then_some(Self {
+            input_per_mtok,
+            output_per_mtok,
+        })
+    }
+
+    /// The estimated cost of the given token counts.
+    pub(super) fn estimate(&self, input_tokens: u64, output_tokens: u64) -> f64 {
+        (input_tokens as f64 * self.input_per_mtok + output_tokens as f64 * self.output_per_mtok)
+            / 1_000_000.0
+    }
 }
 
 /// Validated stored configuration.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Stored {
     pub provider: Provider,
     pub model: Option<String>,
-    /// The API key, or the host for Ollama.
+    /// The API key, or the endpoint for Ollama and a local server.
     pub secret: Option<Secret>,
+    pub prices: Option<Prices>,
 }
 
 /// A loaded file plus whether its permissions allow other users to read it.
@@ -233,12 +261,18 @@ pub(super) fn load(path: &Path) -> Result<Option<Loaded>, CredentialError> {
     {
         return Err(invalid());
     }
+    let prices = match (file.input_price_per_mtok, file.output_price_per_mtok) {
+        (None, None) => None,
+        (Some(input), Some(output)) => Some(Prices::new(input, output).ok_or_else(invalid)?),
+        _ => return Err(invalid()),
+    };
     let secret = file.api_key.or(file.host).map(Secret::new);
     Ok(Some(Loaded {
         stored: Stored {
             provider,
             model: file.model,
             secret,
+            prices,
         },
         insecure_permissions: insecure(&metadata),
     }))
@@ -289,6 +323,8 @@ pub(super) fn save(path: &Path, stored: &Stored) -> Result<(), CredentialError> 
         model: stored.model.clone(),
         api_key,
         host,
+        input_price_per_mtok: stored.prices.map(|prices| prices.input_per_mtok),
+        output_price_per_mtok: stored.prices.map(|prices| prices.output_per_mtok),
     };
     let body = toml::to_string(&file).map_err(|_| CredentialError::Invalid(path.to_path_buf()))?;
     // `tempfile` creates the file with mode 0600 on Unix before any byte is written.
@@ -324,13 +360,13 @@ pub(super) fn remove(path: &Path) -> Result<bool, CredentialError> {
 pub(super) enum KeySource {
     Env(&'static str),
     File,
-    /// The default local Ollama host.
+    /// The provider's default local endpoint (Ollama or a local server).
     Default,
     Missing,
 }
 
 /// The provider configuration a session will use.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Resolved {
     /// `None` when nothing is configured: the offline mock answers.
     pub provider: Option<Provider>,
@@ -339,6 +375,8 @@ pub(super) struct Resolved {
     pub secret: Secret,
     pub source: KeySource,
     pub mock: bool,
+    /// Prices saved with the same provider, for cost estimates.
+    pub prices: Option<Prices>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -371,6 +409,7 @@ pub(super) fn resolve(
             secret: Secret::new(""),
             source: KeySource::Missing,
             mock: true,
+            prices: None,
         });
     };
     let same = stored.filter(|stored| stored.provider == provider);
@@ -378,8 +417,8 @@ pub(super) fn resolve(
         (value.trim().to_string(), KeySource::Env(provider.env_var()))
     } else if let Some(secret) = same.and_then(|stored| stored.secret.as_ref()) {
         (secret.expose().to_string(), KeySource::File)
-    } else if provider == Provider::Ollama {
-        (DEFAULT_OLLAMA_HOST.to_string(), KeySource::Default)
+    } else if let Some(endpoint) = provider.default_endpoint() {
+        (endpoint.to_string(), KeySource::Default)
     } else {
         (String::new(), KeySource::Missing)
     };
@@ -401,6 +440,7 @@ pub(super) fn resolve(
         mock: is_mock_credential(&secret),
         secret: Secret::new(secret),
         source,
+        prices: same.and_then(|stored| stored.prices),
     })
 }
 

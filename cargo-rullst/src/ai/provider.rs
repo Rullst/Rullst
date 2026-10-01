@@ -11,20 +11,26 @@ pub(super) enum Provider {
     Gemini,
     DeepSeek,
     Ollama,
+    /// A local OpenAI-compatible server on a loopback address.
+    Local,
 }
 
-/// Environment lookup order when no provider is selected or stored. It
-/// matches `rullst_ai::AutoAiConfig`.
-pub(super) const DETECTION_ORDER: [Provider; 5] = [
+/// Environment lookup order when no provider is selected or stored. The
+/// first five match `rullst_ai::AutoAiConfig`.
+pub(super) const DETECTION_ORDER: [Provider; 6] = [
     Provider::OpenAi,
     Provider::Anthropic,
     Provider::Gemini,
     Provider::DeepSeek,
     Provider::Ollama,
+    Provider::Local,
 ];
 
 /// The default local Ollama endpoint.
 pub(super) const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
+/// LM Studio's default OpenAI-compatible endpoint; other servers use other
+/// ports (llama.cpp server and LocalAI 8080, vLLM 8000, Jan 1337).
+pub(super) const DEFAULT_LOCAL_BASE_URL: &str = "http://127.0.0.1:1234/v1";
 
 impl Provider {
     pub(super) fn parse(value: &str) -> Option<Self> {
@@ -34,6 +40,7 @@ impl Provider {
             "gemini" | "google" => Some(Self::Gemini),
             "deepseek" => Some(Self::DeepSeek),
             "ollama" => Some(Self::Ollama),
+            "local" => Some(Self::Local),
             _ => None,
         }
     }
@@ -46,6 +53,7 @@ impl Provider {
             Self::Gemini => "gemini",
             Self::DeepSeek => "deepseek",
             Self::Ollama => "ollama",
+            Self::Local => "local",
         }
     }
 
@@ -56,10 +64,22 @@ impl Provider {
             Self::Gemini => "Google Gemini",
             Self::DeepSeek => "DeepSeek",
             Self::Ollama => "Ollama (local)",
+            Self::Local => "Local server",
         }
     }
 
-    /// The variable holding the secret (or, for Ollama, the host).
+    /// The description shown when choosing a provider.
+    pub(super) const fn choice(self) -> &'static str {
+        match self {
+            Self::Local => {
+                "Local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM, LocalAI, Jan)"
+            }
+            other => other.label(),
+        }
+    }
+
+    /// The variable holding the secret (or, for Ollama and a local server,
+    /// the endpoint).
     pub(super) const fn env_var(self) -> &'static str {
         match self {
             Self::OpenAi => "OPENAI_API_KEY",
@@ -67,12 +87,23 @@ impl Provider {
             Self::Gemini => "GEMINI_API_KEY",
             Self::DeepSeek => "DEEPSEEK_API_KEY",
             Self::Ollama => "OLLAMA_HOST",
+            Self::Local => "RULLST_AI_BASE_URL",
         }
     }
 
-    /// Ollama is addressed by host; every other provider needs an API key.
+    /// Ollama and a local server are addressed by endpoint; every other
+    /// provider needs an API key.
     pub(super) const fn uses_api_key(self) -> bool {
-        !matches!(self, Self::Ollama)
+        !matches!(self, Self::Ollama | Self::Local)
+    }
+
+    /// The endpoint used when none is configured.
+    pub(super) const fn default_endpoint(self) -> Option<&'static str> {
+        match self {
+            Self::Ollama => Some(DEFAULT_OLLAMA_HOST),
+            Self::Local => Some(DEFAULT_LOCAL_BASE_URL),
+            _ => None,
+        }
     }
 
     /// The model used when none is configured. These mirror the defaults of
@@ -84,14 +115,9 @@ impl Provider {
             Self::Gemini => "gemini-2.5-flash-lite",
             Self::DeepSeek => "deepseek-v4-flash",
             Self::Ollama => "llama3",
+            // Must match the model the local server has loaded.
+            Self::Local => "local-model",
         }
-    }
-
-    /// Whether answers arrive incrementally. OpenAI, DeepSeek and a loopback
-    /// Ollama use the bounded OpenAI-compatible SSE transport; the native
-    /// Anthropic and Gemini transports in `rullst-ai` answer at once.
-    pub(super) const fn streams(self) -> bool {
-        matches!(self, Self::OpenAi | Self::DeepSeek | Self::Ollama)
     }
 }
 

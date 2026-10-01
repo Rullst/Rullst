@@ -105,9 +105,9 @@ impl<W: Write + Send> Session<'_, W> {
         for (index, proposal) in proposals.iter().enumerate() {
             let number = index + 1;
             let name = proposal.as_ref().map_or("action", Action::name);
-            let prepared = proposal
-                .clone()
-                .and_then(|action| actions::prepare(&action, self.root.as_deref(), &overlay));
+            let prepared = proposal.clone().and_then(|action| {
+                actions::prepare(&action, self.root.as_deref(), &self.cwd, &overlay)
+            });
             let prepared = match prepared {
                 Ok(prepared) => prepared,
                 Err(reason) => {
@@ -135,7 +135,7 @@ impl<W: Write + Send> Session<'_, W> {
                 ));
                 continue;
             }
-            let decision = if *approve_all {
+            let decision = if *approve_all && !prepared.always_confirm() {
                 Decision::Yes
             } else {
                 self.decide().await
@@ -159,10 +159,8 @@ impl<W: Write + Send> Session<'_, W> {
                 results.push(format!("{number}. {summary}: not applied (no checkpoint)"));
                 continue;
             }
-            let Some(root) = self.root.clone() else {
-                continue;
-            };
-            let applied = actions::apply(&prepared, &root, &mut self.out, self.style);
+            let root = self.root.clone();
+            let applied = actions::apply(&prepared, root.as_deref(), &mut self.out, self.style);
             if prepared.mutates() && applied.success {
                 *changed = true;
                 *checked_after_change = false;
@@ -175,6 +173,9 @@ impl<W: Write + Send> Session<'_, W> {
                 line.push_str(&indent(&prompt::cap(&output, 8 * 1024)));
             }
             results.push(line);
+            if let Some(new_root) = applied.new_root {
+                self.enter_project(new_root);
+            }
         }
         if let Mode::PlanOnly(reason) = self.mode {
             let summary = self.style.yellow(&format!(

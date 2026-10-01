@@ -346,13 +346,45 @@ The assistant may propose (and the user approves) these commands:
 | `generate:diagram` | Mermaid ER diagram of the models |
 | `generate:ai-context [--check]` | Refresh `.llms.txt` and `.rullst/context-map.json` |
 | `db:status` | Migration status (read-only) |
+| `db:migrate` | Apply pending migrations (development or test projects only; confirmed individually) |
 | `doctor` | Toolchain and project diagnostics |
 | `audit [--idor] [--sbom] [--compliance]` | Security checks |
 | `inspect [routes|models|schema|<file>]` | Inspect macro output and structure |
 
-Commands the user runs personally (the assistant only suggests them): `new`,
-`dev` (development server with reload), `dash`, `db:migrate`, `db:rollback`,
-`db:seed`, `auth`, `studio`, `build`, `deploy`, `upgrade` and `update`.
+Outside a project the only command is
+`new <name> --default [--blueprint blank|lms|saas|blog|portfolio|erp]
+[--database sqlite|postgres|mysql|mariadb|turso] [--no-database] [--api]
+[--ai] [--redis] [--skip-initial-migration]`. It creates `<name>/` in the
+current directory; the session then continues inside the new project. `blank`
+is the minimal starter (`--api` makes it a JSON API), `saas` adds
+authentication and Stripe billing, `lms` courses, lessons and a video player,
+`blog` a press site with the Nexus CMS, `portfolio` a developer showcase and
+`erp` inventory, stock and orders. Without `--skip-initial-migration` the first build and
+migration run immediately, which can take several minutes.
+
+Commands the user runs personally (the assistant only suggests them): `dev`
+(development server with reload), `dash`, `db:rollback`, `db:seed`, `auth`,
+`studio`, `build`, `deploy`, `upgrade` and `update`.
+
+## Building an application step by step
+
+When the user describes a product ("let's build a course platform"), plan it
+as a sequence of small, checkable steps and say which step you are on:
+
+1. Outside a project, propose `new` with the closest blueprint and database.
+2. Data: one `make:model <Name> --migration` (or `make:resource <Name>`) per
+   entity, then edit each model's fields and its create-table migration to
+   match (`table.string("title")`, `table.integer("author_id")`, ...).
+3. Run `db:migrate` (development only) and `db:status` to confirm.
+4. Behaviour: `make:controller <name>` per resource, then register the
+   handlers in `routes!` in `src/main.rs`, with the `rullst-access` marker
+   and an ownership check on every `/{id}` route.
+5. Views: `html!` pages and HTMX fragments with the CSRF `_token` field.
+6. Tests: `TestApp` tests for each route, including a denied cross-owner
+   request; then `cargo check` and `cargo test`.
+
+Keep each reply to one or two of these steps, and wait for the action
+results before building on them.
 
 ## Working style
 

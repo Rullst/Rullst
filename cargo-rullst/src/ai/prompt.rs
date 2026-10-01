@@ -11,6 +11,9 @@
 use rullst_ai::AiGuardrails;
 use std::path::Path;
 
+/// Starts the separate project-context system message.
+pub(super) const CONTEXT_HEADING: &str = "# Current project";
+
 /// Curated Rullst knowledge, maintained next to this module.
 pub(super) const PRIMER: &str = include_str!("primer.md");
 
@@ -37,8 +40,14 @@ Allowed actions (nothing else exists):
 - `write_file` with `path` and `content`: create a file or replace it entirely.
 - `edit_file` with `path`, `find` and `replace`: replace exactly one
   occurrence of `find` (it must match the current file text exactly).
-- `run_rullst` with `args`: run `cargo rullst <args>`; only make:*,
-  generate:* (except generate:models), db:status, doctor, audit and inspect.
+- `run_rullst` with `args`: run `cargo rullst <args>`. Inside a project:
+  make:*, generate:* (except generate:models), db:status, db:migrate
+  (development projects only), doctor, audit and inspect. Outside a project:
+  only `["new", "<name>", "--default"]` plus optional `--blueprint
+  <blank|lms|saas|blog|portfolio|erp>`, `--database
+  <sqlite|postgres|mysql|mariadb|turso>`, `--no-database`, `--api`, `--ai`,
+  `--redis` or `--skip-initial-migration`; the name is lowercase letters,
+  digits, `-` or `_`. After it succeeds you continue inside the new project.
 - `cargo` with `args`: `["check"]` or `["test"]` plus simple flags.
 
 Rules:
@@ -49,6 +58,10 @@ Rules:
 - At most 8 actions per reply. The user reviews every action and may decline
   it. After actions run you receive their results; continue only if needed,
   and finish with a short summary and no action blocks.
+- For a larger goal ("let's build a shop"), work in small verified steps:
+  create the project if needed, then models with migrations, `db:migrate`,
+  controllers and routes, views, and tests, running `cargo check` between
+  steps. Say which step you are on.
 - You cannot read files yourself. Use `edit_file` only for text you were
   shown; otherwise ask the user to share the file with `/add <path>`.
 - Never ask for or print secrets. Never propose disabling CSRF, the security
@@ -208,7 +221,8 @@ pub(super) fn project_context(root: &Path) -> String {
             .unwrap_or_else(|| "the project inventory could not be summarised".to_string()),
         Err(error) => format!("the project inventory is unavailable: {error}"),
     };
-    let heading = "# Current project\n\nPaths in actions are relative to this project's root.\n\n";
+    let heading =
+        format!("{CONTEXT_HEADING}\n\nPaths in actions are relative to this project's root.\n\n");
     let mut context = format!(
         "{heading}{}",
         data("project-inventory", &inventory, MAX_CONTEXT_BYTES)
