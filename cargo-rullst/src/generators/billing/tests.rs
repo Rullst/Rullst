@@ -54,3 +54,20 @@ fn generated_billing_binds_signed_events_to_authenticated_owners() {
         );
     }
 }
+
+#[test]
+fn billing_identity_failures_do_not_return_database_error_text() {
+    for backend in [ProjectOrmBackend::Sqlx, ProjectOrmBackend::Turso] {
+        let source = render_billing_controller("workspace_id", backend);
+        assert!(!source.contains("Failed to persist billing identity: {error}"));
+        assert!(!source.contains("Failed to query billing identity: {error}"));
+        assert!(source.contains("eprintln!(\"Billing identity persistence failed: {error}\")"));
+        assert!(source.contains("eprintln!(\"Billing identity lookup failed: {error}\")"));
+        assert_eq!(
+            source
+                .matches("\"Billing identity is unavailable\".to_string()")
+                .count(),
+            2
+        );
+    }
+}
