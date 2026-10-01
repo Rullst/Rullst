@@ -67,6 +67,15 @@ pub fn resolve_variant(variants: &[(String, u32)], bucket: u32) -> Option<String
     None
 }
 
+/// The variant of `identifier` in an A/B split, or `"disabled"` when its
+/// bucket lies outside weights summing to less than 100. A driver that knows
+/// the flag always answers, so lower-priority drivers never decide for
+/// identifiers outside a narrowed split.
+pub(crate) fn split_variant(variants: &[(String, u32)], flag: &str, identifier: &str) -> String {
+    resolve_variant(variants, calculate_hash_bucket(flag, identifier))
+        .unwrap_or_else(|| "disabled".to_string())
+}
+
 /// Helper function to parse feature toggles string formats uniformly
 #[cfg_attr(mutants, mutants::skip)]
 pub(crate) fn parse_feature_string_value(
@@ -109,8 +118,7 @@ pub(crate) fn parse_feature_string_value(
         if !variants.is_empty()
             && let Some(ident) = identifier
         {
-            let bucket = calculate_hash_bucket(flag, ident);
-            return resolve_variant(&variants, bucket);
+            return Some(split_variant(&variants, flag, ident));
         }
     }
 

@@ -210,7 +210,10 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   reassigns users to buckets once; percentages and variant weights are kept.
   `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
   so concurrent evaluations never see a flag as unset mid-reload, and a
-  `[features] # comment` header is recognized.
+  `[features] # comment` header is recognized. When an A/B split's weights
+  sum to less than 100, an identifier outside them gets the variant
+  `"disabled"` from the driver that defines the flag; it no longer falls
+  through to a lower-priority driver's split.
 - **Shared project settings (internal, v13):** `server::ProjectSettings` and
   `server::read_project_setting` resolve a setting from the process
   environment first and then the project's `.env`, which never overrides the

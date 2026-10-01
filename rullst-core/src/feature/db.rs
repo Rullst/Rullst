@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use super::driver::FeatureDriver;
-use super::resolvers::{calculate_hash_bucket, parse_variants, resolve_variant};
+use super::resolvers::{calculate_hash_bucket, parse_variants, split_variant};
 
 // ─── Database Driver (with local TTL caching) ───────────────────────────────
 
@@ -190,8 +190,7 @@ impl DbFeatureDriver {
             if !vars.is_empty()
                 && let Some(ident) = identifier
             {
-                let bucket = calculate_hash_bucket(flag, ident);
-                return resolve_variant(&vars, bucket);
+                return Some(split_variant(&vars, flag, ident));
             }
         }
 

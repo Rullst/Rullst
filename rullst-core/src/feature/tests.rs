@@ -307,3 +307,41 @@ fn oversized_variant_weights_saturate_instead_of_overflowing() {
         Some("x".to_string())
     );
 }
+
+/// An identifier whose bucket for `flag` is at least `minimum`.
+fn identifier_in_bucket_at_least(flag: &str, minimum: u32) -> String {
+    (0..1_000)
+        .map(|index| format!("user-{index}"))
+        .find(|identifier| calculate_hash_bucket(flag, identifier) >= minimum)
+        .expect("some identifier lands in the upper buckets")
+}
+
+#[tokio::test]
+async fn identifiers_outside_a_narrowed_split_never_fall_through() {
+    let flag = "pricing-ab";
+    let outside = identifier_in_bucket_at_least(flag, 20);
+
+    // String drivers (Env, TOML) answer for every identifier.
+    assert_eq!(
+        parse_feature_string_value("control:10,treatment:10", flag, Some(&outside)),
+        Some("disabled".to_string())
+    );
+
+    let narrowed = MemoryFeatureDriver::new();
+    narrowed.override_variants(
+        flag,
+        vec![("control".to_string(), 10), ("treatment".to_string(), 10)],
+    );
+    let broad = MemoryFeatureDriver::new();
+    broad.override_variants(
+        flag,
+        vec![("control".to_string(), 50), ("treatment".to_string(), 50)],
+    );
+    let manager = FeatureManager::new()
+        .add_driver(Box::new(narrowed))
+        .add_driver(Box::new(broad));
+    assert_eq!(
+        manager.variant(flag, &outside).await,
+        Some("disabled".to_string())
+    );
+}
