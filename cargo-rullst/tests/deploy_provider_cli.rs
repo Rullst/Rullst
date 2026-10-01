@@ -35,14 +35,23 @@ impl Fixture {
     }
 
     fn deploy(&self, platform: &str) -> Output {
+        self.run(&["deploy", "--platform", platform])
+    }
+
+    fn run(&self, arguments: &[&str]) -> Output {
         Command::new(env!("CARGO_BIN_EXE_rullst"))
             .current_dir(&self.root)
-            .args(["deploy", "--platform", platform])
+            .args(arguments)
             .env("RULLST_DISABLE_UPDATE_CHECK", "1")
             .env("NO_COLOR", "1")
             .env("PATH", self.root.join("tools"))
             .output()
-            .unwrap_or_else(|error| panic!("run deploy {platform}: {error}"))
+            .unwrap_or_else(|error| panic!("run {arguments:?}: {error}"))
+    }
+
+    fn read(&self, relative: &str) -> String {
+        fs::read_to_string(self.root.join(relative))
+            .unwrap_or_else(|error| panic!("read {relative}: {error}"))
     }
 }
 
@@ -100,4 +109,42 @@ fn unknown_platforms_fail_before_scaffolding_a_dockerfile() {
             "{generated} was written for a rejected platform"
         );
     }
+}
+
+#[test]
+fn snake_case_packages_get_rfc_1123_kubernetes_and_fly_names() {
+    let fixture = Fixture::new();
+    fs::write(
+        fixture.root.join("Cargo.toml"),
+        "[package]\nname = \"My_App\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+    )
+    .expect("snake_case manifest");
+    fs::remove_file(fixture.root.join("Dockerfile")).expect("start without a Dockerfile");
+
+    let k8s = fixture.run(&["make:k8s"]);
+    assert!(k8s.status.success(), "{}", text(&k8s));
+    let deployment = fixture.read("k8s/deployment.yaml");
+    assert!(deployment.contains("  name: my-app\n"), "{deployment}");
+    assert!(deployment.contains("image: my-app:latest"), "{deployment}");
+    assert!(!deployment.contains("My_App"), "{deployment}");
+    assert!(
+        fixture
+            .read("k8s/service.yaml")
+            .contains("name: my-app-service")
+    );
+    assert!(
+        fixture
+            .read("k8s/ingress.yaml")
+            .contains("host: my-app.local")
+    );
+
+    let fly = fixture.deploy("fly");
+    assert!(fly.status.success(), "{}", text(&fly));
+    assert!(fixture.read("fly.toml").contains("app = \"my-app\""));
+    // The binary keeps the Cargo package name.
+    assert!(
+        fixture
+            .read("Dockerfile")
+            .contains("/app/target/release/My_App")
+    );
 }

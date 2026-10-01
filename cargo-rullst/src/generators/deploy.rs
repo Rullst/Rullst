@@ -6,6 +6,7 @@ use std::process::Command;
 use crate::blueprints::deploy::{
     CADDYFILE, DOCKER_COMPOSE_PROD, FLY_TOML, RAILWAY_JSON, RENDER_YAML,
 };
+use crate::generators::platform_name::{dns_label, package_name};
 
 /// A supported deployment target, parsed before anything is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,8 +63,9 @@ pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::
         }
     };
 
-    // Extract project name from Cargo.toml if available
-    let project_name = get_project_name().unwrap_or_else(|| "rullst_app".to_string());
+    // The binary name (Dockerfile, Railway start command) is the package name.
+    let project_name =
+        package_name(Path::new("Cargo.toml")).unwrap_or_else(|| "rullst_app".to_string());
 
     // Ensure Dockerfile exists
     if !Path::new("Dockerfile").exists() {
@@ -89,20 +91,6 @@ pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-fn get_project_name() -> Option<String> {
-    if let Ok(content) = fs::read_to_string("Cargo.toml") {
-        for line in content.lines() {
-            if line.trim().starts_with("name =") {
-                let parts: Vec<&str> = line.split('=').collect();
-                if parts.len() == 2 {
-                    return Some(parts[1].trim().trim_matches('"').to_string());
-                }
-            }
-        }
-    }
-    None
-}
-
 /// Runs a provider CLI and reports whether it was available.
 ///
 /// A missing executable stays advisory because the manifest was still
@@ -123,7 +111,8 @@ fn run_provider_cli(program: &str, args: &[&str]) -> Result<bool, Box<dyn std::e
 
 fn deploy_fly(project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let fly_file = "fly.toml";
-    let content = FLY_TOML.replace("APP_NAME", project_name);
+    // Fly app names allow only lowercase letters, digits and dashes.
+    let content = FLY_TOML.replace("APP_NAME", &dns_label(project_name));
 
     if !Path::new(fly_file).exists() {
         fs::write(fly_file, content)?;

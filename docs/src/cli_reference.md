@@ -793,6 +793,10 @@ Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deplo
 The command fails before writing anything when any of these manifests already
 exists, and it does not write through a symlinked `k8s/` directory or file; move
 customized manifests aside to regenerate the templates.
+Object names, the image reference and the ingress host use the `[package]`
+name as a lowercase RFC 1123 label: characters other than letters and digits
+become `-` (`my_app` becomes `my-app`), and the label is capped at 55
+characters so suffixed names such as `<name>-service` stay valid.
 
 ### `cargo rullst make:scalar`
 Scaffolds a Scalar API Documentation controller at
@@ -814,10 +818,13 @@ Guided deployment helper that generates cloud manifests (`fly.toml`,
 `railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
 selected provider CLI where supported. A provider CLI that is not installed
 only prints the manual commands; one that runs and fails (`flyctl deploy`,
-`railway up`) makes `deploy` exit non-zero. An unknown `--platform` value is
-rejected before anything is written, including the `Dockerfile` the command
-otherwise scaffolds when it is missing. Credentials, migrations,
-availability, DNS/TLS and rollback remain operator responsibilities.
+`railway up`) makes `deploy` exit non-zero. The Fly.io `app` name uses the same
+lowercase label as `make:k8s` (`my_app` becomes `my-app`), while the
+`Dockerfile` and Railway start command keep the package's binary name. An
+unknown `--platform` value is rejected before anything is written, including
+the `Dockerfile` the command otherwise scaffolds when it is missing.
+Credentials, migrations, availability, DNS/TLS and rollback remain operator
+responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
