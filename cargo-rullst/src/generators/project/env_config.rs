@@ -25,7 +25,9 @@ pub fn generate_env_and_configs(
     let mut config_toml = String::new();
     config_toml.push_str(
         r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
-# Selects available linkers for local development.
+# Selects the linkers found on the machine that generated this project.
+# Host-local: the generated .gitignore and .dockerignore exclude this file so
+# CI runners and container builds without mold/lld do not inherit it.
 # Windows uses the toolchain's supported linker and debug-information defaults.
 
 "#,
@@ -108,6 +110,9 @@ csp = "{billing_csp}"
 .env
 .env.*
 !.env.example
+
+# Rullst: host-local linker selection (mold/lld when found)
+/.cargo/config.toml
 
 # IDEs and OS files
 .vscode/
@@ -380,6 +385,26 @@ mod tests {
         }
 
         fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
+
+    #[test]
+    fn host_linker_selection_stays_out_of_the_repository() {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_env_and_configs(
+            root.path(),
+            false,
+            "Sqlite",
+            &[],
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+
+        let config =
+            fs::read_to_string(root.path().join(".cargo/config.toml")).expect("Cargo config");
+        assert!(config.contains("Host-local"));
+        let gitignore = fs::read_to_string(root.path().join(".gitignore")).expect("gitignore");
+        assert!(gitignore.lines().any(|line| line == "/.cargo/config.toml"));
     }
 
     #[test]

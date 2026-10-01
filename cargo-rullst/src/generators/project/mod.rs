@@ -488,7 +488,9 @@ CMD ["/app/{project_name}"]
     if !dockerignore.exists() {
         fs::write(
             dockerignore,
-            "target\n.git\n.env\n*.db\n*.db-shm\n*.db-wal\ncoverage\n",
+            // `.cargo/config.toml` holds the generating host's linker
+            // selection (mold/lld), which the builder image does not have.
+            "target\n.git\n.env\n*.db\n*.db-shm\n*.db-wal\ncoverage\n.cargo/config.toml\n",
         )?;
     }
     println!("{}", "  ✅ Dockerfile generated.".green());
@@ -567,6 +569,11 @@ mod tests {
             fs::read_to_string(root.path().join(".dockerignore")).expect("dockerignore");
         assert!(dockerignore.lines().any(|line| line == ".env"));
         assert!(dockerignore.lines().any(|line| line == "target"));
+        assert!(
+            dockerignore
+                .lines()
+                .any(|line| line == ".cargo/config.toml")
+        );
     }
 
     #[test]
