@@ -81,6 +81,21 @@ A prepared version section does not establish that its tag or crates exist.
   the tenant ID is one normal path segment. Before, tenant `.` resolved into
   another tenant's storage root.
 
+### Core final-review fixes
+
+- `csrf_middleware` handles `HEAD` like `GET`, so form pages extracting
+  `CsrfToken` answer HEAD instead of returning 500.
+- The development hot-reload server enforces `Server::with_machine_endpoints`
+  authentication.
+- JSON PII masking decodes string escapes before masking, so `\uXXXX` escapes
+  are never corrupted into invalid JSON.
+- `Storage::url` for an R2 driver returns `Unsupported`, because R2's S3 API
+  endpoint never serves anonymous reads.
+- The memory cache sizes its expiry-sweep interval to the store, keeping the
+  cleanup cost per operation constant.
+- `MemoryFeatureDriver` no longer reports A/B-split flags as enabled for every
+  user.
+
 ### Core state review fixes
 
 - The legacy `live_ws_handler` limits incoming WebSocket frames and messages
@@ -120,6 +135,25 @@ A prepared version section does not establish that its tag or crates exist.
 - `Cache::memory()` no longer panics on a TTL too large for the monotonic clock
   (such entries never expire), and expiry on read no longer deletes a value
   written concurrently.
+
+### ORM derive final-review fixes
+
+- `only_trashed()` on a model without soft deletes fails with `Validation`
+  instead of treating every live row as trashed, so an "empty trash"
+  `only_trashed().delete_all()` can no longer delete the whole table.
+- Soft-delete `delete_all()` rejects `with_trashed()`/`only_trashed()` instead
+  of resetting the deletion time of rows already trashed.
+- The generated tenant and soft-delete predicates and the `chunk_by_id` cursor
+  are qualified with the model's table, so lazy `belongs_to_many` loads and
+  joins no longer fail with ambiguous columns.
+- `chunk()`/`chunk_by_id()` (and `_with_tx`) honour an explicit `limit(n)` as
+  a total cap and `offset(k)` as the start.
+- Eager `belongs_to_many` keeps the related query's order.
+- Relations keyed by nullable foreign keys (`Option<i32>`) compile and load,
+  with `None` matching no row.
+- Struct-level `#[sqlx(...)]` options other than `default` (for example
+  `rename_all`) fail compilation instead of letting `FromRow` drift from the
+  generated SQL.
 
 ### Portfolio blueprint escaping
 
@@ -323,6 +357,23 @@ A prepared version section does not establish that its tag or crates exist.
 - Blog and Portfolio pages keep their styling under the production CSP.
 - The host-specific `.cargo/config.toml` linker selection is excluded from Git
   and Docker builds.
+
+### Mail final-review fixes
+
+- Attachment inspection classifies markup the way browsers parse it (root
+  element after any prologue or DOCTYPE, namespace prefixes, SVG/XHTML
+  namespace URIs including character-reference spellings, DTD entities,
+  UTF-16), so namespaced SVG or XHTML labelled `application/xml` is rejected.
+- The homograph check resolves links with WHATWG URL parsing (tab/newline
+  removal, backslashes, `https:host`, scheme-relative, percent-encoded and
+  A-label hosts), and click tracking checks each destination as one link.
+- The `Mail` facade reuses its configured driver while settings are unchanged,
+  so managed-identity tokens and connection pools are shared, and an invalid
+  `MAIL_PORT` is a `ConfigError`.
+- SES requests carry 7-bit ASCII addresses (IDNA A-labels, RFC 2047 sender
+  names), and direct Resend schedules beyond 30 days fail before any request.
+- Tracking tokens sign the bare recipient address, and the derived plain-text
+  part keeps HTTP(S) link targets as `label <URL>`.
 
 ### Large module splits
 

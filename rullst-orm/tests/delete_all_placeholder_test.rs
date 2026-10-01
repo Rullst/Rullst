@@ -100,13 +100,13 @@ async fn tenant_scoped_delete_all_numbers_the_scope_binding_first() {
     for driver in NON_POSTGRES {
         assert_eq!(
             query.__rullst_delete_all_sql(driver),
-            "DELETE FROM tenant_bulk_items WHERE (tenant_id = ?) AND (score = ?)",
+            "DELETE FROM tenant_bulk_items WHERE (tenant_bulk_items.tenant_id = ?) AND (score = ?)",
             "{driver}"
         );
     }
     assert_eq!(
         query.__rullst_delete_all_sql("postgres"),
-        "DELETE FROM tenant_bulk_items WHERE (tenant_id = $1) AND (score = $2)"
+        "DELETE FROM tenant_bulk_items WHERE (tenant_bulk_items.tenant_id = $1) AND (score = $2)"
     );
 }
 
@@ -119,14 +119,14 @@ fn cascade_soft_delete_statement_keeps_question_marks_off_postgres() {
         assert_eq!(
             cascade.__rullst_delete_all_sql(driver),
             "UPDATE bulk_comments SET deleted_at = CURRENT_TIMESTAMP \
-             WHERE (bulk_post_id = ?) AND deleted_at IS NULL",
+             WHERE (bulk_post_id = ?) AND bulk_comments.deleted_at IS NULL",
             "{driver}"
         );
     }
     assert_eq!(
         cascade.__rullst_delete_all_sql("postgres"),
         "UPDATE bulk_comments SET deleted_at = CURRENT_TIMESTAMP \
-         WHERE (bulk_post_id = $1) AND deleted_at IS NULL"
+         WHERE (bulk_post_id = $1) AND bulk_comments.deleted_at IS NULL"
     );
 }
 
@@ -136,7 +136,7 @@ fn cascade_soft_delete_ignores_the_child_global_scope() {
     assert_eq!(
         cascade.__rullst_delete_all_sql("sqlite"),
         "UPDATE bulk_notes SET deleted_at = CURRENT_TIMESTAMP \
-         WHERE (bulk_post_id = ?) AND deleted_at IS NULL"
+         WHERE (bulk_post_id = ?) AND bulk_notes.deleted_at IS NULL"
     );
     assert!(BulkNote::query().to_sql().contains("approved = ?"));
 }

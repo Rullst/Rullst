@@ -50,30 +50,44 @@ pub(super) fn generate_eager_load_assignment(
     let helpers = share_helpers();
     let (collect, take_last, missing) = if is_many {
         (
-            quote! { map.entry(rel.#map_key_ident.clone()).or_insert_with(Vec::new).push(rel); },
-            quote! { Some(map.remove(key).unwrap_or_default()) },
+            quote! { map.entry(key).or_insert_with(Vec::new).push(rel); },
+            quote! { Some(map.remove(&key).unwrap_or_default()) },
             quote! { Some(Vec::new()) },
         )
     } else {
         (
-            quote! { map.entry(rel.#map_key_ident.clone()).or_insert(rel); },
-            quote! { map.remove(key) },
+            quote! { map.entry(key).or_insert(rel); },
+            quote! { map.remove(&key) },
             quote! { None },
         )
     };
+    // A `None` key (a nullable foreign key) matches nothing: such a related
+    // row belongs to no parent, and such a parent receives `missing`.
+    let rel_key = super::relation_key(quote!(rel.#map_key_ident));
+    let model_key = super::relation_key(quote!(model.#model_key_ident));
     quote! {
         #helpers
         let mut map = std::collections::HashMap::with_capacity(all_related.len());
         for rel in all_related {
-            #collect
+            let key = #rel_key;
+            if let Some(key) = key {
+                #collect
+            }
         }
         let mut parents_per_key = std::collections::HashMap::with_capacity(results.len());
         for model in results.iter() {
-            *parents_per_key.entry(model.#model_key_ident.clone()).or_insert(0_usize) += 1;
+            let key = #model_key;
+            if let Some(key) = key {
+                *parents_per_key.entry(key).or_insert(0_usize) += 1;
+            }
         }
         for model in &mut results {
-            let key = &model.#model_key_ident;
-            let is_last_parent = match parents_per_key.get_mut(key) {
+            let key = #model_key;
+            let Some(key) = key else {
+                model.#method_name = #missing;
+                continue;
+            };
+            let is_last_parent = match parents_per_key.get_mut(&key) {
                 Some(remaining) => {
                     *remaining = remaining.saturating_sub(1);
                     *remaining == 0
@@ -82,7 +96,7 @@ pub(super) fn generate_eager_load_assignment(
             };
             model.#method_name = if is_last_parent {
                 #take_last
-            } else if let Some(related) = map.get(key) {
+            } else if let Some(related) = map.get(&key) {
                 let shared = (&__RullstEagerShare(related))
                     .__rullst_eager_share()
                     .ok_or_else(|| rullst_orm::Error::Validation(format!(
@@ -110,11 +124,13 @@ mod tests {
         let method = quote::format_ident!("author");
         let single = generate_eager_load_assignment(&parent, false, &key, &fk, &method).to_string();
         assert!(single.contains("parents_per_key"));
-        assert!(single.contains("map . get (key)"));
+        assert!(single.contains("map . get (& key)"));
         assert!(single.contains("__rullst_eager_share"));
         assert!(single.contains("the related model must implement Clone"));
         // The consuming lookup is reserved for the last parent of each key.
-        assert_eq!(single.matches("map . remove (key)").count(), 1);
+        assert_eq!(single.matches("map . remove (& key)").count(), 1);
+        // A parent without a key is assigned as missing, never matched.
+        assert!(single.contains("let Some (key) = key else"));
 
         let many = generate_eager_load_assignment(&parent, true, &fk, &key, &method).to_string();
         assert!(many.contains("unwrap_or_default"));

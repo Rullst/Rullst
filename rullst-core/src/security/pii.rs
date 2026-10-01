@@ -108,8 +108,8 @@ fn body_collection_failure() -> Response {
 /// Automatic PII (Personally Identifiable Information) masking middleware for response payloads.
 ///
 /// JSON responses (any `json` subtype or `+json` suffix) are masked only
-/// inside string literals, so JSON numbers are never rewritten and the body
-/// stays valid JSON. Other textual responses use [`mask_pii`] on the whole
+/// inside string literals, after decoding their escapes, so JSON numbers and
+/// escape syntax are never rewritten and the body stays valid JSON. Other textual responses use [`mask_pii`] on the whole
 /// text.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
@@ -259,17 +259,24 @@ pub fn mask_pii(text: &str) -> String {
 /// Numbers, `true`/`false`/`null` and structural characters are never
 /// rewritten, so a millisecond timestamp or a 64-bit ID stays a valid JSON
 /// number instead of becoming `*********0000`. Each string is masked on its
-/// own, and the scan is linear in the number of characters. Invalid JSON is
+/// own after decoding its escapes, so escape syntax never joins a digit run:
+/// `\u2014` is an em dash, not the digits `2014`, and an escaped digit or `@`
+/// counts as that character. A masked character is written as a literal `*`
+/// and every other character keeps its original spelling, so the body stays
+/// valid JSON. The scan is linear in the number of characters. Invalid JSON is
 /// scanned the same way; an unterminated string runs to the end.
 fn mask_json_strings(text: &str) -> String {
-    let mut chars: Vec<char> = text.chars().collect();
+    let chars: Vec<char> = text.chars().collect();
+    let mut masked = String::with_capacity(text.len());
+    let mut scratch = JsonStringScratch::default();
     let mut index = 0;
-    while index < chars.len() {
-        if chars[index] != '"' {
-            index += 1;
+    while let Some(&c) = chars.get(index) {
+        masked.push(c);
+        index += 1;
+        if c != '"' {
             continue;
         }
-        let start = index + 1;
+        let start = index;
         let mut end = start;
         let mut escaped = false;
         while let Some(&c) = chars.get(end) {
@@ -282,10 +289,84 @@ fn mask_json_strings(text: &str) -> String {
             }
             end += 1;
         }
-        mask_chars(&mut chars[start..end]);
+        scratch.mask_into(&chars[start..end], &mut masked);
+        if let Some(&quote) = chars.get(end) {
+            masked.push(quote);
+        }
         index = end + 1;
     }
-    chars.into_iter().collect()
+    masked
+}
+
+/// Stands in for an escape that decodes to no single character, such as a
+/// lone surrogate or a malformed escape. It is never masked and ends any digit
+/// run or address, so that escape is copied unchanged.
+const OPAQUE_ESCAPE: char = '\u{FFFD}';
+
+/// Decodes the character or escape at the start of a JSON string body and
+/// returns it with the number of source characters it spans.
+fn decode_json_char(raw: &[char]) -> (char, usize) {
+    match raw {
+        ['\\', 'u', rest @ ..] => {
+            let code = rest.get(..4).and_then(|hex| {
+                hex.iter()
+                    .try_fold(0_u32, |code, digit| Some(code * 16 + digit.to_digit(16)?))
+            });
+            match code {
+                Some(code) => (char::from_u32(code).unwrap_or(OPAQUE_ESCAPE), 6),
+                None => (OPAQUE_ESCAPE, 2),
+            }
+        }
+        ['\\', escaped, ..] => {
+            let decoded = match escaped {
+                '"' => '"',
+                '\\' => '\\',
+                '/' => '/',
+                'b' => '\u{8}',
+                'f' => '\u{c}',
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                _ => OPAQUE_ESCAPE,
+            };
+            (decoded, 2)
+        }
+        [c, ..] => (*c, 1),
+        [] => (OPAQUE_ESCAPE, 1),
+    }
+}
+
+/// Buffers reused across the string literals of one JSON body.
+#[derive(Default)]
+struct JsonStringScratch {
+    decoded: Vec<char>,
+    starts: Vec<usize>,
+}
+
+impl JsonStringScratch {
+    /// Masks one string body (the characters between its quotes) and appends
+    /// it to `out`.
+    fn mask_into(&mut self, raw: &[char], out: &mut String) {
+        self.decoded.clear();
+        self.starts.clear();
+        let mut offset = 0;
+        while let Some(rest) = raw.get(offset..).filter(|rest| !rest.is_empty()) {
+            let (c, len) = decode_json_char(rest);
+            self.decoded.push(c);
+            self.starts.push(offset);
+            offset += len;
+        }
+        mask_chars(&mut self.decoded);
+        for (index, (&masked, &start)) in self.decoded.iter().zip(&self.starts).enumerate() {
+            let end = self.starts.get(index + 1).copied().unwrap_or(raw.len());
+            let source = raw.get(start..end).unwrap_or_default();
+            if masked == decode_json_char(source).0 {
+                out.extend(source);
+            } else {
+                out.push(masked);
+            }
+        }
+    }
 }
 
 /// Applies the card and e-mail passes to one span of characters.

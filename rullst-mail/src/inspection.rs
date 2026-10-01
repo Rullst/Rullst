@@ -59,6 +59,12 @@ pub enum OpaqueAttachmentPolicy {
 /// unknown extensions, declared types other than the inspected ones and
 /// `application/octet-stream`, and opaque formats.
 ///
+/// Markup is classified as a browser parses it: by the root element after any
+/// XML declaration, processing instruction, comment or DOCTYPE, whatever its
+/// namespace prefix, and by the SVG or XHTML namespace URI anywhere in a
+/// document that opens with markup. Markup declaring DTD entities counts as
+/// SVG unless its root is `html`.
+///
 /// This is not antivirus, sandbox execution, recursive archive inspection or a
 /// substitute for an independently operated content-disarm/scanning service.
 /// PDF names written with `#xx` escapes or hidden in compressed streams are

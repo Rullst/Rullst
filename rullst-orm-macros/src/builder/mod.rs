@@ -68,23 +68,27 @@ pub fn generate(
     let column_enum_name = quote::format_ident!("{}Column", name);
     let builder_name = quote::format_ident!("{}QueryBuilder", name);
 
-    let soft_delete_filter_unset = parsed
+    // The parser synthesizes the configuration of every soft-delete model.
+    // Builder filters are qualified with the table, so a join with a table
+    // that has the same column (a soft-deletable pivot) stays unambiguous.
+    let table = &parsed.table_name;
+    let soft_delete_filters = parsed
         .soft_delete
         .as_ref()
-        .map(|cfg| soft_delete_where_clause(cfg, false))
-        .unwrap_or_else(|| "deleted_at IS NULL".to_string());
-    let soft_delete_filter_set = parsed
-        .soft_delete
-        .as_ref()
-        .map(|cfg| soft_delete_where_clause(cfg, true))
-        .unwrap_or_else(|| "deleted_at IS NOT NULL".to_string());
+        .filter(|_| parsed.has_soft_deletes)
+        .map(|cfg| {
+            (
+                format!("{table}.{}", soft_delete_where_clause(cfg, false)),
+                format!("{table}.{}", soft_delete_where_clause(cfg, true)),
+            )
+        });
 
     let where_clause_methods = generate_where_clause_methods(&column_enum_name);
     let sql_assembly_methods = generate_sql_assembly_methods(
         &parsed.table_name,
-        parsed.has_soft_deletes,
-        &soft_delete_filter_unset,
-        &soft_delete_filter_set,
+        soft_delete_filters
+            .as_ref()
+            .map(|(live, trashed)| (live.as_str(), trashed.as_str())),
     );
     let mut execution_methods = generate_execution_methods(parsed, &builder_name, eager_loads);
     execution_methods.extend(generate_chunk_methods(parsed));
@@ -156,6 +160,27 @@ mod tests {
         let delete = crate::models::generate_delete_methods(&parsed).to_string();
         assert!(delete.contains("__rullst_cascade_soft_delete_with_tx (tx)"));
         assert!(!delete.contains("delete_all_with_tx (tx)"));
+    }
+
+    #[test]
+    fn only_trashed_fails_closed_on_models_without_soft_deletes() {
+        let generated = |input: syn::DeriveInput| {
+            let parsed = crate::parser::parse(&input).expect("test model should parse");
+            generate(&parsed, &[], &[], &[], &TokenStream::new()).to_string()
+        };
+        let hard = generated(syn::parse_quote! {
+            struct LineItem { id: i32, order_id: i32 }
+        });
+        assert!(hard.contains("only_trashed() requires a soft-delete model; `LineItem`"));
+        assert!(hard.contains("sql . push_str (\"1 = 0\")"));
+
+        let soft = generated(syn::parse_quote! {
+            struct Comment { id: i32, deleted_at: Option<String> }
+        });
+        assert!(!soft.contains("only_trashed() requires"));
+        assert!(!soft.contains("sql . push_str (\"1 = 0\")"));
+        assert!(soft.contains("\"comments.deleted_at IS NOT NULL\""));
+        assert!(soft.contains("\"comments.deleted_at IS NULL\""));
     }
 
     #[test]

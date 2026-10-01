@@ -9,6 +9,7 @@ use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 
+mod address;
 mod limits;
 #[cfg(feature = "aws-ses")]
 mod native;
@@ -239,9 +240,10 @@ impl AwsSesDriver {
 
         // The proxy receives the same SES v2 shape, so it gets the same bounds.
         limits::validate_message_limits(message)?;
-        let from = super::rest::required_sender(message)?;
+        let from = address::sender(super::rest::required_sender(message)?)?;
+        let to = address::recipient(&message.to)?;
         let client = super::http::client()?;
-        let payload = proxy_payload(message, from);
+        let payload = proxy_payload(message, &from, &to);
         let response = client
             .post(endpoint)
             .header("Content-Type", "application/json")
@@ -259,7 +261,8 @@ impl AwsSesDriver {
     }
 }
 
-fn proxy_payload(message: &Message, from: &str) -> serde_json::Value {
+/// `from` and `to` are the 7-bit ASCII forms from [`address`].
+fn proxy_payload(message: &Message, from: &str, to: &str) -> serde_json::Value {
     let mut headers = Vec::new();
     if let Some(unsubscribe) = message.list_unsubscribe_header() {
         headers.push(serde_json::json!({"Name": "List-Unsubscribe", "Value": unsubscribe}));
@@ -318,7 +321,7 @@ fn proxy_payload(message: &Message, from: &str) -> serde_json::Value {
     }
     serde_json::json!({
         "FromEmailAddress": from,
-        "Destination": {"ToAddresses": [message.to]},
+        "Destination": {"ToAddresses": [to]},
         "Content": {"Simple": simple}
     })
 }

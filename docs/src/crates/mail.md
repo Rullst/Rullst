@@ -53,10 +53,10 @@ publication. Existing applications must adopt the new store/worker explicitly.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
-- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling, and direct SendGrid rejects a schedule more than 72 hours ahead (its provider limit) with `ConfigError` before any request. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
-- **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
+- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling, and direct SendGrid and Resend reject a schedule beyond their documented provider limits (72 hours and 30 days ahead) with `ConfigError` before any request. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
+- **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe`, plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click` only for an HTTPS unsubscribe URL, as RFC 8058 requires). The unsubscribe email must be one bare address and the URL may not contain whitespace, `<`, `>` or `"`, so neither value can add another header entry.
-- **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
+- **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication; an absolute HTTP(S) link keeps its target as `label <URL>` unless the label already is the URL.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (whole-token `AKIA`/`ASIA` AWS access key IDs, passwords, API tokens, bearer tokens and PEM private-key blocks of any `<label>PRIVATE KEY` type, including OpenSSH, EC and encrypted keys) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
@@ -342,7 +342,9 @@ the host owns any external metrics/tracing sink, retention and alerts.
 
 Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory
 32-byte secret and bounded validity. HMAC authenticates but does not encrypt:
-recipient and target URL remain base64-readable in the current token. The
+recipient and target URL remain base64-readable in the current token.
+`Message` tracking builders sign the bare address the pipeline delivers to
+(`alice@example.com` for `Alice <alice@example.com>`), so set `to` first. The
 application owns consent, minimization, retention, redirects and applicable
 privacy-law decisions.
 
@@ -421,6 +423,13 @@ limits and 40 MiB encoded estimate as native mode before any request, and
 failures return `MailError::ValidationError`. The proxy must forward
 attachments or reject the request; Rullst never drops them.
 
+SES does not support SMTPUTF8, so native and proxy requests carry 7-bit ASCII
+addresses: an internationalized domain becomes its IDNA A-label
+(`maria@bücher.de` is sent as `maria@xn--bcher-kva.de`) and a non-ASCII sender
+display name becomes RFC 2047 encoded-words (`=?UTF-8?B?...?=`), while an
+all-ASCII sender is sent unchanged. A non-ASCII local part cannot be expressed
+and fails before any request with `MailError::ValidationError`. (v13)
+
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
 
@@ -471,6 +480,13 @@ production check uses the `Server` environment precedence (`RULLST_ENV`, then
 malformed `.env` fails with `MailError::ConfigError` without echoing its
 content.
 
+The settings are read on every facade call, but the driver built from them is
+reused while they stay the same, so its connection pools, native SES client
+and Azure managed-identity token (reused until five minutes before it expires)
+survive across messages and queue jobs. A changed setting builds a new driver
+for the next message, `Mail::reset_driver()` drops the reused one, and
+`MAIL_DRIVER=memory` still builds a fresh store per message. (v13)
+
 Environment variables:
 - `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`).
 - `MAIL_FROM`: Default sender (v13) for `Mail` facade messages that set no
@@ -493,6 +509,8 @@ Environment variables:
 - `AWS_SES_ENDPOINT`: Native SDK base endpoint or complete proxy send URL;
   HTTPS is required except for loopback integration tests.
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
+  `MAIL_PORT` defaults to 25 only when unset or empty; any other value must be
+  an integer from 1 to 65535, or the facade returns `MailError::ConfigError`.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
 For Resend, SendGrid, Postmark and the SES fixture/proxy,
@@ -578,6 +596,15 @@ declared type it does not inspect other than `application/octet-stream` (so a
 `text/html` attachment named `invoice.txt` is rejected), and opaque formats;
 `allowing_opaque()` still accepts HTML and other opaque content. PDF names written with `#xx` escapes or inside compressed streams are
 not decoded.
+
+Markup is classified the way a browser parses it, not by its first bytes: a
+document opening with `<` is SVG or active (X)HTML by its root element after
+any XML declaration, processing instruction, comment or DOCTYPE, matched after
+an optional `prefix:` (`<s:svg>`, `<h:html>`), and by the SVG or XHTML
+namespace URI anywhere in it, also when written with character references.
+Markup that declares DTD entities, which can assemble a namespace URI from
+pieces, is treated as SVG unless its root is `html`, and a UTF-16 document is
+read by its byte-order mark. (v13)
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
 aggregate before transport encoding. Provider/account limits can be lower. The

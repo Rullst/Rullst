@@ -11,6 +11,7 @@ mod id_only_rows;
 mod missing_rows;
 mod nested_transaction;
 mod offset_paging;
+mod qualified_scopes;
 mod search_relevance;
 mod soft_delete_lifecycle;
 mod timestamps;
@@ -27,4 +28,5 @@ pub async fn exercise() {
     missing_rows::exercise().await;
     id_only_rows::exercise().await;
     search_relevance::exercise().await;
+    qualified_scopes::exercise().await;
 }

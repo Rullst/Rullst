@@ -51,7 +51,7 @@ fn encode(value: &str, keep_separators: bool) -> String {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::encode_key_path;
-    use crate::storage::{LocalDriver, Storage};
+    use crate::storage::{LocalDriver, Storage, StorageError};
 
     #[test]
     fn key_segments_are_percent_encoded_but_separators_are_kept() {
@@ -77,10 +77,15 @@ mod tests {
             s3.url("reports/Q1 #2.pdf").unwrap(),
             "https://assets.s3.us-east-1.amazonaws.com/reports/Q1%20%232.pdf"
         );
-        assert_eq!(
-            r2.url("reports/ação?.pdf").unwrap(),
-            "https://account.r2.cloudflarestorage.com/assets/reports/a%C3%A7%C3%A3o%3F.pdf"
-        );
+        // R2 has no anonymous S3 API URL; key validation still runs first.
+        assert!(matches!(
+            r2.url("reports/ação?.pdf"),
+            Err(StorageError::Unsupported(_))
+        ));
+        assert!(matches!(
+            r2.url("../secret"),
+            Err(StorageError::PathTraversal(_))
+        ));
     }
 
     #[test]
