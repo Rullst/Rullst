@@ -20,11 +20,7 @@ pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>
         std::process::exit(1);
     }
 
-    let snake_name = name
-        .to_lowercase()
-        .replace("-", "_")
-        .trim_start_matches("m")
-        .to_string();
+    let snake_name = migration_snake_name(name)?;
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_{}", timestamp, snake_name);
 
@@ -59,6 +55,36 @@ pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>
     regenerate_migrations_mod()?;
 
     Ok(())
+}
+
+/// Normalizes a migration name without dropping any of its characters and
+/// rejects names that cannot form the `m<timestamp>_<name>` module identifier.
+fn migration_snake_name(name: &str) -> Result<String, std::io::Error> {
+    let snake_name = name.to_lowercase().replace('-', "_");
+    if is_migration_module_suffix(&snake_name) {
+        Ok(snake_name)
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!(
+                "migration name '{name}' must contain only ASCII letters, digits, '_' or '-' (for example add_index_v2)"
+            ),
+        ))
+    }
+}
+
+fn is_migration_module_suffix(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+}
+
+/// Whether a `src/migrations` file stem can be declared as `pub mod <stem>;`.
+fn is_migration_module_name(stem: &str) -> bool {
+    stem.bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+        && crate::generators::is_valid_rust_identifier(stem)
 }
 
 pub(crate) fn render_migration(
@@ -155,6 +181,17 @@ pub fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
         {
             let stem_str = stem.to_string_lossy().to_string();
             if stem_str != "mod" && stem_str.starts_with('m') {
+                // A stem such as `m..._add_index.v2` would make mod.rs unparsable.
+                if !is_migration_module_name(&stem_str) {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "'{}' is not a valid migration module name; rename it to ASCII letters, digits and '_'",
+                            path.display()
+                        ),
+                    )
+                    .into());
+                }
                 modules.push(stem_str);
             }
         }
@@ -423,6 +460,27 @@ mod tests {
         assert!(source.contains("DROP TABLE widgets"));
         assert!(!source.contains("unwrap("));
         syn::parse_file(&source).expect("generated Turso migration should parse");
+    }
+
+    #[test]
+    fn migration_names_keep_leading_m_and_reject_invalid_module_names() {
+        assert_eq!(
+            migration_snake_name("modify_users_email").unwrap(),
+            "modify_users_email"
+        );
+        assert_eq!(
+            migration_snake_name("Migrate-Legacy-Data").unwrap(),
+            "migrate_legacy_data"
+        );
+        for invalid in ["add_index.v2", "", "drop table", "café"] {
+            assert!(
+                migration_snake_name(invalid).is_err(),
+                "{invalid} must be rejected"
+            );
+        }
+        assert!(is_migration_module_name("m20261001000000_modify_users"));
+        assert!(!is_migration_module_name("m20261001000000_add_index.v2"));
+        assert!(!is_migration_module_name("match"));
     }
 
     #[test]
