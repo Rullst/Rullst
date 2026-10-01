@@ -15,6 +15,9 @@ use tokio::sync::watch;
 struct FakeRedis {
     address: SocketAddr,
     accepted: Arc<AtomicUsize>,
+    /// Must outlive the test: dropping it ends every `serve` loop. Only the
+    /// cache tests send on it.
+    #[cfg_attr(not(feature = "cache-redis"), allow(dead_code))]
     disconnect: watch::Sender<u64>,
     server: tokio::task::JoinHandle<()>,
 }
@@ -55,6 +58,7 @@ impl FakeRedis {
     }
 
     /// Closes every open connection from the server side.
+    #[cfg(feature = "cache-redis")]
     fn drop_connections(&self) {
         self.disconnect.send_modify(|epoch| *epoch += 1);
     }
