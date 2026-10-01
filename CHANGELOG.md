@@ -273,6 +273,31 @@ A prepared version section does not establish that its tag or crates exist.
 - The host-specific `.cargo/config.toml` linker selection is excluded from Git
   and Docker builds.
 
+### Large module splits
+
+- Ten oversized production modules are split into focused submodules under the
+  ~500-line target: rullst-auth `auth`, rullst-core `server::builder` and
+  `resilience`, rullst-connect `extractors` and the Auth0 provider, rullst-orm
+  `privacy` and pool placeholders, rullst-capital `webhook` and its SQL replay
+  store, and rullst-messaging `model`. Public paths, signatures and behaviour
+  are unchanged; the `TM-AUTH-01` evidence source now points to
+  `rullst-auth/src/auth/tests.rs`.
+### Project settings, queue previews and review follow-ups
+
+- `rullst::config::project_setting` reads one application setting from the
+  process environment and then `./.env`, without loading `.env` into the
+  process. Nexus `basic_from_env` and generated billing code (`BILLING_*`) use
+  it; Nexus reports a malformed or unreadable `.env` as
+  `NexusBuildError::InvalidDotenv` and no longer depends on `dotenvy`.
+- Generated billing treats the server's resolved environment, including
+  `.env` and `[app].env`, as authoritative for production checks.
+- `QueueDriver::list_job_previews` / `Queue::list_job_previews` return
+  `QueuedJobPreview` rows whose payload and error SQLite and Redis cut to a
+  byte budget in SQL or Lua; Studio's queue monitor loads at most 2 KiB per
+  field.
+- The threat-model release minimum includes CORE-03 and NEXUS-03, and its
+  TENANT-04 evidence path is fixed.
+
 ### Labs: bring your own runner
 
 - The unpublished experimental `rullst-labs-runner` candidate (a Linux

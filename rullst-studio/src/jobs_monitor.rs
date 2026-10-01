@@ -8,7 +8,10 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use rullst_core::{Queue, QueuedJobDetail, queue::QueueError};
+use rullst_core::{
+    Queue,
+    queue::{QueueError, QueuedJobPreview},
+};
 use std::{fmt::Write, sync::Arc};
 
 struct HorizonState {
@@ -18,6 +21,14 @@ struct HorizonState {
 /// Number of most recent queue records in one snapshot. Status counts derived
 /// from it describe this window, not the whole queue.
 const SNAPSHOT_RECORDS: u32 = 50;
+/// Characters of a payload and of an error rendered in a row.
+const PAYLOAD_PREVIEW_CHARS: usize = 256;
+const ERROR_PREVIEW_CHARS: usize = 512;
+/// Bytes of each payload and error the queue returns: the longest preview in
+/// four-byte characters. The SQLite and Redis drivers cut the values in the
+/// store, so a large payload never reaches Studio in full.
+const PREVIEW_BYTES: u32 = 2_048;
+const _: () = assert!(PREVIEW_BYTES as usize >= ERROR_PREVIEW_CHARS * 4);
 
 /// Raw queue routes, without an access boundary.
 ///
@@ -59,7 +70,7 @@ async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> Response {
 }
 
 async fn jobs_table(State(state): State<Arc<HorizonState>>) -> Response {
-    match state.queue.list_all_jobs(SNAPSHOT_RECORDS).await {
+    match list_previews(&state.queue).await {
         Ok(jobs) => Html(render_table_rows(&jobs)).into_response(),
         Err(error) => queue_error_response(error),
     }
@@ -105,8 +116,14 @@ async fn purge_completed_history(
     }
 }
 
-async fn load_snapshot(queue: &Queue) -> Result<(Vec<QueuedJobDetail>, u64), QueueError> {
-    let jobs = queue.list_all_jobs(SNAPSHOT_RECORDS).await?;
+async fn list_previews(queue: &Queue) -> Result<Vec<QueuedJobPreview>, QueueError> {
+    queue
+        .list_job_previews(SNAPSHOT_RECORDS, PREVIEW_BYTES)
+        .await
+}
+
+async fn load_snapshot(queue: &Queue) -> Result<(Vec<QueuedJobPreview>, u64), QueueError> {
+    let jobs = list_previews(queue).await?;
     let pending = queue.pending_count().await?;
     Ok((jobs, pending))
 }
@@ -169,24 +186,30 @@ fn render_dashboard_layout(
 /// Cuts a value to `maximum_chars` characters without reading past them, so a
 /// large payload is never scanned in full just to render its preview.
 fn bounded_preview(value: &str, maximum_chars: usize) -> String {
+    field_preview(value, maximum_chars, false)
+}
+
+/// [`bounded_preview`] that also marks a value the queue already cut.
+fn field_preview(value: &str, maximum_chars: usize, truncated: bool) -> String {
     match value.char_indices().nth(maximum_chars) {
         Some((cut, _)) => format!("{}…", &value[..cut]),
+        None if truncated => format!("{value}…"),
         None => value.to_string(),
     }
 }
 
-fn render_table_rows(jobs: &[QueuedJobDetail]) -> String {
+fn render_table_rows(jobs: &[QueuedJobPreview]) -> String {
     if jobs.is_empty() {
         return "<tr><td colspan=\"6\">No queue records in this snapshot.</td></tr>".to_string();
     }
 
     jobs.iter().fold(String::new(), |mut rows, job| {
         let id_preview = bounded_preview(&job.id, 8);
-        let payload = bounded_preview(&job.payload, 256);
+        let payload = field_preview(&job.payload, PAYLOAD_PREVIEW_CHARS, job.payload_truncated);
         let error = job
             .error
             .as_deref()
-            .map(|error| bounded_preview(error, 512));
+            .map(|error| field_preview(error, ERROR_PREVIEW_CHARS, job.error_truncated));
         let action = if job.status == "failed" {
             format!(
                 "<form method=\"post\" action=\"/studio/jobs/retry/{}\"><button type=\"submit\">Retry job</button></form>",
@@ -218,207 +241,5 @@ fn render_table_rows(jobs: &[QueuedJobDetail]) -> String {
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used, clippy::unwrap_used)]
 #[cfg(not(miri))]
-mod tests {
-    use super::*;
-    use axum::{
-        body::{Body, to_bytes},
-        http::Request,
-    };
-    use rullst_core::queue::{QueueDriver, SqliteDriver};
-    use tower::ServiceExt;
-
-    fn verified_post(uri: &str) -> Request<Body> {
-        let mut request = Request::builder()
-            .method("POST")
-            .uri(uri)
-            .body(Body::empty())
-            .unwrap();
-        request
-            .extensions_mut()
-            .insert(crate::access::VerifiedLocalStudioAccess);
-        request
-    }
-
-    async fn snapshot_html(app: &Router) -> String {
-        let response = app
-            .clone()
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-        let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
-        String::from_utf8(body.to_vec()).unwrap()
-    }
-
-    #[tokio::test]
-    async fn queue_dashboard_routes_return_real_snapshots() {
-        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
-        let app = router(queue);
-
-        for uri in ["/", "/jobs-table"] {
-            let response = app
-                .clone()
-                .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
-                .await
-                .unwrap();
-            assert_eq!(response.status(), StatusCode::OK);
-        }
-
-        let purge = app
-            .clone()
-            .oneshot(verified_post("/purge-failed"))
-            .await
-            .unwrap();
-        assert!(purge.status().is_redirection());
-
-        let legacy_purge = app.oneshot(verified_post("/purge")).await.unwrap();
-        assert!(legacy_purge.status().is_redirection());
-    }
-
-    #[tokio::test]
-    // TM-STUDIO-06: importing the raw queue router cannot turn retry or purge
-    // into an unprotected write API.
-    async fn raw_queue_router_denies_writes_without_verified_local_access() {
-        let driver = SqliteDriver::new("sqlite::memory:")
-            .await
-            .unwrap()
-            .try_with_completed_history_limit(10)
-            .unwrap();
-        driver
-            .push("completed-job", "report", r#"{"scope":"daily"}"#)
-            .await
-            .unwrap();
-        let completed = driver.pop().await.unwrap().unwrap();
-        driver.mark_complete(&completed.id).await.unwrap();
-        driver
-            .push("failed-job", "report", r#"{"scope":"weekly"}"#)
-            .await
-            .unwrap();
-        let failed = driver.pop().await.unwrap().unwrap();
-        driver.mark_failed(&failed.id, "boom").await.unwrap();
-        let app = router(Queue::custom(Box::new(driver)));
-
-        for uri in [
-            "/retry/failed-job",
-            "/purge-failed",
-            "/purge-completed",
-            "/purge",
-        ] {
-            let response = app
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .method("POST")
-                        .uri(uri)
-                        .body(Body::empty())
-                        .unwrap(),
-                )
-                .await
-                .unwrap();
-            assert_eq!(response.status(), StatusCode::FORBIDDEN, "{uri}");
-        }
-        let html = snapshot_html(&app).await;
-        assert!(html.contains("<code>complete…</code>"));
-        assert!(html.contains("<code>failed-j…</code>"));
-        assert!(html.contains("Retry job"));
-
-        let retry = app
-            .clone()
-            .oneshot(verified_post("/retry/failed-job"))
-            .await
-            .unwrap();
-        assert!(retry.status().is_redirection());
-        assert!(!snapshot_html(&app).await.contains("Retry job"));
-    }
-
-    #[tokio::test]
-    async fn dashboard_reads_and_purges_real_opt_in_completed_history() {
-        let driver = SqliteDriver::new("sqlite::memory:")
-            .await
-            .unwrap()
-            .try_with_completed_history_limit(10)
-            .unwrap();
-        driver
-            .push("completed-job", "report", r#"{"scope":"daily"}"#)
-            .await
-            .unwrap();
-        let claimed = driver.pop().await.unwrap().unwrap();
-        driver.mark_complete(&claimed.id).await.unwrap();
-        let app = router(Queue::custom(Box::new(driver)));
-
-        let response = app
-            .clone()
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-        let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
-        let html = String::from_utf8(body.to_vec()).unwrap();
-        assert!(html.contains("Completed among the 50 most recent records"));
-        assert!(html.contains("<code>complete…</code>"));
-        assert!(html.contains("<dd>1</dd>"));
-        assert!(html.contains("Purge all completed history"));
-
-        let purge = app
-            .clone()
-            .oneshot(verified_post("/purge-completed"))
-            .await
-            .unwrap();
-        assert!(purge.status().is_redirection());
-
-        let response = app
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
-        let html = String::from_utf8(body.to_vec()).unwrap();
-        assert!(!html.contains("<code>complete…</code>"));
-    }
-
-    #[test]
-    fn previews_are_cut_on_character_boundaries() {
-        assert_eq!(bounded_preview("abc", 3), "abc");
-        assert_eq!(bounded_preview("abcd", 3), "abc…");
-        assert_eq!(bounded_preview("ééé", 2), "éé…");
-        assert_eq!(bounded_preview("", 0), "");
-        assert_eq!(bounded_preview("a", 0), "…");
-    }
-
-    #[test]
-    fn job_rows_escape_untrusted_values_and_accept_short_identifiers() {
-        let html = render_table_rows(&[QueuedJobDetail {
-            id: "é".to_string(),
-            name: "<script>".to_string(),
-            payload: "{\"value\":\"<img>\"}".to_string(),
-            status: "failed".to_string(),
-            error: Some("<b>failure</b>".to_string()),
-            attempts: 1,
-            created_at: "now".to_string(),
-            updated_at: "now".to_string(),
-        }]);
-
-        assert!(html.contains("Retry job"));
-        assert!(html.contains("&lt;script&gt;"));
-        assert!(html.contains("&lt;img&gt;"));
-        assert!(html.contains("&lt;b&gt;failure&lt;/b&gt;"));
-        assert!(!html.contains("<script>"));
-    }
-
-    #[test]
-    fn dashboard_labels_windowed_status_counts_as_such() {
-        let html = render_dashboard_layout(2, 1, 3, 4, String::new());
-
-        // Only the pending count covers the whole queue; the status counts
-        // come from the snapshot window, while purges remove every match.
-        assert!(html.contains("<dt>Pending jobs in the queue</dt><dd>2</dd>"));
-        assert!(html.contains("<dt>Marked failed among the 50 most recent records</dt><dd>1</dd>"));
-        assert!(
-            html.contains("<dt>Marked processing among the 50 most recent records</dt><dd>3</dd>")
-        );
-        assert!(html.contains("<dt>Completed among the 50 most recent records</dt><dd>4</dd>"));
-        assert!(html.contains("Purge every failed job"));
-        assert!(!html.contains("<dt>Jobs marked failed</dt>"));
-    }
-}
+mod tests;

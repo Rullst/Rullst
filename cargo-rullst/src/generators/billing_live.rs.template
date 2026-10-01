@@ -66,11 +66,12 @@ fn now() -> Result<i64> {
         .map_err(|_| UNAVAILABLE).and_then(|value| i64::try_from(value.as_secs()).map_err(|_| UNAVAILABLE))
 }
 fn scope(config: &BillingConfig) -> Result<(String, String, bool)> {
-    let account = std::env::var("BILLING_ACCOUNT_ID").map_err(|_| UNAVAILABLE)?;
+    let account = super::setting("BILLING_ACCOUNT_ID").map_err(|_| UNAVAILABLE)?.ok_or(UNAVAILABLE)?;
     let mode = if config.api_key.starts_with("sk_test_") || config.api_key.starts_with("rk_test_") { false }
         else if config.api_key.starts_with("sk_live_") || config.api_key.starts_with("rk_live_") { true }
         else { return Err(UNAVAILABLE); };
-    if mode && std::env::var("BILLING_LIVE_ACKNOWLEDGEMENT").as_deref() != Ok("I_UNDERSTAND_REAL_CHARGES") {
+    if mode && super::setting("BILLING_LIVE_ACKNOWLEDGEMENT").map_err(|_| UNAVAILABLE)?.as_deref()
+        != Some("I_UNDERSTAND_REAL_CHARGES") {
         return Err(UNAVAILABLE);
     }
     if config.provider != "stripe" || !super::strong_webhook_secret(&config.webhook_secret)

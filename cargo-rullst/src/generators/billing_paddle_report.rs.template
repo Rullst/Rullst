@@ -52,7 +52,7 @@ pub(in super::super) async fn report(config: &BillingConfig, identity: &BillingI
 pub(super) async fn report_with(config: &BillingConfig, identity: &BillingIdentity, gateway: &impl Gateway) -> Result<Response> {
     if !valid_identity(identity) { return Err(StatusCode::UNAUTHORIZED); }
     let (namespace, _, _) = scope(config)?;
-    let plans = std::env::var("BILLING_REPORT_PLAN_IDS").map_err(|_| UNAVAILABLE)?;
+    let plans = super::super::setting("BILLING_REPORT_PLAN_IDS").map_err(|_| UNAVAILABLE)?.ok_or(UNAVAILABLE)?;
     if plans.len() > 12864 { return Err(UNAVAILABLE); }
     let plans = plans.split(',').map(str::trim).collect::<Vec<_>>();
     if plans.iter().any(|plan| !config.allowed_plan_ids.contains(*plan)) { return Err(UNAVAILABLE); }

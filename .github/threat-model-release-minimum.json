@@ -39,6 +39,24 @@
       "marker": "TM-CORE-02"
     },
     {
+      "id": "CORE-03",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "security::trusted_proxy::tests::untrusted_peer_cannot_choose_its_identity_through_forwarding_headers",
+      "source": "rullst-core/src/security/trusted_proxy/tests.rs",
+      "marker": "TM-CORE-03"
+    },
+    {
+      "id": "CORE-03",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "server::stack::tests::trusted_proxy_is_the_outermost_server_layer",
+      "source": "rullst-core/src/server/stack_tests.rs",
+      "marker": "TM-CORE-03"
+    },
+    {
       "id": "ORM-01",
       "crate": "rullst-orm",
       "target_kind": "lib",
@@ -62,7 +80,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "auth::tests::test_session_encryption_error_paths",
-      "source": "rullst-auth/src/auth.rs",
+      "source": "rullst-auth/src/auth/tests.rs",
       "marker": "TM-AUTH-01"
     },
     {
@@ -210,6 +228,15 @@
       "marker": "TM-NEXUS-02"
     },
     {
+      "id": "NEXUS-03",
+      "crate": "rullst-nexus",
+      "target_kind": "integration",
+      "target": "content_security_policy",
+      "test_filter": "nexus_pages_run_under_the_default_production_csp",
+      "source": "rullst-nexus/tests/content_security_policy.rs",
+      "marker": "TM-NEXUS-03"
+    },
+    {
       "id": "NEXUS-05",
       "crate": "rullst-core",
       "target_kind": "lib",
@@ -296,7 +323,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "realtime::tests::identical_channels_are_isolated_by_authenticated_tenant_context",
-      "source": "rullst-core/src/realtime.rs",
+      "source": "rullst-core/src/realtime_tests.rs",
       "marker": "TM-TENANT-04"
     },
     {

@@ -4,7 +4,8 @@
 //! project's `.env`, which never overrides the environment, as `Server`
 //! resolves `DATABASE_URL`, `PORT` and the runtime environment. These are
 //! hidden support APIs for first-party crates such as `rullst-mail`, not a
-//! stable extension point.
+//! stable extension point; application code uses the public
+//! [`crate::config::project_setting`].
 
 use super::ServerError;
 use super::builder::read_optional_environment_variable;
