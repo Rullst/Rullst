@@ -1,6 +1,11 @@
 //! Payment Gateways Catalog and Configuration Metadata for Rullst Capital.
 //! Defines payment-adapter metadata with environment credential detection.
 
+/// Whether a provider credential is set in the process environment or `./.env`.
+fn configured(name: &str) -> bool {
+    matches!(rullst::config::project_setting(name), Ok(Some(_)))
+}
+
 /// Metadata model for a supported Payment / Payout Gateway.
 #[derive(Debug, Clone)]
 pub struct GatewayInfo {
@@ -20,17 +25,17 @@ impl GatewayInfo {
     /// Presence does not validate the credential or prove that every adapter capability is live.
     pub fn is_configured(&self) -> bool {
         match self.id {
-            "stripe" => std::env::var("STRIPE_SECRET_KEY").is_ok(),
-            "lemonsqueezy" => std::env::var("LEMONSQUEEZY_API_KEY").is_ok(),
-            "infinitepay" => std::env::var("INFINITEPAY_API_KEY").is_ok(),
-            "polar" => std::env::var("POLAR_ACCESS_TOKEN").is_ok(),
-            "paddle" => std::env::var("PADDLE_API_KEY").is_ok(),
-            "alipay" => std::env::var("ALIPAY_APP_ID").is_ok(),
-            "mercadopago" => std::env::var("MERCADOPAGO_ACCESS_TOKEN").is_ok(),
-            "razorpay" => std::env::var("RAZORPAY_KEY_ID").is_ok(),
-            "coinbase" => std::env::var("COINBASE_COMMERCE_API_KEY").is_ok(),
-            "picpay" => std::env::var("PICPAY_TOKEN").is_ok(),
-            "wise" => std::env::var("WISE_API_TOKEN").is_ok(),
+            "stripe" => configured("STRIPE_SECRET_KEY"),
+            "lemonsqueezy" => configured("LEMONSQUEEZY_API_KEY"),
+            "infinitepay" => configured("INFINITEPAY_API_KEY"),
+            "polar" => configured("POLAR_ACCESS_TOKEN"),
+            "paddle" => configured("PADDLE_API_KEY"),
+            "alipay" => configured("ALIPAY_APP_ID"),
+            "mercadopago" => configured("MERCADOPAGO_ACCESS_TOKEN"),
+            "razorpay" => configured("RAZORPAY_KEY_ID"),
+            "coinbase" => configured("COINBASE_COMMERCE_API_KEY"),
+            "picpay" => configured("PICPAY_TOKEN"),
+            "wise" => configured("WISE_API_TOKEN"),
             _ => false,
         }
     }
