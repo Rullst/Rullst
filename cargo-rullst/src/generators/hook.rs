@@ -271,9 +271,70 @@ fn install_hook(hook: &Path, script: &str) -> Result<(), HookInstallError> {
     Ok(())
 }
 
+/// Returns the effective `core.hooksPath` (local, global or system Git
+/// configuration), resolved against the worktree like Git does.
+///
+/// `None` when it is unset or Git cannot be run; installation then uses the
+/// metadata-derived hooks directory.
+fn configured_hooks_path(worktree: &Path) -> Option<PathBuf> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(worktree)
+        .args(["config", "--path", "--get", "core.hooksPath"])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8(output.stdout).ok()?;
+    let value = value.trim_end_matches(['\n', '\r']);
+    if value.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(value);
+    Some(if path.is_absolute() {
+        path
+    } else {
+        worktree.join(path)
+    })
+}
+
+fn same_directory(left: &Path, right: &Path) -> bool {
+    match (left.canonicalize(), right.canonicalize()) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => left == right,
+    }
+}
+
 fn install_git_hooks_at(start: &Path) -> Result<PathBuf, HookInstallError> {
+    install_git_hooks_with(start, configured_hooks_path)
+}
+
+fn install_git_hooks_with(
+    start: &Path,
+    hooks_path: impl FnOnce(&Path) -> Option<PathBuf>,
+) -> Result<PathBuf, HookInstallError> {
     let worktree = find_worktree(start)?;
     let hooks_dir = hooks_directory(&worktree)?;
+    // Git runs hooks only from core.hooksPath when it is set (Husky, shared
+    // team hooks), so wrappers in the default directory would never execute.
+    if let Some(configured) = hooks_path(&worktree)
+        && !same_directory(&configured, &hooks_dir)
+    {
+        return Err(HookInstallError::Io {
+            operation: "install managed hooks because core.hooksPath selects",
+            source: io::Error::new(
+                io::ErrorKind::Unsupported,
+                format!(
+                    "Git runs only the hooks in that directory, so wrappers in `{}` would never execute; unset core.hooksPath or invoke cargo fmt, Clippy and `cargo rullst audit --idor` from that hook manager",
+                    hooks_dir.display()
+                ),
+            ),
+            path: configured,
+        });
+    }
     fs::create_dir_all(&hooks_dir)
         .map_err(|error| io_error("create hooks directory", &hooks_dir, error))?;
     let pre_commit = hooks_dir.join("pre-commit");
@@ -308,164 +369,5 @@ pub fn install_git_pre_commit_hook() -> Result<(), HookInstallError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct TempWorktree {
-        path: PathBuf,
-    }
-
-    impl TempWorktree {
-        fn new(label: &str) -> Self {
-            let path =
-                std::env::temp_dir().join(format!("rullst-hook-{label}-{}", rand::random::<u64>()));
-            fs::create_dir_all(&path).expect("temporary hook worktree");
-            Self { path }
-        }
-
-        fn init(&self) -> PathBuf {
-            let hooks = self.path.join(".git/hooks");
-            fs::create_dir_all(&hooks).expect("temporary Git hooks");
-            hooks
-        }
-    }
-
-    impl Drop for TempWorktree {
-        fn drop(&mut self) {
-            let _ = fs::remove_dir_all(&self.path);
-        }
-    }
-
-    #[test]
-    fn missing_worktree_fails_without_creating_git_metadata() {
-        let worktree = TempWorktree::new("missing");
-        assert!(matches!(
-            install_git_hooks_at(&worktree.path),
-            Err(HookInstallError::NotGitWorktree(_))
-        ));
-        assert!(!worktree.path.join(".git").exists());
-    }
-
-    #[test]
-    fn installation_is_idempotent_and_executable() {
-        let worktree = TempWorktree::new("idempotent");
-        let hooks = worktree.init();
-        install_git_hooks_at(&worktree.path).expect("first hook installation");
-        let pre_commit = hooks.join("pre-commit");
-        let first = fs::read(&pre_commit).expect("first managed hook");
-        install_git_hooks_at(&worktree.path).expect("idempotent hook installation");
-        assert_eq!(fs::read(&pre_commit).expect("second managed hook"), first);
-        assert!(!backup_path(&pre_commit).exists());
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mode = fs::metadata(&pre_commit)
-                .expect("managed hook metadata")
-                .permissions()
-                .mode();
-            assert_ne!(mode & 0o111, 0);
-        }
-    }
-
-    #[test]
-    fn existing_hooks_are_preserved_chained_and_not_overwritten_on_reinstall() {
-        let worktree = TempWorktree::new("preserve");
-        let hooks = worktree.init();
-        let pre_commit = hooks.join("pre-commit");
-        let commit_msg = hooks.join("commit-msg");
-        fs::write(&pre_commit, "#!/bin/sh\necho existing-pre\n").expect("existing pre-commit");
-        fs::write(&commit_msg, "#!/bin/sh\necho existing-message\n").expect("existing commit-msg");
-
-        install_git_hooks_at(&worktree.path).expect("preserving hook installation");
-        assert_eq!(
-            fs::read_to_string(backup_path(&pre_commit)).expect("preserved pre-commit"),
-            "#!/bin/sh\necho existing-pre\n"
-        );
-        assert_eq!(
-            fs::read_to_string(backup_path(&commit_msg)).expect("preserved commit-msg"),
-            "#!/bin/sh\necho existing-message\n"
-        );
-        let wrapper = fs::read_to_string(&pre_commit).expect("managed pre-commit wrapper");
-        assert!(wrapper.contains("${0}.rullst-original"));
-        install_git_hooks_at(&worktree.path).expect("idempotent preserved hook installation");
-        assert_eq!(
-            fs::read_to_string(backup_path(&pre_commit)).expect("unchanged pre-commit backup"),
-            "#!/bin/sh\necho existing-pre\n"
-        );
-    }
-
-    #[test]
-    fn backup_collision_fails_before_mutating_any_hook() {
-        let worktree = TempWorktree::new("collision");
-        let hooks = worktree.init();
-        let pre_commit = hooks.join("pre-commit");
-        fs::write(&pre_commit, "custom").expect("custom pre-commit");
-        fs::write(backup_path(&pre_commit), "older backup").expect("existing backup");
-
-        assert!(matches!(
-            install_git_hooks_at(&worktree.path),
-            Err(HookInstallError::BackupConflict { .. })
-        ));
-        assert_eq!(
-            fs::read_to_string(&pre_commit).expect("untouched custom hook"),
-            "custom"
-        );
-        assert!(!hooks.join("commit-msg").exists());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn commit_msg_accepts_git_generated_subjects_and_rejects_free_text() {
-        let worktree = TempWorktree::new("commit-msg");
-        let script = worktree.path.join("commit-msg");
-        fs::write(&script, COMMIT_MSG_SCRIPT).expect("commit-msg script");
-        let accepts = |subject: &str| {
-            let message = worktree.path.join("COMMIT_EDITMSG");
-            fs::write(&message, format!("{subject}\n\nbody\n")).expect("commit message");
-            std::process::Command::new("sh")
-                .arg(&script)
-                .arg(&message)
-                .output()
-                .expect("run commit-msg")
-                .status
-                .success()
-        };
-        for subject in [
-            "feat(cli): add a generator",
-            "fix!: drop a legacy flag",
-            "Merge branch 'main' into feat/x",
-            "Merge remote-tracking branch 'origin/main' into fix/v13-capital-low-fixes",
-            "Merge tag 'v1.2.0'",
-            "Merge branches 'a' and 'b'",
-            "Merge pull request #367 from Rullst/chore/v13-remove-labs-runner",
-            "Merge commit 'abc1234'",
-            "Revert \"feat(x): y\"",
-            "fixup! feat(cli): add a generator",
-            "squash! fix(auth): hash passwords off the runtime",
-            "amend! docs: update the guide",
-        ] {
-            assert!(accepts(subject), "rejected: {subject}");
-        }
-        for subject in ["update stuff", "Merged things", "Revert this", "fixup: x"] {
-            assert!(!accepts(subject), "accepted: {subject}");
-        }
-    }
-
-    #[test]
-    fn linked_worktree_uses_the_common_git_hooks_directory() {
-        let worktree = TempWorktree::new("linked");
-        let common = worktree.path.join("common.git");
-        let linked = common.join("worktrees/linked");
-        fs::create_dir_all(&linked).expect("linked Git directory");
-        fs::write(
-            worktree.path.join(".git"),
-            "gitdir: common.git/worktrees/linked\n",
-        )
-        .expect("linked worktree metadata");
-        fs::write(linked.join("commondir"), "../..\n").expect("common directory metadata");
-
-        let hooks = install_git_hooks_at(&worktree.path).expect("linked hook installation");
-        assert_eq!(hooks, common.canonicalize().unwrap().join("hooks"));
-        assert!(hooks.join("pre-commit").exists());
-    }
-}
+#[path = "hook_tests.rs"]
+mod tests;

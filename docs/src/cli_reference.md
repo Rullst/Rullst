@@ -1157,7 +1157,10 @@ reverts (`Revert "..."`) and `fixup!`/`squash!`/`amend!` commits. Existing
 active hooks are moved to explicit `.rullst-original` backups and invoked first,
 while reinstalling the managed wrappers is idempotent. The command supports
 linked worktrees, fails clearly outside a Git worktree, and refuses a backup
-collision instead of overwriting it. These local hooks are bypassable by design;
+collision instead of overwriting it. When `core.hooksPath` (local or global Git
+configuration, as used by Husky or shared hook directories) selects another
+directory, it fails before writing, because Git would never run wrappers in the
+default hooks directory; call the checks from that hook manager instead. These local hooks are bypassable by design;
 protected CI remains authoritative.
 
 ### `cargo rullst doctor`
