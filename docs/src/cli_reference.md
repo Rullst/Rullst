@@ -512,8 +512,9 @@ the diff and run `cargo check` after scaffolding.
 ### `cargo rullst make:resource <name>`
 Scaffolds the bounded starting files for a CRUD resource in one command: a
 Model (`src/models/<name>.rs`), Migration
-(`src/migrations/m<timestamp>_create_<plural>.rs`), Controller
-(`src/controllers/<name>.rs`), and HTML view placeholders
+(`src/migrations/m<timestamp>_create_<plural>.rs`, for example
+`create_categories` for `Category`), Controller
+(`src/controllers/<name>_controller.rs`), and HTML view placeholders
 (`views/<name>/index.html` and `views/<name>/form.html`). It does not infer
 application fields, register routes, establish ownership/RBAC, or turn the
 placeholder handlers into a complete authorized CRUD implementation. Like
