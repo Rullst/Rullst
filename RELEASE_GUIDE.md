@@ -130,8 +130,9 @@ Before releasing, make sure:
 - [ ] Every package in [the release order](.github/release-order.json) has
   synchronized manifest versions and internal requirements at the selected
   release version. The current v13 candidate inventory has 17 packages, including
-  `rullst-privacy`. Supervision, Media, Labs and its runner remain outside that
-  inventory until their separate package/release admission; a successful
+  `rullst-privacy`. Supervision, Media and Labs remain outside that inventory
+  until their separate package/release admission (the Labs runner candidate was
+  removed from 13.0); a successful
   experimental archive rehearsal does not authorize their publication.
 - [ ] Review the README extracted from each `.crate`, installation examples and
   public demo links before creating the tag. The facade and CLI package the root

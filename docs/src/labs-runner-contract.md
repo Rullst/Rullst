@@ -44,7 +44,9 @@ network-filesystem database.
 - Create the signer with `ReceiptSigner::from_seed` from a dedicated random
   32-byte seed (all zeroes is refused). Its `public_key()` is the profile's
   `receipt_key`. Never reuse the content key or an application secret as the
-  seed, and never give the seed to the application or the worker.
+  seed, and never give the seed to the application or the worker. Keep both
+  secrets in owned private regular files under protected ancestors, and
+  validate the opened no-follow descriptor and exact 32-byte length.
 - The profile, including tool digests and receipt key, is part of the store's
   configuration binding. Rotating the key or changing a pinned tool therefore
   requires a new store: drain and retire the old one first.

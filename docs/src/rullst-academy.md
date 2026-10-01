@@ -88,7 +88,8 @@ must use a disposable rootless container or stronger microVM boundary with:
 
 The runner returns structured test evidence. It does not grant points directly;
 the Academy service binds that evidence to the authenticated learner, project
-version and server-owned scoring policy.
+version and server-owned scoring policy. Rullst does not ship this runner; with
+`rullst-labs`, it implements the [Labs controller contract](labs-runner-contract.md).
 
 ## Local AI mascot
 
