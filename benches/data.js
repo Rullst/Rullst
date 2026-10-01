@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790863451935,
+  "lastUpdate": 1790865483092,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23853,6 +23853,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1793,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cde548e2971d4f391782204cf1a421dabadb03fc",
+          "message": "Merge pull request #380 from Rullst/fix/v13-final-core-tail\n\nfix(core): final-review fixes for HEAD CSRF, hot-reload machine auth, PII escapes, R2 URLs and memory drivers",
+          "timestamp": "2026-10-01T11:27:05-03:00",
+          "tree_id": "a5a5f8e2a8271b942c86ee83cb6e85a6c9c1fa81",
+          "url": "https://github.com/Rullst/Rullst/commit/cde548e2971d4f391782204cf1a421dabadb03fc"
+        },
+        "date": 1790865480012,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 591,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 796,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 510,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1812,
+            "range": "± 57",
             "unit": "ns/iter"
           }
         ]
