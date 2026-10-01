@@ -101,7 +101,9 @@ metadata encryption.
 
 The first key encrypts new records; add at most seven prior decryption keys with
 `with_decryption_key`. Startup rejects a missing/wrong key, tampered profile or
-removal of a prior key while any retained record still references it. Rotation
+removal of a prior key while any retained record still references it; it opens
+one retained record per referenced key ID, so a prior key with the right ID but
+wrong bytes fails at startup instead of blocking later receives. Rotation
 does not rewrite old messages: ACK and purge them under the complete keyring
 before retiring that key. Plaintext and encrypted profiles never mix silently;
 migration requires an explicit new namespace/database and application-owned
