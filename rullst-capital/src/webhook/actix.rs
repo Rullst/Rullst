@@ -21,7 +21,9 @@ use std::collections::HashMap;
 /// Production-safe Actix middleware for signed billing webhooks.
 ///
 /// Mount it with `actix_web::middleware::from_fn(verify_webhook_actix)`. It uses the globally
-/// configured Capital provider and rejects `mock_*` verification modes.
+/// configured Capital provider and rejects `mock_*` verification modes. Replay proofs go to the
+/// process-wide default store (at most 10,000 proofs for 24 hours each, 503 when full); use
+/// [`verify_webhook_actix_with_state`] to size or share the store.
 pub async fn verify_webhook_actix<B>(
     req: ServiceRequest,
     next: Next<B>,

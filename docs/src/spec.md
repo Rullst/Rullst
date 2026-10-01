@@ -2841,7 +2841,10 @@ sending.
   derived signatures are constant-time where applicable.
 * Timestamped protocols enforce a bounded freshness window. The default replay
   store is bounded and process-local and fails closed instead of evicting an
-  unexpired proof when full.
+  unexpired proof when full. It holds at most 10,000 proofs for 24 hours each,
+  so the default middleware answers 503 after about 10,000 verified deliveries
+  per rolling day in one process; `verify_webhook_with_state` accepts a sized
+  or shared store.
 * Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body, and their
   adapters check no delivery timestamp (provider retries can span hours or
   days). An exact captured body therefore verifies again after its replay claim
