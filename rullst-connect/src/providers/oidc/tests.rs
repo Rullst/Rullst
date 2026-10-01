@@ -650,8 +650,10 @@ async fn test_oidc_id_token_missing_kid() {
         .await
         .unwrap_err();
 
+    // A token without `kid` may use only the single key of an issuer's set
+    // (OIDC Core 10.1), and never a symmetric algorithm.
     assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("Missing 'kid' header"))
+        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("insecure or symmetric algorithm"))
     );
 }
 

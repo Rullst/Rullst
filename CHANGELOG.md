@@ -507,6 +507,25 @@ A prepared version section does not establish that its tag or crates exist.
 - PII masking keeps JSON numbers valid and leaves versioned CDN URLs and `@2x`
   asset names alone.
 
+### Security and Connect final-review fixes
+
+- `DlpResponseLayer` masks XML (`application/xml`, `+xml`), YAML and
+  `application/javascript` responses, and withholds a `206 Partial Content`
+  response that would need masking with a `no-store` 502 instead of emitting a
+  206 without `Content-Range`.
+- `redact_secrets` counts masked log records only as log redactions, so they no
+  longer inflate "DLP Leaks Blocked" or flood the live event feed.
+- RASP no longer rejects the stock PowerShell `User-Agent` product token, while
+  PowerShell execution syntax still blocks.
+- Honeypot bans with a TTL beyond the monotonic clock are enforced, and
+  honeypot telemetry records only bans that were stored, keyed by the
+  configured trap path.
+- `OidcProvider` accepts ID tokens and userinfo responses without the optional
+  `name` claim (falling back to `given_name`/`family_name`,
+  `preferred_username` or `nickname`), and verifies ID tokens without `kid`
+  when the issuer's JWK Set holds exactly one key that fits the token's
+  asymmetric algorithm.
+
 ### Security second-pass review fixes
 
 - `rate_limit_middleware` keys IPv6 peers per /64 (IPv4 per address,
