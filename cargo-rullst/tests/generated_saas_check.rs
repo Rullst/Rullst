@@ -250,6 +250,42 @@ fn add_saas_generator_smoke(project_dir: &Path) {
     )
     .expect("register generated JWT middleware");
 
+    // Generator outputs import Axum and async-trait only through the `rullst`
+    // facade, because generated manifests depend on neither crate directly.
+    let controllers_mod_path = project_dir.join("src/controllers/mod.rs");
+    let controllers_mod =
+        fs::read_to_string(&controllers_mod_path).expect("generated controllers module");
+    fs::write(
+        controllers_mod_path,
+        format!("{controllers_mod}pub mod docs_controller;\npub mod product_controller;\n"),
+    )
+    .expect("register generated controller smoke");
+    fs::write(
+        project_dir.join("src/controllers/docs_controller.rs"),
+        cargo_rullst::generators::scalar::scalar_controller_source(),
+    )
+    .expect("generated Scalar controller");
+    fs::write(
+        project_dir.join("src/controllers/product_controller.rs"),
+        cargo_rullst::generators::controller::render_controller_source("ProductController", true),
+    )
+    .expect("generated API controller");
+    let live_dir = project_dir.join("src/live");
+    fs::create_dir_all(&live_dir).expect("generated live directory");
+    fs::write(live_dir.join("mod.rs"), "pub mod live_counter;\n").expect("generated live module");
+    fs::write(
+        live_dir.join("live_counter.rs"),
+        cargo_rullst::generators::live::render_live_component_source("LiveCounter", "live_counter"),
+    )
+    .expect("generated LiveComponent");
+    let bin_dir = project_dir.join("src/bin");
+    fs::create_dir_all(&bin_dir).expect("generated bin directory");
+    fs::write(
+        bin_dir.join("ejected.rs"),
+        cargo_rullst::generators::eject::ejected_entry_point_source(),
+    )
+    .expect("ejected entry point");
+
     let main_path = project_dir.join("src/main.rs");
     let main_source = fs::read_to_string(&main_path).expect("generated main source");
     let worker_lifecycle_smoke = r#"
@@ -264,7 +300,7 @@ fn start_generated_workers(
 "#;
     fs::write(
         main_path,
-        format!("mod workers;\n{worker_lifecycle_smoke}\n{main_source}"),
+        format!("mod live;\nmod workers;\n{worker_lifecycle_smoke}\n{main_source}"),
     )
     .expect("register generated worker lifecycle smoke");
 }

@@ -239,6 +239,27 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### CLI generator low-severity fixes
+
+- `make:live`, `make:scalar` and `eject` import async-trait and Axum through the
+  `rullst` facade, so they compile in generated projects; `eject` also applies
+  the configured security baseline.
+- `make:controller --api` extracts `Json` bodies, `generate:ts` supports axum
+  0.8 `{id}`/`{*rest}` captures with URL encoding and scans `src/lib.rs`, and
+  `generate:openapi` matches exact handler names.
+- `make:model` and `make:migration` reject names that would corrupt module
+  files, and `make:migration` no longer strips leading `m` characters.
+- `make:migration:auto` reads `table_name` and qualified `Orm` derives, ignores
+  framework tables and no longer writes comment-only migrations.
+- `inspect schema` derives the ORM model schema.
+- `foundry:deploy` stages uploads in a private per-app directory and verifies
+  owner and SHA-256 before installing, and `foundry:init` always ignores a
+  private (0600) `Foundry.toml`.
+- `hook:install` accepts Git merge, revert and fixup subjects and refuses an
+  overriding `core.hooksPath`.
+- Generated workers no longer log payloads, and fixture billing no longer
+  returns database error text.
+
 ### CLI operations low-severity fixes
 
 - Scaffold refreshes and `generate:diagram` no longer overwrite a hand-written
@@ -312,6 +333,20 @@ A prepared version section does not establish that its tag or crates exist.
   field.
 - The threat-model release minimum includes CORE-03 and NEXUS-03, and its
   TENANT-04 evidence path is fixed.
+
+### Education candidates final-review fixes
+
+- `rullst-supervision` limits one learner (tenant and subject) to 4096
+  unexpired events across sessions, or the store-wide event limit when lower,
+  and adds `Limits::subject_events`.
+- `rullst-media` maps SQLite lock and connection-pool timeouts to
+  `MediaError::Busy` instead of `Storage`, and its upload module accepts a
+  maximum-length grant when the browser clock is up to 300 seconds behind the
+  server.
+- `rullst-labs` adds the optional `StoreConfig::tenant_exercises` quota for
+  shared stores. Its bring-your-own-runner controller example abandons and
+  reconciles the attempt on clock and signing failures, and the controller
+  contract says when withdrawn running jobs reach `cleanup_candidates`.
 
 ### Labs: bring your own runner
 

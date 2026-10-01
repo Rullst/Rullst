@@ -2,10 +2,13 @@ use crate::{OpaqueId, SupervisionError as Error};
 
 /// Retained sessions one learner (tenant and subject) may hold by default.
 pub(crate) const SUBJECT_SESSIONS: i64 = 64;
+/// Unexpired events one learner (tenant and subject) may hold by default.
+pub(crate) const SUBJECT_EVENTS: i64 = 4096;
 
 /// Hard capacities apply to the whole local store, across all tenants. One
 /// learner may additionally retain at most 64 sessions (or `sessions`, when
-/// lower), so a single subject cannot fill the store-wide session budget.
+/// lower) and hold at most 4096 unexpired events across them (or `events`,
+/// when lower), so a single subject cannot fill a store-wide budget.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Limits {
@@ -16,6 +19,7 @@ pub struct Limits {
     pub(crate) events_per_session: i64,
     pub(crate) event_interval: i64,
     pub(crate) subject_sessions: i64,
+    pub(crate) subject_events: i64,
 }
 
 impl Limits {
@@ -35,6 +39,7 @@ impl Limits {
             events_per_session: 1024,
             event_interval: 1,
             subject_sessions: SUBJECT_SESSIONS.min(sessions.into()),
+            subject_events: SUBJECT_EVENTS.min(events.into()),
         })
     }
 
@@ -62,9 +67,27 @@ impl Limits {
         Ok(self)
     }
 
+    /// Unexpired events one learner (tenant and subject) may hold across all
+    /// sessions, from 1 to the store-wide `events` limit (v13). The default is
+    /// 4096, or `events` when lower. Every opener must supply the same value.
+    pub fn subject_events(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || i64::from(maximum) > self.events {
+            return Err(Error::InvalidInput);
+        }
+        self.subject_events = maximum.into();
+        Ok(self)
+    }
+
     /// Whether the per-learner quota is the default derived from `sessions`.
+    #[cfg(feature = "sqlite")]
     pub(crate) fn default_subject_sessions(&self) -> bool {
         self.subject_sessions == SUBJECT_SESSIONS.min(self.sessions)
+    }
+
+    /// Whether the per-learner event quota is the default derived from `events`.
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn default_subject_events(&self) -> bool {
+        self.subject_events == SUBJECT_EVENTS.min(self.events)
     }
 }
 

@@ -119,6 +119,10 @@ Capacities are store-wide. An ended session keeps its slot until its retention
 (start, policy lifetime and event retention) ends, so one learner (tenant and
 subject) may retain at most 64 sessions, or the store-wide limit when lower;
 `Limits::subject_sessions` selects another bound that every opener must share.
+Events stay until their own retention ends, even after the session ends, so one
+learner may also hold at most 4096 unexpired events across all sessions, or the
+store-wide event limit when lower; a further observation returns `Capacity`.
+`Limits::subject_events` selects another event bound that every opener must share.
 When a store-wide session or event limit is reached, admission first removes a
 bounded batch of rows already past retention in any tenant, so logically
 deleted state never blocks new work. Hosts should still rate-limit starts.

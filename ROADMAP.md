@@ -194,8 +194,9 @@ context, golden tasks and reproducible model evaluation.
    until the generator and snapshots prove it.)*
 3. **Structured system discovery:** a versioned schema should expose active
    routes, controllers, models, policies, and source locations. *(Partial and
-   worth completing; the CLI can inspect `rullst-schema.json`, but generation and
-   freshness must become an end-to-end contract.)*
+   worth completing; `inspect schema` prints a statically derived ORM model
+   schema, but routes, controllers, policies, versioning and freshness must
+   become an end-to-end contract.)*
 
 ## Preserved extraordinary capability decisions
 

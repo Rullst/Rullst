@@ -279,3 +279,106 @@ async fn user_objects_with_a_sqlite_like_name_fail_the_exact_schema_check() {
         ));
     }
 }
+
+/// Each tenant's teacher manages that tenant's exercises.
+struct TenantPolicy;
+impl Authorization for TenantPolicy {
+    async fn check(
+        &self,
+        actor: &Reference,
+        _scope: &Scope,
+        action: Action,
+    ) -> Result<Permission, LabError> {
+        if actor.as_str() != "teacher" || action != Action::ManageExercises {
+            return Err(LabError::Denied);
+        }
+        Permission::until(NOW + 1000)
+    }
+}
+fn revision(tenant: &str, course: &str, revision: &str) -> Exercise {
+    Exercise::new(
+        Scope::new(tenant, course).unwrap(),
+        reference("sum"),
+        reference(revision),
+        vec![GraderCase {
+            id: reference("case"),
+            input: [1, 2],
+            expected: 3,
+        }],
+        ExecutionLimits::new(30, 100000, 64).unwrap(),
+    )
+    .unwrap()
+}
+
+#[tokio::test]
+async fn an_optional_tenant_quota_keeps_one_tenant_from_filling_the_exercise_store() {
+    let configuration = || {
+        StoreConfig::new(
+            reference("isolated-test"),
+            10,
+            3,
+            ExecutionProfile::Simulation,
+        )
+        .unwrap()
+    };
+    assert!(configuration().tenant_exercises(0).is_err());
+    assert!(configuration().tenant_exercises(4).is_err());
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("quota.sqlite");
+    let clock = TestClock(Arc::new(AtomicI64::new(NOW)));
+    let key = || ContentKey::new([7; 32]).unwrap();
+    let quota = || configuration().tenant_exercises(2).unwrap();
+    let store = SqliteLabs::initialize(&path, quota(), key(), clock.clone())
+        .await
+        .unwrap();
+    let teacher = reference("teacher");
+    // Every course of one tenant shares its quota, withdrawn revisions included.
+    for course in ["rust", "go"] {
+        store
+            .register_exercise(&TenantPolicy, &teacher, &revision("school-a", course, "v1"))
+            .await
+            .unwrap();
+    }
+    let scope = Scope::new("school-a", "go").unwrap();
+    store
+        .set_exercise_enabled(
+            &TenantPolicy,
+            &teacher,
+            &scope,
+            &reference("sum"),
+            &reference("v1"),
+            false,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .register_exercise(&TenantPolicy, &teacher, &revision("school-a", "rust", "v2"))
+            .await
+            .unwrap_err(),
+        LabError::Capacity
+    );
+    // An identical retry of a held revision stays idempotent at the quota.
+    store
+        .register_exercise(&TenantPolicy, &teacher, &revision("school-a", "rust", "v1"))
+        .await
+        .unwrap();
+    // Another tenant keeps its share of the store-wide capacity.
+    store
+        .register_exercise(&TenantPolicy, &teacher, &revision("school-b", "rust", "v1"))
+        .await
+        .unwrap();
+    store.close().await;
+    // The quota is bound into the configuration, distinct from a job quota.
+    for other in [configuration(), configuration().learner_jobs(2).unwrap()] {
+        assert!(matches!(
+            SqliteLabs::open(&path, other, key(), clock.clone()).await,
+            Err(LabError::Configuration)
+        ));
+    }
+    SqliteLabs::open(&path, quota(), key(), clock)
+        .await
+        .unwrap()
+        .close()
+        .await;
+}
