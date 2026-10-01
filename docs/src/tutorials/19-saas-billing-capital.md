@@ -25,7 +25,9 @@ newer state, and event completion shares the subscription transaction.
 
 Configure `BILLING_PROVIDER=stripe`, `BILLING_ACCOUNT_ID`, `BILLING_API_KEY`,
 `BILLING_WEBHOOK_SECRET`, an HTTPS `BILLING_REDIRECT_URL`, and the explicit
-`BILLING_ALLOWED_PLAN_IDS` recurring-price allowlist. Follow the generated
+`BILLING_ALLOWED_PLAN_IDS` recurring-price allowlist in the process environment
+or the project's `.env` (in v13 the generated code reads the process environment
+first, then `.env`, through `rullst::config::project_setting`). Follow the generated
 `BILLING.md` for webhook event selection, pinned API version, CSP, recovery and
 migration details. Keep credentials outside source control. Test and live keys
 use separate persisted namespaces; mixed real/mock credentials fail closed.

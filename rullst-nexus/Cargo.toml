@@ -33,7 +33,6 @@ rullst-ai = { workspace = true }
 axum = { workspace = true }
 ammonia = "4.0.0"
 base64 = { workspace = true }
-dotenvy = { workspace = true }
 subtle = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

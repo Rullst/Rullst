@@ -188,7 +188,16 @@ fn configure_sqlite(_: &mut Url, _: bool) -> Result<(), RecoveryError> {
     Err(RecoveryError::Configuration)
 }
 
-#[cfg(test)]
+// Every test below needs PostgreSQL or a durable SQLite family, so the module
+// would only hold an unused import under `recovery-sqlite` alone.
+#[cfg(all(
+    test,
+    any(
+        feature = "recovery-postgres",
+        feature = "email-login-sqlite",
+        feature = "api-tokens-sqlite"
+    )
+))]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;

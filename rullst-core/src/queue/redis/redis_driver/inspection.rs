@@ -1,10 +1,23 @@
 //! Bounded job listing, failed-job retry and failure purge for the Redis
 //! queue driver.
 
-use super::super::scripts::RETRY_FAILED_SCRIPT;
+use super::super::scripts::{LIST_PREVIEWS_SCRIPT, RETRY_FAILED_SCRIPT};
 use super::RedisDriver;
-use crate::queue::{QueueError, QueuedJobDetail};
+use crate::queue::preview::{field_prefix, optional_field_prefix, stored_prefix_bytes};
+use crate::queue::{QueueError, QueuedJobDetail, QueuedJobPreview};
 use serde::Deserialize;
+
+/// One row of [`LIST_PREVIEWS_SCRIPT`]: status, id, name, payload head, error
+/// head, attempts and failure, claim or due time in milliseconds.
+type PreviewRow = (
+    Vec<u8>,
+    Vec<u8>,
+    Vec<u8>,
+    Vec<u8>,
+    Option<Vec<u8>>,
+    i64,
+    Option<String>,
+);
 
 /// Upper bound on the rows one `list_all_jobs` call returns.
 pub(super) const MAX_LISTED_JOBS: usize = 1_000;
@@ -102,6 +115,44 @@ impl RedisDriver {
             .chain(waiting)
             .chain(due)
             .take(limit)
+            .collect())
+    }
+
+    /// Lists the records of [`Self::list_jobs`] with each payload and error
+    /// cut to at most `max_field_bytes` bytes. One Lua script decodes at most
+    /// `limit` envelopes and returns only `max_field_bytes + 1` leading bytes
+    /// of each value, so complete payloads never leave Redis; unlike
+    /// [`Self::list_jobs`] the listing is one atomic snapshot.
+    pub(super) async fn list_previews(
+        &self,
+        limit: u32,
+        max_field_bytes: u32,
+    ) -> Result<Vec<QueuedJobPreview>, QueueError> {
+        let limit = usize::try_from(limit)
+            .unwrap_or(MAX_LISTED_JOBS)
+            .min(MAX_LISTED_JOBS);
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        let mut connection = self.connection().await?;
+        let rows: Vec<PreviewRow> = redis::cmd("EVAL")
+            .arg(LIST_PREVIEWS_SCRIPT)
+            .arg(6)
+            .arg(&self.failed_index_key)
+            .arg(&self.failed_key)
+            .arg(&self.dead_letter_key)
+            .arg(&self.processing_key)
+            .arg(&self.queue_key)
+            .arg(&self.scheduled_key)
+            .arg(limit)
+            .arg(stored_prefix_bytes(max_field_bytes))
+            .query_async(&mut connection)
+            .await
+            .map_err(|error| QueueError::Driver(format!("Failed to list Redis jobs: {error}")))?;
+        Ok(rows
+            .into_iter()
+            .take(limit)
+            .map(|row| preview(row, max_field_bytes))
             .collect())
     }
 
@@ -204,6 +255,27 @@ fn job_detail(
     }
 }
 
+fn preview(row: PreviewRow, max_field_bytes: u32) -> QueuedJobPreview {
+    let (status, id, name, payload, error, attempts, time) = row;
+    let (payload, payload_truncated) = field_prefix(&payload, max_field_bytes);
+    let (error, error_truncated) = optional_field_prefix(error.as_deref(), max_field_bytes);
+    QueuedJobPreview {
+        id: String::from_utf8_lossy(&id).into_owned(),
+        name: String::from_utf8_lossy(&name).into_owned(),
+        payload,
+        payload_truncated,
+        status: String::from_utf8_lossy(&status).into_owned(),
+        error,
+        error_truncated,
+        attempts: i32::try_from(attempts.max(0)).unwrap_or(i32::MAX),
+        created_at: String::new(),
+        updated_at: time
+            .and_then(|millis| millis.parse::<f64>().ok())
+            .map(format_millis)
+            .unwrap_or_default(),
+    }
+}
+
 fn format_millis(millis: f64) -> String {
     // Scores are integral milliseconds; `as` saturates out-of-range values.
     chrono::DateTime::from_timestamp_millis(millis as i64)
@@ -227,6 +299,44 @@ mod tests {
         assert_eq!(detail.attempts, 3);
         assert!(detail.created_at.is_empty());
         assert_eq!(detail.updated_at, "2023-11-14T22:13:20.123Z");
+    }
+
+    #[test]
+    fn preview_rows_are_cut_to_the_byte_budget() {
+        let row = (
+            b"failed".to_vec(),
+            b"job-1".to_vec(),
+            b"mail".to_vec(),
+            "{\"to\":\"\u{e9}\u{e9}\u{e9}\"}".as_bytes()[..9].to_vec(),
+            Some(b"smtp down".to_vec()),
+            3,
+            Some("1700000000123".to_string()),
+        );
+        let listed = preview(row, 8);
+        assert_eq!(listed.payload, "{\"to\":\"");
+        assert!(listed.payload_truncated);
+        assert_eq!(listed.error.as_deref(), Some("smtp dow"));
+        assert!(listed.error_truncated);
+        assert_eq!(
+            (listed.id.as_str(), listed.status.as_str(), listed.attempts),
+            ("job-1", "failed", 3)
+        );
+        assert_eq!(listed.updated_at, "2023-11-14T22:13:20.123Z");
+
+        let row = (
+            b"pending".to_vec(),
+            Vec::new(),
+            Vec::new(),
+            b"not\xffjson".to_vec(),
+            None,
+            -1,
+            None,
+        );
+        let listed = preview(row, 64);
+        assert_eq!(listed.payload, "not\u{fffd}json");
+        assert!(!listed.payload_truncated && listed.error.is_none());
+        assert_eq!(listed.attempts, 0);
+        assert!(listed.updated_at.is_empty());
     }
 
     #[test]

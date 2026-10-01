@@ -390,6 +390,13 @@ comments. Offline, locked, dependency-free Cargo metadata enumerates workspace
 members inside the copy. Rustup auto-installation is disabled using its
 [documented environment setting](https://rust-lang.github.io/rustup/environment-variables.html);
 Git and Cargo must already be installed on absolute trusted PATH entries.
+Every Cargo/rustc invocation in a project copy (preparation, verification,
+review and apply) runs with `RUSTUP_TOOLCHAIN` pinned to the caller's
+toolchain: an inherited `RUSTUP_TOOLCHAIN` (rustup sets it for `cargo rullst`),
+otherwise rustup's configured default. A `rust-toolchain`/`rust-toolchain.toml`
+in the project, including a `path` toolchain, is therefore not honored. Run the
+CLI from outside an untrusted project: invoking `cargo rullst` inside it lets
+rustup select that project's toolchain for the CLI process itself.
 
 The result points to `before/`, `candidate/` and `preparation.json` inside the
 private update cache. JSON uses `rullst.project-preparation-result.v1`, with a
@@ -420,15 +427,20 @@ fail before project code runs. Fix findings in the original and prepare again.
 Builds and tests use another fresh private copy, preserving the reviewed copy.
 
 The sequence probes `rustc --version --verbose` and `cargo --version`, resolves
-`Cargo.lock`, checks all workspace targets, and runs workspace tests with the
-resolved lockfile. Every managed Rullst package must resolve to the exact target.
+`Cargo.lock` with `cargo update --workspace`, checks all workspace targets, and
+runs workspace tests with the resolved lockfile. That resolution keeps every
+existing lock entry the edited manifests still accept and resolves only what
+the dependency edits require; it does not upgrade unrelated pins (a missing
+lockfile is resolved in full). Every managed Rullst package must resolve to the
+exact target.
 Default features apply unless `--all-features`, `--features names` or
 `--no-default-features` selects another policy. This verifies that policy only;
 application-specific service/browser/deployment tests remain separate.
 
 Cargo is offline by default. `--allow-network` permits dependency retrieval but
 cannot override `CARGO_NET_OFFLINE=true`. Rustup does not install missing
-toolchains. `--timeout-seconds` bounds each command (default 900, range 1–3,600);
+toolchains, and the project's toolchain file is ignored as described above; set
+`RUSTUP_TOOLCHAIN` explicitly to verify with the project's pinned channel. `--timeout-seconds` bounds each command (default 900, range 1–3,600);
 stdout/stderr are each capped at 8 MiB. Private logs retain failed Cargo output;
 failure, cancellation or timeout never records acceptance. Builds/tests inherit
 the caller's environment and can affect external files, databases or services:
@@ -510,11 +522,13 @@ the diff and run `cargo check` after scaffolding.
 ### `cargo rullst make:resource <name>`
 Scaffolds the bounded starting files for a CRUD resource in one command: a
 Model (`src/models/<name>.rs`), Migration
-(`migrations/<timestamp>_create_<name>s_table.rs`), Controller
+(`src/migrations/m<timestamp>_create_<plural>.rs`), Controller
 (`src/controllers/<name>.rs`), and HTML view placeholders
 (`views/<name>/index.html` and `views/<name>/form.html`). It does not infer
 application fields, register routes, establish ownership/RBAC, or turn the
-placeholder handlers into a complete authorized CRUD implementation. Mount the
+placeholder handlers into a complete authorized CRUD implementation. Like
+`make:model --migration`, it keeps an existing model and does not add a second
+create-table migration for it. Mount the
 routes behind the canonical security baseline, render request-scoped CSRF
 tokens in state-changing forms, complete validation/persistence, and run the
 application's authorization-negative tests.
@@ -539,7 +553,7 @@ key. Backend detection reads the generated manifest and does not treat an
 additive `--turso` integration as the primary ORM.
 * **Arguments:** `<name>` (e.g., `BlogPost`).
 * **Optional Flags:**
-  * `--migration` or `-m`: Simultaneously generates a reversible migration with the correctly pluralized table name.
+  * `--migration` or `-m`: Simultaneously generates a reversible migration with the correctly pluralized table name. An existing model file is kept, and the migration is skipped when the model already existed or a `*_create_<table>.rs`/`*_create_<table>_table.rs` migration exists, since a second create migration would drop the live table on rollback.
 
 ### `cargo rullst make:chat-session`
 
@@ -779,6 +793,9 @@ or claim broker connectivity.
 
 ### `cargo rullst make:k8s`
 Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.
+The command fails before writing anything when any of these manifests already
+exists, and it does not write through a symlinked `k8s/` directory or file; move
+customized manifests aside to regenerate the templates.
 
 ### `cargo rullst make:scalar`
 Scaffolds a Scalar API Documentation controller at
@@ -798,18 +815,50 @@ Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf
 ### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
 Guided deployment helper that generates cloud manifests (`fly.toml`,
 `railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
-selected provider CLI where supported. Credentials, migrations, availability,
-DNS/TLS and rollback remain operator responsibilities.
+selected provider CLI where supported. A provider CLI that is not installed
+only prints the manual commands; one that runs and fails (`flyctl deploy`,
+`railway up`) makes `deploy` exit non-zero. Credentials, migrations,
+availability, DNS/TLS and rollback remain operator responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
 - User model and migration with asynchronous Argon2 password hashing.
 - Auth Controllers (Login, Registration, Logout).
-- Session or Token Middleware.
-- Complete HTML Views for Login and Signup (unless `--api` is used).
+- Encrypted-session middleware that inserts the signed-in user's id as `Extension<i32>`.
+- HTML Views for Login and Signup.
+
+It targets the SQLx ORM: Turso-primary projects are rejected. The command
+enables the `orm` and `auth` umbrella features, registers the generated
+`controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
+`src/main.rs`), and refreshes the migration registry. It fails before writing
+anything when `src/models/user.rs`, `src/controllers/auth_controller.rs`,
+`src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists, or
+when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
+the users table (the blank database starter and the SaaS/LMS blueprints ship
+one). Mounting routes and the security baseline remains application work.
 
 ### `cargo rullst make:mfa`
-Scaffolds a 2FA TOTP Multi-Factor Authentication controller at `src/controllers/mfa.rs` providing RFC 6238 Base32 secret generation, 6-digit TOTP code validation, and `otpauth://` QR URI generation.
+Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
+and a reversible `user_mfa_factors` migration (one factor per account). The
+secret is generated and stored on the server and bound to the signed-in
+account: `mfa_setup`, `mfa_confirm` and `mfa_verify` take the user id from the
+`Extension<i32>` that the `cargo rullst auth` middleware inserts, and a client
+never submits a secret. Verification uses `verify_totp_step_after` with an
+atomic conditional update of `last_accepted_step`, so each code is accepted at
+most once. Setup returns the secret and `otpauth://` URI once with
+`Cache-Control: no-store`; enrollment stays pending until `mfa_confirm`
+accepts a current code.
+
+The command targets the SQLx ORM (Turso-primary projects are rejected), enables
+the `orm` and `security` umbrella features, registers the module, refreshes the
+migration registry and refuses to overwrite an existing `src/controllers/mfa.rs`
+or `*_create_user_mfa_factors_table.rs` migration. Mount the handlers as POST
+routes behind the authentication middleware, CSRF protection and rate limiting,
+and require a recent password check before enrollment. To gate login, keep the
+session pending until `verify_second_factor` succeeds; the generated auth
+controller issues a full session after the password. Secrets are stored
+unencrypted in the database, so protect that table and its backups like
+credentials. Recovery codes and factor reset remain application work.
 
 ---
 
@@ -871,9 +920,11 @@ the tables and columns visible in SQLite or the current PostgreSQL/MySQL schema.
 Table lookups are parameterized and SQL identifiers are allowlisted. Table
 module names are normalized, while collisions and database columns that would
 require an unsupported ORM field remapping fail before the output directory is
-written. The bounded type mapping falls back to `String`; review keys,
-relations, custom types, schema selection and generated files before compiling
-or replacing application models.
+written. Existing model files are never replaced: if any `<table>.rs` target
+already exists, the command fails before writing anything. An existing
+`mod.rs` keeps its content and receives only missing `pub mod` declarations.
+The bounded type mapping falls back to `String`; review keys, relations, custom
+types, schema selection and generated files before compiling them.
 * **Required Flags:**
   * `--driver`: `postgres`, `mysql`, or `sqlite`.
   * `--url`: The complete connection string.
@@ -1006,7 +1057,11 @@ kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
-Injects infrastructure files (Dockerfile or Nix Flake) directly into a pre-existing project (similar to the flags used in `new`).
+Injects infrastructure files into a pre-existing project (similar to the flags
+used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
+absent) and `nixify` writes `flake.nix` and `.envrc`. Both commands, like
+`generate:buildah` for `build_buildah.sh`, refuse to replace an existing file;
+move a customized file aside to regenerate its template.
 
 ### `cargo rullst foundry:init`
 Generates the `Foundry.toml` deployment manifest at the project root containing
@@ -1021,7 +1076,11 @@ restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
 reviewed `curl`, systemd, and Caddy installation plus root or passwordless
 non-interactive `sudo`. Candidate files are staged under an application-specific
 `/opt/rullst/<app>` root, the Caddy configuration is validated, and `.previous`
-copies of replaced files are retained. The current command replaces the global
+copies of replaced files are retained. The application runs as a dedicated
+`rullst-<app>` system account (created with `useradd`) under a sandboxed unit
+(`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
+capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
+only under `/opt/rullst/<app>/data`. The current command replaces the global
 `/etc/caddy/Caddyfile`; it does not perform a separate remote checksum,
 migrations, data backup, external reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.

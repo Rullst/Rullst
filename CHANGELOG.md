@@ -256,6 +256,24 @@ A prepared version section does not establish that its tag or crates exist.
   and detects its launch line, streams the app's output and runs Cargo for its
   backend only in debug builds.
 
+### CLI generator and operations review fixes
+
+- CLI generators no longer overwrite application files: `make:k8s`,
+  `dockerize`, `nixify`, `generate:buildah`, `generate:models` and
+  `cargo rullst auth` fail before writing when a target already exists, never
+  write through a symlink, and `generate:models` adds to an existing `mod.rs`
+  instead of replacing it.
+- `make:model -m` and `make:resource` no longer add a second create-table
+  migration, and `make:migration:auto` output compiles again.
+- `cargo rullst auth` enables the `auth` feature, registers its modules and
+  rejects Turso-primary projects.
+- `make:mfa` keeps TOTP secrets on the server, ties them to the signed-in
+  account and accepts each code only once.
+- `deploy` exits non-zero when `flyctl deploy` or `railway up` fails, and
+  `update project verify` keeps unrelated `Cargo.lock` pins.
+- Project-copy commands ignore a project's `rust-toolchain` file.
+- Foundry runs services as a dedicated sandboxed system user instead of root.
+
 ### Generated starter review fixes
 
 - Blog, ERP and Portfolio migrations no longer use SQLite-only
@@ -281,6 +299,21 @@ A prepared version section does not establish that its tag or crates exist.
   store, and rullst-messaging `model`. Public paths, signatures and behaviour
   are unchanged; the `TM-AUTH-01` evidence source now points to
   `rullst-auth/src/auth/tests.rs`.
+### Project settings, queue previews and review follow-ups
+
+- `rullst::config::project_setting` reads one application setting from the
+  process environment and then `./.env`, without loading `.env` into the
+  process. Nexus `basic_from_env` and generated billing code (`BILLING_*`) use
+  it; Nexus reports a malformed or unreadable `.env` as
+  `NexusBuildError::InvalidDotenv` and no longer depends on `dotenvy`.
+- Generated billing treats the server's resolved environment, including
+  `.env` and `[app].env`, as authoritative for production checks.
+- `QueueDriver::list_job_previews` / `Queue::list_job_previews` return
+  `QueuedJobPreview` rows whose payload and error SQLite and Redis cut to a
+  byte budget in SQL or Lua; Studio's queue monitor loads at most 2 KiB per
+  field.
+- The threat-model release minimum includes CORE-03 and NEXUS-03, and its
+  TENANT-04 evidence path is fixed.
 
 ### Labs: bring your own runner
 

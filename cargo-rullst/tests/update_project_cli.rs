@@ -5,6 +5,9 @@ mod application;
 mod migration;
 #[path = "update_project_cli/review.rs"]
 mod review;
+#[cfg(target_os = "linux")]
+#[path = "update_project_cli/toolchain.rs"]
+mod toolchain;
 #[path = "update_project_cli/verification.rs"]
 mod verification;
 use serde_json::Value;

@@ -355,6 +355,7 @@ pub struct Marker;
     assert!(auto_migration.contains("Schema::create(\"courses\""));
     assert!(auto_migration.contains("ALTER TABLE accounts ADD COLUMN newly_added"));
     assert!(auto_migration.contains("Destructive operation detected"));
+    syn::parse_file(&auto_migration).expect("auto migration with a new table must parse");
 }
 
 #[test]

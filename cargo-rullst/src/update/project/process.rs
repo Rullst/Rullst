@@ -1,5 +1,6 @@
 use super::ProjectError;
 use std::{
+    ffi::OsString,
     path::{Path, PathBuf},
     process::Stdio,
     time::Duration,
@@ -28,17 +29,23 @@ fn capture_with_status(
         ));
     }
     let tool = tool_path(program)?;
+    let toolchain = pinned_toolchain(program)?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
     runtime.block_on(async {
         tokio::time::timeout(Duration::from_secs(30), async {
-            let mut child = tokio::process::Command::new(tool).args(args).current_dir(root)
+            let mut command = tokio::process::Command::new(tool);
+            command.args(args).current_dir(root)
                 .env("GIT_OPTIONAL_LOCKS", "0").env("CARGO_NET_OFFLINE", "true")
                 .env("RUSTUP_AUTO_INSTALL", "0")
                 .env("RULLST_DISABLE_UPDATE_CHECK", "true")
                 .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped())
-                .kill_on_drop(true).spawn()?;
+                .kill_on_drop(true);
+            if let Some(toolchain) = &toolchain {
+                command.env("RUSTUP_TOOLCHAIN", toolchain);
+            }
+            let mut child = command.spawn()?;
             let stdout = child.stdout.take().ok_or(ProjectError::Invalid("missing tool output stream"))?;
             let stderr = child.stderr.take().ok_or(ProjectError::Invalid("missing tool error stream"))?;
             let (status, body, _diagnostic) = tokio::try_join!(
@@ -112,6 +119,53 @@ async fn read(
     Ok(body)
 }
 
+/// Returns the toolchain every Cargo/rustc invocation in a project copy uses.
+///
+/// Rustup proxies otherwise select a toolchain from the copy's
+/// `rust-toolchain(.toml)`, and a `path` toolchain there executes
+/// project-supplied binaries before any `--allow-project-code` consent. The
+/// copy is untrusted input, so the caller's toolchain is pinned instead: an
+/// inherited `RUSTUP_TOOLCHAIN` (rustup sets it for `cargo rullst`, or the
+/// caller chose it), otherwise rustup's configured default, which does not
+/// depend on the working directory. Without rustup on PATH there is no
+/// toolchain-file dispatch to pin.
+fn pinned_toolchain(program: &str) -> Result<Option<OsString>, ProjectError> {
+    if program == "git" {
+        return Ok(None);
+    }
+    if let Some(toolchain) = std::env::var_os("RUSTUP_TOOLCHAIN").filter(|value| !value.is_empty())
+    {
+        return Ok(Some(toolchain));
+    }
+    let Ok(rustup) = tool_path("rustup") else {
+        return Ok(None);
+    };
+    let neutral = rustup
+        .parent()
+        .ok_or(ProjectError::Invalid("rustup has no parent directory"))?;
+    let output = std::process::Command::new(&rustup)
+        .arg("default")
+        .current_dir(neutral)
+        .env_remove("RUSTUP_TOOLCHAIN")
+        .env("RUSTUP_AUTO_INSTALL", "0")
+        .stdin(Stdio::null())
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let toolchain = stdout.split_whitespace().next().unwrap_or_default();
+    if !output.status.success()
+        || toolchain.is_empty()
+        || toolchain.len() > 128
+        || !toolchain
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_'))
+    {
+        return Err(ProjectError::Invalid(
+            "rustup reports no usable default toolchain; set RUSTUP_TOOLCHAIN to the trusted toolchain for project commands",
+        ));
+    }
+    Ok(Some(toolchain.into()))
+}
+
 fn tool_path(name: &str) -> Result<PathBuf, ProjectError> {
     let path = std::env::var_os("PATH").unwrap_or_default();
     let filename = if cfg!(windows) {
@@ -157,6 +211,7 @@ pub(super) fn execute(
         ));
     }
     let tool = tool_path(program)?;
+    let toolchain = pinned_toolchain(program)?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -167,6 +222,9 @@ pub(super) fn execute(
                 .env("CARGO_NET_OFFLINE", if offline { "true" } else { "false" })
                 .env("RUSTUP_AUTO_INSTALL", "0").env("RULLST_DISABLE_UPDATE_CHECK", "true")
                 .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
+            if let Some(toolchain) = &toolchain {
+                command.env("RUSTUP_TOOLCHAIN", toolchain);
+            }
             crate::generators::dev::configure_group(command.as_std_mut());
             let mut owned = crate::generators::dev::BuildChild::new(command.spawn()?)?;
             let stdout = owned.child.stdout.take().ok_or(ProjectError::Invalid("missing Cargo output"))?;

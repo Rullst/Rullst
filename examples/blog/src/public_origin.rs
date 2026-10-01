@@ -6,7 +6,8 @@ const PUBLIC_ORIGIN_ENV: &str = "RULLST_PUBLIC_ORIGIN";
 
 /// Returns the configured canonical HTTPS origin without a trailing slash.
 pub(crate) fn configured_public_origin() -> Option<String> {
-    let configured = std::env::var(PUBLIC_ORIGIN_ENV).ok()?;
+    // Process environment first, then `./.env`, like the rest of the framework.
+    let configured = rullst::config::project_setting(PUBLIC_ORIGIN_ENV).ok()??;
     normalize_public_origin(&configured)
 }
 

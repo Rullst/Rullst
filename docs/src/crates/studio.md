@@ -22,8 +22,11 @@ views from the sources explicitly supplied by the application.
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
 - **Worker queue monitoring:** Inspect up to 50 records exposed by a supplied
-  Rullst queue and request retries. SQLite removes successful jobs, so the view
-  is not durable completion history.
+  Rullst queue and request retries. Records come from the bounded
+  `list_job_previews` projection: at most 2 KiB of each payload and error
+  leaves the SQLite or Redis store, and previews cut there are marked `…`.
+  SQLite removes successful jobs, so the view is not durable completion
+  history.
 - **Safe configuration view:** Environment values are deny-by-default redacted;
   typed runtime configuration is projected without URLs, paths, or secrets.
 - **Feature flags manager:** Toggle database-backed flags and immediately
