@@ -34,14 +34,18 @@ pub(super) async fn create_record(
     let mut keys = Vec::new();
     let mut expressions = Vec::new();
     let mut values: Vec<Option<String>> = Vec::new();
+    // A key the administrator entered is known before the INSERT, so the
+    // audit can name it. A numeric key must already be canonical (`RecordKey`
+    // rejects `01` or `1e3`, which the database may store differently).
+    let mut submitted_key = None;
     for value in data {
-        if value.field.name == entry.pk
-            && value
-                .value
-                .as_deref()
-                .is_none_or(|key| key.trim().is_empty())
-        {
-            continue;
+        if value.field.name == entry.pk {
+            match value.value.as_deref() {
+                Some(key) if !key.trim().is_empty() => {
+                    submitted_key = RecordKey::parse(entry, key).map(|key| key.text().into_owned());
+                }
+                _ => continue,
+            }
         }
         keys.push(value.field.name);
         match write_value_sql(
@@ -101,7 +105,7 @@ pub(super) async fn create_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "create",
-                record_key: None,
+                record_key: submitted_key.as_deref().and_then(auditable_record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },

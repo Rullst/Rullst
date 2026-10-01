@@ -263,7 +263,8 @@ let nexus = rullst::nexus::Nexus::new()
 
 Each successful mutation and its minimized `rullst_nexus_audits` row commit in
 one database transaction. Audit failure rolls the mutation back. The record
-contains actor, optional tenant, table/action, optional known key, affected-row
+contains actor, optional tenant, table/action, optional known key (for a create,
+the key the administrator entered; a database-generated key is absent), affected-row
 count, committed outcome, optional bounded request ID, timestamp and format
 version. A key that does not fit 1 to 256 bytes of unpadded text without
 control characters is recorded as absent instead of blocking the change. `verify_nexus_audit_table()` checks deployment readiness and

@@ -118,7 +118,8 @@ let nexus = rullst::nexus::Nexus::new()
 ```
 
 `rullst_nexus_audits` stores the authenticated Nexus actor, optional tenant,
-table, action, optional known record key, affected-row count, committed outcome,
+table, action, optional known record key (for a create, the key the administrator
+entered; a database-generated key is absent), affected-row count, committed outcome,
 bounded correlation ID, timestamp and format version. A record key that does
 not fit 1 to 256 bytes of unpadded text without control characters is recorded
 as absent. An unavailable audit table rolls the data mutation back and returns
