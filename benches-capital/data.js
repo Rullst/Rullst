@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790888069778,
+  "lastUpdate": 1790892206576,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10551,6 +10551,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/72728c5651e0951a7c3fd12f6df5fee038cd1564"
         },
         "date": 1790888069061,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0498febc53a5ccf38f08022fc33221de65c9cd67",
+          "message": "Merge pull request #392 from Rullst/feat/v13-cli-ai-chat\n\nfeat(cli,ai): cargo rullst ai terminal assistant with token usage and native Anthropic/Gemini streaming",
+          "timestamp": "2026-10-01T18:36:11-03:00",
+          "tree_id": "d0967dd5233401aac50d20a04aecbce27bbac784",
+          "url": "https://github.com/Rullst/Rullst/commit/0498febc53a5ccf38f08022fc33221de65c9cd67"
+        },
+        "date": 1790892205717,
         "tool": "cargo",
         "benches": [
           {
