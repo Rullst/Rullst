@@ -48,6 +48,15 @@ siblings for `html`, `css`, `js`, `json`, `svg`, `wasm`, `xml`, and `txt` files
 under `static/`. The standard server negotiates Brotli through `ServeDir` and
 Zstandard through its static middleware.
 
+The server serves an existing sibling without comparing it with its source, so
+an asset edited after the last build would keep reaching browsers that accept
+`br` or `zstd` in its old form. `cargo rullst dev` therefore deletes every
+`.br`/`.zst` sibling that is not newer than its source when it starts and before
+each rebuild, and reports how many it removed. A sibling without a source file
+is kept, because it may be hand-made. Outside `cargo rullst dev`, rerun
+`cargo rullst build` after editing assets and before `docker build` copies
+`static/` into an image.
+
 The Zstandard middleware serves `name.zst` only when `Accept-Encoding` lists
 `zstd` with a quality above zero (`zstd;q=0` is a refusal) and the path below
 `/static/` has only plain segments. Paths with `.`, `..`, empty segments,

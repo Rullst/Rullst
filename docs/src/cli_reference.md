@@ -993,7 +993,13 @@ and must be measured.
 * **Flags:** `--debug` (Avoids extreme minification so you can inspect and debug Wasm sourcemaps).
 
 ### `cargo rullst build`
-Creates the monolithic final Production binary of the backend and executes pre-compression tools (GZIP and Brotli) on your static assets.
+Creates the monolithic final Production binary of the backend and writes Brotli
+(`.br`) and Zstandard (`.zst`) siblings next to the `html`, `css`, `js`, `json`,
+`svg`, `wasm`, `xml` and `txt` files under `static/`. The server prefers a
+sibling over its source, so rerun the command after editing an asset and before
+building an image; `cargo rullst dev` removes siblings that are not newer than
+their source at startup and on every change (siblings without a source file are
+kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
