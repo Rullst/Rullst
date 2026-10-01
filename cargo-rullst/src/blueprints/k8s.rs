@@ -1,6 +1,35 @@
 //! Kubernetes Manifest Blueprints for Rullst Applications
 
+/// Longest name: `<name>-service` must still fit a 63-character DNS label.
+const MAX_NAME_LENGTH: usize = 55;
+
+/// Derives the lowercase RFC 1123 label used for Kubernetes object, container
+/// and Service names and for the OCI image repository.
+///
+/// Package names may contain uppercase letters and `_`, which Kubernetes and
+/// OCI registries reject. ASCII letters are lowercased, every run of other
+/// characters becomes one `-`, the result is shortened to 55 characters and
+/// starts with a letter (`app-` is prepended otherwise), e.g. `my_startup`
+/// becomes `my-startup`.
+pub fn container_name(package_name: &str) -> String {
+    let mut name = String::with_capacity(package_name.len());
+    for character in package_name.chars() {
+        if character.is_ascii_alphanumeric() {
+            name.push(character.to_ascii_lowercase());
+        } else if !name.is_empty() && !name.ends_with('-') {
+            name.push('-');
+        }
+    }
+    if !name.starts_with(|first: char| first.is_ascii_lowercase()) {
+        name.insert_str(0, "app-");
+    }
+    // Only ASCII remains, so byte truncation keeps whole characters.
+    name.truncate(MAX_NAME_LENGTH);
+    name.trim_end_matches('-').to_string()
+}
+
 pub fn deployment_yaml(app_name: &str, port: u16) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: apps/v1
 kind: Deployment
@@ -53,6 +82,7 @@ spec:
 }
 
 pub fn service_yaml(app_name: &str, port: u16) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: v1
 kind: Service
@@ -76,6 +106,7 @@ spec:
 }
 
 pub fn configmap_yaml(app_name: &str, port: u16) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: v1
 kind: ConfigMap
@@ -92,6 +123,7 @@ data:
 }
 
 pub fn hpa_yaml(app_name: &str) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -126,6 +158,7 @@ spec:
 /// section; without one the production app (Secure cookies, HSTS, Nexus
 /// Basic Auth over verified TLS) would be served over plain HTTP.
 pub fn ingress_yaml(app_name: &str) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -192,6 +225,26 @@ mod tests {
         assert!(manifest.contains("cert-manager.io/cluster-issuer"));
         assert!(manifest.contains("  ingressClassName: nginx\n"));
         assert!(!manifest.contains("kubernetes.io/ingress.class"));
+    }
+
+    #[test]
+    fn package_names_become_valid_kubernetes_and_image_names() {
+        assert_eq!(container_name("my_startup"), "my-startup");
+        assert_eq!(container_name("MyApp"), "myapp");
+        assert_eq!(container_name("Billing__API--v2_"), "billing-api-v2");
+        assert_eq!(container_name("2fast"), "app-2fast");
+        assert_eq!(container_name(""), "app");
+        let long = container_name(&format!("a{}", "_b".repeat(60)));
+        assert!(long.len() <= 55 && !long.ends_with('-'), "{long}");
+
+        // `metadata.name: my_startup` and `image: MyApp:latest` were rejected.
+        let manifest = all_in_one_yaml("My_Startup", 3000);
+        assert!(!manifest.contains("My_Startup") && !manifest.contains("my_startup"));
+        assert!(manifest.contains("  name: my-startup\n"));
+        assert!(manifest.contains("        - name: my-startup\n"));
+        assert!(manifest.contains("          image: my-startup:latest\n"));
+        assert!(manifest.contains("  name: my-startup-service\n"));
+        assert!(manifest.contains("    - host: my-startup.local\n"));
     }
 
     #[test]

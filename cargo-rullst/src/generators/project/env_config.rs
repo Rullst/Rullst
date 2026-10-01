@@ -306,15 +306,16 @@ pub fn generate_buildah_script(
         )
         .into());
     }
+    // OCI repository names are lowercase; `make:k8s` references the same name.
+    let image = crate::blueprints::k8s::container_name(project_name);
     let buildah_script = format!(
         r#"#!/usr/bin/env bash
 set -euo pipefail
 
-echo "🦀 Building rootless OCI image for {}..."
-buildah bud -f Dockerfile -t {}:latest .
+echo "🦀 Building rootless OCI image {image}:latest..."
+buildah bud -f Dockerfile -t {image}:latest .
 echo "✅ Build complete!"
-"#,
-        project_name, project_name
+"#
     );
     let script_path = project_path.join("build_buildah.sh");
     fs::write(&script_path, buildah_script)?;
@@ -471,6 +472,16 @@ mod tests {
         assert!(!root.join("Rullst.toml").exists());
 
         fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
+
+    #[test]
+    fn buildah_tags_a_lowercase_image_name() {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_buildah_script(root.path(), "My_App").expect("Buildah script");
+        let script = fs::read_to_string(root.path().join("build_buildah.sh")).expect("script");
+        // `buildah bud -t My_App:latest` fails: repository names are lowercase.
+        assert!(script.contains("buildah bud -f Dockerfile -t my-app:latest .\n"));
+        assert!(!script.contains("My_App"));
     }
 
     #[test]

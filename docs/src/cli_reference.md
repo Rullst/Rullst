@@ -55,7 +55,7 @@ the generated application:
   * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Enables bounded dense-vector Qdrant operations and generates empty/`mock_*`-compatible environment fields; it is additive, not the SQL primary.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
-  * `--buildah`: Adds rootless Buildah container-build files where supported.
+  * `--buildah`: Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend with `--default`; network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
