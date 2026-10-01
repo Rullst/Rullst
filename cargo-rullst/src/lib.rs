@@ -31,18 +31,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         ui::trigger_background_update_check();
         ui::show_interactive_dashboard()?;
     } else {
-        // Extend executable commands without adding a variant to the v12 public
-        // Commands enum, which downstream Rust callers may exhaustively match.
-        let matches = <cli::Cli as clap::CommandFactory>::command()
-            .subcommand(update::command())
-            .subcommand(generators::age_gate::command())
-            .subcommand(generators::privacy::command())
-            .subcommand(generators::api_contract::command())
-            .subcommand(generators::deploy_doctor::command())
-            // Extend executable syntax without changing the published v12 enum.
-            .mut_subcommand("omni", generators::desktop::release_command)
-            .mut_subcommand("generate:ai-context", generators::ai_context::command)
-            .get_matches_from(args);
+        // Unknown commands get "did you mean" suggestions and exit status 2.
+        let matches = cli::runtime::parse(command(), args)?;
         if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
         } else if let Some(api) = matches.subcommand_matches("generate:api") {
@@ -71,4 +61,21 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+/// The complete executable command tree, shared by parsing, the command
+/// palette and shell completions.
+pub(crate) fn command() -> clap::Command {
+    // Extend executable commands without adding a variant to the v12 public
+    // Commands enum, which downstream Rust callers may exhaustively match.
+    let command = <cli::Cli as clap::CommandFactory>::command()
+        .subcommand(update::command())
+        .subcommand(generators::age_gate::command())
+        .subcommand(generators::privacy::command())
+        .subcommand(generators::api_contract::command())
+        .subcommand(generators::deploy_doctor::command())
+        // Extend executable syntax without changing the published v12 enum.
+        .mut_subcommand("omni", generators::desktop::release_command)
+        .mut_subcommand("generate:ai-context", generators::ai_context::command);
+    cli::runtime::extend(command)
 }

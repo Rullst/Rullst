@@ -11,6 +11,7 @@ mod choices;
 mod commands;
 mod dispatch;
 pub(crate) mod runtime;
+pub(crate) mod suggest;
 #[cfg(test)]
 mod tests;
 
