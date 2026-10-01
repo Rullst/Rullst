@@ -39,6 +39,24 @@
       "marker": "TM-CORE-02"
     },
     {
+      "id": "CORE-03",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "security::trusted_proxy::tests::untrusted_peer_cannot_choose_its_identity_through_forwarding_headers",
+      "source": "rullst-core/src/security/trusted_proxy/tests.rs",
+      "marker": "TM-CORE-03"
+    },
+    {
+      "id": "CORE-03",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "server::stack::tests::trusted_proxy_is_the_outermost_server_layer",
+      "source": "rullst-core/src/server/stack_tests.rs",
+      "marker": "TM-CORE-03"
+    },
+    {
       "id": "ORM-01",
       "crate": "rullst-orm",
       "target_kind": "lib",
@@ -208,6 +226,15 @@
       "test_filter": "nexus::crud::query::tests::scoped_query_without_context_is_empty_by_construction",
       "source": "rullst-nexus/src/nexus/crud/query.rs",
       "marker": "TM-NEXUS-02"
+    },
+    {
+      "id": "NEXUS-03",
+      "crate": "rullst-nexus",
+      "target_kind": "integration",
+      "target": "content_security_policy",
+      "test_filter": "nexus_pages_run_under_the_default_production_csp",
+      "source": "rullst-nexus/tests/content_security_policy.rs",
+      "marker": "TM-NEXUS-03"
     },
     {
       "id": "NEXUS-05",
