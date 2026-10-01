@@ -125,6 +125,13 @@ fn sqlite_database_url(path: &Path) -> String {
 #[test]
 fn auth_resource_and_service_scaffolds_compose_in_one_project() {
     let project = Project::new();
+    // `auth` and `make:mfa` add migrations, so they need the migration runner.
+    assert!(!project.run(&["auth"]).status.success());
+    fs::write(
+        project.root.join("src/main.rs"),
+        "pub mod migrations;\n\nfn main() {\n    rullst::artisan!(crate::migrations::get_migrations());\n}\n",
+    )
+    .expect("migration runner entry point");
 
     project.succeeds(&["make:chat-session"]);
     assert!(!project.run(&["make:chat-session"]).status.success());

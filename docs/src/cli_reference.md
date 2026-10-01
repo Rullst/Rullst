@@ -892,7 +892,13 @@ anything when `src/models/user.rs`, `src/controllers/auth_controller.rs`,
 `src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists, or
 when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
 the users table (the blank database starter and the SaaS/LMS blueprints ship
-one). Mounting routes and the security baseline remains application work.
+one). It also refuses a project without a SQL migration runner (`pub mod
+migrations;` in `src/main.rs` or `src/lib.rs` plus a
+`rullst::artisan!(crate::migrations::get_migrations())` call, which database
+starters include), such as a `--no-database` starter, because nothing would
+compile or apply the users migration. Generated code names the ORM through the
+`rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
+routes and the security baseline remains application work.
 
 ### `cargo rullst make:mfa`
 Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
@@ -906,7 +912,8 @@ most once. Setup returns the secret and `otpauth://` URI once with
 `Cache-Control: no-store`; enrollment stays pending until `mfa_confirm`
 accepts a current code.
 
-The command targets the SQLx ORM (Turso-primary projects are rejected), enables
+The command targets the SQLx ORM (Turso-primary projects and projects without
+a migration runner are rejected, as for `cargo rullst auth`), enables
 the `orm` and `security` umbrella features, registers the module, refreshes the
 migration registry and refuses to overwrite an existing `src/controllers/mfa.rs`
 or `*_create_user_mfa_factors_table.rs` migration. Mount the handlers as POST
