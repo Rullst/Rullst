@@ -1,7 +1,14 @@
 use serde::Deserialize;
 use std::{fmt, str::FromStr};
 
+#[cfg(not(target_arch = "wasm32"))]
+mod project_setting;
 mod security_validation;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use project_setting::parse_dotenv_entries;
+#[cfg(not(target_arch = "wasm32"))]
+pub use project_setting::project_setting;
 
 /// Validated runtime environment shared by every Rullst subsystem.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]

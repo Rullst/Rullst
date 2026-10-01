@@ -1432,6 +1432,11 @@ the same server-authoritative controls.
   first database view resolve the current directory with this same resolver
   and initialize the pool once. Without a configured database Studio reports
   its database tools as unavailable and creates nothing.
+* **Application Settings (unpublished v13):** `rullst::config::project_setting`
+  reads one application setting from the process environment, then from
+  `./.env`, which never overrides the process environment and is never loaded
+  into it. An unreadable or malformed `.env` is a `ConfigError` that never
+  contains file content.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`

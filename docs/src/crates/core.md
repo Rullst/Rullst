@@ -228,13 +228,16 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global
   `feature::manager()` when it uses the default pipeline), so programmatic
   overrides reach it.
-- **Shared project settings (internal, v13):** `server::ProjectSettings` and
-  `server::read_project_setting` resolve a setting from the process
-  environment first and then the project's `.env`, which never overrides the
-  environment, and `ProjectSettings::environment` applies the `Server`
-  precedence for `RULLST_ENV`/`APP_ENV`/`[app].env`. Errors never contain
-  `.env` content. They are `#[doc(hidden)]` support for first-party crates such
-  as `rullst-mail`, not a stable extension point.
+- **Project settings (unpublished v13):** `config::project_setting(name)`
+  (also `rullst::config::project_setting`) reads an application setting from
+  the process environment first and then `./.env`, which never overrides the
+  environment and is never loaded into it. It returns `Ok(None)` when neither
+  defines the name and fails with `ConfigError::Read`/`Parse` for an unreadable
+  or malformed `.env`; errors never contain `.env` content. The `#[doc(hidden)]`
+  `server::ProjectSettings` and async `server::read_project_setting` apply the
+  same precedence for first-party crates such as `rullst-mail`, and
+  `ProjectSettings::environment` applies the `Server` precedence for
+  `RULLST_ENV`/`APP_ENV`/`[app].env`; they are not a stable extension point.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

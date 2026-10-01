@@ -678,20 +678,7 @@ fn mark_lifecycle_stopped(lifecycle: Option<&ApplicationLifecycle>) {
 /// Parses dotenv content with errors that never contain file content: dotenvy's
 /// own parse error embeds the unparsed remainder, which can include secrets.
 pub(super) fn parse_dotenv(content: &str) -> Result<HashMap<String, String>, ServerError> {
-    let mut values = HashMap::new();
-    for (index, entry) in dotenvy::from_read_iter(content.as_bytes()).enumerate() {
-        let (name, value) = entry.map_err(|error| {
-            ServerError::Configuration(match error {
-                dotenvy::Error::LineParse(..) => {
-                    format!("invalid .env syntax in entry {}", index + 1)
-                }
-                dotenvy::Error::Io(error) => format!("failed to read .env: {}", error.kind()),
-                _ => "invalid .env file".to_string(),
-            })
-        })?;
-        values.insert(name, value);
-    }
-    Ok(values)
+    crate::config::parse_dotenv_entries(content).map_err(ServerError::Configuration)
 }
 
 #[cfg(test)]
