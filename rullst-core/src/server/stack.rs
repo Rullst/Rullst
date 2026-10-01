@@ -33,7 +33,8 @@ impl Server {
     /// Builds the static application. Outer-to-inner request order:
     /// trusted proxy → security baseline → lifecycle → Traffic Shield → rate
     /// limit (both skipped for exact health probes) → development/static/access
-    /// log layers → application routes.
+    /// log layers → application routes. The development reload and telemetry
+    /// routes exist only in a supervised debug Development process.
     pub(super) fn into_static_app(
         self,
         security: SecurityConfig,
@@ -44,7 +45,9 @@ impl Server {
         let mut app = self.router.into_axum();
         let generation = std::env::var("RULLST_DEV_GENERATION").ok();
         let dev_reload = super::dev_reload::is_enabled(is_dev, generation.as_deref());
-        app = super::dev_reload::mount(app, is_dev, generation);
+        app = super::dev_reload::mount(app, is_dev, generation.clone());
+        // Mounted after the reload layer, which would otherwise wrap it.
+        app = super::dev_telemetry::mount(app, is_dev, generation, None);
 
         app = app.layer(axum::middleware::from_fn(
             super::console::access_log_middleware,

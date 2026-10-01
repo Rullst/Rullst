@@ -29,16 +29,23 @@ fn write_line(output: &mut impl Write, line: Arguments<'_>) {
 }
 
 /// Development polling paths that would otherwise log twice a second per
-/// open page.
-const UNLOGGED_DEVELOPMENT_PATHS: [&str; 2] = ["/_rullst/dev-generation", "/_rullst/dev-reload.js"];
+/// open page (and once a second for `cargo rullst dash`).
+const UNLOGGED_DEVELOPMENT_PATHS: [&str; 3] = [
+    "/_rullst/dev-generation",
+    "/_rullst/dev-reload.js",
+    super::dev_telemetry::PATH,
+];
 
 /// Records one completed request, except for the development HMR channel and
-/// the development reload poll.
-pub(crate) fn log_request(method: &str, path: &str, status: u16, elapsed_ms: f64) {
+/// the development polls. When the development telemetry endpoint is mounted
+/// the same method, path, status and duration also feed its bounded recorder.
+pub(crate) fn log_request(method: &str, path: &str, status: u16, elapsed: std::time::Duration) {
     if is_logged(path) {
+        let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
         stdout_line(format_args!(
             "[HTTP] {method} {path} -> {status} ({elapsed_ms:.2} ms)"
         ));
+        super::dev_telemetry::record_request(method, path, status, elapsed);
     }
 }
 
@@ -56,7 +63,7 @@ pub(crate) async fn access_log_middleware(request: Request, next: Next) -> Respo
         method.as_str(),
         &path,
         response.status().as_u16(),
-        start.elapsed().as_secs_f64() * 1000.0,
+        start.elapsed(),
     );
     response
 }
@@ -66,6 +73,7 @@ pub(crate) async fn access_log_middleware(request: Request, next: Next) -> Respo
 fn development_polls_are_not_access_logged() {
     assert!(!is_logged("/_rullst/dev-generation"));
     assert!(!is_logged("/_rullst/dev-reload.js"));
+    assert!(!is_logged("/_rullst/dev-telemetry"));
     assert!(!is_logged("/_rullst_hmr"));
     assert!(is_logged("/orders"));
     assert!(is_logged("/_rullst/dev-generation/extra"));
