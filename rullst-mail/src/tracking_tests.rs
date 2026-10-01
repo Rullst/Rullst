@@ -369,3 +369,28 @@ fn unsafe_click_targets_stay_visible_to_the_mandatory_pipeline() {
     assert!(html.contains("api_key=[REDACTED]"));
     assert_eq!(html.matches("/track/click/").count(), 1);
 }
+
+#[test]
+fn click_targets_are_checked_as_one_link_not_as_text() {
+    for href in [
+        "https://p&#9;&#x430;ypal.com/",
+        "https://p&NewLine;&#x430;ypal.com/login",
+        "https://example.com&#9;@p&#x430;ypal.com/",
+    ] {
+        let message = crate::Message::new()
+            .to("user@example.com")
+            .html(format!("<a href=\"{href}\">Pay</a>"))
+            .try_with_click_tracking("https://track.example.com", SECRET)
+            .expect("valid tracker");
+        let html = message.body_html.as_deref().unwrap();
+        assert!(!html.contains("/track/click/"), "{href}");
+        assert!(html.contains(href), "{href}");
+        assert!(
+            matches!(
+                crate::DeliveryPipeline::prepare(&message),
+                Err(crate::MailError::SendError(_))
+            ),
+            "{href}"
+        );
+    }
+}

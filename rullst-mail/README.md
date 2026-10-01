@@ -360,7 +360,9 @@ as a click. The token signs the destination with HTML character references
 decoded (`?a=1&amp;b=2` is redirected as `?a=1&b=2`), and the tracker base is
 escaped for the attribute it enters. A destination that the mandatory pipeline
 would reject (homograph host) or redact (credentials in the URL) is not wrapped,
-so that pipeline still rejects or redacts it.
+so that pipeline still rejects or redacts it. Each destination is checked as one
+link, and one containing whitespace or control characters, which browsers strip,
+is never wrapped.
 
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
