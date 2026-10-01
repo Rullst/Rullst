@@ -492,11 +492,13 @@ the diff and run `cargo check` after scaffolding.
 ### `cargo rullst make:resource <name>`
 Scaffolds the bounded starting files for a CRUD resource in one command: a
 Model (`src/models/<name>.rs`), Migration
-(`migrations/<timestamp>_create_<name>s_table.rs`), Controller
+(`src/migrations/m<timestamp>_create_<plural>.rs`), Controller
 (`src/controllers/<name>.rs`), and HTML view placeholders
 (`views/<name>/index.html` and `views/<name>/form.html`). It does not infer
 application fields, register routes, establish ownership/RBAC, or turn the
-placeholder handlers into a complete authorized CRUD implementation. Mount the
+placeholder handlers into a complete authorized CRUD implementation. Like
+`make:model --migration`, it keeps an existing model and does not add a second
+create-table migration for it. Mount the
 routes behind the canonical security baseline, render request-scoped CSRF
 tokens in state-changing forms, complete validation/persistence, and run the
 application's authorization-negative tests.
@@ -521,7 +523,7 @@ key. Backend detection reads the generated manifest and does not treat an
 additive `--turso` integration as the primary ORM.
 * **Arguments:** `<name>` (e.g., `BlogPost`).
 * **Optional Flags:**
-  * `--migration` or `-m`: Simultaneously generates a reversible migration with the correctly pluralized table name.
+  * `--migration` or `-m`: Simultaneously generates a reversible migration with the correctly pluralized table name. An existing model file is kept, and the migration is skipped when the model already existed or a `*_create_<table>.rs`/`*_create_<table>_table.rs` migration exists, since a second create migration would drop the live table on rollback.
 
 ### `cargo rullst make:chat-session`
 
