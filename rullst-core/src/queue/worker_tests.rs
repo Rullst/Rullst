@@ -88,15 +88,19 @@ fn worker_start_outside_runtime_is_fallible() {
 }
 
 #[tokio::test]
-async fn worker_rejects_zero_concurrency_without_spawning() {
+async fn worker_rejects_zero_concurrency_or_job_timeout_without_spawning() {
     let state = SharedDriverState::with_jobs(0);
     let queue = test_queue(&state);
-    let worker = Worker::new(&queue).max_concurrency(0);
-
-    assert!(matches!(
-        worker.run(),
-        Err(QueueError::InvalidConfiguration(_))
-    ));
+    for worker in [
+        Worker::new(&queue).max_concurrency(0),
+        // A zero deadline would fail every job as timed out before it runs.
+        Worker::new(&queue).job_timeout(Duration::ZERO),
+    ] {
+        assert!(matches!(
+            worker.run(),
+            Err(QueueError::InvalidConfiguration(_))
+        ));
+    }
 }
 
 #[tokio::test]

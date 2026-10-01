@@ -70,7 +70,8 @@ impl Worker {
     /// A handler still running at the deadline is aborted and its job is
     /// failed as timed out. A handler that cannot be interrupted (for example
     /// one that blocks its thread) and then returns is recorded from its own
-    /// result instead.
+    /// result instead. [`Self::run`] rejects a zero timeout, which would fail
+    /// every job before its handler could run; there is no "no timeout" value.
     pub fn job_timeout(mut self, timeout: Duration) -> Self {
         self.job_timeout = timeout;
         self
@@ -109,13 +110,19 @@ impl Worker {
     /// Starts the polling loop and returns an observable lifecycle handle.
     ///
     /// # Errors
-    /// Returns a typed error for zero concurrency, a zero polling interval, or
-    /// invocation outside an active Tokio runtime. No task is spawned on error.
+    /// Returns a typed error for zero concurrency, a zero polling interval or
+    /// job timeout, or invocation outside an active Tokio runtime. No task is
+    /// spawned on error.
     #[cfg_attr(mutants, mutants::skip)]
     pub fn run(&self) -> Result<WorkerHandle, QueueError> {
         if self.max_concurrency == 0 {
             return Err(QueueError::InvalidConfiguration(
                 "max_concurrency must be greater than zero".to_string(),
+            ));
+        }
+        if self.job_timeout.is_zero() {
+            return Err(QueueError::InvalidConfiguration(
+                "job_timeout must be greater than zero".to_string(),
             ));
         }
         if self.poll_interval.is_zero() {
