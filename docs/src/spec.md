@@ -604,8 +604,8 @@ initial backend. One private initialized database owns scoped authority,
 sessions, parental enrollment/policy and allowlisted events. Serialize operations
 with `BEGIN IMMEDIATE`, persist configuration, a clock high-water mark and a
 global revision counter, and enforce bounded quotas and retention. One learner
-has a bounded retained-session quota inside the store-wide limit, and rows
-already past retention never block admission. An opener
+has bounded retained-session and unexpired-event quotas inside the store-wide
+limits, and rows already past retention never block admission. An opener
 must supply the independently retained deployment epoch. This detects epoch
 mismatch, not restoration of an old database with the same epoch.
 
