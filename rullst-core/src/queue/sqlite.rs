@@ -113,8 +113,12 @@ impl SqliteDriver {
     }
 
     /// Retries a failed job by resetting its status to 'pending' and clearing error details.
+    ///
+    /// The attempt counter is kept: it is the fencing token of every claim, so
+    /// resetting it would let a stale worker from an earlier claim finish the
+    /// claim made after the retry. The stalled-lease count restarts.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, stalled_recoveries = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', stalled_recoveries = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
             .execute(&self.pool)
             .await

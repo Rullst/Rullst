@@ -379,7 +379,7 @@ pub mod redis_driver {
         }
 
         /// Moves a failed job to the tail of the pending list, keeping its
-        /// attempt counter (SQLite resets it).
+        /// attempt counter (as SQLite does) so older leases stay fenced.
         async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
             self.retry_failed(job_id).await
         }

@@ -75,3 +75,36 @@ async fn a_lease_free_claim_is_never_recovered_before_its_age() {
         1
     );
 }
+
+#[tokio::test]
+async fn a_stale_lease_cannot_finish_the_claim_made_after_a_manual_retry() {
+    let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+    driver.push("sync", "sync_account", "{}").await.unwrap();
+    // A paused worker's claim is recovered and claimed again, and that claim
+    // fails; an operator then retries the job and a third worker claims it.
+    let stale = driver.pop().await.unwrap().unwrap();
+    driver
+        .requeue_attempt(&stale.id, stale.attempts, "recovered")
+        .await
+        .unwrap();
+    let second = driver.pop().await.unwrap().unwrap();
+    driver
+        .mark_failed_attempt(&second.id, second.attempts, "provider down")
+        .await
+        .unwrap();
+    driver.retry_failed_job("sync").await.unwrap();
+    let current = driver.pop().await.unwrap().unwrap();
+    assert_eq!(current.attempts, 3);
+
+    assert!(
+        driver
+            .mark_complete_attempt(&stale.id, stale.attempts)
+            .await
+            .is_err(),
+        "the paused worker must not finish the claim made after the retry"
+    );
+    driver
+        .mark_complete_attempt(&current.id, current.attempts)
+        .await
+        .unwrap();
+}
