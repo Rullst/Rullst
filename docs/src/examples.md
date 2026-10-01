@@ -19,7 +19,8 @@ The blog package demonstrates:
 - server-rendered HTML and Active Record persistence;
 - a parameterized repository query;
 - LiveView/WebSocket and Wasm-island presentation examples;
-- Pico CSS and Tera presentation paths;
+- Pico CSS and a small embedded file-template fixture (`include_str!` plus
+  fixed placeholder replacement; not Tera or another template engine);
 - `Billable` quota evaluation and payment-adapter mock fixtures;
 - an escaped, unsigned DPS XML preview that is explicitly not an NFS-e
   authorization;
