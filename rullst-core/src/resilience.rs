@@ -8,6 +8,9 @@ const MONITORS_IDLE: u8 = 0;
 const MONITORS_RUNNING: u8 = 1;
 const MONITORS_SHUT_DOWN: u8 = 2;
 
+#[path = "resilience_probe.rs"]
+mod db_probe;
+
 /// Failures that can occur while managing Traffic Shield monitors.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -27,6 +30,7 @@ pub struct TrafficShieldConfig {
     /// Maximum Tokio event-loop lag before load shedding activates. Default: 100ms.
     pub max_event_loop_lag: Duration,
     /// Maximum DB probe round-trip latency before load shedding activates. Default: 500ms.
+    /// A probe still running at this latency is abandoned and recorded as taking it.
     pub max_db_latency: Duration,
     /// Maximum number of concurrent in-flight requests before load shedding activates. Default: 1000.
     pub max_active_requests: usize,
@@ -194,6 +198,7 @@ impl TrafficShield {
         if self.config.enable_db_probe {
             let db_lat_ms = self.db_latency_ms.clone();
             let db_shutdown = Arc::clone(&self.monitors.shutdown);
+            let deadline = self.config.max_db_latency;
             tasks.push(runtime.spawn(async move {
                 let interval = Duration::from_millis(1000);
                 loop {
@@ -202,17 +207,12 @@ impl TrafficShield {
                         _ = db_shutdown.notified() => break,
                     }
                     if let Some(pool) = crate::db::safe_pool() {
-                        let start = Instant::now();
-                        let res = sqlx::query("SELECT 1").execute(pool).await;
-                        match res {
-                            Ok(_) => {
-                                let latency = start.elapsed();
-                                db_lat_ms.store(duration_millis_u64(latency), Ordering::Relaxed);
-                            }
-                            Err(_) => {
-                                db_lat_ms.store(9999, Ordering::Relaxed);
-                            }
-                        }
+                        // A probe that outlives the shedding threshold is
+                        // already critical; abandon it so a hung connection
+                        // cannot leave a stale healthy latency behind.
+                        let probe = sqlx::query("SELECT 1").execute(pool);
+                        let latency = db_probe::measure(deadline, probe).await;
+                        db_lat_ms.store(latency, Ordering::Relaxed);
                     } else {
                         db_lat_ms.store(0, Ordering::Relaxed);
                     }
@@ -242,7 +242,8 @@ impl TrafficShield {
 
     /// Returns the most recently measured database probe round-trip latency as a `Duration`.
     /// Returns `Duration::ZERO` if `enable_db_probe` is `false`, the `orm`
-    /// feature is disabled, or the pool is uninitialized.
+    /// feature is disabled, or the pool is uninitialized. A probe abandoned at
+    /// `max_db_latency` reports at least that latency.
     pub fn db_latency(&self) -> Duration {
         Duration::from_millis(self.db_latency_ms.load(Ordering::Relaxed))
     }
