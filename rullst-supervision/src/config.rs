@@ -67,9 +67,25 @@ impl Limits {
         Ok(self)
     }
 
+    /// Unexpired events one learner (tenant and subject) may hold across all
+    /// sessions, from 1 to the store-wide `events` limit (v13). The default is
+    /// 4096, or `events` when lower. Every opener must supply the same value.
+    pub fn subject_events(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || i64::from(maximum) > self.events {
+            return Err(Error::InvalidInput);
+        }
+        self.subject_events = maximum.into();
+        Ok(self)
+    }
+
     /// Whether the per-learner quota is the default derived from `sessions`.
     pub(crate) fn default_subject_sessions(&self) -> bool {
         self.subject_sessions == SUBJECT_SESSIONS.min(self.sessions)
+    }
+
+    /// Whether the per-learner event quota is the default derived from `events`.
+    pub(crate) fn default_subject_events(&self) -> bool {
+        self.subject_events == SUBJECT_EVENTS.min(self.events)
     }
 }
 

@@ -360,3 +360,90 @@ async fn an_explicit_learner_quota_is_enforced_and_bound_into_the_configuration(
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn an_explicit_learner_event_quota_is_enforced_and_bound_into_the_configuration() {
+    let limits = Limits::new(16, 16, 128, 16)
+        .unwrap()
+        .subject_events(2)
+        .unwrap();
+    let (temp, store, clock) = bounded(limits.clone()).await;
+    let actor = context("learner-a");
+    let session = store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    for sequence in 1..=2 {
+        clock.set(1000 + sequence);
+        store
+            .record_visibility(
+                &actor,
+                &scope(),
+                session.id(),
+                session.revision(),
+                sequence,
+                VisibilityEvent::PageHidden,
+            )
+            .await
+            .unwrap();
+    }
+    clock.set(1003);
+    assert!(matches!(
+        store
+            .record_visibility(
+                &actor,
+                &scope(),
+                session.id(),
+                session.revision(),
+                3,
+                VisibilityEvent::PageVisible,
+            )
+            .await,
+        Err(Error::Capacity)
+    ));
+    // The quota spans every session of the learner, not one resource.
+    let other = Scope::new("school-a", "learner-a", "resource-b").unwrap();
+    let second = store
+        .start_exam(&actor, &other, &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    assert!(matches!(
+        store
+            .record_visibility(
+                &actor,
+                &other,
+                second.id(),
+                second.revision(),
+                1,
+                VisibilityEvent::PageHidden,
+            )
+            .await,
+        Err(Error::Capacity)
+    ));
+    store.close().await;
+    let path = temp.path().join("bounded.sqlite");
+    let default = StoreConfig::new("epoch", Limits::new(16, 16, 128, 16).unwrap(), 3600, 600);
+    assert!(matches!(
+        SqliteSupervision::open(&path, default.unwrap(), clock.clone()).await,
+        Err(Error::Configuration)
+    ));
+    let explicit = StoreConfig::new("epoch", limits, 3600, 600).unwrap();
+    SqliteSupervision::open(&path, explicit, clock.clone())
+        .await
+        .unwrap();
+
+    // Naming the default explicitly keeps the key of existing stores.
+    let (temp, store, _) = fixture().await;
+    store.close().await;
+    let same = Limits::new(16, 16, 128, 16)
+        .unwrap()
+        .subject_events(128)
+        .unwrap();
+    SqliteSupervision::open(
+        temp.path().join("supervision.sqlite"),
+        StoreConfig::new("deployment-v1", same, 3600, 600).unwrap(),
+        clock,
+    )
+    .await
+    .unwrap();
+}
