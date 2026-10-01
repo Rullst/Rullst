@@ -1406,8 +1406,10 @@ the same server-authoritative controls.
   explicit cache policy. Versioned public/static responses can therefore opt
   into reviewed caching without weakening the default for dynamic data.
 * **Double-Submit Form Contract:** `csrf_middleware` installs the exact
-  request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
-  and preserves it after a valid state-changing request. Server-rendered forms
+  request-scoped `CsrfToken` used by the CSRF cookie on eligible `GET` and
+  `HEAD` requests (HEAD mirrors GET's headers, including a new cookie, so a
+  `get` route extracting the token also answers HEAD) and preserves it after a
+  valid state-changing request. Server-rendered forms
   must echo that value in `_token`; HTMX/JavaScript may instead send it through
   `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
   place its `_token` field before any file input: the middleware reads at most
