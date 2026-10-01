@@ -22,6 +22,15 @@ it), `retry_failed_job` moves a failed job to the tail of the pending list while
 keeping its attempt counter, and `purge_failed_jobs` deletes every failed job
 and dead letter.
 
+The unpublished v13 `list_job_previews(limit, max_field_bytes)` (on
+`QueueDriver` and the `Queue` facade) lists the same records as
+`QueuedJobPreview`s whose payload and error hold at most `max_field_bytes`
+bytes, cut on a UTF-8 boundary, with `payload_truncated`/`error_truncated`
+flags. SQLite cuts the values in SQL and Redis in one atomic Lua script that
+decodes at most `limit` envelopes, so complete payloads never leave the store.
+Custom drivers inherit a default that projects their `list_all_jobs` (and
+therefore still loads complete records).
+
 Cache diagnostics are driver-specific too. `Cache::inspect(limit)` accepts
 1–200 and returns sorted logical-key, UTF-8 value-length and remaining-TTL
 metadata for Memory and Redis without the value. Exact keys are still
@@ -228,13 +237,18 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global
   `feature::manager()` when it uses the default pipeline), so programmatic
   overrides reach it.
-- **Shared project settings (internal, v13):** `server::ProjectSettings` and
-  `server::read_project_setting` resolve a setting from the process
-  environment first and then the project's `.env`, which never overrides the
-  environment, and `ProjectSettings::environment` applies the `Server`
-  precedence for `RULLST_ENV`/`APP_ENV`/`[app].env`. Errors never contain
-  `.env` content. They are `#[doc(hidden)]` support for first-party crates such
-  as `rullst-mail`, not a stable extension point.
+- **Project settings (unpublished v13):** `config::project_setting(name)`
+  (also `rullst::config::project_setting`) reads an application setting from
+  the process environment first and then `./.env`, which never overrides the
+  environment and is never loaded into it. It returns `Ok(None)` when neither
+  defines the name and fails with `ConfigError::Read`/`Parse` for an unreadable
+  or malformed `.env`; errors never contain `.env` content. Nexus
+  `basic_from_env` and generated billing code (`BILLING_*`) use it. The
+  `#[doc(hidden)]` `server::ProjectSettings` and async
+  `server::read_project_setting` apply the same precedence for first-party
+  crates such as `rullst-mail`, and `ProjectSettings::environment` applies the
+  `Server` precedence for `RULLST_ENV`/`APP_ENV`/`[app].env`; they are not a
+  stable extension point.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

@@ -1,4 +1,5 @@
 mod browser_boundary;
+mod credentials;
 #[cfg(test)]
 mod proxy_tests;
 mod rate_limit;
@@ -14,6 +15,7 @@ use axum::{
     response::Response,
 };
 use base64::Engine;
+use credentials::{required_environment_variable, validate_password, validate_username};
 use rate_limit::{AuthGuardStatus, BasicAuthRateLimiter};
 pub use rate_limit::{
     NEXUS_BASIC_AUTH_FAILURE_WINDOW, NEXUS_BASIC_AUTH_LOCKOUT, NEXUS_BASIC_AUTH_MAX_FAILURES,
@@ -54,6 +56,9 @@ pub enum NexusBuildError {
     MissingCredential { variable: &'static str },
     /// A required Nexus credential contains invalid Unicode.
     InvalidCredentialEncoding { variable: &'static str },
+    /// A required Nexus credential is absent from the process environment and
+    /// the project's `.env` file is unreadable or malformed. Unpublished v13.
+    InvalidDotenv { variable: &'static str },
     /// Unauthenticated local access is never available in release builds.
     LocalAccessRequiresDebugBuild,
     /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
@@ -92,6 +97,10 @@ impl fmt::Display for NexusBuildError {
             Self::InvalidCredentialEncoding { variable } => write!(
                 formatter,
                 "Nexus requires {variable} to contain valid Unicode"
+            ),
+            Self::InvalidDotenv { variable } => write!(
+                formatter,
+                "Nexus could not read {variable}: the project .env file is unreadable or malformed"
             ),
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
                 "Nexus loopback-only access is restricted to debug builds; configure an authenticated policy for release builds",
@@ -203,12 +212,16 @@ impl NexusAuthPolicy {
         NexusBasicAuth::new(username, password).map(Self::Basic)
     }
 
-    /// Loads and validates Basic Auth credentials from the process environment or `.env`.
+    /// Loads and validates Basic Auth credentials from the process environment,
+    /// then the working directory's `.env`.
     ///
     /// The required variables are [`NEXUS_ADMIN_USERNAME_ENV`] and
-    /// [`NEXUS_ADMIN_PASSWORD_ENV`]. No username or password fallback is provided.
+    /// [`NEXUS_ADMIN_PASSWORD_ENV`], each resolved with
+    /// [`rullst_core::config::project_setting`]: `.env` never overrides the
+    /// process environment and is never loaded into it, and an unreadable or
+    /// malformed `.env` is [`NexusBuildError::InvalidDotenv`]. No username or
+    /// password fallback is provided.
     pub fn basic_from_env() -> Result<Self, NexusBuildError> {
-        let _ = dotenvy::dotenv();
         let username = required_environment_variable(NEXUS_ADMIN_USERNAME_ENV)?;
         let password = required_environment_variable(NEXUS_ADMIN_PASSWORD_ENV)?;
         Self::basic(username, password)
@@ -393,73 +406,6 @@ fn has_valid_basic_credentials(request: &Request, credentials: &NexusBasicAuth) 
 
 fn constant_time_equal(candidate: &[u8], expected: &[u8]) -> bool {
     candidate.len() == expected.len() && bool::from(candidate.ct_eq(expected))
-}
-
-fn validate_username(username: &str) -> Result<(), NexusBuildError> {
-    if username.trim().is_empty() {
-        return Err(NexusBuildError::EmptyUsername);
-    }
-    if username.contains(':') {
-        return Err(NexusBuildError::UsernameContainsSeparator);
-    }
-    if username.trim().len() != username.len()
-        || username.len() > 255
-        || username.chars().any(char::is_control)
-    {
-        return Err(NexusBuildError::InvalidUsername);
-    }
-    if is_placeholder_username(username) {
-        return Err(NexusBuildError::PlaceholderUsername);
-    }
-    Ok(())
-}
-
-fn validate_password(password: &str) -> Result<(), NexusBuildError> {
-    if password.chars().count() < MIN_NEXUS_PASSWORD_LENGTH {
-        return Err(NexusBuildError::WeakPassword {
-            minimum: MIN_NEXUS_PASSWORD_LENGTH,
-        });
-    }
-    if is_placeholder_password(password) {
-        return Err(NexusBuildError::PlaceholderPassword);
-    }
-    Ok(())
-}
-
-fn is_placeholder_username(username: &str) -> bool {
-    matches!(
-        username.trim().to_ascii_lowercase().as_str(),
-        "username" | "user_name" | "your_username" | "your_user" | "change_me" | "changeme"
-    )
-}
-
-fn is_placeholder_password(password: &str) -> bool {
-    let normalized = password.trim().to_ascii_lowercase();
-    matches!(
-        normalized.as_str(),
-        "password"
-            | "password123"
-            | "admin_password"
-            | "your_password"
-            | "your_strong_password"
-            | "replace_with_a_strong_password"
-            | "change_me_before_deploying"
-            | "changeme_before_deploying"
-    ) || normalized.starts_with("replace_me_")
-        || normalized.starts_with("change_me_")
-        || normalized.starts_with("your_password_")
-}
-
-fn required_environment_variable(name: &'static str) -> Result<String, NexusBuildError> {
-    match std::env::var(name) {
-        Ok(value) => Ok(value),
-        Err(std::env::VarError::NotPresent) => {
-            Err(NexusBuildError::MissingCredential { variable: name })
-        }
-        Err(std::env::VarError::NotUnicode(_)) => {
-            Err(NexusBuildError::InvalidCredentialEncoding { variable: name })
-        }
-    }
 }
 
 fn unauthorized_response() -> Response {

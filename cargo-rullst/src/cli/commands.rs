@@ -192,7 +192,7 @@ pub enum Commands {
     /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
     #[command(name = "foundry:deploy")]
     FoundryDeploy,
-    /// Generates Dockerfile and docker-compose.yml for the project
+    /// Generates a Dockerfile (and .dockerignore when absent) for the project
     Dockerize,
     /// Generates a rootless OCI image build script via Buildah
     #[command(name = "generate:buildah")]
@@ -248,7 +248,7 @@ pub enum Commands {
     /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
     #[command(name = "make:k8s")]
     MakeK8s,
-    /// Scaffolds a complete 2FA TOTP authentication system in src/controllers/mfa.rs
+    /// Scaffolds a server-side TOTP second factor (src/controllers/mfa.rs and a migration)
     #[command(name = "make:mfa")]
     MakeMfa,
     /// Scaffolds interactive Scalar API documentation router at /docs

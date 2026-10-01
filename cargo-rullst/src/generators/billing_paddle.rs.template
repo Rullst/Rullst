@@ -34,20 +34,21 @@ struct State {
 struct Receipt { id: String, digest: String }
 fn token() -> String { rullst::security::generate_csrf_token() }
 fn scope(config: &BillingConfig) -> Result<(String, bool, String)> {
-    let account = std::env::var("BILLING_ACCOUNT_ID").map_err(|_| UNAVAILABLE)?;
+    let account = super::setting("BILLING_ACCOUNT_ID").map_err(|_| UNAVAILABLE)?.ok_or(UNAVAILABLE)?;
     // Paddle does not expose Stripe's account-verification API. This is an
     // operator-owned credential/account namespace, never a browser argument.
     if config.provider != "paddle" || account.is_empty() || account.len() > 64
         || !account.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
         || config.api_key.trim().is_empty() || super::is_mock_credential(&config.api_key)
         || !super::strong_webhook_secret(&config.webhook_secret) { return Err(UNAVAILABLE); }
-    let sandbox = match std::env::var("BILLING_PADDLE_ENVIRONMENT").as_deref() {
-        Ok("sandbox") => true, Ok("live") => false, _ => return Err(UNAVAILABLE),
+    let sandbox = match super::setting("BILLING_PADDLE_ENVIRONMENT").map_err(|_| UNAVAILABLE)?.as_deref() {
+        Some("sandbox") => true, Some("live") => false, _ => return Err(UNAVAILABLE),
     };
-    if !sandbox && std::env::var("BILLING_LIVE_ACKNOWLEDGEMENT").as_deref() != Ok("I_UNDERSTAND_REAL_CHARGES") {
+    if !sandbox && super::setting("BILLING_LIVE_ACKNOWLEDGEMENT").map_err(|_| UNAVAILABLE)?.as_deref()
+        != Some("I_UNDERSTAND_REAL_CHARGES") {
         return Err(UNAVAILABLE);
     }
-    let page = std::env::var("BILLING_PADDLE_PAYMENT_LINK").map_err(|_| UNAVAILABLE)?;
+    let page = super::setting("BILLING_PADDLE_PAYMENT_LINK").map_err(|_| UNAVAILABLE)?.ok_or(UNAVAILABLE)?;
     Ok((format!("paddle:{account}:{}", if sandbox { "sandbox" } else { "live" }), sandbox, page))
 }
 fn provider(config: &BillingConfig, sandbox: bool) -> PaddleProvider {

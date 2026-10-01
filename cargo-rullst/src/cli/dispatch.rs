@@ -2,6 +2,7 @@
 #![cfg_attr(mutants, mutants::skip)]
 
 use colored::Colorize;
+use std::path::{Path, PathBuf};
 
 use super::{Commands, DatabaseChoice};
 use crate::generators::{
@@ -20,10 +21,14 @@ use crate::generators::{
     migration::create_new_migration,
     model::create_new_model,
     openapi::generate_openapi_spec,
+    output_guard::{reject_existing, reject_symlink},
     project::{ProjectScaffoldOptions, create_new_project_with_cli_options},
     resource::create_new_resource,
     worker::create_new_worker,
 };
+
+/// Packaging files are application-owned once generated; regeneration is explicit.
+const REGENERATE_HINT: &str = "; move them aside to regenerate the template";
 
 /// Central command dispatcher. Routes each CLI command to its generator function.
 pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
@@ -176,6 +181,13 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             run_foundry_deploy()?;
         }
         Commands::Dockerize => {
+            // `.dockerignore` is only created when absent; never write through a link.
+            reject_symlink(Path::new(".dockerignore"))?;
+            reject_existing(
+                "Dockerfile",
+                &[PathBuf::from("Dockerfile")],
+                REGENERATE_HINT,
+            )?;
             let mut proj_name = "app".to_string();
             if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
                 for line in toml_content.lines() {
@@ -197,6 +209,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             )?;
         }
         Commands::GenerateBuildah => {
+            reject_existing(
+                "Buildah script",
+                &[PathBuf::from("build_buildah.sh")],
+                REGENERATE_HINT,
+            )?;
             let mut proj_name = "app".to_string();
             if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
                 for line in toml_content.lines() {
@@ -216,6 +233,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             )?;
         }
         Commands::Nixify => {
+            reject_existing(
+                "Nix environment files",
+                &[PathBuf::from("flake.nix"), PathBuf::from(".envrc")],
+                REGENERATE_HINT,
+            )?;
             crate::generators::project::generate_nix_files(std::path::Path::new("."))?;
         }
         Commands::MakeCors => {

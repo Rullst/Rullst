@@ -2587,7 +2587,6 @@ dependencies = [
  "ammonia",
  "axum",
  "base64 0.23.1",
- "dotenvy",
  "rullst-ai",
  "rullst-auth",
  "rullst-core",

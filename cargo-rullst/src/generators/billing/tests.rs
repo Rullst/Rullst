@@ -8,13 +8,10 @@ fn generated_billing_binds_signed_events_to_authenticated_owners() {
     for backend in [ProjectOrmBackend::Sqlx, ProjectOrmBackend::Turso] {
         let source = render_billing_controller("workspace_id", backend);
         syn::parse_file(&source).expect("billing controller must parse");
-        let canonical_environment = source
-            .find("std::env::var(\"RULLST_ENV\")")
-            .expect("canonical environment lookup");
-        let legacy_environment = source
-            .find("std::env::var(\"APP_ENV\")")
-            .expect("legacy environment fallback");
-        assert!(canonical_environment < legacy_environment);
+        // Production follows the environment `Server` enforces and fails closed.
+        assert!(source.contains("match rullst::RullstConfig::global().environment() {"));
+        assert!(source.contains("Err(_) => true,"));
+        assert!(source.contains("rullst::config::project_setting(name)"));
         assert!(source.contains("workspace_id: identity.owner_id"));
         assert!(source.contains("Extension(identity): Extension<BillingIdentity>"));
         assert!(source.contains("rullst-capital's mandatory signature/replay middleware"));
@@ -52,5 +49,38 @@ fn generated_billing_binds_signed_events_to_authenticated_owners() {
             migration.contains("DROP TABLE subscriptions")
                 || migration.contains("drop_if_exists(\"subscriptions\")")
         );
+    }
+}
+
+#[test]
+fn generated_billing_reads_settings_from_the_process_then_dotenv() {
+    for backend in [ProjectOrmBackend::Sqlx, ProjectOrmBackend::Turso] {
+        let controller = render_billing_controller("workspace_id", backend);
+        let mut sources = vec![("src/controllers/billing_controller.rs", controller)];
+        sources.extend(live_billing_files("workspace_id", backend));
+        for (path, source) in sources.iter().filter(|(path, _)| path.ends_with(".rs")) {
+            assert!(!source.contains("std::env::var"), "{path}");
+            assert!(!source.contains("dotenvy"), "{path}");
+            // Every billing key literal goes through the `.env`-aware helper.
+            for (index, _) in source.match_indices("\"BILLING_") {
+                let key = &source[index + 1..];
+                let length = key
+                    .find(|character: char| !(character.is_ascii_uppercase() || character == '_'))
+                    .unwrap_or(key.len());
+                if key[length..].starts_with('"') {
+                    assert!(
+                        source[..index].ends_with("setting("),
+                        "{path}: {}",
+                        &key[..length]
+                    );
+                }
+            }
+        }
+        let readme = &sources
+            .iter()
+            .find(|(path, _)| *path == "BILLING.md")
+            .expect("billing guide")
+            .1;
+        assert!(readme.contains("rullst::config::project_setting"));
     }
 }

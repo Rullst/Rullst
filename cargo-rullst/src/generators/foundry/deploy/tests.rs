@@ -59,3 +59,50 @@ fn systemd_environment_values_are_quoted_and_escaped() {
     let command = render_configure_command(&cfg, "demo");
     assert!(command.contains(r#"EXAMPLE="space and \\\"quote""#));
 }
+
+#[test]
+fn the_service_runs_as_a_dedicated_unprivileged_sandboxed_account() {
+    let provision = render_provision_command(&test_config("false"));
+    assert!(provision.contains("useradd --system --user-group --no-create-home"));
+    assert!(
+        provision
+            .contains("install -d -m 0750 -o rullst-demo -g rullst-demo /opt/rullst/demo/data")
+    );
+    assert!(provision.contains("chown -R -h rullst-demo:rullst-demo /opt/rullst/demo/data"));
+    assert!(provision.contains("install -d -m 0700 /opt/rullst/demo/config"));
+
+    let command = render_configure_command(&test_config("false"), "demo");
+    for directive in [
+        "User=rullst-demo",
+        "Group=rullst-demo",
+        "NoNewPrivileges=yes",
+        "CapabilityBoundingSet=\n",
+        "ProtectSystem=strict",
+        "ReadWritePaths=/opt/rullst/demo/data",
+        "PrivateTmp=yes",
+    ] {
+        assert!(command.contains(directive), "missing {directive}");
+    }
+    assert!(!command.contains("AmbientCapabilities"));
+
+    let mut privileged = test_config("false");
+    privileged.port = "80".to_string();
+    let privileged = render_configure_command(&privileged, "demo");
+    assert!(privileged.contains("AmbientCapabilities=CAP_NET_BIND_SERVICE"));
+
+    #[cfg(unix)]
+    for script in [provision, command, privileged] {
+        let mut shell = std::process::Command::new("sh")
+            .arg("-n")
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        shell
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(script.as_bytes())
+            .unwrap();
+        assert!(shell.wait().unwrap().success(), "invalid shell:\n{script}");
+    }
+}
