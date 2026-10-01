@@ -104,7 +104,10 @@
   value is redacted to the end of its line, so later cookies and credentials
   containing spaces are covered; only a recognized authentication scheme such
   as `Bearer`, `Basic`, `Digest` or `Token` is kept. Records over
-  64 KiB are replaced wholesale by an oversized-record marker. The host must
+  64 KiB are replaced wholesale by an oversized-record marker. A redacted
+  record increments only the log-redaction counter; it is never counted or
+  announced as a blocked HTTP response (`dlp_secrets_masked`,
+  `DLP_SECRET_LEAK_PREVENTED`). The host must
   invoke it before emitting untrusted log fields; pattern matching is not a
   guarantee that arbitrary sensitive content can be recognized.
 - **SRI:** Generate escaped SHA-384 tags from bytes or bounded local JS/CSS

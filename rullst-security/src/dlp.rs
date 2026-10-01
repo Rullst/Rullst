@@ -16,7 +16,7 @@ use tower::{Layer, Service};
 
 mod masking;
 
-pub(crate) use masking::SegmentRewriter;
+pub(crate) use masking::{SegmentRewriter, mask_text};
 
 const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 

@@ -56,7 +56,7 @@ const PRIVATE_KEY_BLOCKS: [(&str, &str); 7] = [
 ];
 
 /// Applies every masking pass in order. Returns `None` when nothing matched.
-pub(super) fn mask_text(text: &str) -> Option<String> {
+pub(crate) fn mask_text(text: &str) -> Option<String> {
     let mut current: Option<String> = None;
     for (begin, end) in PRIVATE_KEY_BLOCKS {
         let input = current.as_deref().unwrap_or(text);
