@@ -273,6 +273,40 @@ fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
 }
 
 #[test]
+fn interactive_wizard_keeps_an_explicit_api_flag() {
+    for blueprint_override in [None, Some(BLANK_BLUEPRINT_ID)] {
+        let mut ui = FakeWizardUi {
+            selections: [0].into(),
+            confirmations: [true, false, false].into(),
+            multiple: [vec![]].into(),
+            ..FakeWizardUi::default()
+        };
+        let result = run_project_wizard_with_ui(
+            Some("billing-api"),
+            ProjectScaffoldOptions {
+                api: true,
+                ..ProjectScaffoldOptions::default()
+            },
+            &[],
+            blueprint_override,
+            &mut ui,
+        )
+        .expect("interactive API profile");
+
+        // The build-type select defaulted to Full-Stack and replaced `--api`.
+        assert!(result.api);
+        assert_eq!(result.blueprint_selection, BLANK_BLUEPRINT_ID);
+        assert_eq!(result.db_provider, "Sqlite");
+        assert!(
+            ui.prompts
+                .iter()
+                .all(|prompt| !prompt.contains("What would you like to build?")
+                    && !prompt.contains("Select a Starter Blueprint"))
+        );
+    }
+}
+
+#[test]
 fn interactive_nonblank_and_database_free_profiles_keep_explicit_boundaries() {
     let mut lms_ui = FakeWizardUi {
         selections: [LMS_BLUEPRINT_ID, 3].into(),

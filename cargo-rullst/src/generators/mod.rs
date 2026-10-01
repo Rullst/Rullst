@@ -43,7 +43,7 @@ pub mod migration;
 pub mod model;
 pub mod openapi;
 pub(crate) mod output_guard;
-mod platform_name;
+pub(crate) mod platform_name;
 pub(crate) mod privacy;
 pub mod project;
 pub mod resource;

@@ -30,25 +30,32 @@ the generated application:
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it.
+  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
-    `.dockerignore` excludes secrets, local databases and the host-local
-    `.cargo/config.toml` described below. The runtime
+    `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
+    `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
+    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals) and the
+    host-local `.cargo/config.toml` described below, so the builder's
+    `COPY . .` never sends them to a (possibly remote) builder. An existing
+    `.dockerignore` is kept unchanged. The runtime
     image installs CA certificates, runs as UID/GID 10001, sets the production
     bind address and copies local static/config assets when present. An explicit
     SQLite selection uses the writable `/app/data` directory. Secrets are never
     embedded and no anonymous volume is declared. Run schema migrations as one
     deployment job before starting or rolling multiple replicas; the generated
     image deliberately does not race migrations from every application process.
-    Compose services, persistent-volume ownership, backup/restore, health
-    probes and platform deployment hardening remain explicit project work.
+    Compose services, persistent-volume ownership, backup/restore and platform
+    deployment hardening remain explicit project work. Every starter mounts
+    `rullst::health::health_router()`, so the `/health` and `/ready` probes
+    written by `make:k8s`, `deploy` and `foundry:deploy` answer `200` without
+    authentication.
   * `--turso`: Adds the direct Hrana HTTP v3 Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
   * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
   * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Enables bounded dense-vector Qdrant operations and generates empty/`mock_*`-compatible environment fields; it is additive, not the SQL primary.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
-  * `--buildah`: Adds rootless Buildah container-build files where supported.
+  * `--buildah`: Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend with `--default`; network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
@@ -84,10 +91,13 @@ cargo rullst new operations-portal --default --blueprint erp \
   --ai --redis --skip-initial-migration
 ```
 
-Generated SQLx applications disable the umbrella dependency's default features
-and select exactly one strict primary profile (`strict-sqlite`,
-`strict-postgres`, or `strict-mysql`; MariaDB uses the MySQL protocol). This
-prevents an implicit SQLite default from masking the chosen backend.
+Generated SQLx applications disable the default features of both the umbrella
+`rullst` dependency and the direct `rullst-orm` dependency, and select exactly
+one strict primary profile (`strict-sqlite`, `strict-postgres`, or
+`strict-mysql`; MariaDB uses the MySQL protocol). This prevents an implicit
+SQLite default from masking the chosen backend and keeps the other drivers,
+including bundled SQLite, out of the build. Turso-primary and database-free
+profiles keep `rullst-orm`'s default drivers for its `AnyPool`.
 
 #### Generated-project verification boundary
 
@@ -1098,7 +1108,13 @@ and must be measured.
 * **Flags:** `--debug` (Avoids extreme minification so you can inspect and debug Wasm sourcemaps).
 
 ### `cargo rullst build`
-Creates the monolithic final Production binary of the backend and executes pre-compression tools (GZIP and Brotli) on your static assets.
+Creates the monolithic final Production binary of the backend and writes Brotli
+(`.br`) and Zstandard (`.zst`) siblings next to the `html`, `css`, `js`, `json`,
+`svg`, `wasm`, `xml` and `txt` files under `static/`. The server prefers a
+sibling over its source, so rerun the command after editing an asset and before
+building an image; `cargo rullst dev` removes siblings that are not newer than
+their source at startup and on every change (siblings without a source file are
+kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
@@ -1149,7 +1165,10 @@ See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
 setup, migration of existing shells and certificate/device verification.
 
 Runs the generated Tauri development client after `make:omni`. Android/iOS
-require their official SDK/toolchain and a reachable backend.
+require their official SDK/toolchain and a reachable backend. For `desktop`, the
+spinner lasts until the shell prints `Launching Omni interface...` (or 200
+output lines arrive); the command then prints the held lines and keeps streaming
+the shell's and its managed backend's standard output until the window closes.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
 
 ---

@@ -31,7 +31,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = routes![
         get("/" => controllers::portfolio_controller::index),
-    ].nest_axum("/nexus", nexus);
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus);
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: __FRONTEND_ENGINE__, ORM: __ORM_PATTERN__)...");
     println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (local loopback access in debug; environment credentials in release)");

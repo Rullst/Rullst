@@ -48,6 +48,8 @@ const ROUTER: &str = r##"pub fn router() -> Result<Router, Box<dyn std::error::E
     Ok(public
         .merge_axum(learning.into_axum())
         .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+        // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+        .merge_axum(rullst::health::health_router())
         .layer(rullst::server::from_fn(rullst::security::headers_middleware))
         .nest_axum("/nexus", nexus))
 }

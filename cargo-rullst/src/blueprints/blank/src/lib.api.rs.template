@@ -23,7 +23,10 @@ __DB_STATUS_CODE__
 pub fn router() -> Router {
     routes![
         get("/" => home),
-    ].layer(rullst::server::from_fn(rullst::security::headers_middleware))
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
 }
 
 #[unsafe(no_mangle)]

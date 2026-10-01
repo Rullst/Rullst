@@ -1,6 +1,17 @@
 //! Kubernetes Manifest Blueprints for Rullst Applications
 
+/// Derives the lowercase RFC 1123 label used for Kubernetes object, container
+/// and Service names and for the OCI image repository.
+///
+/// Package names may contain uppercase letters and `_`, which Kubernetes and
+/// OCI registries reject, e.g. `my_startup` becomes `my-startup`. This is the
+/// same label `make:k8s` and `fly.toml` use (`generators::platform_name`).
+pub fn container_name(package_name: &str) -> String {
+    crate::generators::platform_name::dns_label(package_name)
+}
+
 pub fn deployment_yaml(app_name: &str, port: u16) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: apps/v1
 kind: Deployment
@@ -53,6 +64,7 @@ spec:
 }
 
 pub fn service_yaml(app_name: &str, port: u16) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: v1
 kind: Service
@@ -76,6 +88,7 @@ spec:
 }
 
 pub fn configmap_yaml(app_name: &str, port: u16) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: v1
 kind: ConfigMap
@@ -92,6 +105,7 @@ data:
 }
 
 pub fn hpa_yaml(app_name: &str) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -122,16 +136,26 @@ spec:
     )
 }
 
+/// cert-manager issues a certificate only for an Ingress with a `tls`
+/// section; without one the production app (Secure cookies, HSTS, Nexus
+/// Basic Auth over verified TLS) would be served over plain HTTP.
 pub fn ingress_yaml(app_name: &str) -> String {
+    let app_name = container_name(app_name);
     format!(
         r###"apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {app_name}-ingress
   annotations:
-    kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  ingressClassName: nginx
+  # Replace the placeholder host in both places with a public DNS name you
+  # control; the issuer cannot certify a .local name.
+  tls:
+    - hosts:
+        - {app_name}.local
+      secretName: {app_name}-tls
   rules:
     - host: {app_name}.local
       http:
@@ -168,6 +192,41 @@ mod tests {
         let manifest = configmap_yaml("demo", 3000);
         assert!(manifest.contains("RULLST_ENV: \"production\""));
         assert!(!manifest.contains("APP_ENV:"));
+    }
+
+    #[test]
+    fn ingress_requests_a_certificate_for_its_host() {
+        let manifest = ingress_yaml("demo");
+        // cert-manager ignores the issuer annotation without `spec.tls`.
+        assert!(
+            manifest.contains(
+                "  tls:\n    - hosts:\n        - demo.local\n      secretName: demo-tls\n"
+            )
+        );
+        assert!(manifest.contains("    - host: demo.local\n"));
+        assert!(manifest.contains("cert-manager.io/cluster-issuer"));
+        assert!(manifest.contains("  ingressClassName: nginx\n"));
+        assert!(!manifest.contains("kubernetes.io/ingress.class"));
+    }
+
+    #[test]
+    fn package_names_become_valid_kubernetes_and_image_names() {
+        assert_eq!(container_name("my_startup"), "my-startup");
+        assert_eq!(container_name("MyApp"), "myapp");
+        assert_eq!(container_name("Billing__API--v2_"), "billing-api-v2");
+        assert_eq!(container_name("2fast"), "app-2fast");
+        assert_eq!(container_name(""), "rullst-app");
+        let long = container_name(&format!("a{}", "_b".repeat(60)));
+        assert!(long.len() <= 55 && !long.ends_with('-'), "{long}");
+
+        // `metadata.name: my_startup` and `image: MyApp:latest` were rejected.
+        let manifest = all_in_one_yaml("My_Startup", 3000);
+        assert!(!manifest.contains("My_Startup") && !manifest.contains("my_startup"));
+        assert!(manifest.contains("  name: my-startup\n"));
+        assert!(manifest.contains("        - name: my-startup\n"));
+        assert!(manifest.contains("          image: my-startup:latest\n"));
+        assert!(manifest.contains("  name: my-startup-service\n"));
+        assert!(manifest.contains("    - host: my-startup.local\n"));
     }
 
     #[test]

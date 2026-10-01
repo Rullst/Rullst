@@ -292,6 +292,23 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Generated starter low-severity fixes
+
+- LMS progress idempotency keys are unique per learner, and ERP orders reserve
+  stock atomically in one transaction and report 404/409/422/503 instead of
+  redirecting.
+- Blog and ERP page their reads and compute ERP totals in SQL instead of
+  loading `Model::all()`, and every starter mounts `/health` and `/ready`.
+- Blank and ERP pages declare `lang="en"`, and the LMS dashboard no longer
+  mentions a demo school.
+- Strict-database projects disable `rullst-orm`'s default drivers, and the
+  interactive wizard keeps `--api`.
+- `.dockerignore` mirrors `.gitignore`, the Kubernetes Ingress has a TLS
+  section, and k8s and Buildah names are lowercase RFC 1123 labels.
+- `cargo rullst dev` removes outdated `.br`/`.zst` siblings, and Omni prints
+  and detects its launch line, streams the app's output and runs Cargo for its
+  backend only in debug builds.
+
 ### Facade and examples low-severity fixes
 
 - The `rullst` facade guards its native-only re-exports on wasm32, and the
