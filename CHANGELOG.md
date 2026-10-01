@@ -260,6 +260,21 @@ A prepared version section does not establish that its tag or crates exist.
 - Generated workers no longer log payloads, and fixture billing no longer
   returns database error text.
 
+### CLI operations low-severity fixes
+
+- Scaffold refreshes and `generate:diagram` no longer overwrite a hand-written
+  `diagram.md`.
+- `audit` no longer writes reports through symlinks, its source scans are
+  bounded and no longer follow symlinks, `--network` fails when the `ss`
+  listener inventory is unavailable, and the SBOM emits source-aware purls.
+  Audit docs match the real report and SBOM.
+- Invalid `pkg` invocations exit non-zero, `deploy` validates `--platform`
+  before writing, and `make:k8s` and Fly manifests use RFC 1123 names.
+- The dashboard's gRPC and model-introspection items collect their required
+  arguments, and its tagline shows the installed version instead of "v12".
+- `sync-badges` escapes prerelease versions and is no longer installed by
+  `cargo install` (new `maintainer-tools` feature).
+
 ### CLI generator and operations review fixes
 
 - CLI generators no longer overwrite application files: `make:k8s`,

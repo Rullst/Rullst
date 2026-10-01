@@ -500,14 +500,21 @@ Manages third-party community packages and extensions conforming to the `RullstP
   * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`.
   * `list`: Scans and lists all active `rullst-*` community extensions installed in your project.
 
+An unknown action, or `add` without a package name, fails with a non-zero exit
+status.
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
 
 Rullst generators write the files described under each command. Some commands
 also register modules and refresh `.llms.txt`; this is command-specific, and a
-failed best-effort context refresh does not roll back generated source. Review
-the diff and run `cargo check` after scaffolding.
+failed best-effort context refresh does not roll back generated source.
+`make:controller`, `make:model`, `make:middleware`, `make:worker`,
+`make:island`, `auth`, `make:billing`, `make:cors` and `make:jwt` also refresh
+the `generate:diagram` output `diagram.md`: a missing file is created, while a
+`diagram.md` the generator did not write is kept and reported instead of
+replaced. Review the diff and run `cargo check` after scaffolding.
 
 ### `cargo rullst make:resource <name>`
 Scaffolds the bounded starting files for a CRUD resource in one command: a
@@ -818,6 +825,10 @@ Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deplo
 The command fails before writing anything when any of these manifests already
 exists, and it does not write through a symlinked `k8s/` directory or file; move
 customized manifests aside to regenerate the templates.
+Object names, the image reference and the ingress host use the `[package]`
+name as a lowercase RFC 1123 label: characters other than letters and digits
+become `-` (`my_app` becomes `my-app`), and the label is capped at 55
+characters so suffixed names such as `<name>-service` stay valid.
 
 ### `cargo rullst make:scalar`
 Scaffolds a Scalar API Documentation controller at
@@ -839,8 +850,13 @@ Guided deployment helper that generates cloud manifests (`fly.toml`,
 `railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
 selected provider CLI where supported. A provider CLI that is not installed
 only prints the manual commands; one that runs and fails (`flyctl deploy`,
-`railway up`) makes `deploy` exit non-zero. Credentials, migrations,
-availability, DNS/TLS and rollback remain operator responsibilities.
+`railway up`) makes `deploy` exit non-zero. The Fly.io `app` name uses the same
+lowercase label as `make:k8s` (`my_app` becomes `my-app`), while the
+`Dockerfile` and Railway start command keep the package's binary name. An
+unknown `--platform` value is rejected before anything is written, including
+the `Dockerfile` the command otherwise scaffolds when it is missing.
+Credentials, migrations, availability, DNS/TLS and rollback remain operator
+responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
@@ -938,6 +954,10 @@ fail before generation. See the [profile and executable acceptance](typed-api.md
 
 ### `cargo rullst generate:diagram`
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.
+The file starts with a generator marker comment. An existing `diagram.md` is
+replaced only when it carries that marker (or is the single unmarked Mermaid
+block earlier releases wrote); the command refuses a hand-written file or a
+symlink, so move it aside to regenerate the diagram.
 
 ### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
 Connects to an existing database and generates reviewable starter structs from
@@ -968,8 +988,8 @@ Runs bounded source/configuration checks and can invoke installed dependency
 scanners. Static findings require human review and are not a penetration test or
 compliance certification.
 * **Flags:**
-  * `--ai`: Enables AI Sentinel suggestions for threat mitigation.
-  * `--compliance`: Generates an evidence-oriented control report with `PASS`, `FAIL`, `SKIPPED`, or `NOT_EVALUATED`; it does not confer SOC 2 or ISO 27001 certification.
+  * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
+  * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and does not confer SOC 2 or ISO 27001 certification.
   * `--idor`: Fails on parameterized routes without an adjacent `// rullst-access: public|owner|role|admin — reason` classification and the recognized guard required by non-public classifications. `public` is accepted only for recognized GET routes. This bounded heuristic cannot prove domain authorization correctness.
 
 ### `cargo rullst eject [--force] [--output <path>]`
@@ -1140,13 +1160,29 @@ require their official SDK/toolchain and a reachable backend.
 Executes bounded automated checks across recognized source, configuration,
 route, dependency, and local network patterns.
 * **Optional Flags:**
-  * `--ai`: Enables autonomous AI Sentinel analysis with risk assessment and proactive remediation advice.
-  * `--compliance`: Generates an evidence-oriented control report; it is not a SOC 2, ISO 27001, or transport certification.
+  * `--ai`: Prints fixed, rule-based remediation suggestions; no AI model or network service is called.
+  * `--compliance`: Generates the evidence report described above (no `PASS` results); it is not a SOC 2, ISO 27001, or transport certification.
   * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
-  * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) with package SHA-256 checksums and license metadata.
+  * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
-  * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan.
+  * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
+
+The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
+follow symlinked files or directories and skip `target/` and `.git/`. A walk
+stops at 64 directory levels or 250,000 entries; reaching either bound is
+reported as a finding, so the scan fails as incomplete instead of passing.
+
+SBOM components come from `Cargo.lock`. Only crates.io packages receive the
+plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a
+`repository_url` qualifier, a git package adds a `vcs_url` qualifier with the
+locked commit, and path or workspace packages (including the application) have
+no purl. Every component that is not from crates.io carries a
+`rullst:cargo:source` property with its lockfile source, or `local`.
+
+`SECURITY_COMPLIANCE.md` and `sbom-cyclonedx.json` are written in the current
+directory and replace a previous regular file. Because an audit may run on an
+untrusted checkout, the command refuses to write either file through a symlink.
 
 ### `cargo rullst hook:install`
 Installs managed `pre-commit` and `commit-msg` wrappers. The first runs

@@ -56,9 +56,10 @@ fn synchronizer_discovers_workspace_package_and_nested_invocations() {
     assert!(root_output.contains("12.0.0-rc.1"));
     assert!(root_output.contains("README.pt.md"));
 
+    // An unescaped prerelease badge written by an earlier version is repaired.
     fs::write(
         fixture.0.join("README.pt.md"),
-        "![Status: v6.0.0](https://img.shields.io/badge/Status-v6.0.0-emerald)\n",
+        "![Status: v6.0.0-alpha.1](https://img.shields.io/badge/Status-v6.0.0-alpha.1-emerald)\n",
     )
     .expect("Portuguese README");
     fixture.run_from("cargo-rullst");
@@ -66,8 +67,11 @@ fn synchronizer_discovers_workspace_package_and_nested_invocations() {
 
     for readme in ["README.md", "README.pt.md"] {
         let content = fs::read_to_string(fixture.0.join(readme)).expect("updated README");
-        assert!(content.contains("Status-v12.0.0-rc.1-emerald"));
-        assert!(!content.contains("Status-v5.0.0"));
-        assert!(!content.contains("Status-v6.0.0"));
+        // shields.io reads a single `-` as a separator, so the prerelease
+        // dash must be doubled to stay inside the message.
+        assert_eq!(
+            content,
+            "![Status: v12.0.0-rc.1](https://img.shields.io/badge/Status-v12.0.0--rc.1-emerald)\n"
+        );
     }
 }
