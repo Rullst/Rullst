@@ -30,7 +30,7 @@ the generated application:
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it.
+  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
