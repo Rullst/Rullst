@@ -135,7 +135,10 @@ pub async fn inject_hmr_script(
 /// percent-encoding, so nothing outside `static/` is ever probed. Such paths
 /// fall through to the uncompressed service unchanged. `Content-Encoding` and
 /// the original `Content-Type` are set only on a successful (2xx) or `304`
-/// response.
+/// response. Only types this middleware can label are served from `.zst`
+/// (HTML, CSS, JavaScript including `.mjs`/`.cjs`, JSON and source maps, web
+/// manifests, SVG, Wasm, XML, text, CSV, PDF, TTF and OTF); any other file is
+/// served uncompressed rather than as `application/octet-stream`.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn zstd_static_middleware(
     req: axum::extract::Request,
@@ -155,6 +158,11 @@ pub(crate) async fn zstd_static_from(
     if !accepts_zstd(req.headers()) {
         return next.run(req).await;
     }
+    // `ServeDir` would label `<file>.zst` as application/octet-stream; serve
+    // the uncompressed file when the original type is not known here.
+    let Some(mime_type) = zstd_content_type(&relative) else {
+        return next.run(req).await;
+    };
     let compressed = root.join("static").join(format!("{relative}.zst"));
     let exists = tokio::fs::metadata(&compressed)
         .await
@@ -176,28 +184,36 @@ pub(crate) async fn zstd_static_from(
         axum::http::header::CONTENT_ENCODING,
         axum::http::header::HeaderValue::from_static("zstd"),
     );
-    let extension = std::path::Path::new(&relative)
+    response.headers_mut().insert(
+        axum::http::header::CONTENT_TYPE,
+        axum::http::header::HeaderValue::from_static(mime_type),
+    );
+    response
+}
+
+/// The `Content-Type` restored on a `.zst` variant of `relative`, or `None`
+/// for a type this middleware does not know (served uncompressed instead).
+fn zstd_content_type(relative: &str) -> Option<&'static str> {
+    let extension = std::path::Path::new(relative)
         .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("");
-    let mime_type = match extension {
-        "html" => "text/html; charset=utf-8",
+        .and_then(|ext| ext.to_str())?
+        .to_ascii_lowercase();
+    Some(match extension.as_str() {
+        "html" | "htm" => "text/html; charset=utf-8",
         "css" => "text/css; charset=utf-8",
-        "js" => "application/javascript; charset=utf-8",
-        "json" => "application/json; charset=utf-8",
+        "js" | "mjs" | "cjs" => "application/javascript; charset=utf-8",
+        "json" | "map" => "application/json; charset=utf-8",
+        "webmanifest" => "application/manifest+json; charset=utf-8",
         "svg" => "image/svg+xml",
         "wasm" => "application/wasm",
         "xml" => "application/xml; charset=utf-8",
         "txt" => "text/plain; charset=utf-8",
-        _ => "",
-    };
-    if !mime_type.is_empty() {
-        response.headers_mut().insert(
-            axum::http::header::CONTENT_TYPE,
-            axum::http::header::HeaderValue::from_static(mime_type),
-        );
-    }
-    response
+        "csv" => "text/csv; charset=utf-8",
+        "pdf" => "application/pdf",
+        "ttf" => "font/ttf",
+        "otf" => "font/otf",
+        _ => return None,
+    })
 }
 
 /// Returns the part of a `/static/...` request path that may be probed on
@@ -384,6 +400,25 @@ mod tests {
         let response = get(&failing, "/static/app.js", "zstd").await;
         assert_eq!(response.status(), 404);
         assert!(!response.headers().contains_key("content-encoding"));
+
+        // Module scripts keep a JavaScript type; an unknown type is served
+        // uncompressed instead of as application/octet-stream.
+        std::fs::write(root.join("static/app.mjs"), "plain module").unwrap();
+        std::fs::write(root.join("static/app.mjs.zst"), "compressed module").unwrap();
+        std::fs::write(root.join("static/data.bin"), "plain bytes").unwrap();
+        std::fs::write(root.join("static/data.bin.zst"), "compressed bytes").unwrap();
+        let response = get(&router, "/static/app.mjs", "zstd").await;
+        assert_eq!(response.headers()["content-encoding"], "zstd");
+        assert_eq!(
+            response.headers()["content-type"],
+            "application/javascript; charset=utf-8"
+        );
+        let response = get(&router, "/static/data.bin", "zstd").await;
+        assert!(!response.headers().contains_key("content-encoding"));
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"plain bytes");
     }
 }
 
