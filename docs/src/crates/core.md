@@ -209,8 +209,11 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   Earlier releases used `std`'s unspecified `DefaultHasher`, so upgrading
   reassigns users to buckets once; percentages and variant weights are kept.
   `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
-  so concurrent evaluations never see a flag as unset mid-reload, and a
-  `[features] # comment` header is recognized. When an A/B split's weights
+  so concurrent evaluations never see a flag as unset mid-reload. It reads
+  `[features]` with a TOML parser, so quoted flag names (`"checkout.v2"`),
+  `# ` inside strings and any valid header spelling work, and dotted keys or
+  `[features.<group>]` tables become dotted flag names; a file that is not
+  valid TOML falls back to the earlier line reader. When an A/B split's weights
   sum to less than 100, an identifier outside them gets the variant
   `"disabled"` from the driver that defines the flag; it no longer falls
   through to a lower-priority driver's split.

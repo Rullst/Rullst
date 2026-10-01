@@ -345,3 +345,18 @@ async fn identifiers_outside_a_narrowed_split_never_fall_through() {
         Some("disabled".to_string())
     );
 }
+
+#[tokio::test]
+async fn toml_features_accept_quoted_keys_spaced_headers_and_hashes_in_strings() {
+    let driver = TomlFeatureDriver::new();
+    driver.load_from_str(
+        "[app]\nenv = \"test\"\n\n[ features ] # flags\n\"checkout.v2\" = \"100%\"\nbeta.ui = true\nlabel = \"a#b\" # comment\nrollout = 0\n\n[features.billing]\nnew-invoices = false\n",
+    );
+    assert_eq!(driver.value("checkout.v2").as_deref(), Some("100%"));
+    assert_eq!(driver.enabled_for("checkout.v2", "user").await, Some(true));
+    assert_eq!(driver.value("beta.ui").as_deref(), Some("true"));
+    assert_eq!(driver.value("label").as_deref(), Some("a#b"));
+    assert_eq!(driver.value("rollout").as_deref(), Some("0"));
+    assert_eq!(driver.enabled("billing.new-invoices").await, Some(false));
+    assert_eq!(driver.value("env"), None);
+}
