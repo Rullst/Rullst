@@ -42,6 +42,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             // Extend executable syntax without changing the published v12 enum.
             .mut_subcommand("omni", generators::desktop::release_command)
             .mut_subcommand("generate:ai-context", generators::ai_context::command)
+            .mut_subcommand("new", generators::project::new_command)
             .get_matches_from(args);
         if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
@@ -57,6 +58,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             generators::ai_context::refresh_after_scaffold();
         } else if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
+        } else if matches
+            .subcommand_matches("new")
+            .is_some_and(|new| new.get_flag("dry_run"))
+        {
+            let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
+            generators::project::run_dry_run(&cli.command)?;
         } else if let Some(omni) = matches
             .subcommand_matches("omni")
             .filter(|m| m.get_flag("release"))

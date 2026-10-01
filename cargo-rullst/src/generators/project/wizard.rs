@@ -1,96 +1,25 @@
-// cargo-rullst/src/generators/project/wizard.rs — Interactive project creation wizard.
+// cargo-rullst/src/generators/project/wizard.rs — The choices behind `cargo rullst new`:
+// the deterministic flag profile and the interactive wizard.
 
-use colored::*;
+pub(crate) mod catalog;
+pub(crate) mod flow;
+pub(crate) mod plan;
+pub(crate) mod preview;
+pub(crate) mod summary;
+mod terminal;
 
 use crate::blueprints::{
     BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
     PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
 };
 use crate::generators::project::ProjectScaffoldOptions;
-
-const SQLX_DATABASE_OPTIONS: [(&str, &str); 4] = [
-    ("SQLite (zero setup; recommended for a first run)", "Sqlite"),
-    ("Postgres (requires localhost:5432)", "Postgres"),
-    ("MySQL (requires localhost:3306)", "MySQL"),
-    (
-        "MariaDB (MySQL protocol; separately contract-tested)",
-        "MariaDB",
-    ),
-];
-
-const BLANK_DATABASE_OPTIONS: [(&str, &str); 5] = [
-    SQLX_DATABASE_OPTIONS[0],
-    SQLX_DATABASE_OPTIONS[1],
-    SQLX_DATABASE_OPTIONS[2],
-    SQLX_DATABASE_OPTIONS[3],
-    ("Turso / libSQL (primary edge SQL)", "Turso"),
-];
+use crate::ui::screen::{Line, Terminal, Tone};
+use plan::{Database, ProjectPlan};
 
 const V12_ORM_PATTERN: &str = "Active Record";
 const V12_FRONTEND_ENGINE: &str = "Zero-Bundle HTMX";
 
 type WizardResult<T> = Result<T, Box<dyn std::error::Error>>;
-
-trait ProjectWizardUi {
-    fn input(&mut self, prompt: &str) -> WizardResult<String>;
-    fn select(&mut self, prompt: &str, choices: &[String]) -> WizardResult<usize>;
-    fn confirm(&mut self, prompt: &str, default: bool) -> WizardResult<bool>;
-    fn multi_select(&mut self, prompt: &str, choices: &[String]) -> WizardResult<Vec<usize>>;
-}
-
-struct DialoguerWizardUi {
-    theme: dialoguer::theme::ColorfulTheme,
-}
-
-impl DialoguerWizardUi {
-    fn new() -> Self {
-        Self {
-            theme: dialoguer::theme::ColorfulTheme::default(),
-        }
-    }
-}
-
-impl ProjectWizardUi for DialoguerWizardUi {
-    fn input(&mut self, prompt: &str) -> WizardResult<String> {
-        Ok(dialoguer::Input::with_theme(&self.theme)
-            .with_prompt(prompt)
-            .interact_text()?)
-    }
-
-    fn select(&mut self, prompt: &str, choices: &[String]) -> WizardResult<usize> {
-        Ok(dialoguer::Select::with_theme(&self.theme)
-            .with_prompt(prompt)
-            .default(0)
-            .items(choices)
-            .interact()?)
-    }
-
-    fn confirm(&mut self, prompt: &str, default: bool) -> WizardResult<bool> {
-        Ok(dialoguer::Confirm::with_theme(&self.theme)
-            .with_prompt(prompt)
-            .default(default)
-            .interact()?)
-    }
-
-    fn multi_select(&mut self, prompt: &str, choices: &[String]) -> WizardResult<Vec<usize>> {
-        Ok(dialoguer::MultiSelect::with_theme(&self.theme)
-            .with_prompt(prompt)
-            .items(choices)
-            .interact()?)
-    }
-}
-
-fn primary_database_options(blueprint_selection: usize) -> &'static [(&'static str, &'static str)] {
-    if blueprint_selection == BLANK_BLUEPRINT_ID {
-        &BLANK_DATABASE_OPTIONS
-    } else {
-        &SQLX_DATABASE_OPTIONS
-    }
-}
-
-const fn should_prompt_project_profile(_has_positional_name: bool, use_defaults: bool) -> bool {
-    !use_defaults
-}
 
 /// Optional persistence capabilities that complement the primary SQL ORM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,29 +60,6 @@ impl PolyglotIntegration {
     }
 }
 
-const OPTIONAL_STORAGE_OPTIONS: [(&str, PolyglotIntegration); 5] = [
-    (
-        "Turso / libSQL adapter (add-on; application integration remains explicit in v12)",
-        PolyglotIntegration::Turso,
-    ),
-    ("MongoDB (document CRUD)", PolyglotIntegration::MongoDb),
-    ("DuckDB (in-process analytics)", PolyglotIntegration::DuckDb),
-    (
-        "SurrealDB (documents + read-only graph queries)",
-        PolyglotIntegration::SurrealDb,
-    ),
-    ("Qdrant (vector search)", PolyglotIntegration::Qdrant),
-];
-
-fn available_optional_storage_options(
-    selected: &[PolyglotIntegration],
-) -> Vec<(&'static str, PolyglotIntegration)> {
-    OPTIONAL_STORAGE_OPTIONS
-        .into_iter()
-        .filter(|(_, integration)| !selected.contains(integration))
-        .collect()
-}
-
 pub struct ProjectWizardOptions {
     pub name: String,
     pub api: bool,
@@ -167,6 +73,219 @@ pub struct ProjectWizardOptions {
     pub polyglot_integrations: Vec<PolyglotIntegration>,
     pub orm_pattern: String,
     pub frontend_engine: String,
+}
+
+/// What `cargo rullst new` was asked on the command line.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct NewProjectRequest<'a> {
+    pub(crate) name: Option<&'a str>,
+    pub(crate) options: ProjectScaffoldOptions,
+    pub(crate) blueprint: Option<usize>,
+    pub(crate) skip_initial_migration: bool,
+    pub(crate) dry_run: bool,
+}
+
+/// The decided plan, or a cancelled wizard.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Planned {
+    /// `reviewed` is true when the user already saw the review screen.
+    Ready {
+        plan: ProjectPlan,
+        reviewed: bool,
+    },
+    Cancelled,
+}
+
+fn invalid_input(message: &str) -> Box<dyn std::error::Error> {
+    std::io::Error::new(std::io::ErrorKind::InvalidInput, message.to_string()).into()
+}
+
+/// Storage adapters selected by flags, in their stable manifest order.
+pub(crate) fn requested_integrations(options: &ProjectScaffoldOptions) -> Vec<PolyglotIntegration> {
+    [
+        (
+            options.turso || options.database == Some("Turso"),
+            PolyglotIntegration::Turso,
+        ),
+        (options.mongodb, PolyglotIntegration::MongoDb),
+        (options.duckdb, PolyglotIntegration::DuckDb),
+        (options.surrealdb, PolyglotIntegration::SurrealDb),
+        (options.qdrant, PolyglotIntegration::Qdrant),
+    ]
+    .into_iter()
+    .filter_map(|(selected, integration)| selected.then_some(integration))
+    .collect()
+}
+
+fn validate_request(request: &NewProjectRequest<'_>) -> WizardResult<()> {
+    let options = &request.options;
+    if options.hot_reload {
+        return Err(invalid_input(
+            "DLL hot reload is unavailable in v12: generate without --hot-reload and use `cargo rullst dev` for supervised process reload",
+        ));
+    }
+    if options.database.is_some_and(|provider| {
+        !matches!(
+            provider,
+            "Sqlite" | "Postgres" | "MySQL" | "MariaDB" | "Turso"
+        )
+    }) {
+        return Err(invalid_input("unknown relational database provider"));
+    }
+    if request.blueprint.is_some_and(|id| {
+        !matches!(
+            id,
+            BLANK_BLUEPRINT_ID
+                | LMS_BLUEPRINT_ID
+                | SAAS_BLUEPRINT_ID
+                | BLOG_BLUEPRINT_ID
+                | PORTFOLIO_BLUEPRINT_ID
+                | ERP_BLUEPRINT_ID
+        )
+    }) {
+        return Err(invalid_input("unknown public blueprint ID"));
+    }
+    Ok(())
+}
+
+fn check_blank_only_flags(
+    plan: &ProjectPlan,
+    options: &ProjectScaffoldOptions,
+) -> WizardResult<()> {
+    if plan.api && plan.blueprint != BLANK_BLUEPRINT_ID {
+        return Err(invalid_input(
+            "--api is available only for the blank blueprint",
+        ));
+    }
+    if options.no_database && plan.blueprint != BLANK_BLUEPRINT_ID {
+        return Err(invalid_input(
+            "--no-database is available only for the blank blueprint",
+        ));
+    }
+    Ok(())
+}
+
+/// The flag answers, with deterministic defaults for everything else.
+fn initial_plan(request: &NewProjectRequest<'_>, requested: &[PolyglotIntegration]) -> ProjectPlan {
+    let options = &request.options;
+    ProjectPlan {
+        name: request.name.unwrap_or("app").to_string(),
+        blueprint: request.blueprint.unwrap_or(BLANK_BLUEPRINT_ID),
+        api: options.api,
+        database: if options.no_database {
+            Database::None
+        } else {
+            Database::Provider(options.database.unwrap_or("Sqlite"))
+        },
+        ai: options.wants_ai,
+        redis: options.wants_redis,
+        docker: options.docker,
+        nix: options.nix,
+        buildah: options.buildah,
+        requested: requested.to_vec(),
+        add_ons: Vec::new(),
+        skip_initial_migration: request.skip_initial_migration,
+    }
+}
+
+/// Questions the flags already answered.
+fn locked_questions(request: &NewProjectRequest<'_>) -> flow::Locked {
+    let options = &request.options;
+    flow::Locked {
+        name: request.name.is_some(),
+        // These flags exist only for the Blank starter, so they choose it.
+        blueprint: request.blueprint.is_some()
+            || options.api
+            || options.no_database
+            || options.database == Some("Turso"),
+        application: options.api,
+        database: options.database.is_some() || options.no_database,
+        ai: options.wants_ai,
+        redis: options.wants_redis,
+        docker: options.docker || options.buildah,
+        nix: options.nix,
+    }
+}
+
+/// The wizard's starting point: flag answers locked, the name asked unless given.
+fn interactive_setup(
+    request: &NewProjectRequest<'_>,
+    mut plan: ProjectPlan,
+    offer_packaging: bool,
+    port: u16,
+) -> flow::Setup {
+    let locked = locked_questions(request);
+    if !locked.name {
+        plan.name.clear();
+    }
+    flow::Setup {
+        plan,
+        locked,
+        offer_packaging,
+        dry_run: request.dry_run,
+        port,
+    }
+}
+
+fn needs_terminal() -> Box<dyn std::error::Error> {
+    invalid_input(
+        "`cargo rullst new` asks its questions only in an interactive terminal; add --default (with --blueprint, --database and other flags as needed) to create a project without prompts, and --dry-run to preview it first",
+    )
+}
+
+/// Decides what to create: from the flags with `--default`, otherwise with
+/// the interactive wizard. Without an interactive terminal it never prompts.
+pub(crate) fn plan_project(
+    request: &NewProjectRequest<'_>,
+    requested: &[PolyglotIntegration],
+    terminal: &Terminal,
+    offer_packaging: bool,
+) -> WizardResult<Planned> {
+    validate_request(request)?;
+    let plan = initial_plan(request, requested);
+    if request.options.use_defaults {
+        check_blank_only_flags(&plan, &request.options)?;
+        return Ok(Planned::Ready {
+            plan,
+            reviewed: false,
+        });
+    }
+    if !terminal.interactive() {
+        return Err(needs_terminal());
+    }
+    check_blank_only_flags(&plan, &request.options)?;
+    if plan.database == Database::Provider("Turso") && plan.blueprint != BLANK_BLUEPRINT_ID {
+        return Err(invalid_input(
+            "Turso-primary currently requires the blank starter while the SQLx-specific blueprints are being ported",
+        ));
+    }
+    if let Some(name) = request.name
+        && std::path::Path::new(name).exists()
+    {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("directory '{name}' already exists"),
+        )
+        .into());
+    }
+
+    terminal.print(&[Line::new()
+        .push(Tone::Accent, "◆ ")
+        .push(Tone::Brand, flow::TITLE)
+        .push(
+            Tone::Muted,
+            "  A few questions, then a review before anything is written.",
+        )])?;
+    let port = super::next_steps::resolve_port(std::env::var("PORT").ok().as_deref(), None, None);
+    let setup = interactive_setup(request, plan, offer_packaging, port);
+    let mut ui = terminal::TerminalUi::new(*terminal);
+    Ok(match flow::run(setup, &mut ui, preview::rendered_files)? {
+        flow::Outcome::Create(plan) => Planned::Ready {
+            plan,
+            reviewed: true,
+        },
+        flow::Outcome::Cancelled => Planned::Cancelled,
+    })
 }
 
 pub fn run_project_wizard(
@@ -193,276 +312,28 @@ pub fn run_project_wizard(
     )
 }
 
+/// The library entry point: the wizard's answers without creating anything.
+/// Packaging questions are left to the caller here.
 pub(crate) fn run_project_wizard_with_blueprint(
     name_arg: Option<&str>,
     options: ProjectScaffoldOptions,
     requested_integrations: &[PolyglotIntegration],
     blueprint_override: Option<usize>,
 ) -> WizardResult<ProjectWizardOptions> {
-    run_project_wizard_with_ui(
-        name_arg,
+    let request = NewProjectRequest {
+        name: name_arg,
         options,
-        requested_integrations,
-        blueprint_override,
-        &mut DialoguerWizardUi::new(),
-    )
-}
-
-fn run_project_wizard_with_ui<U: ProjectWizardUi>(
-    name_arg: Option<&str>,
-    options: ProjectScaffoldOptions,
-    requested_integrations: &[PolyglotIntegration],
-    blueprint_override: Option<usize>,
-    ui: &mut U,
-) -> WizardResult<ProjectWizardOptions> {
-    if options.hot_reload {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "DLL hot reload is unavailable in v12: generate without --hot-reload and use `cargo rullst dev` for supervised process reload",
-        )
-        .into());
-    }
-    let prompt_project_profile =
-        should_prompt_project_profile(name_arg.is_some(), options.use_defaults);
-    let mut api = options.api;
-    let db_provider_override = options.database;
-    if db_provider_override.is_some_and(|provider| {
-        !matches!(
-            provider,
-            "Sqlite" | "Postgres" | "MySQL" | "MariaDB" | "Turso"
-        )
-    }) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "unknown relational database provider",
-        )
-        .into());
-    }
-    if blueprint_override.is_some_and(|id| {
-        !matches!(
-            id,
-            BLANK_BLUEPRINT_ID
-                | LMS_BLUEPRINT_ID
-                | SAAS_BLUEPRINT_ID
-                | BLOG_BLUEPRINT_ID
-                | PORTFOLIO_BLUEPRINT_ID
-                | ERP_BLUEPRINT_ID
-        )
-    }) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "unknown public blueprint ID",
-        )
-        .into());
-    }
-
-    if !prompt_project_profile {
-        let name = name_arg.unwrap_or("app").to_string();
-        let blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
-        let db_provider = db_provider_override.unwrap_or("Sqlite").to_string();
-        if api && blueprint_selection != BLANK_BLUEPRINT_ID {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "--api is available only for the blank blueprint",
-            )
-            .into());
-        }
-        if options.no_database && blueprint_selection != BLANK_BLUEPRINT_ID {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "--no-database is available only for the blank blueprint",
-            )
-            .into());
-        }
-        return Ok(ProjectWizardOptions {
-            name,
-            api,
-            orm_pattern: if db_provider == "Turso" {
-                "Turso Active Record"
-            } else {
-                V12_ORM_PATTERN
-            }
-            .to_string(),
-            db_provider,
-            db_needed: !options.no_database,
-            hot_reload: options.hot_reload,
-            blueprint_selection,
-            wants_ai: options.wants_ai,
-            wants_redis: options.wants_redis,
-            turso: requested_integrations.contains(&PolyglotIntegration::Turso),
-            polyglot_integrations: requested_integrations.to_vec(),
-            frontend_engine: V12_FRONTEND_ENGINE.to_string(),
-        });
-    }
-
-    let name = match name_arg {
-        Some(n) => n.to_string(),
-        None => loop {
-            let val = ui.input(
-                "🚀 What's the New App Name? (lowercase, no spaces, must start with a letter)",
-            )?;
-            let val_trim = val.trim();
-            if val_trim.is_empty() {
-                continue;
-            }
-            if val_trim.contains(' ') {
-                println!(
-                    "{}",
-                    "❌ Spaces are not allowed in the project name. Please try again.".red()
-                );
-                continue;
-            }
-            if val_trim
-                .chars()
-                .next()
-                .is_some_and(|first| first.is_ascii_digit())
-            {
-                println!(
-                    "{}",
-                    "❌ The project name cannot start with a number. Please try again.".red()
-                );
-                continue;
-            }
-            if !val_trim
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-            {
-                println!("{}", "❌ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
-                continue;
-            }
-            break val_trim.to_string();
-        },
+        blueprint: blueprint_override,
+        ..NewProjectRequest::default()
     };
-
-    let mut db_provider = "Sqlite".to_string();
-    let mut db_needed = true;
-    let hot_reload = false;
-    let mut blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
-    let mut polyglot_integrations = requested_integrations.to_vec();
-
-    // A positional name replaces only the name prompt. `--default` is the
-    // explicit contract for skipping the interactive project-profile choices.
-    if prompt_project_profile {
-        let portfolio_title = format!(
-            "Portfolio 🔥 (showcase for Rullst/AI developers) - {}",
-            "HOT".bright_red().bold()
-        );
-        let blueprint_choices = vec![
-            "Blank Starter (Minimal HTMX counter; Nexus CMS is not included)".to_string(),
-            "LMS Platform (Courses, lessons, video player, HTMX integration)".to_string(),
-            "SaaS App Starter (Authentication + Stripe payments billing template)".to_string(),
-            "Blog / Press (Static site generator pre-wired with Nexus CMS)".to_string(),
-            portfolio_title,
-            "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)".to_string(),
-        ];
-        // `--api` exists only for the Blank starter, so it already chose it.
-        if blueprint_override.is_none() && !api {
-            blueprint_selection = ui.select("👉 Select a Starter Blueprint", &blueprint_choices)?;
-        }
-
-        if api && blueprint_selection != BLANK_BLUEPRINT_ID {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "--api is available only for the blank blueprint",
-            )
-            .into());
-        }
-
-        if blueprint_selection == BLANK_BLUEPRINT_ID {
-            // An explicit `--api` is the answer; asking would let the
-            // Full-Stack default silently replace it.
-            if !api {
-                let build_options = [
-                    "Full-Stack Web App (SaaS, Portfolio, Blog, Etc)".to_string(),
-                    "Headless REST API".to_string(),
-                ];
-                let build_selection =
-                    ui.select("🏗️ What would you like to build?", &build_options)?;
-                api = build_selection == 1;
-            }
-
-            db_needed = ui.confirm("🗄️ Will your project need a Database?", true)?;
-        } else {
-            db_needed = true;
-        }
-
-        if db_needed {
-            let db_options = primary_database_options(blueprint_selection);
-            let db_labels = db_options
-                .iter()
-                .map(|(label, _)| (*label).to_string())
-                .collect::<Vec<_>>();
-            let db_selection = ui.select(
-                "💾 Select the primary DB (network choices need a running local server)",
-                &db_labels,
-            )?;
-            db_provider = db_options
-                .get(db_selection)
-                .map(|(_, provider)| (*provider).to_string())
-                .ok_or_else(|| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "database selection was outside the displayed choices",
-                    )
-                })?;
-            if db_provider == "Turso"
-                && !polyglot_integrations.contains(&PolyglotIntegration::Turso)
-            {
-                polyglot_integrations.push(PolyglotIntegration::Turso);
-            }
-        }
-
-        let persistence_options = available_optional_storage_options(&polyglot_integrations);
-        if !persistence_options.is_empty() {
-            let labels = persistence_options
-                .iter()
-                .map(|(label, _)| (*label).to_string())
-                .collect::<Vec<_>>();
-            let persistence_selection = ui.multi_select(
-                "🧩 Optional storage add-ons (select zero or more; Space toggles, Enter confirms)",
-                &labels,
-            )?;
-            for selected in persistence_selection {
-                let Some((_, integration)) = persistence_options.get(selected) else {
-                    continue;
-                };
-                polyglot_integrations.push(*integration);
-            }
-        }
+    match plan_project(&request, requested_integrations, &Terminal::detect(), false)? {
+        Planned::Ready { plan, .. } => Ok(plan.wizard_options()),
+        Planned::Cancelled => Err(std::io::Error::new(
+            std::io::ErrorKind::Interrupted,
+            "project creation was cancelled",
+        )
+        .into()),
     }
-
-    let orm_pattern = if db_provider == "Turso" {
-        "Turso Active Record"
-    } else {
-        V12_ORM_PATTERN
-    }
-    .to_string();
-    let frontend_engine = V12_FRONTEND_ENGINE.to_string();
-
-    let wants_ai = ui.confirm(
-        "🤖 Will your project need Artificial Intelligence features (rullst-ai)?",
-        false,
-    )?;
-
-    let wants_redis = ui.confirm(
-        "Enable Redis adapters? (Requires explicit configuration; no automatic production fallback)",
-        false,
-    )?;
-
-    Ok(ProjectWizardOptions {
-        name,
-        api,
-        db_provider,
-        db_needed,
-        hot_reload,
-        blueprint_selection,
-        wants_ai,
-        wants_redis,
-        turso: polyglot_integrations.contains(&PolyglotIntegration::Turso),
-        polyglot_integrations,
-        orm_pattern,
-        frontend_engine,
-    })
 }
 
 #[cfg(test)]
