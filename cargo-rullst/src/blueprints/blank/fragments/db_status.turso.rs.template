@@ -1,5 +1,10 @@
-    // Typed Turso Active Record query through the primary Hrana transport.
-    let db_status = match User::all().await {
+    // Typed Turso Active Record query through the primary Hrana transport. A
+    // one-row probe keeps each request from reading (and billing) the table.
+    let probe = match User::query() {
+        Ok(query) => query.first().await,
+        Err(error) => Err(error),
+    };
+    let db_status = match probe {
         Ok(_) => "Database connected.".to_string(),
         Err(error) => {
             tracing::warn!(error = %error, "database status check failed");

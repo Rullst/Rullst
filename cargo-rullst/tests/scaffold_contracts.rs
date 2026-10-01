@@ -262,7 +262,15 @@ fn blank_database_status_keeps_diagnostics_out_of_public_responses() {
                     assert!(sources.contains(
                         "tracing::warn!(error = %error, \"database status check failed\")"
                     ));
+                    // The public home page probes one row instead of reading
+                    // the whole table (up to 10,000 billed Turso rows).
+                    assert!(sources.contains(if orm_pattern == "Active Record" {
+                        "match User::query().first().await {"
+                    } else {
+                        "Ok(query) => query.first().await,"
+                    }));
                 }
+                assert!(!sources.contains("User::all()"));
                 assert!(!sources.contains("users.len()"));
                 assert!(!sources.contains("offline or not"));
                 assert!(!sources.contains("not configured: {}"));
