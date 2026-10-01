@@ -17,7 +17,9 @@ pub enum FieldKind {
     Boolean,
     /// Date picker (YYYY-MM-DD).
     Date,
-    /// Date + time picker (YYYY-MM-DDTHH:MM).
+    /// Date + time picker (`datetime-local`). A local value is stored as
+    /// `YYYY-MM-DD HH:MM:SS[.fraction]`, the text form of `CURRENT_TIMESTAMP`;
+    /// a value with a `Z` or `±HH:MM` offset is stored as entered.
     DateTime,
     /// A password or secret field that hides its value.
     ///

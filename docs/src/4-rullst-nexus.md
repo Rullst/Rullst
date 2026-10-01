@@ -73,7 +73,10 @@ or other control characters (shown read-only; declare `kind = "textarea"` to
 edit multi-line text) or a value that cannot be decoded. Emptying a
 number, relation, date, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
-`NOT NULL` constraint therefore rejects clearing a required typed column.
+`NOT NULL` constraint therefore rejects clearing a required typed column. A
+saved local date-time is stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text
+`CURRENT_TIMESTAMP` and SQLx write, so text comparisons and ordering agree with
+application rows; a value with an offset is stored as entered.
 
 In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
 or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or

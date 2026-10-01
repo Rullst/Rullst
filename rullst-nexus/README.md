@@ -34,7 +34,10 @@ breaks or other control characters is shown read-only in a text area (declare
 empty with a note. An emptied number, relation, date, date-time, enum or JSON
 field is stored as NULL, never `''` (a new record omits it so the column default
 applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
-a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
+a `Z` or `±HH:MM` offset and use a `T` or space separator. A local date-time is
+stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text that `CURRENT_TIMESTAMP` and
+SQLx write, so text comparisons and ordering agree with application rows; a
+value with an offset is stored as entered. API clients should send only the fields they intend to
 change. A rejected value answers `422` with a plain-text reason, which the
 panel shows as a toast.
 

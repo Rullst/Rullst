@@ -139,6 +139,10 @@ fn normalize_values<'a>(
         return Ok(ValidatedFieldValue { field, value: None });
     }
     validate_semantic_value(field, &value)?;
+    let value = match field.kind {
+        FieldKind::DateTime => canonical_datetime(value),
+        _ => value,
+    };
     Ok(ValidatedFieldValue {
         field,
         value: Some(value),
@@ -286,7 +290,9 @@ fn validate_date(field: &FieldMeta, value: &str) -> Result<(), FormInputError> {
 }
 
 fn validate_datetime(field: &FieldMeta, value: &str) -> Result<(), FormInputError> {
-    let Some((date, time)) = value.split_once('T') else {
+    // `T` is what a `datetime-local` input submits; a space is the form
+    // `CURRENT_TIMESTAMP` and SQLx store, which a text widget shows as is.
+    let Some((date, time)) = value.split_once(['T', ' ']) else {
         return invalid(field, "must use a valid local date-time");
     };
     validate_date(field, date)?;
@@ -327,6 +333,30 @@ fn validate_datetime(field: &FieldMeta, value: &str) -> Result<(), FormInputErro
     } else {
         invalid(field, "must use a valid local date-time")
     }
+}
+
+/// The stored text of a validated date-time.
+///
+/// Rullst keeps date-times in text columns written as `YYYY-MM-DD HH:MM:SS`
+/// (`CURRENT_TIMESTAMP`, SQLx's `NaiveDateTime` encoding), and text comparison
+/// and ordering only agree between values of one form: `T` sorts after a
+/// space. A local value, including a browser `datetime-local` submission
+/// (`YYYY-MM-DDTHH:MM`), is therefore stored with a space and with seconds,
+/// keeping any fraction. A value with an offset can only come from the text
+/// widget that shows the stored value verbatim, and is kept as entered.
+pub(super) fn canonical_datetime(value: String) -> String {
+    let Some((date, time)) = value.split_once(['T', ' ']) else {
+        return value;
+    };
+    if time.contains(['Z', 'z', '+', '-']) {
+        return value;
+    }
+    let seconds = if time.matches(':').count() == 1 {
+        ":00"
+    } else {
+        ""
+    };
+    format!("{date} {time}{seconds}")
 }
 
 fn valid_utc_offset(offset: &str) -> bool {
@@ -381,5 +411,7 @@ fn invalid<T>(field: &FieldMeta, reason: &'static str) -> Result<T, FormInputErr
     })
 }
 
+#[cfg(test)]
+mod canonical_tests;
 #[cfg(test)]
 mod tests;
