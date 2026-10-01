@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790811571490,
+  "lastUpdate": 1790814828944,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13106,6 +13106,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c6b8266f577ebe90ba211157290a324ec45ebc07",
+          "message": "Merge pull request #362 from Rullst/fix/v13-connect-messaging-low-fixes\n\nfix(connect,messaging): low-severity retry, error typing, discovery, store URL and key-rotation fixes",
+          "timestamp": "2026-09-30T21:11:20-03:00",
+          "tree_id": "ad5c1330fe825410a71774e8d434d4ab62326f4d",
+          "url": "https://github.com/Rullst/Rullst/commit/c6b8266f577ebe90ba211157290a324ec45ebc07"
+        },
+        "date": 1790814828299,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5253,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 670,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 28,
             "range": "± 0",
             "unit": "ns/iter"
           }
