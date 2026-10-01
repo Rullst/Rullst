@@ -201,6 +201,7 @@ MAIL_FROM=
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         let billing_template = r#"
 # ── Billing (required in production) ──
+# Generated billing code reads these from the process environment, then this file.
 BILLING_PROVIDER=stripe
 # Stripe platform account ID; complete setup is documented in BILLING.md.
 BILLING_ACCOUNT_ID=

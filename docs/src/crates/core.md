@@ -233,11 +233,13 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   the process environment first and then `./.env`, which never overrides the
   environment and is never loaded into it. It returns `Ok(None)` when neither
   defines the name and fails with `ConfigError::Read`/`Parse` for an unreadable
-  or malformed `.env`; errors never contain `.env` content. The `#[doc(hidden)]`
-  `server::ProjectSettings` and async `server::read_project_setting` apply the
-  same precedence for first-party crates such as `rullst-mail`, and
-  `ProjectSettings::environment` applies the `Server` precedence for
-  `RULLST_ENV`/`APP_ENV`/`[app].env`; they are not a stable extension point.
+  or malformed `.env`; errors never contain `.env` content. Nexus
+  `basic_from_env` and generated billing code (`BILLING_*`) use it. The
+  `#[doc(hidden)]` `server::ProjectSettings` and async
+  `server::read_project_setting` apply the same precedence for first-party
+  crates such as `rullst-mail`, and `ProjectSettings::environment` applies the
+  `Server` precedence for `RULLST_ENV`/`APP_ENV`/`[app].env`; they are not a
+  stable extension point.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

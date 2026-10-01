@@ -1437,7 +1437,9 @@ the same server-authoritative controls.
   `./.env`, which never overrides the process environment and is never loaded
   into it. An unreadable or malformed `.env` is a `ConfigError` that never
   contains file content. Nexus `basic_from_env` reads its administrator
-  credentials through it.
+  credentials and generated billing code its `BILLING_*` settings through it;
+  generated billing treats a production `RullstConfig::environment()` (or an
+  invalid one) as production.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
