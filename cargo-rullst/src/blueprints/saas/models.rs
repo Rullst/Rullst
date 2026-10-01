@@ -14,6 +14,9 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
+    // Keeps the Argon2 hash out of `to_json()`, which feeds audit rows and
+    // the post-commit Redis model events.
+    #[orm(hidden)]
     pub password_hash: Option<String>,
     pub oauth_provider: Option<String>,
     pub oauth_id: Option<String>,

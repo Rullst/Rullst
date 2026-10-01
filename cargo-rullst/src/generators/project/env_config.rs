@@ -1,6 +1,6 @@
 // cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, Nix, and Buildah configuration.
 
-use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::{BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use crate::generators::project::PolyglotIntegration;
 use crate::generators::project::has_binary;
 use colored::*;
@@ -199,6 +199,17 @@ MAIL_FROM=
         env_example_content.push_str(
             "\n# ── Nexus Admin (required; use unique values, password >= 16 chars) ──\nNEXUS_ADMIN_USERNAME=\nNEXUS_ADMIN_PASSWORD=\n",
         );
+    }
+
+    if blueprint_selection == BLOG_BLUEPRINT_ID {
+        let origin_template = r#"
+# ── Public origin ──
+# Canonical HTTPS origin (no path) for the absolute URLs in robots.txt and
+# sitemap.xml, e.g. https://blog.example.com. Unset, neither lists a URL.
+RULLST_PUBLIC_ORIGIN=
+"#;
+        env_content.push_str(origin_template);
+        env_example_content.push_str(origin_template);
     }
 
     if blueprint_selection == SAAS_BLUEPRINT_ID {

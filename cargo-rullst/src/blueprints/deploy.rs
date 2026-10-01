@@ -73,6 +73,12 @@ pub const RENDER_YAML: &str = r#"services:
         value: info,rullst=debug
 "#;
 
+/// Address the generated Caddy proxy holds on the compose `edge` network.
+/// `deploy --platform vps` lists it in `Rullst.toml` `[security]
+/// trusted_proxies`, so the app reads each client from `X-Forwarded-For`
+/// instead of seeing every request come from Caddy.
+pub const VPS_PROXY_ADDRESS: &str = "172.31.250.10";
+
 pub const DOCKER_COMPOSE_PROD: &str = r#"version: '3.8'
 
 services:
@@ -86,6 +92,8 @@ services:
       - RUST_LOG=info,rullst=debug
     expose:
       - "3000"
+    networks:
+      - edge
 
   caddy:
     image: caddy:2-alpine
@@ -99,14 +107,29 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      edge:
+        # Rullst.toml [security] trusted_proxies trusts only this address to
+        # report the client address. Change both together.
+        ipv4_address: 172.31.250.10
     depends_on:
       - app
+
+networks:
+  edge:
+    ipam:
+      config:
+        # Pinned so the proxy address is known. If it overlaps a network on
+        # this host, choose another private /24 and update the address above.
+        - subnet: 172.31.250.0/24
 
 volumes:
   caddy_data:
   caddy_config:
 "#;
 
+/// Caddy (2.5+) replaces a client-supplied `X-Forwarded-For` with the address
+/// it received the request from, which the app trusts from this proxy only.
 pub const CADDYFILE: &str = r#"{$DOMAIN:localhost} {
     reverse_proxy app:3000
 }

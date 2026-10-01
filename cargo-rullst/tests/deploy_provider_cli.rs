@@ -148,3 +148,56 @@ fn snake_case_packages_get_rfc_1123_kubernetes_and_fly_names() {
             .contains("/app/target/release/My_App")
     );
 }
+
+#[test]
+fn vps_deploy_trusts_its_caddy_proxy_in_the_image_configuration() {
+    let fixture = Fixture::new();
+    fs::remove_file(fixture.root.join("Dockerfile")).expect("start without a Dockerfile");
+    fs::write(
+        fixture.root.join("Rullst.toml"),
+        "[database]\nurl = \"sqlite://db.sqlite\"\n",
+    )
+    .expect("fixture configuration");
+
+    // Without a trusted proxy every request reaches the app from Caddy, so
+    // all clients share the starters' per-client login budget.
+    let vps = fixture.deploy("vps");
+    assert!(vps.status.success(), "{}", text(&vps));
+    let config = fixture.read("Rullst.toml");
+    assert!(config.starts_with("[database]\nurl = \"sqlite://db.sqlite\"\n"));
+    assert!(config.contains("[security]\n"), "{config}");
+    assert!(
+        config.contains("trusted_proxies = [\"172.31.250.10\"]\n"),
+        "{config}"
+    );
+    assert!(
+        fixture
+            .read("docker-compose.prod.yml")
+            .contains("ipv4_address: 172.31.250.10\n")
+    );
+    assert!(
+        fixture
+            .read("Dockerfile")
+            .contains("COPY --chown=10001:10001 Rullst.toml /app/Rullst.toml\n")
+    );
+
+    let repeated = fixture.deploy("vps");
+    assert!(repeated.status.success(), "{}", text(&repeated));
+    assert!(text(&repeated).contains("already trusts the Caddy proxy"));
+    assert_eq!(fixture.read("Rullst.toml"), config);
+
+    fs::write(
+        fixture.root.join("docker-compose.prod.yml"),
+        "services: {}\n",
+    )
+    .expect("old compose");
+    let outdated = fixture.deploy("vps");
+    assert!(outdated.status.success(), "{}", text(&outdated));
+    assert!(text(&outdated).contains("does not pin Caddy to 172.31.250.10"));
+
+    // Managed platforms explain the requirement instead of guessing networks.
+    fs::remove_file(fixture.root.join("Rullst.toml")).expect("remove configuration");
+    let render = fixture.deploy("render");
+    assert!(render.status.success(), "{}", text(&render));
+    assert!(text(&render).contains("Render forwards every request through its proxy"));
+}

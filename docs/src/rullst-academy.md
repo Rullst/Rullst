@@ -124,8 +124,8 @@ PII masking and secret-minimized audit remain mandatory.
 
 | Boundary | Current reusable foundation | Academy must still prove |
 | :--- | :--- | :--- |
-| Learning domain | Generated curriculum, enrollment, progress, activities, quizzes, review, completion, certificates, leaderboard and automation foundations | coherent product UX, content quality, complete authorship and browser E2E |
-| Identity and schools | Session/RBAC helpers and persisted school-scoped LMS contracts | account recovery, invitations, device/session policy and every cross-school negative |
+| Learning domain | The v13 LMS starter's catalog, modules, lessons, accessible player, enrollment and owner-bound progress; the v12 Academy scaffold's activities, quizzes, review, completion, certificates, leaderboard and automation were retired | those learning features, coherent product UX, content quality, complete authorship and browser E2E |
+| Identity and schools | Session/RBAC helpers; the v13 LMS starter has no schools (the v12 school-scoped contracts were retired) | schools and memberships, account recovery, invitations, device/session policy and every cross-school negative |
 | AI tutor | guarded providers, Ollama fallback, bounded tenant-aware RAG and audit contracts | curated corpus, pedagogy, model evaluation, capacity and user-facing failure behavior |
 | Practical projects | queues, outbox and bounded messaging foundations | isolated runner, immutable images, resource policy and escape testing |
 | Media | bounded accessible lesson metadata, captions and transcripts | upload, storage, scanning, transcoding, caption quality and retention |

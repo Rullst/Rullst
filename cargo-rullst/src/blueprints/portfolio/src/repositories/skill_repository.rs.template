@@ -3,7 +3,7 @@ use crate::models::skill::Skill;
 pub struct SkillRepository;
 
 impl SkillRepository {
-    pub async fn all() -> Vec<Skill> {
-        Skill::all().await.unwrap_or_default()
+    pub async fn all() -> Result<Vec<Skill>, rullst_orm::Error> {
+        Skill::all().await
     }
 }

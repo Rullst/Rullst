@@ -105,4 +105,36 @@ mod tests {
         assert!(!source.contains(".expect("));
         assert!(!source.contains("panic!("));
     }
+
+    #[test]
+    fn registration_stores_real_timestamps() {
+        let source = render_auth_controller(None);
+        // The ORM inserts every field, so '' replaced the column's
+        // CURRENT_TIMESTAMP default for every self-registered account.
+        assert!(!source.contains("created_at: String::new()"));
+        assert!(!source.contains("updated_at: String::new()"));
+        assert!(source.contains("let created_at = utc_timestamp();"));
+        assert!(source.contains("updated_at: created_at.clone(),\n        created_at,\n"));
+        assert!(source.contains("fn registration_timestamps_use_the_current_timestamp_text()"));
+    }
+
+    #[test]
+    fn registration_lengths_match_the_form_limits() {
+        let source = render_auth_controller(None);
+        // Byte counts rejected non-ASCII names and passwords that the form's
+        // maxlength (UTF-16 units) accepted, with a "characters" message.
+        assert!(!source.contains("name.len() <= 120"));
+        assert!(!source.contains("payload.password.len()"));
+        assert!(source.contains("value.encode_utf16().count()"));
+        assert!(source.contains("form_length(name) <= 120"));
+        // The minimum counts characters; the maximum stays at the 72 bytes
+        // that rullst::auth::hash_password accepts, so no accepted password
+        // fails later as "Error processing password".
+        assert!(
+            source.contains("form_length(password) >= 12 && password.len() <= MAX_PASSWORD_BYTES")
+        );
+        assert!(source.contains("const MAX_PASSWORD_BYTES: usize = 72;"));
+        assert!(source.contains("if !valid_password(&payload.password) {"));
+        assert!(source.contains("fn length_limits_count_what_the_form_counts()"));
+    }
 }
