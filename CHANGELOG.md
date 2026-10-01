@@ -521,6 +521,13 @@ A prepared version section does not establish that its tag or crates exist.
 - Tracking tokens sign the bare recipient address, and the derived plain-text
   part keeps HTTP(S) link targets as `label <URL>`.
 
+### CLI starter templates
+
+- The Blog, SaaS and LMS starter sources live in template files under
+  `cargo-rullst/src/blueprints/{blog,saas,lms}/` that mirror the generated
+  project's layout, as Portfolio, ERP and Blank already do; their output is
+  byte-identical (610 variants, 12,922 files compared).
+
 ### Large module splits
 
 - Ten oversized production modules are split into focused submodules under the

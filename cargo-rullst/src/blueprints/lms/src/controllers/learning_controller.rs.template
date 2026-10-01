@@ -1,4 +1,4 @@
-pub(super) const FOUNDATION_CONTROLLER: &str = r##"use crate::pages::lms;
+use crate::pages::lms;
 use crate::services::learning_service::{self, LearningError};
 use rullst::server::{Extension, Form, IntoResponse, Path, Redirect, Response, StatusCode};
 use rullst_security::UserContext;
@@ -131,4 +131,3 @@ mod tests {
         assert!(longest.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b':' | b'-')));
     }
 }
-"##;

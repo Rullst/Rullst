@@ -1,19 +1,4 @@
-// Authentication controller and compact Academy-themed pages for the LMS starter.
-
-pub fn get_files() -> Vec<(&'static str, String)> {
-    vec![
-        ("src/controllers/auth_controller.rs", identity_controller()),
-        ("src/pages/auth.rs", AUTH_PAGES.to_string()),
-    ]
-}
-
-/// Registration creates only the account: the starter has no schools or
-/// memberships, and learners enroll in courses from the catalog.
-fn identity_controller() -> String {
-    crate::generators::auth::controllers::render_auth_controller(None)
-}
-
-const AUTH_PAGES: &str = r##"use rullst::response::Html;
+use rullst::response::Html;
 
 fn auth_page(
     title: &str,
@@ -73,4 +58,3 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
         nonce = rullst::html::escape_str(csp_nonce),
     ))
 }
-"##;

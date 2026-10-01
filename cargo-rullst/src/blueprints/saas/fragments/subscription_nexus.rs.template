@@ -1,0 +1,21 @@
+
+use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
+
+impl NexusModel for Subscription {
+    fn nexus_table() -> &'static str { "subscriptions" }
+    fn nexus_label() -> &'static str { "Subscriptions" }
+    fn nexus_icon() -> &'static str { "💳" }
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
+            FieldMeta { name: "user_id", label: "User ID", kind: FieldKind::Number, hidden: false, readonly: false },
+            FieldMeta { name: "customer_id", label: "Customer ID", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "subscription_id", label: "Subscription ID", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "plan_id", label: "Plan ID", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "status", label: "Status", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "ends_at", label: "Ends At", kind: FieldKind::Number, hidden: false, readonly: false },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::Text, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::Text, hidden: false, readonly: true },
+        ]
+    }
+}
