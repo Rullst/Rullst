@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790810756896,
+  "lastUpdate": 1790812816884,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22989,6 +22989,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1781,
             "range": "± 45",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d2ea2a53f766d89537f013832f8969106c889ac",
+          "message": "Merge pull request #361 from Rullst/fix/v13-nexus-low-fixes\n\nfix(nexus): PostgreSQL typed writes, canonical keys, safe edit forms, htmx history and live search",
+          "timestamp": "2026-09-30T20:52:02-03:00",
+          "tree_id": "e41f717ba5ad65480e2c22716452425055acfc42",
+          "url": "https://github.com/Rullst/Rullst/commit/0d2ea2a53f766d89537f013832f8969106c889ac"
+        },
+        "date": 1790812813879,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 625,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 889,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 664,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1825,
+            "range": "± 60",
             "unit": "ns/iter"
           }
         ]
