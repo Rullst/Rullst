@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790867263540,
+  "lastUpdate": 1790868673913,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24015,6 +24015,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2270,
             "range": "± 99",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d86d576b8783dc161a03457ccc78ba41afc6fb1d",
+          "message": "Merge pull request #385 from Rullst/fix/v13-final-ai-tail\n\nfix(ai): final-review fixes for image-beacon parsing, RAG tenant checks and provider output limits",
+          "timestamp": "2026-10-01T12:23:53-03:00",
+          "tree_id": "482dd58b820b5d8ad29581297367e609e58fc64a",
+          "url": "https://github.com/Rullst/Rullst/commit/d86d576b8783dc161a03457ccc78ba41afc6fb1d"
+        },
+        "date": 1790868671378,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 763,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 977,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 648,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2378,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
