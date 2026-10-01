@@ -175,6 +175,56 @@ async fn a_driver_without_deferral_still_fails_an_unhandled_claim() {
     );
 }
 
+#[tokio::test]
+async fn a_job_no_worker_can_handle_is_failed_after_the_hand_back_ceiling() {
+    let below = worker::MAX_UNHANDLED_CLAIM_ATTEMPT - 1;
+    let (queue, state) = recording_queue("retired_export", below);
+    let handle = Worker::new(&queue).poll_interval(2).run().unwrap();
+    wait_for_transition(&state).await;
+    drop(handle);
+    assert_eq!(
+        *state.fenced.lock().unwrap(),
+        vec![("requeue_attempt_after", "job".to_string(), below)]
+    );
+
+    let ceiling = worker::MAX_UNHANDLED_CLAIM_ATTEMPT;
+    let (queue, state) = recording_queue("retired_export", ceiling);
+    let mut handle = Worker::new(&queue).poll_interval(2).run().unwrap();
+    wait_for_transition(&state).await;
+    assert!(matches!(
+        handle.next_error().await,
+        Some(QueueError::HandlerNotFound(name)) if name == "retired_export"
+    ));
+    handle.shutdown().await.unwrap();
+    assert_eq!(
+        *state.fenced.lock().unwrap(),
+        vec![("mark_failed_attempt", "job".to_string(), ceiling)]
+    );
+    assert!(state.deferral.lock().unwrap().is_none());
+}
+
+#[tokio::test]
+async fn dispatch_rejects_job_names_no_worker_could_handle() {
+    let (queue, _state) = recording_queue("unused", 1);
+    let far = std::time::SystemTime::now() + Duration::from_secs(60);
+    for name in [String::new(), "x".repeat(257)] {
+        assert!(matches!(
+            queue.dispatch(&name, serde_json::json!({})).await,
+            Err(QueueError::InvalidConfiguration(_))
+        ));
+        assert!(matches!(
+            queue.dispatch_at(&name, serde_json::json!({}), far).await,
+            Err(QueueError::InvalidConfiguration(_))
+        ));
+    }
+    assert!(
+        queue
+            .dispatch(&"x".repeat(256), serde_json::json!({}))
+            .await
+            .is_ok()
+    );
+}
+
 #[cfg(all(feature = "queue-sqlite", not(miri)))]
 mod sqlite {
     use super::*;

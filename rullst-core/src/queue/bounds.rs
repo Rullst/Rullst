@@ -4,6 +4,20 @@ use super::{MAX_STALLED_LEASES_LIMIT, QueueError};
 #[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Longest job name [`super::Queue::dispatch`] accepts, in bytes.
+const MAX_JOB_NAME_BYTES: usize = 256;
+
+/// Rejects an empty or oversized job name before it is stored, since no
+/// worker could ever register a handler for an empty name.
+pub(super) fn validate_job_name(job_name: &str) -> Result<(), QueueError> {
+    if job_name.is_empty() || job_name.len() > MAX_JOB_NAME_BYTES {
+        return Err(QueueError::InvalidConfiguration(format!(
+            "job names must be between 1 and {MAX_JOB_NAME_BYTES} bytes"
+        )));
+    }
+    Ok(())
+}
+
 #[cfg_attr(
     not(any(feature = "queue-sqlite", feature = "queue-redis")),
     allow(dead_code)

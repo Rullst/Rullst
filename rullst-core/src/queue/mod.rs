@@ -390,7 +390,12 @@ impl Queue {
     }
 
     /// Dispatch a named job with a JSON payload onto the queue.
+    ///
+    /// # Errors
+    /// Returns [`QueueError::InvalidConfiguration`] for an empty job name or
+    /// one longer than 256 bytes.
     pub async fn dispatch(&self, job_name: &str, payload: Value) -> Result<String, QueueError> {
+        bounds::validate_job_name(job_name)?;
         let id = Uuid::new_v4().to_string();
         let payload_str = serde_json::to_string(&payload)
             .map_err(|e| QueueError::Serialization(e.to_string()))?;
@@ -402,13 +407,15 @@ impl Queue {
     ///
     /// The built-in SQLite and Redis drivers support millisecond scheduling for at most 366 days
     /// ahead. Actual execution occurs on the first worker poll after the timestamp; wall-clock
-    /// precision, provider acceptance, and exactly-once delivery are not implied.
+    /// precision, provider acceptance, and exactly-once delivery are not implied. Job names are
+    /// validated as in [`Self::dispatch`].
     pub async fn dispatch_at(
         &self,
         job_name: &str,
         payload: Value,
         available_at: SystemTime,
     ) -> Result<String, QueueError> {
+        bounds::validate_job_name(job_name)?;
         if available_at.duration_since(UNIX_EPOCH).is_err() {
             return Err(QueueError::InvalidConfiguration(
                 "scheduled timestamp predates the Unix epoch".to_string(),

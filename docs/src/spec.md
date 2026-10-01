@@ -1521,6 +1521,11 @@ the same server-authoritative controls.
   millisecond expiry has passed; a claim made without one (`pop`) records only
   whole seconds, so it is recovered between `stalled_after` and about two
   seconds later.
+* A worker without a handler for a claimed job's name hands it back with a
+  five-second delay until the claim's 720th attempt, then fails it with
+  `HandlerNotFound`, so a job whose name no worker registers reaches the
+  failed state instead of cycling forever. `Queue::dispatch` and
+  `dispatch_at` reject empty job names and names longer than 256 bytes.
 
 ### Local object replacement
 

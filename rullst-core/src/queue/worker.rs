@@ -15,6 +15,10 @@ mod execution;
 
 /// Delay before a job handed back for lack of a handler can be claimed again.
 pub(crate) const UNHANDLED_JOB_RETRY_DELAY: Duration = Duration::from_secs(5);
+/// Claim attempt from which a job without a local handler is failed instead
+/// of handed back: with the five-second hand-back delay, at least an hour in
+/// which no worker that registers its name claimed it.
+pub(crate) const MAX_UNHANDLED_CLAIM_ATTEMPT: u32 = 720;
 
 /// Type alias for asynchronous job handler closures.
 pub type JobHandler = Box<
@@ -402,7 +406,9 @@ async fn dispatch_job(
 /// Returns a job this worker has no handler for to the queue, so a worker
 /// that registered its name can claim it. The delay keeps this worker from
 /// re-claiming the job in a hot loop; `HandlerNotFound` is still reported.
-/// Drivers without delayed requeue keep the previous behaviour and fail it.
+/// Drivers without delayed requeue keep the previous behaviour and fail it,
+/// and a claim at [`MAX_UNHANDLED_CLAIM_ATTEMPT`] or later is failed too, so
+/// a job whose name no worker handles reaches a terminal state.
 async fn hand_back_unhandled(
     job: &QueuedJob,
     driver: &dyn QueueDriver,
@@ -410,15 +416,26 @@ async fn hand_back_unhandled(
 ) {
     let missing = QueueError::HandlerNotFound(job.name.clone());
     let reason = missing.to_string();
-    let transition = match driver
-        .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
-        .await
-    {
-        Err(QueueError::Unsupported(_)) => driver
+    let fail = |reason: String| async move {
+        driver
             .mark_failed_attempt(&job.id, job.attempts, &reason)
             .await
-            .map_err(|error| state_error(&job.id, "mark_failed", error)),
-        deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
+            .map_err(|error| state_error(&job.id, "mark_failed", error))
+    };
+    let transition = if job.attempts >= MAX_UNHANDLED_CLAIM_ATTEMPT {
+        fail(format!(
+            "{reason}; failed at claim attempt {} instead of being handed back again",
+            job.attempts
+        ))
+        .await
+    } else {
+        match driver
+            .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
+            .await
+        {
+            Err(QueueError::Unsupported(_)) => fail(reason).await,
+            deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
+        }
     };
     match transition {
         Ok(()) => errors.report(missing),

@@ -67,7 +67,12 @@
   worker) instead of requeuing it forever.
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
   name hands the claim back with a five-second delay (SQLite and Redis) instead
-  of failing it, so a worker that registered that name can run it.
+  of failing it, so a worker that registered that name can run it. From the
+  720th claim attempt (at least an hour of hand-backs) the job is failed with
+  `HandlerNotFound` instead, so a job no worker handles becomes visible and
+  purgeable; since a retry keeps the attempt counter, deploy a handler before
+  retrying it. `dispatch` and `dispatch_at` reject empty job names and names
+  longer than 256 bytes.
 - **Bounded Redis Failure State:** Failed jobs and dead letters are each
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
