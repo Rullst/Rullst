@@ -1122,6 +1122,9 @@ only in debug/development. Readiness verifies that marker, not just an open port
 Changing the configured port requires restarting the CLI. In-memory state and
 unsaved browser state reset during reload. The process receives a bounded
 shutdown interval before forced termination; this is a development facility.
+Ctrl+C, SIGTERM (an IDE stop button or `kill`) and SIGHUP (a closed terminal)
+end `dev` and `dash` the same way: the application's process group is stopped
+and its executable snapshot removed (on Windows, Ctrl+C and closing the console).
 
 No scaffold question is required: `dev` and `dash` enable auto-reload, while
 `cargo run` runs the application normally. The legacy `--hot-reload` scaffold

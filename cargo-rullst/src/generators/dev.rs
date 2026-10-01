@@ -33,21 +33,57 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
     let (commands, command_rx) = mpsc::channel(1);
     let supervisor = supervise(is_dash, port, log_tx.clone(), status_tx, command_rx);
     tokio::pin!(supervisor);
+    let shutdown = shutdown_signal()?;
     if is_dash {
         tokio::select! {
             result = &mut supervisor => result?,
             result = crate::ui::dash_tui::run(log_rx, log_tx, port, true, status_rx, commands) => result?,
-            result = tokio::signal::ctrl_c() => result?,
+            result = shutdown => result?,
         }
     } else {
         drop(log_rx);
         tokio::select! {
             result = &mut supervisor => result?,
-            result = tokio::signal::ctrl_c() => result?,
+            result = shutdown => result?,
         }
     }
     // Dropping the supervisor cancels the watcher/build and reaps its owned child.
     Ok(())
+}
+
+/// Resolves on Ctrl+C and, on Unix, on SIGTERM (an IDE stop button, `kill`)
+/// or SIGHUP (a closed terminal); on Windows also on console close. Each ends
+/// the session through the drop path that stops the application group and
+/// removes its snapshot, instead of the default action orphaning them. The
+/// handlers are registered before this returns.
+fn shutdown_signal() -> io::Result<impl std::future::Future<Output = io::Result<()>>> {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        let mut terminate = signal(SignalKind::terminate())?;
+        let mut hangup = signal(SignalKind::hangup())?;
+        Ok(async move {
+            tokio::select! {
+                result = tokio::signal::ctrl_c() => result,
+                _ = terminate.recv() => Ok(()),
+                _ = hangup.recv() => Ok(()),
+            }
+        })
+    }
+    #[cfg(windows)]
+    {
+        let mut close = tokio::signal::windows::ctrl_close()?;
+        Ok(async move {
+            tokio::select! {
+                result = tokio::signal::ctrl_c() => result,
+                _ = close.recv() => Ok(()),
+            }
+        })
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        Ok(tokio::signal::ctrl_c())
+    }
 }
 
 async fn supervise(
