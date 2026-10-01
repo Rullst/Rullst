@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use crate::generators::audit_purl::{CargoOrigin, cargo_origin};
 use crate::generators::output_guard::write_output;
 use crate::generators::source_walk::rust_sources;
 
@@ -57,7 +58,8 @@ fn generate_cyclonedx_sbom_at(
             .get("checksum")
             .and_then(toml::Value::as_str)
             .unwrap_or_default();
-        push_component(&mut components, name, version, checksum, index);
+        let source = package.get("source").and_then(toml::Value::as_str);
+        push_component(&mut components, name, version, checksum, source, index);
     }
 
     let count = components.len();
@@ -96,18 +98,35 @@ fn push_component(
     name: &str,
     version: &str,
     checksum: &str,
+    source: Option<&str>,
     index: usize,
 ) {
     if name.is_empty() || version.is_empty() {
         return;
     }
+    let origin = cargo_origin(name, version, source);
+    let bom_ref = match origin.purl() {
+        Some(purl) if purl.contains('?') => format!("{purl}&rullst-index={index}"),
+        Some(purl) => format!("{purl}?rullst-index={index}"),
+        None => format!("local:cargo/{name}@{version}?rullst-index={index}"),
+    };
     let mut component = serde_json::json!({
         "type": "library",
         "name": name,
         "version": version,
-        "bom-ref": format!("pkg:cargo/{name}@{version}?rullst-index={index}"),
-        "purl": format!("pkg:cargo/{name}@{version}"),
+        "bom-ref": bom_ref,
     });
+    if let Some(purl) = origin.purl() {
+        component["purl"] = serde_json::json!(purl);
+    }
+    if !matches!(origin, CargoOrigin::CratesIo(_)) {
+        // Path, workspace, git and other-registry packages are not the crates.io
+        // package of the same name; record the lockfile origin explicitly.
+        component["properties"] = serde_json::json!([{
+            "name": "rullst:cargo:source",
+            "value": source.unwrap_or("local")
+        }]);
+    }
     if checksum.len() == 64 && checksum.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         component["hashes"] = serde_json::json!([{
             "alg": "SHA-256",
@@ -296,7 +315,7 @@ mod tests {
         .expect("temporary manifest");
         fs::write(
             &lock,
-            "version = 4\n\n[[package]]\nname = \"demo\"\nversion = \"1.2.3\"\n\n[[package]]\nname = \"dep\"\nversion = \"2.0.0\"\nchecksum = \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n",
+            "version = 4\n\n[[package]]\nname = \"demo\"\nversion = \"1.2.3\"\n\n[[package]]\nname = \"dep\"\nversion = \"2.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n",
         )
         .expect("temporary lockfile");
 
@@ -310,10 +329,17 @@ mod tests {
         assert_eq!(document["bomFormat"], "CycloneDX");
         assert_eq!(document["specVersion"], "1.5");
         assert_eq!(document["metadata"]["component"]["name"], "demo");
+        let components = document["components"].as_array().expect("components");
+        assert_eq!(components.len(), 2);
+        // The root package has no lockfile source: it is not a crates.io crate.
+        assert!(components[0].get("purl").is_none());
+        assert_eq!(components[0]["properties"][0]["value"], "local");
+        assert_eq!(components[1]["purl"], "pkg:cargo/dep@2.0.0");
         assert_eq!(
-            document["components"].as_array().expect("components").len(),
-            2
+            components[1]["bom-ref"],
+            "pkg:cargo/dep@2.0.0?rullst-index=1"
         );
+        assert!(components[1].get("properties").is_none());
         let serial = document["serialNumber"]
             .as_str()
             .expect("serial number")

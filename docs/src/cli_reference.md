@@ -1115,6 +1115,13 @@ follow symlinked files or directories and skip `target/` and `.git/`. A walk
 stops at 64 directory levels or 250,000 entries; reaching either bound is
 reported as a finding, so the scan fails as incomplete instead of passing.
 
+SBOM components come from `Cargo.lock`. Only crates.io packages receive the
+plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a
+`repository_url` qualifier, a git package adds a `vcs_url` qualifier with the
+locked commit, and path or workspace packages (including the application) have
+no purl. Every component that is not from crates.io carries a
+`rullst:cargo:source` property with its lockfile source, or `local`.
+
 `SECURITY_COMPLIANCE.md` and `sbom-cyclonedx.json` are written in the current
 directory and replace a previous regular file. Because an audit may run on an
 untrusted checkout, the command refuses to write either file through a symlink.
