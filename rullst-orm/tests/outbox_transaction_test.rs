@@ -105,10 +105,69 @@ async fn outbox_is_atomic_idempotent_and_safely_claimed() {
     .await
     .expect_err("reject idempotency-key reuse with different content");
     assert!(matches!(collision, Error::Validation(_)));
+    let collision_message = collision.to_string();
+    assert!(
+        !collision_message.contains("order-1") && !collision_message.contains("tenant-a"),
+        "the conflict error must not echo the stream or event key"
+    );
     collision_transaction
         .rollback()
         .await
         .expect("rollback collision transaction");
+
+    // A replay whose object keys serialize in another order is the same event.
+    let ordered = json!({"a": 1, "b": {"c": 3, "d": 4}});
+    let original = Orm::transaction(move |_| {
+        Box::pin(async move {
+            Outbox::enqueue("replay-stream", "replayed-event", "order.created", &ordered).await
+        })
+    })
+    .await
+    .expect("enqueue multi-key payload");
+    sqlx::query("UPDATE rullst_outbox SET payload_json = ? WHERE stream = ? AND event_key = ?")
+        .bind(r#"{"b":{"d":4,"c":3},"a":1}"#)
+        .bind("replay-stream")
+        .bind("replayed-event")
+        .execute(Orm::pool().expect("ORM pool"))
+        .await
+        .expect("store the payload in another key order");
+    let replay = Orm::transaction(|_| {
+        Box::pin(async {
+            Outbox::enqueue(
+                "replay-stream",
+                "replayed-event",
+                "order.created",
+                &json!({"a": 1, "b": {"c": 3, "d": 4}}),
+            )
+            .await
+        })
+    })
+    .await
+    .expect("a key-order-only difference is the same event");
+    assert!(!replay.inserted);
+    assert_eq!(replay.id, original.id);
+
+    // Lease operations commit on their own, so a managed transaction (whose
+    // rollback would otherwise leave the event acknowledged) refuses them. On
+    // SQLite they would also wait on the transaction's write lock.
+    let refused = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        Orm::transaction(|_| {
+            Box::pin(async {
+                let claim = Outbox::claim_next("tenant-b", "worker-b", 30, 3).await;
+                let acknowledge = Outbox::acknowledge(1, "claim-token").await;
+                let fail = Outbox::fail(1, "claim-token", "retry later", 3, 5).await;
+                let claim_refused = matches!(claim, Err(Error::Validation(_)));
+                Ok::<_, Error>((claim_refused, acknowledge, fail))
+            })
+        }),
+    )
+    .await
+    .expect("lease operations must not wait on the managed transaction")
+    .expect("the managed transaction commits");
+    assert!(refused.0);
+    assert!(matches!(refused.1, Err(Error::Validation(_))));
+    assert!(matches!(refused.2, Err(Error::Validation(_))));
 
     let tenant_b = Outbox::claim_next("tenant-b", "worker-b", 30, 3)
         .await

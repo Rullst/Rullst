@@ -260,6 +260,16 @@ impl std::fmt::Debug for AccessTokenLease {
 /// consumed the prior one; the call returns the underlying error and the next
 /// call refreshes again. Cross-process leases, encrypted
 /// persistence and account authorization remain application responsibilities.
+///
+/// # Cancellation
+///
+/// The provider refresh runs inside the caller's future while it holds the
+/// state lock. If that future is dropped after the provider accepted the grant
+/// (a client disconnect, a timeout layer or `tokio::select!`), the response is
+/// lost and this session keeps a refresh token the provider may already have
+/// rotated or consumed; the next refresh then fails with `invalid_grant`.
+/// Drive refreshes from a task that is not cancelled with the request, or treat
+/// that failure as a reauthentication signal.
 pub struct AutoRefreshingSession<'provider, SelectedProvider>
 where
     SelectedProvider: Provider + ?Sized,
@@ -314,11 +324,17 @@ where
     }
 
     /// Returns a valid lease, refreshing once when the current token is due.
+    ///
+    /// Not cancellation-safe while a refresh is in flight; see
+    /// [the type-level notes](Self#cancellation).
     pub async fn access_token(&self) -> Result<AccessTokenLease, ConnectError> {
         self.access_token_at(unix_now()?).await
     }
 
     /// Uses an explicit trusted clock for deterministic workers and tests.
+    ///
+    /// Not cancellation-safe while a refresh is in flight; see
+    /// [the type-level notes](Self#cancellation).
     pub async fn access_token_at(&self, now: u64) -> Result<AccessTokenLease, ConnectError> {
         let mut state = self.state.lock().await;
         if !state.should_refresh(now, self.refresh_leeway_seconds) {

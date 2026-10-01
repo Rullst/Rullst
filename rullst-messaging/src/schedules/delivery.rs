@@ -23,6 +23,9 @@ impl<C: Clock> PostgresRecurringStore<C> {
     }
     /// Claims pending/abandoned work with a fresh, single-use, fenced capability.
     /// A lease may be shorter than configured at the end of its delivery window.
+    /// Leases that already expired when the claim committed are not returned;
+    /// their occurrences are reclaimed or expire normally, and the claim fails
+    /// only when no lease in the batch could still be used.
     pub async fn claim(&self, limit: usize) -> Result<Vec<OccurrenceLease>> {
         let limit = tick::batch(limit)?;
         bounded(async {
@@ -49,8 +52,12 @@ impl<C: Clock> PostgresRecurringStore<C> {
                 metadata.attempts += 1; metadata.state = OccurrenceState::Leased;
                 output.push(OccurrenceLease { namespace: self.config.namespace().to_owned(), token, version, expires, metadata });
             }
-            let deadline = output.iter().map(|lease| lease.expires).min();
-            self.commit(tx, now, deadline).await?; Ok(output)
+            // One lease near its window end must not fail or orphan the batch:
+            // each lease is fenced by its own expiry when it is used.
+            let deadline = output.iter().map(|lease| lease.expires).max();
+            let observed = self.commit_observed(tx, now, deadline).await?;
+            output.retain(|lease| observed < lease.expires);
+            Ok(output)
         }).await
     }
     pub(super) async fn verify(

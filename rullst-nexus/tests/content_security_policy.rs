@@ -143,9 +143,43 @@ fn assert_runs_under_default_csp(route: &str, html: &str) {
     }
 }
 
+/// Stores one complex record so the edit form renders its real widgets. A
+/// strict PostgreSQL/MySQL build has no server here, so its edit form reports
+/// the failure (still as CSP-clean markup) instead.
+async fn edit_form_status() -> StatusCode {
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+    {
+        rullst_orm::Orm::init_with_options("sqlite::memory:", 1, 10)
+            .await
+            .expect("isolated CSP fixture database");
+        let pool = rullst_orm::Orm::try_pool().expect("CSP fixture pool");
+        for sql in [
+            "CREATE TABLE complex_records (id INTEGER PRIMARY KEY, title TEXT, \
+             description TEXT, email TEXT, website TEXT, price INTEGER, secret TEXT, \
+             created_date TEXT, updated_time TEXT, is_published INTEGER, metadata TEXT, \
+             status TEXT)",
+            "INSERT INTO complex_records VALUES (1, 'Title', 'First line', \
+             'ada@example.com', 'https://example.com', 5, 'stored', '2026-01-01', \
+             '2026-01-01T10:00:00', 1, '{}', 'legacy')",
+        ] {
+            rullst_orm::_sqlx::query(sql)
+                .execute(pool)
+                .await
+                .expect("CSP fixture statement");
+        }
+        StatusCode::OK
+    }
+    #[cfg(any(feature = "strict-postgres", feature = "strict-mysql"))]
+    {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
 #[tokio::test]
 // TM-NEXUS-03: the panel must work under the production nonce CSP.
 async fn nexus_pages_run_under_the_default_production_csp() {
+    let edit_route = "/table/complex_records/1/edit";
+    let edit_status = edit_form_status().await;
     let nexus = Nexus::new()
         .with_brand("CSP Suite")
         .register::<UserModel>()
@@ -158,7 +192,7 @@ async fn nexus_pages_run_under_the_default_production_csp() {
     let fragments = [
         "/table/complex_records",
         "/table/complex_records/new",
-        "/table/complex_records/1/edit",
+        edit_route,
         "/table/users/search?q=alice",
     ];
     let mut asset_paths = Vec::new();
@@ -172,7 +206,12 @@ async fn nexus_pages_run_under_the_default_production_csp() {
             .oneshot(request.body(Body::empty()).expect("valid request"))
             .await
             .expect("handler executed");
-        assert_eq!(response.status(), StatusCode::OK, "{route}");
+        let expected = if *route == edit_route {
+            edit_status
+        } else {
+            StatusCode::OK
+        };
+        assert_eq!(response.status(), expected, "{route}");
         let policy = response
             .headers()
             .get(axum::http::header::CONTENT_SECURITY_POLICY)

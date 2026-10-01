@@ -145,17 +145,32 @@ impl<C: Clock> PostgresRecurringStore<C> {
         let last: i64 = row
             .try_get("last_now")
             .map_err(|_| RecurringError::Configuration)?;
-        if crypto::open(
+        let configuration = crypto::open(
             &self.keys,
             self.config.namespace(),
             "configuration",
             "v1",
             &binding,
-        )?
-        .as_slice()
-            != self.config.binding()
-        {
+        )?;
+        if configuration.as_slice() != self.config.binding() {
             return Err(RecurringError::Configuration);
+        }
+        // Keep the binding under the primary key, so the key that sealed it at
+        // initialization can leave the bounded keyring after a rotation.
+        if crypto::sealed_key_id(&binding) != Some(self.keys.primary_key_id()) {
+            let resealed = crypto::seal(
+                &self.keys,
+                self.config.namespace(),
+                "configuration",
+                "v1",
+                &configuration,
+            )?;
+            sqlx::query("UPDATE rullst_recurring_control SET binding=$1 WHERE namespace=$2")
+                .bind(resealed)
+                .bind(self.config.namespace())
+                .execute(&mut **tx)
+                .await
+                .map_err(|_| RecurringError::Storage)?;
         }
         if last < 0 {
             return Err(RecurringError::Clock);
@@ -171,20 +186,31 @@ impl<C: Clock> PostgresRecurringStore<C> {
     }
     pub(super) async fn commit(
         &self,
-        mut tx: Transaction<'_, Postgres>,
+        tx: Transaction<'_, Postgres>,
         minimum: i64,
         deadline: Option<i64>,
     ) -> Result<()> {
+        let observed = self.commit_observed(tx, minimum, deadline).await?;
+        if deadline.is_some_and(|end| observed >= end) {
+            return Err(RecurringError::InvalidLease);
+        }
+        Ok(())
+    }
+    /// Rolls back when `deadline` has passed before COMMIT; otherwise commits
+    /// and returns the trusted time observed afterwards, leaving it to the
+    /// caller to judge work that was already durably committed.
+    pub(super) async fn commit_observed(
+        &self,
+        mut tx: Transaction<'_, Postgres>,
+        minimum: i64,
+        deadline: Option<i64>,
+    ) -> Result<i64> {
         let finished = self.observe(&mut tx, minimum).await?;
         if deadline.is_some_and(|end| finished >= end) {
             return Err(RecurringError::InvalidLease);
         }
         tx.commit().await.map_err(|_| RecurringError::Storage)?;
-        let observed = advance_clock(current(&self.clock)?, finished)?;
-        if deadline.is_some_and(|end| observed >= end) {
-            return Err(RecurringError::InvalidLease);
-        }
-        Ok(())
+        advance_clock(current(&self.clock)?, finished)
     }
 }
 

@@ -67,8 +67,10 @@ mutations.
 - Application responsibility: identity, tenant membership and domain policy;
   model/field authorization for global models and custom routes; database
   privileges; trusted proxy and TLS configuration; secret rotation; immutable
-  external audit delivery, retention and backup; schema/type compatibility;
-  and ownership rules beyond the explicit tenant column. The built-in audit
+  external audit delivery, retention and backup; schema/type compatibility
+  (on PostgreSQL Nexus casts number, relation and Boolean writes, but dates,
+  date-times, JSON and enums need text columns); and ownership rules beyond
+  the explicit tenant column. The built-in audit
   table is transaction-coupled in the same database, not append-only or
   tamper-evident, and records committed mutations rather than rejected
   attempts. Multiline intent and

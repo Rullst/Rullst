@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::nexus::crud::{field_kind_label, sanitize_identifier};
 use crate::nexus::types::NexusState;
-use crate::nexus::ui::{render_shell, render_sidebar};
+use crate::nexus::ui::{render_shell, render_sidebar, wants_fragment};
 
 #[derive(Deserialize, Serialize)]
 pub struct ChatRequest {
@@ -251,7 +251,7 @@ pub async fn nexus_chat_page(
     );
     content.push_str("</form></div></div>");
 
-    if headers.contains_key("hx-request") {
+    if wants_fragment(&headers) {
         Html(content)
     } else {
         Html(render_shell(

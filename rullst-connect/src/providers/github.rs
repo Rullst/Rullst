@@ -405,9 +405,11 @@ mod tests {
         }));
 
         let err = provider.poll_device_token("device_123").await.unwrap_err();
-        assert!(
-            matches!(err, crate::error::ConnectError::Token(msg) if msg.contains("authorization_pending"))
-        );
+        assert!(matches!(
+            err,
+            crate::error::ConnectError::ProviderApiError { code, message }
+                if code == "authorization_pending" && message == "User has not yet entered code."
+        ));
     }
 
     #[tokio::test]

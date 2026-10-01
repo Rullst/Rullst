@@ -218,8 +218,8 @@ async fn test_github_refresh_token_error() {
         .unwrap_err();
     assert!(matches!(
         err,
-        ConnectError::Token(ref message)
-            if message.contains("Provider returned error: invalid_grant - The refresh token is invalid.")
+        ConnectError::ProviderApiError { ref code, ref message }
+            if code == "invalid_grant" && message == "The refresh token is invalid."
     ));
 }
 

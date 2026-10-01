@@ -164,6 +164,7 @@ html, body { height: 100%; }
 .nexus-fields-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
 .nexus-form-group { display: flex; flex-direction: column; gap: 6px; }
 .nexus-label { font-size: 12px; font-weight: 600; color: var(--text-300); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px; }
+.nexus-field-note { margin: 0; font-size: 12px; color: var(--text-500); }
 .nexus-input { background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-100); font-family: var(--font-sans); font-size: 13.5px; padding: 10px 12px; width: 100%; outline: none; }
 .nexus-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 .nexus-input[readonly], .nexus-checkbox[readonly] { opacity: 0.6; cursor: not-allowed; }

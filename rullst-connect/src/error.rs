@@ -31,6 +31,10 @@ pub enum ConnectError {
     #[error("Missing token or unexpected response: {0}")]
     Token(String),
 
+    /// The provider rejected the request. `code` is its OAuth `error` value
+    /// (for example `invalid_grant` or `authorization_pending`) or
+    /// `HTTP_<status>`, whether the error arrived with an error status or, as
+    /// GitHub does, inside a successful response.
     #[error("Provider API Error ({code}): {message}")]
     ProviderApiError { code: String, message: String },
 
@@ -163,12 +167,19 @@ pub(crate) fn bounded_provider_text(text: &str, max_bytes: usize) -> String {
 }
 
 /// Builds the error for an OAuth `error` object returned with a success status.
+///
+/// It carries the same structured, bounded `code` and `message` as an error
+/// status, so callers can match OAuth codes without parsing display text.
 pub(crate) fn provider_returned_error(error: &str, description: &str) -> ConnectError {
-    ConnectError::Token(format!(
-        "Provider returned error: {} - {}",
-        bounded_provider_text(error, MAX_PROVIDER_ERROR_CODE_BYTES),
-        bounded_provider_text(description, MAX_PROVIDER_ERROR_MESSAGE_BYTES)
-    ))
+    let message = if description.is_empty() {
+        "Unknown error"
+    } else {
+        description
+    };
+    ConnectError::ProviderApiError {
+        code: bounded_provider_text(error, MAX_PROVIDER_ERROR_CODE_BYTES),
+        message: bounded_provider_text(message, MAX_PROVIDER_ERROR_MESSAGE_BYTES),
+    }
 }
 
 impl From<reqwest::Error> for ConnectError {

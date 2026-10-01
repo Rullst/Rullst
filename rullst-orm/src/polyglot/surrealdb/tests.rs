@@ -71,7 +71,7 @@ async fn list_records(
 #[tokio::test]
 async fn live_http_contract_sets_scope_and_uses_bounded_sql_page() {
     let router = Router::new()
-        .route("/key/events/evt-1", post(create_record))
+        .route("/key/events/%22evt-1%22", post(create_record))
         .route("/sql", post(list_records));
     let (endpoint, server) = spawn_test_server(router).await;
     let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
@@ -117,6 +117,8 @@ fn configuration_and_graph_queries_fail_closed() {
 
     let insecure = SurrealConfig::new("http://database.example", "main", "app", SurrealAuth::None);
     assert!(SurrealDbStore::<Event>::connect_or_mock(insecure).is_err());
+    let ipv6_loopback = SurrealConfig::new("http://[::1]:8000", "main", "app", SurrealAuth::None);
+    assert!(SurrealDbStore::<Event>::connect_or_mock(ipv6_loopback).is_ok());
     let invalid_mock =
         SurrealConfig::new("mock_local", "invalid namespace", "app", SurrealAuth::None);
     assert!(SurrealDbStore::<Event>::connect_or_mock(invalid_mock).is_err());
@@ -128,7 +130,7 @@ async fn oversized_responses_are_rejected_before_deserialization() {
         (StatusCode::OK, "x".repeat(2048))
     }
     let (endpoint, server) =
-        spawn_test_server(Router::new().route("/key/events/evt-1", post(oversized))).await;
+        spawn_test_server(Router::new().route("/key/events/%22evt-1%22", post(oversized))).await;
     let config = SurrealConfig::new(endpoint, "main", "app", SurrealAuth::None)
         .with_response_limit(1024)
         .unwrap();
@@ -146,5 +148,43 @@ async fn oversized_responses_are_rejected_before_deserialization() {
         result,
         Err(PolyglotError::ResponseTooLarge { .. })
     ));
+    server.abort();
+}
+
+async fn update_missing_record(Json(body): Json<Value>) -> Json<Value> {
+    assert_eq!(body["method"], "query");
+    assert!(
+        body["params"][0]
+            .as_str()
+            .is_some_and(|statement| statement.starts_with("UPDATE type::record($table, $id)"))
+    );
+    assert_eq!(
+        body["params"][1],
+        json!({ "table": "events", "id": "evt-9", "data": { "label": "edited" } })
+    );
+    Json(json!({ "id": 1, "result": [{ "status": "OK", "result": [] }] }))
+}
+
+#[tokio::test]
+async fn replace_updates_without_creating_a_missing_document() {
+    let (endpoint, server) =
+        spawn_test_server(Router::new().route("/rpc", post(update_missing_record))).await;
+    let store = SurrealDbStore::<Event>::connect_or_mock(SurrealConfig::new(
+        endpoint,
+        "main",
+        "app",
+        SurrealAuth::None,
+    ))
+    .unwrap();
+    let replaced = store
+        .replace(
+            &CollectionName::new("events").unwrap(),
+            &DocumentId::new("evt-9").unwrap(),
+            &Event {
+                label: "edited".to_owned(),
+            },
+        )
+        .await;
+    assert!(matches!(replaced, Err(PolyglotError::NotFound)));
     server.abort();
 }

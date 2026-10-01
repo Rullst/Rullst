@@ -24,7 +24,15 @@ pub struct ConnectUser {
     pub raw_data: Value,
 
     /// The access token retrieved during the OAuth2 flow.
-    #[serde(skip_serializing, deserialize_with = "secret_serde::deserialize")]
+    ///
+    /// Serialization omits it, so a `ConnectUser` restored from its own
+    /// serialized form (for example from a session) carries an empty access
+    /// token and no refresh token: it is a profile, not a usable credential.
+    #[serde(
+        skip_serializing,
+        default,
+        deserialize_with = "secret_serde::deserialize"
+    )]
     pub access_token: secrecy::SecretString,
 
     /// The refresh token retrieved during the OAuth2 flow (if provided).
@@ -62,6 +70,18 @@ mod opt_secret_serde {
     {
         let opt = Option::<String>::deserialize(deserializer)?;
         Ok(opt.map(SecretString::from))
+    }
+}
+
+/// Reads an `email_verified` claim sent as a JSON boolean or, as Apple and
+/// Amazon Cognito do, as the string `"true"` or `"false"`. Any other value is
+/// unknown.
+pub(crate) fn email_verified_claim(value: &Value) -> Option<bool> {
+    match value {
+        Value::Bool(verified) => Some(*verified),
+        Value::String(text) if text.eq_ignore_ascii_case("true") => Some(true),
+        Value::String(text) if text.eq_ignore_ascii_case("false") => Some(false),
+        _ => None,
     }
 }
 
@@ -183,6 +203,25 @@ mod tests {
         assert_eq!(public_json["email"], "test@example.com");
         assert!(public_json.get("raw_data").is_none());
         assert!(public_json.get("expires_in").is_none());
+
+        // Its own serialized form restores the profile without credentials.
+        let restored: ConnectUser = serde_json::from_value(serialized).unwrap();
+        assert_eq!(restored.id, "123");
+        assert_eq!(restored.email.as_deref(), Some("test@example.com"));
+        assert!(secrecy::ExposeSecret::expose_secret(&restored.access_token).is_empty());
+        assert!(restored.refresh_token.is_none());
+        assert_eq!(restored.expires_in, Some(3600));
+    }
+
+    #[test]
+    fn email_verified_claims_accept_booleans_and_boolean_strings() {
+        assert_eq!(email_verified_claim(&json!(true)), Some(true));
+        assert_eq!(email_verified_claim(&json!(false)), Some(false));
+        assert_eq!(email_verified_claim(&json!("true")), Some(true));
+        assert_eq!(email_verified_claim(&json!("FALSE")), Some(false));
+        for unknown in [json!(null), json!("yes"), json!(1), json!({})] {
+            assert_eq!(email_verified_claim(&unknown), None);
+        }
     }
 
     #[test]

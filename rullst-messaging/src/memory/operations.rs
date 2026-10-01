@@ -13,12 +13,15 @@ use crate::{
 };
 use std::time::Duration;
 
+// Trusted time is sampled after the state lock is acquired, as the SQLite
+// adapter does after `BEGIN IMMEDIATE`, so waiting for the lock cannot admit
+// an expired lease or hand out a lease that is already partly elapsed.
 impl<C: Clock> InMemoryBroker<C> {
     pub(super) async fn publish_inner(&self, request: PublishRequest) -> Result<PublishReceipt> {
         request.validate_payload(self.config.max_payload_bytes())?;
         let fingerprint = request.fingerprint()?;
-        let now = self.now()?;
         let mut state = self.state.lock().await;
+        let now = self.now()?;
 
         if let Some(record) = state
             .topics
@@ -146,9 +149,9 @@ impl<C: Clock> InMemoryBroker<C> {
     }
 
     pub(super) async fn receive_inner(&self, request: ReceiveRequest) -> Result<Vec<Delivery>> {
+        let mut state = self.state.lock().await;
         let now = self.now()?;
         let lease_expires_at_ms = add_millis(now, request.lease_millis())?;
-        let mut state = self.state.lock().await;
         let mut expired_tokens = Vec::new();
         let mut new_leases = Vec::new();
 
@@ -266,8 +269,8 @@ impl<C: Clock> InMemoryBroker<C> {
     }
 
     pub(super) async fn ack_inner(&self, token: &AckToken) -> Result<()> {
-        let now = self.now()?;
         let mut state = self.state.lock().await;
+        let now = self.now()?;
         let (pointer, lease) =
             take_valid_lease(&mut state, token, now, self.config.max_attempts())?;
         let subscription = subscription_mut(&mut state, &pointer)?;
@@ -292,9 +295,9 @@ impl<C: Clock> InMemoryBroker<C> {
         failure_code: FailureCode,
     ) -> Result<RetryDisposition> {
         let delay_millis = validate_retry_delay(delay)?;
+        let mut state = self.state.lock().await;
         let now = self.now()?;
         let available_at_ms = add_millis(now, delay_millis)?;
-        let mut state = self.state.lock().await;
         let (pointer, lease) =
             take_valid_lease(&mut state, token, now, self.config.max_attempts())?;
         let subscription = subscription_mut(&mut state, &pointer)?;
@@ -320,8 +323,8 @@ impl<C: Clock> InMemoryBroker<C> {
         token: &AckToken,
         failure_code: FailureCode,
     ) -> Result<()> {
-        let now = self.now()?;
         let mut state = self.state.lock().await;
+        let now = self.now()?;
         let (pointer, lease) =
             take_valid_lease(&mut state, token, now, self.config.max_attempts())?;
         let subscription = subscription_mut(&mut state, &pointer)?;

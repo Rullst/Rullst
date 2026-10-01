@@ -34,6 +34,14 @@ pub trait TursoModel: Sized + Send + Sync + 'static {
     /// Primary-key column. The v12 derive currently requires an `id` field.
     fn primary_key_column() -> &'static str;
 
+    /// Columns in [`Self::columns`] that store randomized ciphertext (the
+    /// derive lists its `#[orm(encrypted)]` fields). Equality filters and
+    /// ordering on them are rejected, because the stored value never equals
+    /// or sorts like the plaintext. Defaults to none. Added in v13.
+    fn opaque_columns() -> &'static [&'static str] {
+        &[]
+    }
+
     /// Encodes every declared persistent field in [`Self::columns`] order.
     fn encode_turso(&self) -> Result<Vec<TursoValue>, PolyglotError>;
 

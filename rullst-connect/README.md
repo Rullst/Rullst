@@ -76,7 +76,14 @@ Official support for 11 core providers:
 
 1. **Google**
 2. **GitHub**
-3. **Microsoft / Azure AD**
+3. **Microsoft / Azure AD** (uses the multi-tenant `common` authority, so any
+   Entra tenant and personal Microsoft accounts can sign in, and returns no
+   tenant ID; `email` is Graph `mail` or, failing that, `userPrincipalName`,
+   which tenant administrators control and which may not be a mailbox, so
+   `email_verified` is `None`. Never link accounts or grant tenant access on
+   it; for a single tenant use `OidcProvider` with the
+   `https://login.microsoftonline.com/<tenant-id>/v2.0` issuer, whose ID
+   tokens bind that tenant)
 4. **Apple** (Sign in with Apple)
 5. **Auth0**
 6. **AWS Cognito**
@@ -281,6 +288,14 @@ let proxy = ReqwestClient::try_with_proxy_basic_auth(
 let github = github.with_http_client(Arc::new(proxy));
 ```
 
+With the `retry` feature, a provider's `with_retry` replaces its transport with
+a new direct client, so call it before `with_http_client`, or not at all: the
+proxy constructors already apply the bounded retry policy.
+
+`OidcProvider::discover` fetches its metadata before `with_http_client` can
+apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
+(unpublished v13 API); discovery, JWKS and token calls then share it.
+
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
 credentials, path, query, or fragment. Authenticated non-loopback proxies must
 use HTTPS. The configured client uses only that explicit proxy; PAC/WPAD,
@@ -408,8 +423,19 @@ token is still kept and the generation advances, so persist the snapshot after
 that failure too; the next call refreshes with the rotation. If the grant
 succeeds but the follow-up profile or ID-token step fails, adapters return
 `ConnectError::RefreshIncomplete` with the issued tokens (`IssuedTokens`), and
-the session keeps the rotation the same way. Seal `state_snapshot()` with
-`EncryptedTokenSnapshot` before writing it to application-owned storage:
+the session keeps the rotation the same way.
+
+Do not cancel `access_token()` while it refreshes. The provider call runs
+inside the caller's future, so dropping that future (a client disconnect, a
+`tower` timeout layer or `tokio::select!`) after the provider accepted the grant
+discards its response: a provider that rotates or consumes refresh tokens has
+then spent the credential this session still holds, and the next refresh fails
+with `invalid_grant` (Auth0 rotation may also revoke the token family). Drive
+refreshes from a task that is not cancelled with the request, or treat such an
+`invalid_grant` as a reauthentication signal.
+
+Seal `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to
+application-owned storage:
 
 ```rust
 use rullst_connect::{
@@ -513,7 +539,10 @@ normalization; a trailing slash may differ. ID tokens must carry the discovered 
 published it, so an Auth0 tenant whose issuer is `https://TENANT/` is validated with
 the trailing slash. `OidcProvider::issuer` holds that published value. Discovered token,
 authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
-both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
+both the issuer and endpoint use the same exact loopback origin. `userinfo_endpoint` is
+optional, as OIDC Discovery only recommends it: when it is absent, ID-token sign-in and
+`verify_id_token` still work, while `get_user_from_token` and code exchanges that return no
+`id_token` fail with `ConnectError::InvalidConfiguration`. JWKS entries are refreshed
 after their TTL and when a token presents an unknown `kid`. Because the `kid` is
 unverified input, a forced refresh of a fresh set happens at most once per 30 seconds per
 JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes
