@@ -65,7 +65,9 @@ coep = "require-corp"
 ```
 
 Wildcard, path-bearing, credential-bearing, queried or duplicate CORS origins
-are configuration errors. When credentials are enabled, Core still grants them
+are configuration errors, as are spellings a browser never sends: an uppercase
+scheme or host, or an explicit default port (`:443` for HTTPS, `:80` for HTTP).
+CORS compares the configured origin with the `Origin` header byte for byte. When credentials are enabled, Core still grants them
 only to an origin in the exact allowlist. Test the final policy behind the real
 TLS proxy because an intermediary can change headers and cookie behavior.
 

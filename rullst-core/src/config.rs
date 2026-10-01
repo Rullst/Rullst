@@ -346,6 +346,11 @@ impl SecurityConfig {
                     "CORS origin `{origin}` must be an exact HTTP(S) origin without path, query, credentials, wildcard, or trailing slash"
                 )));
             }
+            if !is_serialized_origin(origin, &uri) {
+                return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                    "CORS origin `{origin}` must be written as browsers send it: lowercase scheme and host, without the default port"
+                )));
+            }
             if !unique_origins.insert(origin) {
                 return Err(ConfigError::InvalidSecurityConfiguration(format!(
                     "duplicate CORS origin `{origin}`"
@@ -376,6 +381,32 @@ impl SecurityConfig {
             .map_err(|error| ConfigError::InvalidSecurityConfiguration(error.to_string()))?;
         Ok(())
     }
+}
+
+/// Whether `origin` is byte-for-byte the `Origin` a browser sends for `uri`:
+/// lowercase scheme and host and no default port. CORS matching compares the
+/// configured value with that header exactly, so any other spelling never
+/// matches.
+fn is_serialized_origin(origin: &str, uri: &http::Uri) -> bool {
+    let (Some(scheme), Some(host)) = (uri.scheme_str(), uri.host()) else {
+        return false;
+    };
+    let default_port = match scheme {
+        "http" => 80,
+        "https" => 443,
+        _ => return false,
+    };
+    let port = match uri.port_u16() {
+        Some(port) if port == default_port => return false,
+        Some(port) => format!(":{port}"),
+        None => String::new(),
+    };
+    origin
+        == format!(
+            "{}://{}{port}",
+            scheme.to_ascii_lowercase(),
+            host.to_ascii_lowercase()
+        )
 }
 
 static GLOBAL_CONFIG: std::sync::OnceLock<RullstConfig> = std::sync::OnceLock::new();

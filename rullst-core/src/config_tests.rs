@@ -178,8 +178,27 @@ fn browser_security_configuration_is_strict_and_exact() {
     config.cors_allow_origins = vec![
         "https://academy.example".to_string(),
         "http://localhost:3000".to_string(),
+        "http://[::1]:8080".to_string(),
     ];
     assert!(config.validate().is_ok());
+
+    // Browsers send a lowercase scheme and host and omit the default port;
+    // CORS compares bytes, so these spellings could never match.
+    for unmatched in [
+        "https://Academy.example",
+        "HTTPS://academy.example",
+        "https://academy.example:443",
+        "http://localhost:80",
+        "http://localhost:03000",
+        "http://[::ABCD]:8080",
+    ] {
+        config.cors_allow_origins = vec![unmatched.to_string()];
+        let error = config.validate().unwrap_err().to_string();
+        assert!(
+            error.contains("as browsers send it"),
+            "{unmatched}: {error}"
+        );
+    }
 
     for invalid in [
         "*",
