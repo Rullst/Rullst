@@ -127,7 +127,14 @@ mod tests {
         assert!(!source.contains("payload.password.len()"));
         assert!(source.contains("value.encode_utf16().count()"));
         assert!(source.contains("form_length(name) <= 120"));
-        assert!(source.contains("(12..=72).contains(&form_length(&payload.password))"));
+        // The minimum counts characters; the maximum stays at the 72 bytes
+        // that rullst::auth::hash_password accepts, so no accepted password
+        // fails later as "Error processing password".
+        assert!(
+            source.contains("form_length(password) >= 12 && password.len() <= MAX_PASSWORD_BYTES")
+        );
+        assert!(source.contains("const MAX_PASSWORD_BYTES: usize = 72;"));
+        assert!(source.contains("if !valid_password(&payload.password) {"));
         assert!(source.contains("fn length_limits_count_what_the_form_counts()"));
     }
 }

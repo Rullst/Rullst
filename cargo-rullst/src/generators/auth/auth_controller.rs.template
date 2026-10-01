@@ -112,6 +112,16 @@ fn valid_name(name: &str) -> bool {
     !name.is_empty() && form_length(name) <= 120 && !name.contains(['\r', '\n'])
 }
 
+/// `rullst::auth::hash_password` and `verify_password` accept at most 72
+/// bytes, so the upper bound stays in bytes while the minimum counts
+/// characters like the form's `minlength`.
+const MAX_PASSWORD_BYTES: usize = 72;
+const PASSWORD_LENGTH_MESSAGE: &str = "Use a password of at least 12 characters and at most 72 bytes (accented and non-Latin characters take 2 to 4 bytes each)";
+
+fn valid_password(password: &str) -> bool {
+    form_length(password) >= 12 && password.len() <= MAX_PASSWORD_BYTES
+}
+
 /// The current UTC time as `YYYY-MM-DD HH:MM:SS`, the text `CURRENT_TIMESTAMP`
 /// stores in the `timestamps()` columns. The ORM inserts every field, so an
 /// empty string would replace the column default.
@@ -269,13 +279,8 @@ pub async fn register_submit(
         return auth::register_page(&token, Some("Enter a valid email address"), nonce)
             .into_response();
     }
-    if !(12..=72).contains(&form_length(&payload.password)) {
-        return auth::register_page(
-            &token,
-            Some("Password must contain between 12 and 72 characters"),
-            nonce,
-        )
-        .into_response();
+    if !valid_password(&payload.password) {
+        return auth::register_page(&token, Some(PASSWORD_LENGTH_MESSAGE), nonce).into_response();
     }
 
     match User::find_by_email(&email).await {
@@ -405,10 +410,15 @@ mod tests {
 
     #[test]
     fn length_limits_count_what_the_form_counts() {
-        // 40 Cyrillic characters are 80 bytes but satisfy maxlength="72".
-        let passphrase = "ж".repeat(40);
-        assert_eq!(form_length(&passphrase), 40);
-        assert!((12..=72).contains(&form_length(&passphrase)));
+        // 30 Cyrillic letters are 60 bytes: accepted, although a byte count
+        // of the minimum would also have accepted only 6 of them.
+        assert!(valid_password(&"ж".repeat(30)));
+        assert!(!valid_password(&"ж".repeat(6)));
+        assert!(valid_password(&"a".repeat(72)));
+        // Hashing rejects more than 72 bytes, so the form's 72 characters
+        // cannot all be two-byte letters.
+        assert!(!valid_password(&"ж".repeat(40)));
+        assert!(!valid_password(&"a".repeat(73)));
         assert!(valid_name(&"名".repeat(70)));
         assert!(!valid_name(&"名".repeat(121)));
         assert!(!valid_name(""));
