@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::generators::audit::incomplete_walk_warning;
-use crate::generators::audit_source::production_source;
+use crate::generators::audit_source::audit_source;
 use crate::generators::source_walk::{RustSources, rust_sources};
 
 const ACCESS_MARKER: &str = "rullst-access:";
@@ -16,8 +16,11 @@ const ACCESS_MARKER: &str = "rullst-access:";
 ///
 /// This is a bounded source heuristic. It deliberately reports a finding when
 /// it cannot recognize the route boundary; a clean scan is not a proof that a
-/// domain resource lookup enforces ownership correctly at runtime. Top-level
-/// `#[cfg(test)]` items are skipped individually, not the rest of the file.
+/// domain resource lookup enforces ownership correctly at runtime.
+///
+/// Top-level `#[cfg(test)]` items are skipped individually. Guard evidence for
+/// an owner/role/admin classification is collected per crate (`src` tree)
+/// from code outside those items; comments and doc comments do not count.
 pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     let source_files = collect_rust_source_files(src_dir);
     let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
@@ -26,13 +29,13 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
         let Ok(content) = fs::read_to_string(&path) else {
             continue;
         };
-        let production = production_source(&content);
+        let views = audit_source(&content);
         let source_root = source_root_for(&path).unwrap_or_else(|| src_dir.to_path_buf());
         crate_evidence
             .entry(source_root.clone())
             .or_default()
-            .include(&production);
-        sources.push((path, source_root, production));
+            .include(&views.code);
+        sources.push((path, source_root, views.production));
     }
 
     let mut warnings = Vec::new();
@@ -72,8 +75,12 @@ pub(super) fn collect_rust_source_files(src_dir: &Path) -> RustSources {
 
 #[cfg(test)]
 fn scan_idor_source(path: &Path, content: &str) -> Vec<String> {
-    let production = production_source(content);
-    scan_idor_source_with_evidence(path, &production, GuardEvidence::from_content(&production))
+    let views = audit_source(content);
+    scan_idor_source_with_evidence(
+        path,
+        &views.production,
+        GuardEvidence::from_content(&views.code),
+    )
 }
 
 #[derive(Clone, Copy, Default)]
@@ -145,15 +152,15 @@ fn scan_idor_source_with_evidence(
                 ),
                 Some("owner") if evidence.owner => None,
                 Some("owner") => Some(
-                    "owner classification requires RbacGuard::authorize_owner_or_role in this source file",
+                    "owner classification requires RbacGuard::authorize_owner_or_role in this crate's non-test code (comments do not count)",
                 ),
                 Some("role") if evidence.role => None,
                 Some("role") => Some(
-                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this source file",
+                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this crate's non-test code (comments do not count)",
                 ),
                 Some("admin") if evidence.admin => None,
                 Some("admin") => Some(
-                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this source file",
+                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this crate's non-test code (comments do not count)",
                 ),
                 Some(_) => Some("unknown rullst-access classification"),
                 None => Some(
@@ -389,6 +396,22 @@ mod inline {
         let both = r#"routes! { get("/teams/{team}" => team), delete("/users/{id}" => drop) }"#;
         assert_eq!(findings(both).len(), 2);
         assert!(quoted_literals(r#"a("x\"y", "/z")"#).eq([r#"x\"y"#, "/z"]));
+    }
+
+    #[test]
+    fn guard_mentions_in_comments_are_not_evidence() {
+        // The old scan accepted any substring, so these comments satisfied
+        // the owner classification.
+        let commented = r#"
+// rullst-access: owner — the handler compares the authenticated subject.
+get("/accounts/{id}" => show_account),
+// TODO use RbacGuard::authorize_owner_or_role
+/// Calls `admin_access.protect_router(..)` later.
+fn show_account() {}
+"#;
+        let result = findings(commented);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("this crate's non-test code"));
     }
 
     #[test]
