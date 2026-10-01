@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790848888872,
+  "lastUpdate": 1790852271649,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23691,6 +23691,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2440,
             "range": "± 129",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "748730db913f6b7229a6bb366d24baf294334411",
+          "message": "Merge pull request #375 from Rullst/fix/v13-cli-generator-low-fixes\n\nfix(cli): compiling generator output, safe names, verified Foundry uploads and schema_diff parity",
+          "timestamp": "2026-10-01T07:49:02-03:00",
+          "tree_id": "e04f56b01207fb79fe970b8cf12e3ad1d1c5071a",
+          "url": "https://github.com/Rullst/Rullst/commit/748730db913f6b7229a6bb366d24baf294334411"
+        },
+        "date": 1790852269664,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 759,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 958,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 632,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2401,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
