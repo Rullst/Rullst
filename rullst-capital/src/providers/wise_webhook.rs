@@ -27,6 +27,8 @@ const RSA_ENCRYPTION: &[u8] = &[
 ///
 /// Only the documented transfer states below are accepted; any other value,
 /// including Wise's generic `unknown`, is rejected instead of being guessed.
+/// See Wise's transfer status list
+/// (<https://github.com/transferwise/api-docs/blob/master/source/includes/_payouts.md>).
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WiseTransferState {
@@ -34,6 +36,9 @@ pub enum WiseTransferState {
     IncomingPaymentWaiting,
     /// `incoming_payment_initiated`: funding started but has not arrived.
     IncomingPaymentInitiated,
+    /// `waiting_recipient_input_to_proceed`: a "send money to email" transfer
+    /// waits for the recipient to enter bank details (v13).
+    WaitingRecipientInput,
     /// `processing`: Wise received the funds and is processing the transfer.
     Processing,
     /// `funds_converted`: compliance checks passed and funds were converted.
@@ -55,6 +60,7 @@ impl WiseTransferState {
         Some(match value {
             "incoming_payment_waiting" => Self::IncomingPaymentWaiting,
             "incoming_payment_initiated" => Self::IncomingPaymentInitiated,
+            "waiting_recipient_input_to_proceed" => Self::WaitingRecipientInput,
             "processing" => Self::Processing,
             "funds_converted" => Self::FundsConverted,
             "outgoing_payment_sent" => Self::OutgoingPaymentSent,
@@ -71,6 +77,7 @@ impl WiseTransferState {
         match self {
             Self::IncomingPaymentWaiting => "incoming_payment_waiting",
             Self::IncomingPaymentInitiated => "incoming_payment_initiated",
+            Self::WaitingRecipientInput => "waiting_recipient_input_to_proceed",
             Self::Processing => "processing",
             Self::FundsConverted => "funds_converted",
             Self::OutgoingPaymentSent => "outgoing_payment_sent",
@@ -88,6 +95,7 @@ impl WiseTransferState {
         match self {
             Self::IncomingPaymentWaiting
             | Self::IncomingPaymentInitiated
+            | Self::WaitingRecipientInput
             | Self::Processing
             | Self::FundsConverted => Some(PayoutStatus::Processing),
             Self::OutgoingPaymentSent => Some(PayoutStatus::OutgoingPaymentSent),

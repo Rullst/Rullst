@@ -122,7 +122,10 @@ decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
 or undocumented state fails the provider response contract, and a
 `bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
 because `PayoutStatus` cannot express a returned or reversed payout; it is
-never reported as `Processing`. The additive v13 `get_transfer_state` returns
+never reported as `Processing`. A `waiting_recipient_input_to_proceed`
+transfer (a "send money to email" transfer waiting for the recipient's bank
+details) is in flight: the typed state is `WaitingRecipientInput` (v13) and
+the coarse status is `Processing`. The additive v13 `get_transfer_state` returns
 the typed `WiseTransferState` from the same bound read, and
 `with_sandbox_api()` sends reads to `https://api.sandbox.transferwise.tech`
 for sandbox tokens.
