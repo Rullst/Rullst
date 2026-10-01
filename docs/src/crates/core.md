@@ -103,10 +103,10 @@ delay keeps the claiming worker out of a hot loop, and it still reports
 stays pending and is re-offered every five seconds instead of being failed.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
-`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`/`422`
-JSON) for other clients, but an HTMX request receives its escaped HTML
-fragment with `200 OK` and an `X-Rullst-Validation-Status: 400|422` header,
-because htmx swaps only successful responses by default.
+`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`, `413`,
+`415` or `422` JSON) for other clients, but an HTMX request receives its
+escaped HTML fragment with `200 OK` and an `X-Rullst-Validation-Status` header
+carrying that status, because htmx swaps only successful responses by default.
 `Scheduler::task` takes a POSIX five-field expression (`minute hour
 day-of-month month day-of-week`) evaluated in UTC. Day-of-week accepts 0-7
 (0 and 7 are Sunday, 1 is Monday) and names, so `0 9 * * 1-5` runs Monday to

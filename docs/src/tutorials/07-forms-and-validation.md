@@ -2,19 +2,25 @@
 
 Rullst provides `ValidatedForm<T>` and `ValidatedJson<T>` extractors. They parse
 the request and run `validator` constraints before the handler is called.
-Invalid payloads become bounded `400` or `422` JSON responses. HTMX requests
-(`HX-Request: true`) instead receive an HTML error fragment with `200 OK`,
-because HTMX 1.x and 2.x swap only successful responses by default; the
-`X-Rullst-Validation-Status` header carries the `400` or `422` status. htmx
+Invalid payloads become bounded `400`, `413`, `415` or `422` JSON responses.
+HTMX requests (`HX-Request: true`) instead receive an HTML error fragment with
+`200 OK`, because HTMX 1.x and 2.x swap only successful responses by default;
+the `X-Rullst-Validation-Status` header carries the REST status. htmx
 swaps the fragment into the form's `hx-target` with its `hx-swap`, so point
 `hx-target` at an error or result container rather than at the form itself.
 
-A body that cannot be parsed (wrong content type, oversized, malformed or with
-an unknown enum variant) gets a fixed `400` message such as "The submitted data
-could not be read or has an invalid format." The deserializer's own text can
-echo request input, so it is logged at `debug` level on the
-`rullst::validation` target and not returned. Every message and field name in
-the HTMX fragment is HTML-escaped, including custom validator messages.
+A body that cannot be parsed gets a fixed message: `413` "Request body is too
+large." for a body over the extractor limit, `415` "Unsupported request content
+type." for a wrong content type, and `400` "The submitted data could not be
+read or has an invalid format." for a malformed body or an unknown enum
+variant (`422` stays reserved for failed `validator` constraints). The
+deserializer's own text can echo request input, so it is logged at `debug`
+level on the `rullst::validation` target and not returned. Every message and
+field name in the HTMX fragment is HTML-escaped, including custom validator
+messages. Errors inside `#[validate(nested)]` structs and lists are reported
+under dotted and indexed paths such as `address.zip` and `items[0].name`.
+`ValidationError`'s `Display` and `Debug` list only those paths and validator
+codes, never the rejected values, so logging the error cannot leak a password.
 
 ---
 
