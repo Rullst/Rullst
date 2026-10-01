@@ -274,6 +274,14 @@ impl<C: Clock> Operation<'_, C> {
         if count >= self.config.limits.events {
             return Err(Error::Capacity);
         }
+        // Events outlive their session by the retention period, so bound
+        // what one learner holds instead of letting session loops fill the store.
+        let held: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_events e JOIN rullst_supervision_sessions s ON s.id=e.session_id WHERE s.tenant=? AND s.subject=? AND e.expires_at>?")
+            .bind(request.scope.tenant().as_str()).bind(request.scope.subject().as_str()).bind(self.now)
+            .fetch_one(&mut *self.tx).await.map_err(storage)?;
+        if held >= self.config.limits.subject_events {
+            return Err(Error::Capacity);
+        }
         Ok(())
     }
 }

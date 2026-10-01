@@ -232,6 +232,32 @@ async fn sqlite_lock_does_not_extend_permission_or_send_a_remote_mutation() {
     app.close().await;
 }
 
+#[tokio::test]
+async fn a_lock_held_past_the_busy_timeout_is_busy_not_a_storage_incident() {
+    let fixture = Fixture::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let app = service(&fixture, &dir, TestClock::new(), 2).await;
+    let auth = Auth::new();
+    let (teacher, id, scope) = (reference("teacher"), reference("lesson"), scope());
+    app.create(&auth, &teacher, &scope, &id, metadata())
+        .await
+        .unwrap();
+    let mut db = connection(&dir).await;
+    sqlx::query("BEGIN IMMEDIATE")
+        .execute(&mut db)
+        .await
+        .unwrap();
+    // Contention is retryable; `Storage` tells operators to stop and investigate.
+    assert_eq!(
+        app.get(&auth, &teacher, &scope, &id).await.unwrap_err(),
+        MediaError::Busy
+    );
+    sqlx::query("ROLLBACK").execute(&mut db).await.unwrap();
+    app.get(&auth, &teacher, &scope, &id).await.unwrap();
+    db.close().await.unwrap();
+    app.close().await;
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn reopening_a_symlink_is_rejected_and_initialization_never_overwrites() {

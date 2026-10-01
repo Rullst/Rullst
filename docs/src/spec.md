@@ -168,8 +168,9 @@ bind an immutable tenant/course/provider-library scope; provider IDs and signed
 webhooks never establish that ownership. Service operations recheck permission
 and local revision/state after external work and use bounded durable leases to
 reject concurrent/stale mutation results. Playback is a read: it takes no lease,
-so concurrent viewers never serialize and an abandoned request leaves no intent;
-it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
+so viewers never wait on one another's provider reads and an abandoned request
+leaves no intent; its short local transactions still serialize, and a lock or
+connection wait over 3 seconds is `Busy`; it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
 library, store-wide capacity and an optional per-tenant asset quota for shared
 stores, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
@@ -604,8 +605,8 @@ initial backend. One private initialized database owns scoped authority,
 sessions, parental enrollment/policy and allowlisted events. Serialize operations
 with `BEGIN IMMEDIATE`, persist configuration, a clock high-water mark and a
 global revision counter, and enforce bounded quotas and retention. One learner
-has a bounded retained-session quota inside the store-wide limit, and rows
-already past retention never block admission. An opener
+has bounded retained-session and unexpired-event quotas inside the store-wide
+limits, and rows already past retention never block admission. An opener
 must supply the independently retained deployment epoch. This detects epoch
 mismatch, not restoration of an old database with the same epoch.
 

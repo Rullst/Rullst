@@ -75,5 +75,15 @@ for (const options of [{ badPatch: true }, { offset: blob.size + 1 }, { offset: 
   const run = fixture({ unauthorizedPatch: true, getGrant: async () => ({ ...makeGrant(), video: ++grants === 1 ? video : '22345678-1234-4234-8234-123456789abc' }) });
   await assert.rejects(run.upload.start(), /interrupted/); assert.equal(run.counts().patches, 1);
 }
+{
+  // A maximum-length grant from a server clock ahead of the browser is valid.
+  const run = fixture({ getGrant: async () => ({ ...makeGrant(), expires_at: Math.floor(Date.now() / 1000) + 3605 }) });
+  assert.equal((await run.upload.start()).status, 'complete');
+}
+{
+  // Beyond the skew allowance a grant is still refused before any request.
+  const run = fixture({ getGrant: async () => ({ ...makeGrant(), expires_at: Math.floor(Date.now() / 1000) + 4500 }) });
+  await assert.rejects(run.upload.start(), /interrupted/); assert.deepEqual(run.calls, []);
+}
 assert.throws(() => new BunnyUpload({ file: blob, title: 'Rust', getGrant: async () => makeGrant(), maxBytes: 1 }), /invalid_upload_input/);
-console.log('Bunny upload client: offset recovery, cancellation, identity, uncertain creation and URL boundaries passed.');
+console.log('Bunny upload client: offset recovery, cancellation, identity, uncertain creation, grant lifetime and URL boundaries passed.');

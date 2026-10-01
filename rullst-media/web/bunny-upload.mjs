@@ -94,6 +94,9 @@ export class BunnyUpload {
     let endpoint;
     try { endpoint = new URL(grant.endpoint); } catch { throw new Error('upload_grant_invalid'); }
     const now = Math.floor(Date.now() / 1000);
+    // The server caps grants at 3600 s by its own clock; allow a browser clock
+    // up to 300 s behind it instead of refusing a valid maximum-length grant.
+    const ceiling = now + 3600 + 300;
     const remote = grant.mode === 'RemoteUnvalidated' && endpoint.href === 'https://video.bunnycdn.com/tusupload';
     const local = this.#fixture && grant.mode === 'ProtocolFixture' && endpoint.protocol === 'http:'
       && ['127.0.0.1', '[::1]'].includes(endpoint.hostname) && endpoint.port !== '0' && endpoint.pathname === '/tusupload';
@@ -101,7 +104,7 @@ export class BunnyUpload {
       || !Number.isSafeInteger(grant.library) || grant.library < 1
       || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(grant.video)
       || !/^[0-9a-f]{64}$/.test(grant.signature) || !Number.isSafeInteger(grant.expires_at)
-      || grant.expires_at <= now || grant.expires_at > now + 3600) throw new Error('upload_grant_invalid');
+      || grant.expires_at <= now || grant.expires_at > ceiling) throw new Error('upload_grant_invalid');
     // The existing upload URL includes no authority to change video/library.
     const binding = `${endpoint.href}|${grant.library}|${grant.video}`;
     if (this.#binding && this.#binding !== binding) throw new Error('upload_binding_changed');

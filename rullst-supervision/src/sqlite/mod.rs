@@ -144,9 +144,12 @@ impl<C: Clock> SqliteSupervision<C> {
             c.session_lifetime
         );
         // Only an explicit per-learner quota extends the key, so stores that
-        // were initialized before it existed keep opening unchanged.
+        // were initialized before these quotas existed keep opening unchanged.
         if !c.limits.default_subject_sessions() {
             key.push_str(&format!("|subject-sessions={}", c.limits.subject_sessions));
+        }
+        if !c.limits.default_subject_events() {
+            key.push_str(&format!("|subject-events={}", c.limits.subject_events));
         }
         key
     }

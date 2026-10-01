@@ -244,11 +244,11 @@ fn academy_evidence_and_forced_ejection_cover_success_and_failure_boundaries() {
 
     project.succeeds(&["eject", "--force"]);
     assert!(project.root.join("src/main.rs.rullst-backup").is_file());
-    assert!(
-        fs::read_to_string(project.root.join("src/main.rs"))
-            .expect("ejected entry point")
-            .contains("EJECTED AXUM SERVER")
-    );
+    let ejected =
+        fs::read_to_string(project.root.join("src/main.rs")).expect("ejected entry point");
+    assert!(ejected.contains("EJECTED ENTRY POINT"));
+    assert!(ejected.contains("use rullst::web::axum::"));
+    assert!(ejected.contains("rullst::apply_security_baseline("));
     assert!(!project.run(&["eject", "--force"]).status.success());
 }
 
