@@ -318,24 +318,61 @@ fn current_key() -> Result<Vec<u8>, PrivacyError> {
     decode_configured_key(&environment_variable(KEY_ENV)?)
 }
 
+fn parse_keyring(
+    keyring: &str,
+) -> Result<serde_json::Map<String, serde_json::Value>, PrivacyError> {
+    serde_json::from_str(keyring).map_err(|error| {
+        PrivacyError::EnvError(format!(
+            "{KEYRING_ENV} must be a JSON object of key IDs to 32-byte keys: {error}"
+        ))
+    })
+}
+
 fn configured_key(key_id: &str) -> Result<Vec<u8>, PrivacyError> {
     if current_key_id()? == key_id {
         return current_key();
     }
 
-    let keyring = environment_variable(KEYRING_ENV)?;
-    let values: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&keyring)
-        .map_err(|error| {
-            PrivacyError::EnvError(format!(
-                "{KEYRING_ENV} must be a JSON object of key IDs to 32-byte keys: {error}"
-            ))
-        })?;
+    let values = parse_keyring(&environment_variable(KEYRING_ENV)?)?;
     let key = values
         .get(key_id)
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| PrivacyError::KeyNotFound(key_id.to_string()))?
         .to_string();
     decode_configured_key(&key)
+}
+
+/// Decrypts a pre-v12 value, which names no key: the current key first, then
+/// the `RULLST_ENCRYPTION_KEYRING` keys (`default`, the implicit ID of those
+/// values, before the others), so legacy rows stay readable after rotation.
+/// AES-GCM authentication rejects every key but the one that wrote the value.
+fn decrypt_legacy_configured(encrypted: &str) -> Result<String, PrivacyError> {
+    let rejected = match decrypt_legacy_aes_gcm(encrypted, &current_key()?) {
+        Err(error @ PrivacyError::DecryptionFailed(_)) => error,
+        other => return other,
+    };
+    let keyring = match std::env::var(KEYRING_ENV) {
+        Ok(keyring) => keyring,
+        Err(std::env::VarError::NotPresent) => return Err(rejected),
+        Err(error) => return Err(PrivacyError::EnvError(format!("{KEYRING_ENV}: {error}"))),
+    };
+    let values = parse_keyring(&keyring)?;
+    let candidates = values.get(DEFAULT_KEY_ID).into_iter().chain(
+        values
+            .iter()
+            .filter(|(key_id, _)| key_id.as_str() != DEFAULT_KEY_ID)
+            .map(|(_, key)| key),
+    );
+    for candidate in candidates {
+        let key = candidate.as_str().ok_or_else(|| {
+            PrivacyError::EnvError(format!("{KEYRING_ENV} values must be key strings"))
+        })?;
+        match decrypt_legacy_aes_gcm(encrypted, &decode_configured_key(key)?) {
+            Err(PrivacyError::DecryptionFailed(_)) => continue,
+            other => return other,
+        }
+    }
+    Err(rejected)
 }
 
 /// Encrypts an ORM model field using the configured current key and an
@@ -412,7 +449,7 @@ fn decrypt_configured_secret(encrypted: &str) -> Result<String, PrivacyError> {
         let key = configured_key(envelope.key_id)?;
         decrypt_envelope(&envelope, &key, b"")
     } else {
-        decrypt_legacy_aes_gcm(encrypted, &current_key()?)
+        decrypt_legacy_configured(encrypted)
     }
 }
 

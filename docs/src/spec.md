@@ -2977,7 +2977,7 @@ sending.
 * **Key Rotation:** Built-in keyring support (`decrypt_with_keyring`) can read
   prior keys while new writes use the active key. Deployment coordination,
   re-encryption, key custody and retirement remain operator responsibilities.
-* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Rullst does not provide key custody or automatic retirement.
+* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Versioned envelopes name their key ID; pre-v12 `SecretString` ciphertext names none, so it is tried with the current key and then every keyring key (`default` first), and AES-GCM authentication accepts only the key that wrote it. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
 * **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Header values are decoded lossily in RASP and Core's WAF, so an obs-text byte (0x80-0xFF) that hyper accepts cannot hide the rest of a value. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.

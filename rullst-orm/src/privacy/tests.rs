@@ -3,6 +3,15 @@
 use super::*;
 use std::collections::BTreeMap;
 
+/// Serializes the tests that change the process-wide key variables.
+static ENVIRONMENT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn environment_lock() -> std::sync::MutexGuard<'static, ()> {
+    ENVIRONMENT_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 struct EnvironmentGuard {
     values: BTreeMap<&'static str, Option<String>>,
 }
@@ -274,6 +283,7 @@ fn legacy_ciphertext_decrypts_and_invalid_utf8_is_typed() {
 
 #[test]
 fn environment_key_selection_rotation_and_context_fail_closed() {
+    let _serial = environment_lock();
     let mut environment = EnvironmentGuard::new();
     for key in [KEY_ENV, KEY_ID_ENV, KEYRING_ENV] {
         environment.clear(key);
@@ -370,4 +380,68 @@ fn secret_string_serde_redacts_projections_and_accepts_plaintext_input() {
     ] {
         assert!(serde_json::from_str::<SecretString>(malformed).is_err());
     }
+}
+
+fn legacy_ciphertext(key: &str, plaintext: &str) -> String {
+    let cipher = Aes256Gcm::new_from_slice(key.as_bytes()).unwrap();
+    let nonce_bytes = [9_u8; NONCE_LENGTH];
+    let nonce = Nonce::<Aes256Gcm>::try_from(nonce_bytes.as_slice()).unwrap();
+    let mut payload = nonce_bytes.to_vec();
+    payload.extend_from_slice(&cipher.encrypt(&nonce, plaintext.as_bytes()).unwrap());
+    STANDARD.encode(payload)
+}
+
+/// Pre-v12 values name no key, so after the documented rotation (old key
+/// moved into the keyring) they decrypt through the keyring instead of
+/// failing with the new current key.
+#[test]
+fn legacy_ciphertext_stays_readable_through_the_keyring_after_rotation() {
+    let _serial = environment_lock();
+    let mut environment = EnvironmentGuard::new();
+    let retired = "0123456789abcdef0123456789abcdef";
+    let unrelated = "fedcba9876543210fedcba9876543210";
+    let current = "abcdef0123456789abcdef0123456789";
+    let legacy = legacy_ciphertext(retired, "pre-v12 secret");
+
+    environment.set(KEY_ENV, current);
+    environment.set(KEY_ID_ENV, "rotated-2027");
+    environment.clear(KEYRING_ENV);
+    assert!(matches!(
+        decrypt_configured_secret(&legacy),
+        Err(PrivacyError::DecryptionFailed(_))
+    ));
+    environment.set(KEYRING_ENV, &format!(r#"{{"unrelated":"{unrelated}"}}"#));
+    assert!(matches!(
+        decrypt_configured_secret(&legacy),
+        Err(PrivacyError::DecryptionFailed(_))
+    ));
+
+    for keyring in [
+        format!(r#"{{"unrelated":"{unrelated}","default":"{retired}"}}"#),
+        format!(r#"{{"primary-2026":"{retired}"}}"#),
+    ] {
+        environment.set(KEYRING_ENV, &keyring);
+        assert_eq!(
+            decrypt_configured_secret(&legacy).unwrap(),
+            "pre-v12 secret"
+        );
+    }
+
+    environment.set(KEY_ENV, retired);
+    environment.set(KEYRING_ENV, "not-json");
+    assert_eq!(
+        decrypt_configured_secret(&legacy).unwrap(),
+        "pre-v12 secret",
+        "the current key is tried before the keyring"
+    );
+    environment.set(KEY_ENV, current);
+    assert!(matches!(
+        decrypt_configured_secret(&legacy),
+        Err(PrivacyError::EnvError(_))
+    ));
+    environment.set(KEYRING_ENV, r#"{"default":"short"}"#);
+    assert_eq!(
+        decrypt_configured_secret(&legacy).unwrap_err(),
+        PrivacyError::InvalidKeyLength
+    );
 }
