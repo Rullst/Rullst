@@ -26,6 +26,40 @@ async fn zero_ttl_and_periodic_cleanup_reclaim_expired_entries() {
     assert!(driver.store.is_empty());
 }
 
+#[test]
+fn sweep_interval_grows_with_the_store_so_cleanup_stays_amortized() {
+    let driver = MemoryDriver::default();
+    for index in 0..4096 {
+        driver.store.insert(
+            format!("live:{index}"),
+            CacheEntry {
+                value: Arc::new(String::new()),
+                expires_at: None,
+            },
+        );
+    }
+    // The first sweep runs after 256 operations and keeps 4,096 entries.
+    for _ in 0..256 {
+        assert!(driver.get_sync("missing").is_none());
+    }
+    driver.store.insert(
+        "stale".to_string(),
+        CacheEntry {
+            value: Arc::new("expired".to_string()),
+            expires_at: Some(Instant::now()),
+        },
+    );
+    // The next full sweep waits for a quarter of that store (1,024
+    // operations) instead of rescanning it every 256 operations.
+    for _ in 0..1023 {
+        assert!(driver.get_sync("missing").is_none());
+    }
+    assert!(driver.store.contains_key("stale"));
+    assert!(driver.get_sync("missing").is_none());
+    assert!(!driver.store.contains_key("stale"));
+    assert_eq!(driver.store.len(), 4096);
+}
+
 #[tokio::test]
 async fn unrepresentable_ttl_never_expires_instead_of_panicking() {
     let driver = MemoryDriver::default();
