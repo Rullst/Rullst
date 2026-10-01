@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790831695191,
+  "lastUpdate": 1790836384462,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8685,6 +8685,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 558,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8bc2ab74d49a419daa4a77d376ddc8178e0af27",
+          "message": "Merge pull request #371 from Rullst/refactor/v13-split-large-files\n\nrefactor: split ten oversized modules into focused submodules",
+          "timestamp": "2026-10-01T03:17:07-03:00",
+          "tree_id": "8b2f3d3c005ddffbf27826477414e651432fc14b",
+          "url": "https://github.com/Rullst/Rullst/commit/c8bc2ab74d49a419daa4a77d376ddc8178e0af27"
+        },
+        "date": 1790836383624,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 305,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
