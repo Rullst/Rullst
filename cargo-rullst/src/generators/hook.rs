@@ -49,10 +49,11 @@ if [ -x "$original_hook" ]; then
 fi
 
 commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .{1,80}$'
-merge_regex='^Merge branch .*'
+# Subjects Git itself writes for merges, reverts and autosquash commits.
+git_generated_regex='^(Merge (branch|branches|remote-tracking branch|remote-tracking branches|tag|tags|pull request|commit) |Revert "|(fixup|squash|amend)! )'
 commit_message=$(head -n 1 "$1")
 
-if echo "$commit_message" | grep -qE "$merge_regex"; then
+if echo "$commit_message" | grep -qE "$git_generated_regex"; then
     exit 0
 fi
 if ! echo "$commit_message" | grep -qE "$commit_regex"; then
@@ -410,6 +411,44 @@ mod tests {
             "custom"
         );
         assert!(!hooks.join("commit-msg").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn commit_msg_accepts_git_generated_subjects_and_rejects_free_text() {
+        let worktree = TempWorktree::new("commit-msg");
+        let script = worktree.path.join("commit-msg");
+        fs::write(&script, COMMIT_MSG_SCRIPT).expect("commit-msg script");
+        let accepts = |subject: &str| {
+            let message = worktree.path.join("COMMIT_EDITMSG");
+            fs::write(&message, format!("{subject}\n\nbody\n")).expect("commit message");
+            std::process::Command::new("sh")
+                .arg(&script)
+                .arg(&message)
+                .output()
+                .expect("run commit-msg")
+                .status
+                .success()
+        };
+        for subject in [
+            "feat(cli): add a generator",
+            "fix!: drop a legacy flag",
+            "Merge branch 'main' into feat/x",
+            "Merge remote-tracking branch 'origin/main' into fix/v13-capital-low-fixes",
+            "Merge tag 'v1.2.0'",
+            "Merge branches 'a' and 'b'",
+            "Merge pull request #367 from Rullst/chore/v13-remove-labs-runner",
+            "Merge commit 'abc1234'",
+            "Revert \"feat(x): y\"",
+            "fixup! feat(cli): add a generator",
+            "squash! fix(auth): hash passwords off the runtime",
+            "amend! docs: update the guide",
+        ] {
+            assert!(accepts(subject), "rejected: {subject}");
+        }
+        for subject in ["update stuff", "Merged things", "Revert this", "fixup: x"] {
+            assert!(!accepts(subject), "accepted: {subject}");
+        }
     }
 
     #[test]

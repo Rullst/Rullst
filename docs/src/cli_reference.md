@@ -1124,7 +1124,10 @@ route, dependency, and local network patterns.
 ### `cargo rullst hook:install`
 Installs managed `pre-commit` and `commit-msg` wrappers. The first runs
 `cargo fmt --all -- --check`, strict workspace Clippy, and
-`cargo rullst audit --idor`; the second enforces Conventional Commits. Existing
+`cargo rullst audit --idor`; the second enforces Conventional Commits while
+accepting the subjects Git itself writes for merges (`Merge branch`,
+`Merge remote-tracking branch`, `Merge tag`, `Merge pull request`, ...),
+reverts (`Revert "..."`) and `fixup!`/`squash!`/`amend!` commits. Existing
 active hooks are moved to explicit `.rullst-original` backups and invoked first,
 while reinstalling the managed wrappers is idempotent. The command supports
 linked worktrees, fails clearly outside a Git worktree, and refuses a backup
