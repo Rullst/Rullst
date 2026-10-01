@@ -255,3 +255,52 @@ fn rejects_widgets_that_would_expose_protected_orm_fields() {
         assert!(error.contains("hidden"), "{error}");
     }
 }
+
+#[test]
+fn an_annotated_primary_key_outranks_a_later_id_field() {
+    let input: DeriveInput = parse_quote! {
+        struct Order {
+            #[nexus(primary_key)]
+            number: String,
+            id: i64,
+            total: f64,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    assert!(output.contains("fn nexus_pk () -> & 'static str { \"number\" }"));
+    let id = field_meta(&output, "id").expect("id metadata");
+    assert!(id.contains("hidden : false"), "{id}");
+    assert!(id.contains("readonly : false"), "{id}");
+
+    let two_keys: DeriveInput = parse_quote! {
+        struct Order {
+            #[nexus(primary_key)]
+            number: String,
+            #[nexus(primary_key)]
+            code: String,
+        }
+    };
+    assert!(
+        expand_nexus(&two_keys)
+            .expect_err("two annotated keys must fail")
+            .to_string()
+            .contains("only one field may declare")
+    );
+
+    let contradicting: DeriveInput = parse_quote! {
+        #[nexus(primary_key = "code")]
+        struct Order {
+            #[nexus(primary_key)]
+            number: String,
+            code: String,
+        }
+    };
+    assert!(
+        expand_nexus(&contradicting)
+            .expect_err("contradicting keys must fail")
+            .to_string()
+            .contains("contradicts the struct-level primary key `code`")
+    );
+}

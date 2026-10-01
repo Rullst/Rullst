@@ -126,7 +126,10 @@ On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
   `#[nexus(kind = ...)]` deliberately shows them.
 
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
-`#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
+`#[nexus(primary_key = "uuid")]` on the struct for another key. An annotated
+field is the key even when the struct also has an `id` field, which then stays
+an ordinary column; annotating two fields, or a field other than the
+struct-level key, is a compile error. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
 widget kinds. A `hidden` field is left out of the list, search and the

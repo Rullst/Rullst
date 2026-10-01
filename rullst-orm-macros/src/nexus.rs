@@ -262,6 +262,37 @@ fn humanize_field_name(field_name: &str) -> String {
     }
 }
 
+/// The record key: the struct-level `primary_key`, else the one field
+/// annotated `#[nexus(primary_key)]`, else `id`. An annotation outranks the
+/// `id` naming convention whatever the field order, and two annotations, or
+/// one that contradicts the struct-level key, fail compilation.
+fn resolve_primary_key(
+    configured: Option<String>,
+    columns: &[(&syn::Field, String, FieldOptions)],
+) -> syn::Result<String> {
+    let mut annotated = columns.iter().filter(|(_, _, options)| options.primary_key);
+    let first = annotated.next();
+    if let Some((field, _, _)) = annotated.next() {
+        return Err(syn::Error::new_spanned(
+            field,
+            "only one field may declare #[nexus(primary_key)]",
+        ));
+    }
+    match (configured, first) {
+        (Some(configured), Some((field, name, _))) if configured != *name => {
+            Err(syn::Error::new_spanned(
+                field,
+                format!(
+                    "#[nexus(primary_key)] on `{name}` contradicts the struct-level primary key `{configured}`"
+                ),
+            ))
+        }
+        (Some(configured), _) => Ok(configured),
+        (None, Some((_, name, _))) => Ok(name.clone()),
+        (None, None) => Ok("id".to_string()),
+    }
+}
+
 fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let model_options = parse_model_options(input)?;
@@ -288,11 +319,8 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         .unwrap_or_else(|| format!("{}s", name.to_string().to_lowercase()));
     let label = model_options.label.unwrap_or_else(|| format!("{name}s"));
     let icon = model_options.icon.unwrap_or_else(|| "📄".to_string());
-    let configured_primary_key = model_options.primary_key;
     let tenant_column = model_options.tenant_column;
-    let mut inferred_primary_key = None;
-    let mut field_metas = Vec::with_capacity(fields.len());
-
+    let mut columns = Vec::with_capacity(fields.len());
     for field in fields {
         let field_ident = field.ident.as_ref().ok_or_else(|| {
             syn::Error::new_spanned(field, "Nexus fields must have an identifier")
@@ -304,9 +332,14 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             .to_string();
         let options = parse_field_options(field)?;
         // Relations hold related models and skipped fields have no column.
-        if options.relation || options.skipped {
-            continue;
+        if !options.relation && !options.skipped {
+            columns.push((field, field_name, options));
         }
+    }
+    let primary_key = resolve_primary_key(model_options.primary_key, &columns)?;
+    let mut field_metas = Vec::with_capacity(columns.len());
+
+    for (field, field_name, options) in columns {
         let protection = protection(field, &options)?;
         if tenant_column.as_deref() == Some(field_name.as_str())
             && (type_name(&field.ty) != "String"
@@ -318,10 +351,6 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 "Nexus tenant columns must use a non-optional `String` with text metadata",
             ));
         }
-        if options.primary_key || (configured_primary_key.is_none() && field_name == "id") {
-            inferred_primary_key = Some(field_name.clone());
-        }
-
         let password = quote!(::rullst::nexus::FieldKind::Password);
         let kind = match protection {
             Protection::Sealed | Protection::Hidden => password,
@@ -335,9 +364,7 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let label = options
             .label
             .unwrap_or_else(|| humanize_field_name(&field_name));
-        let is_primary_key = configured_primary_key.as_deref() == Some(field_name.as_str())
-            || options.primary_key
-            || (configured_primary_key.is_none() && field_name == "id");
+        let is_primary_key = field_name == primary_key;
         let hidden = options.hidden
             || concealed
             || is_primary_key
@@ -360,9 +387,6 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         });
     }
 
-    let primary_key = configured_primary_key
-        .or(inferred_primary_key)
-        .unwrap_or_else(|| "id".to_string());
     if !fields
         .iter()
         .filter_map(|field| field.ident.as_ref())
