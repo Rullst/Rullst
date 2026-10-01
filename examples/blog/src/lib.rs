@@ -53,6 +53,8 @@ fn router_with_nexus_auth(
         .register::<Post>()
         .try_build()?;
     rullst_security::register_deception_trap("/wp-admin");
+    // Read provider credential presence (and `./.env`) once, off the request path.
+    billing_demo::gateways::configured_gateway_ids();
 
     Ok(routes![
         get("/" => index),
