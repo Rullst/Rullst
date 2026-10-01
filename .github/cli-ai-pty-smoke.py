@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """`cargo rullst ai` in a real terminal with the offline assistant: review
-prompts, the git checkpoint, applied edits, Ctrl+C and Ctrl+D handling, and the
-plan-only fallback under CI. Local fixtures only: no network or credentials."""
+prompts, the git checkpoint, applied edits, a new project created outside one,
+Ctrl+C and Ctrl+D handling, and the plan-only fallback under CI. Local
+fixtures only: no network or credentials."""
 import errno
 import json
 import os
@@ -83,7 +84,8 @@ with tempfile.TemporaryDirectory(prefix="rullst-ai-") as directory:
     env = {name: value for name, value in os.environ.items()
            if name not in ("CI", "NO_COLOR", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
                            "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "OLLAMA_HOST",
-                           "RULLST_AI_MODEL", "OPENAI_BASE_URL")}
+                           "RULLST_AI_BASE_URL", "RULLST_AI_MODEL", "OPENAI_BASE_URL",
+                           "RULLST_ENV", "APP_ENV")}
     env.update(XDG_CONFIG_HOME=str(base / "config"), TERM="xterm-256color",
                RULLST_UPDATE_CHECK="0", CARGO_NET_OFFLINE="true")
 
@@ -108,6 +110,19 @@ with tempfile.TemporaryDirectory(prefix="rullst-ai-") as directory:
     assert not (app / "rullst-ai-demo.md").exists()
     assert git(app, "for-each-ref", "refs/rullst") == "", "no change, no checkpoint"
     print(json.dumps({"case": "ctrl-c-and-ctrl-d", "passed": True}))
+
+    workspace = base / "workspace"
+    workspace.mkdir()
+    answers = [((b"Apply?", 1), b"y\r"), ((b"Apply?", 2), b"y\r"),
+               ((b"Continue without a checkpoint?", 1), b"y\r"), ((b"Apply?", 3), b"y\r"),
+               ((b"Run `cargo check` now?", 1), b"n\r")]
+    status, text, _ = terminal(workspace, env, ["ai", "build a shop"], answers, timeout=180)
+    assert status == 0, (status, text[-800:])
+    created = workspace / "rullst-ai-demo"
+    assert (created / "Cargo.toml").is_file(), text[-800:]
+    assert "Now working in the new project rullst-ai-demo" in text
+    assert (created / "rullst-ai-demo.md").read_text().endswith("Status: reviewed\n")
+    print(json.dumps({"case": "new-project-then-change", "passed": True}))
 
     app = project(base, "ci-app")
     status, text, raw = terminal(app, dict(env, CI="true"), ["ai", "write a demo note"], [])
