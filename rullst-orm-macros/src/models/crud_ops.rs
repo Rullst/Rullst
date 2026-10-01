@@ -82,7 +82,22 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         None => None,
                     })
                 },
-                None => quote! { .bind(self.#field_name.clone()) },
+                // FromRow decodes `#[sqlx(json)]` through SQLx `Json`, so the
+                // write encodes the value the same way.
+                None => match parsed
+                    .json_fields
+                    .iter()
+                    .find(|(field, _)| field == field_name)
+                    .map(|(_, nullable)| *nullable)
+                {
+                    Some(false) => quote! {
+                        .bind(rullst_orm::_sqlx::types::Json(self.#field_name.clone()))
+                    },
+                    Some(true) => quote! {
+                        .bind(self.#field_name.clone().map(rullst_orm::_sqlx::types::Json))
+                    },
+                    None => quote! { .bind(self.#field_name.clone()) },
+                },
             };
             bind_inserts.push(binding.clone());
 
@@ -268,5 +283,34 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             #scout_after_commit
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn sqlx_json_fields_are_written_through_sqlx_json() {
+        let input: DeriveInput = parse_quote! {
+            struct Profile {
+                id: i32,
+                #[sqlx(json)]
+                tags: Vec<String>,
+                #[sqlx(json(nullable))]
+                extra: Option<Preferences>,
+                name: String,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate_save_method(&parsed).to_string();
+        assert!(
+            generated
+                .contains(". bind (rullst_orm :: _sqlx :: types :: Json (self . tags . clone ()))")
+        );
+        assert!(generated.contains(
+            ". bind (self . extra . clone () . map (rullst_orm :: _sqlx :: types :: Json))"
+        ));
+        assert!(generated.contains(". bind (self . name . clone ())"));
     }
 }

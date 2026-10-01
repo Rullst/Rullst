@@ -1674,13 +1674,15 @@ application's SQLx `FromRow`, which still reads the column from `SELECT *`. A
 field without a table column therefore needs `#[sqlx(skip)]` (alone or
 together with `#[orm(skip)]`, which are distinct options) or
 `#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
-generated writes must not touch. `json` and `json(nullable)` change only how
-that `FromRow` decodes the column: generated INSERT/UPDATE statements bind the
-field's own Rust type, not a `Json(...)` wrapper. Such a field therefore
-needs a type that SQLx itself encodes as the column's JSON type on the
-selected driver (for example `serde_json::Value` under a strict driver
-feature); with a type that only implements Serde the derive fails to compile
-at the generated bind. `rename`, `try_from`,
+generated writes must not touch. `FromRow` decodes a `json` or
+`json(nullable)` field through SQLx `Json`, and generated INSERT/UPDATE
+statements (including `update_partial()`) encode it the same way: the value is
+bound as `sqlx::types::Json(value)`, and a `json(nullable)` `None` as SQL
+`NULL`. The field type therefore needs Serde `Serialize`/`Deserialize`, not
+an SQLx `Encode`, and the column the driver's JSON type (`JSONB`/`JSON` on
+PostgreSQL, `JSON` on MySQL, text on SQLite). SQLx implements `Json` only for
+the concrete drivers, so such models require a strict driver feature; the
+dynamic `Any` pool cannot decode them. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
 decoded shape drift from generated SQL. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are

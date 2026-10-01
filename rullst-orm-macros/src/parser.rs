@@ -44,6 +44,8 @@ pub struct ParsedModel {
     /// Persisted `SecretString` / `Option<SecretString>` fields, redacted like
     /// masked fields and compared through `PartialEq` for audit changes.
     pub secret_fields: Vec<syn::Ident>,
+    /// Persisted `#[sqlx(json)]` fields and whether they are `json(nullable)`.
+    pub json_fields: Vec<(syn::Ident, bool)>,
     /// Fields tagged with `#[orm(skip)]` or `#[sqlx(skip)]`. They are
     /// still part of the struct but excluded from generated INSERT /
     /// UPDATE statements, the `*Column` enum and JSON serialisation.
@@ -143,6 +145,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut encrypted_fields = vec![];
     let mut masked_fields = vec![];
     let mut secret_fields = vec![];
+    let mut json_fields = vec![];
     let mut skipped_fields = vec![];
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
@@ -253,6 +256,9 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             }
             if is_secret_string_type(&field.ty) {
                 secret_fields.push(field_name.clone());
+            }
+            if let Some(nullable) = field_attributes.sqlx_json {
+                json_fields.push((field_name.clone(), nullable));
             }
             if field_attributes.is_hidden {
                 hidden_fields.push(field_name);
@@ -440,6 +446,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         encrypted_fields,
         masked_fields,
         secret_fields,
+        json_fields,
         skipped_fields,
         relations,
         has_soft_deletes,

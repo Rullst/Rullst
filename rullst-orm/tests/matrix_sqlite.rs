@@ -60,4 +60,5 @@ async fn strict_sqlite_crud_uses_the_sqlite_pool_and_dialect() {
 
     support::exercise_outbox().await;
     partial_update_contract::exercise().await;
+    support::json_columns::exercise_sqlx_json("TEXT").await;
 }
