@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790821411623,
+  "lastUpdate": 1790828304587,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8625,6 +8625,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 339,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c80e38b3903c1897951a1a90a63fa1eaef08994f",
+          "message": "Merge pull request #367 from Rullst/chore/v13-remove-labs-runner\n\nchore(labs): remove rullst-labs-runner and document a bring-your-own runner contract",
+          "timestamp": "2026-10-01T01:01:47-03:00",
+          "tree_id": "efad69ab657347767cb34dbdbcbc4ff8203aaf72",
+          "url": "https://github.com/Rullst/Rullst/commit/c80e38b3903c1897951a1a90a63fa1eaef08994f"
+        },
+        "date": 1790828303937,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 390,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
