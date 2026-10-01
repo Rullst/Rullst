@@ -124,9 +124,10 @@ fn scan_idor_source_with_evidence(
             continue;
         }
 
-        let Some(route) = quoted_parameterized_route(trimmed) else {
+        let routes = quoted_parameterized_routes(trimmed);
+        if routes.is_empty() {
             continue;
-        };
+        }
         let marker_line = access_marker_line(&lines, index, trimmed);
         let classification = marker_line.and_then(access_classification);
         let reason = if marker_line.is_some_and(|marker| !access_marker_has_reason(marker)) {
@@ -157,11 +158,13 @@ fn scan_idor_source_with_evidence(
         };
 
         if let Some(reason) = reason {
-            findings.push(format!(
-                "File '{}:{}': parameterized route `{route}` {reason}",
-                path.display(),
-                index + 1
-            ));
+            for route in routes {
+                findings.push(format!(
+                    "File '{}:{}': parameterized route `{route}` {reason}",
+                    path.display(),
+                    index + 1
+                ));
+            }
         }
     }
 
@@ -176,16 +179,31 @@ fn contains_route_call(line: &str) -> bool {
     .any(|needle| line.contains(needle))
 }
 
-fn quoted_parameterized_route(line: &str) -> Option<&str> {
-    let quote_start = line.find('"')?;
-    let tail = &line[quote_start + 1..];
-    let quote_end = tail.find('"')?;
-    let candidate = &tail[..quote_end];
-    if candidate.starts_with('/') && candidate.split('/').any(is_parameter_segment) {
-        Some(candidate)
-    } else {
-        None
-    }
+/// Every quoted literal on the line that is a parameterized path, so a
+/// later route on a one-line `routes!` list is not hidden by an earlier one.
+fn quoted_parameterized_routes(line: &str) -> Vec<&str> {
+    quoted_literals(line)
+        .filter(|candidate| {
+            candidate.starts_with('/') && candidate.split('/').any(is_parameter_segment)
+        })
+        .collect()
+}
+
+/// The contents of each `"..."` on the line; `\"` does not end a literal.
+fn quoted_literals(line: &str) -> impl Iterator<Item = &str> {
+    let mut rest = line;
+    std::iter::from_fn(move || {
+        let start = rest.find('"')? + 1;
+        let body = rest.get(start..)?;
+        let mut escaped = false;
+        let end = body.char_indices().find_map(|(offset, character)| {
+            let closes = character == '"' && !escaped;
+            escaped = character == '\\' && !escaped;
+            closes.then_some(offset)
+        })?;
+        rest = body.get(end + 1..)?;
+        body.get(..end)
+    })
 }
 
 fn is_parameter_segment(segment: &str) -> bool {
@@ -353,6 +371,19 @@ mod inline {
         assert_eq!(result.len(), 1, "{result:?}");
         assert!(result[0].contains("routes.rs:7"));
         assert!(result[0].contains("/accounts/{id}"));
+    }
+
+    #[test]
+    fn every_route_on_a_single_line_list_is_checked() {
+        // The old scan read only the first literal, "/", and skipped the line.
+        let source = r#"routes! { get("/" => home), get("/users/{id}" => show_user) }"#;
+        let result = findings(source);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("/users/{id}"));
+
+        let both = r#"routes! { get("/teams/{team}" => team), delete("/users/{id}" => drop) }"#;
+        assert_eq!(findings(both).len(), 2);
+        assert!(quoted_literals(r#"a("x\"y", "/z")"#).eq([r#"x\"y"#, "/z"]));
     }
 
     #[test]
