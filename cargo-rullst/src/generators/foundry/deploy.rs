@@ -148,9 +148,11 @@ command -v systemctl > /dev/null 2>&1
 command -v caddy > /dev/null 2>&1
 install -d -m 0755 /opt/rullst /opt/rullst/{app_name} /opt/rullst/{app_name}/bin /var/log/caddy
 install -d -m 0700 /opt/rullst/{app_name}/config
+install -d -m 0700 -o {user} /opt/rullst/{app_name}/incoming
 {account_setup}
 echo "✅ Server environment ready.""#,
         app_name = cfg.app_name,
+        user = cfg.user,
         account_setup = service::render_account_setup(cfg)
     )
 }
@@ -204,8 +206,10 @@ pub fn execute_upload_step(
     scp_args.push("--".to_string());
     scp_args.push(local_bin.to_string());
     scp_args.push(format!(
-        "{}@{}:/tmp/rullst_{}.upload",
-        cfg.user, cfg.host, cfg.app_name
+        "{}@{}:{}",
+        cfg.user,
+        cfg.host,
+        staged_upload_path(&cfg.app_name, &bin_name)
     ));
 
     if !Command::new("scp").args(&scp_args).status()?.success() {
@@ -221,10 +225,37 @@ pub fn execute_upload_step(
     Ok(())
 }
 
+/// Remote upload path inside the deploy user's private `incoming` directory.
+///
+/// A predictable world-writable location such as `/tmp` would let another
+/// local account pre-create or swap the file before root installs it.
+fn staged_upload_path(app_name: &str, bin_name: &str) -> String {
+    format!("/opt/rullst/{app_name}/incoming/{bin_name}.upload")
+}
+
+/// SHA-256 of the local release binary, verified remotely before `install`.
+pub fn local_binary_sha256(path: &str) -> std::io::Result<String> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+
+    let mut file = fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let length = file.read(&mut buffer)?;
+        if length == 0 {
+            break;
+        }
+        hasher.update(&buffer[..length]);
+    }
+    Ok(hex::encode(hasher.finalize()))
+}
+
 #[cfg_attr(mutants, mutants::skip)]
 pub fn execute_configure_step(
     cfg: &FoundryConfig,
     bin_name: &str,
+    binary_sha256: &str,
     ssh_args: &[String],
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
@@ -233,7 +264,7 @@ pub fn execute_configure_step(
             .bold()
             .yellow()
     );
-    let configure_cmd = render_configure_command(cfg, bin_name);
+    let configure_cmd = render_configure_command(cfg, bin_name, binary_sha256);
 
     if !run_ssh_script(&configure_cmd, ssh_args)? {
         return Err(std::io::Error::other(
@@ -245,7 +276,7 @@ pub fn execute_configure_step(
     Ok(())
 }
 
-fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
+fn render_configure_command(cfg: &FoundryConfig, bin_name: &str, binary_sha256: &str) -> String {
     let app_port = if cfg.port.is_empty() {
         "3000"
     } else {
@@ -286,8 +317,11 @@ fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
     format!(
         r#"set -e
 umask 077
-staged_binary=/tmp/rullst_{app_name}.upload
+staged_binary={staged_binary}
+test ! -L "$staged_binary"
 test -f "$staged_binary"
+test "$(stat -c %u "$staged_binary")" = "$(id -u {user})"
+test "$(sha256sum "$staged_binary" | cut -d ' ' -f 1)" = "{binary_sha256}"
 command -v systemctl > /dev/null 2>&1
 if ! command -v caddy > /dev/null 2>&1; then
     echo "Caddy is required but was not found; install it from a reviewed package source before retrying" >&2
@@ -347,6 +381,9 @@ echo "✅ Services configured and started."
         env_lines = env_lines,
         caddy_site = caddy_site,
         hardening = service::render_unit_hardening(cfg),
+        staged_binary = staged_upload_path(&cfg.app_name, bin_name),
+        user = cfg.user,
+        binary_sha256 = binary_sha256,
         bin_name = bin_name,
         app_name = cfg.app_name
     )

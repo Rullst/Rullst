@@ -135,8 +135,9 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
             )
         })?
         .to_string_lossy();
+    let binary_sha256 = deploy::local_binary_sha256(&local_bin)?;
     deploy::execute_upload_step(&cfg, &local_bin)?;
-    deploy::execute_configure_step(&cfg, &bin_name, &ssh_base_args)?;
+    deploy::execute_configure_step(&cfg, &bin_name, &binary_sha256, &ssh_base_args)?;
 
     println!(
         "{}",
