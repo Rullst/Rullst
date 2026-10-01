@@ -135,7 +135,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   SQLite AST/schema diff; review generated SQL before applying it.
 - **Atomic Cascading Soft Deletes**: Mark generated has-one/has-many
   relationships for cascade; implicit deletes open a transaction when needed,
-  while explicit or task-scoped transactions are reused without nesting.
+  while explicit or task-scoped transactions are reused without nesting. The
+  cascade honours the child's tenant scope, not its `global_scope`.
 - **Transactional Partial Updates (v13 candidate)**: `.update_partial()` merges
   selected values into the locked current row and runs the full save lifecycle,
   including audit and post-commit effects. The loaded row runs `after_fetch`

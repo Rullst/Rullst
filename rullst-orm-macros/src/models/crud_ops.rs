@@ -375,8 +375,13 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                     "__rullst_cascade_soft_delete_with_tx",
                     rel.field_name.span(),
                 );
+                // The child's global_scope must not leave children outside
+                // it live under a trashed parent; its tenant scope applies.
                 cascade_deletes_with_tx.extend(quote! {
-                    #rel_model::query().where_eq(#fk, self.#lk.clone()).#cascade(tx).await?;
+                    #rel_model::__rullst_cascade_query()
+                        .where_eq(#fk, self.#lk.clone())
+                        .#cascade(tx)
+                        .await?;
                 });
             }
         }

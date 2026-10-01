@@ -138,6 +138,17 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
             builder
         }
 
+        /// Builds the child query of a parent's `cascade_soft_delete`: the
+        /// mandatory tenant scope applies, the model-wide `global_scope`
+        /// does not, so every direct child is trashed with its parent.
+        #[doc(hidden)]
+        pub fn __rullst_cascade_query() -> #builder_name {
+            let mut builder = #builder_name::new();
+            #tenant_scope_logic
+            builder.freeze_scope();
+            builder
+        }
+
         /// Builds a query without model-wide or tenant scopes.
         ///
         /// This deliberately noisy escape hatch is intended for reviewed
@@ -169,6 +180,28 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
 mod tests {
     use super::*;
     use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn cascade_query_keeps_the_tenant_scope_but_not_the_global_scope() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "notes", tenant_column = "org", global_scope = "approved")]
+            struct Note { id: i32, org: String, deleted_at: Option<String> }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let builder = quote::format_ident!("NoteQueryBuilder");
+        let generated = generate_query_methods(&parsed, &builder).to_string();
+        let (query, cascade) = generated
+            .split_once("fn __rullst_cascade_query")
+            .expect("cascade query constructor");
+        assert!(query.contains("builder = builder . approved ()"));
+        let cascade = cascade
+            .split_once("fn unscoped")
+            .expect("cascade constructor body")
+            .0;
+        assert!(!cascade.contains("approved"));
+        assert!(cascade.contains("where_eq (\"org\" , tenant)"));
+        assert!(cascade.contains("tenant context is required"));
+    }
 
     #[test]
     fn sql_search_fallback_skips_hidden_and_protected_columns() {

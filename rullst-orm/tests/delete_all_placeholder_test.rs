@@ -33,6 +33,13 @@ struct BulkPost {
         cascade_soft_delete
     )]
     comments: Option<Vec<BulkComment>>,
+    #[sqlx(default, skip)]
+    #[orm(
+        has_many = "BulkNote",
+        foreign_key = "bulk_post_id",
+        cascade_soft_delete
+    )]
+    notes: Option<Vec<BulkNote>>,
     deleted_at: Option<String>,
 }
 
@@ -42,6 +49,22 @@ struct BulkComment {
     id: i32,
     bulk_post_id: i32,
     deleted_at: Option<String>,
+}
+
+/// A child whose model-wide scope hides unapproved rows from `query()`.
+#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+#[orm(table = "bulk_notes", global_scope = "approved")]
+struct BulkNote {
+    id: i32,
+    bulk_post_id: i32,
+    approved: i32,
+    deleted_at: Option<String>,
+}
+
+impl BulkNoteQueryBuilder {
+    fn approved(self) -> Self {
+        self.where_eq("approved", 1)
+    }
 }
 
 const NON_POSTGRES: [&str; 2] = ["mysql", "sqlite"];
@@ -91,7 +114,7 @@ async fn tenant_scoped_delete_all_numbers_the_scope_binding_first() {
 fn cascade_soft_delete_statement_keeps_question_marks_off_postgres() {
     // The generated cascade runs exactly this child builder through
     // delete_all_with_tx when a BulkPost is deleted.
-    let cascade = BulkComment::query().where_eq("bulk_post_id", 7);
+    let cascade = BulkComment::__rullst_cascade_query().where_eq("bulk_post_id", 7);
     for driver in NON_POSTGRES {
         assert_eq!(
             cascade.__rullst_delete_all_sql(driver),
@@ -105,6 +128,17 @@ fn cascade_soft_delete_statement_keeps_question_marks_off_postgres() {
         "UPDATE bulk_comments SET deleted_at = CURRENT_TIMESTAMP \
          WHERE (bulk_post_id = $1) AND deleted_at IS NULL"
     );
+}
+
+#[test]
+fn cascade_soft_delete_ignores_the_child_global_scope() {
+    let cascade = BulkNote::__rullst_cascade_query().where_eq("bulk_post_id", 7);
+    assert_eq!(
+        cascade.__rullst_delete_all_sql("sqlite"),
+        "UPDATE bulk_notes SET deleted_at = CURRENT_TIMESTAMP \
+         WHERE (bulk_post_id = ?) AND deleted_at IS NULL"
+    );
+    assert!(BulkNote::query().to_sql().contains("approved = ?"));
 }
 
 #[tokio::test]
@@ -125,6 +159,8 @@ async fn delete_all_and_cascade_execute_with_the_active_driver() {
         "CREATE TABLE bulk_comments (id INTEGER PRIMARY KEY, bulk_post_id INTEGER NOT NULL, deleted_at TEXT)",
         "INSERT INTO bulk_posts (id) VALUES (1), (2)",
         "INSERT INTO bulk_comments (id, bulk_post_id) VALUES (1, 1), (2, 1), (3, 2)",
+        "CREATE TABLE bulk_notes (id INTEGER PRIMARY KEY, bulk_post_id INTEGER NOT NULL, approved INTEGER NOT NULL, deleted_at TEXT)",
+        "INSERT INTO bulk_notes (id, bulk_post_id, approved) VALUES (1, 1, 1), (2, 1, 0), (3, 2, 0)",
     ] {
         sqlx::query(statement)
             .execute(pool)
@@ -149,6 +185,8 @@ async fn delete_all_and_cascade_execute_with_the_active_driver() {
         3
     );
     assert!(BulkPost::find(1).await.unwrap().is_none());
+    // Unapproved notes, outside BulkNote's global scope, are trashed too.
+    assert_eq!(BulkNote::unscoped().pluck_i32("id").await.unwrap(), vec![3]);
 
     pool.close().await;
     let _ = std::fs::remove_file(database_path);

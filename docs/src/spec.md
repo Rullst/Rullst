@@ -1863,8 +1863,10 @@ while portability and semantic review remain the model author's responsibility.
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
-  commits, or rolls back its own transaction. Recursive descendant/cycle
-  traversal remains a separate contract. The related model must itself use
+  commits, or rolls back its own transaction. The children are selected with
+  the related model's tenant scope but without its `global_scope`, so a
+  child hidden by that model-wide filter is trashed with its parent too.
+  Recursive descendant/cycle traversal remains a separate contract. The related model must itself use
   soft deletes (a `deleted_at` field or `#[orm(soft_delete)]`): a cascade into
   a model without them fails to compile (no method
   `__rullst_cascade_soft_delete_with_tx`, reported at the relation field)
