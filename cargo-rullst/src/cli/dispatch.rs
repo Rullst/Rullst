@@ -392,7 +392,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
     }
 
-    // Automatically generate AI Context for scaffolding commands so it stays up to date
+    // Keep the generated project context and ER diagram current after scaffolds;
+    // both refreshes are best effort and never replace hand-written files.
     match command {
         Commands::MakeController { .. }
         | Commands::MakeModel { .. }
@@ -404,7 +405,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeCors
         | Commands::MakeJwt => {
             crate::generators::ai_context::refresh_after_scaffold();
-            crate::generators::diagram::generate_mermaid_diagram(None).ok();
+            crate::generators::diagram::refresh_after_scaffold();
         }
         _ => {}
     }

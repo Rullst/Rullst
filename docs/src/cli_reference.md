@@ -506,8 +506,12 @@ Manages third-party community packages and extensions conforming to the `RullstP
 
 Rullst generators write the files described under each command. Some commands
 also register modules and refresh `.llms.txt`; this is command-specific, and a
-failed best-effort context refresh does not roll back generated source. Review
-the diff and run `cargo check` after scaffolding.
+failed best-effort context refresh does not roll back generated source.
+`make:controller`, `make:model`, `make:middleware`, `make:worker`,
+`make:island`, `auth`, `make:billing`, `make:cors` and `make:jwt` also refresh
+the `generate:diagram` output `diagram.md`: a missing file is created, while a
+`diagram.md` the generator did not write is kept and reported instead of
+replaced. Review the diff and run `cargo check` after scaffolding.
 
 ### `cargo rullst make:resource <name>`
 Scaffolds the bounded starting files for a CRUD resource in one command: a
@@ -903,6 +907,10 @@ fail before generation. See the [profile and executable acceptance](typed-api.md
 
 ### `cargo rullst generate:diagram`
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.
+The file starts with a generator marker comment. An existing `diagram.md` is
+replaced only when it carries that marker (or is the single unmarked Mermaid
+block earlier releases wrote); the command refuses a hand-written file or a
+symlink, so move it aside to regenerate the diagram.
 
 ### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
 Connects to an existing database and generates reviewable starter structs from
