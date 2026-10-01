@@ -1876,6 +1876,12 @@ while portability and semantic review remain the model author's responsibility.
   exactly as for mutations, instead of reaching a predicate that MySQL would
   compare numerically across tenants. Generated full/partial updates and
   instance delete/restore paths reject a model from another tenant.
+* The generated tenant predicate, the soft-delete filter and the
+  `chunk_by_id` keyset name their column with the model's table
+  (`<table>.<column>`), so a join with a table that has the same columns, such
+  as a tenant-scoped or soft-deletable `belongs_to_many` pivot, cannot make
+  them ambiguous. A model-wide `global_scope` is application code and
+  qualifies its own columns.
 * `Model::unscoped()` is the explicit global escape hatch. Deciding who may use
   it, deriving tenant identity from authenticated state, and database-level RLS
   remain host responsibilities.

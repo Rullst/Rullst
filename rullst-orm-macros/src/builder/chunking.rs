@@ -8,7 +8,8 @@ use quote::quote;
 pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
-    // Qualified, so a join cannot make the default order ambiguous.
+    // Qualified, so a join cannot make the default order or the keyset
+    // order ambiguous.
     let default_order = format!("{table_name}.id ASC");
 
     vec![quote! {
@@ -98,9 +99,10 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
 
         /// Processes rows in ascending primary-key order without offset drift.
         ///
-        /// The generated SQL uses `id > last_seen_id`, so deleting already
-        /// processed rows cannot make later records move behind an offset. The
-        /// handler is fallible and stops traversal on its first error.
+        /// The generated SQL uses `<table>.id > last_seen_id` (qualified, so a
+        /// join cannot make it ambiguous), so deleting already processed rows
+        /// cannot make later records move behind an offset. The handler is
+        /// fallible and stops traversal on its first error.
         #[rullst_orm::_tracing::instrument(
             name = "rullst.orm.query",
             target = "rullst_orm",
@@ -123,12 +125,14 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             }
             let mut cursor: Option<i32> = None;
             loop {
-                let mut builder = self.clone().order_by("id");
+                let mut builder = self.clone();
+                builder.order_bindings.clear();
+                builder.order_by = Some(#default_order.to_string());
                 builder.freeze_scope();
                 builder.limit = Some(size);
                 builder.offset = None;
                 if let Some(last_seen_id) = cursor {
-                    builder = builder.where_gt("id", last_seen_id);
+                    builder = builder.__rullst_where_own("id", ">", last_seen_id);
                 }
                 let results = builder.get().await?;
                 let count = results.len();
@@ -153,12 +157,14 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             }
             let mut cursor: Option<i32> = None;
             loop {
-                let mut builder = self.clone().order_by("id");
+                let mut builder = self.clone();
+                builder.order_bindings.clear();
+                builder.order_by = Some(#default_order.to_string());
                 builder.freeze_scope();
                 builder.limit = Some(size);
                 builder.offset = None;
                 if let Some(last_seen_id) = cursor {
-                    builder = builder.where_gt("id", last_seen_id);
+                    builder = builder.__rullst_where_own("id", ">", last_seen_id);
                 }
                 let results = builder.get_with_tx(tx).await?;
                 let count = results.len();

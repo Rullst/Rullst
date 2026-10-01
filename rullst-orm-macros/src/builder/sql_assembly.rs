@@ -76,6 +76,26 @@ pub fn generate_sql_assembly_methods(
             }
         }
 
+        /// A generated predicate (the tenant scope or the keyset cursor) on
+        /// one of this model's own columns, qualified with its table so a
+        /// join with a table that has the same column cannot make it
+        /// ambiguous. The column name was validated when the model was
+        /// derived; the column guards still apply.
+        fn __rullst_where_own<T: Into<rullst_orm::RullstValue>>(
+            mut self,
+            column: &'static str,
+            operator: &'static str,
+            value: T,
+        ) -> Self {
+            self.reject_skipped_column(column);
+            self.wheres.push((
+                "AND".to_string(),
+                format!("{}.{} {} {}", #table_lit, column, operator, Self::__rullst_bind_marker(column)),
+            ));
+            self.bindings.push(value.into());
+            self
+        }
+
         /// Freezes the filters added so far, such as a relation's ownership
         /// predicate, into their own AND group before a caller's modifier runs.
         #[doc(hidden)]

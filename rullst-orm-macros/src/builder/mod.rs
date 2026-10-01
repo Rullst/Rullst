@@ -69,14 +69,17 @@ pub fn generate(
     let builder_name = quote::format_ident!("{}QueryBuilder", name);
 
     // The parser synthesizes the configuration of every soft-delete model.
+    // Builder filters are qualified with the table, so a join with a table
+    // that has the same column (a soft-deletable pivot) stays unambiguous.
+    let table = &parsed.table_name;
     let soft_delete_filters = parsed
         .soft_delete
         .as_ref()
         .filter(|_| parsed.has_soft_deletes)
         .map(|cfg| {
             (
-                soft_delete_where_clause(cfg, false),
-                soft_delete_where_clause(cfg, true),
+                format!("{table}.{}", soft_delete_where_clause(cfg, false)),
+                format!("{table}.{}", soft_delete_where_clause(cfg, true)),
             )
         });
 
@@ -176,7 +179,8 @@ mod tests {
         });
         assert!(!soft.contains("only_trashed() requires"));
         assert!(!soft.contains("sql . push_str (\"1 = 0\")"));
-        assert!(soft.contains("deleted_at IS NOT NULL"));
+        assert!(soft.contains("\"comments.deleted_at IS NOT NULL\""));
+        assert!(soft.contains("\"comments.deleted_at IS NULL\""));
     }
 
     #[test]
