@@ -404,6 +404,22 @@ A prepared version section does not establish that its tag or crates exist.
 - `sync-badges` escapes prerelease versions and is no longer installed by
   `cargo install` (new `maintainer-tools` feature).
 
+### CLI generator second-round fixes
+
+- `generate:models` reads PostgreSQL 12+ and MySQL 8 metadata (cast and
+  aliased columns) and reports bad metadata as an error instead of panicking.
+- `make:migration:auto` derives column types from the Rust field type:
+  new-table fields are `NOT NULL` unless `Option`, required columns added to
+  existing tables get a typed default, and unmappable types are refused.
+- `cargo rullst auth` and `make:mfa` use the `rullst::orm` facade and refuse
+  projects without a migration runner.
+- `inspect routes` no longer follows symlinks; `generate:ts` clients send
+  `X-CSRF-Token` from the `rullst_csrf` cookie; `make:live`,
+  `make:controller` and `make:middleware` validate names.
+- Generated `.gitignore` files ignore DuckDB databases and SQLite journals,
+  and `omni android|ios` no longer leaves the backend running when the Tauri
+  CLI is missing.
+
 ### CLI generator and operations review fixes
 
 - CLI generators no longer overwrite application files: `make:k8s`,
