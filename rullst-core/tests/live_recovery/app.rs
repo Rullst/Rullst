@@ -50,6 +50,28 @@ impl Server {
         actions: usize,
         lifetime: Duration,
     ) -> Self {
+        let fast = Duration::from_millis(200);
+        Self::configured(database, port, connections, actions, lifetime, fast, fast).await
+    }
+    /// Callbacks may take up to `operation`; the session pings every `revalidate`.
+    pub async fn with_timing(
+        database: &str,
+        port: u16,
+        operation: Duration,
+        revalidate: Duration,
+    ) -> Self {
+        let lifetime = Duration::from_secs(120);
+        Self::configured(database, port, 8, 32, lifetime, operation, revalidate).await
+    }
+    async fn configured(
+        database: &str,
+        port: u16,
+        connections: usize,
+        actions: usize,
+        lifetime: Duration,
+        operation: Duration,
+        revalidate: Duration,
+    ) -> Self {
         let pool = SqlitePoolOptions::new()
             .max_connections(4)
             .connect(database)
@@ -85,11 +107,7 @@ impl Server {
             .unwrap()
             .with_capacity(connections, actions)
             .unwrap()
-            .with_timing(
-                Duration::from_millis(200),
-                Duration::from_millis(200),
-                lifetime,
-            )
+            .with_timing(operation, revalidate, lifetime)
             .unwrap();
         let state = Arc::new(App {
             pool: pool.clone(),
@@ -215,9 +233,12 @@ impl RecoverableLiveView for View {
         if command.action() == "slow" {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
+        if command.action() == "slow-increment" {
+            tokio::time::sleep(Duration::from_millis(700)).await;
+        }
         if !matches!(
             command.action(),
-            "increment" | "increment-drop" | "increment-revoke"
+            "increment" | "increment-drop" | "increment-revoke" | "slow-increment"
         ) {
             return Err(LiveRecoveryError::Invalid);
         }

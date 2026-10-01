@@ -309,9 +309,10 @@ impl Cache {
 
     /// Store a value with an optional TTL in seconds.
     ///
-    /// Pass `None` for TTL to store indefinitely. The in-memory driver also
-    /// stores a TTL too large for the monotonic clock (such as `u64::MAX`)
-    /// without expiry.
+    /// Pass `None` for TTL to store indefinitely. A TTL too large for the
+    /// driver's clock (such as `u64::MAX`) is also stored without expiry. A
+    /// zero TTL stores an already-expired value, so it is never returned and
+    /// it replaces any previous value; Redis simply removes the key.
     pub async fn put(
         &self,
         key: &str,

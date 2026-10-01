@@ -4,6 +4,7 @@ use super::{
 };
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use std::future::Future;
+use std::time::Duration;
 use tokio::time::{Instant, MissedTickBehavior};
 
 pub(super) async fn run<C: RecoverableLiveView>(
@@ -100,17 +101,21 @@ async fn session<C: RecoverableLiveView>(
         config.revalidate_every,
     );
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    let mut last_peer = Instant::now();
+    // Silence counts only time spent waiting for the peer here, never this
+    // session's own callbacks and sends, during which the socket is not read.
+    let mut peer_silence = Duration::ZERO;
     loop {
+        let waiting_since = Instant::now();
         tokio::select! {
             _ = tick.tick() => {
+                peer_silence = peer_silence.saturating_add(waiting_since.elapsed());
                 bounded(config, component.authorize(scope)).await?;
-                if last_peer.elapsed() > config.revalidate_every.saturating_mul(3) { return Err(LiveRecoveryError::Unavailable); }
+                if peer_silence > config.revalidate_every.saturating_mul(3) { return Err(LiveRecoveryError::Unavailable); }
                 bounded(config, async { socket.send(Message::Ping(Vec::new().into())).await.map_err(|_| LiveRecoveryError::Unavailable) }).await?;
             }
             incoming = socket.recv() => {
                 let message = match incoming { Some(Ok(message)) => message, Some(Err(_)) => return Err(LiveRecoveryError::Invalid), None => return Ok(()) };
-                last_peer = Instant::now();
+                peer_silence = Duration::ZERO;
                 match message {
                     Message::Text(text) => {
                         if actions >= config.max_actions { return Err(LiveRecoveryError::Unavailable); }

@@ -190,6 +190,8 @@ async fn test_matrix_postgres_crud() {
 
     #[cfg(feature = "strict-postgres")]
     exercise_native_enum().await;
+    #[cfg(feature = "strict-postgres")]
+    support::json_columns::exercise_sqlx_json("JSONB").await;
     #[cfg(not(feature = "strict-postgres"))]
     exercise_dynamic_pool_enum_refusal().await;
     driver_contract::exercise().await;

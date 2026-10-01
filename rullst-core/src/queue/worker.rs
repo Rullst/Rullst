@@ -15,6 +15,10 @@ mod execution;
 
 /// Delay before a job handed back for lack of a handler can be claimed again.
 pub(crate) const UNHANDLED_JOB_RETRY_DELAY: Duration = Duration::from_secs(5);
+/// Claim attempt from which a job without a local handler is failed instead
+/// of handed back: with the five-second hand-back delay, at least an hour in
+/// which no worker that registers its name claimed it.
+pub(crate) const MAX_UNHANDLED_CLAIM_ATTEMPT: u32 = 720;
 
 /// Type alias for asynchronous job handler closures.
 pub type JobHandler = Box<
@@ -66,7 +70,8 @@ impl Worker {
     /// A handler still running at the deadline is aborted and its job is
     /// failed as timed out. A handler that cannot be interrupted (for example
     /// one that blocks its thread) and then returns is recorded from its own
-    /// result instead.
+    /// result instead. [`Self::run`] rejects a zero timeout, which would fail
+    /// every job before its handler could run; there is no "no timeout" value.
     pub fn job_timeout(mut self, timeout: Duration) -> Self {
         self.job_timeout = timeout;
         self
@@ -105,13 +110,19 @@ impl Worker {
     /// Starts the polling loop and returns an observable lifecycle handle.
     ///
     /// # Errors
-    /// Returns a typed error for zero concurrency, a zero polling interval, or
-    /// invocation outside an active Tokio runtime. No task is spawned on error.
+    /// Returns a typed error for zero concurrency, a zero polling interval or
+    /// job timeout, or invocation outside an active Tokio runtime. No task is
+    /// spawned on error.
     #[cfg_attr(mutants, mutants::skip)]
     pub fn run(&self) -> Result<WorkerHandle, QueueError> {
         if self.max_concurrency == 0 {
             return Err(QueueError::InvalidConfiguration(
                 "max_concurrency must be greater than zero".to_string(),
+            ));
+        }
+        if self.job_timeout.is_zero() {
+            return Err(QueueError::InvalidConfiguration(
+                "job_timeout must be greater than zero".to_string(),
             ));
         }
         if self.poll_interval.is_zero() {
@@ -402,7 +413,9 @@ async fn dispatch_job(
 /// Returns a job this worker has no handler for to the queue, so a worker
 /// that registered its name can claim it. The delay keeps this worker from
 /// re-claiming the job in a hot loop; `HandlerNotFound` is still reported.
-/// Drivers without delayed requeue keep the previous behaviour and fail it.
+/// Drivers without delayed requeue keep the previous behaviour and fail it,
+/// and a claim at [`MAX_UNHANDLED_CLAIM_ATTEMPT`] or later is failed too, so
+/// a job whose name no worker handles reaches a terminal state.
 async fn hand_back_unhandled(
     job: &QueuedJob,
     driver: &dyn QueueDriver,
@@ -410,15 +423,26 @@ async fn hand_back_unhandled(
 ) {
     let missing = QueueError::HandlerNotFound(job.name.clone());
     let reason = missing.to_string();
-    let transition = match driver
-        .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
-        .await
-    {
-        Err(QueueError::Unsupported(_)) => driver
+    let fail = |reason: String| async move {
+        driver
             .mark_failed_attempt(&job.id, job.attempts, &reason)
             .await
-            .map_err(|error| state_error(&job.id, "mark_failed", error)),
-        deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
+            .map_err(|error| state_error(&job.id, "mark_failed", error))
+    };
+    let transition = if job.attempts >= MAX_UNHANDLED_CLAIM_ATTEMPT {
+        fail(format!(
+            "{reason}; failed at claim attempt {} instead of being handed back again",
+            job.attempts
+        ))
+        .await
+    } else {
+        match driver
+            .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
+            .await
+        {
+            Err(QueueError::Unsupported(_)) => fail(reason).await,
+            deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
+        }
     };
     match transition {
         Ok(()) => errors.report(missing),

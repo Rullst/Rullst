@@ -12,6 +12,7 @@ pub mod execution;
 pub mod magic_methods;
 mod pluck;
 mod query_cache;
+mod relevance;
 pub mod sql_assembly;
 mod subqueries;
 pub mod where_clauses;
@@ -88,6 +89,7 @@ pub fn generate(
     let mut execution_methods = generate_execution_methods(parsed, &builder_name, eager_loads);
     execution_methods.extend(generate_chunk_methods(parsed));
     execution_methods.push(generate_cascade_soft_delete_target(parsed));
+    execution_methods.push(relevance::generate(parsed));
     execution_methods.push(enum_columns::generate(parsed));
     let magic_methods = generate_magic_methods(parsed);
 

@@ -239,6 +239,27 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Core state low-severity review fixes
+
+- SQLite queue claims follow due-time order, so due scheduled or handed-back
+  jobs are no longer starved by later immediate jobs; `retry_failed_job` keeps
+  the attempt counter so stale workers stay fenced; claims made without a
+  lease are never recovered before `stalled_after`.
+- Redis queue lease age uses Redis server time, and queue commands wait up to
+  10 s for a reply instead of 500 ms.
+- A job no worker can handle fails with `HandlerNotFound` at its 720th claim
+  attempt, `dispatch`/`dispatch_at` reject empty or over-256-byte names, and
+  `Worker::run` and `Scheduler::start` reject zero timeouts
+  (`SchedulerError::InvalidConfiguration`).
+- Redis cache: a zero TTL removes the key, and a TTL beyond Redis's range is
+  stored without expiry, matching the memory driver.
+- `PresenceTracker` counts connections per user, and `Channel::new` clamps
+  capacity to 1–65,536.
+- The Traffic Shield database probe gives up at `max_db_latency`, Live
+  recovery no longer counts its own callback time as peer silence, and the
+  legacy `init_telemetry` sends 64-span batches, honours the proxy variables
+  and reports dropped batches.
+
 ### Core runtime low-severity review fixes
 
 - Validated extractors return 413 or 415 for oversized or wrongly typed bodies,
@@ -575,6 +596,28 @@ A prepared version section does not establish that its tag or crates exist.
 - Add macro/facade regressions and an archive-only consumer compile probe.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
+
+### ORM macros low-severity review fixes (models, test harness, Nexus derive)
+
+- `save()`, `delete()` and `force_delete()` return `RecordNotFound` when the row
+  no longer exists instead of succeeding and running observers, audit and
+  effects, and a failed COMMIT restores the model's `id`.
+- Soft `delete()` affects only live rows and `restore()` only trashed rows, so
+  repeated deletes no longer re-stamp `deleted_at` and restoring a missing or
+  live row is a no-op, also on tenant models.
+- Auditable saves lock the row they diff, delete/force-delete/restore audits
+  record the stored row, and in-transaction lookups and pivot loads respect
+  `Orm::set_query_timeout`.
+- `cascade_soft_delete` ignores the child's `global_scope`, models with only an
+  `id` column can be inserted, and `#[sqlx(json)]` fields are written as JSON.
+- Scout-backed `search()` returns results in the engine's relevance order
+  unless `order_by` is set.
+- `#[rullst_orm::test]` honours the test's `Result` and discards post-commit
+  effects of the rolled-back sandbox.
+- `PersonalData` reports actual encryption and the ORM table name, and
+  `ComplianceModel::personal_fields()` is new.
+- `#[derive(Nexus)]`: an annotated primary key beats `id`, non-integer keys can
+  be entered on create and chrono date-time types get the date-time widget.
 
 ### ORM macros low-severity review fixes (builder, relations, parser)
 

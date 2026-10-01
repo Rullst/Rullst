@@ -177,6 +177,16 @@ fn scheduler_defaults_and_duration_saturation_are_explicit() {
     assert_eq!(duration_millis_u64(Duration::MAX), u64::MAX);
 }
 
+#[tokio::test]
+async fn a_zero_task_timeout_is_rejected_before_any_task_starts() {
+    // A zero deadline would report every tick as timed out without running.
+    let scheduler = every_second(Duration::ZERO, || async {});
+    assert!(matches!(
+        scheduler.start(),
+        Err(SchedulerError::InvalidConfiguration(_))
+    ));
+}
+
 #[test]
 fn registered_tasks_use_posix_weekday_numbering() {
     use chrono::{Datelike, TimeZone};

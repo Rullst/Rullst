@@ -128,15 +128,17 @@ return 1
 "#;
 
 // Recovers stalled leases. A lease that recorded lease_expires_at_ms stalls
-// once server time passes it; any other lease once it was claimed at or before
-// ARGV[1]. KEYS: processing set, processing index, pending list, dead letters,
-// failed hash, failed index. ARGV[3] is the stalled-lease ceiling: the lease
-// that reaches it fails the job with message ARGV[4] (failed retention
-// ARGV[5]) instead of requeuing it, so a job that keeps crashing its worker
-// cannot be reclaimed forever.
+// once server time passes it; any other lease once it is at least ARGV[1]
+// milliseconds old by server time (claims are scored with server time, so a
+// worker host's clock skew cannot shift the cutoff). KEYS: processing set,
+// processing index, pending list, dead letters, failed hash, failed index.
+// ARGV[3] is the stalled-lease ceiling: the lease that reaches it fails the
+// job with message ARGV[4] (failed retention ARGV[5]) instead of requeuing
+// it, so a job that keeps crashing its worker cannot be reclaimed forever.
 pub(super) const RECOVER_SCRIPT: &str = r#"
 local now = redis.call('TIME')
 local now_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
+local cutoff_ms = now_ms - tonumber(ARGV[1])
 local leases = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', '+inf', 'WITHSCORES')
 local recovered = 0
 for index = 1, #leases, 2 do
@@ -149,7 +151,7 @@ for index = 1, #leases, 2 do
     if deadline then
         expired = deadline <= now_ms
     else
-        expired = tonumber(leases[index + 1]) <= tonumber(ARGV[1])
+        expired = tonumber(leases[index + 1]) <= cutoff_ms
     end
     if expired then
         redis.call('ZREM', KEYS[1], raw)

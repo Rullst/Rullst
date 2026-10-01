@@ -5,6 +5,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
@@ -20,6 +21,12 @@ struct FakeRedis {
 
 impl FakeRedis {
     async fn start() -> Self {
+        Self::start_with_eval_delay(Duration::ZERO).await
+    }
+
+    /// Like [`Self::start`], but replies to every `EVAL` only after `delay`,
+    /// like a Redis server stalled by a fork or a slow fsync.
+    async fn start_with_eval_delay(delay: Duration) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let accepted = Arc::new(AtomicUsize::new(0));
@@ -28,7 +35,7 @@ impl FakeRedis {
         let server = tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
                 counter.fetch_add(1, Ordering::SeqCst);
-                tokio::spawn(serve(stream, epochs.clone()));
+                tokio::spawn(serve(stream, epochs.clone(), delay));
             }
         });
         Self {
@@ -59,7 +66,7 @@ impl Drop for FakeRedis {
     }
 }
 
-async fn serve(stream: TcpStream, mut epochs: watch::Receiver<u64>) {
+async fn serve(stream: TcpStream, mut epochs: watch::Receiver<u64>, eval_delay: Duration) {
     epochs.borrow_and_update();
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
@@ -71,6 +78,12 @@ async fn serve(stream: TcpStream, mut epochs: watch::Receiver<u64>) {
         let Some(command) = command else {
             return;
         };
+        if command
+            .first()
+            .is_some_and(|name| name.eq_ignore_ascii_case("EVAL"))
+        {
+            tokio::time::sleep(eval_delay).await;
+        }
         if writer.write_all(reply(&command)).await.is_err() {
             return;
         }
@@ -207,4 +220,18 @@ async fn queue_operations_reuse_one_connection() {
     assert_eq!(driver.pending_count().await.unwrap(), 0);
 
     assert_eq!(redis.accepted(), 1);
+}
+
+#[cfg(feature = "queue-redis")]
+#[tokio::test]
+async fn queue_scripts_outlast_the_default_response_timeout() {
+    use crate::queue::QueueDriver;
+    use crate::queue::RedisDriver;
+
+    // Longer than the 500 ms redis-rs default: the claim must not be reported
+    // as failed while Redis applies it.
+    let redis = FakeRedis::start_with_eval_delay(Duration::from_millis(800)).await;
+    let driver = RedisDriver::new(redis.url()).unwrap();
+
+    assert!(driver.pop().await.unwrap().is_none());
 }

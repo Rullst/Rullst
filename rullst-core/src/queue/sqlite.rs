@@ -113,8 +113,12 @@ impl SqliteDriver {
     }
 
     /// Retries a failed job by resetting its status to 'pending' and clearing error details.
+    ///
+    /// The attempt counter is kept: it is the fencing token of every claim, so
+    /// resetting it would let a stale worker from an earlier claim finish the
+    /// claim made after the retry. The stalled-lease count restarts.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, stalled_recoveries = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', stalled_recoveries = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
             .execute(&self.pool)
             .await
@@ -146,14 +150,9 @@ impl SqliteDriver {
     /// Claims the oldest due job. With `lease`, the claim stalls only after
     /// that lease; without one, after the recovering worker's age.
     async fn claim(&self, lease: Option<Duration>) -> Result<Option<QueuedJob>, QueueError> {
-        let now_ms =
-            i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
-                QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
-            })?;
-        let lease_expires_at_ms = lease.map_or(0, |lease| {
-            let lease_ms = i64::try_from(lease.as_millis()).unwrap_or(i64::MAX).max(1);
-            now_ms.saturating_add(lease_ms)
-        });
+        let now_ms = current_unix_millis()?;
+        let lease_expires_at_ms =
+            lease.map_or(0, |lease| recovery::lease_deadline_ms(now_ms, lease));
         // Atomically select and mark the oldest pending job as 'processing'
         let row: Option<(String, String, String, i32)> = sqlx::query_as(
             r#"UPDATE rullst_jobs
@@ -315,14 +314,20 @@ impl SqliteDriver {
 
 #[async_trait]
 impl QueueDriver for SqliteDriver {
+    /// Stores the enqueue time as the job's due time, so claims follow the
+    /// effective due time: a scheduled or deferred job that became due before
+    /// an immediate job was pushed is claimed first.
     async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError> {
-        sqlx::query("INSERT INTO rullst_jobs (id, name, payload) VALUES (?, ?, ?)")
-            .bind(id)
-            .bind(job_name)
-            .bind(payload)
-            .execute(&self.pool)
-            .await
-            .map_err(|error| QueueError::Driver(format!("Failed to push job: {error}")))?;
+        sqlx::query(
+            "INSERT INTO rullst_jobs (id, name, payload, available_at_ms) VALUES (?, ?, ?, ?)",
+        )
+        .bind(id)
+        .bind(job_name)
+        .bind(payload)
+        .bind(current_unix_millis()?)
+        .execute(&self.pool)
+        .await
+        .map_err(|error| QueueError::Driver(format!("Failed to push job: {error}")))?;
         Ok(())
     }
 
@@ -445,6 +450,13 @@ impl QueueDriver for SqliteDriver {
     async fn purge_completed_history(&self) -> Result<(), QueueError> {
         SqliteDriver::purge_completed_history(self).await
     }
+}
+
+/// Current Unix time in whole milliseconds, rounded down.
+fn current_unix_millis() -> Result<i64, QueueError> {
+    i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
+        QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
+    })
 }
 
 /// Like [`ensure_transition`], naming the claim attempt when a fenced

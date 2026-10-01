@@ -293,6 +293,68 @@ async fn restore_and_force_delete_run_the_mutation_lifecycle() {
     assert_eq!(erased_audit.0, "force_deleted");
     assert!(erased_audit.1.is_some() && erased_audit.2.is_none());
 
+    // delete() of a trashed row and restore() of a live row match no row:
+    // the deletion time, audit trail and post-commit effects stay as they were.
+    let twice = create("deleted twice", &context).await;
+    with_audit_context(context.clone(), twice.delete())
+        .await
+        .expect("first soft delete");
+    let stamped = row_state(twice.id).await;
+    let audits = audit_events(twice.id).await.len();
+    take(&log);
+    let again = with_audit_context(context.clone(), twice.delete()).await;
+    assert!(matches!(again, Err(Error::RecordNotFound)), "{again:?}");
+    assert_eq!(row_state(twice.id).await, stamped);
+    assert_eq!(audit_events(twice.id).await.len(), audits);
+    let id = twice.id;
+    assert_eq!(take(&log), vec![format!("deleting:{id}")]);
+    let live = create("never deleted", &context).await;
+    take(&log);
+    with_audit_context(context.clone(), live.restore())
+        .await
+        .expect("restoring a live row is a no-op");
+    assert_eq!(row_state(live.id).await, Some(None));
+    assert_eq!(audit_events(live.id).await.len(), 1, "only the creation");
+    assert!(take(&log).is_empty());
+
+    // deleted/restored/force_deleted entries record the persisted row, not
+    // unsaved edits on the caller's handle.
+    let mut edited = create("persisted name", &context).await;
+    let old_name = |entry: Option<(String, Option<String>, Option<String>)>| {
+        let entry = entry.expect("audit row");
+        let old: Value = serde_json::from_str(entry.1.as_deref().expect("old values")).unwrap();
+        (entry.0, old["name"].as_str().map(str::to_string))
+    };
+    edited.name = "unsaved delete edit".to_string();
+    with_audit_context(context.clone(), edited.delete())
+        .await
+        .expect("delete an edited handle");
+    assert_eq!(
+        old_name(audit_events(edited.id).await.pop()),
+        ("deleted".to_string(), Some("persisted name".to_string()))
+    );
+    let mut restorable = trashed(edited.id).await;
+    restorable.name = "unsaved restore edit".to_string();
+    with_audit_context(context.clone(), restorable.restore())
+        .await
+        .expect("restore an edited handle");
+    assert_eq!(
+        old_name(audit_events(edited.id).await.pop()),
+        ("restored".to_string(), Some("persisted name".to_string()))
+    );
+    let mut erasable = trashed(edited.id).await;
+    erasable.name = "unsaved erase edit".to_string();
+    with_audit_context(context.clone(), erasable.force_delete())
+        .await
+        .expect("force delete an edited handle");
+    assert_eq!(
+        old_name(audit_events(edited.id).await.pop()),
+        (
+            "force_deleted".to_string(),
+            Some("persisted name".to_string())
+        )
+    );
+
     Orm::pool().unwrap().close().await;
     let _ = std::fs::remove_file(database_path);
 }

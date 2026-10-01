@@ -134,6 +134,8 @@ async fn test_matrix_mysql_crud() {
     partial_update_contract::exercise().await;
     exercise_native_enum().await;
     driver_contract::exercise().await;
+    #[cfg(feature = "strict-mysql")]
+    support::json_columns::exercise_sqlx_json("JSON").await;
 }
 
 async fn exercise_native_enum() {

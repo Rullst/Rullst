@@ -42,8 +42,9 @@ are not modified by these framework changes.
 ## Derive and register a model
 
 The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
-infers booleans, numbers, dates and ordinary text; semantic widgets that Rust's
-type alone cannot reveal are selected explicitly:
+infers booleans, numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` and
+`NaiveDateTime` under any path spelling, optional or not) and ordinary text;
+semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
 ```rust
 use rullst::db::{FromRow, Nexus, Orm};
@@ -126,7 +127,13 @@ On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
   `#[nexus(kind = ...)]` deliberately shows them.
 
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
-`#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
+`#[nexus(primary_key = "uuid")]` on the struct for another key. An annotated
+field is the key even when the struct also has an `id` field, which then stays
+an ordinary column; annotating two fields, or a field other than the
+struct-level key, is a compile error. An integer key is treated as
+database-generated, so it is hidden and read-only; any other key (a UUID or
+code) is listed and entered in the create form, and stays read-only on edit.
+Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
 widget kinds. A `hidden` field is left out of the list, search and the

@@ -55,6 +55,10 @@ pub enum SchedulerError {
         /// Runtime failure description.
         message: String,
     },
+    /// A scheduler option would make every execution fail, such as a zero
+    /// task timeout. Unpublished v13 variant.
+    #[error("invalid scheduler configuration: {0}")]
+    InvalidConfiguration(String),
 }
 
 /// Action taken after a timeout, panic, or unexpected cancellation.
@@ -105,6 +109,9 @@ impl Scheduler {
     }
 
     /// Sets the maximum duration of one handler execution.
+    ///
+    /// [`Self::start`] rejects a zero timeout, which would report every tick
+    /// as timed out without running the task.
     pub fn with_task_timeout(mut self, timeout: Duration) -> Self {
         self.task_timeout = timeout;
         self
@@ -153,10 +160,16 @@ impl Scheduler {
     /// futures. Prefer [`SchedulerHandle::shutdown`] for graceful cancellation.
     ///
     /// # Errors
-    /// Returns [`SchedulerError::RuntimeUnavailable`] without spawning anything
-    /// when called outside Tokio.
+    /// Returns [`SchedulerError::InvalidConfiguration`] for a zero task
+    /// timeout, or [`SchedulerError::RuntimeUnavailable`] when called outside
+    /// Tokio. Nothing is spawned on error.
     #[cfg_attr(mutants, mutants::skip)]
     pub fn start(self) -> Result<SchedulerHandle, SchedulerError> {
+        if self.task_timeout.is_zero() {
+            return Err(SchedulerError::InvalidConfiguration(
+                "task timeout must be greater than zero".to_string(),
+            ));
+        }
         let runtime = tokio::runtime::Handle::try_current()
             .map_err(|_| SchedulerError::RuntimeUnavailable)?;
         let (shutdown, _) = watch::channel(false);
