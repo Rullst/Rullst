@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790882604935,
+  "lastUpdate": 1790885735007,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13754,6 +13754,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27e6047f2348dd5ba6587dfbab9169fd104ff4d8",
+          "message": "Merge pull request #389 from Rullst/fix/v13-cli-r2-generators\n\nfix(cli): second-round generator fixes for introspection, typed auto-migrations, auth facade and name validation",
+          "timestamp": "2026-10-01T16:51:06-03:00",
+          "tree_id": "28abeeae312fefe4afbe90eebd3a0678bd9440d2",
+          "url": "https://github.com/Rullst/Rullst/commit/27e6047f2348dd5ba6587dfbab9169fd104ff4d8"
+        },
+        "date": 1790885733655,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4340,
+            "range": "± 134",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 598,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 5,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
             "range": "± 0",
             "unit": "ns/iter"
           }
