@@ -70,7 +70,9 @@ fn main() -> Result<(), rullst::SecurityBaselineError> {
 
 The production baseline verifies the double-submit CSRF cookie/header pair.
 The Wasm caller reads the bounded `rullst_csrf` cookie and forwards it as
-`X-CSRF-Token`. The application must still add session/authentication, trusted
+`X-CSRF-Token`. `Server` issues that cookie only in staging and production;
+without it (as in Development) the caller sends no token and lets the server
+decide, and a non-JSON `403` is reported as `rpc.csrf_token_missing`. The application must still add session/authentication, trusted
 tenant resolution, object/role authorization and rate limiting in the order
 documented by `ProductionPreset`. Never accept role, owner or tenant authority
 from a function argument.

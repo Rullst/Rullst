@@ -23,6 +23,12 @@ pub fn rullst_client_init() {
 #[cfg_attr(mutants, mutants::skip)]
 /// Calls one same-origin server-function endpoint with the versioned Rullst
 /// client envelope.
+///
+/// The `rullst_csrf` cookie, when present, is forwarded as `X-CSRF-Token`.
+/// Without it (Development and Test, where `Server` mounts no CSRF layer) the
+/// request is sent without a token and the server's CSRF middleware, where
+/// mounted, decides; its non-JSON `403` is then reported as
+/// `rpc.csrf_token_missing`.
 pub async fn rpc_call<Req, Output>(path: &str, payload: &Req) -> RpcResult<Output>
 where
     Req: serde::Serialize + ?Sized,
@@ -33,13 +39,11 @@ where
     }
     let window =
         web_sys::window().ok_or_else(|| RpcFailure::framework("rpc.browser_unavailable", false))?;
-    let cookie = window
+    let csrf_token = window
         .document()
         .and_then(|document| document.dyn_into::<web_sys::HtmlDocument>().ok())
         .and_then(|document| document.cookie().ok())
-        .ok_or_else(|| RpcFailure::framework("rpc.csrf_token_missing", false))?;
-    let csrf_token = csrf_token_from_cookie(&cookie)
-        .ok_or_else(|| RpcFailure::framework("rpc.csrf_token_missing", false))?;
+        .and_then(|cookie| csrf_token_from_cookie(&cookie).map(str::to_string));
     let request_id = RequestId::framework(format!("rpc_{}", uuid::Uuid::new_v4().simple()));
     let policy = ClientContractPolicy::default();
     let envelope = ClientRequest::new(CURRENT_CLIENT_CONTRACT_VERSION, request_id.clone(), payload);
@@ -64,10 +68,12 @@ where
         .headers()
         .set("accept", "application/json")
         .map_err(|_| RpcFailure::framework("rpc.request_creation", false))?;
-    request
-        .headers()
-        .set("x-csrf-token", csrf_token)
-        .map_err(|_| RpcFailure::framework("rpc.request_creation", false))?;
+    if let Some(token) = csrf_token.as_deref() {
+        request
+            .headers()
+            .set("x-csrf-token", token)
+            .map_err(|_| RpcFailure::framework("rpc.request_creation", false))?;
+    }
     let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request))
         .await
         .map_err(|_| RpcFailure::framework("rpc.transport", true))?;
@@ -75,6 +81,7 @@ where
         .dyn_into()
         .map_err(|_| RpcFailure::framework("rpc.response_invalid", false))?;
     let success = resp.ok();
+    let status = resp.status();
     let response_is_json = resp
         .headers()
         .get("content-type")
@@ -94,14 +101,8 @@ where
         return Err(RpcFailure::framework("rpc.response_too_large", false));
     }
     if !response_is_json {
-        return Err(RpcFailure::framework(
-            if success {
-                "rpc.response_invalid"
-            } else {
-                "rpc.http_failure"
-            },
-            false,
-        ));
+        let code = non_json_failure_code(status, success, csrf_token.is_some());
+        return Err(RpcFailure::framework(code, false));
     }
     if !success {
         let failure = policy
@@ -120,6 +121,16 @@ where
         return Err(RpcFailure::framework("rpc.correlation_mismatch", false));
     }
     Ok(response.into_data())
+}
+
+/// Framework failure code for a response that is not JSON.
+#[cfg(any(target_arch = "wasm32", test))]
+fn non_json_failure_code(status: u16, success: bool, sent_csrf_token: bool) -> &'static str {
+    match (success, status) {
+        (true, _) => "rpc.response_invalid",
+        (false, 403) if !sent_csrf_token => "rpc.csrf_token_missing",
+        (false, _) => "rpc.http_failure",
+    }
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
@@ -158,7 +169,23 @@ fn is_json_content_type(content_type: &str) -> bool {
 
 #[cfg(test)]
 mod contract_tests {
-    use super::{csrf_token_from_cookie, is_json_content_type, is_safe_rpc_path};
+    use super::{
+        csrf_token_from_cookie, is_json_content_type, is_safe_rpc_path, non_json_failure_code,
+    };
+
+    #[test]
+    fn a_missing_csrf_cookie_is_reported_only_when_the_server_rejects() {
+        assert_eq!(
+            non_json_failure_code(403, false, false),
+            "rpc.csrf_token_missing"
+        );
+        assert_eq!(non_json_failure_code(403, false, true), "rpc.http_failure");
+        assert_eq!(non_json_failure_code(500, false, false), "rpc.http_failure");
+        assert_eq!(
+            non_json_failure_code(200, true, false),
+            "rpc.response_invalid"
+        );
+    }
 
     #[test]
     fn csrf_cookie_parser_and_rpc_paths_are_bounded() {
