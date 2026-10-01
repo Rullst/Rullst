@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 /// Kind of field for UI forms and schema definitions.
+///
+/// New kinds may be added in minor releases, so matches outside Nexus need a
+/// wildcard arm.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FieldKind {
     /// Single-line text input.
     Text,
