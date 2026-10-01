@@ -13,6 +13,7 @@ struct FakeUi {
     inputs: VecDeque<String>,
     prompts: Vec<String>,
     brand_count: usize,
+    geiger: bool,
 }
 
 impl FakeUi {
@@ -50,6 +51,10 @@ impl DashboardUi for FakeUi {
         self.inputs.pop_front().ok_or_else(|| {
             io::Error::new(io::ErrorKind::UnexpectedEof, "missing fake input").into()
         })
+    }
+
+    fn geiger_available(&mut self) -> bool {
+        self.geiger
     }
 }
 
@@ -192,16 +197,10 @@ fn database_auth_and_deploy_menus_map_every_choice() {
     for (selection, expected) in [
         (0, vec!["cargo-rullst", "auth"]),
         (1, vec!["cargo-rullst", "make:mfa"]),
+        // Without cargo-geiger, requesting it would fail the whole audit.
         (
             2,
-            vec![
-                "cargo-rullst",
-                "audit",
-                "--ai",
-                "--compliance",
-                "--idor",
-                "--geiger",
-            ],
+            vec!["cargo-rullst", "audit", "--ai", "--compliance", "--idor"],
         ),
         (3, vec!["cargo-rullst", "make:billing"]),
         (4, vec!["cargo-rullst", "make:cors"]),
@@ -219,6 +218,18 @@ fn database_auth_and_deploy_menus_map_every_choice() {
             vec![expected.into_iter().map(str::to_string).collect::<Vec<_>>()]
         );
     }
+
+    let mut ui = FakeUi {
+        geiger: true,
+        ..FakeUi::with_selections([2])
+    };
+    let mut commands = Vec::new();
+    handle_auth_billing(&mut ui, "cargo-rullst", &mut |command| {
+        commands.push(command);
+        Ok(())
+    })
+    .expect("audit choice should be accepted");
+    assert_eq!(commands[0].last().map(String::as_str), Some("--geiger"));
 
     for (selection, action) in [(0, "deploy"), (1, "foundry:init"), (2, "foundry:deploy")] {
         let mut ui = FakeUi::with_selections([selection]);
