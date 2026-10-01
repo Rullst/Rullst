@@ -83,6 +83,35 @@ pub async fn authorize_lesson(
     Ok(lesson)
 }
 
+/// The stored receipt when this learner already recorded `idempotency_key`.
+async fn replay(
+    driver: &str,
+    user_id: i32,
+    lesson_id: i32,
+    progress_percent: i32,
+    idempotency_key: &str,
+) -> Result<Option<ProgressReceipt>, LearningError> {
+    let pool = rullst::db::Orm::pool()?;
+    // Keys are unique per learner, so another learner's submission can never
+    // claim, replay or block this learner's key.
+    let replay_sql = match driver {
+        "postgres" => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE subject_user_id = $1 AND event_key = $2",
+        _ => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE subject_user_id = ? AND event_key = ?",
+    };
+    let Some(replay) = rullst::db::sqlx::query_as::<_, (i32, i32, i32)>(replay_sql)
+        .bind(user_id).bind(idempotency_key).fetch_optional(pool).await
+        .map_err(|error| LearningError::Database(error.into()))?
+    else {
+        return Ok(None);
+    };
+    if replay != (user_id, lesson_id, progress_percent) {
+        return Err(LearningError::IdempotencyConflict);
+    }
+    let progress = LessonProgress::for_learner(user_id, lesson_id).await?
+        .ok_or(LearningError::NotFound("progress"))?;
+    Ok(Some(ProgressReceipt { applied: false, progress }))
+}
+
 pub async fn record_progress(
     context: &UserContext,
     user_id: i32,
@@ -96,49 +125,42 @@ pub async fn record_progress(
     authorize_lesson(context, user_id, lesson_id).await?;
     let pool = rullst::db::Orm::pool()?;
     let driver = rullst::db::Orm::driver()?;
-    // Keys are unique per learner, so another learner's submission can never
-    // claim, replay or block this learner's key.
-    let replay_sql = match driver {
-        "postgres" => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE subject_user_id = $1 AND event_key = $2",
-        _ => "SELECT subject_user_id, lesson_id, current_percent FROM lesson_progress_events WHERE subject_user_id = ? AND event_key = ?",
-    };
-    if let Some(replay) = rullst::db::sqlx::query_as::<_, (i32, i32, i32)>(replay_sql)
-        .bind(user_id).bind(idempotency_key).fetch_optional(pool).await
-        .map_err(|error| LearningError::Database(error.into()))?
-    {
-        if replay != (user_id, lesson_id, progress_percent) {
-            return Err(LearningError::IdempotencyConflict);
-        }
-        let progress = LessonProgress::for_learner(user_id, lesson_id).await?
-            .ok_or(LearningError::NotFound("progress"))?;
-        return Ok(ProgressReceipt { applied: false, progress });
+    if let Some(receipt) = replay(driver, user_id, lesson_id, progress_percent, idempotency_key).await? {
+        return Ok(receipt);
     }
 
     let mut transaction = pool.begin().await
         .map_err(|error| LearningError::Database(error.into()))?;
-    let current_sql = match driver {
-        "postgres" => "SELECT progress_percent FROM lesson_progress WHERE user_id = $1 AND lesson_id = $2",
-        _ => "SELECT progress_percent FROM lesson_progress WHERE user_id = ? AND lesson_id = ?",
+    // The event insert claims the key as the transaction's first write, so a
+    // concurrent submission of the same key (a double click) waits for this
+    // one and then replays it instead of failing after its own read.
+    let event_sql = match driver {
+        "postgres" => "INSERT INTO lesson_progress_events (event_key, actor_user_id, subject_user_id, lesson_id, previous_percent, current_percent, event_kind, reason, created_at, updated_at) VALUES ($1, $2, $3, $4, COALESCE((SELECT progress_percent FROM lesson_progress WHERE user_id = $5 AND lesson_id = $6), 0), $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO lesson_progress_events (event_key, actor_user_id, subject_user_id, lesson_id, previous_percent, current_percent, event_kind, reason, created_at, updated_at) VALUES (?, ?, ?, ?, COALESCE((SELECT progress_percent FROM lesson_progress WHERE user_id = ? AND lesson_id = ?), 0), ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
     };
-    let previous = rullst::db::sqlx::query_scalar::<_, i32>(current_sql)
-        .bind(user_id).bind(lesson_id).fetch_optional(&mut *transaction).await
-        .map_err(|error| LearningError::Database(error.into()))?.unwrap_or(0);
-    let effective = previous.max(progress_percent);
+    let claimed = rullst::db::sqlx::query(event_sql).bind(idempotency_key).bind(user_id).bind(user_id)
+        .bind(lesson_id).bind(user_id).bind(lesson_id).bind(progress_percent).bind("progress_recorded")
+        .bind("").execute(&mut *transaction).await;
+    match claimed {
+        Ok(_) => {}
+        Err(rullst::db::sqlx::Error::Database(error)) if error.is_unique_violation() => {
+            transaction.rollback().await.map_err(|error| LearningError::Database(error.into()))?;
+            return match replay(driver, user_id, lesson_id, progress_percent, idempotency_key).await? {
+                Some(receipt) => Ok(receipt),
+                None => Err(LearningError::Database(rullst::db::sqlx::Error::Database(error).into())),
+            };
+        }
+        Err(error) => return Err(LearningError::Database(error.into())),
+    }
+    // The conflict branches keep the higher stored value, so a new row simply
+    // takes the requested percentage.
     let upsert_sql = match driver {
         "postgres" => "INSERT INTO lesson_progress (user_id, lesson_id, progress_percent, completed, created_at, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, lesson_id) DO UPDATE SET progress_percent = GREATEST(lesson_progress.progress_percent, EXCLUDED.progress_percent), completed = GREATEST(lesson_progress.completed, EXCLUDED.completed), updated_at = CURRENT_TIMESTAMP",
         "mysql" => "INSERT INTO lesson_progress (user_id, lesson_id, progress_percent, completed, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE progress_percent = GREATEST(progress_percent, VALUES(progress_percent)), completed = GREATEST(completed, VALUES(completed)), updated_at = CURRENT_TIMESTAMP",
         _ => "INSERT INTO lesson_progress (user_id, lesson_id, progress_percent, completed, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, lesson_id) DO UPDATE SET progress_percent = MAX(lesson_progress.progress_percent, excluded.progress_percent), completed = MAX(lesson_progress.completed, excluded.completed), updated_at = CURRENT_TIMESTAMP",
     };
-    rullst::db::sqlx::query(upsert_sql).bind(user_id).bind(lesson_id).bind(effective)
-        .bind(i32::from(effective == 100)).execute(&mut *transaction).await
-        .map_err(|error| LearningError::Database(error.into()))?;
-    let event_sql = match driver {
-        "postgres" => "INSERT INTO lesson_progress_events (event_key, actor_user_id, subject_user_id, lesson_id, previous_percent, current_percent, event_kind, reason, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        _ => "INSERT INTO lesson_progress_events (event_key, actor_user_id, subject_user_id, lesson_id, previous_percent, current_percent, event_kind, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-    };
-    rullst::db::sqlx::query(event_sql).bind(idempotency_key).bind(user_id).bind(user_id)
-        .bind(lesson_id).bind(previous).bind(progress_percent).bind("progress_recorded")
-        .bind("").execute(&mut *transaction).await
+    rullst::db::sqlx::query(upsert_sql).bind(user_id).bind(lesson_id).bind(progress_percent)
+        .bind(i32::from(progress_percent == 100)).execute(&mut *transaction).await
         .map_err(|error| LearningError::Database(error.into()))?;
     transaction.commit().await.map_err(|error| LearningError::Database(error.into()))?;
     let progress = LessonProgress::for_learner(user_id, lesson_id).await?
