@@ -1,4 +1,4 @@
-pub(super) const FOUNDATION_SERVICE: &str = r##"use crate::models::course::Course;
+use crate::models::course::Course;
 use crate::models::enrollment::Enrollment;
 use crate::models::lesson::Lesson;
 use crate::models::lesson_progress::LessonProgress;
@@ -181,4 +181,3 @@ mod tests {
         ));
     }
 }
-"##;

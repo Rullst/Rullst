@@ -1,10 +1,4 @@
-// Course-module model template for the LMS starter.
-
-pub fn get_files() -> Vec<(&'static str, String)> {
-    vec![("src/models/course_module.rs", COURSE_MODULE.to_string())]
-}
-
-const COURSE_MODULE: &str = r##"use rullst::db::{FromRow, Orm};
+use rullst::db::{FromRow, Orm};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
 
 #[derive(Debug, Clone, FromRow, Orm)]
@@ -35,4 +29,3 @@ impl NexusModel for CourseModule {
         ]
     }
 }
-"##;

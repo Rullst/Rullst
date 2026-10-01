@@ -1,4 +1,4 @@
-pub(super) const FOUNDATION_AUTH_MIDDLEWARE: &str = r##"use crate::models::user::User;
+use crate::models::user::User;
 use rullst::server::{IntoResponse, Next, Redirect, Request, Response, StatusCode};
 use rullst_security::UserContext;
 
@@ -32,4 +32,3 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
         }
     }
 }
-"##;
