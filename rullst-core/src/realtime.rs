@@ -13,6 +13,9 @@ const MAX_EVENT_BYTES: usize = 128;
 const MAX_PAYLOAD_BYTES: usize = 64 * 1024;
 /// Registry size that triggers the first sweep of idle channels.
 const MIN_CHANNEL_SWEEP_THRESHOLD: usize = 64;
+/// Largest broadcast queue [`Channel::new`] allocates. Tokio preallocates
+/// every slot and panics above `usize::MAX / 2`.
+const MAX_CHANNEL_CAPACITY: usize = 65_536;
 
 /// Payload model for realtime broadcast events.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -59,10 +62,13 @@ pub enum RealtimeError {
 
 impl Channel {
     /// Creates a new realtime channel with specified message queue capacity.
+    ///
+    /// The capacity is clamped to 1–65,536 messages: Tokio rejects zero,
+    /// panics on huge values and allocates every slot up front.
     pub fn new(name: impl Into<String>, capacity: usize) -> Self {
-        // Tokio rejects zero-capacity broadcast channels. Keep this infallible
-        // compatibility constructor panic-free while preserving a bounded queue.
-        let (sender, _) = broadcast::channel(capacity.max(1));
+        // Keep this infallible compatibility constructor panic-free while
+        // preserving a bounded, reasonably sized queue.
+        let (sender, _) = broadcast::channel(capacity.clamp(1, MAX_CHANNEL_CAPACITY));
         Self {
             name: name.into(),
             sender,

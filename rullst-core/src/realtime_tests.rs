@@ -124,6 +124,16 @@ fn zero_capacity_channel_is_panic_free() {
 }
 
 #[test]
+fn huge_capacity_channels_are_clamped_instead_of_panicking() {
+    for capacity in [usize::MAX, 1 << 40] {
+        let channel = Channel::new("feed", capacity);
+        let mut receiver = channel.subscribe();
+        assert_eq!(channel.broadcast("event", "{}"), Ok(1));
+        assert_eq!(receiver.try_recv().expect("message").event, "event");
+    }
+}
+
+#[test]
 fn a_user_stays_online_until_their_last_connection_leaves() {
     let tracker = PresenceTracker::new();
     // The same learner opens the course in two tabs.
