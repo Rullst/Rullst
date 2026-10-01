@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790818659229,
+  "lastUpdate": 1790821411623,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8595,6 +8595,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 581,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef865d4f63fde2c26a8e731361d584d61f86cb7f",
+          "message": "Merge pull request #366 from Rullst/fix/v13-orm-macros-low-fixes-b\n\nfix(orm-macros,nexus): low-severity model mutation, audit, test harness and Nexus derive fixes",
+          "timestamp": "2026-09-30T23:06:40-03:00",
+          "tree_id": "bcf141e16969db4d483a806972d2e7838db1e7d2",
+          "url": "https://github.com/Rullst/Rullst/commit/ef865d4f63fde2c26a8e731361d584d61f86cb7f"
+        },
+        "date": 1790821410815,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 339,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
