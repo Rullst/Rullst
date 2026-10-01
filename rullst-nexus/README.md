@@ -258,6 +258,13 @@ admin pages and open edit forms are never snapshotted into origin-wide
 `localStorage`, and Back reloads the page from the server.
 The asset routes sit behind the same authentication policy as the panel.
 
+AI assistant replies, from a provider or the built-in fallback, are untrusted.
+Nexus keeps only an explicit text-formatting allowlist (paragraphs, lists, code,
+tables, emphasis and links with `rel="noopener noreferrer"`). Scripts, event
+handlers, unsafe URL schemes and every element that loads a resource by itself,
+such as `img`, are removed, so a prompt-injected reply cannot render an image
+beacon even where no CSP restricts `img-src`.
+
 `assets/htmx-2.0.4.min.js` is the unmodified upstream
 [`dist/htmx.min.js`](https://github.com/bigskysoftware/htmx/blob/b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f/dist/htmx.min.js)
 of htmx 2.0.4 (tag `v2.0.4`, commit `b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f`),
