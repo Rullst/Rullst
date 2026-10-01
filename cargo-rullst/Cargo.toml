@@ -27,10 +27,22 @@ name = "rullst"
 path = "src/bin/rullst.rs"
 doc = false
 
+# Internal repository maintenance tool. The feature keeps `cargo install
+# cargo-rullst` from installing it: `cargo sync-badges` enables it explicitly.
 [[bin]]
 name = "sync-badges"
 path = "src/bin/sync_badges.rs"
 doc = false
+required-features = ["maintainer-tools"]
+
+[[test]]
+name = "sync_badges_cli"
+path = "tests/sync_badges_cli.rs"
+required-features = ["maintainer-tools"]
+
+[features]
+# Builds repository maintenance binaries; not part of the installed CLI.
+maintainer-tools = []
 
 [dependencies]
 base64 = { workspace = true }
