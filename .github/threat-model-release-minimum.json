@@ -548,7 +548,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "generators::project::env_config::tests::buildah_image_name_cannot_inject_shell_commands",
-      "source": "cargo-rullst/src/generators/project/env_config.rs",
+      "source": "cargo-rullst/src/generators/project/env_config_tests.rs",
       "marker": "TM-DEPLOY-05"
     },
     {
