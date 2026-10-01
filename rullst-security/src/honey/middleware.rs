@@ -168,9 +168,17 @@ impl HoneypotState {
 
     /// Matches only a complete configured URI path; substrings and prefixes are not traps.
     pub fn is_trap(&self, path: &str) -> bool {
+        self.matched_trap(path).is_some()
+    }
+
+    /// Returns the configured trap path that `path` matches in any ASCII case.
+    /// Telemetry is keyed by this canonical path, so case variants of one trap
+    /// share a single route counter.
+    fn matched_trap(&self, path: &str) -> Option<&str> {
         self.trap_paths
             .iter()
-            .any(|trap| trap.eq_ignore_ascii_case(path))
+            .find(|trap| trap.eq_ignore_ascii_case(path))
+            .map(String::as_str)
     }
 
     pub fn banned_count(&self) -> usize {
@@ -277,8 +285,8 @@ where
             return Box::pin(async move { Ok(response) });
         }
 
-        let path = req.uri().path().to_string();
-        if self.state.is_trap(&path) {
+        let path = req.uri().path();
+        if let Some(trap) = self.state.matched_trap(path).map(str::to_owned) {
             let client_ip = peer_ip
                 .map(|ip| ip.to_string())
                 .unwrap_or_else(|| "unknown".to_string());
@@ -294,11 +302,11 @@ where
             };
             match stored_ban {
                 Some(ban_ttl) => {
-                    telemetry.record_honeypot_trap_with_ttl(&client_ip, &path, ban_ttl)
+                    telemetry.record_honeypot_trap_with_ttl(&client_ip, &trap, ban_ttl)
                 }
-                None => telemetry.record_honeypot_observation(&client_ip, &path),
+                None => telemetry.record_honeypot_observation(&client_ip, &trap),
             }
-            tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, page_initiated, "Honeypot trap triggered");
+            tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, trap = %trap, page_initiated, "Honeypot trap triggered");
             let response = (
                 StatusCode::FORBIDDEN,
                 "Access Denied: Honeypot Trap Triggered",

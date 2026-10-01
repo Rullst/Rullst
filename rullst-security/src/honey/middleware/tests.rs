@@ -298,3 +298,38 @@ async fn a_ban_ttl_beyond_the_clock_still_bans_the_peer() {
     let response = app.oneshot(later).await.expect("response");
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn route_hits_are_keyed_by_the_configured_trap_not_the_request_spelling() {
+    let state = HoneypotState::new(vec!["/.Git/HEAD".to_string()]);
+    let app = Router::new()
+        .route("/{*path}", get(|| async { StatusCode::OK }))
+        .layer(HoneypotLayer::new(state));
+    let variants = ["/.GIT/HEAD", "/.git/head", "/.gIt/hEaD", "/.Git/HEAD"];
+    for (index, variant) in variants.iter().enumerate() {
+        // Page-initiated hits are refused without a ban, so one client can
+        // send any number of spellings.
+        let mut request = Request::builder()
+            .uri(*variant)
+            .header("sec-fetch-site", "cross-site")
+            .body(Body::empty())
+            .expect("valid request");
+        request.extensions_mut().insert(ConnectInfo(
+            format!("192.0.2.{}:5000", 70 + index)
+                .parse::<SocketAddr>()
+                .expect("valid socket address"),
+        ));
+        let response = app.clone().oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN, "{variant}");
+    }
+
+    let hits = &crate::telemetry::SecurityStore::global().honeypot_route_hits;
+    for variant in ["/.GIT/HEAD", "/.git/head", "/.gIt/hEaD"] {
+        assert!(!hits.contains_key(variant), "{variant} got its own row");
+    }
+    let canonical = hits
+        .get("/.Git/HEAD")
+        .expect("the configured trap is counted")
+        .load(std::sync::atomic::Ordering::Relaxed);
+    assert!(canonical >= variants.len() as u64);
+}
