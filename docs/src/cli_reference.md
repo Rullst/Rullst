@@ -1041,14 +1041,17 @@ cargo rullst ai status [--json]        # provider, model and key source (never t
 cargo rullst ai disconnect             # delete the saved credentials file
 ```
 
-* **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek and Ollama,
-  all through `rullst-ai` and its mandatory prompt-injection/PII guardrails.
-  OpenAI, DeepSeek and an Ollama host on a literal loopback address stream
-  their answers; the native Anthropic and Gemini transports (and a
-  non-loopback Ollama host) return the answer at once.
+* **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and
+  a local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM,
+  LocalAI, Jan), all through `rullst-ai` and its mandatory
+  prompt-injection/PII guardrails. Every provider streams its answers except an
+  Ollama host that is not a literal loopback address, which answers at once. A
+  local server must listen on a literal loopback IP (`http://127.0.0.1:...` or
+  `http://[::1]:...`); its model name must match the model the server loaded.
 * **Credentials:** a provider environment variable (`OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `OLLAMA_HOST`)
-  takes precedence over the user credentials file
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `OLLAMA_HOST`,
+  `RULLST_AI_BASE_URL` for a local server) takes precedence over the user
+  credentials file
   `$XDG_CONFIG_HOME/rullst/credentials.toml` (`~/.config/rullst/...`;
   `%APPDATA%\rullst\credentials.toml` on Windows). `connect` writes it
   atomically with mode 0600 in a 0700 directory on Unix, refuses symlinks and
@@ -1056,21 +1059,37 @@ cargo rullst ai disconnect             # delete the saved credentials file
   never printed. Provider selection: `--provider`, then the saved provider,
   then the first variable above that is set. Model: `--model`, then
   `RULLST_AI_MODEL`, then the saved model, then the provider default.
-* **`connect` flags:** `--provider <openai|anthropic|claude|gemini|deepseek|ollama>`,
+* **`connect` flags:** `--provider <openai|anthropic|claude|gemini|deepseek|ollama|local>`,
   `--model <name>`, `--api-key-stdin` (read the key from the first line of
-  standard input, for scripts) and `--host <url>` (Ollama). Without a terminal,
-  `--provider` is required.
+  standard input, for scripts), `--host <url>` (Ollama, default
+  `http://127.0.0.1:11434`), `--base-url <url>` (local server, default
+  `http://127.0.0.1:1234/v1`) and the pair `--input-price-per-mtok <n>`
+  `--output-price-per-mtok <n>` (your prices per million tokens, stored with the
+  provider and used only for labelled estimates). Without a terminal,
+  `--provider` is required; interactively, `connect` also offers to record
+  prices.
 * **Chat flags:** `--provider`, `--model` and `--dry-run` (show proposed
   actions, never execute them). REPL commands: `/add <path>` shares a project
   file with your next message, `/reset`, `/help`, `/exit`. Ctrl+C cancels the
   current answer; Ctrl+D exits.
 * **Offline mode:** with no configured provider, or an empty or `mock_*` key,
-  a deterministic offline assistant answers (no network). It proposes a
-  two-step demo plan so the review flow can be tried safely.
+  a deterministic offline assistant answers (no network). Inside a project it
+  proposes a two-step demo plan (create and edit `rullst-ai-demo.md`); outside
+  one it first proposes `cargo rullst new rullst-ai-demo` and continues inside
+  it, so the review flow can be tried safely.
 * **Actions:** the model may only propose `write_file`, `edit_file` (one exact
   replacement), an allowlisted `cargo rullst` command (`make:*`, `generate:*`
-  except `generate:models`, `db:status`, `doctor` without `--fix`, `audit`
-  without `--network`, `inspect`) or `cargo check`/`cargo test`. Paths must stay
+  except `generate:models`, `db:status`, `db:migrate`, `doctor` without
+  `--fix`, `audit` without `--network`, `inspect`) or `cargo check`/`cargo
+  test`. `db:migrate` is refused when the project environment (`RULLST_ENV`,
+  then `APP_ENV`, from the process or the project `.env`, then `[app].env` in
+  `Rullst.toml`) is staging, production or unrecognized. Outside a project the
+  only action is `cargo rullst new <name> --default` with optional
+  `--blueprint`, `--database`, `--no-database`, `--api`, `--ai`, `--redis` and
+  `--skip-initial-migration` (`--default` is added when missing); the name must
+  be a new lowercase directory in the current directory, and after it succeeds
+  the session continues inside the new project. `new` and `db:migrate` are
+  always confirmed one by one, even after `a`. Paths must stay
   below the project root (nearest `Cargo.toml`): no `..`, absolute paths,
   symlinks, `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`),
   credentials, keys, `Cargo.lock` or toolchain files. Each action shows a
@@ -1091,9 +1110,12 @@ cargo rullst ai disconnect             # delete the saved credentials file
   sent inside delimited `<untrusted-data>` blocks, size-capped and checked by
   the rullst-ai guardrails (a match is withheld). The project context is a
   separate system message, so a match there cannot block the conversation.
-* **Usage:** after each answer the CLI shows the provider, the answer size and
-  the elapsed time. The current `rullst-ai` transports do not report token
-  usage, so no token count or cost estimate is shown.
+* **Usage:** after each answer the CLI shows the tokens the provider reported
+  (input, output and cached input) and the elapsed time, and the session totals
+  on exit. Providers or servers that report nothing show `usage not reported`;
+  counts are never estimated. A cost appears only when you configured prices,
+  labelled `≈ … est. at your prices` (all input tokens at the input price, so
+  cache discounts are not modelled). Rullst ships no price table.
 
 ### `cargo rullst audit [--ai] [--compliance] [--idor]`
 Runs bounded source/configuration checks and can invoke installed dependency
