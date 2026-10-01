@@ -325,6 +325,36 @@ fn blank_html_profiles_emit_a_same_origin_stylesheet() {
 }
 
 #[test]
+fn english_starter_pages_declare_english() {
+    for spec in BLUEPRINTS {
+        for hot_reload in [false, true] {
+            let sources = manifest_for(
+                spec,
+                false,
+                hot_reload,
+                true,
+                "Active Record",
+                "Zero-Bundle HTMX",
+            )
+            .into_iter()
+            .filter(|(path, _)| path.ends_with(".rs"))
+            .map(|(_, source)| source)
+            .collect::<Vec<_>>()
+            .join("\n");
+            // `render_page` and the ERP page declared Portuguese on English UI.
+            assert!(!sources.contains("pt-BR"), "{}", spec.key);
+            assert!(!sources.contains("render_page(&htmx"), "{}", spec.key);
+            if spec.id == BLANK_BLUEPRINT_ID {
+                assert!(sources.contains("render_page_with_lang(&htmx, \"en\", "));
+            }
+            if spec.id == ERP_BLUEPRINT_ID {
+                assert!(sources.contains("<html lang=\"en\" class=\"dark\">"));
+            }
+        }
+    }
+}
+
+#[test]
 fn saas_and_erp_emit_csp_compatible_same_origin_stylesheets() {
     let saas =
         blueprints::saas::file_manifest("styled_app", false, "Active Record", "Zero-Bundle HTMX");

@@ -1,5 +1,5 @@
 use rullst::{html, routes, Server, response::{Html, IntoResponse}, server::Extension};
-use rullst::htmx::{HtmxRequest, render_page};
+use rullst::htmx::{HtmxRequest, render_page_with_lang};
 
 __MIGRATIONS_MOD_DECLARATION____RPC_MODULE__
 
@@ -42,7 +42,8 @@ __DB_STATUS_CODE__
         </div>
     };
 
-    render_page(&htmx, "Welcome to Rullst", content)
+    // The page is written in English; plain `render_page` declares Portuguese.
+    render_page_with_lang(&htmx, "en", "Welcome to Rullst", content)
 }
 
 // State for counter
