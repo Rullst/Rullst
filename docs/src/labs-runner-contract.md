@@ -59,9 +59,14 @@ network-filesystem database.
 ### 1. Recover before claiming
 
 On startup, and periodically, call `cleanup_candidates(limit)` (1–32). It
-returns leased jobs that were cancelled, withdrawn or expired, or whose lease
+returns leased jobs that are no longer `Running` (cancelled, abandoned with
+cleanup pending, or expired) and `Running` jobs whose lease or job lifetime
 ran out. A still-`Running` record is fenced to `Uncertain` (or `Expired`) before
-it is returned. For each `CleanupJob`, tear down everything your runner owns for
+it is returned. Withdrawing an exercise changes no job record: the controller
+that owns a lease sees it as `Stop` from `lease_status` (and `complete` returns
+`Denied`), while a withdrawn job whose controller was lost is returned only
+once its lease runs out, at most the wall limit plus 15 seconds after the claim.
+For each `CleanupJob`, tear down everything your runner owns for
 `binding.nonce`, then attest it as described in step 7. Recovery never releases
 source and can never award a grade.
 
