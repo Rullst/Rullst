@@ -12,6 +12,8 @@ use tower::{Layer, Service};
 
 use crate::media_type;
 
+mod user_agent;
+
 const MAX_INSPECTED_REQUEST_BYTES: usize = 1024 * 1024;
 
 /// Heuristic RASP (Runtime Application Self-Protection) inspector.
@@ -46,7 +48,7 @@ static ATTACK_PATTERNS: &[&str] = &[
     "; cat ",
     "| sh",
     "; rm -rf",
-    "powershell",
+    user_agent::POWERSHELL,
     "cmd.exe",
     "/bin/bash",
     "/bin/sh",
@@ -82,6 +84,28 @@ const fn fold_ascii_byte(byte: u8) -> u8 {
     } else {
         byte
     }
+}
+
+/// Whether `payload` contains a signature. In a `User-Agent` value, a
+/// PowerShell product token does not count as the `powershell` keyword.
+fn has_attack_pattern(payload: &str, is_user_agent: bool) -> bool {
+    ATTACK_PATTERNS.iter().any(|pattern| {
+        if is_user_agent && *pattern == user_agent::POWERSHELL {
+            user_agent::has_powershell_outside_product_tokens(payload)
+        } else {
+            contains_ignore_ascii_case(payload, pattern)
+        }
+    })
+}
+
+/// Applies the signatures to the raw text and to one percent-decoded layer.
+fn inspect_value(payload: &str, is_user_agent: bool) -> bool {
+    if has_attack_pattern(payload, is_user_agent) {
+        return true;
+    }
+
+    let decoded = decode_percent_once(payload);
+    decoded != payload && has_attack_pattern(&decoded, is_user_agent)
 }
 
 fn decode_percent_once(payload: &str) -> String {
@@ -183,18 +207,7 @@ pub struct RaspInspector;
 impl RaspInspector {
     /// Inspects text for known attack signatures, including one layer of URL encoding.
     pub fn inspect_text(payload: &str) -> bool {
-        if ATTACK_PATTERNS
-            .iter()
-            .any(|pattern| contains_ignore_ascii_case(payload, pattern))
-        {
-            return true;
-        }
-
-        let decoded = decode_percent_once(payload);
-        decoded != payload
-            && ATTACK_PATTERNS
-                .iter()
-                .any(|pattern| contains_ignore_ascii_case(&decoded, pattern))
+        inspect_value(payload, false)
     }
 
     /// Inspects an incoming request target URI and query string for attack patterns.
@@ -206,12 +219,16 @@ impl RaspInspector {
     ///
     /// Values are decoded lossily, so an obs-text byte (0x80-0xFF), which
     /// hyper accepts but `HeaderValue::to_str` rejects, cannot hide a payload.
+    /// In `User-Agent`, the product token of a stock PowerShell client
+    /// (`PowerShell/7.4.1`, `WindowsPowerShell/5.1…`) is not treated as the
+    /// `powershell` command keyword; every other signature still applies.
     pub fn inspect_headers(headers: &HeaderMap) -> bool {
         for (name, val) in headers {
             if name == "cookie" || name == "authorization" {
                 continue;
             }
-            if Self::inspect_text(&String::from_utf8_lossy(val.as_bytes())) {
+            let is_user_agent = name == header::USER_AGENT;
+            if inspect_value(&String::from_utf8_lossy(val.as_bytes()), is_user_agent) {
                 return true;
             }
         }
