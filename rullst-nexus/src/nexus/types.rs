@@ -11,8 +11,22 @@ pub enum FieldKind {
     Email,
     /// URL input with validation.
     Url,
-    /// Integer or float number input.
+    /// Number input for any finite decimal or exponent value, such as a
+    /// floating-point column. Use [`FieldKind::Integer`] for integer columns.
     Number,
+    /// Integer number input bounded to `min..=max`.
+    ///
+    /// Nexus accepts only a base-10 whole number in that range (an optional
+    /// sign and leading zeros are normalized away), so a fraction, exponent or
+    /// out-of-range value never reaches an integer column or a narrower Rust
+    /// field. The form renders `step="1"` with the bounds. A primary key of
+    /// this kind is addressed as a canonical integer, like `Number`.
+    Integer {
+        /// Smallest accepted value.
+        min: i64,
+        /// Largest accepted value.
+        max: i64,
+    },
     /// A boolean checkbox.
     Boolean,
     /// Date picker (YYYY-MM-DD).

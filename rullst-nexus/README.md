@@ -39,7 +39,10 @@ stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text that `CURRENT_TIMESTAMP` an
 SQLx write, so text comparisons and ordering agree with application rows; a
 value with an offset is stored as entered. API clients should send only the fields they intend to
 change. A rejected value answers `422` with a plain-text reason, which the
-panel shows as a toast.
+panel shows as a toast. A `FieldKind::Number` field accepts any finite number,
+while `FieldKind::Integer { min, max }` accepts only a whole number in that
+range (stored without a `+` sign or leading zeros) and renders `step="1"` with
+the bounds, so a fraction or out-of-range value never reaches an integer column.
 
 In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
 or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
@@ -50,7 +53,7 @@ Opening the edit form of a missing, other-tenant or misspelled key returns
 reads only the registered visible, non-password columns.
 
 Form values are bound as text. PostgreSQL has no assignment cast from text,
-so there Nexus writes `number` values through `NUMERIC`, relation values that
+so there Nexus writes `number` and `integer` values through `NUMERIC`, relation values that
 are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
 `'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
 and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
@@ -63,8 +66,8 @@ The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 with an action route. The older `/nexus/table/{table}/{key}` routes remain for
 other keys.
 
-Record keys follow the registered primary-key kind: a `number` (or relation)
-key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+Record keys follow the registered primary-key kind: a `number`, `integer` (or
+relation) key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
 
 Search matches the typed text literally (`%` and `_` are not wildcards) in the

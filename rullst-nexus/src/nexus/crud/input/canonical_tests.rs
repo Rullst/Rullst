@@ -56,3 +56,73 @@ fn local_date_times_are_stored_in_the_current_timestamp_text_form() {
     assert!(edited.as_str() <= "2026-10-01 09:00:00");
     assert!(edited.as_str() > "2026-10-01 07:59:59");
 }
+
+#[test]
+fn integer_fields_accept_only_whole_numbers_in_range() {
+    let entry = entry(vec![
+        FieldMeta::new(
+            "stock",
+            "Stock",
+            FieldKind::Integer {
+                min: i64::from(i32::MIN),
+                max: i64::from(i32::MAX),
+            },
+        ),
+        FieldMeta::new(
+            "views",
+            "Views",
+            FieldKind::Integer {
+                min: 0,
+                max: i64::from(u32::MAX),
+            },
+        ),
+        FieldMeta::new("ratio", "Ratio", FieldKind::Number),
+    ]);
+    for (submitted, expected) in [
+        ("42", "42"),
+        ("+7", "7"),
+        ("007", "7"),
+        ("-0", "0"),
+        ("-2147483648", "-2147483648"),
+        ("2147483647", "2147483647"),
+    ] {
+        assert_eq!(
+            stored(&entry, "stock", submitted).as_deref(),
+            Some(expected),
+            "{submitted}"
+        );
+    }
+    assert_eq!(
+        stored(&entry, "views", "4294967295").as_deref(),
+        Some("4294967295")
+    );
+
+    for (field, value) in [
+        ("stock", "2.5"),
+        ("stock", "2.0"),
+        ("stock", "1e3"),
+        ("stock", "3000000000"),
+        ("stock", "-2147483649"),
+        ("stock", "99999999999999999999"),
+        ("stock", " 5"),
+        ("stock", "5 "),
+        ("stock", "--1"),
+        ("stock", "+"),
+        ("stock", "0x10"),
+        ("stock", "١٢"),
+        ("views", "-1"),
+        ("views", "4294967296"),
+    ] {
+        assert!(
+            validate_form_values(
+                &entry,
+                vec![(field.to_owned(), value.to_owned())],
+                FormMode::Update,
+            )
+            .is_err(),
+            "{field} accepted {value}"
+        );
+    }
+    // A floating-point field keeps accepting fractions.
+    assert_eq!(stored(&entry, "ratio", "2.5").as_deref(), Some("2.5"));
+}

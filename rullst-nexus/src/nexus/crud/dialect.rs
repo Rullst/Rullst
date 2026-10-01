@@ -57,7 +57,9 @@ pub(crate) fn write_value_sql(
     match (kind, value) {
         (FieldKind::Boolean, Some("0")) => ValueSql::Literal("'0'"),
         (FieldKind::Boolean, Some("1")) => ValueSql::Literal("'1'"),
-        (FieldKind::Number, _) => ValueSql::Bind(format!("CAST({marker} AS NUMERIC)")),
+        (FieldKind::Number | FieldKind::Integer { .. }, _) => {
+            ValueSql::Bind(format!("CAST({marker} AS NUMERIC)"))
+        }
         (FieldKind::ForeignKey { .. }, None) => ValueSql::Bind(format!("CAST({marker} AS BIGINT)")),
         (FieldKind::ForeignKey { .. }, Some(value))
             if value
@@ -73,7 +75,7 @@ pub(crate) fn write_value_sql(
 /// A record key from a URL or batch form, typed by the registered primary key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RecordKey<'a> {
-    /// A `number` or relation key: bound as a 64-bit integer.
+    /// A `number`, `integer` or relation key: bound as a 64-bit integer.
     Integer(i64),
     /// Any other key kind: compared as text, so a text key such as `1001`
     /// is never bound as an integer.
@@ -97,7 +99,12 @@ impl<'a> RecordKey<'a> {
             .fields
             .iter()
             .find(|field| field.name == entry.pk)
-            .map(|field| matches!(field.kind, FieldKind::Number | FieldKind::ForeignKey { .. }));
+            .map(|field| {
+                matches!(
+                    field.kind,
+                    FieldKind::Number | FieldKind::Integer { .. } | FieldKind::ForeignKey { .. }
+                )
+            });
         match (integer_key, canonical) {
             (Some(true) | None, Some(value)) => Some(Self::Integer(value)),
             (Some(true), None) => None,
@@ -181,6 +188,20 @@ mod tests {
             tenant_column: None,
             fields: vec![crate::nexus::FieldMeta::new("id", "ID", pk_kind)],
         }
+    }
+
+    #[test]
+    fn integer_keys_are_canonical_integers_and_written_as_numeric() {
+        let integer = entry(FieldKind::Integer {
+            min: 0,
+            max: i64::MAX,
+        });
+        assert_eq!(RecordKey::parse(&integer, "7"), Some(RecordKey::Integer(7)));
+        assert_eq!(RecordKey::parse(&integer, "07"), None);
+        assert_eq!(
+            write_value_sql(&integer.fields[0].kind, Some("7"), 2, "postgres"),
+            ValueSql::Bind("CAST($2 AS NUMERIC)".into())
+        );
     }
 
     #[test]

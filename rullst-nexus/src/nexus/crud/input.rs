@@ -141,6 +141,10 @@ fn normalize_values<'a>(
     validate_semantic_value(field, &value)?;
     let value = match field.kind {
         FieldKind::DateTime => canonical_datetime(value),
+        // Validation parsed it; store `7` for `+7` or `007`.
+        FieldKind::Integer { .. } => value
+            .parse::<i64>()
+            .map_or(value, |number| number.to_string()),
         _ => value,
     };
     Ok(ValidatedFieldValue {
@@ -208,6 +212,7 @@ fn validate_semantic_value(field: &FieldMeta, value: &str) -> Result<(), FormInp
             Ok(number) if number.is_finite() => Ok(()),
             _ => invalid(field, "must be a finite number"),
         },
+        FieldKind::Integer { min, max } => validate_integer(field, value, *min, *max),
         FieldKind::Boolean => {
             if matches!(value, "0" | "1") {
                 Ok(())
@@ -234,6 +239,22 @@ fn validate_semantic_value(field: &FieldMeta, value: &str) -> Result<(), FormInp
         | FieldKind::Textarea
         | FieldKind::Password
         | FieldKind::ForeignKey { .. } => Ok(()),
+    }
+}
+
+fn validate_integer(
+    field: &FieldMeta,
+    value: &str,
+    min: i64,
+    max: i64,
+) -> Result<(), FormInputError> {
+    let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return invalid(field, "must be a whole number");
+    }
+    match value.parse::<i64>() {
+        Ok(number) if (min..=max).contains(&number) => Ok(()),
+        _ => invalid(field, "is outside the field's integer range"),
     }
 }
 

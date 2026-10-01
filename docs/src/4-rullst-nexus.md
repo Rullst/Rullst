@@ -87,7 +87,7 @@ Opening the edit form of a missing, other-tenant or misspelled key returns
 reads only the registered visible, non-password columns.
 
 Form values are bound as text. PostgreSQL has no assignment cast from text,
-so there Nexus writes `number` values through `NUMERIC`, relation values that
+so there Nexus writes `number` and `integer` values through `NUMERIC`, relation values that
 are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
 `'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
 and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
@@ -100,8 +100,8 @@ The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 with an action route. The older `/nexus/table/{table}/{key}` routes remain for
 other keys.
 
-Record keys follow the registered primary-key kind: a `number` (or relation)
-key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+Record keys follow the registered primary-key kind: a `number`, `integer` (or
+relation) key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
 
 Search matches the typed text literally (`%` and `_` are not wildcards) in the

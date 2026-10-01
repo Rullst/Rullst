@@ -38,6 +38,7 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
         FieldKind::Email => "email",
         FieldKind::Url => "url",
         FieldKind::Number => "number",
+        FieldKind::Integer { .. } => "integer",
         FieldKind::Boolean => "boolean",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime",
@@ -52,7 +53,7 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
 #[allow(dead_code)]
 pub fn field_kind_sql(kind: &FieldKind) -> &'static str {
     match kind {
-        FieldKind::Number => "INTEGER",
+        FieldKind::Number | FieldKind::Integer { .. } => "INTEGER",
         FieldKind::Boolean => "INTEGER",
         FieldKind::ForeignKey { .. } => "INTEGER",
         FieldKind::Date | FieldKind::DateTime => "TEXT",
@@ -69,7 +70,7 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",
         FieldKind::Url => "url",
-        FieldKind::Number => "number",
+        FieldKind::Number | FieldKind::Integer { .. } => "number",
         FieldKind::Password => "password",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime-local",

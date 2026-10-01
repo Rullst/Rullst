@@ -101,7 +101,7 @@ pub async fn render_table_rows(
                             .ok()
                             .map(|b| if b { "✅ Yes" } else { "❌ No" }.to_string())
                     }),
-                    FieldKind::Number | FieldKind::ForeignKey { .. } => decode_cell(&row, f.name, |row| {
+                    FieldKind::Number | FieldKind::Integer { .. } | FieldKind::ForeignKey { .. } => decode_cell(&row, f.name, |row| {
                         row.try_get::<i64, _>(f.name)
                             .map(|v| v.to_string())
                             .or_else(|_| row.try_get::<f64, _>(f.name).map(|v| v.to_string()))
