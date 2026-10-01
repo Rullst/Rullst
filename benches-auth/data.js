@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790854252793,
+  "lastUpdate": 1790867812418,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14193,6 +14193,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4452,
             "range": "± 55",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0fa35e32c865324bd7918b448682bd452c4d78a0",
+          "message": "Merge pull request #373 from Rullst/fix/v13-cli-blueprint-low-fixes\n\nfix(cli): atomic ERP orders, health routes in every starter, paged reads and container/Omni scaffold fixes",
+          "timestamp": "2026-10-01T12:00:48-03:00",
+          "tree_id": "48b79c57f455e22e1b4997e874b6461c6d81147c",
+          "url": "https://github.com/Rullst/Rullst/commit/0fa35e32c865324bd7918b448682bd452c4d78a0"
+        },
+        "date": 1790867811863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1008,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 784,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1831,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4531,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
