@@ -319,3 +319,65 @@ async fn seeding_is_idempotent_and_never_deletes_visitor_posts() {
     .expect("visitor post count");
     assert_eq!(kept, 1);
 }
+
+#[tokio::test]
+async fn story_submissions_are_bounded() {
+    database().await;
+    let app = test_router().into_axum();
+    let long_title = "t".repeat(crate::app::MAX_TITLE_CHARS + 1);
+    let long_body = "b".repeat(crate::app::MAX_BODY_CHARS + 1);
+    for form in [
+        format!("title={long_title}&body=ok"),
+        format!("title=ok&body={long_body}"),
+        "title=+&body=ok".to_string(),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(csrf_post("/posts", "tenant-enterprise", &form))
+            .await
+            .expect("store response");
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    let oversized = format!("title=big&body={}", "b".repeat(crate::app::MAX_FORM_BYTES));
+    let response = app
+        .oneshot(csrf_post("/posts", "tenant-enterprise", &oversized))
+        .await
+        .expect("oversized response");
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn tenants_keep_a_bounded_number_of_stories_and_listings() {
+    use crate::app::{CreatePostError, LISTED_POSTS, MAX_POSTS_PER_TENANT};
+    use crate::repository_demo::{BODY_PREVIEW_CHARS, PostRepository, REPOSITORY_ROWS};
+
+    database().await;
+    let tenant = format!("quota-{}", std::process::id());
+    let body = "x".repeat(crate::app::MAX_BODY_CHARS);
+    for number in 0..MAX_POSTS_PER_TENANT {
+        crate::app::create_post(&tenant, &format!("Story {number}"), &body)
+            .await
+            .expect("story within the quota");
+    }
+    assert!(matches!(
+        crate::app::create_post(&tenant, "One too many", "body").await,
+        Err(CreatePostError::QuotaReached)
+    ));
+
+    let listed = crate::app::recent_posts(&tenant).await.expect("listing");
+    assert_eq!(listed.len(), LISTED_POSTS);
+    assert_eq!(
+        listed[0].title,
+        format!("Story {}", MAX_POSTS_PER_TENANT - 1)
+    );
+
+    let rows = PostRepository::get_tenant_posts(&tenant)
+        .await
+        .expect("repository listing");
+    assert_eq!(rows.len() as i64, REPOSITORY_ROWS);
+    assert!(
+        rows.iter()
+            .all(|row| row.body.chars().count() as i64 == BODY_PREVIEW_CHARS)
+    );
+}

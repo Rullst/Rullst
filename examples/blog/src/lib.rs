@@ -74,6 +74,7 @@ fn router_with_nexus_auth(
         get("/sitemap.xml" => sitemap_xml),
     ]
     .nest_axum("/nexus", nexus_router)
+    .layer(axum::extract::DefaultBodyLimit::max(app::MAX_FORM_BYTES))
     .layer(axum::middleware::map_response(set_security_headers))
     .layer(rullst::tenant_layer(config))
     .layer(axum::Extension(demo_membership))

@@ -90,10 +90,98 @@ pub async fn create_schema() -> Result<(), rullst_orm::Error> {
     Ok(())
 }
 
+/// Longest accepted title, in characters.
+pub const MAX_TITLE_CHARS: usize = 120;
+/// Longest accepted body, in characters.
+pub const MAX_BODY_CHARS: usize = 4_000;
+/// Stories this public showcase keeps per tenant.
+pub const MAX_POSTS_PER_TENANT: i64 = 100;
+/// Newest stories rendered on the landing page.
+pub const LISTED_POSTS: usize = 20;
+/// Largest accepted request body. URL-encoding can triple multibyte text.
+pub const MAX_FORM_BYTES: usize = 64 * 1024;
+
 #[derive(serde::Deserialize)]
 pub struct CreatePostForm {
     pub title: String,
     pub body: String,
+}
+
+/// Why a story was not stored.
+#[derive(Debug)]
+pub enum CreatePostError {
+    /// The title or body is blank or longer than its limit.
+    Invalid(&'static str),
+    /// The tenant already holds [`MAX_POSTS_PER_TENANT`] stories.
+    QuotaReached,
+    /// The database rejected the query.
+    Database(rullst_orm::Error),
+}
+
+impl From<rullst_orm::Error> for CreatePostError {
+    fn from(error: rullst_orm::Error) -> Self {
+        Self::Database(error)
+    }
+}
+
+/// Trims and bounds a submitted story.
+pub fn validate_post(title: &str, body: &str) -> Result<(String, String), CreatePostError> {
+    let (title, body) = (title.trim(), body.trim());
+    if title.is_empty() || body.is_empty() {
+        return Err(CreatePostError::Invalid(
+            "A story needs a title and a body.",
+        ));
+    }
+    if title.chars().count() > MAX_TITLE_CHARS {
+        return Err(CreatePostError::Invalid(
+            "The title is limited to 120 characters.",
+        ));
+    }
+    if body.chars().count() > MAX_BODY_CHARS {
+        return Err(CreatePostError::Invalid(
+            "The body is limited to 4,000 characters.",
+        ));
+    }
+    Ok((title.to_string(), body.to_string()))
+}
+
+/// Stores a validated story in `tenant_id` unless the tenant is at its quota.
+///
+/// The count and the insert are separate statements, so concurrent requests
+/// can overshoot the quota by at most the number of requests in flight.
+pub async fn create_post(
+    tenant_id: &str,
+    title: &str,
+    body: &str,
+) -> Result<Post, CreatePostError> {
+    let (title, body) = validate_post(title, body)?;
+    with_tenant(tenant_id.to_string(), async {
+        if Post::query().count().await? >= MAX_POSTS_PER_TENANT {
+            return Err(CreatePostError::QuotaReached);
+        }
+        let mut post = Post {
+            id: 0,
+            tenant_id: tenant_id.to_string(),
+            title,
+            body,
+        };
+        post.save().await?;
+        Ok(post)
+    })
+    .await
+}
+
+/// The tenant's newest [`LISTED_POSTS`] stories, newest first.
+pub async fn recent_posts(tenant_id: &str) -> Result<Vec<Post>, rullst_orm::Error> {
+    // Build the query inside the scope: `query()` binds the active tenant.
+    with_tenant(tenant_id.to_string(), async {
+        Post::query()
+            .order_by_desc("id")
+            .limit(LISTED_POSTS)
+            .get()
+            .await
+    })
+    .await
 }
 
 fn render_post_list(posts: &[Post]) -> String {
@@ -106,7 +194,6 @@ fn render_post_list(posts: &[Post]) -> String {
     } else {
         let items: String = posts
             .iter()
-            .rev()
             .map(|post| {
                 html! {
                     <div style="background: #0d121f; border-left: 4px solid #3b82f6; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #1e293b; border-left-width: 4px;">
@@ -132,7 +219,7 @@ pub async fn index(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
     Extension(tenant): Extension<TenantContext>,
 ) -> Result<Html<String>, StatusCode> {
-    let posts = with_tenant(tenant.tenant_id.clone(), Post::all())
+    let posts = recent_posts(&tenant.tenant_id)
         .await
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     let nav = render_showcase_nav("/");
@@ -168,12 +255,13 @@ pub async fn index(
                             <h3 style="margin-top: 0; color: #38bdf8; font-size: 1.1rem; margin-bottom: 1rem;">"Publish a New Story (Active Record)"</h3>
                             <div style="margin-bottom: 1rem;">
                                 <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.4rem;">"Article Title"</label>
-                                <input type="text" name="title" placeholder="e.g. Memory Safety with Rust 2024" required="required" style="width: 100%; background: #0d121f; border: 1px solid #334155; border-radius: 0.375rem; padding: 0.65rem 0.85rem; color: #fff;" />
+                                <input type="text" name="title" maxlength="120" placeholder="e.g. Memory Safety with Rust 2024" required="required" style="width: 100%; background: #0d121f; border: 1px solid #334155; border-radius: 0.375rem; padding: 0.65rem 0.85rem; color: #fff;" />
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.4rem;">"Content (Markdown/Text)"</label>
-                                <textarea name="body" rows="4" placeholder="Write your post content here..." required="required" style="width: 100%; background: #0d121f; border: 1px solid #334155; border-radius: 0.375rem; padding: 0.65rem 0.85rem; color: #fff;"></textarea>
+                                <textarea name="body" rows="4" maxlength="4000" placeholder="Write your post content here..." required="required" style="width: 100%; background: #0d121f; border: 1px solid #334155; border-radius: 0.375rem; padding: 0.65rem 0.85rem; color: #fff;"></textarea>
                             </div>
+                            <p class="form-hint">"Titles up to 120 characters, bodies up to 4,000. Each tenant keeps at most 100 stories; the newest 20 are listed below."</p>
                             <button type="submit" class="btn">"Publish Article"</button>
                         </form>
                     </div>
@@ -194,17 +282,20 @@ pub async fn index(
 pub async fn store(
     Extension(tenant): Extension<TenantContext>,
     Form(form): Form<CreatePostForm>,
-) -> Result<Redirect, StatusCode> {
-    if !form.title.trim().is_empty() && !form.body.trim().is_empty() {
-        let mut post = Post {
-            id: 0,
-            tenant_id: tenant.tenant_id.clone(),
-            title: form.title,
-            body: form.body,
-        };
-        with_tenant(tenant.tenant_id.clone(), post.save())
-            .await
-            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+) -> Result<Redirect, (StatusCode, &'static str)> {
+    match create_post(&tenant.tenant_id, &form.title, &form.body).await {
+        Ok(_) => Ok(Redirect::to("/")),
+        Err(CreatePostError::Invalid(reason)) => Err((StatusCode::UNPROCESSABLE_ENTITY, reason)),
+        Err(CreatePostError::QuotaReached) => Err((
+            StatusCode::FORBIDDEN,
+            "This showcase tenant already holds its 100 stories.",
+        )),
+        Err(CreatePostError::Database(error)) => {
+            tracing::warn!(%error, "storing a showcase story failed");
+            Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "The showcase database is unavailable.",
+            ))
+        }
     }
-    Ok(Redirect::to("/"))
 }

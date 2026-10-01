@@ -30,6 +30,11 @@ pub struct RawPostRecord {
     pub body: String,
 }
 
+/// Rows listed by the repository page.
+pub const REPOSITORY_ROWS: i64 = 20;
+/// Characters of each body included in the repository listing.
+pub const BODY_PREVIEW_CHARS: i64 = 160;
+
 /// Repository responsible for aggregations and raw read models.
 ///
 /// These hand-written queries bypass the model's `tenant_column` scope, so
@@ -74,15 +79,19 @@ impl PostRepository {
         Ok(analytics)
     }
 
-    /// Fetches the tenant's raw posts directly via a Data Mapper SQLx query.
+    /// Fetches the tenant's newest [`REPOSITORY_ROWS`] posts, with a bounded
+    /// body preview, directly via a Data Mapper SQLx query.
     pub async fn get_tenant_posts(
         tenant_id: &str,
     ) -> Result<Vec<RawPostRecord>, rullst_orm::Error> {
         let pool = Orm::pool()?;
         let rows = sqlx::query(
-            "SELECT id, tenant_id, title, body FROM posts WHERE tenant_id = ? ORDER BY id DESC",
+            "SELECT id, tenant_id, title, substr(body, 1, ?) AS body FROM posts
+            WHERE tenant_id = ? ORDER BY id DESC LIMIT ?",
         )
+        .bind(BODY_PREVIEW_CHARS)
         .bind(tenant_id)
+        .bind(REPOSITORY_ROWS)
         .fetch_all(pool)
         .await?;
 
@@ -198,7 +207,7 @@ pub async fn repository_page(
                             </tbody>
                         </table>
 
-                        <h3 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.75rem;">"Tenant Records (`posts` Table)"</h3>
+                        <h3 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.75rem;">"Newest Tenant Records (`posts` Table, 20 rows, 160-character previews)"</h3>
                         <table style="width: 100%; border-collapse: collapse; text-align: left; background: #05070c; border-radius: 0.5rem; overflow: hidden; border: 1px solid #1e293b;">
                             <thead>
                                 <tr style="background: rgba(30, 41, 59, 0.8); border-bottom: 2px solid #334155; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase;">

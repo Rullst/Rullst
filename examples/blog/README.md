@@ -8,12 +8,15 @@ or proof that every crate and feature is exercised.
 ## Demonstrated paths
 
 - `/`: server-rendered posts using the `html!` macro and an ORM model whose
-  `tenant_column` fails closed outside the request's `TenantContext`.
+  `tenant_column` fails closed outside the request's `TenantContext`. Stories
+  are bounded for a public deployment: titles up to 120 characters, bodies up
+  to 4,000, at most 100 per tenant and 64 KiB per form (422, 403 and 413
+  otherwise); the page lists the newest 20.
 - `/live-feed` and `/_live`: server-driven WebSocket example.
 - `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
 - `/posts/repository`: parameterized repository queries bound to the selected
-  tenant.
+  tenant, listing its newest 20 posts with 160-character previews.
 - `/pricing`: `Billable` quotas, payment-adapter mock fixtures, and an unsigned,
   offline DPS XML preview. It never issues or signs an NFS-e.
 - `/security-demo`: bounded, instrumented security-control demonstrations. The
