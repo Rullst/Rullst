@@ -398,7 +398,8 @@ fn refill_token_count(current_tokens: f64, elapsed_secs: f64, config: &RateLimit
 /// Clones share one bucket map. It tracks at most 100,000 keys: buckets that
 /// have refilled completely are dropped (a new bucket behaves identically),
 /// and beyond the cap the least recently used buckets are evicted, which gives
-/// those clients a fresh burst.
+/// those clients a fresh burst. Keys longer than 128 bytes are stored as a
+/// SHA-256 digest, so each bucket's key takes at most 128 bytes.
 #[derive(Clone)]
 pub struct RateLimiter {
     pub(crate) config: RateLimitConfig,
@@ -435,14 +436,20 @@ impl RateLimiter {
     }
 
     /// Evaluates if the bucket for `key` can consume 1 token, refilling dynamic tokens incrementally.
+    ///
+    /// A key longer than 128 bytes is stored as its SHA-256 digest, so a
+    /// custom extractor returning a long header value (an `Authorization`
+    /// token, say) cannot make each of the at most 100,000 buckets hold an
+    /// attacker-sized key.
     pub fn check_and_consume(&self, key: &str) -> bool {
         let now = Instant::now();
-        if !self.buckets.contains_key(key) {
+        let key = buckets::bounded_bucket_key(key);
+        if !self.buckets.contains_key(key.as_ref()) {
             self.make_room_for_new_key(now);
         }
         let mut entry = self
             .buckets
-            .entry(key.to_string())
+            .entry(key.into_owned())
             .or_insert_with(|| TokenBucket {
                 tokens: self.config.max_tokens,
                 last_refill: now,
