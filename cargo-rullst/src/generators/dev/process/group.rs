@@ -62,7 +62,23 @@ impl ProcessGroup {
                 .ok_or_else(|| io::Error::other("could not observe owned process state"))?;
             Ok(matches!(state, "Z" | "X"))
         }
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "cygwin",
+            target_os = "horizon",
+            target_os = "openbsd",
+            target_os = "redox"
+        )))]
+        {
+            exited_without_reaping(self.id)
+        }
+        // Platforms without waitid in rustix fall back to `ps`.
+        #[cfg(any(
+            target_os = "cygwin",
+            target_os = "horizon",
+            target_os = "openbsd",
+            target_os = "redox"
+        ))]
         {
             let output = Command::new("ps")
                 .args(["-o", "stat=", "-p", &self.id.to_string()])
@@ -78,4 +94,32 @@ impl ProcessGroup {
                 .starts_with('Z'))
         }
     }
+}
+
+/// Whether the child `id` has exited, observed with
+/// `waitid(WEXITED | WNOHANG | WNOWAIT)`: one system call that leaves the
+/// zombie, and so its PID/PGID, reserved for the later reap. It replaces a
+/// `ps` process spawned per 20 ms poll. A stopped child (which some kernels
+/// also report) is not an exit.
+#[cfg(all(
+    unix,
+    not(any(
+        target_os = "cygwin",
+        target_os = "horizon",
+        target_os = "openbsd",
+        target_os = "redox"
+    ))
+))]
+#[cfg_attr(target_os = "linux", allow(dead_code))]
+pub(super) fn exited_without_reaping(id: u32) -> io::Result<bool> {
+    use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
+    let pid = i32::try_from(id)
+        .ok()
+        .and_then(Pid::from_raw)
+        .ok_or_else(|| io::Error::other("owned process ID is out of range"))?;
+    let status = waitid(
+        WaitId::Pid(pid),
+        WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT,
+    )?;
+    Ok(status.is_some_and(|status| status.exited() || status.killed() || status.dumped()))
 }
