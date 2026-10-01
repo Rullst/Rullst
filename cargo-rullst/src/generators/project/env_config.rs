@@ -94,18 +94,14 @@ csp = "{billing_csp}"
         fs::write(path.join("Rullst.toml"), rullst_toml)?;
     }
 
-    let gitignore_content = r#"# Rust build artifacts
+    let gitignore_content = format!(
+        r#"# Rust build artifacts
 /target
 
 # Commit Cargo.lock for reproducible application/deployment builds.
 
 # Rullst: Database
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
+{LOCAL_DATABASE_IGNORES}
 # Rullst: Environment & Secrets
 .env
 .env.*
@@ -118,7 +114,9 @@ csp = "{billing_csp}"
 .vscode/
 .idea/
 .DS_Store
-"#;
+"#,
+        LOCAL_DATABASE_IGNORES = super::docker::LOCAL_DATABASE_IGNORES
+    );
     fs::write(path.join(".gitignore"), gitignore_content)?;
 
     let db_url = match db_provider {

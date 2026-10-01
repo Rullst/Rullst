@@ -34,7 +34,8 @@ the generated application:
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
-    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals) and the
+    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals, one list
+    shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
     `.dockerignore` is kept unchanged. The runtime
