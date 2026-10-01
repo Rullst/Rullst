@@ -938,12 +938,17 @@ compliance certification.
   * `--idor`: Fails on parameterized routes without an adjacent `// rullst-access: public|owner|role|admin — reason` classification and the recognized guard required by non-public classifications. `public` is accepted only for recognized GET routes. This bounded heuristic cannot prove domain authorization correctness.
 
 ### `cargo rullst eject [--force] [--output <path>]`
-Generates an inspectable Axum/Tokio entry-point snapshot
-(`src/ejected_main.rs`) for the supported abstractions. Review it and run
-`cargo check`; optional subsystems may still depend on Rullst crates.
+Writes a reviewable Axum/Tokio entry-point template (`src/ejected_main.rs`). It
+is not a translation of the project's `main.rs`: it serves a placeholder route
+from `application_routes()`, wraps it in the configured Rullst security
+baseline (`apply_security_baseline` with `Rullst.toml`, as `Server` applies it)
+and reaches Axum through `rullst::web::axum`, so it compiles without a direct
+Axum dependency. Move the application's routes and module declarations into it
+before use. Static files, rate limiting, lifecycle probes, hot reload,
+sessions, authentication and authorization are not included.
 * **Flags:**
-  * `--force`: Overwrites `src/main.rs` directly instead of creating `src/ejected_main.rs`.
-  * `--output <path>`: Specifies a custom output path for the ejected file.
+  * `--force`: Replaces `src/main.rs` with the template after copying the original to `src/main.rs.rullst-backup` (an existing backup stops the command). Application routes are not carried over.
+  * `--output <path>`: Specifies a custom output path below `src/` for the ejected file.
 
 ### `cargo rullst deploy:doctor` (v13 candidate)
 
