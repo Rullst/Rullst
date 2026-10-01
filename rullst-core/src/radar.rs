@@ -156,13 +156,16 @@ fn parse_vm_rss_kib(status: &str) -> Option<u64> {
 
 /// Sums the aggregate `cpu` line of `/proc/stat` and counts its `cpuN` lines,
 /// the host CPUs that aggregate covers.
+///
+/// Only the first eight columns (`user` to `steal`) are summed: the kernel
+/// already counts `guest` and `guest_nice` inside `user` and `nice`.
 #[cfg(target_os = "linux")]
 fn parse_proc_stat(stat: &str) -> Option<(u64, usize)> {
     let mut aggregate = stat.lines().next()?.split_whitespace();
     if aggregate.next()? != "cpu" {
         return None;
     }
-    let total = aggregate.try_fold(0_u64, |total, value| {
+    let total = aggregate.take(8).try_fold(0_u64, |total, value| {
         value
             .parse::<u64>()
             .ok()
@@ -429,6 +432,11 @@ mod tests {
         stat.push_str("intr 1 2 3\nctxt 4\ncpufreq 5\n");
         assert_eq!(parse_proc_stat(&stat), Some((3200, 32)));
         assert_eq!(parse_proc_stat("intr 1\n"), None);
+        // guest (400) and guest_nice (100) are already inside user and nice.
+        assert_eq!(
+            parse_proc_stat("cpu  1000 50 200 3000 10 5 5 30 400 100\ncpu0 1 0 0 0\n"),
+            Some((4300, 1))
+        );
 
         // Two CPUs saturated for one second on a 32-CPU host at 100 Hz.
         assert_eq!(linux_cpu_percent(200, 3200, 32), Some(200.0));
