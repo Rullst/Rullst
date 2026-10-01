@@ -10,6 +10,7 @@ pub(crate) mod api_contract;
 pub mod audit;
 mod audit_compliance;
 mod audit_evidence;
+mod audit_idor;
 mod audit_purl;
 pub mod auth;
 pub mod billing;
