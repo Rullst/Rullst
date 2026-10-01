@@ -175,10 +175,23 @@ impl Migration for MigrationImpl {
         // Seed initial blog posts
         let pool = rullst::db::Orm::pool()?;
         rullst::db::sqlx::query(
-            "INSERT INTO posts (id, title, slug, content, created_at, updated_at) VALUES 
-             (1, 'Building a Server-Rendered Blog with Rullst', 'building-with-rullst', 'This starter combines typed Axum routes, server-rendered HTML, and a configured SQL database.', datetime('now'), datetime('now')),
-             (2, 'The Power of WebAssembly Islands', 'power-of-wasm-islands', 'Wasm Islands give you the speed of server-side HTML combined with high-fidelity Wasm interactivity when needed.', datetime('now'), datetime('now'))"
+            "INSERT INTO posts (id, title, slug, content) VALUES 
+             (1, 'Building a Server-Rendered Blog with Rullst', 'building-with-rullst', 'This starter combines typed Axum routes, server-rendered HTML, and a configured SQL database.'),
+             (2, 'The Power of WebAssembly Islands', 'power-of-wasm-islands', 'Wasm Islands give you the speed of server-side HTML combined with high-fidelity Wasm interactivity when needed.')"
         ).execute(pool).await?;
+
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('posts', 'id'), (SELECT MAX(id) FROM posts))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
 
         Ok(())
     }
@@ -250,17 +263,31 @@ impl NexusModel for Post {
     };
 
     let blog_controller = format!(
-        r##"use rullst::server::{{Path, IntoResponse}};
+        r##"use rullst::server::{{Extension, Path, IntoResponse}};
 use rullst::response::Html;
 {repo_import}
 use crate::pages::blog;
 
-pub async fn index() -> impl IntoResponse {{
-    let posts = {all_call};
-    Html(blog::index_page(posts))
+/// The production security headers allow only nonce-bound inline styles; the
+/// nonce is absent (and unneeded) when no CSP is sent, as in development.
+fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {{
+    csp_nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
 }}
 
-pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
+pub async fn index(
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {{
+    let posts = {all_call};
+    Html(blog::index_page(posts, nonce(&csp_nonce)))
+}}
+
+pub async fn show(
+    Path(slug): Path<String>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {{
     let posts = {all_call};
     let Some(post) = posts.into_iter().find(|post| post.slug == slug) else {{
         return (
@@ -269,7 +296,7 @@ pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
         )
             .into_response();
     }};
-    Html(blog::detail_page(post)).into_response()
+    Html(blog::detail_page(post, nonce(&csp_nonce))).into_response()
 }}
 
 pub async fn robots_txt() -> impl IntoResponse {{
@@ -312,7 +339,7 @@ pub async fn sitemap_xml() -> impl IntoResponse {{
     let page_header = common::frontend_page_imports(frontend_engine);
     let blog_page_body = r##"use crate::models::post::Post;
 
-pub fn index_page(posts: Vec<Post>) -> String {
+pub fn index_page(posts: Vec<Post>, csp_nonce: &str) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
@@ -320,13 +347,18 @@ pub fn index_page(posts: Vec<Post>) -> String {
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Press Feed"</title>
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <style>
+                <style nonce={csp_nonce}>
                     "
-                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
                     body { background: #030712; color: #f3f4f6; min-height: 100vh; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; }
                     .container { max-width: 800px; width: 100%; }
-                    header { text-align: center; margin-bottom: 5rem; }
+                    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1.5rem; margin-bottom: 5rem; }
+                    .tools { display: flex; gap: 1rem; align-items: flex-start; }
+                    .tool { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+                    .tool-link { padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+                    .tool-link.nexus { background: rgba(5, 150, 105, 0.2); border: 1px solid rgba(5, 150, 105, 0.5); color: #10b981; }
+                    .tool-link.studio { background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; }
+                    .tool-note { font-size: 0.7rem; color: #94a3b8; }
                     h1 { font-size: 3.5rem; font-weight: 800; background: linear-gradient(135deg, #059669, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
                     p.sub { color: #9ca3af; font-size: 1.20rem; margin-top: 0.5rem; }
                     .post-list { display: flex; flex-direction: column; gap: 2.5rem; }
@@ -341,17 +373,17 @@ pub fn index_page(posts: Vec<Post>) -> String {
             </head>
             <body>
                 <div class="container">
-                    <header style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="text-align: left;">
+                    <header>
+                        <div>
                             <h1>"Rullst Blog"</h1>
                             <p class="sub">"Insights on hyper-performance fullstack development"</p>
                         </div>
-                        <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
-                            <a href="/nexus" style="background: rgba(5, 150, 105, 0.2); border: 1px solid rgba(5, 150, 105, 0.5); color: #10b981; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
-                            <span style="font-size: 0.7rem; color: #94a3b8;">"(local in debug; credentials in release)"</span>
-                        </div>
-                            <a href="http://127.0.0.1:5555" target="_blank" style="background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"📊 Rullst Studio (local)"</a>
+                        <div class="tools">
+                            <div class="tool">
+                                <a class="tool-link nexus" href="/nexus">"⚙️ Nexus CMS"</a>
+                                <span class="tool-note">"(local in debug; credentials in release)"</span>
+                            </div>
+                            <a class="tool-link studio" href="http://127.0.0.1:5555" target="_blank">"📊 Rullst Studio (local)"</a>
                         </div>
                     </header>
                     <div class="post-list">
@@ -369,7 +401,7 @@ pub fn index_page(posts: Vec<Post>) -> String {
     }
 }
 
-pub fn detail_page(post: Post) -> String {
+pub fn detail_page(post: Post, csp_nonce: &str) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
@@ -377,10 +409,9 @@ pub fn detail_page(post: Post) -> String {
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>{&post.title}</title>
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <style>
+                <style nonce={csp_nonce}>
                     "
-                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
                     body { background: #030712; color: #f3f4f6; min-height: 100vh; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; }
                     .container { max-width: 700px; width: 100%; }
                     .back-link { color: #f97316; text-decoration: none; font-weight: 600; margin-bottom: 2rem; display: inline-block; }

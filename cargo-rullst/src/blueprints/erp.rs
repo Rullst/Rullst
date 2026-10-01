@@ -100,3 +100,37 @@ pub fn file_manifest(
 
     manifest
 }
+
+#[cfg(test)]
+mod tests {
+    use super::file_manifest;
+
+    #[test]
+    fn every_erp_route_shares_the_admin_policy() {
+        for hot_reload in [false, true] {
+            let manifest =
+                file_manifest("erp_app", hot_reload, "Active Record", "Zero-Bundle HTMX");
+            let entry = if hot_reload {
+                "src/lib.rs"
+            } else {
+                "src/main.rs"
+            };
+            let source = manifest
+                .iter()
+                .find_map(|(path, source)| (*path == entry).then_some(source.as_str()))
+                .unwrap_or_default();
+            let protected = source
+                .split_once("let admin_routes = routes![")
+                .and_then(|(_, rest)| rest.split_once("];"))
+                .map(|(routes, _)| routes)
+                .unwrap_or_default();
+            // The dashboard lists every order's customer and the revenue totals.
+            assert!(protected.contains("get(\"/\" => controllers::erp_controller::index)"));
+            assert_eq!(source.matches("routes![").count(), 1, "{entry}");
+            assert!(source.contains("admin_access.protect_router(admin_routes.into_axum())?"));
+        }
+        let library = file_manifest("erp_app", true, "Active Record", "Zero-Bundle HTMX");
+        assert!(library.iter().any(|(path, source)| *path == "src/lib.rs"
+            && source.contains("fn back_office_dashboard_is_not_public()")));
+    }
+}

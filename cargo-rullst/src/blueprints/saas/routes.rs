@@ -34,13 +34,16 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         get("/" => controllers::billing_controller::pricing_view),
         get("/pricing" => controllers::billing_controller::pricing_view),
         get("/login" => controllers::auth_controller::login_view),
-        post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
-        post("/register" => controllers::auth_controller::register_submit),
         post("/logout" => controllers::auth_controller::logout),
     ];
 
-    Ok(router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    // Each credential submission runs Argon2id, so it is budgeted per client.
+    Ok(router.route("/login", rullst::routing::post(controllers::auth_controller::login_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/reports/billing", rullst::routing::get(controllers::billing_controller::billing_report)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
@@ -142,13 +145,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/" => controllers::billing_controller::pricing_view),
         get("/pricing" => controllers::billing_controller::pricing_view),
         get("/login" => controllers::auth_controller::login_view),
-        post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
-        post("/register" => controllers::auth_controller::register_submit),
         post("/logout" => controllers::auth_controller::logout),
     ];
 
-    let router = router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    // Each credential submission runs Argon2id, so it is budgeted per client.
+    let router = router.route("/login", rullst::routing::post(controllers::auth_controller::login_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/reports/billing", rullst::routing::get(controllers::billing_controller::billing_report)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))

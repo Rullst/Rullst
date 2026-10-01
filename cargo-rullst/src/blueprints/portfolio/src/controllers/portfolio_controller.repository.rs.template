@@ -1,4 +1,4 @@
-use rullst::server::IntoResponse;
+use rullst::server::{Extension, IntoResponse};
 use rullst::response::Html;
 use crate::repositories::profile_repository::ProfileRepository;
 use crate::repositories::project_repository::ProjectRepository;
@@ -6,11 +6,22 @@ use crate::repositories::experience_repository::ExperienceRepository;
 use crate::repositories::skill_repository::SkillRepository;
 use crate::pages::home;
 
-pub async fn index() -> impl IntoResponse {
+/// The production security headers allow only nonce-bound inline styles; the
+/// nonce is absent (and unneeded) when no CSP is sent, as in development.
+fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    csp_nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
+pub async fn index(
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {
     let profile = ProfileRepository::get().await;
     let projects = ProjectRepository::all().await;
     let experiences = ExperienceRepository::all().await;
     let skills = SkillRepository::all().await;
 
-    Html(home::render(&profile, &projects, &experiences, &skills))
+    Html(home::render(&profile, &projects, &experiences, &skills, nonce(&csp_nonce)))
 }
