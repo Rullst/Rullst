@@ -1,7 +1,15 @@
+mod metrics;
+#[cfg(test)]
+mod metrics_render_tests;
+#[cfg(test)]
+mod metrics_tests;
 mod render;
 #[cfg(test)]
 mod render_tests;
 mod state;
+mod telemetry;
+#[cfg(test)]
+mod telemetry_tests;
 mod terminal;
 
 use crate::generators::dev::{DevCommand, DevStatus};
@@ -84,6 +92,8 @@ pub(crate) async fn run(
     };
     let mut ticker = tokio::time::interval(tick_duration);
     app.server_status = supervisor_status(*process_status.borrow_and_update());
+    let (telemetry_tx, mut telemetry_rx) = tokio::sync::mpsc::channel(2);
+    telemetry::spawn_poller(port, telemetry_tx);
 
     loop {
         terminal.draw(|frame| render::ui(frame, &app))?;
@@ -94,12 +104,15 @@ pub(crate) async fn run(
             }
             changed = process_status.changed() => {
                 if changed.is_err() { break; }
-                app.server_status = supervisor_status(*process_status.borrow_and_update());
+                apply_status(&mut app, *process_status.borrow_and_update());
             }
             message = log_rx.recv() => {
                 if let Some(message) = message {
                     handle_log_message(&mut app, message);
                 }
+            }
+            Some(outcome) = telemetry_rx.recv() => {
+                ingest_telemetry(&mut app, outcome, std::time::Instant::now());
             }
             event = key_rx.recv() => {
                 let Some(Event::Key(key)) = event else {
@@ -159,6 +172,57 @@ fn handle_log_message(app: &mut App, message: LogMsg) {
     }
 }
 
+/// Folds one telemetry poll into the metrics and logs connection changes.
+fn ingest_telemetry(app: &mut App, outcome: telemetry::PollOutcome, now: std::time::Instant) {
+    let message = match app.metrics.ingest(outcome, now) {
+        Some(metrics::Notice::Connected) => {
+            "Live metrics connected to /_rullst/dev-telemetry.".to_string()
+        }
+        Some(metrics::Notice::Restarted) => {
+            "Live metrics: new application process; counters restart from zero.".to_string()
+        }
+        Some(metrics::Notice::Lost(metrics::Source::NotServed)) => format!(
+            "Telemetry not available: the app does not serve /_rullst/dev-telemetry. See {}",
+            render::DOCS_URL
+        ),
+        Some(metrics::Notice::Lost(metrics::Source::Rejected(reason))) => {
+            format!("Telemetry response rejected ({reason}); metrics hidden.")
+        }
+        Some(metrics::Notice::Lost(_)) => {
+            "Live metrics paused: the application is not answering.".to_string()
+        }
+        None => return,
+    };
+    app.push_system(message);
+}
+
+/// `r`: restarts the owned process from its current executable snapshot.
+fn request_restart(app: &mut App, commands: &Sender<DevCommand>) {
+    let refused = if app.server_status == ServerStatus::Starting {
+        "The application is still starting; restart once it is ready or has exited."
+    } else if commands.try_send(DevCommand::Restart).is_ok() {
+        // The supervisor logs the restart itself.
+        app.action_notice = Some(RESTART_NOTICE.to_string());
+        return;
+    } else {
+        "Restart could not be queued; the supervisor is busy (for example migrating)."
+    };
+    app.action_notice = Some(refused.to_string());
+    app.push_system(refused.to_string());
+}
+
+const RESTART_NOTICE: &str = "Restarting the application from the current build...";
+
+/// Applies a supervisor status; a restart notice ends once the app is ready.
+fn apply_status(app: &mut App, status: DevStatus) {
+    app.server_status = supervisor_status(status);
+    if app.server_status == ServerStatus::Ready
+        && app.action_notice.as_deref() == Some(RESTART_NOTICE)
+    {
+        app.action_notice = None;
+    }
+}
+
 fn handle_key(
     key: KeyEvent,
     app: &mut App,
@@ -167,6 +231,11 @@ fn handle_key(
 ) -> bool {
     if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
         return true;
+    }
+    if app.show_help {
+        // `q` still quits; any other key only closes the help.
+        app.show_help = false;
+        return key.code == KeyCode::Char('q');
     }
     if app.search_editing {
         match key.code {
@@ -180,6 +249,8 @@ fn handle_key(
 
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => return true,
+        KeyCode::Char('?') => app.show_help = true,
+        KeyCode::Char('r') => request_restart(app, commands),
         KeyCode::Char('o') => {
             open_browser(format!("http://127.0.0.1:{}", app.port), log_tx.clone())
         }

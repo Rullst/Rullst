@@ -20,6 +20,8 @@ pub(crate) enum DevStatus {
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum DevCommand {
     Migrate,
+    /// Restarts the owned process from its current executable snapshot.
+    Restart,
 }
 
 pub fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -135,22 +137,29 @@ async fn supervise(
                     exit_reported = true;
                 }
             }
-            Some(DevCommand::Migrate) = commands.recv() => {
-                // Owned by this future: dashboard exit cancels the migration
-                // and its child group, with the same bounded output as startup.
-                let result = if Path::new("src/migrations").is_dir() {
-                    running.migrate(dashboard, &logs).await
-                } else {
-                    Err(io::Error::other("this project has no src/migrations directory"))
-                };
-                let _ = logs.send(LogMsg::MigrationFinished {
-                    success: result.is_ok(),
-                    summary: match result {
-                        Ok(()) => "Database migration completed using the current executable snapshot.".into(),
-                        Err(error) => format!("Database migration failed: {error}"),
-                    },
-                }).await;
-            }
+            Some(command) = commands.recv() => match command {
+                DevCommand::Migrate => {
+                    // Owned by this future: dashboard exit cancels the migration
+                    // and its child group, with the same bounded output as startup.
+                    let result = if Path::new("src/migrations").is_dir() {
+                        running.migrate(dashboard, &logs).await
+                    } else {
+                        Err(io::Error::other("this project has no src/migrations directory"))
+                    };
+                    let _ = logs.send(LogMsg::MigrationFinished {
+                        success: result.is_ok(),
+                        summary: match result {
+                            Ok(()) => "Database migration completed using the current executable snapshot.".into(),
+                            Err(error) => format!("Database migration failed: {error}"),
+                        },
+                    }).await;
+                }
+                DevCommand::Restart => {
+                    restart(&mut running, dashboard, &logs, &status)?;
+                    exit_reported = false;
+                    report_ready(&mut running, port, dashboard, &logs, &status).await;
+                }
+            },
             changed = changes.recv() => {
                 if changed.is_none() {
                     return Err(io::Error::other("development file watcher stopped"));
@@ -191,6 +200,24 @@ async fn supervise(
             }
         }
     }
+}
+
+/// Stops the owned process group and starts the same executable snapshot as a
+/// new process generation; readiness is verified by the caller.
+fn restart(
+    running: &mut process::Application,
+    dashboard: bool,
+    logs: &mpsc::Sender<LogMsg>,
+    status: &watch::Sender<DevStatus>,
+) -> io::Result<()> {
+    report(
+        logs,
+        dashboard,
+        "Restarting the application from the current build...".into(),
+    );
+    running.stop()?;
+    status.send_replace(DevStatus::Starting);
+    running.start(dashboard, logs)
 }
 
 /// `dev --ts-sync`: regenerates the TypeScript SDK from routes that just
