@@ -27,6 +27,8 @@ The blog package demonstrates:
 - an escaped, unsigned DPS XML preview that is explicitly not an NFS-e
   authorization;
 - bounded security-helper demonstrations and a local AI/vector fixture;
+- pages that render under the unrelaxed production Content Security Policy,
+  with same-origin stylesheets, scripts and vendored HTMX/Pico.css files;
 - a debug-only standalone Studio and Nexus access that is loopback-only in
   debug builds and credential-protected in release builds.
 

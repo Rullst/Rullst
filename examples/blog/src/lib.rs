@@ -3,6 +3,8 @@
 #![cfg_attr(mutants, mutants::skip)]
 
 pub mod ai_demo;
+#[cfg(not(target_arch = "wasm32"))]
+mod assets;
 pub mod billing_demo;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod database;
@@ -69,19 +71,31 @@ fn router_with_nexus_auth(
         get("/ai-assistant" => crate::ai_demo::ai_page),
         get("/omni" => crate::omni_demo::omni_page),
         get("/wp-admin" => honeypot_trap),
-        get("/favicon.ico" => favicon_handler),
+        get("/assets/showcase.css" => crate::assets::showcase_css),
+        get("/assets/pages.css" => crate::assets::pages_css),
+        get("/assets/showcase.js" => crate::assets::showcase_js),
+        get("/assets/vendor/htmx-1.9.12.min.js" => crate::assets::htmx_js),
+        get("/assets/vendor/htmx-ext-ws-1.9.12.js" => crate::assets::htmx_ws_js),
+        get("/assets/vendor/pico-2.1.1.slate.min.css" => crate::assets::pico_css),
+        get("/assets/rullst-logo.png" => crate::assets::rullst_logo),
+        get("/favicon.ico" => crate::assets::rullst_logo),
         get("/robots.txt" => robots_txt),
         get("/sitemap.xml" => sitemap_xml),
     ]
     .nest_axum("/nexus", nexus_router)
     .layer(axum::extract::DefaultBodyLimit::max(app::MAX_FORM_BYTES))
-    .layer(axum::middleware::map_response(set_security_headers))
     .layer(rullst::tenant_layer(config))
     .layer(axum::Extension(demo_membership))
     .layer(axum::middleware::from_fn(
         rullst_security::deception_trap_middleware,
     ))
-    .layer(axum::middleware::from_fn(rullst::security::csrf_middleware)))
+    .layer(axum::middleware::from_fn(rullst::security::csrf_middleware))
+    // The production header baseline, including the nonce-based CSP, is also
+    // mounted here so development serves the policy that `Server` enforces in
+    // staging and production. Repeating it there reuses the same nonce.
+    .layer(axum::middleware::from_fn(
+        rullst::security::headers_middleware,
+    )))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

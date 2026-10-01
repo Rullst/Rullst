@@ -6,7 +6,7 @@ use rullst::html;
 /// Renders the complete HTML Pricing and Gateway Showcase page.
 pub fn render_pricing_page(
     nav: String,
-    styles: String,
+    head_assets: String,
     free_can_post: bool,
     xml_snippet: String,
     csrf_token: &str,
@@ -15,44 +15,6 @@ pub fn render_pricing_page(
     let gateways = all_gateways();
     let configured_count = gateways.iter().filter(|g| g.is_configured()).count();
     let total_count = gateways.len();
-
-    let extra_styles = r#"
-        .pricing-hero { margin-bottom: 2rem; }
-        .hero-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
-        .stat-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9999px; padding: 0.35rem 0.85rem; font-size: 0.8rem; color: #cbd5e1; }
-        .stat-badge.live { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); color: #34d399; }
-        
-        .badge-emerald { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-        .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
-        .badge-indigo { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
-
-        .gateway-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; margin-top: 1.5rem; }
-        .gateway-card { background: #070a12; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; }
-        .gateway-card:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .gateway-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
-        .gateway-title { display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 700; color: #f8fafc; margin: 0; }
-        .gateway-archetype { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 9999px; margin-top: 0.25rem; }
-        
-        .gateway-specs { font-size: 0.82rem; color: #94a3b8; line-height: 1.6; margin: 0.85rem 0; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; padding: 0.75rem 0; }
-        .spec-item { display: flex; justify-content: space-between; margin-bottom: 0.35rem; }
-        .spec-item:last-child { margin-bottom: 0; }
-        .spec-label { color: #64748b; }
-        .spec-val { color: #e2e8f0; font-weight: 500; text-align: right; }
-
-        .config-accordion { margin-top: 2rem; background: #070a12; border: 1px solid #1e293b; border-radius: 0.75rem; overflow: hidden; }
-        .config-details summary { padding: 1.25rem; font-weight: 700; color: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; background: rgba(255,255,255,0.02); }
-        .config-details summary:hover { background: rgba(255,255,255,0.05); }
-        .config-body { padding: 1.25rem; border-top: 1px solid #1e293b; }
-
-        .tab-btn { background: #0f172a; border: 1px solid #334155; color: #94a3b8; padding: 0.4rem 0.85rem; border-radius: 0.375rem; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
-        .tab-btn.active, .tab-btn:hover { background: #1e293b; color: #f8fafc; border-color: #3b82f6; }
-        
-        .code-box { background: #030712; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1rem; font-family: monospace; font-size: 0.82rem; color: #38bdf8; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
-        .checkout-box { background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 0.75rem; padding: 1.5rem; margin-top: 1.5rem; }
-    "#;
 
     let gateways_cards_html = render_gateway_cards(&gateways);
     let config_accordions_html = render_config_guide(&gateways);
@@ -64,9 +26,7 @@ pub fn render_pricing_page(
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Capital — Offline Adapter Capability Showcase"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-                <style>{ rullst::html::RawHtml(styles) }</style>
-                <style>{ rullst::html::RawHtml(extra_styles.to_string()) }</style>
+                { rullst::html::RawHtml(head_assets) }
             </head>
             <body>
                 { rullst::html::RawHtml(nav) }
@@ -75,13 +35,13 @@ pub fn render_pricing_page(
                     { rullst::html::RawHtml(checkout_result_html) }
 
                     <div class="card pricing-hero">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                        <div class="card-header wrap">
                             <div>
-                                <h1 class="card-title" style="margin-bottom: 0.5rem;">
+                                <h1 class="card-title compact">
                                     "SaaS Pricing & Quota Governance"
                                     <span class="feature-tag tag-cap">"rullst-capital"</span>
                                 </h1>
-                                <p style="color: var(--text-muted); max-width: 800px; margin: 0;">
+                                <p class="lead flush hero-copy">
                                     "Billing demonstrations in Rust: tier quotas with the " <code>"Billable"</code> " trait, verified webhook primitives, and an offline catalogue of payment-provider adapters. Capabilities vary by adapter and live credentials are never used by this page."
                                 </p>
                             </div>
@@ -102,64 +62,64 @@ pub fn render_pricing_page(
                             </span>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-                            <div style="background: #05070c; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="tier-grid">
+                            <div class="tier">
                                 <div>
-                                    <h3 style="color: #94a3b8; margin: 0 0 0.5rem 0;">"Community Free"</h3>
-                                    <div style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 1rem;">"$0" <span style="font-size: 1rem; color: #64748b;">"/mo"</span></div>
-                                    <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1.25rem; line-height: 1.7;">
+                                    <h3 class="tier-name">"Community Free"</h3>
+                                    <div class="tier-price">"$0" <span class="tier-period">"/mo"</span></div>
+                                    <ul class="tier-features">
                                         <li>"Up to 3 Published Stories"</li>
                                         <li>"Typed SSR UI with optional HTMX behavior"</li>
                                         <li>"Community Support & Forum"</li>
                                     </ul>
                                 </div>
-                                <div style="margin-top: 1.5rem; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 0.375rem; font-size: 0.8rem; color: #34d399; text-align: center;">
+                                <div class="quota-check">
                                     {if free_can_post { "✅ Quota Check: Allowed (2/3)" } else { "❌ Quota Reached" }}
                                 </div>
                             </div>
 
-                            <div style="background: #05070c; border: 2px solid #3b82f6; border-radius: 0.5rem; padding: 1.5rem; position: relative; display: flex; flex-direction: column; justify-content: space-between;">
-                                <div style="position: absolute; top: -10px; right: 15px; background: #3b82f6; color: #fff; font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 9999px;">"MOST POPULAR"</div>
+                            <div class="tier tier-featured">
+                                <div class="tier-ribbon">"MOST POPULAR"</div>
                                 <div>
-                                    <h3 style="color: #38bdf8; margin: 0 0 0.5rem 0;">"Pro Author"</h3>
-                                    <div style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 1rem;">"$29" <span style="font-size: 1rem; color: #64748b;">"/mo"</span></div>
-                                    <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1.25rem; line-height: 1.7;">
+                                    <h3 class="tier-name pro">"Pro Author"</h3>
+                                    <div class="tier-price">"$29" <span class="tier-period">"/mo"</span></div>
+                                    <ul class="tier-features">
                                         <li>"Up to 50 Published Stories"</li>
                                         <li>"LiveView Real-time Comments"</li>
                                         <li>"AI Assistant & Semantic RAG"</li>
                                     </ul>
                                 </div>
-                                <a href="#checkout-simulator" class="btn" style="width: 100%; text-align: center; margin-top: 1rem;">"Run an Offline Fixture (11 Adapters)"</a>
+                                <a href="#checkout-simulator" class="btn btn-block">"Run an Offline Fixture (11 Adapters)"</a>
                             </div>
 
-                            <div style="background: #05070c; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="tier">
                                 <div>
-                                    <h3 style="color: #c084fc; margin: 0 0 0.5rem 0;">"Enterprise"</h3>
-                                    <div style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 1rem;">"$99" <span style="font-size: 1rem; color: #64748b;">"/mo"</span></div>
-                                    <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1.25rem; line-height: 1.7;">
+                                    <h3 class="tier-name enterprise">"Enterprise"</h3>
+                                    <div class="tier-price">"$99" <span class="tier-period">"/mo"</span></div>
+                                    <ul class="tier-features">
                                         <li>"Unlimited Stories & Multi-tenant"</li>
                                         <li>"Full Studio & Nexus CMS Control Room"</li>
                                         <li>"Offline DPS XML preview (not an issued NFS-e)"</li>
                                     </ul>
                                 </div>
-                                <a href="#checkout-simulator" class="btn btn-emerald" style="width: 100%; text-align: center; margin-top: 1rem;">"Inspect Adapter Boundaries"</a>
+                                <a href="#checkout-simulator" class="btn btn-emerald btn-block">"Inspect Adapter Boundaries"</a>
                             </div>
                         </div>
                     </div>
 
                     <div id="checkout-simulator" class="card checkout-box">
-                        <h2 class="card-title" style="margin-bottom: 0.5rem; color: #38bdf8;">
+                        <h2 class="card-title compact accent-sky">
                             "🧪 Offline Checkout Fixture Explorer"
                         </h2>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+                        <p class="checkout-intro">
                             "Select an adapter to exercise deterministic mock behavior through " <code>"rullst-capital"</code> ". This page does not contact a live payment service:"
                         </p>
 
-                        <form method="POST" action="/checkout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+                        <form method="POST" action="/checkout" class="checkout-form">
                             <input type="hidden" name="_token" value={csrf_token} />
                             <div>
-                                <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"Payment or Payout Adapter Fixture:"</label>
-                                <select name="provider" style="width: 100%; padding: 0.6rem; background: #070a12; border: 1px solid #334155; border-radius: 0.375rem; color: #fff; font-size: 0.9rem;">
+                                <label for="checkout-provider" class="field-label">"Payment or Payout Adapter Fixture:"</label>
+                                <select id="checkout-provider" name="provider" class="field-control">
                                     <option value="infinitepay">"🇧🇷 InfinitePay (offline billing fixture)"</option>
                                     <option value="alipay">"🇨🇳 Alipay (offline fixture; live RSA2 disabled)"</option>
                                     <option value="stripe">"🌐 Stripe (offline billing fixture)"</option>
@@ -175,20 +135,20 @@ pub fn render_pricing_page(
                             </div>
 
                             <div>
-                                <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"SaaS Plan:"</label>
-                                <select name="plan" style="width: 100%; padding: 0.6rem; background: #070a12; border: 1px solid #334155; border-radius: 0.375rem; color: #fff; font-size: 0.9rem;">
+                                <label for="checkout-plan" class="field-label">"SaaS Plan:"</label>
+                                <select id="checkout-plan" name="plan" class="field-control">
                                     <option value="pro_plan">"Pro Author ($29/mo)"</option>
                                     <option value="enterprise_plan">"Enterprise ($99/mo)"</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"Subscriber Email:"</label>
-                                <input type="email" name="email" value="customer@rullst.com" style="width: 100%; padding: 0.6rem; background: #070a12; border: 1px solid #334155; border-radius: 0.375rem; color: #fff; font-size: 0.9rem;" required="true" />
+                                <label for="checkout-email" class="field-label">"Subscriber Email:"</label>
+                                <input id="checkout-email" type="email" name="email" value="customer@rullst.com" class="field-control" required="true" />
                             </div>
 
                             <div>
-                                <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.25rem; font-weight: 700; width: 100%;">
+                                <button type="submit" class="btn">
                                     "Generate Offline Fixture ➔"
                                 </button>
                             </div>
@@ -196,18 +156,18 @@ pub fn render_pricing_page(
 
                     </div>
 
-                    <div class="card" style="margin-top: 2rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div class="card card-spaced">
+                        <div class="card-header wrap centered">
                             <div>
-                                <h2 class="card-title" style="margin: 0;">
+                                <h2 class="card-title flush">
                                     "💳 Payment Adapter Catalogue in Rullst Capital"
                                 </h2>
-                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.35rem;">
+                                <p class="catalogue-copy">
                                     "Strongly typed adapters with deterministic offline credentials. Each card states the reviewed v12 boundary; a fixture is not evidence of live provider acceptance."
                                 </p>
                             </div>
                             <div>
-                                <a href="https://github.com/Rullst/Rullst/blob/main/docs/src/payment-gateways-guide.md" target="_blank" class="btn" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+                                <a href="https://github.com/Rullst/Rullst/blob/main/docs/src/payment-gateways-guide.md" target="_blank" rel="noopener noreferrer" class="btn btn-small">
                                     "📖 Open Full Architecture Guide"
                                 </a>
                             </div>
@@ -218,11 +178,11 @@ pub fn render_pricing_page(
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top: 2rem;">
-                        <h2 class="card-title" style="margin-bottom: 0.5rem; color: #a78bfa;">
+                    <div class="card card-spaced">
+                        <h2 class="card-title compact accent-violet">
                             "⚙️ Adapter Initialization Reference"
                         </h2>
-                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        <p class="muted small-text">
                             "Open a provider to inspect illustrative environment names, Rust initialization, and the reviewed v12 capability boundary. Consult the provider and Rullst documentation before enabling a live account:"
                         </p>
 
@@ -231,12 +191,12 @@ pub fn render_pricing_page(
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top: 2rem;">
+                    <div class="card card-spaced">
                         <h2 class="card-title">"🇧🇷 Fiscal Module: Contained Offline DPS Preview"</h2>
-                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        <p class="muted small-text">
                             "This fixture demonstrates escaped DPS XML construction only. It is not signed, transmitted, homologated, or authorized. Homologation and production fail closed until the complete official integration is independently verified."
                         </p>
-                        <div class="code-box" style="margin-top: 1rem;">
+                        <div class="code-box spaced">
                             { xml_snippet }
                         </div>
                     </div>
@@ -268,12 +228,12 @@ fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
                                     {g.archetype}
                                 </span>
                             </div>
-                            <span class={format!("stat-badge {}", status_class)} style="font-size: 0.72rem; padding: 0.2rem 0.5rem;">
+                            <span class={format!("stat-badge compact {}", status_class)}>
                                 {status_text}
                             </span>
                         </div>
 
-                        <p style="color: #cbd5e1; font-size: 0.82rem; margin: 0.5rem 0 0.75rem 0; line-height: 1.4;">
+                        <p class="gateway-boundary">
                             {g.current_boundary}
                         </p>
 
@@ -285,11 +245,11 @@ fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                        <a href={format!("/checkout?provider={}&plan=pro_plan", g.id)} class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
+                    <div class="gateway-actions">
+                        <a href={format!("/checkout?provider={}&plan=pro_plan", g.id)} class="btn">
                             "Run Offline Fixture"
                         </a>
-                        <a href={format!("#{}", config_id)} class="btn" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
+                        <a href={format!("#{}", config_id)} class="btn">
                             "View Setup Guide"
                         </a>
                     </div>
@@ -306,21 +266,21 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
         .map(|g| {
             let config_id = format!("config-{}", g.id);
             html! {
-                <details id={config_id} class="config-details" style="border-bottom: 1px solid #1e293b;">
+                <details id={config_id} class="config-details">
                     <summary>
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <span style="font-size: 1.25rem;">{g.flag}</span>
-                            <span style="font-size: 1.05rem;">{g.name}</span>
-                            <span class={format!("gateway-archetype {}", g.archetype_badge_class)} style="font-size: 0.68rem;">
+                        <div class="config-summary">
+                            <span class="config-flag">{g.flag}</span>
+                            <span class="config-name">{g.name}</span>
+                            <span class={format!("gateway-archetype {}", g.archetype_badge_class)}>
                                 {g.archetype}
                             </span>
                         </div>
-                        <span style="color: #38bdf8; font-size: 0.85rem;">"View Instructions ▾"</span>
+                        <span class="config-hint">"View Instructions ▾"</span>
                     </summary>
                     <div class="config-body">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+                        <div class="config-grid">
                             <div>
-                                <h4 style="color: #38bdf8; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
+                                <h4 class="config-step-title">
                                     "1. Environment Variables (" <code>".env"</code> "):"
                                 </h4>
                                 <div class="code-box">
@@ -329,7 +289,7 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
                             </div>
 
                             <div>
-                                <h4 style="color: #34d399; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
+                                <h4 class="config-step-title rust">
                                     "2. Rust Server Initialization (" <code>"main.rs"</code> "):"
                                 </h4>
                                 <div class="code-box">
@@ -338,8 +298,8 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
                             </div>
                         </div>
 
-                        <div style="margin-top: 1rem;">
-                            <h4 style="color: #c084fc; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
+                        <div class="config-step">
+                            <h4 class="config-step-title boundary">
                                 "3. Current v12 capability boundary:"
                             </h4>
                             <div class="code-box">
@@ -357,19 +317,19 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
 fn render_checkout_result(simulated: Option<(String, String)>) -> String {
     if let Some((provider, url)) = simulated {
         html! {
-            <div id="offline-fixture-result" style="margin-bottom: 1.5rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 0.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 700; color: #34d399; font-size: 0.95rem;">
+            <div id="offline-fixture-result" class="fixture-result">
+                <div class="fixture-result-header">
+                    <span class="fixture-result-title">
                         "🧪 Offline Adapter Result for: " <strong>{provider.to_uppercase()}</strong>
                     </span>
                     <span class="stat-badge live">"OFFLINE FIXTURE"</span>
                 </div>
-                <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0.25rem 0;">"Adapter output (no live request was made):"</p>
-                <div class="code-box" style="margin-top: 0.35rem; color: #a7f3d0;">
+                <p class="fixture-result-label">"Adapter output (no live request was made):"</p>
+                <div class="code-box">
                     {&url}
                 </div>
-                <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem; align-items: center;">
-                    <a href="/pricing" class="btn" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
+                <div class="fixture-result-actions">
+                    <a href="/pricing" class="btn btn-small">
                         "Clear Simulation"
                     </a>
                 </div>

@@ -1,5 +1,7 @@
 //! Router-level tests of the blog showcase.
 
+mod csp;
+
 use axum::body::{Body, to_bytes};
 use axum::extract::ConnectInfo;
 use axum::http::{Request, StatusCode, header};

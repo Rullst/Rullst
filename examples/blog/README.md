@@ -116,10 +116,18 @@ header.
 
 ## Security boundary
 
-The showcase loads third-party development assets and consequently uses a relaxed
-demo CSP for those pages. It is not the production header baseline. A deployed
-application should self-host or explicitly trust assets, use per-response nonces,
-and test the final CSP.
+Every page is served with Rullst's production header baseline: the nonce-based
+Content Security Policy, `X-Frame-Options: DENY` and
+`Cross-Origin-Embedder-Policy: require-corp`. The router mounts
+`headers_middleware` itself, so local development shows the policy that
+`Server` enforces in staging and production. The stylesheet, behavior module,
+logo, HTMX 1.9.12 with its WebSocket extension and Pico.css 2.1.1 are
+same-origin files embedded from `assets/` (provenance and digests are in
+`assets/vendor/README.md`). Pages use classes instead of inline `style`
+attributes and a delegated `data-action` module instead of inline event
+handlers, and `/omni` no longer frames the application. A router test renders
+every page and rejects inline styles, handlers, cross-origin subresources and
+frames. This shows the pages work under the policy; it is not a scanner grade.
 
 The `/wp-admin` button crosses the mounted deception middleware, records the
 socket peer as a local unsigned event, and returns `403`. The generic honeypot
