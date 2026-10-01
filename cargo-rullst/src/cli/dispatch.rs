@@ -1,7 +1,6 @@
 // src/cli/dispatch.rs — Routes each parsed command to its generator function.
 #![cfg_attr(mutants, mutants::skip)]
 
-use colored::Colorize;
 use std::path::{Path, PathBuf};
 
 use super::{Commands, DatabaseChoice};
@@ -294,22 +293,26 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             }
             crate::generators::dev::run_dev_server(false)?;
         }
-        Commands::Pkg { action, name } => match action.as_str() {
-            "add" => {
-                if let Some(pkg_name) = name {
-                    crate::pkg::pkg_add(pkg_name)?;
-                } else {
-                    println!("{}", "❌ Please specify a package name (e.g. 'cargo rullst pkg add rullst-auth')".red());
-                }
+        Commands::Pkg { action, name } => match (action.as_str(), name) {
+            ("add", Some(pkg_name)) => {
+                crate::pkg::pkg_add(pkg_name)?;
             }
-            "list" => {
+            ("add", None) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "please specify a package name (e.g. 'cargo rullst pkg add rullst-auth')",
+                )
+                .into());
+            }
+            ("list", _) => {
                 crate::pkg::pkg_list()?;
             }
             _ => {
-                println!(
-                    "{}",
-                    format!("❌ Unknown pkg action '{}'. Use 'add' or 'list'.", action).red()
-                );
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("unknown pkg action '{action}'; use 'add' or 'list'"),
+                )
+                .into());
             }
         },
         Commands::Dash => {
@@ -392,7 +395,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
     }
 
-    // Automatically generate AI Context for scaffolding commands so it stays up to date
+    // Keep the generated project context and ER diagram current after scaffolds;
+    // both refreshes are best effort and never replace hand-written files.
     match command {
         Commands::MakeController { .. }
         | Commands::MakeModel { .. }
@@ -404,7 +408,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeCors
         | Commands::MakeJwt => {
             crate::generators::ai_context::refresh_after_scaffold();
-            crate::generators::diagram::generate_mermaid_diagram(None).ok();
+            crate::generators::diagram::refresh_after_scaffold();
         }
         _ => {}
     }

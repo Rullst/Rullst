@@ -53,12 +53,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Define target README paths
     let readmes = vec![root_dir.join("README.md"), root_dir.join("README.pt.md")];
 
+    // Matches escaped badges and the unescaped prerelease badges earlier
+    // versions wrote (`Status-v13.0.0-alpha.1-emerald`), so both are repaired.
     let badge_regex = Regex::new(
-        r#"!\[Status:\s*v[^\]]+\]\(https://img\.shields\.io/badge/Status-v[^-]+-emerald\)"#,
+        r#"!\[Status:\s*v[^\]]+\]\(https://img\.shields\.io/badge/Status-v[^)\s]+-emerald\)"#,
     )?;
     let new_badge = format!(
         "![Status: v{}](https://img.shields.io/badge/Status-v{}-emerald)",
-        version, version
+        version,
+        shields_escape(version)
     );
 
     let mut updated_count = 0;
@@ -93,6 +96,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+/// Escapes a shields.io static-badge path segment, where a single `-`
+/// separates label, message and color and `_` means a space.
+fn shields_escape(value: &str) -> String {
+    value.replace('-', "--").replace('_', "__")
 }
 
 // Add terminal coloring support for self-contained output

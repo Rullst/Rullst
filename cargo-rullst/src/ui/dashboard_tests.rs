@@ -68,6 +68,7 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
         (4, "make:migration", vec![]),
         (5, "make:live", vec![]),
         (6, "make:island", vec![]),
+        (9, "make:grpc", vec![]),
     ];
     for (selection, action, extra) in named_cases {
         let mut ui = FakeUi::with_input(selection, "Example");
@@ -88,12 +89,7 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
         assert_eq!(ui.prompts.len(), 2);
     }
 
-    for (selection, action) in [
-        (7, "make:scalar"),
-        (8, "make:k8s"),
-        (9, "make:grpc"),
-        (10, "generate:models"),
-    ] {
+    for (selection, action) in [(7, "make:scalar"), (8, "make:k8s")] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut commands = Vec::new();
         handle_scaffold_code(&mut ui, "cargo-rullst", &mut |command| {
@@ -111,6 +107,64 @@ fn scaffold_menu_maps_every_choice_to_the_documented_command() {
     let mut run = |_| -> DashboardResult<()> { panic!("invalid selection must not execute") };
     handle_scaffold_code(&mut ui, "cargo-rullst", &mut run)
         .expect("unknown scaffold choices are ignored");
+}
+
+#[test]
+fn model_introspection_collects_the_required_driver_and_url() {
+    let mut ui = FakeUi {
+        selections: [10, 1].into(),
+        inputs: ["postgres://localhost/app".to_string()].into(),
+        ..FakeUi::default()
+    };
+    let mut commands = Vec::new();
+    handle_scaffold_code(&mut ui, "cargo-rullst", &mut |command| {
+        commands.push(command);
+        Ok(())
+    })
+    .expect("model introspection choice should be accepted");
+    assert_eq!(
+        commands,
+        vec![
+            [
+                "cargo-rullst",
+                "generate:models",
+                "--driver",
+                "postgres",
+                "--url",
+                "postgres://localhost/app",
+            ]
+            .map(str::to_string)
+            .to_vec()
+        ]
+    );
+    // Every argument clap requires is present.
+    let parsed = <crate::cli::Cli as clap::Parser>::try_parse_from(&commands[0])
+        .expect("generate:models arguments must parse");
+    assert!(matches!(
+        parsed.command,
+        crate::cli::Commands::GenerateModels { .. }
+    ));
+
+    let mut ui = FakeUi::with_selections([10, usize::MAX]);
+    let mut run = |_| -> DashboardResult<()> { panic!("an unknown driver must not execute") };
+    handle_scaffold_code(&mut ui, "cargo-rullst", &mut run).expect("unknown drivers are ignored");
+}
+
+#[test]
+fn grpc_scaffold_passes_the_required_service_name() {
+    let mut ui = FakeUi::with_input(9, "UserService");
+    let mut commands = Vec::new();
+    handle_scaffold_code(&mut ui, "cargo-rullst", &mut |command| {
+        commands.push(command);
+        Ok(())
+    })
+    .expect("gRPC choice should be accepted");
+    let parsed = <crate::cli::Cli as clap::Parser>::try_parse_from(&commands[0])
+        .expect("make:grpc arguments must parse");
+    assert!(matches!(
+        parsed.command,
+        crate::cli::Commands::MakeGrpc { ref name } if name == "UserService"
+    ));
 }
 
 #[test]

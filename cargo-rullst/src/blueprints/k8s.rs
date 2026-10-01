@@ -1,31 +1,13 @@
 //! Kubernetes Manifest Blueprints for Rullst Applications
 
-/// Longest name: `<name>-service` must still fit a 63-character DNS label.
-const MAX_NAME_LENGTH: usize = 55;
-
 /// Derives the lowercase RFC 1123 label used for Kubernetes object, container
 /// and Service names and for the OCI image repository.
 ///
 /// Package names may contain uppercase letters and `_`, which Kubernetes and
-/// OCI registries reject. ASCII letters are lowercased, every run of other
-/// characters becomes one `-`, the result is shortened to 55 characters and
-/// starts with a letter (`app-` is prepended otherwise), e.g. `my_startup`
-/// becomes `my-startup`.
+/// OCI registries reject, e.g. `my_startup` becomes `my-startup`. This is the
+/// same label `make:k8s` and `fly.toml` use (`generators::platform_name`).
 pub fn container_name(package_name: &str) -> String {
-    let mut name = String::with_capacity(package_name.len());
-    for character in package_name.chars() {
-        if character.is_ascii_alphanumeric() {
-            name.push(character.to_ascii_lowercase());
-        } else if !name.is_empty() && !name.ends_with('-') {
-            name.push('-');
-        }
-    }
-    if !name.starts_with(|first: char| first.is_ascii_lowercase()) {
-        name.insert_str(0, "app-");
-    }
-    // Only ASCII remains, so byte truncation keeps whole characters.
-    name.truncate(MAX_NAME_LENGTH);
-    name.trim_end_matches('-').to_string()
+    crate::generators::platform_name::dns_label(package_name)
 }
 
 pub fn deployment_yaml(app_name: &str, port: u16) -> String {
@@ -233,7 +215,7 @@ mod tests {
         assert_eq!(container_name("MyApp"), "myapp");
         assert_eq!(container_name("Billing__API--v2_"), "billing-api-v2");
         assert_eq!(container_name("2fast"), "app-2fast");
-        assert_eq!(container_name(""), "app");
+        assert_eq!(container_name(""), "rullst-app");
         let long = container_name(&format!("a{}", "_b".repeat(60)));
         assert!(long.len() <= 55 && !long.ends_with('-'), "{long}");
 
