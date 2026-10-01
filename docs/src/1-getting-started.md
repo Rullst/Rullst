@@ -179,6 +179,12 @@ Nexus administrator policy described below: loopback-only in a debug build and
 Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
 build. Per-employee accounts and roles remain application work.
 
+An order reserves its stock with one conditional `UPDATE` and records the order
+in the same transaction, so concurrent sales cannot oversell and a failed
+insert leaves the stock untouched. Quantities must be 1–10,000; invalid input,
+missing products and insufficient stock return `422`, `404` and `409`, and a
+database failure returns `503` instead of redirecting as if it succeeded.
+
 ---
 
 > [!TIP]

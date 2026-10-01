@@ -133,4 +133,32 @@ mod tests {
         assert!(library.iter().any(|(path, source)| *path == "src/lib.rs"
             && source.contains("fn back_office_dashboard_is_not_public()")));
     }
+
+    #[test]
+    fn orders_reserve_stock_atomically_and_report_failures() {
+        let manifest = file_manifest("erp_app", false, "Active Record", "Zero-Bundle HTMX");
+        let controller = manifest
+            .iter()
+            .find_map(|(path, source)| {
+                (*path == "src/controllers/erp_controller.rs").then_some(source.as_str())
+            })
+            .unwrap_or_default();
+        // A read/compare/write let concurrent orders oversell, a negative
+        // quantity added stock, and discarded save errors still redirected.
+        assert!(!controller.contains("let _ = "));
+        assert!(!controller.contains("stock -= payload.quantity"));
+        assert!(!controller.contains("stock += 1"));
+        assert!(controller.contains("WHERE id = ? AND stock >= ?\""));
+        assert!(controller.contains("WHERE id = $2 AND stock >= $3\""));
+        assert!(controller.contains("WHERE id = ? AND stock < ?\""));
+        assert!(controller.contains(".begin().await?"));
+        assert!(controller.contains("transaction.commit().await?"));
+        assert!(controller.contains("!(1..=MAX_ORDER_QUANTITY).contains(&payload.quantity)"));
+        assert!(
+            controller.contains(
+                "Ok(StockChange::UnknownProduct) => return rejected(StatusCode::NOT_FOUND"
+            )
+        );
+        assert!(controller.contains("Err(error) => unavailable(error)"));
+    }
 }
