@@ -91,6 +91,10 @@ struct TrafficShieldMonitors {
     state: AtomicU8,
     shutdown: Arc<tokio::sync::Notify>,
     tasks: Mutex<Vec<tokio::task::JoinHandle<()>>>,
+    /// At most one load-shedding line per interval, shared by clones.
+    shed_log: shield_log::LogThrottle,
+    /// At most one "monitoring unavailable" line per interval.
+    unavailable_log: shield_log::LogThrottle,
 }
 
 impl TrafficShieldMonitors {
@@ -130,6 +134,8 @@ impl TrafficShield {
                 state: AtomicU8::new(MONITORS_IDLE),
                 shutdown: Arc::new(tokio::sync::Notify::new()),
                 tasks: Mutex::new(Vec::new()),
+                shed_log: shield_log::LogThrottle::new(),
+                unavailable_log: shield_log::LogThrottle::new(),
             }),
         }
     }
@@ -296,10 +302,22 @@ impl<'a> Drop for ActiveRequestGuard<'a> {
 }
 
 /// Router-level protection middleware that tracks load timing and drops requests under critical saturation.
+///
+/// Rejections are reported on stderr at most once per second per shield,
+/// with the number of rejections suppressed since the previous line, so
+/// overload never turns into one blocking log write per request.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: Next) -> Response {
     if let Err(error) = shield.start() {
-        crate::server::console::stderr_line(format_args!("Traffic Shield is unavailable: {error}"));
+        if let Some(suppressed) = shield
+            .monitors
+            .unavailable_log
+            .admit(Instant::now(), shield_log::LOG_INTERVAL)
+        {
+            crate::server::console::stderr_line(format_args!(
+                "Traffic Shield is unavailable: {error} ({suppressed} similar rejections suppressed)"
+            ));
+        }
         let mut response = Response::new(axum::body::Body::from(
             "Traffic Shield monitoring is unavailable.",
         ));
@@ -316,10 +334,16 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
     let pressure = classify_traffic_pressure(&shield.config, lag, db_lat, active);
 
     if pressure == TrafficPressure::Critical {
-        crate::server::console::stderr_line(format_args!(
-            "⚠️ [Rullst Backpressure] Load shedding active! CPU lag: {:?}, DB latency: {:?}, Active requests: {}",
-            lag, db_lat, active
-        ));
+        if let Some(suppressed) = shield
+            .monitors
+            .shed_log
+            .admit(Instant::now(), shield_log::LOG_INTERVAL)
+        {
+            crate::server::console::stderr_line(format_args!(
+                "⚠️ [Rullst Backpressure] Load shedding active! CPU lag: {:?}, DB latency: {:?}, Active requests: {} ({} more requests shed since the previous report)",
+                lag, db_lat, active, suppressed
+            ));
+        }
 
         match Response::builder()
             .status(StatusCode::SERVICE_UNAVAILABLE)
@@ -550,6 +574,39 @@ mod tests {
         })
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn load_shedding_reports_once_per_interval() {
+        use tower::ServiceExt;
+
+        // Zero admitted requests keeps the shield permanently critical.
+        let shield = TrafficShield::new(
+            TrafficShieldConfig::new()
+                .with_db_probe(false)
+                .with_max_active_requests(0),
+        );
+        let layer_shield = shield.clone();
+        let router = axum::Router::new()
+            .route("/work", axum::routing::get(|| async { "work" }))
+            .layer(axum::middleware::from_fn(move |request, next| {
+                backpressure_middleware(layer_shield.clone(), request, next)
+            }));
+        for _ in 0..3 {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::get("/work")
+                        .body(axum::body::Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        }
+        // One report; the other two rejections in the interval are counted.
+        assert_eq!(shield.monitors.shed_log.suppressed(), 2);
+        shield.shutdown();
     }
 
     #[test]
@@ -789,6 +846,9 @@ mod tests {
         );
     }
 }
+
+#[path = "resilience_log.rs"]
+mod shield_log;
 
 #[path = "resilience_buckets.rs"]
 mod buckets;
