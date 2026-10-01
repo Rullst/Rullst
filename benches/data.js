@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790816908589,
+  "lastUpdate": 1790817484637,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23205,6 +23205,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2272,
             "range": "± 56",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1efe513cbc07f8bed53f21165b7ff1658b1cdc99",
+          "message": "Merge pull request #358 from Rullst/fix/v13-capital-low-fixes\n\nfix(capital): low-severity provider, billing and NFS-e/journal review fixes",
+          "timestamp": "2026-09-30T22:11:59-03:00",
+          "tree_id": "994fe0dbe4999f932f07d4e6bcc9cfd15d0c58e5",
+          "url": "https://github.com/Rullst/Rullst/commit/1efe513cbc07f8bed53f21165b7ff1658b1cdc99"
+        },
+        "date": 1790817482766,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 781,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 665,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2290,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
