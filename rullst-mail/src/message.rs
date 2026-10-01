@@ -242,7 +242,16 @@ impl Message {
         crate::validator::is_disposable_email(&self.to)
     }
 
+    /// The address tracking tokens carry: the bare address the pipeline
+    /// delivers to (`alice@example.com` for `Alice <alice@example.com>`), or
+    /// `to` unchanged when it does not parse, which the pipeline rejects.
+    fn tracking_recipient(&self) -> &str {
+        crate::validator::recipient_address(&self.to).unwrap_or(&self.to)
+    }
+
     /// Injects a validated, HMAC-authenticated 1x1 tracking pixel into the HTML body.
+    ///
+    /// The token signs the bare recipient address, so set `to` first.
     pub fn try_with_open_tracking(
         mut self,
         base_tracker_url: impl AsRef<str>,
@@ -252,7 +261,7 @@ impl Message {
         if let Some(ref html) = self.body_html {
             let token = crate::tracking::TrackingEngine::try_generate_open_token(
                 secret,
-                self.to.clone(),
+                self.tracking_recipient(),
                 campaign_id,
                 chrono::Utc::now().timestamp() as u64,
             )?;
@@ -279,7 +288,7 @@ impl Message {
         if let Some(ref html) = self.body_html {
             let token = crate::tracking::TrackingEngine::try_generate_open_token(
                 secret,
-                &self.to,
+                self.tracking_recipient(),
                 campaign_id,
                 chrono::Utc::now().timestamp() as u64,
             );
@@ -300,6 +309,8 @@ impl Message {
     }
 
     /// Rewrites HTML links through a validated, HMAC-authenticated click tracker.
+    ///
+    /// The token signs the bare recipient address, so set `to` first.
     pub fn try_with_click_tracking(
         mut self,
         base_tracker_url: impl AsRef<str>,
@@ -310,7 +321,7 @@ impl Message {
                 html,
                 base_tracker_url.as_ref(),
                 secret,
-                &self.to,
+                self.tracking_recipient(),
                 chrono::Utc::now().timestamp() as u64,
             )?);
         }
@@ -325,7 +336,7 @@ impl Message {
                 html,
                 base_tracker_url,
                 secret,
-                &self.to,
+                self.tracking_recipient(),
                 chrono::Utc::now().timestamp() as u64,
             )
         {

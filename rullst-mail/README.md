@@ -351,7 +351,9 @@ the host owns any external metrics/tracing sink, retention and alerts.
 Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory
 32-byte secret and bounded validity. HMAC authenticates but does not encrypt:
 the current token payload contains the recipient address and destination URL in
-base64-readable form. Applications must decide whether to use tracking at all
+base64-readable form. `Message` tracking builders sign the bare address the
+pipeline delivers to (`alice@example.com` for `Alice <alice@example.com>`), so
+set `to` before adding tracking. Applications must decide whether to use tracking at all
 and own consent, minimization, retention, redirects and applicable law.
 
 Click tracking rewrites only the double-quoted `href` of `<a>` elements, so a

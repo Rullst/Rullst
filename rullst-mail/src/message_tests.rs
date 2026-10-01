@@ -206,3 +206,38 @@ fn one_click_unsubscribe_requires_https() {
     );
     assert!(!Message::new().has_one_click_unsubscribe());
 }
+
+#[test]
+#[allow(deprecated)]
+fn tracking_tokens_sign_the_bare_delivered_address() {
+    const SECRET: &[u8] = b"rullst-message-tracking-secret-with-diversity";
+    let token_after = |html: &str, marker: &str| {
+        let start = html.find(marker).expect("tracker URL") + marker.len();
+        let end = start + html[start..].find('"').expect("closing quote");
+        html[start..end].to_string()
+    };
+    let message = || {
+        Message::new()
+            .to("Alice Doe <alice@example.com>")
+            .html(r#"<p><a href="https://example.com/next">Next</a></p>"#)
+    };
+    for tracked in [
+        message()
+            .try_with_open_tracking("https://t.example", SECRET, "c1")
+            .unwrap()
+            .try_with_click_tracking("https://t.example", SECRET)
+            .unwrap(),
+        message()
+            .with_open_tracking("https://t.example", SECRET, "c1")
+            .with_click_tracking("https://t.example", SECRET),
+    ] {
+        let html = tracked.body_html.as_deref().unwrap();
+        let open = token_after(html, "/track/open/");
+        let click = token_after(html, "/track/click/");
+        let open = crate::TrackingEngine::verify_open_token(SECRET, &open).unwrap();
+        let click = crate::TrackingEngine::verify_click_token(SECRET, &click).unwrap();
+        assert_eq!(open.email, "alice@example.com");
+        assert_eq!(click.email, "alice@example.com");
+        assert_eq!(click.target_url, "https://example.com/next");
+    }
+}
