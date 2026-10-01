@@ -26,7 +26,9 @@ or proof that every crate and feature is exercised.
 - `/ai-assistant`: local deterministic vector-search and guardrail example.
 - `http://127.0.0.1:5555`: debug-only local Studio server.
 - `/nexus`: one-click, loopback-only admin access in debug builds; validated
-  Basic Auth credentials are mandatory in release builds.
+  Basic Auth credentials are mandatory in release builds. `Post` is registered
+  with `nexus_tenant_column`, so the panel lists, creates and edits only the
+  selected tenant's posts and never accepts a submitted `tenant_id`.
 
 Studio process metrics are sampled from the running process. CPU sampling is
 available on Linux and Windows and needs two observations to calculate a delta;

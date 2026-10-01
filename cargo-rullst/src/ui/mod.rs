@@ -6,7 +6,11 @@ pub mod dash_tui;
 pub mod dashboard;
 mod dashboard_brand;
 pub mod help;
+mod home;
+mod opening_marker;
+mod palette;
 pub mod spinner;
+mod terminal;
 pub mod update_check;
 
 pub use dashboard::{execute_command, show_interactive_dashboard};

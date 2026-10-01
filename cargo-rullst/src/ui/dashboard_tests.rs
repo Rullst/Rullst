@@ -3,8 +3,8 @@
 use std::{collections::VecDeque, io};
 
 use super::{
-    DashboardResult, DashboardUi, handle_auth_billing, handle_database_operations, handle_deploy,
-    handle_existing_project, handle_scaffold_code, run_dashboard,
+    DashboardResult, DashboardUi, Home, handle_auth_billing, handle_database_operations,
+    handle_deploy, handle_existing_project, handle_scaffold_code, run_dashboard,
 };
 
 #[derive(Default)]
@@ -33,7 +33,7 @@ impl FakeUi {
 }
 
 impl DashboardUi for FakeUi {
-    fn show_brand(&mut self) -> DashboardResult<()> {
+    fn show_home(&mut self, _home: &Home) -> DashboardResult<()> {
         self.brand_count = self.brand_count.saturating_add(1);
         Ok(())
     }
@@ -258,7 +258,7 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
     ] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut commands = Vec::new();
-        handle_existing_project(&mut ui, "cargo-rullst", &mut |command| {
+        handle_existing_project(&mut ui, "cargo-rullst", &Home::Outside, &mut |command| {
             commands.push(command);
             Ok(())
         })
@@ -277,7 +277,7 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
     ] {
         let mut ui = FakeUi::with_selections(selections);
         let mut commands = Vec::new();
-        handle_existing_project(&mut ui, "cargo-rullst", &mut |command| {
+        handle_existing_project(&mut ui, "cargo-rullst", &Home::Outside, &mut |command| {
             commands.push(command);
             Ok(())
         })
@@ -290,13 +290,13 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
 
     let mut ui = FakeUi::with_selections([10, 3]);
     let mut run = |_| -> DashboardResult<()> { panic!("back then exit must not execute") };
-    handle_existing_project(&mut ui, "cargo-rullst", &mut run)
+    handle_existing_project(&mut ui, "cargo-rullst", &Home::Outside, &mut run)
         .expect("back should return to the main dashboard");
     assert_eq!(ui.prompts.len(), 2);
     assert_eq!(ui.brand_count, 1);
 
     let mut ui = FakeUi::with_selections([usize::MAX]);
-    handle_existing_project(&mut ui, "cargo-rullst", &mut run)
+    handle_existing_project(&mut ui, "cargo-rullst", &Home::Outside, &mut run)
         .expect("unknown project choices are ignored");
 }
 
@@ -304,7 +304,7 @@ fn project_menu_reaches_direct_nested_and_back_paths() {
 fn main_menu_reaches_new_existing_help_exit_and_unknown_paths() {
     let mut ui = FakeUi::with_selections([0]);
     let mut commands = Vec::new();
-    run_dashboard(&mut ui, "cargo-rullst", &mut |command| {
+    run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut |command| {
         commands.push(command);
         Ok(())
     })
@@ -316,7 +316,7 @@ fn main_menu_reaches_new_existing_help_exit_and_unknown_paths() {
 
     let mut ui = FakeUi::with_selections([1, 5]);
     let mut commands = Vec::new();
-    run_dashboard(&mut ui, "cargo-rullst", &mut |command| {
+    run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut |command| {
         commands.push(command);
         Ok(())
     })
@@ -329,7 +329,7 @@ fn main_menu_reaches_new_existing_help_exit_and_unknown_paths() {
     for selection in [2, 3, usize::MAX] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut run = |_| -> DashboardResult<()> { panic!("choice must not execute") };
-        run_dashboard(&mut ui, "cargo-rullst", &mut run)
+        run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut run)
             .expect("non-command dashboard choice should be accepted");
         assert_eq!(ui.prompts.len(), 1);
     }
@@ -339,7 +339,15 @@ fn main_menu_reaches_new_existing_help_exit_and_unknown_paths() {
 fn interaction_input_and_runner_errors_propagate() {
     let mut missing_selection = FakeUi::default();
     let mut run = |_| Ok(());
-    assert!(run_dashboard(&mut missing_selection, "cargo-rullst", &mut run).is_err());
+    assert!(
+        run_dashboard(
+            &mut missing_selection,
+            "cargo-rullst",
+            &Home::Outside,
+            &mut run
+        )
+        .is_err()
+    );
 
     let mut missing_input = FakeUi::with_selections([0]);
     assert!(handle_scaffold_code(&mut missing_input, "cargo-rullst", &mut run).is_err());
@@ -347,5 +355,104 @@ fn interaction_input_and_runner_errors_propagate() {
     let mut ui = FakeUi::with_selections([0]);
     let mut failing_runner =
         |_| -> DashboardResult<()> { Err(io::Error::other("simulated runner failure").into()) };
-    assert!(run_dashboard(&mut ui, "cargo-rullst", &mut failing_runner).is_err());
+    assert!(run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut failing_runner).is_err());
+}
+
+fn project_home(relative_root: Option<&str>) -> Home {
+    Home::Project(Box::new(crate::ui::home::Project {
+        root: std::path::PathBuf::from("/work/shop"),
+        relative_root: relative_root.map(str::to_string),
+        name: "shop".to_string(),
+        features: Vec::new(),
+        database: crate::ui::home::Database::NotConfigured,
+        migrations: None,
+        git_branch: None,
+    }))
+}
+
+#[test]
+fn project_home_offers_quick_actions_and_every_submenu() {
+    let home = project_home(None);
+    for (selections, expected) in [
+        (vec![0], "dev"),
+        (vec![1], "dash"),
+        (vec![2, 7], "make:scalar"),
+        (vec![3, 0], "db:migrate"),
+        (vec![4], "doctor"),
+        (vec![5, 0], "deploy"),
+        (vec![6, 6], "dockerize"),
+        (vec![7], "new"),
+    ] {
+        let mut ui = FakeUi::with_selections(selections.clone());
+        let mut commands = Vec::new();
+        run_dashboard(&mut ui, "cargo-rullst", &home, &mut |command| {
+            commands.push(command);
+            Ok(())
+        })
+        .expect("project home choice should be accepted");
+        assert_eq!(
+            commands,
+            vec![vec!["cargo-rullst".to_string(), expected.to_string()]],
+            "{selections:?}"
+        );
+    }
+
+    for selection in [8, 9, usize::MAX] {
+        let mut ui = FakeUi::with_selections([selection]);
+        let mut run = |_| -> DashboardResult<()> { panic!("choice must not execute") };
+        run_dashboard(&mut ui, "cargo-rullst", &home, &mut run)
+            .expect("non-command project home choice should be accepted");
+    }
+
+    // Back from all project operations returns to the same project home.
+    let mut ui = FakeUi::with_selections([6, 10, 9]);
+    let mut run = |_| -> DashboardResult<()> { panic!("back then exit must not execute") };
+    run_dashboard(&mut ui, "cargo-rullst", &home, &mut run).expect("back returns home");
+    assert_eq!(ui.brand_count, 1);
+    assert_eq!(ui.prompts.len(), 3);
+    assert!(ui.prompts[2].contains("Start Dev Server"));
+}
+
+#[test]
+fn the_outside_home_leads_with_project_creation() {
+    let mut ui = FakeUi::with_selections([3]);
+    let mut run = |_| -> DashboardResult<()> { panic!("exit must not execute") };
+    run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut run).expect("exit");
+    let menu = &ui.prompts[0];
+    assert!(menu.contains("Create New Project"));
+    assert!(menu.find("Create New Project") < menu.find("Already have a project?"));
+}
+
+#[test]
+fn relative_programs_are_anchored_before_running_at_the_project_root() {
+    let current = std::path::Path::new("/work/shop/src");
+    assert_eq!(
+        super::resolve_program("./target/debug/cargo-rullst", current),
+        current
+            .join("./target/debug/cargo-rullst")
+            .display()
+            .to_string()
+    );
+    assert_eq!(
+        super::resolve_program("cargo-rullst", current),
+        "cargo-rullst"
+    );
+    #[cfg(unix)]
+    assert_eq!(
+        super::resolve_program("/usr/bin/cargo-rullst", current),
+        "/usr/bin/cargo-rullst"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn menu_commands_can_run_from_the_project_root() {
+    let root = tempfile::tempdir().expect("temporary project root");
+    std::fs::write(root.path().join("Cargo.toml"), "").expect("marker");
+    let check = ["sh", "-c", "test -f Cargo.toml"]
+        .map(str::to_string)
+        .to_vec();
+    super::execute_command_in(Some(root.path()), check.clone()).expect("runs at the root");
+    let elsewhere = tempfile::tempdir().expect("another directory");
+    assert!(super::execute_command_in(Some(elsewhere.path()), check).is_err());
 }

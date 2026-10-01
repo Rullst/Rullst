@@ -16,6 +16,9 @@ if [[ $# -ne 0 ]]; then
   fi
 fi
 
+# The documented umbrella feature table and defaults must match the manifest.
+python3 .github/check-feature-matrix.py
+
 # Keep every public package usable without implicit default features. Feature
 # rows below exercise every public umbrella feature and the package boundaries
 # most likely to regress when optional adapters change dependency wiring.

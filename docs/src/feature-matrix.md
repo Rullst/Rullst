@@ -20,9 +20,10 @@ cargo tree -e features
 
 The release gates compile every package with no default features, every public
 umbrella feature in isolation, representative domain-package boundaries, and
-the complete workspace with all features. The isolated umbrella list is
-checked automatically against `rullst/Cargo.toml`, so a newly added public
-feature cannot silently escape the matrix. See
+the complete workspace with all features. The isolated umbrella list, and this
+page's umbrella table and default features, are checked automatically against
+`rullst/Cargo.toml`, so a newly added public feature cannot silently escape the
+matrix. See
 [`check-feature-boundaries.sh`](../../.github/check-feature-boundaries.sh) for
 the exact individual checks.
 
@@ -68,17 +69,26 @@ It enables no database, queue or default feature. See
 [private multipart uploads](private-multipart-uploads.md) for server-mediated
 parts, encrypted resumable checkpoints, cleanup responsibilities and admission.
 
-The default `rullst` dependency enables `orm` and `queue-sqlite`. Applications
-that only need the HTTP runtime can opt out:
+The default `rullst` dependency enables `orm`, `drivers-all` and
+`queue-sqlite`: the ORM with the SQLite, PostgreSQL and MySQL/MariaDB SQLx
+drivers, and Core's durable SQLite queue. Applications that only need the HTTP
+runtime can opt out:
 
 ```toml
 [dependencies]
 rullst = { version = "12.1.0", default-features = false }
 ```
 
+An application that disables defaults and keeps the ORM must also select
+`drivers-all` or one `strict-*` backend. `orm` itself adds no SQLx driver: it
+compiles, but `Orm::init` and `Server::with_db` then fail at runtime for every
+URL scheme whose driver no other enabled feature happens to add (`queue-sqlite`,
+for example, adds only SQLite).
+
 | Feature | Default | Enables |
 | --- | :---: | --- |
-| `orm` | yes | `rullst-orm` and Core's ORM integration |
+| `orm` | yes | `rullst-orm` and Core's ORM integration, without a SQLx driver; pair it with `drivers-all` or one `strict-*` backend |
+| `drivers-all` | yes | `orm` plus the SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers in the ORM and Core, and in Studio and Nexus when `studio` or `nexus` is enabled |
 | `orm-mongodb` | no | `orm` plus the MongoDB document adapter |
 | `orm-duckdb` | no | `orm` plus the in-process DuckDB analytics adapter |
 | `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL over Hrana HTTP v3, transactions, reversible checked migrations, and a persistent offline fallback |
@@ -89,12 +99,22 @@ rullst = { version = "12.1.0", default-features = false }
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
 | `orm-polyglot` | no | Convenience feature enabling MongoDB, DuckDB, Turso, SurrealDB and Qdrant adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
+| `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
+| `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
 | `nexus` | no | The generated Nexus administration interface |
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
 | `auth-sqlite` | no | `auth-jwt` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
 | `auth-passkey-postgres` | no | Optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
+| `auth-sessions-sqlite` | no | `auth` plus the SQLite account registry, opaque sessions and session inventory (Auth `recovery-sqlite`); see [session management](session-management.md) |
+| `auth-sessions-postgres` | no | `auth` plus the PostgreSQL account registry, opaque sessions and session inventory (Auth `recovery-postgres`) |
+| `auth-email-login-sqlite` | no | v13 candidate: `auth` plus email login over the SQLite recovery accounts and sessions; see [the email-login contract](email-login.md) |
+| `auth-email-login-postgres` | no | v13 candidate: `auth` plus email login over the PostgreSQL recovery accounts and sessions |
+| `auth-api-tokens-sqlite` | no | v13 candidate: `auth` plus scoped API tokens over the SQLite recovery backend; see [the API-token contract](api-tokens.md) |
+| `auth-api-tokens-postgres` | no | v13 candidate: `auth` plus scoped API tokens over the PostgreSQL recovery backend |
+| `account-mail-sqlite` | no | `auth` and `mail` plus the SQLite recovery store and the `account_mail` delivery bridge; see [account mail](account-mail-v12-1.md) |
+| `account-mail-postgres` | no | `auth` and `mail` plus the PostgreSQL recovery store and the `account_mail` delivery bridge |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-sqlite` | no | `mail` plus bounded shared-local SQLite recipient suppression and provider-event replay evidence |
 | `mail-postgres` | no | v13 candidate: shared PostgreSQL suppression with keyed identifiers, authoritative dispatch checks and independent quotas |
@@ -105,6 +125,15 @@ rullst = { version = "12.1.0", default-features = false }
 | `messaging-schedules-postgres` | no | v13 candidate: encrypted PostgreSQL recurring-publication outbox and fenced relay into an explicitly selected broker; no default SQLite/ORM |
 | `messaging-webhooks` | no | v13 candidate: encrypted shared-local SQLite outgoing outbox, immutable HTTPS destination, signed exact bytes, fenced retries and minimized terminal inspection |
 | `messaging-orm-outbox` | no | `messaging` and `orm` plus the static relational outbox-to-broker relay; the publish/ACK crash window remains at-least-once |
+| `messaging-redis` | no | v13 candidate: `messaging` plus the Redis Streams broker with fenced delivery indexes; enables no ORM, mail, cache or Core queue; see [Redis Streams messaging](redis-messaging.md) |
+| `privacy` | no | v13 candidate: the independent empty `rullst-privacy` base; the `privacy-*` features are listed in [the privacy additions](#unpublished-v13-privacy-additions) |
+| `privacy-age` | no | v13 candidate: `privacy` plus proportional age-policy contracts |
+| `privacy-challenge-tokens` | no | v13 candidate: `privacy-age` plus authenticated server challenge transport |
+| `privacy-sqlite` | no | v13 candidate: `privacy-age` plus shared-local age replay protection |
+| `privacy-postgres` | no | v13 candidate: `privacy-age` plus age replay protection on one authoritative PostgreSQL database |
+| `privacy-consent` | no | v13 candidate: `privacy` plus purpose/version choices and effective withdrawal |
+| `privacy-consent-sqlite` | no | v13 candidate: `privacy-consent` plus shared-local consent state |
+| `privacy-consent-postgres` | no | v13 candidate: `privacy-consent` plus shared PostgreSQL consent state |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
@@ -129,11 +158,12 @@ rullst = { version = "12.1.0", default-features = false }
 | `strict-mysql` | no | `orm` with the concrete MySQL pool/backend selected when PostgreSQL is not also selected |
 | `strict-sqlite` | no | `orm` with the concrete SQLite pool/backend selected when PostgreSQL and MySQL are not also selected |
 
-The three `strict-*` backend features are supported as single selections.
-Feature unification can activate more than one; the current deterministic
-precedence is PostgreSQL, then MySQL, then SQLite. Do not depend on that
-precedence as backend negotiation. Select one strict backend in an application,
-or select none to use SQLx `Any`.
+The three `strict-*` backend features are supported as single selections;
+each enables only its own SQLx driver. Feature unification can activate more
+than one; the current deterministic precedence is PostgreSQL, then MySQL, then
+SQLite. Do not depend on that precedence as backend negotiation. Select one
+strict backend in an application, or select none and keep `drivers-all` to use
+SQLx `Any` with all three drivers.
 
 ### Shared-local SQLite composition profile
 
@@ -174,7 +204,8 @@ Default features: none.
 
 | Feature | Enables |
 | --- | --- |
-| `orm` | Optional `rullst-orm` and SQLx support, including Artisan and database-backed feature flags |
+| `orm` | Optional `rullst-orm` and SQLx support, including Artisan and database-backed feature flags; it adds no SQLx driver |
+| `drivers-all` | `orm` plus the ORM's SQLite, PostgreSQL and MySQL/MariaDB drivers |
 | `queue-sqlite` | SQLx-backed durable SQLite queues without enabling the full ORM facade |
 | `queue-redis` | Redis-backed queues |
 | `cache-redis` | Redis-backed cache storage |
@@ -195,11 +226,14 @@ Identity, authorization and tenant policy remain application layers.
 
 ### `rullst-orm`
 
-Default features: none. With no `strict-*` feature, public pool and database
-aliases use SQLx `Any`.
+Default feature: `drivers-all`. With no `strict-*` feature, public pool and
+database aliases use SQLx `Any`, which opens only the drivers compiled in. The
+workspace and the umbrella crate depend on the ORM with `default-features =
+false` and forward `drivers-all` or a `strict-*` backend explicitly.
 
 | Feature | Enables |
 | --- | --- |
+| `drivers-all` | The SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers |
 | `redis` | Redis query cache plus bounded namespaced Hash, Set and Sorted Set datastore operations |
 | `mongodb` | Official MongoDB driver plus typed document CRUD, identifier inventory, encrypted recovery participation and offline fallback |
 | `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
@@ -209,14 +243,15 @@ aliases use SQLx `Any`.
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
 | `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
 | `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, `surrealdb`, and `qdrant` |
-| `strict-postgres` | Concrete PostgreSQL pool, database, query-result, and query paths |
-| `strict-mysql` | Concrete MySQL paths when PostgreSQL is not also selected |
-| `strict-sqlite` | Concrete SQLite paths when PostgreSQL and MySQL are not also selected |
+| `ai` | `pgvector` plus the generated `save_with_embedding` for `#[orm(embedding_for = "...")]` models; the application also depends on `rullst-ai` |
+| `strict-postgres` | The PostgreSQL driver plus concrete PostgreSQL pool, database, query-result, and query paths |
+| `strict-mysql` | The MySQL driver plus concrete MySQL paths when PostgreSQL is not also selected |
+| `strict-sqlite` | The SQLite driver plus concrete SQLite paths when PostgreSQL and MySQL are not also selected |
 
 The strict backend selection rules and precedence are the same as the umbrella
-crate. SQLx drivers remain implementation dependencies; `strict-*` selects
-concrete public types and query paths rather than acting as a driver download
-switch.
+crate. Each `strict-*` feature enables its own SQLx driver and selects concrete
+public types and query paths; disable the ORM defaults to keep the other
+drivers out of the graph.
 
 The Polyglot features expose capability-specific APIs under
 `rullst_orm::polyglot`; they do not participate in a shared cross-backend
@@ -331,14 +366,17 @@ The umbrella crate exposes this as `security-redis`, which also enables
 
 ## Dashboard crates
 
-`rullst-nexus` and `rullst-studio` both have no default features and expose the
-same database selection boundary:
+`rullst-nexus` enables `drivers-all` by default, and `rullst-studio` enables
+`drivers-all` and `queue-sqlite`. Disable their defaults to select one backend:
 
 | Crate | Feature | Enables |
 | --- | --- | --- |
+| `rullst-nexus` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-nexus` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-nexus` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
+| `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
+| `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-studio` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-studio` | `strict-sqlite` | SQLite selection in Core and ORM |
