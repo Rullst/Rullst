@@ -540,7 +540,9 @@ Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
 receive `FromRow` plus `Orm`; Turso-primary projects receive
 `#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
 key. Backend detection reads the generated manifest and does not treat an
-additive `--turso` integration as the primary ORM.
+additive `--turso` integration as the primary ORM. Like `make:resource`, it
+rejects a name whose module or type would not be a non-keyword Rust identifier
+(for example `Match`, which would declare `pub mod match;`) before writing.
 * **Arguments:** `<name>` (e.g., `BlogPost`).
 * **Optional Flags:**
   * `--migration` or `-m`: Simultaneously generates a reversible migration with the correctly pluralized table name. An existing model file is kept, and the migration is skipped when the model already existed or a `*_create_<table>.rs`/`*_create_<table>_table.rs` migration exists, since a second create migration would drop the live table on rollback.
