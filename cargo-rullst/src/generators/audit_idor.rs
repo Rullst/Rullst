@@ -118,6 +118,11 @@ fn scan_idor_source_with_evidence(
 
     for (index, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
+        // A comment (such as the access marker) between `.route(` and its path
+        // literal must not end the multi-line call.
+        if route_call_continues && trimmed.starts_with("//") {
+            continue;
+        }
         let declares_route = contains_route_call(trimmed) || route_call_continues;
         route_call_continues = trimmed.ends_with(".route(") || trimmed == "route(";
         if !declares_route {
@@ -411,6 +416,32 @@ mod inline {
         .expect("guard fixture");
         let (count, warnings) = scan_idor_vulnerabilities(&src);
         assert_eq!(count, 0, "{warnings:?}");
+    }
+
+    #[test]
+    fn a_comment_inside_a_multiline_route_call_keeps_the_route_in_scope() {
+        // The old scan ended the `.route(` continuation at the comment line and
+        // never inspected the path literal below it.
+        let note_only = r#"
+Router::new().route(
+    // Removes one invoice.
+    "/invoices/{id}",
+    delete(remove_invoice),
+)
+"#;
+        let result = findings(note_only);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("missing an adjacent"));
+
+        let classified = r#"
+let protected = admin_access.protect_router(router)?;
+Router::new().route(
+    // rullst-access: admin — composed behind the administrator boundary.
+    "/invoices/{id}",
+    delete(remove_invoice),
+)
+"#;
+        assert!(findings(classified).is_empty());
     }
 
     #[test]
