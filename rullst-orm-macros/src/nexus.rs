@@ -155,16 +155,60 @@ fn is_integer_type(field_type: &Type) -> bool {
     )
 }
 
+/// The chrono date/time widget of a field, by path segment rather than by
+/// spelling: `DateTime<Utc>` and `NaiveDateTime` under any `chrono::` prefix
+/// are date-times, `NaiveDate` is a date.
+fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
+    let mut field_type = field_type;
+    if let Some(inner) = option_inner(field_type) {
+        field_type = inner;
+    }
+    let Type::Path(path) = field_type else {
+        return None;
+    };
+    let segment = path.path.segments.last()?;
+    match segment.ident.to_string().as_str() {
+        "NaiveDateTime" => Some(quote!(::rullst::nexus::FieldKind::DateTime)),
+        "NaiveDate" => Some(quote!(::rullst::nexus::FieldKind::Date)),
+        "DateTime" => {
+            let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+                return None;
+            };
+            let utc = matches!(
+                arguments.args.first(),
+                Some(syn::GenericArgument::Type(Type::Path(zone)))
+                    if zone.path.segments.last().is_some_and(|zone| zone.ident == "Utc")
+            );
+            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTime))
+        }
+        _ => None,
+    }
+}
+
+/// `T` of an `Option<T>` field type.
+fn option_inner(field_type: &Type) -> Option<&Type> {
+    let Type::Path(path) = field_type else {
+        return None;
+    };
+    let segment = path.path.segments.last()?;
+    let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+        return None;
+    };
+    match arguments.args.first() {
+        Some(syn::GenericArgument::Type(inner)) if segment.ident == "Option" => Some(inner),
+        _ => None,
+    }
+}
+
 fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
+    if let Some(kind) = chrono_field_kind(field_type) {
+        return kind;
+    }
     match unwrapped_type_name(field_type).as_str() {
         "String" | "&str" => quote!(::rullst::nexus::FieldKind::Text),
         "bool" => quote!(::rullst::nexus::FieldKind::Boolean),
         "i8" | "i16" | "i32" | "i64" | "isize" | "u8" | "u16" | "u32" | "u64" | "usize" | "f32"
         | "f64" => quote!(::rullst::nexus::FieldKind::Number),
-        "chrono::DateTime<chrono::Utc>" | "DateTime<Utc>" => {
-            quote!(::rullst::nexus::FieldKind::DateTime)
-        }
-        "chrono::NaiveDate" | "NaiveDate" => quote!(::rullst::nexus::FieldKind::Date),
         _ => quote!(::rullst::nexus::FieldKind::Text),
     }
 }

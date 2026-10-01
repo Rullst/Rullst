@@ -42,8 +42,9 @@ are not modified by these framework changes.
 ## Derive and register a model
 
 The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
-infers booleans, numbers, dates and ordinary text; semantic widgets that Rust's
-type alone cannot reveal are selected explicitly:
+infers booleans, numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` and
+`NaiveDateTime` under any path spelling, optional or not) and ordinary text;
+semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
 ```rust
 use rullst::db::{FromRow, Nexus, Orm};

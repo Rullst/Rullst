@@ -329,3 +329,37 @@ fn only_integer_keys_are_treated_as_database_generated() {
     let sku = field_meta(&output, "sku").expect("sku metadata");
     assert!(sku.contains("hidden : false") && sku.contains("readonly : false"));
 }
+
+#[test]
+fn infers_chrono_widgets_from_any_path_spelling() {
+    let input: DeriveInput = parse_quote! {
+        struct Event {
+            id: i64,
+            published_at: chrono::DateTime<Utc>,
+            edited_at: DateTime<chrono::Utc>,
+            archived_at: Option<chrono::DateTime<chrono::offset::Utc>>,
+            starts_at: chrono::NaiveDateTime,
+            ends_at: Option<NaiveDateTime>,
+            day: chrono::NaiveDate,
+            local_at: DateTime<chrono::FixedOffset>,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    for name in [
+        "published_at",
+        "edited_at",
+        "archived_at",
+        "starts_at",
+        "ends_at",
+    ] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(meta.contains("FieldKind :: DateTime"), "{name}: {meta}");
+    }
+    let day = field_meta(&output, "day").expect("day metadata");
+    assert!(day.contains("FieldKind :: Date ,"), "{day}");
+    // An offset other than UTC is not a datetime-local value.
+    let local = field_meta(&output, "local_at").expect("local metadata");
+    assert!(local.contains("FieldKind :: Text"), "{local}");
+}
