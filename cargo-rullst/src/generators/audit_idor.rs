@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::generators::audit::incomplete_walk_warning;
+use crate::generators::audit_source::production_source;
 use crate::generators::source_walk::{RustSources, rust_sources};
 
 const ACCESS_MARKER: &str = "rullst-access:";
@@ -15,7 +16,8 @@ const ACCESS_MARKER: &str = "rullst-access:";
 ///
 /// This is a bounded source heuristic. It deliberately reports a finding when
 /// it cannot recognize the route boundary; a clean scan is not a proof that a
-/// domain resource lookup enforces ownership correctly at runtime.
+/// domain resource lookup enforces ownership correctly at runtime. Top-level
+/// `#[cfg(test)]` items are skipped individually, not the rest of the file.
 pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     let source_files = collect_rust_source_files(src_dir);
     let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
@@ -29,8 +31,8 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
         crate_evidence
             .entry(source_root.clone())
             .or_default()
-            .include(production);
-        sources.push((path, source_root, production.to_string()));
+            .include(&production);
+        sources.push((path, source_root, production));
     }
 
     let mut warnings = Vec::new();
@@ -71,7 +73,7 @@ pub(super) fn collect_rust_source_files(src_dir: &Path) -> RustSources {
 #[cfg(test)]
 fn scan_idor_source(path: &Path, content: &str) -> Vec<String> {
     let production = production_source(content);
-    scan_idor_source_with_evidence(path, production, GuardEvidence::from_content(production))
+    scan_idor_source_with_evidence(path, &production, GuardEvidence::from_content(&production))
 }
 
 #[derive(Clone, Copy, Default)]
@@ -97,12 +99,6 @@ impl GuardEvidence {
             || content.contains("protect_router(");
         self.admin |= content.contains("RequireRoleLayer") || content.contains("protect_router(");
     }
-}
-
-fn production_source(content: &str) -> &str {
-    content
-        .split_once("\n#[cfg(test)]")
-        .map_or(content, |(production, _)| production)
 }
 
 fn source_root_for(path: &Path) -> Option<std::path::PathBuf> {
@@ -332,6 +328,58 @@ get("/orders/{order_id}" => show_order),
 fn unrelated(_context: UserContext) {}
 "#;
         assert_eq!(findings(source).len(), 1);
+    }
+
+    #[test]
+    fn routes_after_an_early_test_declaration_are_still_scanned() {
+        // The old scan truncated the file at the first top-level
+        // `#[cfg(test)]` and reported this unclassified route as clean.
+        let source = r#"use rullst::prelude::*;
+#[cfg(test)]
+mod tests;
+
+fn routes() -> Router {
+    routes! {
+        get("/accounts/{id}" => show_account),
+    }
+}
+
+#[cfg(test)]
+mod inline {
+    fn fixture() { get("/fixtures/{id}" => show) }
+}
+"#;
+        let result = findings(source);
+        assert_eq!(result.len(), 1, "{result:?}");
+        assert!(result[0].contains("routes.rs:7"));
+        assert!(result[0].contains("/accounts/{id}"));
+    }
+
+    #[test]
+    fn guard_evidence_is_crate_wide_and_ignores_test_items() {
+        let project = tempfile::tempdir().expect("temporary project");
+        let src = project.path().join("src");
+        fs::create_dir_all(&src).expect("source directory");
+        fs::write(
+            src.join("routes.rs"),
+            "// rullst-access: owner — checked by the guard module.\nget(\"/orders/{id}\" => show),\n",
+        )
+        .expect("route fixture");
+        fs::write(
+            src.join("guard.rs"),
+            "#[cfg(test)]\nmod tests { fn t() { RbacGuard::authorize_owner_or_role(c, o, \"admin\"); } }\n",
+        )
+        .expect("test-only guard fixture");
+        let (count, warnings) = scan_idor_vulnerabilities(&src);
+        assert_eq!(count, 1, "{warnings:?}");
+
+        fs::write(
+            src.join("guard.rs"),
+            "fn guard() { RbacGuard::authorize_owner_or_role(c, o, \"admin\"); }\n",
+        )
+        .expect("guard fixture");
+        let (count, warnings) = scan_idor_vulnerabilities(&src);
+        assert_eq!(count, 0, "{warnings:?}");
     }
 
     #[test]

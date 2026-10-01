@@ -1225,7 +1225,10 @@ route, dependency, and local network patterns.
 The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
 follow symlinked files or directories and skip `target/` and `.git/`. A walk
 stops at 64 directory levels or 250,000 entries; reaching either bound is
-reported as a finding, so the scan fails as incomplete instead of passing.
+reported as a finding, so the scan fails as incomplete instead of passing. The
+route and listener scans skip each top-level `#[cfg(test)]` item (such as
+`mod tests;` or an inline test module) on its own; code after it is still
+scanned.
 
 SBOM components come from `Cargo.lock`. Only crates.io packages receive the
 plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a
