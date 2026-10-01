@@ -1688,7 +1688,11 @@ check does not make a name portable: a word the target database reserves
 struct) passes compilation and fails, or on PostgreSQL may even resolve to a
 built-in such as `current_user`, at runtime. The derive does not check
 reserved words; rename such a column or choose a non-reserved
-`#[orm(table = "...")]`.
+`#[orm(table = "...")]`. Because PostgreSQL folds those unquoted names to
+lower case, `Schema::create` and `Schema::drop_if_exists` quote the table name
+lower-cased on PostgreSQL, so `Schema::create("UserProfiles", ...)` creates the
+`userprofiles` relation that a model with `#[orm(table = "UserProfiles")]`
+queries. MySQL/MariaDB and SQLite keep the name as written.
 
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
 are compatible with generated ORM persistence in v12. `#[orm(skip)]` removes
@@ -1816,7 +1820,13 @@ while portability and semantic review remain the model author's responsibility.
   under the configured key, bound to a serde-specific context (a SQL-column
   envelope is not accepted), and fails when no key is configured;
   `Deserialize` decrypts such an envelope through the current key or keyring
-  and still accepts any other string as plaintext input. Generated `to_json()`
+  and still accepts any other string as plaintext input. The envelope binds
+  only the key, not a model, field or owner, so that `Deserialize` is for
+  trusted stores: given client input, it would turn an envelope exposed for
+  one record into another record's secret. Fields filled from requests use
+  `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`
+  (or `deserialize_optional_plaintext_secret`; unpublished v13 API), which
+  reject any `RULLST:` value without decrypting it. Generated `to_json()`
   and search projections serialize it (also when nested) as `"***"`, and
   `SecretString`/`Option<SecretString>` model fields are audited, excluded and
   change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
@@ -2173,22 +2183,29 @@ while portability and semantic review remain the model author's responsibility.
   envelopes and decrypted on a cache hit, and a result that cannot be
   serialized (for example without an encryption key) is not cached. Each
   generated cache write also records its key in a per-namespace/tenant/table
-  Redis set in the same `EVAL` script, extending that set's TTL to the longest
-  entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the table's `global` partition and, for a
+  Redis sorted set, scored by the entry's expiry time on the Redis server
+  clock, in the same `EVAL` script; that script first prunes members whose
+  entries already expired and extends the set's TTL to the longest entry TTL,
+  so the index holds only entries stored within the last TTL window.
+  Generated model `save()`/`delete()`/`restore()`/`force_delete()` operations
+  invalidate the table's `global` partition and, for a
   tenant-scoped model, the partition of the tenant active at the write, only
   after commit (the tenant is captured when the callback is registered, so a
   `with_tenant` scope that ended inside the transaction closure still has its
   keys removed). An `unscoped()` read of a tenant-scoped model inside another
   tenant's `with_tenant` scope is cached in that scope's partition and is not
-  refreshed by other tenants' writes before its TTL. Invalidation pops each
-  index in batches of 500 and `UNLINK`s its keys (at most 10,000 per
+  refreshed by other tenants' writes before its TTL. Invalidation prunes
+  expired members without counting them, then removes each index's live
+  members in batches of 500 and `UNLINK`s their keys (at most 10,000 per
   write); they never `SCAN` the Redis keyspace, so their cost does not grow
   with unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the
-  generated `orm:events:*` publication still happens. Entries written by
-  earlier versions are not indexed and expire through their TTL; rollback
-  preserves existing entries. The scripts address keys they were not passed
+  generated `orm:events:*` publication still happens. Keys are versioned
+  (`rullst:orm:cache:v4:`); entries written by earlier versions are never
+  read again and expire through their TTL, and during a rolling upgrade a
+  write from an instance on the other version does not invalidate this
+  version's entries before their TTL. A transaction rollback preserves
+  existing entries. The scripts address keys they were not passed
   and are therefore outside Redis Cluster, like the rest of this contract.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
   processes cannot be inferred. Callers must retain a defensive TTL and treat
@@ -2363,7 +2380,8 @@ while portability and semantic review remain the model author's responsibility.
   never closes it for idleness or age (the Turso offline in-memory fallback
   does the same).
 * A SQLite file DSN without a `mode` parameter, or with `mode=rwc`, has its
-  missing database file (and directory) created before connecting. An explicit
+  missing database file (and directory) created before connecting, at the
+  percent-decoded path SQLx opens (`John%20Doe` is `John Doe`). An explicit
   `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails
   to open instead of becoming a new empty database.
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
@@ -3006,7 +3024,7 @@ sending.
 * **Key Rotation:** Built-in keyring support (`decrypt_with_keyring`) can read
   prior keys while new writes use the active key. Deployment coordination,
   re-encryption, key custody and retirement remain operator responsibilities.
-* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Rullst does not provide key custody or automatic retirement.
+* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Versioned envelopes name their key ID; pre-v12 `SecretString` ciphertext names none, so it is tried with the current key and then every keyring key (`default` first), and AES-GCM authentication accepts only the key that wrote it. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
 * **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Header values are decoded lossily in RASP and Core's WAF, so an obs-text byte (0x80-0xFF) that hyper accepts cannot hide the rest of a value. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.

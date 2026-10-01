@@ -94,7 +94,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `orm:events:*`), are omitted from Scout documents, and remain encrypted in
   `save_to_redis` hashes. `SecretString` fields get the same treatment, and
   `SecretString` itself serializes as an encrypted `RULLST:v2` envelope (never
-  plaintext), which the query cache stores and decrypts on a hit.
+  plaintext), which the query cache stores and decrypts on a hit. That
+  envelope is not bound to a record, so deserialize client input with
+  `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`,
+  which rejects envelopes instead of decrypting them.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash
@@ -531,8 +534,9 @@ initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and
 task-scoped transactions always bypass the cache. Generated model saves and
 deletes invalidate that table's generated cache keys after commit, using the
-index each cache write maintains for its table (at most 10,000 keys per write;
-entries cached by earlier versions are not indexed and expire by TTL). Raw SQL,
+index each cache write maintains for its table (at most 10,000 live keys per
+write; members of entries that already expired are pruned and not counted, and
+entries cached by earlier versions are not read again and expire by TTL). Raw SQL,
 bulk builders and writes outside generated model methods cannot be inferred, so
 keep a defensive TTL and do not cache authorization or other reads whose
 freshness requires a stronger distributed consistency contract.

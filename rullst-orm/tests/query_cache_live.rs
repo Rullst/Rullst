@@ -100,18 +100,21 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
     let ttl: i64 = redis.ttl(&cache_key).await.expect("inspect cache TTL");
     assert!(exists);
     assert!((1..=30).contains(&ttl));
-    // The entry is indexed under its table for commit-time invalidation, and
-    // the index lives at least as long as the entry.
-    let index_key = format!(
-        "{}:keys",
-        cache_key.rsplit_once(':').expect("generated entry key").0
-    );
-    let indexed: bool = redis
-        .sismember(&index_key, &cache_key)
+    // The entry is indexed under its table for commit-time invalidation,
+    // scored by its expiry time, and the index lives at least as long as the
+    // entry.
+    let index_key = index_of(&cache_key);
+    let score: Option<f64> = redis
+        .zscore(&index_key, &cache_key)
         .await
         .expect("inspect cache index");
     let index_ttl: i64 = redis.ttl(&index_key).await.expect("inspect index TTL");
-    assert!(indexed);
+    let expires_at_ms = server_time_ms(&mut redis).await + 30_000.0;
+    let score = score.expect("the entry key should be indexed");
+    assert!(
+        score > expires_at_ms - 32_000.0 && score <= expires_at_ms,
+        "index score {score} should be the entry expiry"
+    );
     assert!(index_ttl >= ttl);
 
     sqlx::query("UPDATE query_cache_live_records SET name = ? WHERE id = ?")
@@ -179,7 +182,11 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
 
     // Invalidation follows the table index instead of scanning the keyspace:
     // a key that merely matches the table's key pattern is left to its TTL.
-    let unindexed_key = format!("{}:{}", index_key.trim_end_matches(":keys"), "0".repeat(64));
+    let unindexed_key = format!(
+        "{}:{}",
+        index_key.trim_end_matches(":index"),
+        "0".repeat(64)
+    );
     let _: () = redis
         .set_ex(&unindexed_key, "unindexed", 30)
         .await
@@ -306,6 +313,7 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
     exercise_global_model_partition(&mut redis).await;
     exercise_secret_string_cache(&mut redis).await;
     exercise_undecodable_entries_fail_open(&mut redis).await;
+    exercise_expired_index_members(&mut redis).await;
     let _ = std::fs::remove_file(database_path);
 }
 
@@ -554,4 +562,94 @@ async fn exercise_undecodable_entries_fail_open(
         .expect("vault fixture should exist");
     assert_eq!(row.note, "current key");
     let _: usize = redis.del(&cache_key).await.expect("remove vault cache key");
+}
+
+fn index_of(cache_key: &str) -> String {
+    format!(
+        "{}:index",
+        cache_key.rsplit_once(':').expect("generated entry key").0
+    )
+}
+
+async fn server_time_ms(redis: &mut rullst_orm::_redis::aio::ConnectionManager) -> f64 {
+    let (seconds, micros): (u64, u64) = rullst_orm::_redis::cmd("TIME")
+        .query_async(redis)
+        .await
+        .expect("read Redis server time");
+    (seconds * 1_000 + micros / 1_000) as f64
+}
+
+/// Index members of entries that already expired are pruned when the next
+/// entry is stored and never count toward the per-write invalidation cap, so
+/// steady reads of many distinct queries cannot grow the index or make the
+/// next write fail with `PostCommit`.
+async fn exercise_expired_index_members(redis: &mut rullst_orm::_redis::aio::ConnectionManager) {
+    let live_query = QueryCacheLiveRecord::query().where_id(1).limit(1);
+    let live_key = rullst_orm::query_cache::query_key(
+        "query_cache_live_records",
+        &live_query.to_sql(),
+        &live_query.bindings,
+    )
+    .expect("derive live cache key");
+    let index_key = index_of(&live_key);
+    let prefix = index_key.trim_end_matches(":index").to_string();
+    let expired = |round: u32| -> Vec<(f64, String)> {
+        (0..10_001_u32)
+            .map(|member| {
+                (
+                    1.0,
+                    format!(
+                        "{prefix}:{:064x}",
+                        u64::from(round) << 32 | u64::from(member)
+                    ),
+                )
+            })
+            .collect()
+    };
+
+    for chunk in expired(1).chunks(1_000) {
+        let _: usize = redis
+            .zadd_multiple(&index_key, chunk)
+            .await
+            .expect("index members of expired entries");
+    }
+    live_query
+        .clone()
+        .remember(30)
+        .first()
+        .await
+        .expect("store a live entry")
+        .expect("fixture should exist");
+    let stale: usize = redis
+        .zcount(&index_key, 0, 2)
+        .await
+        .expect("count expired index members");
+    assert_eq!(stale, 0, "storing an entry prunes expired index members");
+    assert!(
+        redis
+            .zscore::<_, _, Option<f64>>(&index_key, &live_key)
+            .await
+            .unwrap()
+            .is_some()
+    );
+
+    for chunk in expired(2).chunks(1_000) {
+        let _: usize = redis
+            .zadd_multiple(&index_key, chunk)
+            .await
+            .expect("index members of expired entries");
+    }
+    let mut row = QueryCacheLiveRecord::find(1)
+        .await
+        .expect("load fixture")
+        .expect("fixture should exist");
+    row.name = "after expired members".to_string();
+    row.save()
+        .await
+        .expect("expired index members must not count toward the invalidation cap");
+    assert!(!redis.exists::<_, bool>(&live_key).await.unwrap());
+    assert!(
+        !redis.exists::<_, bool>(&index_key).await.unwrap(),
+        "invalidation removes live and expired members alike"
+    );
 }

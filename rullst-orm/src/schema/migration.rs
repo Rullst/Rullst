@@ -7,6 +7,24 @@ pub trait Migration: Send + Sync {
     fn name(&self) -> &'static str;
     async fn up(&self) -> Result<(), Error>;
     async fn down(&self) -> Result<(), Error>;
+
+    /// Whether the runner applies `up()` (or `down()`) and records it in the
+    /// `migrations` table inside one [`crate::Orm::transaction`], so a failure
+    /// between the two cannot leave the change applied but unrecorded.
+    ///
+    /// Only statements that join the task-scoped transaction are covered:
+    /// `Schema` calls, `execute_query!`/`dispatch_executor!` and generated
+    /// model methods. A query sent to `Orm::pool()` directly runs on another
+    /// connection outside the transaction and cannot see its uncommitted
+    /// tables, so a migration that uses one must keep the default `false`.
+    /// PostgreSQL and SQLite roll DDL back with the transaction; MySQL and
+    /// MariaDB commit implicitly at each DDL statement, so there only data
+    /// changes after the last DDL statement are atomic with the record.
+    /// Statements that cannot run in a transaction block, such as PostgreSQL
+    /// `CREATE INDEX CONCURRENTLY`, need `false`. Unpublished v13 API.
+    fn within_transaction(&self) -> bool {
+        false
+    }
 }
 
 #[cfg_attr(test, mutants::skip)]
@@ -267,22 +285,35 @@ async fn run_pending_migrations(
         .await?;
     let next_batch = batch_row.0.unwrap_or(0) + 1;
 
+    let tracking_sql = if driver == "postgres" {
+        "INSERT INTO migrations (migration, batch) VALUES ($1, $2)"
+    } else {
+        "INSERT INTO migrations (migration, batch) VALUES (?, ?)"
+    };
     let mut count = 0;
     for m in migrations {
         let name = m.name();
         if !executed_set.contains(name) {
             println!("Migrating: {}", name);
-            m.up().await?;
-            let tracking_sql = if driver == "postgres" {
-                "INSERT INTO migrations (migration, batch) VALUES ($1, $2)"
-            } else {
-                "INSERT INTO migrations (migration, batch) VALUES (?, ?)"
-            };
-            sqlx::query(tracking_sql)
-                .bind(name)
-                .bind(next_batch)
-                .execute(pool)
+            if m.within_transaction() {
+                // The change and its record commit (or roll back) together.
+                crate::Orm::transaction(move |_| {
+                    Box::pin(async move {
+                        m.up().await?;
+                        let record = sqlx::query(tracking_sql).bind(name).bind(next_batch);
+                        crate::execute_query!(record, execute, pool)?;
+                        Ok::<(), Error>(())
+                    })
+                })
                 .await?;
+            } else {
+                m.up().await?;
+                sqlx::query(tracking_sql)
+                    .bind(name)
+                    .bind(next_batch)
+                    .execute(pool)
+                    .await?;
+            }
             println!("Migrated:  {}", name);
             count += 1;
         }
@@ -341,7 +372,8 @@ async fn rollback_last_batch(
         .fetch_all(pool)
         .await?;
 
-    let mut rollback_map = std::collections::HashMap::with_capacity(migrations.len());
+    let mut rollback_map: std::collections::HashMap<String, Box<dyn Migration>> =
+        std::collections::HashMap::with_capacity(migrations.len());
     for m in migrations {
         rollback_map.insert(m.name().to_string(), m);
     }
@@ -352,13 +384,26 @@ async fn rollback_last_batch(
         "DELETE FROM migrations WHERE migration = ?"
     };
     for (name,) in to_rollback {
-        if let Some(m) = rollback_map.get(&name) {
+        if let Some(m) = rollback_map.remove(&name) {
             println!("Rolling back: {}", name);
-            m.down().await?;
             // Forget each migration as soon as its down() succeeds, so a later
             // failing down() leaves only the migrations that were not reverted
             // recorded as applied; the next rollback resumes from there.
-            sqlx::query(forget_sql).bind(&name).execute(pool).await?;
+            if m.within_transaction() {
+                let recorded = name.clone();
+                crate::Orm::transaction(move |_| {
+                    Box::pin(async move {
+                        m.down().await?;
+                        let forget = sqlx::query(forget_sql).bind(recorded);
+                        crate::execute_query!(forget, execute, pool)?;
+                        Ok::<(), Error>(())
+                    })
+                })
+                .await?;
+            } else {
+                m.down().await?;
+                sqlx::query(forget_sql).bind(&name).execute(pool).await?;
+            }
             println!("Rolled back:  {}", name);
         } else {
             println!(

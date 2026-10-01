@@ -3,6 +3,15 @@
 use super::*;
 use std::collections::BTreeMap;
 
+/// Serializes the tests that change the process-wide key variables.
+static ENVIRONMENT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn environment_lock() -> std::sync::MutexGuard<'static, ()> {
+    ENVIRONMENT_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 struct EnvironmentGuard {
     values: BTreeMap<&'static str, Option<String>>,
 }
@@ -274,6 +283,7 @@ fn legacy_ciphertext_decrypts_and_invalid_utf8_is_typed() {
 
 #[test]
 fn environment_key_selection_rotation_and_context_fail_closed() {
+    let _serial = environment_lock();
     let mut environment = EnvironmentGuard::new();
     for key in [KEY_ENV, KEY_ID_ENV, KEYRING_ENV] {
         environment.clear(key);
@@ -370,4 +380,121 @@ fn secret_string_serde_redacts_projections_and_accepts_plaintext_input() {
     ] {
         assert!(serde_json::from_str::<SecretString>(malformed).is_err());
     }
+}
+
+fn legacy_ciphertext(key: &str, plaintext: &str) -> String {
+    let cipher = Aes256Gcm::new_from_slice(key.as_bytes()).unwrap();
+    let nonce_bytes = [9_u8; NONCE_LENGTH];
+    let nonce = Nonce::<Aes256Gcm>::try_from(nonce_bytes.as_slice()).unwrap();
+    let mut payload = nonce_bytes.to_vec();
+    payload.extend_from_slice(&cipher.encrypt(&nonce, plaintext.as_bytes()).unwrap());
+    STANDARD.encode(payload)
+}
+
+/// Pre-v12 values name no key, so after the documented rotation (old key
+/// moved into the keyring) they decrypt through the keyring instead of
+/// failing with the new current key.
+#[test]
+fn legacy_ciphertext_stays_readable_through_the_keyring_after_rotation() {
+    let _serial = environment_lock();
+    let mut environment = EnvironmentGuard::new();
+    let retired = "0123456789abcdef0123456789abcdef";
+    let unrelated = "fedcba9876543210fedcba9876543210";
+    let current = "abcdef0123456789abcdef0123456789";
+    let legacy = legacy_ciphertext(retired, "pre-v12 secret");
+
+    environment.set(KEY_ENV, current);
+    environment.set(KEY_ID_ENV, "rotated-2027");
+    environment.clear(KEYRING_ENV);
+    assert!(matches!(
+        decrypt_configured_secret(&legacy),
+        Err(PrivacyError::DecryptionFailed(_))
+    ));
+    environment.set(KEYRING_ENV, &format!(r#"{{"unrelated":"{unrelated}"}}"#));
+    assert!(matches!(
+        decrypt_configured_secret(&legacy),
+        Err(PrivacyError::DecryptionFailed(_))
+    ));
+
+    for keyring in [
+        format!(r#"{{"unrelated":"{unrelated}","default":"{retired}"}}"#),
+        format!(r#"{{"primary-2026":"{retired}"}}"#),
+    ] {
+        environment.set(KEYRING_ENV, &keyring);
+        assert_eq!(
+            decrypt_configured_secret(&legacy).unwrap(),
+            "pre-v12 secret"
+        );
+    }
+
+    environment.set(KEY_ENV, retired);
+    environment.set(KEYRING_ENV, "not-json");
+    assert_eq!(
+        decrypt_configured_secret(&legacy).unwrap(),
+        "pre-v12 secret",
+        "the current key is tried before the keyring"
+    );
+    environment.set(KEY_ENV, current);
+    assert!(matches!(
+        decrypt_configured_secret(&legacy),
+        Err(PrivacyError::EnvError(_))
+    ));
+    environment.set(KEYRING_ENV, r#"{"default":"short"}"#);
+    assert_eq!(
+        decrypt_configured_secret(&legacy).unwrap_err(),
+        PrivacyError::InvalidKeyLength
+    );
+}
+
+#[derive(serde::Deserialize)]
+struct ClientSettings {
+    #[serde(deserialize_with = "deserialize_plaintext_secret")]
+    webhook_secret: SecretString,
+    #[serde(default, deserialize_with = "deserialize_optional_plaintext_secret")]
+    backup_secret: Option<SecretString>,
+}
+
+/// An envelope exposed for one record must not become another record's
+/// secret through a client request: the plaintext-only deserializers reject
+/// it without decrypting, while `SecretString`'s own `Deserialize` keeps its
+/// documented round trip for trusted stores.
+#[test]
+fn client_input_deserializers_reject_envelopes() {
+    let _serial = environment_lock();
+    let mut environment = EnvironmentGuard::new();
+    environment.set(KEY_ENV, "0123456789abcdef0123456789abcdef");
+    environment.set(KEY_ID_ENV, "client-input-2026");
+    environment.clear(KEYRING_ENV);
+
+    let exposed = serde_json::to_string(&SecretString::new("victim secret")).unwrap();
+    let restored: SecretString = serde_json::from_str(&exposed).unwrap();
+    assert_eq!(restored.reveal_audited(), "victim secret");
+
+    let submitted = format!(r#"{{"webhook_secret":{exposed}}}"#);
+    let error = serde_json::from_str::<ClientSettings>(&submitted)
+        .err()
+        .expect("an exposed envelope must be rejected as client input");
+    assert!(error.to_string().contains("not accepted as secret input"));
+    let optional = format!(r#"{{"webhook_secret":"plain","backup_secret":{exposed}}}"#);
+    assert!(serde_json::from_str::<ClientSettings>(&optional).is_err());
+    for malformed in [r#""RULLST:v2:k:AA:AA""#, r#""RULLST:""#] {
+        let body = format!(r#"{{"webhook_secret":{malformed}}}"#);
+        assert!(serde_json::from_str::<ClientSettings>(&body).is_err());
+    }
+
+    let accepted: ClientSettings =
+        serde_json::from_str(r#"{"webhook_secret":"new secret","backup_secret":null}"#).unwrap();
+    assert_eq!(accepted.webhook_secret.reveal_audited(), "new secret");
+    assert!(accepted.backup_secret.is_none());
+    let accepted: ClientSettings =
+        serde_json::from_str(r#"{"webhook_secret":"RULLSTish","backup_secret":"spare secret"}"#)
+            .unwrap();
+    assert_eq!(accepted.webhook_secret.reveal_audited(), "RULLSTish");
+    assert_eq!(
+        accepted
+            .backup_secret
+            .as_ref()
+            .map(SecretString::reveal_audited),
+        Some("spare secret")
+    );
 }

@@ -163,7 +163,10 @@ impl TursoStore {
             .collect()
     }
 
-    /// Rolls back the most recently applied migration using its declared down statements.
+    /// Rolls back the most recently applied migration using its declared down
+    /// statements. Like [`TursoStore::migrate`], it refuses a migration whose
+    /// digest differs from the recorded one, so changed down statements never
+    /// run against the schema the recorded version created.
     pub async fn rollback_last(
         &self,
         migrations: Vec<TursoMigration>,
@@ -173,7 +176,7 @@ impl TursoStore {
         let rows = self
             .query(
                 TursoStatement::new(
-                    "SELECT name FROM rullst_turso_migrations ORDER BY applied_at DESC, rowid DESC LIMIT 1",
+                    "SELECT name, digest FROM rullst_turso_migrations ORDER BY applied_at DESC, rowid DESC LIMIT 1",
                     vec![],
                 )?,
                 TursoQueryLimit::new(1)?,
@@ -188,6 +191,12 @@ impl TursoStore {
                 message: "migration history returned a non-text name".to_owned(),
             });
         };
+        let Some(TursoValue::Text(recorded_digest)) = row.get("digest") else {
+            return Err(PolyglotError::Driver {
+                backend: "Turso",
+                message: "migration history returned a non-text digest".to_owned(),
+            });
+        };
         let migration = migrations
             .into_iter()
             .find(|migration| migration.name() == name)
@@ -195,6 +204,12 @@ impl TursoStore {
                 backend: "Turso",
                 message: format!("applied migration {name} is missing from the application"),
             })?;
+        if recorded_digest != migration.digest() {
+            return Err(PolyglotError::Driver {
+                backend: "Turso",
+                message: format!("migration history drift detected for {name}"),
+            });
+        }
         if migration.down_statements.is_empty() {
             return Err(PolyglotError::InvalidIdentifier {
                 kind: "Turso rollback migration",
@@ -316,5 +331,61 @@ mod tests {
         let report = store.rollback_last(vec![migration]).await.unwrap();
         assert_eq!(report.rolled_back.as_deref(), Some("m20260829_reversible"));
         assert!(store.migration_status().await.unwrap().is_empty());
+    }
+
+    /// A migration edited after it was applied is drift for rollback as well:
+    /// its new down statements must not run against the recorded schema, and
+    /// the history row stays.
+    #[tokio::test]
+    async fn rollback_refuses_a_migration_changed_since_it_was_applied() {
+        let store = TursoStore::connect(TursoConfig::new("mock_local", ""))
+            .await
+            .unwrap();
+        let reversible = |table: &str| {
+            TursoMigration::new(
+                "m20260830_drifted",
+                vec![
+                    TursoStatement::new(
+                        format!("CREATE TABLE {table} (id INTEGER PRIMARY KEY)"),
+                        vec![],
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap()
+            .with_down(vec![
+                TursoStatement::new(format!("DROP TABLE IF EXISTS {table}"), vec![]).unwrap(),
+            ])
+            .unwrap()
+        };
+        store.migrate(vec![reversible("drift_a")]).await.unwrap();
+
+        let error = store
+            .rollback_last(vec![reversible("drift_b")])
+            .await
+            .expect_err("a changed migration must not roll back");
+        assert!(error.to_string().contains("drift"), "{error}");
+        assert_eq!(
+            store.migration_status().await.unwrap(),
+            vec!["m20260830_drifted"]
+        );
+        let tables = store
+            .query(
+                TursoStatement::new(
+                    "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'drift_a'",
+                    vec![],
+                )
+                .unwrap(),
+                TursoQueryLimit::new(1).unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(tables.len(), 1, "the recorded schema must stay intact");
+
+        let report = store
+            .rollback_last(vec![reversible("drift_a")])
+            .await
+            .unwrap();
+        assert_eq!(report.rolled_back.as_deref(), Some("m20260830_drifted"));
     }
 }

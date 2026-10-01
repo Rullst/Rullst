@@ -138,12 +138,14 @@ impl MockRedisData {
             .flat_map(|set| set.iter())
             .map(|(member, score)| (member.clone(), *score))
             .collect::<Vec<_>>();
+        // ZREVRANGE order: descending score, and members with equal scores
+        // in descending byte-wise lexicographic order.
         rows.sort_by(|left, right| {
             right
                 .1
                 .partial_cmp(&left.1)
                 .unwrap_or(Ordering::Equal)
-                .then_with(|| left.0.cmp(&right.0))
+                .then_with(|| right.0.cmp(&left.0))
         });
         rows.truncate(usize::from(limit.get()));
         rows.into_iter()
