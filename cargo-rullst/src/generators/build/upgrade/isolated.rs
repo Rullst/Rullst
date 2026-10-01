@@ -135,9 +135,20 @@ fn validate_lockfile(
     root: &Path,
     target: &semver::Version,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    if locked_above(root, target)?.is_some() {
+        return Err("project preparation cannot downgrade a locked Rullst package".into());
+    }
+    Ok(())
+}
+
+/// The first Rullst package that `Cargo.lock` holds at a version above `target`.
+pub(super) fn locked_above(
+    root: &Path,
+    target: &semver::Version,
+) -> Result<Option<(String, semver::Version)>, Box<dyn std::error::Error>> {
     let lock = match std::fs::read_to_string(root.join("Cargo.lock")) {
         Ok(lock) => lock,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
     };
     let document: toml::Value = toml::from_str(&lock)?;
@@ -155,13 +166,11 @@ fn validate_lockfile(
                 .get("version")
                 .and_then(toml::Value::as_str)
                 .ok_or("invalid lockfile package version")?;
-            if semver::Version::parse(version)?
-                .cmp_precedence(target)
-                .is_gt()
-            {
-                return Err("project preparation cannot downgrade a locked Rullst package".into());
+            let version = semver::Version::parse(version)?;
+            if version.cmp_precedence(target).is_gt() {
+                return Ok(Some((name.to_string(), version)));
             }
         }
     }
-    Ok(())
+    Ok(None)
 }

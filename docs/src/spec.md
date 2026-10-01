@@ -3721,7 +3721,8 @@ assistant, not a claim that compilation proves production compatibility.
   entries without truncating hardlinks. Unix mode/owner/group and Windows
   owner/group/DACL/integrity label enter the review digest, with a 1 MiB aggregate
   serialized access-policy limit. Unix extended ACLs/xattrs and special
-  mode bits require manual updates; Windows read-only/special attributes, alternate
+  mode bits require manual updates, except the SELinux `security.selinux`
+  label that the staged same-directory replacement receives anyway; Windows read-only/special attributes, alternate
   streams, resource/central-access policies and
   access policies that cannot be recreated exactly fail before source writes.
   Darwin extended ACLs are inspected through a narrowly scoped OS FFI module,

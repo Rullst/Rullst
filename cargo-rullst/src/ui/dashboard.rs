@@ -14,6 +14,9 @@ trait DashboardUi {
     fn show_home(&mut self, home: &Home) -> DashboardResult<()>;
     fn select(&mut self, prompt: &str, choices: &[String]) -> DashboardResult<usize>;
     fn input(&mut self, prompt: &str) -> DashboardResult<String>;
+    /// Whether `cargo geiger` runs; the audit item requests it only then,
+    /// because a requested but missing Geiger fails the whole audit.
+    fn geiger_available(&mut self) -> bool;
 }
 
 struct DialoguerUi {
@@ -55,6 +58,15 @@ impl DashboardUi for DialoguerUi {
         Ok(dialoguer::Input::with_theme(&self.theme)
             .with_prompt(prompt)
             .interact_text()?)
+    }
+
+    fn geiger_available(&mut self) -> bool {
+        std::process::Command::new("cargo")
+            .args(["geiger", "--version"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
     }
 }
 
@@ -235,7 +247,9 @@ where
             args.push("--ai".to_string());
             args.push("--compliance".to_string());
             args.push("--idor".to_string());
-            args.push("--geiger".to_string());
+            if ui.geiger_available() {
+                args.push("--geiger".to_string());
+            }
         }
         3 => args.push("make:billing".to_string()),
         4 => args.push("make:cors".to_string()),

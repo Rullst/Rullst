@@ -1,5 +1,6 @@
 // src/generators/foundry/mod.rs — Rullst Foundry: cloud deployment manifest & SSH pipeline.
 
+mod artifact;
 mod config;
 mod deploy;
 mod service;
@@ -182,11 +183,7 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
             .yellow()
     );
-    let app_port = if cfg.port.is_empty() {
-        "3000"
-    } else {
-        &cfg.port
-    };
+    let app_port = cfg.app_port();
     let health_cmd = format!(
         "attempt=0; while [ \"$attempt\" -lt 10 ]; do if curl -fsS --max-time 5 http://localhost:{app_port}/health > /dev/null; then exit 0; fi; attempt=$((attempt + 1)); sleep 2; done; exit 1"
     );

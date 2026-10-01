@@ -215,6 +215,28 @@ fn kubernetes_manifests_are_never_replaced_or_written_through_links() {
 }
 
 #[test]
+fn packaging_generators_name_the_binary_after_the_parsed_package() {
+    // Line matching took the library name from a [lib] table before
+    // [package], and `app` from `name="shop"` or kept a trailing comment.
+    let project = Project::new();
+    fs::write(
+        project.path("Cargo.toml"),
+        "[lib]\nname = \"shop_core\"\npath = \"src/lib.rs\"\n\n[package]\nname=\"shop\" # storefront\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+    )
+    .expect("project manifest");
+    project.succeeds(&["dockerize"]);
+    let dockerfile = project.read("Dockerfile");
+    assert!(
+        dockerfile.contains("/app/target/release/shop /app/shop\n"),
+        "{dockerfile}"
+    );
+    assert!(dockerfile.contains("CMD [\"/app/shop\"]"), "{dockerfile}");
+    project.succeeds(&["generate:buildah"]);
+    let script = project.read("build_buildah.sh");
+    assert!(script.contains("-t shop:latest ."), "{script}");
+}
+
+#[test]
 fn packaging_generators_refuse_to_replace_customized_files() {
     let project = Project::new();
     let customized = "# customized\n";

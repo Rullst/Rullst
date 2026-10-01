@@ -59,6 +59,14 @@ enum UpgradeError {
         "this project depends on Rullst {0}; this CLI upgrades from v12 or later. Upgrade to v12 first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst upgrade`, then rerun this CLI"
     )]
     RetiredSourceMajor(String),
+    #[error(
+        "upgrading to {target} would downgrade `{package}` ({current}); install a cargo-rullst release that is not older than the project, or pass `--to` with such a version"
+    )]
+    Downgrade {
+        package: String,
+        current: String,
+        target: Version,
+    },
 }
 
 pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Error>> {
@@ -107,6 +115,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         return Err(UpgradeError::RetiredSourceMajor(retired.join(", ")).into());
     }
 
+    reject_downgrade(&root, &target, &plans)?;
     scan::reject_symlinked_sources(&package_roots)?;
     let json_report = render_json_report(&root, &target, &plans)?;
     if options.json {
@@ -207,6 +216,58 @@ fn target_version(requested: Option<&str>) -> Result<Version, UpgradeError> {
         return Err(UpgradeError::IncompatibleCli { target, cli });
     }
     Ok(target)
+}
+
+/// Rejects a plan that would pin a requirement, or move `Cargo.lock`, below
+/// `target`, as an older CLI (or `--to`) would otherwise do silently.
+fn reject_downgrade(
+    root: &Path,
+    target: &Version,
+    plans: &[ManifestUpgradePlan],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for change in plans.iter().flat_map(|plan| &plan.changes) {
+        if requirement_exceeds(&change.from, target) {
+            return Err(UpgradeError::Downgrade {
+                package: change.package.clone(),
+                current: format!("requirement `{}`", change.from),
+                target: target.clone(),
+            }
+            .into());
+        }
+    }
+    if let Some((package, version)) = isolated::locked_above(root, target)? {
+        return Err(UpgradeError::Downgrade {
+            package,
+            current: format!("{version} in Cargo.lock"),
+            target: target.clone(),
+        }
+        .into());
+    }
+    Ok(())
+}
+
+/// Whether any lower bound of `requirement` admits only versions above `target`.
+fn requirement_exceeds(requirement: &str, target: &Version) -> bool {
+    let Ok(requirement) = semver::VersionReq::parse(requirement) else {
+        return false;
+    };
+    requirement.comparators.iter().any(|comparator| {
+        let mut minimum = Version::new(
+            comparator.major,
+            comparator.minor.unwrap_or(0),
+            comparator.patch.unwrap_or(0),
+        );
+        minimum.pre = comparator.pre.clone();
+        match comparator.op {
+            semver::Op::Greater => minimum >= *target,
+            semver::Op::Exact
+            | semver::Op::GreaterEq
+            | semver::Op::Tilde
+            | semver::Op::Caret
+            | semver::Op::Wildcard => minimum > *target,
+            _ => false,
+        }
+    })
 }
 
 fn cargo_command(root: &Path, args: &[&str]) -> bool {
@@ -340,6 +401,31 @@ mod tests {
             target_version(Some(&incompatible)),
             Err(UpgradeError::IncompatibleCli { .. })
         ));
+    }
+
+    #[test]
+    fn requirements_above_the_target_are_downgrades() {
+        let target = Version::parse("13.0.0").unwrap();
+        for newer in [
+            "=13.2.0", "13.1", "^13.0.1", "~13.0.5", ">=14", ">13.0.0", "13.1.*",
+        ] {
+            assert!(requirement_exceeds(newer, &target), "{newer}");
+        }
+        for not_newer in [
+            "=13.0.0",
+            "13",
+            "12",
+            ">=12, <14",
+            "<13.5",
+            "*",
+            "13.0.0-rc.1",
+        ] {
+            assert!(!requirement_exceeds(not_newer, &target), "{not_newer}");
+        }
+        // A stable requirement is above a prerelease CLI of the same version.
+        let prerelease = Version::parse("13.0.0-alpha.1").unwrap();
+        assert!(requirement_exceeds("13", &prerelease));
+        assert!(!requirement_exceeds("13.0.0-alpha.1", &prerelease));
     }
 
     #[test]

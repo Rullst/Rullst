@@ -187,19 +187,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 &[PathBuf::from("Dockerfile")],
                 REGENERATE_HINT,
             )?;
-            let mut proj_name = "app".to_string();
-            if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
-                for line in toml_content.lines() {
-                    if line.starts_with("name = ") {
-                        proj_name = line
-                            .replace("name = ", "")
-                            .replace("\"", "")
-                            .trim()
-                            .to_string();
-                        break;
-                    }
-                }
-            }
+            // The binary and image are named after `[package].name`, as in `deploy`.
+            let proj_name = crate::generators::platform_name::package_name(Path::new("Cargo.toml"))
+                .unwrap_or_else(|| "app".to_string());
             crate::generators::project::generate_docker_files(
                 std::path::Path::new("."),
                 &proj_name,
@@ -213,19 +203,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 &[PathBuf::from("build_buildah.sh")],
                 REGENERATE_HINT,
             )?;
-            let mut proj_name = "app".to_string();
-            if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
-                for line in toml_content.lines() {
-                    if line.starts_with("name = ") {
-                        proj_name = line
-                            .replace("name = ", "")
-                            .replace("\"", "")
-                            .trim()
-                            .to_string();
-                        break;
-                    }
-                }
-            }
+            // The binary and image are named after `[package].name`, as in `deploy`.
+            let proj_name = crate::generators::platform_name::package_name(Path::new("Cargo.toml"))
+                .unwrap_or_else(|| "app".to_string());
             crate::generators::project::generate_buildah_script(
                 std::path::Path::new("."),
                 &proj_name,
@@ -288,10 +268,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             })?;
         }
         Commands::Dev { ts_sync } => {
-            if *ts_sync {
-                let _ = crate::generators::ts::generate_ts_sdk();
-            }
-            crate::generators::dev::run_dev_server(false)?;
+            crate::generators::dev::run_dev(false, *ts_sync)?;
         }
         Commands::Pkg { action, name } => match (action.as_str(), name) {
             ("add", Some(pkg_name)) => {

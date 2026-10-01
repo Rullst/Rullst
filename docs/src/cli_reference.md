@@ -170,7 +170,10 @@ cargo rullst new academy --default --blueprint lms --skip-initial-migration
 ### `cargo rullst upgrade`
 Plans or applies a transactional application upgrade. The target defaults to
 the exact installed `cargo-rullst` version; `--to <VERSION>` accepts an exact
-version in the same major release train as that CLI.
+version in the same major release train as that CLI. The command fails before
+writing anything when the target is older than a managed requirement's lower
+bound or than a Rullst package locked in `Cargo.lock`, so an older CLI never
+downgrades the project; install a CLI that is not older than the project.
 
 ```bash
 # Human-readable plan; no writes or dependency resolution
@@ -532,7 +535,8 @@ is supported. Keep both private source copies and `application.json` until finis
 Replacement is atomic per file, not for the whole workspace. Partial failures
 retain recovery evidence and report progress. Unix mode/owner/group and Windows
 owner/group/DACL/integrity label are bound to the review (1 MiB total policy budget). Unix extended ACLs/xattrs and special
-mode bits, Windows read-only/special attributes, alternate streams, resource/central-access
+mode bits (except the SELinux `security.selinux` label, which the replacement
+staged in the same directory receives like any new file there), Windows read-only/special attributes, alternate streams, resource/central-access
 policies and policies that cannot be
 recreated exactly require manual handling. Other updater cache configurations and
 filesystem aliases do not share the lock. Forced termination during staging may
@@ -543,8 +547,8 @@ Recovery does not undo application-code effects, databases or deployments.
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
 * **Subcommands:**
-  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`.
-  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project.
+  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`. In a virtual workspace manifest it adds the entry to `[workspace.dependencies]`, for members to use with `{ workspace = true }`.
+  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project (the workspace dependencies of a virtual workspace manifest).
 
 An unknown action, or `add` without a package name, fails with a non-zero exit
 status.
@@ -1160,6 +1164,9 @@ only in debug/development. Readiness verifies that marker, not just an open port
 Changing the configured port requires restarting the CLI. In-memory state and
 unsaved browser state reset during reload. The process receives a bounded
 shutdown interval before forced termination; this is a development facility.
+Ctrl+C, SIGTERM (an IDE stop button or `kill`) and SIGHUP (a closed terminal)
+end `dev` and `dash` the same way: the application's process group is stopped
+and its executable snapshot removed (on Windows, Ctrl+C and closing the console).
 
 No scaffold question is required: `dev` and `dash` enable auto-reload, while
 `cargo run` runs the application normally. The legacy `--hot-reload` scaffold
@@ -1171,7 +1178,7 @@ See [Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.m
 for limitations, failure recovery and the v13 architecture decision.
 
 * **Optional Flags:**
-  * `--ts-sync`: Automatically watches controller and model file changes and syncs the TypeScript client SDK (`sdk.ts`) live during development.
+  * `--ts-sync`: Regenerates the TypeScript client SDK (`rullst-client.ts`, as `generate:ts` writes it from the routes in `src/main.rs` and `src/lib.rs`) after the initial build and after every successful rebuild. A failed generation is reported and the application keeps running.
 
 ### `cargo rullst build:client`
 Builds the library for `wasm32-unknown-unknown`, runs `wasm-bindgen`, and writes a
@@ -1198,7 +1205,9 @@ Injects infrastructure files into a pre-existing project (similar to the flags
 used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
 absent) and `nixify` writes `flake.nix` and `.envrc`. Both commands, like
 `generate:buildah` for `build_buildah.sh`, refuse to replace an existing file;
-move a customized file aside to regenerate its template.
+move a customized file aside to regenerate its template. The Dockerfile's binary
+and the Buildah image are named after `[package].name`, read with a TOML parser
+(`app` when `Cargo.toml` has no package name).
 
 ### `cargo rullst foundry:init`
 Generates the `Foundry.toml` deployment manifest at the project root containing
@@ -1214,11 +1223,20 @@ systemd provisioning, `scp` transfer, environment/Caddy configuration, service
 restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
 reviewed `curl`, systemd, and Caddy installation plus root or passwordless
 non-interactive `sudo`. Candidate files are staged under an application-specific
-`/opt/rullst/<app>` root: the binary is uploaded into
+`/opt/rullst/<app>` root: the binary is the executable Cargo reports for the
+package (so `CARGO_TARGET_DIR`, `build.target-dir`, a workspace target directory
+and `build.target` are honored; with several binaries, `package.default-run` or
+the one named after the package is chosen), uploaded into
 `/opt/rullst/<app>/incoming` (mode `0700`, owned by the SSH user), and its
 owner and the SHA-256 of the local build are checked before it is installed.
 The Caddy configuration is validated, and `.previous` copies of replaced files
-are retained. The application runs as a dedicated
+are retained. The service environment file holds the `[env]` table plus
+`PORT`, the `[app] port` (default 3000) that Caddy proxies to and the health
+check probes, unless `[env]` sets `PORT` itself; an `[env] PORT` different from
+`[app] port` is rejected. It also sets `HOST="127.0.0.1"` unless `[env]` sets
+`HOST` or `RULLST_HOST`: a production server otherwise binds `0.0.0.0`, and only
+Caddy needs that plain-HTTP port. Keep it private when overriding `HOST`. The
+application runs as a dedicated
 `rullst-<app>` system account (created with `useradd`) under a sandboxed unit
 (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
 capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
@@ -1261,16 +1279,23 @@ route, dependency, and local network patterns.
 * **Optional Flags:**
   * `--ai`: Prints fixed, rule-based remediation suggestions; no AI model or network service is called.
   * `--compliance`: Generates the evidence report described above (no `PASS` results); it is not a SOC 2, ISO 27001, or transport certification.
-  * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. Manual review and runtime negative tests remain required.
+  * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. The marker goes on the route's line or the line above it; in a multi-line `.route(` call, on the line above the path literal. The guard may appear anywhere in the same crate's `src` tree outside comments and `#[cfg(test)]` items, so the check does not prove that the route is mounted behind it. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
 
-The source scans (unsafe syntax, IDOR/BOLA routes and listener bindings) do not
-follow symlinked files or directories and skip `target/` and `.git/`. A walk
+In a package directory, the unsafe and IDOR/BOLA scans cover its `src` and the
+`src` of every workspace member below it, as listed by `cargo metadata`; in a
+directory without `src`, such as a virtual workspace root, the IDOR/BOLA scan
+walks every `src` tree below it. The source scans (unsafe syntax, IDOR/BOLA
+routes and listener bindings) do not follow symlinked files or directories and
+skip `target/` and `.git/`. A walk
 stops at 64 directory levels or 250,000 entries; reaching either bound is
-reported as a finding, so the scan fails as incomplete instead of passing.
+reported as a finding, so the scan fails as incomplete instead of passing. The
+route and listener scans skip each top-level `#[cfg(test)]` item (such as
+`mod tests;` or an inline test module) on its own; code after it is still
+scanned.
 
 SBOM components come from `Cargo.lock`. Only crates.io packages receive the
 plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a

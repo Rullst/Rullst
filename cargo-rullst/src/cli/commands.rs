@@ -296,7 +296,7 @@ pub enum Commands {
     },
     /// Starts the Rullst development server with neon spinners
     Dev {
-        /// Optional: Automatically sync TypeScript SDK (sdk.ts) on file changes
+        /// Optional: Regenerate the TypeScript SDK (rullst-client.ts) after each successful build
         #[arg(long = "ts-sync")]
         ts_sync: bool,
     },

@@ -22,7 +22,8 @@ pub fn generate_foundry_toml_template(project_name: &str) -> String {
 name = "{project_name}"
 # The public domain that will serve your app (Caddy may manage HTTPS after DNS and network validation)
 domain = "yourdomain.com"
-# The internal port your Rullst server binds to
+# The internal port your Rullst server binds to. Foundry writes it to the
+# service environment as PORT; Caddy and the health check use the same port.
 port = 3000
 
 [deploy]
@@ -59,6 +60,8 @@ auto_https = true
 # Environment variables loaded by the systemd service at runtime.
 # Add your application secrets here (they will NOT be committed if you gitignore Foundry.toml).
 RULLST_ENV = "production"
+# HOST defaults to 127.0.0.1 so that only Caddy reaches the plain-HTTP port.
+# HOST = "127.0.0.1"
 APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
 DATABASE_URL = "sqlite:///opt/rullst/{project_name}/data/db.sqlite"
 # STRIPE_SECRET_KEY = ""
@@ -82,6 +85,25 @@ pub struct FoundryConfig {
     pub target_triple: String,
     pub auto_https: String,
     pub env_vars: Vec<(String, String)>,
+}
+
+impl FoundryConfig {
+    /// The value `[env]` sets for `key`, if any.
+    pub fn env_value(&self, key: &str) -> Option<&str> {
+        self.env_vars
+            .iter()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// The port the service listens on: `[app] port`, else `[env] PORT`, else 3000.
+    pub fn app_port(&self) -> &str {
+        if self.port.is_empty() {
+            self.env_value("PORT").unwrap_or("3000")
+        } else {
+            &self.port
+        }
+    }
 }
 
 pub fn parse_foundry_config(content: &str) -> Result<FoundryConfig, FoundryConfigError> {
@@ -210,6 +232,16 @@ pub fn validate_foundry_config(cfg: &FoundryConfig) -> Result<(), FoundryConfigE
     {
         return Err(FoundryConfigError::Invalid(
             "application and SSH ports must be integers from 1 through 65535".to_string(),
+        ));
+    }
+    // Caddy, the health check and the unit's capabilities use app.port; the
+    // application binds to PORT. They must name the same port.
+    if let Some(port) = cfg.env_value("PORT")
+        && (!valid_port(port)
+            || (!cfg.port.is_empty() && port.parse::<u16>().ok() != cfg.port.parse::<u16>().ok()))
+    {
+        return Err(FoundryConfigError::Invalid(
+            "env.PORT must be a port from 1 through 65535 that equals app.port".to_string(),
         ));
     }
     if cfg.provider.is_empty()
@@ -405,6 +437,29 @@ mod tests {
             Err(FoundryConfigError::Invalid(_))
         ));
         assert!(parse_foundry_config("[app\nname = 1").is_err());
+    }
+
+    #[test]
+    fn the_service_port_comes_from_app_port_or_a_matching_env_port() {
+        let mut config = parse_foundry_config(&usable_template()).unwrap();
+        assert_eq!(config.app_port(), "3000");
+        config.port = String::new();
+        assert_eq!(config.app_port(), "3000");
+        config.env_vars.push(("PORT".to_owned(), "8080".to_owned()));
+        assert_eq!(config.app_port(), "8080");
+        validate_foundry_config(&config).unwrap();
+
+        config.port = "8080".to_owned();
+        validate_foundry_config(&config).unwrap();
+        for (app, env) in [("3000", "8080"), ("8080", "0"), ("8080", "http")] {
+            config.port = app.to_owned();
+            config.env_vars.retain(|(name, _)| name != "PORT");
+            config.env_vars.push(("PORT".to_owned(), env.to_owned()));
+            assert!(
+                matches!(validate_foundry_config(&config), Err(FoundryConfigError::Invalid(ref message)) if message.starts_with("env.PORT")),
+                "{app}/{env}"
+            );
+        }
     }
 
     #[test]
