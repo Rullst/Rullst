@@ -14,6 +14,14 @@ and Checkout Sessions. The generated integration uses platform accounts, not
 Stripe Connect impersonation. Configure the webhook endpoint with Stripe API
 version `2025-03-31.basil` (see the capital adapter's pinned version).
 
+Every `BILLING_*` setting is read with `rullst::config::project_setting`: the
+process environment first, then the project's `.env`, which never overrides it.
+An unreadable or malformed `.env` makes billing unavailable instead of falling
+back to defaults. Production checks use the environment the running server
+enforces (`RULLST_ENV`, then `APP_ENV`, from the process and then from the
+`.env` the server read, then `[app].env` in `Rullst.toml`); an invalid value is
+treated as production.
+
 Live keys alone do not activate real charges. After reviewing the deployed
 offer, merchant settings, webhook, reconciliation and sandbox evidence, set
 `BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. Without that exact

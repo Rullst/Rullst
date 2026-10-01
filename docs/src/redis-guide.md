@@ -160,7 +160,9 @@ script. `RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)`
 accepts 1–100,000 for each (pass the configured driver to `Queue::custom`).
 Failed jobs recorded before this bound was introduced are not indexed, so they
 are neither counted nor evicted, but `purge_failed_jobs` removes them.
-`list_all_jobs` returns at most 1,000 rows, failures and dead letters first;
+`list_all_jobs` returns at most 1,000 rows, failures and dead letters first,
+and `list_job_previews` (unpublished v13) returns the same rows with each
+payload and error cut to a byte budget inside one Lua script;
 `retry_failed_job` moves a failed job back to the pending list with its attempt
 counter intact; `purge_failed_jobs` deletes every failed job and dead letter. Like the cache, each driver shares one lazily opened
 multiplexed connection and reconnects after a failed operation. Production validation must still cover Redis persistence,

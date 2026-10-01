@@ -79,7 +79,9 @@
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
   Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
-  `purge_failed_jobs`.
+  `purge_failed_jobs`. SQLite and Redis implement the unpublished v13
+  `list_job_previews`, which cuts each payload and error to a byte budget in
+  SQL or Lua.
 - **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send
   HTMX requests their error fragment with `200 OK` plus
   `X-Rullst-Validation-Status: 400|422`; other clients keep `400`/`422` JSON.

@@ -29,7 +29,7 @@ fn bound_scope(namespace: &str, identity: &BillingIdentity) -> Result<Entitlemen
     EntitlementScope::new(namespace.replace(':', "."), subject).map_err(|_| UNAVAILABLE)
 }
 fn policy(config: &BillingConfig) -> Result<EntitlementPolicy> {
-    let plans = std::env::var("BILLING_REPORT_PLAN_IDS").map_err(|_| UNAVAILABLE)?;
+    let plans = super::super::setting("BILLING_REPORT_PLAN_IDS").map_err(|_| UNAVAILABLE)?.ok_or(UNAVAILABLE)?;
     if plans.len() > 12864 { return Err(UNAVAILABLE); }
     let plans = plans.split(',').map(str::trim).collect::<Vec<_>>();
     if plans.iter().any(|plan| !config.allowed_plan_ids.contains(*plan)) {

@@ -1,6 +1,9 @@
 #![cfg(feature = "queue-redis")]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+#[path = "queue_scheduling_live/preview.rs"]
+mod preview;
+
 use rullst_core::queue::{QueueDriver, RedisDriver};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use testcontainers::GenericImage;
