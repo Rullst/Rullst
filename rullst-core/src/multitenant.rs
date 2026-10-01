@@ -133,7 +133,9 @@ fn request_host<B>(req: &axum::http::Request<B>) -> Option<&str> {
 /// labels is the tenant (`tenant1.example.com` -> `tenant1`). With one, the
 /// tenant is the label immediately to the left of it. IP addresses, shorter
 /// hosts, hosts outside the base domain and a `www` label have no tenant
-/// subdomain, so `domain_fallback` applies.
+/// subdomain, so `domain_fallback` applies. An empty label (a malformed host
+/// such as `.example.com`) is returned as an empty request, which membership
+/// selection rejects.
 fn extract_subdomain(host: &str, base_domain: Option<&str>) -> Option<String> {
     let host_only = host.split(':').next()?;
     if host_only.parse::<std::net::IpAddr>().is_ok() {
@@ -161,7 +163,11 @@ fn extract_subdomain(host: &str, base_domain: Option<&str>) -> Option<String> {
             parts[0]
         }
     };
-    if label.is_empty() || label.eq_ignore_ascii_case("www") {
+    // A `www` label means "no tenant subdomain". An empty label comes from a
+    // malformed host such as `.example.com`; it is returned as a requested
+    // (empty) tenant so membership selection rejects it instead of falling
+    // back to the caller's default tenant.
+    if label.eq_ignore_ascii_case("www") {
         return None;
     }
     Some(label.to_string())

@@ -14,6 +14,13 @@ fn test_extract_subdomain() {
     assert_eq!(extract_subdomain("127.0.0.1", None), None);
     assert_eq!(extract_subdomain("www.example.com", None), None);
     assert_eq!(extract_subdomain("WWW.example.com:443", None), None);
+    // A malformed host with an empty first label is an (empty) request, which
+    // membership selection rejects, not "no subdomain" with its default tenant.
+    assert_eq!(extract_subdomain(".example.com", None), Some(String::new()));
+    assert_eq!(
+        extract_subdomain(".escola.com.br", Some("escola.com.br")),
+        Some(String::new())
+    );
 }
 
 #[test]
