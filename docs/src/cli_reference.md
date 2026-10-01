@@ -597,9 +597,25 @@ Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
 
-Generated billing currently accepts only development fixtures with empty or
-`mock_*` credentials; real or mixed credentials return HTTP 503 until durable
-owner/attempt binding and atomic webhook processing are integrated.
+Empty or `mock_*` credentials select a local development fixture, which is
+refused in production. Other credentials select a real provider profile that
+creates provider customers, checkout sessions and portal sessions:
+
+* **Stripe** (`BILLING_PROVIDER=stripe`) persists the owner/customer/attempt
+  bindings and processes signed webhooks atomically. It requires
+  `BILLING_ACCOUNT_ID=acct_...`, an `sk_test_`/`rk_test_` or
+  `sk_live_`/`rk_live_` `BILLING_API_KEY`, a strong `BILLING_WEBHOOK_SECRET` and
+  an HTTPS `BILLING_REDIRECT_URL`; live keys additionally require
+  `BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`.
+* **Paddle** (`BILLING_PROVIDER=paddle`) is a recurring candidate configured with
+  `BILLING_ACCOUNT_ID`, `BILLING_PADDLE_ENVIRONMENT` (`sandbox` or `live`, the
+  latter also requiring the acknowledgement) and `BILLING_PADDLE_PAYMENT_LINK`.
+* **Lemon Squeezy** remains fixture-only.
+
+Mixed mock/real credentials, incomplete profile configuration and real Lemon
+Squeezy credentials return HTTP 503. The generated `BILLING.md` lists the
+permissions, webhook events, recovery procedures and remaining limits of each
+profile.
 
 Hosted checkout also requires the submitting page's CSP to allow its exact
 reviewed destination in `form-action`. The SaaS starter selects Stripe and
