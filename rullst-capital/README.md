@@ -686,7 +686,8 @@ before invoking either boundary.
 
 Use one `BillingSubject` for the authenticated tenant/workspace so every member
 consumes the same limit. `Billable::quota_request` derives the limit from the
-subscription owner's tier rather than a client payload. `QuotaGate` atomically
+subscription owner's tier rather than a client payload; a tier limit of zero
+returns `QuotaError::LimitExceeded`, like a used-up limit. `QuotaGate` atomically
 reserves before calling the application operation, skips exact idempotent
 replays and releases a fresh reservation when the callback returns an error.
 `QuotaExecution::Replay` means only that the key is already claimed: the first

@@ -327,7 +327,9 @@ authenticated middleware must first establish the active `TenantContext`; do
 not build a billing subject from an arbitrary header or request field.
 
 `Billable::quota_request` reads the limit from the subscription owner's
-`tier_limit` implementation. Give every attempted creation a stable event key,
+`tier_limit` implementation. A limit of `Some(0)` (a plan that grants none of
+the feature) returns `QuotaError::LimitExceeded`, the same denial as a used-up
+limit. Give every attempted creation a stable event key,
 normally the ID of the application command/request rather than a random value
 generated on every retry.
 
