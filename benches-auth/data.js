@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790814625875,
+  "lastUpdate": 1790818587076,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13809,6 +13809,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4997,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f790903399442605c09c489fefee90d0715ba6f4",
+          "message": "Merge pull request #359 from Rullst/fix/v13-security-low-fixes\n\nfix(security,core): low-severity WAF, CSWSH, redaction, CSRF, tenancy and PII review fixes",
+          "timestamp": "2026-09-30T22:21:57-03:00",
+          "tree_id": "3ff10dd5394f4381ccff5fbf7ab0580b3e5df7b2",
+          "url": "https://github.com/Rullst/Rullst/commit/f790903399442605c09c489fefee90d0715ba6f4"
+        },
+        "date": 1790818586560,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1004,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 799,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1820,
+            "range": "± 318",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4432,
+            "range": "± 67",
             "unit": "ns/iter"
           }
         ]
