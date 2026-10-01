@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790853567353,
+  "lastUpdate": 1790863451935,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23799,6 +23799,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2416,
             "range": "± 51",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c8a2715dcb1c391127a1a8d6e7e788e64fdb1f4",
+          "message": "Merge pull request #372 from Rullst/fix/v13-facade-examples-low-fixes\n\nfix(facade,examples): wasm32-safe facade, tenant-scoped CSP-safe blog showcase and honest examples",
+          "timestamp": "2026-10-01T10:58:54-03:00",
+          "tree_id": "dc99f576d5b147c88b3b42732db0593b577686f7",
+          "url": "https://github.com/Rullst/Rullst/commit/2c8a2715dcb1c391127a1a8d6e7e788e64fdb1f4"
+        },
+        "date": 1790863450147,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 582,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 750,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 481,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1793,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
