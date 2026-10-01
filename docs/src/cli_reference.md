@@ -814,7 +814,9 @@ Guided deployment helper that generates cloud manifests (`fly.toml`,
 `railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
 selected provider CLI where supported. A provider CLI that is not installed
 only prints the manual commands; one that runs and fails (`flyctl deploy`,
-`railway up`) makes `deploy` exit non-zero. Credentials, migrations,
+`railway up`) makes `deploy` exit non-zero. An unknown `--platform` value is
+rejected before anything is written, including the `Dockerfile` the command
+otherwise scaffolds when it is missing. Credentials, migrations,
 availability, DNS/TLS and rollback remain operator responsibilities.
 
 ### `cargo rullst auth`

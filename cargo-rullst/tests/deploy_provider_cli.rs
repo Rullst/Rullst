@@ -85,3 +85,19 @@ fn failed_provider_deployments_exit_nonzero_and_missing_tools_stay_advisory() {
         assert!(text(&deployed).contains("successfully deployed"));
     }
 }
+
+#[test]
+fn unknown_platforms_fail_before_scaffolding_a_dockerfile() {
+    let fixture = Fixture::new();
+    fs::remove_file(fixture.root.join("Dockerfile")).expect("start without a Dockerfile");
+
+    let rejected = fixture.deploy("flyio");
+    assert!(!rejected.status.success(), "{}", text(&rejected));
+    assert!(text(&rejected).contains("Unknown platform 'flyio'"));
+    for generated in ["Dockerfile", ".dockerignore", "fly.toml"] {
+        assert!(
+            !fixture.root.join(generated).exists(),
+            "{generated} was written for a rejected platform"
+        );
+    }
+}

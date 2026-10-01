@@ -7,14 +7,38 @@ use crate::blueprints::deploy::{
     CADDYFILE, DOCKER_COMPOSE_PROD, FLY_TOML, RAILWAY_JSON, RENDER_YAML,
 };
 
+/// A supported deployment target, parsed before anything is written.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Platform {
+    Fly,
+    Railway,
+    Render,
+    Vps,
+}
+
+impl Platform {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value.to_lowercase().as_str() {
+            "fly" | "fly.io" => Ok(Self::Fly),
+            "railway" => Ok(Self::Railway),
+            "render" => Ok(Self::Render),
+            "vps" => Ok(Self::Vps),
+            other => Err(format!(
+                "Unknown platform '{other}'. Supported: fly, railway, render, vps"
+            )),
+        }
+    }
+}
+
 pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
         "🚀 Rullst Guided Cloud Deployment Wizard".bold().cyan()
     );
 
+    // Reject an unknown platform before the Dockerfile scaffold mutates the project.
     let platform = match platform_arg {
-        Some(p) => p.to_lowercase(),
+        Some(p) => Platform::parse(p)?,
         None => {
             let theme = dialoguer::theme::ColorfulTheme::default();
             let options = &[
@@ -30,10 +54,10 @@ pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::
                 .interact()?;
 
             match selection {
-                1 => "railway".to_string(),
-                2 => "render".to_string(),
-                3 => "vps".to_string(),
-                _ => "fly".to_string(),
+                1 => Platform::Railway,
+                2 => Platform::Render,
+                3 => Platform::Vps,
+                _ => Platform::Fly,
             }
         }
     };
@@ -55,18 +79,11 @@ pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::
         )?;
     }
 
-    match platform.as_str() {
-        "fly" | "fly.io" => deploy_fly(&project_name)?,
-        "railway" => deploy_railway(&project_name)?,
-        "render" => deploy_render(&project_name)?,
-        "vps" => deploy_vps(&project_name)?,
-        _ => {
-            return Err(format!(
-                "Unknown platform '{}'. Supported: fly, railway, render, vps",
-                platform
-            )
-            .into());
-        }
+    match platform {
+        Platform::Fly => deploy_fly(&project_name)?,
+        Platform::Railway => deploy_railway(&project_name)?,
+        Platform::Render => deploy_render(&project_name)?,
+        Platform::Vps => deploy_vps(&project_name)?,
     }
 
     Ok(())
@@ -220,4 +237,19 @@ fn deploy_vps(_project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("   DOMAIN=yourdomain.com docker compose -f docker-compose.prod.yml up -d --build");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Platform;
+
+    #[test]
+    fn platforms_are_parsed_case_insensitively_and_unknown_ones_rejected() {
+        assert_eq!(Platform::parse("Fly.io"), Ok(Platform::Fly));
+        assert_eq!(Platform::parse("RAILWAY"), Ok(Platform::Railway));
+        assert_eq!(Platform::parse("render"), Ok(Platform::Render));
+        assert_eq!(Platform::parse("vps"), Ok(Platform::Vps));
+        let error = Platform::parse("flyio").unwrap_err();
+        assert!(error.contains("Unknown platform 'flyio'"));
+    }
 }
