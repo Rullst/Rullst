@@ -1,8 +1,9 @@
 //! Unit tests for the Traffic Shield and the rate limiter middleware.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use super::shield::{TrafficPressure, classify_traffic_pressure};
 use super::*;
-use axum::http::Request;
+use axum::http::{Request, StatusCode};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 #[test]

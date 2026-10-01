@@ -273,6 +273,16 @@ A prepared version section does not establish that its tag or crates exist.
 - The host-specific `.cargo/config.toml` linker selection is excluded from Git
   and Docker builds.
 
+### Large module splits
+
+- Ten oversized production modules are split into focused submodules under the
+  ~500-line target: rullst-auth `auth`, rullst-core `server::builder` and
+  `resilience`, rullst-connect `extractors` and the Auth0 provider, rullst-orm
+  `privacy` and pool placeholders, rullst-capital `webhook` and its SQL replay
+  store, and rullst-messaging `model`. Public paths, signatures and behaviour
+  are unchanged; the `TM-AUTH-01` evidence source now points to
+  `rullst-auth/src/auth/tests.rs`.
+
 ### Labs: bring your own runner
 
 - The unpublished experimental `rullst-labs-runner` candidate (a Linux
