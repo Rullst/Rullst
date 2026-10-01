@@ -1,4 +1,9 @@
+//! Static ORM model extraction shared by `make:migration:auto` and
+//! `inspect schema`. It mirrors `rullst_orm::schema_diff`; keep the two parsers
+//! in step (the CLI does not depend on `rullst-orm`).
+
 use std::fs;
+use std::path::Path;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,8 +21,12 @@ pub struct ParsedTable {
 }
 
 pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
+    extract_tables_from_root("src")
+}
+
+fn extract_tables_from_root(root: impl AsRef<Path>) -> Vec<ParsedTable> {
     let mut tables = Vec::new();
-    let walker = WalkDir::new("src").into_iter().filter_map(|e| e.ok());
+    let walker = WalkDir::new(root).into_iter().filter_map(|e| e.ok());
 
     for entry in walker {
         if entry.path().extension().is_some_and(|ext| ext == "rs") {
@@ -34,7 +43,13 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
                         for attr in &item_struct.attrs {
                             if attr.path().is_ident("derive") {
                                 let _ = attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("Orm") {
+                                    // `Orm`, `rullst_orm::Orm` or another path to it.
+                                    if meta
+                                        .path
+                                        .segments
+                                        .last()
+                                        .is_some_and(|last| last.ident == "Orm")
+                                    {
                                         has_orm_derive = true;
                                     }
                                     Ok(())
@@ -42,13 +57,15 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
                             }
                             if attr.path().is_ident("orm") {
                                 let _ = attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("table")
-                                        && let Ok(value) = meta.value()
-                                        && let Ok(lit) = value.parse::<syn::LitStr>()
+                                    if (meta.path.is_ident("table")
+                                        || meta.path.is_ident("table_name"))
+                                        && meta.input.peek(syn::Token![=])
                                     {
-                                        table_name = Some(lit.value());
+                                        table_name =
+                                            Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                                        return Ok(());
                                     }
-                                    Ok(())
+                                    skip_meta_value(&meta)
                                 });
                             }
                         }
@@ -76,7 +93,7 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
                                                     if meta.path.is_ident("skip") {
                                                         skip = true;
                                                     }
-                                                    Ok(())
+                                                    skip_meta_value(&meta)
                                                 });
                                             }
                                         }
@@ -107,6 +124,18 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
     tables
 }
 
+/// Consumes the value of an option this extractor does not read, so the
+/// options after it (for example `table` after `tenant_column = "..."`) are
+/// still visited instead of aborting the attribute at the first value.
+fn skip_meta_value(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
+    if meta.input.peek(syn::Token![=]) {
+        meta.value()?.parse::<syn::Expr>()?;
+    } else if meta.input.peek(syn::token::Paren) {
+        meta.parse_nested_meta(|nested| skip_meta_value(&nested))?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mutants, mutants::skip)]
 fn extract_type_name(ty: &syn::Type) -> (String, bool) {
     if let syn::Type::Path(type_path) = ty
@@ -123,4 +152,87 @@ fn extract_type_name(ty: &syn::Type) -> (String, bool) {
         return (type_name, false);
     }
     ("Unknown".to_string(), false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tables_in(source: &str) -> Vec<ParsedTable> {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(directory.path().join("models.rs"), source).unwrap();
+        let mut tables = extract_tables_from_root(directory.path());
+        tables.sort_by(|left, right| left.table_name.cmp(&right.table_name));
+        tables
+    }
+
+    #[test]
+    fn explicit_default_optional_and_skipped_fields_are_extracted() {
+        let tables = tables_in(
+            r#"
+                #[derive(Debug, Orm)]
+                #[orm(table = "people")]
+                struct Person {
+                    id: i64,
+                    name: Option<String>,
+                    #[orm(skip)]
+                    transient: String,
+                    #[sqlx(skip)]
+                    computed: i32,
+                }
+
+                #[derive(Orm)]
+                struct BlogPost { id: u64, payload: Vec<u8> }
+
+                #[derive(Debug)]
+                struct NotAModel { id: i64 }
+            "#,
+        );
+        let names: Vec<_> = tables.iter().map(|t| t.table_name.as_str()).collect();
+        assert_eq!(names, ["blogposts", "people"]);
+        assert_eq!(tables[0].fields[1].rust_type, "Vec");
+        assert_eq!(
+            tables[1].fields,
+            [
+                ParsedField {
+                    name: "id".to_string(),
+                    rust_type: "i64".to_string(),
+                    is_option: false,
+                },
+                ParsedField {
+                    name: "name".to_string(),
+                    rust_type: "String".to_string(),
+                    is_option: true,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn table_options_after_other_values_and_qualified_derives_are_extracted() {
+        let tables = tables_in(
+            r#"
+                #[derive(FromRow, Orm)]
+                #[orm(tenant_column = "account_id", soft_delete(column = "removed_at"), table = "user_projects")]
+                struct Project {
+                    id: i64,
+                    account_id: String,
+                    #[orm(encrypted, skip)]
+                    cached: String,
+                }
+
+                #[derive(rullst_orm::Orm)]
+                #[orm(table_name = "audit_events", auditable)]
+                struct AuditEvent { id: i64 }
+            "#,
+        );
+        let names: Vec<_> = tables.iter().map(|t| t.table_name.as_str()).collect();
+        assert_eq!(names, ["audit_events", "user_projects"]);
+        assert_eq!(tables[1].struct_name, "Project");
+        assert_eq!(
+            tables[1].fields.len(),
+            2,
+            "the skipped field must be omitted"
+        );
+    }
 }

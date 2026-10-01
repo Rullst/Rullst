@@ -172,17 +172,101 @@ fn inspect_models() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn inspect_schema() -> Result<(), Box<dyn std::error::Error>> {
+    // A project-provided snapshot keeps precedence; Rullst does not write one.
     let schema_file = Path::new("rullst-schema.json");
     if schema_file.exists() {
         let content = fs::read_to_string(schema_file)?;
-        println!("{}", "📄 Structural Schema (rullst-schema.json):".bold());
-        println!("{}", content);
-    } else {
         println!(
             "{}",
-            "⚠️ 'rullst-schema.json' not found. Run 'cargo rullst dev' to generate schema."
-                .yellow()
+            "📄 Project-provided schema snapshot (rullst-schema.json):".bold()
+        );
+        println!("{}", content);
+        return Ok(());
+    }
+
+    let tables = super::schema_diff::extract_tables_from_ast();
+    println!(
+        "{}",
+        "📄 ORM model schema derived from #[derive(Orm)] structs under src/:".bold()
+    );
+    println!("{}", serde_json::to_string_pretty(&model_schema(&tables))?);
+    if tables.is_empty() {
+        println!(
+            "{}",
+            "  (No #[derive(Orm)] structs found under src/)".dimmed()
         );
     }
     Ok(())
+}
+
+/// Structural JSON for the statically extracted ORM models, sorted by table.
+fn model_schema(tables: &[super::schema_diff::ParsedTable]) -> serde_json::Value {
+    let mut tables: Vec<_> = tables.iter().collect();
+    tables.sort_by(|left, right| {
+        (&left.table_name, &left.struct_name).cmp(&(&right.table_name, &right.struct_name))
+    });
+    serde_json::json!({
+        "source": "src",
+        "models": tables
+            .iter()
+            .map(|table| {
+                serde_json::json!({
+                    "struct": table.struct_name,
+                    "table": table.table_name,
+                    "fields": table
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            serde_json::json!({
+                                "name": field.name,
+                                "rust_type": field.rust_type,
+                                "optional": field.is_option,
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                })
+            })
+            .collect::<Vec<_>>(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::schema_diff::{ParsedField, ParsedTable};
+    use super::*;
+
+    #[test]
+    fn model_schema_lists_tables_fields_and_optionality_in_table_order() {
+        let table = |table: &str, structure: &str, fields: Vec<ParsedField>| ParsedTable {
+            table_name: table.to_string(),
+            struct_name: structure.to_string(),
+            fields,
+        };
+        let schema = model_schema(&[
+            table(
+                "users",
+                "User",
+                vec![ParsedField {
+                    name: "email".to_string(),
+                    rust_type: "String".to_string(),
+                    is_option: true,
+                }],
+            ),
+            table("audit_events", "AuditEvent", Vec::new()),
+        ]);
+        assert_eq!(
+            schema,
+            serde_json::json!({
+                "source": "src",
+                "models": [
+                    {"struct": "AuditEvent", "table": "audit_events", "fields": []},
+                    {
+                        "struct": "User",
+                        "table": "users",
+                        "fields": [{"name": "email", "rust_type": "String", "optional": true}]
+                    }
+                ]
+            })
+        );
+    }
 }

@@ -36,7 +36,10 @@ const LEARNER_JOBS: u32 = 100;
 /// `max_jobs` is store-wide across tenants and counts terminal jobs until
 /// `purge_terminal` (at least 24 hours later), so it bounds submissions per
 /// rolling day. One learner may retain at most 100 jobs per course, or
-/// `max_jobs` when lower, so a single learner cannot fill it.
+/// `max_jobs` when lower, so a single learner cannot fill it. `max_exercises`
+/// is also store-wide and counts every registered revision until
+/// `remove_exercise`; stores shared by several tenants should also set
+/// [`StoreConfig::tenant_exercises`], or use one store per tenant.
 #[derive(Debug, Clone)]
 pub struct StoreConfig {
     pub(super) namespace: Reference,
@@ -44,6 +47,7 @@ pub struct StoreConfig {
     pub(super) max_exercises: u32,
     pub(super) profile: ExecutionProfile,
     pub(super) learner_jobs: u32,
+    pub(super) tenant_exercises: Option<u32>,
 }
 impl StoreConfig {
     pub fn new(
@@ -61,6 +65,7 @@ impl StoreConfig {
             max_exercises,
             profile,
             learner_jobs: LEARNER_JOBS.min(max_jobs),
+            tenant_exercises: None,
         })
     }
     /// Jobs one learner may retain in one course, from 1 to `max_jobs`
@@ -73,22 +78,33 @@ impl StoreConfig {
         self.learner_jobs = maximum;
         Ok(self)
     }
+    /// Exercise revisions, enabled or withdrawn, that one tenant may hold,
+    /// from 1 to `max_exercises` (v13). Without it, one tenant's instructors
+    /// can register the whole store-wide capacity. Every opener must supply
+    /// the same value.
+    pub fn tenant_exercises(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || maximum > self.max_exercises {
+            return Err(Error::Configuration);
+        }
+        self.tenant_exercises = Some(maximum);
+        Ok(self)
+    }
     pub(super) fn binding(&self, key: &ContentKey) -> Result<String, Error> {
+        let key = key.binding();
         let base = (
             crate::PROTOCOL_VERSION,
             &self.namespace,
             self.max_jobs,
             self.max_exercises,
             &self.profile,
-            key.binding(),
+            &key,
         );
-        // Only an explicit learner quota extends the binding, so stores that
-        // were initialized before it existed keep opening unchanged.
-        if self.learner_jobs == LEARNER_JOBS.min(self.max_jobs) {
-            serde_json::to_string(&base)
-        } else {
-            let (protocol, namespace, jobs, exercises, profile, key) = base;
-            serde_json::to_string(&(
+        let (protocol, namespace, jobs, exercises, profile, key) = base;
+        // Only an explicit quota extends the binding, so stores that were
+        // initialized before these quotas existed keep opening unchanged. A
+        // tenant quota always adds both values, so the lengths never collide.
+        match self.tenant_exercises {
+            Some(tenant) => serde_json::to_string(&(
                 protocol,
                 namespace,
                 jobs,
@@ -96,7 +112,20 @@ impl StoreConfig {
                 profile,
                 key,
                 self.learner_jobs,
-            ))
+                tenant,
+            )),
+            None if self.learner_jobs == LEARNER_JOBS.min(self.max_jobs) => {
+                serde_json::to_string(&base)
+            }
+            None => serde_json::to_string(&(
+                protocol,
+                namespace,
+                jobs,
+                exercises,
+                profile,
+                key,
+                self.learner_jobs,
+            )),
         }
         .map_err(|_| Error::Configuration)
     }

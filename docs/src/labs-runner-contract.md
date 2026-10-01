@@ -32,8 +32,9 @@ network-filesystem database.
 - Depend on `rullst-labs` with the `sqlite` and `receipt-signing` features.
 - Open the application's store with `SqliteLabs::open(path, config, key, clock)`.
   `StoreConfig` (namespace, `max_jobs`, `max_exercises`, profile and any
-  `learner_jobs` quota) and the `ContentKey` must be identical to the
-  application's. The store binds them; any difference returns `Configuration`.
+  `learner_jobs` or `tenant_exercises` quota) and the `ContentKey` must be
+  identical to the application's. The store binds them; any difference returns
+  `Configuration`.
 - Use `ExecutionProfile::LinuxExperimental { tools, receipt_key }`. It is the
   only profile whose signed receipts `complete` and `reconcile_cleanup` accept;
   `Simulation` returns `Unsupported` there. Despite the name, `rullst-labs`
@@ -58,9 +59,14 @@ network-filesystem database.
 ### 1. Recover before claiming
 
 On startup, and periodically, call `cleanup_candidates(limit)` (1–32). It
-returns leased jobs that were cancelled, withdrawn or expired, or whose lease
+returns leased jobs that are no longer `Running` (cancelled, abandoned with
+cleanup pending, or expired) and `Running` jobs whose lease or job lifetime
 ran out. A still-`Running` record is fenced to `Uncertain` (or `Expired`) before
-it is returned. For each `CleanupJob`, tear down everything your runner owns for
+it is returned. Withdrawing an exercise changes no job record: the controller
+that owns a lease sees it as `Stop` from `lease_status` (and `complete` returns
+`Denied`), while a withdrawn job whose controller was lost is returned only
+once its lease runs out, at most the wall limit plus 15 seconds after the claim.
+For each `CleanupJob`, tear down everything your runner owns for
 `binding.nonce`, then attest it as described in step 7. Recovery never releases
 source and can never award a grade.
 
@@ -131,6 +137,10 @@ Build an `ExecutionReceipt` and sign it with `ReceiptSigner::sign`:
   observations. `rullst-labs` stores it as evidence but cannot interpret it.
 - `teardown`: `Confirmed` only after the worker group and workspace are gone.
   `complete` refuses `Uncertain`.
+
+`sign` validates the receipt first: a wall clock that steps back between the
+two samples makes it return `Protocol`. Handle a failed clock read or signing
+like any other failure (step 7) instead of returning with the lease still live.
 
 Send it to `complete(job.scope(), job.id(), &signed)`. `Executed` becomes a
 `Completed` job with per-case `Passed`/`WrongAnswer`/`Trapped` feedback; any

@@ -19,6 +19,10 @@ class InputTests(unittest.TestCase):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "fixture@example.invalid")
         self.run_git("config", "user.name", "Fixture")
+        # A detached `git gc --auto` can still be writing objects/pack when the
+        # temporary directory is removed (ENOTEMPTY), so keep git in the foreground.
+        self.run_git("config", "gc.auto", "0")
+        self.run_git("config", "maintenance.auto", "false")
         self.v13_inventory = json.loads((ROOT / ".github/fuzz-targets.json").read_text())
         self.inventory = [item for item in self.v13_inventory if item["dir"] != "rullst-privacy/fuzz"]
         self.write(".github/fuzz-targets.json", json.dumps(self.inventory))

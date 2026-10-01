@@ -27,6 +27,9 @@ fn public_inputs_bound_identifiers_revisions_configuration_and_debug_output() {
     assert!(limits.clone().subject_sessions(0).is_err());
     assert!(limits.clone().subject_sessions(9).is_err());
     assert!(limits.clone().subject_sessions(8).is_ok());
+    assert!(limits.clone().subject_events(0).is_err());
+    assert!(limits.clone().subject_events(9).is_err());
+    assert!(limits.clone().subject_events(8).is_ok());
     assert!(StoreConfig::new("epoch", limits.clone(), 3599, 60).is_err());
     assert!(StoreConfig::new("epoch", limits.clone(), 604801, 60).is_err());
     assert!(StoreConfig::new("epoch", limits.clone(), 3600, 28801).is_err());
