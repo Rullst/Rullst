@@ -1,7 +1,8 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use super::*;
-use axum::{Router, routing::get};
+use axum::{Router, http::StatusCode, routing::get};
+use std::sync::atomic::Ordering;
 use tower::ServiceExt;
 
 fn request() -> Request {
