@@ -133,6 +133,10 @@ Build an `ExecutionReceipt` and sign it with `ReceiptSigner::sign`:
 - `teardown`: `Confirmed` only after the worker group and workspace are gone.
   `complete` refuses `Uncertain`.
 
+`sign` validates the receipt first: a wall clock that steps back between the
+two samples makes it return `Protocol`. Handle a failed clock read or signing
+like any other failure (step 7) instead of returning with the lease still live.
+
 Send it to `complete(job.scope(), job.id(), &signed)`. `Executed` becomes a
 `Completed` job with per-case `Passed`/`WrongAnswer`/`Trapped` feedback; any
 other outcome becomes `Failed`. Serialized receipts are decoded by

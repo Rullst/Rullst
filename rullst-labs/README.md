@@ -103,7 +103,8 @@ executor; a separately deployed runner consumes the shared job plane.
 The `byo_runner_controller` example is a minimal **non-executing** controller.
 It recovers leftover leases, claims a job, polls `lease_status` under the wall
 limit, signs a fixed `Rejected(Isolation)` verdict for `complete` and fences
-failures through `abandon_attempt`/`reconcile_cleanup`. It never compiles or
+every failure after the claim, clock and signing errors included, through
+`abandon_attempt`/`reconcile_cleanup`. It never compiles or
 runs learner code; `PLUG-IN POINT` comments mark where an isolated worker and
 its teardown belong. It runs as a test with the crate's suite:
 
