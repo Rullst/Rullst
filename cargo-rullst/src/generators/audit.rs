@@ -9,8 +9,10 @@ use crate::generators::audit_evidence::inspect_local_network_surface;
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
 use crate::generators::audit_idor::collect_rust_source_files;
 pub use crate::generators::audit_idor::scan_idor_vulnerabilities;
-use crate::generators::audit_scope::{package_source_roots, scan_each};
-use crate::generators::source_walk::rust_sources;
+pub use crate::generators::audit_scope::scan_unsafe_code;
+use crate::generators::audit_scope::{
+    cargo_audit_arguments, package_source_roots, scan_each, validate_audit_ignores,
+};
 
 /// A scan whose source walk hit a bound is reported as a finding, not as clean.
 pub(super) fn incomplete_walk_warning(root: &Path, reason: &str, subject: &str) -> String {
@@ -18,46 +20,6 @@ pub(super) fn incomplete_walk_warning(root: &Path, reason: &str, subject: &str) 
         "Source walk under '{}' is incomplete ({reason}); {subject} beyond it were not scanned",
         root.display()
     )
-}
-
-/// Recursively scans Rust source files for `unsafe` blocks, functions, or implementations.
-///
-/// Symlinked files and directories are not followed; a walk that reaches its
-/// bound adds a finding instead of reporting a clean scan.
-pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
-    let sources = rust_sources(src_dir);
-    let mut warnings = Vec::new();
-    if let Some(reason) = sources.incomplete {
-        warnings.push(incomplete_walk_warning(src_dir, &reason, "source files"));
-    }
-    for path in sources.files {
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        for (line_idx, line) in content.lines().enumerate() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
-                continue;
-            }
-            if trimmed.contains("unsafe {")
-                || trimmed.contains("unsafe fn")
-                || trimmed.contains("unsafe impl")
-                || trimmed.starts_with("unsafe ")
-            {
-                let msg = format!(
-                    "File '{}:{}': Unsafe Rust detected: `{}`",
-                    path.display(),
-                    line_idx + 1,
-                    trimmed
-                );
-                if !warnings.contains(&msg) {
-                    warnings.push(msg);
-                }
-            }
-        }
-    }
-
-    (warnings.len(), warnings)
 }
 
 pub fn run_security_audit(
@@ -88,13 +50,61 @@ pub fn run_security_audit_with_exceptions(
     audit_ignores: &[String],
     network_mode: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    run_audit(AuditOptions {
+        ai: ai_mode,
+        compliance: compliance_mode,
+        idor: idor_mode,
+        geiger: geiger_mode,
+        sbom: sbom_mode,
+        ignores: audit_ignores,
+        network: network_mode,
+        json: false,
+    })
+}
+
+/// The `audit` flags; `json` moves the human progress to stderr and prints
+/// one `rullst.cli-audit.v1` summary on stdout.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct AuditOptions<'a> {
+    pub ai: bool,
+    pub compliance: bool,
+    pub idor: bool,
+    pub geiger: bool,
+    pub sbom: bool,
+    pub ignores: &'a [String],
+    pub network: bool,
+    pub json: bool,
+}
+
+/// Human progress: stdout, or stderr when stdout carries the JSON summary.
+macro_rules! say {
+    ($json:expr, $($arg:tt)*) => {
+        if $json {
+            eprintln!($($arg)*)
+        } else {
+            println!($($arg)*)
+        }
+    };
+}
+
+pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    let AuditOptions {
+        ai: ai_mode,
+        compliance: compliance_mode,
+        idor: idor_mode,
+        geiger: geiger_mode,
+        sbom: sbom_mode,
+        ignores: audit_ignores,
+        network: network_mode,
+        json,
+    } = options;
     validate_audit_ignores(audit_ignores)?;
     let title = if ai_mode {
         "🛡️ Running Rullst Security Audit with deterministic recommendations..."
     } else {
         "🛡️ Running Rullst Security Audit..."
     };
-    println!("{}", title.bright_cyan().bold());
+    say!(json, "{}", title.bright_cyan().bold());
 
     let mut issues_found = 0;
     let mut weak_secret_findings = 0usize;
@@ -121,7 +131,8 @@ pub fn run_security_audit_with_exceptions(
                             && v != "''"
                             && v.len() < 16
                         {
-                            println!(
+                            say!(
+                                json,
                                 "  {} Weak or short secret detected for key '{}' in .env",
                                 "[WARNING]".yellow().bold(),
                                 k
@@ -133,7 +144,8 @@ pub fn run_security_audit_with_exceptions(
                 }
             }
             Err(error) => {
-                println!(
+                say!(
+                    json,
                     "  {} Could not read .env for the bounded secret scan: {}",
                     "[ERROR]".red().bold(),
                     error
@@ -143,11 +155,12 @@ pub fn run_security_audit_with_exceptions(
             }
         }
     } else {
-        println!("  {} No .env file found in root.", "[INFO]".blue());
+        say!(json, "  {} No .env file found in root.", "[INFO]".blue());
     }
 
     // 2. Check for Cargo audit vulnerabilities
-    println!(
+    say!(
+        json,
         "  {} Checking dependency vulnerabilities...",
         "[AUDIT]".magenta()
     );
@@ -162,13 +175,15 @@ pub fn run_security_audit_with_exceptions(
             match command.output() {
                 Ok(out) if out.status.success() => {
                     if audit_ignores.is_empty() {
-                        println!(
+                        say!(
+                            json,
                             "  {} No advisories reported by cargo-audit.",
                             "[OK]".green()
                         );
                         EvidenceStatus::NoFindings
                     } else {
-                        println!(
+                        say!(
+                            json,
                             "  {} No findings outside the governed exceptions; exceptions remain unresolved: {}.",
                             "[OK]".green(),
                             audit_ignores.join(", ")
@@ -177,7 +192,8 @@ pub fn run_security_audit_with_exceptions(
                     }
                 }
                 Ok(out) => {
-                    println!(
+                    say!(
+                        json,
                         "  {} cargo-audit did not complete successfully; inspect its output directly.",
                         "[ERROR]".red().bold()
                     );
@@ -196,7 +212,8 @@ pub fn run_security_audit_with_exceptions(
             }
         }
         Ok(_) | Err(_) => {
-            println!(
+            say!(
+                json,
                 "  {} cargo-audit not installed. Run 'cargo install cargo-audit' for deep dependency scanning.",
                 "[NOTE]".yellow()
             );
@@ -205,7 +222,8 @@ pub fn run_security_audit_with_exceptions(
     };
 
     // 3. Memory Safety & Unsafe Code (Cargo Geiger)
-    println!(
+    say!(
+        json,
         "  {} Auditing memory safety & unsafe code blocks (Cargo Geiger)...",
         "[GEIGER]".bright_cyan()
     );
@@ -217,18 +235,20 @@ pub fn run_security_audit_with_exceptions(
         scan_unsafe_code,
     );
     if !unsafe_source_available {
-        println!(
+        say!(
+            json,
             "  {} No project src directory was available; the bounded unsafe scan was not executed.",
             "[INFO]".blue()
         );
     } else if unsafe_count == 0 {
-        println!(
+        say!(
+            json,
             "  {} The bounded project-source heuristic found no unsafe syntax.",
             "[OK]".green()
         );
     } else {
         for warn in &unsafe_warnings {
-            println!("  {} {}", "[UNSAFE WARNING]".red().bold(), warn);
+            say!(json, "  {} {}", "[UNSAFE WARNING]".red().bold(), warn);
         }
         issues_found += unsafe_count;
     }
@@ -240,14 +260,21 @@ pub fn run_security_audit_with_exceptions(
             .output();
 
         if geiger_status.is_ok_and(|output| output.status.success()) {
-            println!(
+            say!(
+                json,
                 "  {} Running full dependency tree unsafe analysis (cargo geiger)...",
                 "[GEIGER]".cyan()
             );
-            match std::process::Command::new("cargo").arg("geiger").status() {
+            let mut geiger = std::process::Command::new("cargo");
+            geiger.arg("geiger");
+            if json {
+                geiger.stdout(std::process::Stdio::from(std::io::stderr()));
+            }
+            match geiger.status() {
                 Ok(status) if status.success() => {}
                 Ok(status) => {
-                    println!(
+                    say!(
+                        json,
                         "  {} cargo-geiger reported findings or failed with status {}.",
                         "[ERROR]".red().bold(),
                         status
@@ -255,7 +282,8 @@ pub fn run_security_audit_with_exceptions(
                     issues_found += 1;
                 }
                 Err(error) => {
-                    println!(
+                    say!(
+                        json,
                         "  {} cargo-geiger could not run: {}",
                         "[ERROR]".red().bold(),
                         error
@@ -264,7 +292,8 @@ pub fn run_security_audit_with_exceptions(
                 }
             }
         } else {
-            println!(
+            say!(
+                json,
                 "  {} cargo-geiger is unavailable although --geiger was requested. Run 'cargo install cargo-geiger'.",
                 "[ERROR]".red().bold()
             );
@@ -279,24 +308,27 @@ pub fn run_security_audit_with_exceptions(
         .any(|root| !collect_rust_source_files(root).files.is_empty());
     let (idor_count, idor_warnings) = scan_each(&idor_roots, scan_idor_vulnerabilities);
     if idor_mode || idor_count > 0 {
-        println!(
+        say!(
+            json,
             "  {} Checking IDOR / BOLA authorization on parameterized routes...",
             "[IDOR]".bright_yellow()
         );
         if !idor_source_available {
-            println!(
+            say!(
+                json,
                 "  {} No scannable Rust source was available; the IDOR/BOLA check is incomplete.",
                 "[ERROR]".red().bold()
             );
             issues_found += 1;
         } else if idor_count == 0 {
-            println!(
+            say!(
+                json,
                 "  {} The bounded route heuristic found no missing access classifications or recognized guards.",
                 "[OK]".green()
             );
         } else {
             for warn in &idor_warnings {
-                println!("  {} {}", "[IDOR WARNING]".yellow().bold(), warn);
+                say!(json, "  {} {}", "[IDOR WARNING]".yellow().bold(), warn);
             }
             issues_found += idor_count;
         }
@@ -305,13 +337,15 @@ pub fn run_security_audit_with_exceptions(
     // 5. SBOM Generation
     let mut sbom_evidence = EvidenceStatus::NotChecked("SBOM generation was not requested");
     if sbom_mode {
-        println!(
+        say!(
+            json,
             "  {} Generating CycloneDX 1.5 Software Bill of Materials (SBOM)...",
             "[SBOM]".bright_blue()
         );
         match generate_cyclonedx_sbom(Path::new("Cargo.lock")) {
             Ok((count, file_name)) => {
-                println!(
+                say!(
+                    json,
                     "  {} Generated CycloneDX SBOM with {} components at '{}'",
                     "[SUCCESS]".green().bold(),
                     count,
@@ -320,7 +354,8 @@ pub fn run_security_audit_with_exceptions(
                 sbom_evidence = EvidenceStatus::Generated(count);
             }
             Err(e) => {
-                println!(
+                say!(
+                    json,
                     "  {} Failed to generate SBOM: {}",
                     "[ERROR]".red().bold(),
                     e
@@ -334,26 +369,29 @@ pub fn run_security_audit_with_exceptions(
     // 6. Network Surface Scanner (RustScan-inspired)
     let mut network_evidence = EvidenceStatus::NotChecked("network surface scan was not requested");
     if network_mode {
-        println!(
+        say!(
+            json,
             "  {} Scanning local network surface & interface bindings (RustScan mode)...",
             "[NETWORK]".bright_magenta()
         );
         let surface = inspect_local_network_surface();
         if surface.observations.is_empty() && surface.incomplete.is_empty() {
-            println!(
+            say!(
+                json,
                 "  {} No open local listening ports detected.",
                 "[OK]".green()
             );
         }
         for report in &surface.observations {
             if report.contains("should be '127.0.0.1'") {
-                println!("  {} {}", "[NETWORK WARNING]".yellow().bold(), report);
+                say!(json, "  {} {}", "[NETWORK WARNING]".yellow().bold(), report);
             } else {
-                println!("  {} {}", "[ACTIVE SERVICE]".bright_cyan(), report);
+                say!(json, "  {} {}", "[ACTIVE SERVICE]".bright_cyan(), report);
             }
         }
         for reason in &surface.incomplete {
-            println!(
+            say!(
+                json,
                 "  {} Network check incomplete: {}",
                 "[ERROR]".red().bold(),
                 reason
@@ -368,67 +406,77 @@ pub fn run_security_audit_with_exceptions(
     }
 
     if ai_mode {
-        println!(
+        say!(
+            json,
             "\n🤖 {}",
             "Deterministic Security Recommendations:"
                 .bright_purple()
                 .bold()
         );
         if issues_found == 0 {
-            println!(
+            say!(
+                json,
                 "  ✅ Completed bounded checks reported no findings; skipped or unavailable checks remain outside this result."
             );
         } else {
-            println!(
+            say!(
+                json,
                 "  ⚠️ Found {} potential security items. Recommendation: Eliminate unsafe blocks, enforce RbacGuard on parameterized routes, rotate secrets, and run cargo update.",
                 issues_found
             );
         }
     }
 
+    let evidence = ComplianceEvidence {
+        secret_scan: if let Some(error) = secret_scan_error {
+            EvidenceStatus::Error(error)
+        } else if !secret_scan_completed {
+            EvidenceStatus::NotChecked("no .env file was available to inspect")
+        } else if weak_secret_findings == 0 {
+            EvidenceStatus::NoFindings
+        } else {
+            EvidenceStatus::Findings(weak_secret_findings)
+        },
+        dependency_audit,
+        unsafe_scan: if !unsafe_source_available {
+            EvidenceStatus::NotChecked("no src directory was available to inspect")
+        } else if unsafe_count == 0 {
+            EvidenceStatus::NoFindings
+        } else {
+            EvidenceStatus::Findings(unsafe_count)
+        },
+        idor_scan: if !idor_source_available {
+            EvidenceStatus::NotChecked("no scannable Rust source was available")
+        } else if idor_count == 0 {
+            EvidenceStatus::NoFindings
+        } else {
+            EvidenceStatus::Findings(idor_count)
+        },
+        sbom: sbom_evidence,
+        network_scan: network_evidence,
+    };
     if compliance_mode {
-        println!(
+        say!(
+            json,
             "\n📊 {}",
             "Generating evidence-based SECURITY_COMPLIANCE.md report..."
                 .bright_green()
                 .bold()
         );
-        let evidence = ComplianceEvidence {
-            secret_scan: if let Some(error) = secret_scan_error {
-                EvidenceStatus::Error(error)
-            } else if !secret_scan_completed {
-                EvidenceStatus::NotChecked("no .env file was available to inspect")
-            } else if weak_secret_findings == 0 {
-                EvidenceStatus::NoFindings
-            } else {
-                EvidenceStatus::Findings(weak_secret_findings)
-            },
-            dependency_audit,
-            unsafe_scan: if !unsafe_source_available {
-                EvidenceStatus::NotChecked("no src directory was available to inspect")
-            } else if unsafe_count == 0 {
-                EvidenceStatus::NoFindings
-            } else {
-                EvidenceStatus::Findings(unsafe_count)
-            },
-            idor_scan: if !idor_source_available {
-                EvidenceStatus::NotChecked("no scannable Rust source was available")
-            } else if idor_count == 0 {
-                EvidenceStatus::NoFindings
-            } else {
-                EvidenceStatus::Findings(idor_count)
-            },
-            sbom: sbom_evidence,
-            network_scan: network_evidence,
-        };
         write_compliance_report(Path::new("SECURITY_COMPLIANCE.md"), &evidence)?;
-        println!(
+        say!(
+            json,
             "  {} Evidence report written to SECURITY_COMPLIANCE.md",
             "[SUCCESS]".green().bold()
         );
     }
 
-    println!("\nAudit finished. Issues found: {}", issues_found);
+    if json {
+        let summary = crate::generators::audit_compliance::summary(&evidence, issues_found);
+        println!("{}", serde_json::to_string_pretty(&summary)?);
+    }
+
+    say!(json, "\nAudit finished. Issues found: {}", issues_found);
 
     if idor_mode && !idor_source_available {
         return Err(std::io::Error::other(
@@ -452,34 +500,6 @@ pub fn run_security_audit_with_exceptions(
     }
 
     Ok(())
-}
-
-fn validate_audit_ignores(audit_ignores: &[String]) -> Result<(), Box<dyn std::error::Error>> {
-    for advisory in audit_ignores {
-        let bytes = advisory.as_bytes();
-        let valid = bytes.len() == 17
-            && bytes.starts_with(b"RUSTSEC-")
-            && bytes[8..12].iter().all(u8::is_ascii_digit)
-            && bytes[12] == b'-'
-            && bytes[13..].iter().all(u8::is_ascii_digit);
-        if !valid {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("invalid --audit-ignore value '{advisory}'; expected RUSTSEC-YYYY-NNNN"),
-            )
-            .into());
-        }
-    }
-    Ok(())
-}
-
-fn cargo_audit_arguments(audit_ignores: &[String]) -> Vec<String> {
-    let mut arguments = vec!["audit".to_string()];
-    for advisory in audit_ignores {
-        arguments.push("--ignore".to_string());
-        arguments.push(advisory.clone());
-    }
-    arguments
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 //! The executable layer around the public `Commands` enum: the global
-//! `-v/--verbose` flag, `--json` status views, "did you mean" for unknown
-//! commands and the shared friendly error report at the process boundary.
+//! `-v/--verbose` flag, runtime-only subcommands (`completions`, `info`),
+//! `--json` status views, "did you mean" for unknown commands and the shared
+//! friendly error report at the process boundary.
 
 use crate::ui::error_report::{self, AlreadyReported, Friendly, USAGE_EXIT};
 use crate::ui::style::Style;
@@ -17,7 +18,7 @@ fn json_flag(help: &'static str) -> Arg {
         .help(help)
 }
 
-/// Adds the runtime-only flags to `command`.
+/// Adds the runtime-only flags and subcommands to `command`.
 pub(crate) fn extend(command: Command) -> Command {
     command
         .arg(
@@ -28,9 +29,21 @@ pub(crate) fn extend(command: Command) -> Command {
                 .action(ArgAction::Count)
                 .help("Show the underlying causes when a command fails"),
         )
+        .subcommand(super::completions::command())
+        .subcommand(super::info::command())
         .mut_subcommand("doctor", |doctor| {
             doctor.arg(json_flag(
                 "Print the checks as versioned JSON (rullst.cli-doctor.v1); exit status 1 when a check fails",
+            ))
+        })
+        .mut_subcommand("audit", |audit| {
+            audit.arg(json_flag(
+                "Print a versioned JSON summary (rullst.cli-audit.v1); progress moves to stderr",
+            ))
+        })
+        .mut_subcommand("inspect", |inspect| {
+            inspect.arg(json_flag(
+                "Print `inspect routes` as versioned JSON (rullst.cli-routes.v1)",
             ))
         })
 }
@@ -126,15 +139,43 @@ pub(crate) fn parse(
     }
 }
 
-/// Runs the commands this layer owns (`doctor` with its `--json` view);
-/// `false` when the command belongs to the regular dispatch.
+/// Runs `completions`, `info` and the `--json` views; `false` when the
+/// command belongs to the regular dispatch.
 pub(crate) fn run_extension(matches: &ArgMatches) -> Result<bool, Box<dyn Error>> {
     match matches.subcommand() {
+        Some(("completions", sub)) => super::completions::run(sub)?,
+        Some(("info", sub)) => super::info::run(sub)?,
         Some(("doctor", sub)) => {
             crate::generators::doctor::run(crate::generators::doctor::DoctorOptions {
                 fix: flag(sub, "fix"),
                 json: flag(sub, "json"),
             })?
+        }
+        Some(("audit", sub)) if flag(sub, "json") => {
+            let ignores: Vec<String> = sub
+                .try_get_many::<String>("audit_ignore")
+                .ok()
+                .flatten()
+                .map(|values| values.cloned().collect())
+                .unwrap_or_default();
+            crate::generators::audit::run_audit(crate::generators::audit::AuditOptions {
+                ai: flag(sub, "ai"),
+                compliance: flag(sub, "compliance"),
+                idor: flag(sub, "idor"),
+                geiger: flag(sub, "geiger"),
+                sbom: flag(sub, "sbom"),
+                ignores: &ignores,
+                network: flag(sub, "network"),
+                json: true,
+            })?;
+        }
+        Some(("inspect", sub)) if flag(sub, "json") => {
+            let target = sub
+                .try_get_one::<String>("target")
+                .ok()
+                .flatten()
+                .map_or("routes", String::as_str);
+            crate::generators::inspect::print_json(target)?;
         }
         _ => return Ok(false),
     }
@@ -170,16 +211,51 @@ mod tests {
     }
 
     #[test]
-    fn the_runtime_tree_is_valid_and_doctor_accepts_json() {
+    fn the_runtime_tree_is_valid_and_has_the_new_entry_points() {
         let command = crate::command();
         command.clone().debug_assert();
-        assert!(command.find_subcommand("doctor").is_some());
+        for name in [
+            "completions",
+            "info",
+            "version",
+            "doctor",
+            "update",
+            "deploy:doctor",
+        ] {
+            assert!(command.find_subcommand(name).is_some(), "{name}");
+        }
         let matches = command
+            .clone()
             .try_get_matches_from(["rullst", "doctor", "--json", "-v"])
             .expect("doctor --json -v parses");
         let (_, doctor) = matches.subcommand().expect("doctor");
         assert!(flag(doctor, "json"));
         assert!(!flag(doctor, "fix"));
+        assert!(
+            command
+                .clone()
+                .try_get_matches_from(["rullst", "inspect", "routes", "--json"])
+                .is_ok()
+        );
+        let audit = command
+            .try_get_matches_from([
+                "rullst",
+                "audit",
+                "--json",
+                "--audit-ignore",
+                "RUSTSEC-2099-0001",
+            ])
+            .expect("audit --json parses");
+        let (_, audit) = audit.subcommand().expect("audit");
+        assert!(flag(audit, "json"));
+        assert_eq!(
+            audit
+                .try_get_many::<String>("audit_ignore")
+                .ok()
+                .flatten()
+                .map(|values| values.cloned().collect::<Vec<_>>()),
+            Some(vec!["RUSTSEC-2099-0001".to_string()])
+        );
     }
 
     #[test]

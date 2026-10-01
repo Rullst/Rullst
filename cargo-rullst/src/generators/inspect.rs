@@ -88,6 +88,58 @@ fn inspect_routes() -> Result<(), Box<dyn std::error::Error>> {
 
 type RouteRow = (String, String, String);
 
+/// `inspect routes --json`: the recognized route declarations as the
+/// versioned `rullst.cli-routes.v1` document on stdout.
+pub(crate) fn print_json(target: &str) -> Result<(), Box<dyn std::error::Error>> {
+    if !matches!(target, "route" | "routes") {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("--json is available for `inspect routes` only, not `inspect {target}`"),
+        )
+        .into());
+    }
+    let document = routes_document(Path::new("src"))?;
+    println!("{}", serde_json::to_string_pretty(&document)?);
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+struct RoutesDocument {
+    schema_version: &'static str,
+    complete: bool,
+    incomplete_reason: Option<String>,
+    routes: Vec<RouteEntry>,
+}
+
+#[derive(serde::Serialize)]
+struct RouteEntry {
+    method: String,
+    path: String,
+    handler: String,
+}
+
+fn routes_document(src_dir: &Path) -> Result<RoutesDocument, Box<dyn std::error::Error>> {
+    let (routes, incomplete) = if src_dir.is_dir() {
+        collect_routes(src_dir)?
+    } else {
+        (Vec::new(), Some("src/ directory not found".to_string()))
+    };
+    let document = RoutesDocument {
+        schema_version: "rullst.cli-routes.v1",
+        complete: incomplete.is_none(),
+        incomplete_reason: incomplete,
+        routes: routes
+            .into_iter()
+            .map(|(method, path, handler)| RouteEntry {
+                method,
+                path,
+                handler,
+            })
+            .collect(),
+    };
+    Ok(document)
+}
+
 /// Lists `routes!` entries in the regular `.rs` files under `src_dir`. The
 /// bounded walk never follows a symlink, so a link cycle or a link out of the
 /// project cannot make the scan unbounded or read files outside `src/`.
@@ -102,6 +154,17 @@ fn collect_routes(
     Ok((routes, sources.incomplete))
 }
 
+/// The handler of `get("/path" => handler),`: the closing parenthesis of
+/// the route call and the separator comma are not part of it.
+fn route_handler(raw: &str) -> &str {
+    let handler = raw.trim().trim_end_matches(',').trim_end();
+    let unbalanced = handler.matches(')').count() > handler.matches('(').count();
+    match handler.strip_suffix(')') {
+        Some(stripped) if unbalanced => stripped.trim_end(),
+        _ => handler,
+    }
+}
+
 fn routes_in_source(content: &str, routes: &mut Vec<RouteRow>) {
     for line in content.lines() {
         let line_trim = line.trim();
@@ -114,7 +177,7 @@ fn routes_in_source(content: &str, routes: &mut Vec<RouteRow>) {
             let parts: Vec<&str> = line_trim.split("=>").collect();
             if parts.len() == 2 {
                 let left = parts[0].trim();
-                let handler = parts[1].trim().trim_matches(',').trim();
+                let handler = route_handler(parts[1]);
 
                 let method = if left.starts_with("get") {
                     "GET"
@@ -242,6 +305,38 @@ fn model_schema(tables: &[super::schema_diff::ParsedTable]) -> serde_json::Value
 mod tests {
     use super::super::schema_diff::{ParsedField, ParsedTable};
     use super::*;
+
+    #[test]
+    fn routes_json_has_the_documented_shape() {
+        let project = tempfile::tempdir().expect("project");
+        let src = project.path().join("src");
+        fs::create_dir_all(&src).expect("source tree");
+        fs::write(
+            src.join("main.rs"),
+            "routes![\n    get(\"/posts/{id}\" => controllers::posts::show),\n    post(\"/posts\" => controllers::posts::store),\n];\n",
+        )
+        .expect("route source");
+        let document =
+            serde_json::to_value(routes_document(&src).expect("document")).expect("serializable");
+        assert_eq!(document["schema_version"], "rullst.cli-routes.v1");
+        assert_eq!(document["complete"], true);
+        assert!(document["incomplete_reason"].is_null());
+        assert_eq!(document["routes"][0]["method"], "GET");
+        assert_eq!(document["routes"][0]["path"], "/posts/{id}");
+        assert_eq!(document["routes"][0]["handler"], "controllers::posts::show");
+        assert_eq!(document["routes"][1]["method"], "POST");
+
+        let missing = serde_json::to_value(
+            routes_document(&project.path().join("absent")).expect("document"),
+        )
+        .expect("serializable");
+        assert_eq!(missing["complete"], false);
+        assert_eq!(missing["incomplete_reason"], "src/ directory not found");
+        assert!(print_json("models").is_err());
+        assert_eq!(route_handler(" posts::show),"), "posts::show");
+        assert_eq!(route_handler(" handler(state) ,"), "handler(state)");
+        assert_eq!(route_handler(" plain"), "plain");
+    }
 
     #[cfg(unix)]
     #[test]
