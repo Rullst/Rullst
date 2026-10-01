@@ -1,7 +1,9 @@
 // src/ui/dashboard.rs — Interactive Rullst CLI dashboard (menus, logo, handlers).
 
-use super::dashboard_brand::{play_launch_pulse, print_neon_logo};
+use super::dashboard_brand::print_opening;
+use super::terminal::TerminalProfile;
 use colored::*;
+use std::io::Write;
 
 type DashboardResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -25,9 +27,9 @@ impl DialoguerUi {
 
 impl DashboardUi for DialoguerUi {
     fn show_brand(&mut self) -> DashboardResult<()> {
-        print!("\x1B[2J\x1B[1;1H");
-        print_neon_logo()?;
-        play_launch_pulse()?;
+        let mut stdout = std::io::stdout();
+        write!(stdout, "\x1B[2J\x1B[1;1H")?;
+        print_opening(&TerminalProfile::detect(), &mut stdout)?;
         if let Some(version) = super::update_check::check_update_available() {
             super::update_check::print_update_banner(&version);
         }
@@ -361,6 +363,12 @@ where
 }
 
 pub fn show_interactive_dashboard() -> DashboardResult<()> {
+    let profile = TerminalProfile::detect();
+    if !profile.interactive {
+        // Pipes, CI and dumb terminals get the plain opening and no prompt.
+        print_opening(&profile, &mut std::io::stdout())?;
+        return Ok(());
+    }
     let program = std::env::args().next().unwrap_or_default();
     let mut ui = DialoguerUi::new();
     ui.show_brand()?;
