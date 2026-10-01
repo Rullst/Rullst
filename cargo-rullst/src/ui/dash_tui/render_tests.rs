@@ -375,10 +375,14 @@ fn database_profile_classifies_every_supported_url_without_credentials() {
 
 #[test]
 fn non_interactive_branding_uses_the_accessible_static_fallback() {
-    assert!(super::super::dashboard_brand::print_neon_logo().is_ok());
-    assert!(super::super::dashboard_brand::play_launch_pulse().is_ok());
+    let profile = super::super::terminal::TerminalProfile::from_env(
+        &super::super::terminal::TerminalEnv::default(),
+    );
+    assert!(!profile.interactive && !profile.motion);
+    let mut out = Vec::new();
+    super::super::dashboard_brand::print_opening(&profile, &mut out).unwrap();
     assert_eq!(
-        super::super::dashboard_brand::menu_icon("◆", (65, 255, 170)),
-        "◆"
+        String::from_utf8(out).unwrap(),
+        format!("{}\n\n", super::super::dashboard_brand::PLAIN_SLOGAN)
     );
 }
