@@ -373,3 +373,44 @@ async fn the_default_pipeline_exposes_its_override_layer() {
 
     assert!(FeatureManager::new().overrides().is_none());
 }
+
+#[tokio::test]
+async fn memory_ab_splits_gate_like_the_string_drivers() {
+    let flag = "new-checkout";
+    for (split, variants) in [
+        (
+            "a:10,b:10",
+            vec![("a".to_string(), 10), ("b".to_string(), 10)],
+        ),
+        (
+            "enabled:50,control:50",
+            vec![("enabled".to_string(), 50), ("control".to_string(), 50)],
+        ),
+    ] {
+        let driver = MemoryFeatureDriver::new();
+        driver.override_variants(flag, variants);
+        // Without an identifier the split string is not "enabled".
+        assert_ne!(
+            parse_feature_string_value(split, flag, None).as_deref(),
+            Some("enabled")
+        );
+        assert_eq!(driver.enabled(flag).await, Some(false));
+
+        let mut gated_in = 0;
+        for index in 0..200 {
+            let identifier = format!("user-{index}");
+            let expected = parse_feature_string_value(split, flag, Some(&identifier));
+            let variant = driver.variant(flag, &identifier).await;
+            assert_eq!(variant, expected);
+            let enabled = driver.enabled_for(flag, &identifier).await;
+            assert_eq!(enabled, Some(variant.as_deref() == Some("enabled")));
+            gated_in += usize::from(enabled == Some(true));
+        }
+        // Only a variant named "enabled" opens the gate, for its bucket share.
+        if split.starts_with("enabled") {
+            assert!((50..150).contains(&gated_in), "{gated_in}");
+        } else {
+            assert_eq!(gated_in, 0);
+        }
+    }
+}
