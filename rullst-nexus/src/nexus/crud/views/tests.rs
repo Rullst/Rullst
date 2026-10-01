@@ -130,3 +130,43 @@ fn saving_a_record_refreshes_the_current_query() {
     let script = include_str!("../../../../assets/nexus.js");
     assert!(script.contains("window.location.pathname + window.location.search"));
 }
+
+#[test]
+fn failure_toasts_show_text_instead_of_markup() {
+    let script = include_str!("../../../../assets/nexus.js");
+    // Every failure path goes through `messageText`, which reduces an HTML
+    // body to its text; `toast` itself only sets `textContent`.
+    assert!(script.contains("new DOMParser().parseFromString(raw, \"text/html\")"));
+    assert_eq!(script.matches("reportFailure(\"").count(), 2);
+    assert!(script.contains("messageText(xhr?.responseText"));
+    assert!(!script.contains("toast(\"Save failed: \" + text"));
+    assert!(!script.contains(".innerHTML"));
+}
+
+#[tokio::test]
+async fn models_without_a_searchable_column_offer_no_search() {
+    let entry = RegistryEntry {
+        table: "orders",
+        label: "Orders",
+        icon: "O",
+        pk: "id",
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("total", "Total", FieldKind::Number),
+            FieldMeta::new(
+                "status",
+                "Status",
+                FieldKind::Enum {
+                    options: vec!["paid", "refunded"],
+                },
+            ),
+            FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+        ],
+    };
+    let html = render_table_view(&state(), &entry, 1, "refunded", None, None, None).await;
+    assert!(!html.contains("name=\"q\""), "{html}");
+    assert!(!html.contains("nexus-search-wrap"), "{html}");
+    assert!(html.contains("Search is not available"), "{html}");
+    assert!(!html.contains("No results matching"), "{html}");
+}

@@ -6,6 +6,9 @@ use crate::nexus::crud::{field_kind_label, sanitize_identifier};
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar, wants_fragment};
 
+mod sanitize;
+use sanitize::sanitize_chat_html;
+
 #[derive(Deserialize, Serialize)]
 pub struct ChatRequest {
     pub message: String,
@@ -297,8 +300,9 @@ pub async fn nexus_chat_query(
     };
 
     // Provider output and schema-derived fallback output are both untrusted at this boundary.
-    // Ammonia's allowlist removes scripts, event handlers, dangerous URLs and unknown markup.
-    let safe_ai_response = ammonia::clean(&ai_response);
+    // The allowlist removes scripts, event handlers, dangerous URLs, unknown markup and every
+    // element that would load a resource (such as an image beacon) by itself.
+    let safe_ai_response = sanitize_chat_html(&ai_response);
 
     Html(format!(
         "<div class=\"nexus-chat-bubble nexus-chat-user\">\

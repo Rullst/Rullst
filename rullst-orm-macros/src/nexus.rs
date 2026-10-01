@@ -3,6 +3,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, LitStr, Type, parse_macro_input};
 
+mod integer;
+use integer::{integer_field_kind, is_integer_type};
+
 #[derive(Default)]
 struct ModelOptions {
     table: Option<String>,
@@ -148,13 +151,6 @@ fn unwrapped_type_name(field_type: &Type) -> String {
     type_name
 }
 
-fn is_integer_type(field_type: &Type) -> bool {
-    matches!(
-        unwrapped_type_name(field_type).as_str(),
-        "i8" | "i16" | "i32" | "i64" | "isize" | "u8" | "u16" | "u32" | "u64" | "usize"
-    )
-}
-
 /// The chrono date/time widget of a field, by path segment rather than by
 /// spelling: `DateTime<Utc>` and `NaiveDateTime` under any `chrono::` prefix
 /// are date-times, `NaiveDate` is a date.
@@ -201,14 +197,13 @@ fn option_inner(field_type: &Type) -> Option<&Type> {
 }
 
 fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
-    if let Some(kind) = chrono_field_kind(field_type) {
+    if let Some(kind) = chrono_field_kind(field_type).or_else(|| integer_field_kind(field_type)) {
         return kind;
     }
     match unwrapped_type_name(field_type).as_str() {
         "String" | "&str" => quote!(::rullst::nexus::FieldKind::Text),
         "bool" => quote!(::rullst::nexus::FieldKind::Boolean),
-        "i8" | "i16" | "i32" | "i64" | "isize" | "u8" | "u16" | "u32" | "u64" | "usize" | "f32"
-        | "f64" => quote!(::rullst::nexus::FieldKind::Number),
+        "f32" | "f64" => quote!(::rullst::nexus::FieldKind::Number),
         _ => quote!(::rullst::nexus::FieldKind::Text),
     }
 }
@@ -269,7 +264,9 @@ fn configured_field_kind(field: &syn::Field, options: &FieldOptions) -> syn::Res
         "textarea" => quote!(::rullst::nexus::FieldKind::Textarea),
         "email" => quote!(::rullst::nexus::FieldKind::Email),
         "url" => quote!(::rullst::nexus::FieldKind::Url),
-        "number" => quote!(::rullst::nexus::FieldKind::Number),
+        // An integer field keeps its range under an explicit number widget.
+        "number" => integer_field_kind(&field.ty)
+            .unwrap_or_else(|| quote!(::rullst::nexus::FieldKind::Number)),
         "boolean" => quote!(::rullst::nexus::FieldKind::Boolean),
         "date" => quote!(::rullst::nexus::FieldKind::Date),
         "datetime" => quote!(::rullst::nexus::FieldKind::DateTime),

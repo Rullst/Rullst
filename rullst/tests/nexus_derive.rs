@@ -20,6 +20,19 @@ struct DerivedArticle {
     is_active: bool,
 }
 
+/// Integer fields are bounded by their Rust type, so Nexus never stores a
+/// fraction or an out-of-range value the model could not decode.
+#[derive(Nexus)]
+#[allow(dead_code)]
+#[nexus(table = "stock_items")]
+struct StockItem {
+    id: i64,
+    stock: i32,
+    views: Option<u32>,
+    total: u64,
+    price: f64,
+}
+
 #[derive(Nexus)]
 #[allow(dead_code)]
 #[nexus(table = "tenant_articles", tenant = "organization_id")]
@@ -107,4 +120,38 @@ fn derive_nexus_exposes_protected_tenant_metadata_through_the_facade() {
         .expect("tenant field metadata");
     assert!(tenant.hidden && tenant.readonly);
     assert_eq!(tenant.kind, FieldKind::Text);
+}
+
+#[test]
+fn derive_nexus_bounds_integer_fields_by_their_rust_type() {
+    let fields = StockItem::nexus_fields();
+    assert_eq!(
+        fields[0].kind,
+        FieldKind::Integer {
+            min: i64::MIN,
+            max: i64::MAX
+        }
+    );
+    assert_eq!(
+        fields[1].kind,
+        FieldKind::Integer {
+            min: i32::MIN.into(),
+            max: i32::MAX.into()
+        }
+    );
+    assert_eq!(
+        fields[2].kind,
+        FieldKind::Integer {
+            min: 0,
+            max: u32::MAX.into()
+        }
+    );
+    assert_eq!(
+        fields[3].kind,
+        FieldKind::Integer {
+            min: 0,
+            max: i64::MAX
+        }
+    );
+    assert_eq!(fields[4].kind, FieldKind::Number);
 }

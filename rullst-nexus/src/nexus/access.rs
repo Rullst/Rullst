@@ -352,16 +352,26 @@ pub(crate) async fn basic_auth_middleware(
 }
 
 pub(crate) async fn loopback_only_middleware(mut request: Request, next: Next) -> Response {
+    // A dual-stack (`::`) listener reports IPv4 peers as IPv4-mapped IPv6
+    // addresses such as `::ffff:127.0.0.1`, which `Ipv6Addr::is_loopback`
+    // rejects; `to_canonical` maps them back to IPv4 first.
     let is_loopback = request
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
-        .is_some_and(|connection| connection.0.ip().is_loopback());
+        .is_some_and(|connection| connection.0.ip().to_canonical().is_loopback());
 
     if is_loopback && browser_boundary::allows(&request) {
         request
             .extensions_mut()
             .insert(NexusPrincipal::authenticated("local-loopback"));
-        next.run(request).await
+        let mut response = next.run(request).await;
+        response
+            .headers_mut()
+            .entry(header::REFERRER_POLICY)
+            .or_insert(HeaderValue::from_static(
+                browser_boundary::LOCAL_REFERRER_POLICY,
+            ));
+        response
     } else {
         status_response(StatusCode::FORBIDDEN)
     }

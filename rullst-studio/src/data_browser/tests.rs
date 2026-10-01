@@ -228,7 +228,7 @@ async fn primary_keys_outside_the_identifier_boundary_disable_mutations() {
 async fn test_get_any_value_as_string() {
     let pool = super::pool::test_sqlite_pool().await;
 
-    let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
+    let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n, x'ff' as b")
         .fetch_one(pool)
         .await
         .unwrap();
@@ -237,6 +237,8 @@ async fn test_get_any_value_as_string() {
     assert_eq!(get_any_value_as_string(&row, 1), "42");
     assert_eq!(get_any_value_as_string(&row, 2), "3.14");
     assert_eq!(get_any_value_as_string(&row, 3), "NULL");
+    // A present value that is not text is not reported as NULL.
+    assert_eq!(get_any_value_as_string(&row, 4), "unreadable");
 }
 
 #[test]

@@ -1,10 +1,9 @@
 //! Row-action forms rendered by the Studio table view.
 
 use super::MUTATION_BODY_LIMIT;
-use crate::data_browser::db::{
-    StudioColumn, StudioTableSchema, build_rows_html, escape_html_attr, get_any_value_as_string,
-};
-use crate::data_browser::limits::{MAX_CELL_BYTES, display_cell};
+use crate::data_browser::cells::{cell_html, decode_cell};
+use crate::data_browser::db::{StudioColumn, StudioTableSchema, build_rows_html, escape_html_attr};
+use crate::data_browser::limits::MAX_CELL_BYTES;
 use sqlx::Row;
 use std::fmt::Write;
 
@@ -95,17 +94,7 @@ pub(crate) fn build_mutable_rows_html(
     for row in records {
         html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
         for index in 0..columns.len() {
-            let value = get_any_value_as_string(row, index);
-            let class = if value == "NULL" {
-                "text-slate-600 font-mono italic"
-            } else {
-                "text-slate-300"
-            };
-            let _ = write!(
-                html,
-                "<td class=\"px-6 py-4 text-sm truncate max-w-xs {class}\">{}</td>",
-                escape_html_attr(&display_cell(&value))
-            );
+            html.push_str(&cell_html(&decode_cell(row, index)));
         }
 
         // Each offered form must fit the mutation body limit, or submitting it

@@ -54,7 +54,9 @@ Install the exact stable train with
 
 The supported v12 mode is a standalone debug server. `run_studio` and
 `Studio::into_router(LocalStudioAccess::loopback_only())` reject release builds
-and requests whose direct peer is not verified as loopback. Servers composing
+and requests whose direct peer is not verified as loopback (an IPv4-mapped
+peer such as `::ffff:127.0.0.1` from a dual-stack `::` listener counts as IPv4
+loopback). Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. Non-local
 `Host`, cross-origin requests, and unsafe requests without `Origin` fail closed.
 Studio responses use `Referrer-Policy: same-origin` so that browsers keep the
@@ -170,6 +172,10 @@ characters before Studio renders it; key columns keep up to 16 KiB for row
 actions, and a longer key makes its row read-only. Search terms are limited to
 256 bytes and match the displayed columns (at most 256); the record count uses
 the same predicate.
+
+The table view marks SQL NULL as `NULL` and a present value it cannot decode as
+text, a number or a Boolean (such as a non-UTF-8 BLOB) as `unreadable`, so a
+filled column is never reported as NULL.
 
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys; on PostgreSQL they cover the `public` schema, which every data
