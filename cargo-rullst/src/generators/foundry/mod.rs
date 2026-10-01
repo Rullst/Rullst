@@ -1,5 +1,6 @@
 // src/generators/foundry/mod.rs — Rullst Foundry: cloud deployment manifest & SSH pipeline.
 
+mod artifact;
 mod config;
 mod deploy;
 mod service;

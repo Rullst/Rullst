@@ -1178,7 +1178,10 @@ systemd provisioning, `scp` transfer, environment/Caddy configuration, service
 restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
 reviewed `curl`, systemd, and Caddy installation plus root or passwordless
 non-interactive `sudo`. Candidate files are staged under an application-specific
-`/opt/rullst/<app>` root: the binary is uploaded into
+`/opt/rullst/<app>` root: the binary is the executable Cargo reports for the
+package (so `CARGO_TARGET_DIR`, `build.target-dir`, a workspace target directory
+and `build.target` are honored; with several binaries, `package.default-run` or
+the one named after the package is chosen), uploaded into
 `/opt/rullst/<app>/incoming` (mode `0700`, owned by the SSH user), and its
 owner and the SHA-256 of the local build are checked before it is installed.
 The Caddy configuration is validated, and `.previous` copies of replaced files

@@ -115,7 +115,8 @@ cargo rullst foundry:deploy
 
 ### What the current `foundry:deploy` does
 
-1. Builds the selected profile and optional target locally.
+1. Builds the selected profile and optional target locally and takes the
+   executable Cargo reports for the package, wherever its target directory is.
 2. Connects over SSH, checks the preinstalled `curl`, `systemctl`, `caddy` and
    `useradd` executables, creates `/opt/rullst/<app>/{bin,config,data}` and a
    dedicated system account (`rullst-<app>`, lowercase, with a digest suffix

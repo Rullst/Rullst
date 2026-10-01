@@ -151,7 +151,9 @@ pub async fn head() {}
         for (name, body) in [
             (
                 "cargo",
-                "#!/bin/sh\necho 'Launching Omni interface...'\nexit 0\n",
+                // A `foundry:deploy` build reports its binary outside `target/`,
+                // as with CARGO_TARGET_DIR or a configured build target.
+                "#!/bin/sh\nfor argument in \"$@\"; do\n  if [ \"$argument\" = --message-format=json-render-diagnostics ]; then\n    printf '{\"reason\":\"compiler-artifact\",\"manifest_path\":\"%s/Cargo.toml\",\"target\":{\"kind\":[\"bin\"],\"name\":\"cli-fixture\"},\"profile\":{\"test\":false},\"executable\":\"%s/custom-target/release/cli-fixture\"}\\n' \"$PWD\" \"$PWD\"\n  fi\ndone\necho 'Launching Omni interface...'\nexit 0\n",
             ),
             ("rustup", "#!/bin/sh\nexit 0\n"),
             ("rustc", "#!/bin/sh\necho 'rustc 1.98.1 (fixture)'\n"),
@@ -162,7 +164,10 @@ pub async fn head() {}
                 "#!/bin/sh\nif [ \"$1\" = \"install\" ]; then\n  /bin/mkdir -p node_modules/@tauri-apps/cli\n  printf '{}' > node_modules/@tauri-apps/cli/package.json\nfi\nif [ \"$5 $6\" = \"android init\" ]; then\n  /bin/mkdir -p gen/android/app\n  printf '// fixture' > gen/android/app/build.gradle.kts\nfi\nexit 0\n",
             ),
             ("ssh", "#!/bin/sh\n/bin/cat >/dev/null\nexit 0\n"),
-            ("scp", "#!/bin/sh\nexit 0\n"),
+            (
+                "scp",
+                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"${0%/*}/scp-arguments\"\nexit 0\n",
+            ),
             // An empty TCP listener inventory for `audit --network`.
             ("ss", "#!/bin/sh\nexit 0\n"),
         ] {
@@ -504,11 +509,23 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
             "APP_KEY = \"fixture-secret-with-adequate-length\"",
         );
     fs::write(foundry_path, foundry).expect("configured Foundry manifest");
-    // The fake Cargo builds nothing; deploy hashes the binary before upload.
-    let release = fixture.root.join("target/release");
-    fs::create_dir_all(&release).expect("release directory");
-    fs::write(release.join("cli-fixture"), b"fixture binary").expect("release binary fixture");
+    // The fake Cargo builds nothing and reports custom-target/release; deploy
+    // hashes and uploads that binary, never a stale one under target/.
+    for (directory, contents) in [
+        ("custom-target/release", &b"fixture binary"[..]),
+        ("target/release", &b"stale binary"[..]),
+    ] {
+        let release = fixture.root.join(directory);
+        fs::create_dir_all(&release).expect("release directory");
+        fs::write(release.join("cli-fixture"), contents).expect("release binary fixture");
+    }
     fixture.succeeds_with_path(&["foundry:deploy"], &tools);
+    let uploaded = fs::read_to_string(tools.join("scp-arguments")).expect("scp arguments");
+    let reported = format!(
+        "{}/custom-target/release/cli-fixture",
+        fixture.root.display()
+    );
+    assert!(uploaded.lines().any(|line| line == reported), "{uploaded}");
 
     assert_files(
         &fixture.root,

@@ -1,7 +1,7 @@
 // src/generators/foundry/deploy.rs — SSH deployment pipeline steps.
 
 use super::config::FoundryConfig;
-use super::service;
+use super::{artifact, service};
 use colored::*;
 use std::fs;
 use std::io::Write;
@@ -77,34 +77,11 @@ pub fn execute_build_step(cfg: &FoundryConfig) -> Result<String, Box<dyn std::er
         build_args.push(cfg.target_triple.clone());
     }
 
-    if !Command::new("cargo").args(&build_args).status()?.success() {
-        return Err(std::io::Error::other("release build failed; deployment aborted").into());
-    }
-    println!("{}", "  ✅ Build successful.".green());
-
-    let bin_subdir = if cfg.target_triple.is_empty() {
-        if cfg.profile == "debug" {
-            "debug".to_string()
-        } else {
-            "release".to_string()
-        }
-    } else {
-        format!(
-            "{}/{}",
-            cfg.target_triple,
-            if cfg.profile == "debug" {
-                "debug"
-            } else {
-                "release"
-            }
-        )
-    };
-
     let cargo_toml_content = fs::read_to_string("Cargo.toml")?;
     let cargo_manifest = toml::from_str::<toml::Value>(&cargo_toml_content)
         .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
-    let bin_name = cargo_manifest
-        .get("package")
+    let package = cargo_manifest.get("package");
+    let name = package
         .and_then(|package| package.get("name"))
         .and_then(toml::Value::as_str)
         .ok_or_else(|| {
@@ -112,10 +89,27 @@ pub fn execute_build_step(cfg: &FoundryConfig) -> Result<String, Box<dyn std::er
                 std::io::ErrorKind::InvalidData,
                 "Cargo.toml must contain a string package.name",
             )
-        })?
-        .to_string();
+        })?;
+    let manifest = std::path::Path::new("Cargo.toml").canonicalize()?;
+    let package = artifact::Package {
+        manifest: &manifest,
+        name,
+        default_run: package
+            .and_then(|package| package.get("default-run"))
+            .and_then(toml::Value::as_str),
+    };
 
-    Ok(format!("target/{}/{}", bin_subdir, bin_name))
+    // Cargo reports where it wrote the binary (target directory, target triple
+    // and workspace layout included), so a stale file is never uploaded.
+    let executable = artifact::build_executable(&build_args, &package)?;
+    println!("{}", "  ✅ Build successful.".green());
+    executable.into_os_string().into_string().map_err(|_| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "the built executable path is not valid UTF-8",
+        )
+        .into()
+    })
 }
 
 pub fn execute_provision_step(
