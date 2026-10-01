@@ -9,6 +9,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### `cargo rullst ai` terminal assistant and `rullst-ai` usage and streaming
+
+- `cargo rullst ai` is a terminal assistant that knows Rullst and the current
+  project. `cargo rullst ai connect` stores a provider (OpenAI, Anthropic,
+  Gemini, DeepSeek, Ollama or a local OpenAI-compatible server such as LM
+  Studio, llama.cpp, vLLM, LocalAI or Jan) in a private user-level credentials
+  file; environment variables take precedence.
+- `cargo rullst ai` and `cargo rullst ai "<goal>"` answer through `rullst-ai`'s
+  guarded clients and may propose only reviewed actions: file writes inside the
+  project, allowlisted `cargo rullst` scaffolds and diagnostics, `cargo
+  check`/`cargo test`, `cargo rullst new` outside a project and development
+  `db:migrate`. Each action is shown as a diff or exact command and confirmed;
+  a git checkpoint under `refs/rullst/ai-checkpoints/` precedes the first
+  change, non-interactive runs only print the plan, and a deterministic
+  offline assistant answers when no key is configured.
+- Reported token usage is shown per answer and per session; a cost estimate
+  appears only at prices the user configures (Rullst ships no price table).
+- `rullst-ai` reports provider token usage (`TokenUsage`, `chat_with_usage`,
+  `StreamSummary::usage`) and streams Anthropic and Gemini natively; Gemini
+  rejects truncated or withheld replies. The image-beacon guardrail follows
+  CommonMark for code and unmatched references, so Rust such as `vec![x]` next
+  to a link is no longer blocked.
+
 ### Facade and examples second-round fixes
 
 - The blog showcase registers `Post` with Nexus as tenant-scoped
@@ -520,6 +543,13 @@ A prepared version section does not establish that its tag or crates exist.
   names), and direct Resend schedules beyond 30 days fail before any request.
 - Tracking tokens sign the bare recipient address, and the derived plain-text
   part keeps HTTP(S) link targets as `label <URL>`.
+
+### CLI starter templates
+
+- The Blog, SaaS and LMS starter sources live in template files under
+  `cargo-rullst/src/blueprints/{blog,saas,lms}/` that mirror the generated
+  project's layout, as Portfolio, ERP and Blank already do; their output is
+  byte-identical (610 variants, 12,922 files compared).
 
 ### Large module splits
 

@@ -7,6 +7,8 @@ use super::{AiError, Message};
 use rullst_core::security::mask_pii;
 
 mod markdown_images;
+#[cfg(test)]
+mod markdown_tests;
 mod tax_ids;
 
 use markdown_images::has_remote_image;
@@ -337,7 +339,6 @@ mod tests {
             "![a](\\\\example.invalid/x) see https://docs.rs",
             "![a](/\t/example.invalid/x) see https://docs.rs",
             "![logo][1] with [1]: https://example.invalid/x",
-            "![logo] then https://example.invalid/x",
             "![a\\](x)(https://example.invalid/x)",
             "![a](img.png?next=https://example.invalid/x)",
             "![a ![b](https://example.invalid/x) c](local.png)",
@@ -417,9 +418,6 @@ mod tests {
             // Lowercasing is not Unicode case folding, so a non-ASCII label
             // must not resolve to only the local one of several candidates.
             "![s][\u{df}]\n\n[SS]: //attacker.example/x\n[\u{df}]: assets/a.png",
-            // An undefined reference next to a remote destination.
-            "Append ![s][r], where r is //attacker.example/x",
-            "Append ![s], defined as https&#58;//attacker.example/x",
             // Invalid inline syntax leaves a shortcut reference.
             "![s](x y)\n\n[s]: //attacker.example/x",
             // A code span or autolink can move the end of the label.
