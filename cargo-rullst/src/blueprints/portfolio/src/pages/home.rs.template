@@ -7,7 +7,7 @@ use crate::models::skill::Skill;
 
 fn cv_styles() -> String {
     r#"
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     
     :root {
         --bg-color: #050505;
@@ -72,6 +72,9 @@ fn cv_styles() -> String {
 
     .contact-info { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
     .contact-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: var(--text-muted); }
+    .contact-item a { color: var(--text-muted); }
+    .contact-item a.accent { color: var(--accent); }
+    .profile-head { text-align: center; }
 
     .skill-cat { font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }
     .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
@@ -139,7 +142,7 @@ fn safe_link(url: &str) -> &str {
 fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {
     html! {
         <aside class="sidebar">
-            <div style="text-align: center;">
+            <div class="profile-head">
                 <img src={&profile.avatar_url} alt={&profile.name} class="profile-img" />
                 <h1>{&profile.name}</h1>
                 <h2 class="role">{&profile.title}</h2>
@@ -151,9 +154,9 @@ fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {
             
             <div class="contact-info">
                 <div class="contact-item">"📧 "{&profile.email}</div>
-                <div class="contact-item">"🌐 "<a href={safe_link(&profile.website)} target="_blank" style="color: var(--accent);">{&profile.website}</a></div>
-                <div class="contact-item">"💻 "<a href={safe_link(&profile.github_url)} target="_blank" style="color: var(--text-muted);">{&profile.github_url}</a></div>
-                <div class="contact-item">"💼 "<a href={safe_link(&profile.linkedin_url)} target="_blank" style="color: var(--text-muted);">{&profile.linkedin_url}</a></div>
+                <div class="contact-item">"🌐 "<a href={safe_link(&profile.website)} target="_blank" class="accent">{&profile.website}</a></div>
+                <div class="contact-item">"💻 "<a href={safe_link(&profile.github_url)} target="_blank">{&profile.github_url}</a></div>
+                <div class="contact-item">"💼 "<a href={safe_link(&profile.linkedin_url)} target="_blank">{&profile.linkedin_url}</a></div>
             </div>
 
             <div>
@@ -202,7 +205,13 @@ fn render_content(projects: &[Project], experiences: &[Experience]) -> String {
     }
 }
 
-pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+pub fn render(
+    profile: &Profile,
+    projects: &[Project],
+    experiences: &[Experience],
+    skills: &[Skill],
+    csp_nonce: &str,
+) -> String {
     html! {
         <html lang="en">
             <head>
@@ -210,8 +219,7 @@ pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Developer — AI & Rust Portfolio"</title>
                 <link rel="icon" type="image/png" href="/static/rullst.png" />
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-                <style>{ rullst::html::RawHtml(cv_styles()) }</style>
+                <style nonce={csp_nonce}>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>
             <body>
                 <div class="bg-grid"></div>

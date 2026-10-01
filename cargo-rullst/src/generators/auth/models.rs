@@ -13,44 +13,7 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
     let timestamp = now.format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_create_users_table", timestamp);
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
-
-    let migration_template = format!(
-        r##"use rullst::db::{{Orm, sqlx}};
-use rullst::db::schema::{{Schema, Migration}};
-use rullst::db::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {{
-    fn name(&self) -> &'static str {{
-        "{file_stem}"
-    }}
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::create("users", |table| {{
-            table.id();
-            table.string("name").not_null();
-            table.string("email").not_null();
-            table.string("password_hash").nullable();
-            table.string("oauth_provider").nullable();
-            table.string("oauth_id").nullable();
-            table.timestamps();
-        }}).await?;
-        sqlx::query("CREATE UNIQUE INDEX users_email_unique ON users(email)")
-            .execute(Orm::pool()?)
-            .await?;
-        Ok(())
-    }}
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::drop_if_exists("users").await
-    }}
-}}
-"##,
-        file_stem = file_stem
-    );
-    fs::write(&migration_path, migration_template)?;
+    fs::write(&migration_path, user_migration_source(&file_stem))?;
     println!("{}", "  ✨ Created 'users' table migration.".green());
 
     regenerate_migrations_mod()?;
@@ -101,4 +64,62 @@ impl User {
     }
 
     Ok(())
+}
+
+/// The `users` migration written by `make:auth`.
+fn user_migration_source(file_stem: &str) -> String {
+    format!(
+        r##"use rullst::db::{{Orm, sqlx}};
+use rullst::db::schema::{{Schema, Migration}};
+use rullst::db::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {{
+    fn name(&self) -> &'static str {{
+        "{file_stem}"
+    }}
+
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+        Schema::create("users", |table| {{
+            table.id();
+            table.string("name").not_null();
+            // MySQL/MariaDB cannot index a TEXT column without a prefix length, so
+            // indexed strings are bounded VARCHAR columns on every driver.
+            table.string("email").not_null().col_type = "VARCHAR(255)".to_string();
+            table.string("password_hash").nullable();
+            table.string("oauth_provider").nullable();
+            table.string("oauth_id").nullable();
+            table.timestamps();
+        }}).await?;
+        sqlx::query("CREATE UNIQUE INDEX users_email_unique ON users(email)")
+            .execute(Orm::pool()?)
+            .await?;
+        Ok(())
+    }}
+
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
+        Schema::drop_if_exists("users").await
+    }}
+}}
+"##,
+        file_stem = file_stem
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn indexed_user_email_is_a_bounded_varchar_for_mysql() {
+        let source = user_migration_source("m20260101000000_create_users_table");
+        syn::parse_file(&source).expect("users migration must parse");
+        assert!(source.contains(
+            "table.string(\"email\").not_null().col_type = \"VARCHAR(255)\".to_string();"
+        ));
+        assert!(source.contains("CREATE UNIQUE INDEX users_email_unique ON users(email)"));
+        assert!(source.contains("\"m20260101000000_create_users_table\""));
+    }
 }

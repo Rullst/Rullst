@@ -160,6 +160,25 @@ mod tests {
     }
 
     #[test]
+    fn lesson_progress_keys_are_fresh_per_render_and_scoped_per_percentage() {
+        let manifest = manifest(false);
+        let controller = source(&manifest, "src/controllers/learning_controller.rs");
+        // One fixed key per learner and lesson made every later save a 409.
+        assert!(!controller.contains(":next"));
+        assert!(controller.contains("let progress_key = new_progress_key(user_id, lesson_id);"));
+        assert!(controller.contains("rullst::security::generate_csrf_token()"));
+        assert!(
+            controller
+                .contains("&progress_event_key(&form.idempotency_key, form.progress_percent)")
+        );
+        assert!(
+            controller.contains(
+                "fn each_render_and_requested_percentage_records_its_own_progress_event()"
+            )
+        );
+    }
+
+    #[test]
     fn hot_reload_exports_the_router_library() {
         let manifest = manifest(true);
         assert!(

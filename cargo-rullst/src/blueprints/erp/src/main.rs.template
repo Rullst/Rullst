@@ -1,4 +1,4 @@
-use rullst::{routes, Server};
+use rullst::{routes, Router, Server};
 
 pub mod migrations;
 pub mod models;
@@ -18,7 +18,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register::<models::order::Order>()
         .try_build()?;
 
+    // The whole back office shares the Nexus administrator policy, including the
+    // dashboard that lists every order's customer and the revenue totals:
+    // loopback-only in debug builds, Basic Auth over verified TLS in release.
     let admin_routes = routes![
+        get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
         // rullst-access: admin — protected by admin_access.protect_router below.
         post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
@@ -26,13 +30,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
 
-    let router = routes![
-        get("/" => controllers::erp_controller::index),
-    ]
-    .merge_axum(admin_routes)
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus);
+    let router = Router::new()
+        .merge_axum(admin_routes)
+        .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+        .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+        .nest_axum("/nexus", nexus);
 
     #[cfg(debug_assertions)]
     {

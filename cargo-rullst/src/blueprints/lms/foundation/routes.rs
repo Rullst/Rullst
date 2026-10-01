@@ -27,11 +27,14 @@ const ROUTER: &str = r##"pub fn router() -> Result<Router, Box<dyn std::error::E
         // rullst-access: public — bounded published course metadata forms the public catalog.
         get("/courses/{id}" => controllers::lms_controller::show_course),
         get("/login" => controllers::auth_controller::login_view),
-        post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
-        post("/register" => controllers::auth_controller::register_submit),
         post("/logout" => controllers::auth_controller::logout),
-    ];
+    ]
+    // Each credential submission runs Argon2id, so it is budgeted per client.
+    .route("/login", rullst::routing::post(controllers::auth_controller::login_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)));
     let learning = routes![
         get("/dashboard" => controllers::auth_controller::dashboard),
         // rullst-access: owner — the authenticated session owns the enrollment created by the service.

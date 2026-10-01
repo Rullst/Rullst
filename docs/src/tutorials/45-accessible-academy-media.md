@@ -68,7 +68,9 @@ combination in the deployed browser rather than disabling isolation globally.
 The protected lesson controller checks the authenticated learner's
 active enrollment before rendering the player.
 Progress submissions use CSRF and idempotency data and remain authoritative in
-the database.
+the database. Each rendered player carries a fresh random key, scoped to the
+requested percentage on submission: resubmitting the same click replays the
+stored event, while a later save, or another button, records new progress.
 
 ## Evidence boundary
 
