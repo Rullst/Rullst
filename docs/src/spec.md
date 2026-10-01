@@ -1833,6 +1833,12 @@ while portability and semantic review remain the model author's responsibility.
   (the related model's key) applies to `belongs_to`, `belongs_to_many` and
   `morph_to`. Either option on another relation fails compilation instead of
   being ignored.
+* A relation key may be nullable (`Option<T>`, such as a nullable foreign
+  key) on either model; generated loaders compare its inner value. A `None`
+  key matches no row, like SQL `NULL`: the lazy loader returns `None` or an
+  empty list without a query, an eager load assigns `None` (or `Some(vec![])`
+  for a to-many relation) to such a parent, and a related row whose key is
+  `None` belongs to no parent. The `morph_to` id field stays non-optional.
 * SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
   typed `morph_to` targets. A polymorphic relation requires
   `morph_name = "..."` (`name` remains a legacy alias).

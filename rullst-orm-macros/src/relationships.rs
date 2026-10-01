@@ -21,6 +21,19 @@ fn foreign_key_field(name: &syn::Ident, rel: &ParsedRelation) -> String {
     }
 }
 
+/// Reads a relation key field as `Option<key>`: a nullable key (`Option<T>`,
+/// a nullable foreign key) is unwrapped and any other key wrapped in `Some`.
+/// Loaders skip a `None` key, which, like SQL `NULL`, matches no row. The
+/// field type is known only after expansion, so the runtime helper selects
+/// the conversion by autoref dispatch.
+fn relation_key(field: TokenStream) -> TokenStream {
+    quote! {{
+        #[allow(unused_imports)]
+        use rullst_orm::__relation_key::{Nullable as _, Required as _};
+        (&rullst_orm::__relation_key::Key(&#field)).__rullst_relation_key()
+    }}
+}
+
 /// Identifiers shared by the lazy and eager loaders of one relation.
 struct RelationNames<'a> {
     rel: &'a ParsedRelation,

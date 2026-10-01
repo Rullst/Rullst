@@ -26,6 +26,13 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
     let load_flag = quote::format_ident!("load_{}", rel.field_name);
     let filter_flag = quote::format_ident!("filter_{}", rel.field_name);
 
+    // A parent or related row whose key is `None` (a nullable key) takes part
+    // in no match, like SQL `NULL`.
+    let m_lk = super::relation_key(quote!(m.#lk_ident));
+    let m_fk = super::relation_key(quote!(m.#fk_ident));
+    let model_lk = super::relation_key(quote!(model.#lk_ident));
+    let related_pk = super::relation_key(quote!(related.#pk_ident));
+
     // One query serves every parent: exceeding the row cap fails instead of dropping rows.
     let guarded_fetch = quote! {
         let eager_limit = rullst_orm::__eager_limit::guard(&mut query.limit);
@@ -51,29 +58,35 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
     if rel_type == "has_many" || rel_type == "has_one" {
         quote! {
             if self.#load_flag {
-                let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();
-                if !parent_ids.is_empty() {
+                let parent_ids: Vec<_> = results.iter().filter_map(|m| #m_lk).collect();
+                let all_related: Vec<#rel_model_ident> = if parent_ids.is_empty() {
+                    Vec::new()
+                } else {
                     let mut query = #rel_model_ident::query().where_in(stringify!(#fk_ident), parent_ids).__rullst_freeze_scope();
                     if let Some(ref filter) = self.#filter_flag {
                         query = filter(query);
                     }
                     #guarded_fetch
-                    #eager_load_assignment
-                }
+                    all_related
+                };
+                #eager_load_assignment
             }
         }
     } else if rel_type == "belongs_to" {
         quote! {
             if self.#load_flag {
-                let parent_ids: Vec<_> = results.iter().map(|m| m.#fk_ident.clone()).collect();
-                if !parent_ids.is_empty() {
+                let parent_ids: Vec<_> = results.iter().filter_map(|m| #m_fk).collect();
+                let all_related: Vec<#rel_model_ident> = if parent_ids.is_empty() {
+                    Vec::new()
+                } else {
                     let mut query = #rel_model_ident::query().where_in(stringify!(#pk_ident), parent_ids).__rullst_freeze_scope();
                     if let Some(ref filter) = self.#filter_flag {
                         query = filter(query);
                     }
                     #guarded_fetch
-                    #eager_load_assignment
-                }
+                    all_related
+                };
+                #eager_load_assignment
             }
         }
     } else if rel_type == "morph_to" {
@@ -94,7 +107,10 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                     #guarded_fetch
                     let related_by_id: std::collections::HashMap<_, _> = all_related
                         .into_iter()
-                        .map(|related| (related.#pk_ident.clone(), related))
+                        .filter_map(|related| {
+                            let key = #related_pk?;
+                            Some((key, related))
+                        })
                         .collect();
                     for model in &mut results {
                         model.#method_name = if model.#morph_type_ident == stringify!(#rel_model_ident) {
@@ -111,8 +127,10 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
         // instead of issuing one relationship query per parent model.
         quote! {
             if self.#load_flag {
-                let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();
-                if !parent_ids.is_empty() {
+                let parent_ids: Vec<_> = results.iter().filter_map(|m| #m_lk).collect();
+                let all_related: Vec<#rel_model_ident> = if parent_ids.is_empty() {
+                    Vec::new()
+                } else {
                     let mut query = #rel_model_ident::query()
                         .where_in(stringify!(#morph_id_ident), parent_ids)
                         .where_eq(stringify!(#morph_type_ident), stringify!(#name))
@@ -121,8 +139,9 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                         query = filter(query);
                     }
                     #guarded_fetch
-                    #eager_load_assignment
-                }
+                    all_related
+                };
+                #eager_load_assignment
             }
         }
     } else {
@@ -132,7 +151,10 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
         // Then distribute in memory. No N+1.
         quote! {
             if self.#load_flag {
-                let parent_ids: Vec<i32> = results.iter().map(|m| m.#lk_ident).collect();
+                let parent_ids: Vec<i32> = results.iter().filter_map(|m| #m_lk).collect();
+                // parent_id -> related models, in the related query order
+                let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
+                    std::collections::HashMap::with_capacity(results.len());
                 if !parent_ids.is_empty() {
                     let driver = rullst_orm::Orm::driver()?;
                     // Q1: pivot table pairs
@@ -176,9 +198,6 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                         }
                     })?;
 
-                    // parent_id -> related models, in the related query order
-                    let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
-                        std::collections::HashMap::with_capacity(results.len());
                     if !pivot_pairs.is_empty() {
                         // Deduplicate related IDs for Q2
                         let mut related_ids: Vec<i32> = pivot_pairs.iter().map(|(_, rid)| *rid).collect();
@@ -221,15 +240,16 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                                 .push(related);
                         }
                     }
+                }
 
-                    // Every parent is loaded: one without related rows gets
-                    // an empty list, and parents sharing a local key each
-                    // receive the group.
-                    for model in &mut results {
-                        model.#method_name = Some(
-                            parent_to_related.get(&model.#lk_ident).cloned().unwrap_or_default()
-                        );
-                    }
+                // Every parent is loaded: one without related rows (or
+                // without a key) gets an empty list, and parents sharing a
+                // local key each receive the group.
+                for model in &mut results {
+                    let key = #model_lk;
+                    model.#method_name = Some(
+                        key.and_then(|key| parent_to_related.get(&key).cloned()).unwrap_or_default()
+                    );
                 }
             }
         }
