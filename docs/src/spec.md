@@ -1510,6 +1510,9 @@ the same server-authoritative controls.
   Rows contain the original payload, so Studio access, data minimization and
   retention policy remain host responsibilities. Redis/custom drivers expose
   inspection or history only when their capability implements it.
+* Redis stalled-lease recovery measures each lease's age with Redis server
+  time, the clock that scored the claim, so a worker host's clock skew cannot
+  recover a running job early or postpone recovery of a crashed one.
 
 ### Local object replacement
 

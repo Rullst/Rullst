@@ -14,7 +14,7 @@ pub mod redis_driver {
     use crate::redis_connection::{RedisConnection, SharedRedisConnection};
     use async_trait::async_trait;
     use serde::Deserialize;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime};
 
     mod inspection;
     mod transitions;
@@ -342,10 +342,9 @@ pub mod redis_driver {
         }
 
         async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|error| QueueError::Driver(format!("System clock error: {error}")))?;
-            let cutoff = now.as_millis().saturating_sub(stale_after.as_millis());
+            // The script subtracts this age from Redis server time, the clock
+            // that scored each claim, so worker clock skew cannot shift it.
+            let stale_after_ms = stale_after.as_millis().to_string();
             let mut connection = self.connection().await?;
             redis::cmd("EVAL")
                 .arg(RECOVER_SCRIPT)
@@ -356,7 +355,7 @@ pub mod redis_driver {
                 .arg(&self.dead_letter_key)
                 .arg(&self.failed_key)
                 .arg(&self.failed_index_key)
-                .arg(cutoff.to_string())
+                .arg(stale_after_ms)
                 .arg(self.dead_letter_retention)
                 .arg(self.max_stalled_leases)
                 .arg(format!(
