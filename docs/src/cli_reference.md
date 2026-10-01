@@ -32,8 +32,12 @@ the generated application:
 * **Optional Flags:**
   * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
-    `.dockerignore` excludes secrets, local databases and the host-local
-    `.cargo/config.toml` described below. The runtime
+    `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
+    `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
+    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals) and the
+    host-local `.cargo/config.toml` described below, so the builder's
+    `COPY . .` never sends them to a (possibly remote) builder. An existing
+    `.dockerignore` is kept unchanged. The runtime
     image installs CA certificates, runs as UID/GID 10001, sets the production
     bind address and copies local static/config assets when present. An explicit
     SQLite selection uses the writable `/app/data` directory. Secrets are never
