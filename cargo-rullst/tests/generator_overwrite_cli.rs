@@ -201,3 +201,34 @@ fn kubernetes_manifests_are_never_replaced_or_written_through_links() {
         assert_eq!(fs::read_dir(&outside).expect("outside").count(), 0);
     }
 }
+
+#[test]
+fn packaging_generators_refuse_to_replace_customized_files() {
+    let project = Project::new();
+    let customized = "# customized\n";
+    for (command, path) in [
+        ("dockerize", "Dockerfile"),
+        ("nixify", ".envrc"),
+        ("generate:buildah", "build_buildah.sh"),
+    ] {
+        fs::write(project.path(path), customized).expect("custom packaging file");
+        let refused = project.fails(&[command]);
+        assert!(refused.contains("refusing to overwrite"), "{refused}");
+        assert_unchanged(&project, path, customized);
+    }
+    assert!(
+        !project.path("flake.nix").exists(),
+        "nixify must not write flake.nix when .envrc exists"
+    );
+
+    #[cfg(unix)]
+    {
+        let linked = Project::new();
+        let outside = linked.path("outside-ignore");
+        std::os::unix::fs::symlink(&outside, linked.path(".dockerignore"))
+            .expect("dangling .dockerignore link");
+        assert!(linked.fails(&["dockerize"]).contains("symlink"));
+        assert!(!linked.path("Dockerfile").exists());
+        assert!(!outside.exists());
+    }
+}

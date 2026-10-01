@@ -192,7 +192,7 @@ pub enum Commands {
     /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
     #[command(name = "foundry:deploy")]
     FoundryDeploy,
-    /// Generates Dockerfile and docker-compose.yml for the project
+    /// Generates a Dockerfile (and .dockerignore when absent) for the project
     Dockerize,
     /// Generates a rootless OCI image build script via Buildah
     #[command(name = "generate:buildah")]
