@@ -1854,6 +1854,11 @@ while portability and semantic review remain the model author's responsibility.
   `unsafe_unlimited()` is honored as written. A to-many eager load
   (`has_many`, `morph_many`, `belongs_to_many`) assigns `Some(vec![])` to a
   parent without related rows, so `None` always means "not loaded".
+* An eager `belongs_to_many` load hands each parent its related rows in the
+  order of the related query, so the `order_by` of
+  `with_<relation>_constrained` applies as it does to the lazy
+  `<relation>_constrained` loader; a related row linked by several pivot rows
+  appears once per pivot row. Without an `order_by` the order is unspecified.
 * Every parent receives the related rows it shares with other parents (one
   `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
   parent rows). The shared value is cloned for every such parent but the last;

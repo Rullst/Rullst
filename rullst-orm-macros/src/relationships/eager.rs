@@ -176,7 +176,7 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                         }
                     })?;
 
-                    // Build parent_id -> Vec<model> from pivot pairs
+                    // parent_id -> related models, in the related query order
                     let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
                         std::collections::HashMap::with_capacity(results.len());
                     if !pivot_pairs.is_empty() {
@@ -191,17 +191,34 @@ pub(super) fn generate(name: &syn::Ident, names: &RelationNames<'_>) -> TokenStr
                         }
                         #guarded_fetch
 
-                        // related_id -> model lookup
-                        let mut related_map: std::collections::HashMap<i32, #rel_model_ident> =
-                            all_related.into_iter().map(|m| (m.id, m)).collect();
-
+                        // related_id -> the parent of each of its pivot rows
+                        let mut parents_of: std::collections::HashMap<i32, Vec<i32>> =
+                            std::collections::HashMap::with_capacity(pivot_pairs.len());
                         for (parent_id, related_id) in &pivot_pairs {
-                            if let Some(m) = related_map.get(related_id) {
+                            parents_of.entry(*related_id).or_insert_with(Vec::new).push(*parent_id);
+                        }
+
+                        // Distribute in the related query's order, so every parent's
+                        // list follows its ORDER BY (for example a constrained
+                        // `order_by`), like the lazy loader, instead of the order of
+                        // the unordered pivot rows.
+                        for related in all_related {
+                            let Some((last, earlier)) = parents_of
+                                .get(&related.id)
+                                .and_then(|parents| parents.split_last())
+                            else {
+                                continue;
+                            };
+                            for parent_id in earlier {
                                 parent_to_related
                                     .entry(*parent_id)
                                     .or_insert_with(Vec::new)
-                                    .push(m.clone());
+                                    .push(related.clone());
                             }
+                            parent_to_related
+                                .entry(*last)
+                                .or_insert_with(Vec::new)
+                                .push(related);
                         }
                     }
 
