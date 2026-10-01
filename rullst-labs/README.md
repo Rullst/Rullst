@@ -81,6 +81,11 @@ bounds submissions per rolling day. One learner may retain at most 100 jobs per
 course, or `max_jobs` when lower; `StoreConfig::learner_jobs` selects another
 bound that every opener must share. Rate-limit submissions in
 `Authorization::check` for `Submit`, and consider one store per tenant.
+`max_exercises` (at most 1,000) is store-wide too: every registered revision,
+enabled or withdrawn, counts until `remove_exercise`, so one tenant's
+instructors could otherwise register all of it. A store shared by several
+tenants should add `StoreConfig::tenant_exercises(n)`, which bounds the
+revisions one tenant holds and is persisted like the other capacities.
 
 Use a dedicated random content key and a separate controller signing seed. The
 application receives only the controller's pinned public key. The untrusted worker

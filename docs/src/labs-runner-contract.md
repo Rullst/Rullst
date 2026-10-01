@@ -32,8 +32,9 @@ network-filesystem database.
 - Depend on `rullst-labs` with the `sqlite` and `receipt-signing` features.
 - Open the application's store with `SqliteLabs::open(path, config, key, clock)`.
   `StoreConfig` (namespace, `max_jobs`, `max_exercises`, profile and any
-  `learner_jobs` quota) and the `ContentKey` must be identical to the
-  application's. The store binds them; any difference returns `Configuration`.
+  `learner_jobs` or `tenant_exercises` quota) and the `ContentKey` must be
+  identical to the application's. The store binds them; any difference returns
+  `Configuration`.
 - Use `ExecutionProfile::LinuxExperimental { tools, receipt_key }`. It is the
   only profile whose signed receipts `complete` and `reconcile_cleanup` accept;
   `Simulation` returns `Unsupported` there. Despite the name, `rullst-labs`
