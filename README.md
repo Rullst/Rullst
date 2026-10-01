@@ -364,8 +364,9 @@ commands above install the stable **v12** line, maintained on the
 In development for v13: email login and scoped API tokens, active-session
 management with remote logout, private S3/R2 storage with resumable uploads,
 durable outgoing webhooks and recurring jobs, Redis Streams messaging,
-distributed tracing and a recoverable Live UI. Until v13 is released, these are
-development candidates, not shipped features.
+distributed tracing, a recoverable Live UI and `cargo rullst ai`, a terminal
+assistant that proposes reviewed changes to your project. Until v13 is
+released, these are development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)
 · [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)

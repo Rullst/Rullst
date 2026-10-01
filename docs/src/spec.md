@@ -3462,6 +3462,41 @@ implementation passed hosted and installed-archive source acceptance in PR #221;
 final release admission remains separate. See the
 [supported profile](typed-api.md) for exact limits and application wiring.
 
+### 11.3. Terminal AI Assistant (v13 preview)
+
+`cargo rullst ai` sends every request through `rullst-ai`'s guarded clients
+(OpenAI, DeepSeek and loopback Ollama stream over the bounded
+OpenAI-compatible SSE transport; Anthropic, Gemini and other Ollama hosts use
+the guarded `AiClient`). An empty or `mock_*` credential, or no configuration,
+selects a deterministic offline assistant. A provider environment variable
+takes precedence over the user credentials file, which lives in the user
+configuration directory, is written atomically with owner-only permissions on
+Unix, is never followed through a link and is refused inside the current
+project or a git work tree. Keys never appear in output, errors or `Debug`.
+
+The model can only propose fenced `rullst-action` JSON objects, parsed with
+exact keys, types and sizes: `write_file`, `edit_file` (one exact match), an
+allowlisted `cargo rullst` command (`make:*`, `generate:*` except
+`generate:models`, `db:status`, `doctor` without `--fix`, `audit` without
+`--network`, `inspect`) and `cargo check`/`cargo test` with fixed flags.
+Arguments follow a token grammar without `..` or absolute paths, and programs
+run without a shell, with standard input closed, bounded output and a deadline.
+Paths are relative to the nearest `Cargo.toml` directory; no component may be a
+symlink, `..`, `.git`, `target` or `.cargo`, and secret, key, lockfile and
+toolchain files are refused. Each action is previewed (diff or exact command)
+and confirmed; without an interactive terminal, under `CI` or `TERM=dumb`, or
+with `--dry-run`, actions are displayed and never executed. The first change of
+a session is preceded by a checkpoint commit built in a temporary index and
+stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and `target/`.
+
+Project context (inventory names and paths, project `AGENTS.md`), shared files
+and command output are delimited untrusted data, size-capped and guardrail
+checked; a match is withheld. Markdown image syntax is broken before sending.
+Terminal output escapes control characters. Token usage and cost are not shown
+because the transports do not report usage. Live provider interoperability is
+not established by the offline test suite. See the
+[assistant guide](ai-assistant.md).
+
 ## 🔄 12. Assisted Framework Upgrade Contract
 
 `cargo rullst upgrade` is the canonical application-upgrade boundary. It is an
