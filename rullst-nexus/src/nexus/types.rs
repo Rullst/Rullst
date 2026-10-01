@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
 /// Kind of field for UI forms and schema definitions.
+///
+/// New kinds may be added in minor releases, so matches outside Nexus need a
+/// wildcard arm.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FieldKind {
     /// Single-line text input.
     Text,
@@ -11,13 +15,29 @@ pub enum FieldKind {
     Email,
     /// URL input with validation.
     Url,
-    /// Integer or float number input.
+    /// Number input for any finite decimal or exponent value, such as a
+    /// floating-point column. Use [`FieldKind::Integer`] for integer columns.
     Number,
+    /// Integer number input bounded to `min..=max`.
+    ///
+    /// Nexus accepts only a base-10 whole number in that range (an optional
+    /// sign and leading zeros are normalized away), so a fraction, exponent or
+    /// out-of-range value never reaches an integer column or a narrower Rust
+    /// field. The form renders `step="1"` with the bounds. A primary key of
+    /// this kind is addressed as a canonical integer, like `Number`.
+    Integer {
+        /// Smallest accepted value.
+        min: i64,
+        /// Largest accepted value.
+        max: i64,
+    },
     /// A boolean checkbox.
     Boolean,
     /// Date picker (YYYY-MM-DD).
     Date,
-    /// Date + time picker (YYYY-MM-DDTHH:MM).
+    /// Date + time picker (`datetime-local`). A local value is stored as
+    /// `YYYY-MM-DD HH:MM:SS[.fraction]`, the text form of `CURRENT_TIMESTAMP`;
+    /// a value with a `Z` or `±HH:MM` offset is stored as entered.
     DateTime,
     /// A password or secret field that hides its value.
     ///
@@ -50,9 +70,10 @@ pub struct FieldMeta {
     pub label: &'static str,
     /// Semantic type that determines which input widget to render.
     pub kind: FieldKind,
-    /// If true, hides this field from list/table views, search and the
-    /// create/edit forms. Nexus also treats it as protected: a submitted value
-    /// is rejected and batch deactivation never writes it.
+    /// If true, hides this field from list/table views, search, sorting and
+    /// the create/edit forms (a hidden primary key still orders the list).
+    /// Nexus also treats it as protected: a submitted value is rejected and
+    /// batch deactivation never writes it.
     pub hidden: bool,
     /// If true, the field is displayed but cannot be modified via the edit form.
     pub readonly: bool,

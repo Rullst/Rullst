@@ -64,6 +64,34 @@ pub(crate) fn is_text(media_type: &str) -> bool {
         .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"text/"))
 }
 
+/// `application/yaml`, `application/yaml+…` or `application/…+yaml`.
+pub(crate) fn is_yaml(media_type: &str) -> bool {
+    has_structured_syntax(media_type, "yaml")
+        || media_type.eq_ignore_ascii_case("application/x-yaml")
+}
+
+/// The obsolete `application/` aliases of `text/javascript` (RFC 9239).
+pub(crate) fn is_application_javascript(media_type: &str) -> bool {
+    [
+        "application/javascript",
+        "application/x-javascript",
+        "application/ecmascript",
+    ]
+    .iter()
+    .any(|alias| media_type.eq_ignore_ascii_case(alias))
+}
+
+/// Whether a response body with this media type is textual for DLP: text,
+/// JSON, XML, YAML and JavaScript, in any ASCII case and with structured
+/// syntax suffixes. Server-sent event streams are excluded by the caller.
+pub(crate) fn is_textual_response_body(media_type: &str) -> bool {
+    is_text(media_type)
+        || is_json(media_type)
+        || is_xml(media_type)
+        || is_yaml(media_type)
+        || is_application_javascript(media_type)
+}
+
 /// Whether a request body with this media type is inspected: text, JSON,
 /// XML and URL-encoded forms, in every spelling the extractors accept.
 pub(crate) fn is_inspected_request_body(media_type: &str) -> bool {

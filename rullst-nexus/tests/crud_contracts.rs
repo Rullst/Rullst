@@ -167,6 +167,7 @@ async fn crud_contracts_hold_on_sqlite() {
     );
 
     search_matches_wildcards_literally(&app, pool).await;
+    submitted_create_keys_are_audited(&app, pool).await;
     numeric_keys_are_canonical_in_sql_and_audit(&app, pool).await;
     unrepresentable_keys_do_not_block_required_audit(&app, pool).await;
     null_and_unreadable_list_values_are_not_fabricated(&app, pool).await;
@@ -416,6 +417,28 @@ async fn unrepresentable_keys_do_not_block_required_audit(app: &axum::Router, po
     }
     assert_eq!(audited_keys("nexus_pages", "update").await, [None, None]);
     assert_eq!(audited_keys("nexus_pages", "delete").await, [None, None]);
+}
+
+/// A key entered on create is known before the INSERT, so the audit names
+/// it; a database-generated key stays absent (NX-AUDIT-01).
+async fn submitted_create_keys_are_audited(app: &axum::Router, pool: &RullstPool) {
+    let created = mutate(app, "POST", "/table/nexus_pages", "slug=ACME-7&title=Acme").await;
+    assert_eq!(created, StatusCode::OK);
+    assert_eq!(
+        mutate(app, "POST", "/table/nexus_counters", "label=generated").await,
+        StatusCode::OK
+    );
+    assert_eq!(
+        audited_keys("nexus_pages", "create").await,
+        [Some("ACME-7".to_owned())]
+    );
+    assert_eq!(audited_keys("nexus_counters", "create").await, [None]);
+    for reset in ["DELETE FROM nexus_pages", "DELETE FROM nexus_counters"] {
+        sqlx::query(reset)
+            .execute(pool)
+            .await
+            .expect("reset created fixtures");
+    }
 }
 
 /// `%` and `_` typed into the search box are literal characters (NX2-11).

@@ -42,7 +42,9 @@ are not modified by these framework changes.
 ## Derive and register a model
 
 The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
-infers booleans, numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` and
+infers booleans, integers (`FieldKind::Integer` bounded by the Rust type, with
+`u64`/`usize` capped at `i64::MAX`, so a fraction or out-of-range value is
+rejected), floating-point numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` and
 `NaiveDateTime` under any path spelling, optional or not) and ordinary text;
 semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
@@ -73,7 +75,10 @@ or other control characters (shown read-only; declare `kind = "textarea"` to
 edit multi-line text) or a value that cannot be decoded. Emptying a
 number, relation, date, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
-`NOT NULL` constraint therefore rejects clearing a required typed column.
+`NOT NULL` constraint therefore rejects clearing a required typed column. A
+saved local date-time is stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text
+`CURRENT_TIMESTAMP` and SQLx write, so text comparisons and ordering agree with
+application rows; a value with an offset is stored as entered.
 
 In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
 or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
@@ -84,7 +89,7 @@ Opening the edit form of a missing, other-tenant or misspelled key returns
 reads only the registered visible, non-password columns.
 
 Form values are bound as text. PostgreSQL has no assignment cast from text,
-so there Nexus writes `number` values through `NUMERIC`, relation values that
+so there Nexus writes `number` and `integer` values through `NUMERIC`, relation values that
 are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
 `'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
 and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
@@ -97,8 +102,8 @@ The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 with an action route. The older `/nexus/table/{table}/{key}` routes remain for
 other keys.
 
-Record keys follow the registered primary-key kind: a `number` (or relation)
-key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+Record keys follow the registered primary-key kind: a `number`, `integer` (or
+relation) key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
 
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
@@ -106,7 +111,12 @@ visible text, textarea, e-mail and URL columns. It is case-insensitive on
 PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
 collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
 page 1, rebuilds the sort and pagination links for the new query and records it
-in the URL, so saving a record refreshes the same view.
+in the URL, so saving a record refreshes the same view. A model without such a
+visible column shows no search box, and a search query sent to it lists no rows
+(with a note) instead of every row.
+
+The list sorts only by the record key and visible, non-`password` columns; a
+`sort_by` naming a hidden or `password` column orders by the key instead.
 
 A `password` field is never displayed: the list shows a fixed mask and the
 edit form an empty input, and leaving it empty keeps the stored value. Nexus
@@ -136,7 +146,7 @@ code) is listed and entered in the create form, and stays read-only on edit.
 Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
-widget kinds. A `hidden` field is left out of the list, search and the
+widget kinds. A `hidden` field is left out of the list, search, sorting and the
 create/edit forms, and a submitted value for it is rejected; `readonly` keeps a
 field visible but rejects submitted values. Implementing `NexusModel` manually
 remains available when an application needs metadata that cannot be derived.
@@ -158,12 +168,19 @@ let router = router.nest_axum("/nexus", nexus);
 ```
 
 The helper is intentionally asymmetric: debug builds allow only requests whose
-`ConnectInfo` peer is loopback; release builds load and validate
+`ConnectInfo` peer is loopback (an IPv4-mapped peer such as `::ffff:127.0.0.1`,
+which a dual-stack `::` listener reports for IPv4 clients, counts as IPv4); release builds load and validate
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` from the process environment,
 then the working directory's `.env`. Missing connection metadata
 is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-free access on in a release
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
+
+The debug policy also requires a local `Host` and, for unsafe methods, a
+same-origin `Origin`. Its responses carry `Referrer-Policy: same-origin` unless
+the application sets one; when a host layer imposes `no-referrer`, browsers send
+`Origin: null`, which is accepted only with a single `Sec-Fetch-Site:
+same-origin` header (page scripts cannot set it).
 
 ### Basic Auth failures and reverse proxies
 
@@ -251,7 +268,8 @@ let nexus = rullst::nexus::Nexus::new()
 
 Each successful mutation and its minimized `rullst_nexus_audits` row commit in
 one database transaction. Audit failure rolls the mutation back. The record
-contains actor, optional tenant, table/action, optional known key, affected-row
+contains actor, optional tenant, table/action, optional known key (for a create,
+the key the administrator entered; a database-generated key is absent), affected-row
 count, committed outcome, optional bounded request ID, timestamp and format
 version. A key that does not fit 1 to 256 bytes of unpadded text without
 control characters is recorded as absent instead of blocking the change. `verify_nexus_audit_table()` checks deployment readiness and

@@ -24,7 +24,11 @@ pub(super) struct ReplayEntry {
 ///
 /// Multi-process applications can select `SqlWebhookReplayStore` through the
 /// `webhook-sql` feature. This process-local variant fails closed at capacity
-/// rather than evicting an active replay proof.
+/// rather than evicting an active replay proof: once `max_entries` unexpired
+/// proofs are held, every further verified delivery returns
+/// [`CapitalError::WebhookReplayStoreFull`] (HTTP 503 from the middleware)
+/// until the oldest proof reaches its TTL. Expired proofs are evicted on the
+/// next check. Size the store for the expected deliveries per TTL window.
 pub struct InMemoryWebhookReplayStore {
     pub(super) entries: Mutex<VecDeque<ReplayEntry>>,
     max_entries: usize,
@@ -134,6 +138,13 @@ impl InMemoryWebhookReplayStore {
     }
 }
 
+/// The store used by `verify_webhook`, `verify_webhook_mock_local` and the
+/// Actix equivalents: at most 10,000 proofs, each kept for 24 hours.
+///
+/// That admits about 10,000 verified deliveries per rolling 24 hours in one
+/// process (roughly seven per minute). Busier endpoints should mount
+/// `verify_webhook_with_state` with a store sized by [`Self::new`] or a shared
+/// `SqlWebhookReplayStore`.
 impl Default for InMemoryWebhookReplayStore {
     fn default() -> Self {
         Self {

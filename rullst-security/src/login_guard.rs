@@ -224,7 +224,7 @@ fn record_jail_telemetry(identity: &str, jail_duration: Duration, current_count:
 }
 
 /// Returns `now + duration`, shortening a duration the clock cannot represent.
-fn saturating_deadline(now: Instant, duration: Duration) -> Instant {
+pub(crate) fn saturating_deadline(now: Instant, duration: Duration) -> Instant {
     let mut duration = duration;
     loop {
         if let Some(deadline) = now.checked_add(duration) {

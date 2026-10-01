@@ -111,6 +111,9 @@ fn validate_field_kind(kind: &FieldKind) -> Result<(), NexusBuildError> {
             }
             Ok(())
         }
+        FieldKind::Integer { min, max } if min > max => {
+            invalid("an integer widget's minimum exceeds its maximum")
+        }
         FieldKind::ForeignKey { table, label_col } => {
             validate_identifier(
                 table,
@@ -202,6 +205,13 @@ mod tests {
             options: vec!["draft", "draft"],
         };
         assert!(validate_registry(&[duplicate_enum]).is_err());
+
+        let mut inverted_integer = valid_entry();
+        inverted_integer.fields[0].kind = FieldKind::Integer { min: 1, max: 0 };
+        assert!(validate_registry(&[inverted_integer]).is_err());
+        let mut single_integer = valid_entry();
+        single_integer.fields[0].kind = FieldKind::Integer { min: 7, max: 7 };
+        assert!(validate_registry(&[single_integer]).is_ok());
 
         let mut invalid_tenant = valid_entry();
         invalid_tenant.tenant_column = Some("status");

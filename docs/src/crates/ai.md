@@ -22,6 +22,14 @@ tenant-aware RAG pipeline.
 Unsupported capabilities return `AiError::UnsupportedCapability`; the client does not silently
 switch to an unrelated endpoint or represent a fixture as a live-provider result.
 
+Anthropic requests allow up to 16,000 output tokens unless `AnthropicProvider::with_max_tokens`
+sets another limit (the Messages API requires one, and adaptive thinking counts toward it; a longer
+reply may also need a longer `with_request_timeout`). A reply the API reports as cut short (`stop_reason`
+`max_tokens` or `model_context_window_exceeded`) or declined (`refusal`) returns
+`AiError::ApiError` instead of the partial text. `OpenAiProvider` sends no output limit on text or
+vision requests, so the model's own limit applies, and a reply whose `finish_reason` is `length` or
+`content_filter` likewise returns `AiError::ApiError`.
+
 `OpenAiCompatibleProvider` covers servers implementing the named OpenAI
 `/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
 vision, embeddings, JSON mode, and JSON Schema must be declared for the exact
@@ -53,7 +61,9 @@ Call custom `AiProvider` implementations through `AiClient` when the application
 mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
-Markdown beacons, and invisible Unicode controls, including zero-width, bidirectional
+Markdown image beacons (inline or reference images with a remote or unclassifiable destination,
+read with CommonMark escapes and character references; raw HTML `<img>` is not inspected), and
+invisible Unicode controls, including zero-width, bidirectional
 embedding/isolate, tag and other default-ignorable characters with no ordinary use in text. Soft
 hyphens, bidirectional marks and emoji variation selectors are removed before phrase matching
 instead of being blocked. Check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted),
@@ -192,7 +202,9 @@ capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
 `DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
-it does not probe localhost implicitly.
+it does not probe localhost implicitly. `OLLAMA_HOST` (and the host given to `OllamaProvider::new`)
+is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
+port 11434 unless a port is named.
 
 ## JSON mode and structured output
 

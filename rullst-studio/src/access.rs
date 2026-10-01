@@ -84,10 +84,12 @@ impl std::error::Error for StudioBuildError {}
 const STUDIO_REFERRER_POLICY: &str = "same-origin";
 
 async fn loopback_only_middleware(mut request: Request, next: Next) -> Response {
+    // A dual-stack (`::`) listener reports IPv4 peers as IPv4-mapped IPv6
+    // addresses (`::ffff:127.0.0.1`), which `Ipv6Addr::is_loopback` rejects.
     let is_loopback = request
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
-        .is_some_and(|connection| connection.0.ip().is_loopback());
+        .is_some_and(|connection| connection.0.ip().to_canonical().is_loopback());
 
     let local_host = local_host_authority(request.headers());
     let origin_valid = request
@@ -146,7 +148,7 @@ fn local_host_authority(headers: &HeaderMap) -> Option<String> {
     let is_local = host.eq_ignore_ascii_case("localhost")
         || ip_host
             .parse::<std::net::IpAddr>()
-            .is_ok_and(|address| address.is_loopback());
+            .is_ok_and(|address| address.to_canonical().is_loopback());
     is_local.then(|| authority.as_str().to_ascii_lowercase())
 }
 
@@ -245,6 +247,19 @@ mod tests {
             .await
             .expect("remote Studio response");
         assert_eq!(remote.status(), StatusCode::FORBIDDEN);
+
+        // A dual-stack listener reports IPv4 clients as IPv4-mapped peers.
+        for (peer, expected) in [
+            ("[::ffff:127.0.0.1]:42000", StatusCode::OK),
+            ("[::ffff:192.0.2.20]:42000", StatusCode::FORBIDDEN),
+        ] {
+            let response = router
+                .clone()
+                .oneshot(request_from(Some(peer)))
+                .await
+                .expect("mapped-peer Studio response");
+            assert_eq!(response.status(), expected, "{peer}");
+        }
 
         let missing = router
             .oneshot(request_from(None))

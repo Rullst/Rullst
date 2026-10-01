@@ -136,6 +136,11 @@ pub use actix::{
 /// It rejects empty configuration and `mock_*` verifier modes, validates provider signature and
 /// freshness, prevents payload replay, preserves every request part and the original body, and
 /// inserts the parsed `WebhookEvent` into request extensions.
+///
+/// Replay proofs go to a process-wide default [`InMemoryWebhookReplayStore`] holding at most
+/// 10,000 proofs for 24 hours each. When it is full, further deliveries get 503 instead of
+/// evicting an unexpired proof; mount [`verify_webhook_with_state`] with a sized or shared store
+/// for more than about 10,000 verified deliveries per day.
 #[cfg(feature = "axum")]
 pub async fn verify_webhook(req: Request, next: Next) -> Result<Response, StatusCode> {
     verify_webhook_inner(req, next, &DEFAULT_REPLAY_STORE, false, provider()).await
@@ -144,7 +149,8 @@ pub async fn verify_webhook(req: Request, next: Next) -> Result<Response, Status
 /// Explicit local-only middleware variant for deterministic `mock_*` webhook credentials.
 ///
 /// Mock signatures are still mandatory and must equal the configured `mock_*` secret. Do not mount
-/// this middleware on a publicly reachable endpoint.
+/// this middleware on a publicly reachable endpoint. It shares the bounded default replay store of
+/// [`verify_webhook`].
 #[cfg(feature = "axum")]
 pub async fn verify_webhook_mock_local(req: Request, next: Next) -> Result<Response, StatusCode> {
     verify_webhook_inner(req, next, &DEFAULT_REPLAY_STORE, true, provider()).await

@@ -407,4 +407,5 @@ async fn oidc_issuer_with_a_trailing_slash_is_validated_exactly_as_published() {
     }
 }
 
+mod oidc_interop;
 mod verify;

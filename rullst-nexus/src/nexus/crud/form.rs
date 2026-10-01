@@ -190,7 +190,9 @@ pub(super) fn form_html(
                                     .or_else(|_| r.try_get::<i64, _>(fname).map(|v| v != 0))
                                     .ok()
                                     .map(|b| if b { "1" } else { "0" }.to_string()),
-                                FieldKind::Number | FieldKind::ForeignKey { .. } => r
+                                FieldKind::Number
+                                | FieldKind::Integer { .. }
+                                | FieldKind::ForeignKey { .. } => r
                                     .try_get::<i32, _>(fname)
                                     .map(|v| v.to_string())
                                     .or_else(|_| r.try_get::<i64, _>(fname).map(|v| v.to_string()))
@@ -347,8 +349,16 @@ pub(super) fn render_field_widget(
         ),
         kind => {
             let (input_type, value) = typed_input(kind, text);
+            // The browser steps and flags out-of-range integers; the server
+            // still validates every submitted value.
+            let bounds = match kind {
+                FieldKind::Integer { min, max } if input_type == "number" => {
+                    format!(" step=\"1\" min=\"{min}\" max=\"{max}\"")
+                }
+                _ => String::new(),
+            };
             format!(
-                "<input type=\"{input_type}\"{name_attr} value=\"{}\" class=\"nexus-input\"{readonly_attr}{placeholder} />",
+                "<input type=\"{input_type}\"{name_attr} value=\"{}\" class=\"nexus-input\"{readonly_attr}{placeholder}{bounds} />",
                 escape_str(&value)
             )
         }
@@ -362,7 +372,7 @@ fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
         return match kind {
             FieldKind::Email => shown("email"),
             FieldKind::Url => shown("url"),
-            FieldKind::Number => shown("number"),
+            FieldKind::Number | FieldKind::Integer { .. } => shown("number"),
             FieldKind::Date => shown("date"),
             FieldKind::DateTime => shown("datetime-local"),
             _ => shown("text"),
@@ -373,7 +383,7 @@ fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
     match kind {
         FieldKind::Email if plain => shown("email"),
         FieldKind::Url if plain => shown("url"),
-        FieldKind::Number if is_html_number(text) => shown("number"),
+        FieldKind::Number | FieldKind::Integer { .. } if is_html_number(text) => shown("number"),
         FieldKind::Date if is_local_date(text) => shown("date"),
         FieldKind::DateTime => match datetime_local_value(text) {
             Some(local) => ("datetime-local", local),

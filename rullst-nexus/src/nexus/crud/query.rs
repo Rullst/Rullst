@@ -38,6 +38,7 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
         FieldKind::Email => "email",
         FieldKind::Url => "url",
         FieldKind::Number => "number",
+        FieldKind::Integer { .. } => "integer",
         FieldKind::Boolean => "boolean",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime",
@@ -52,7 +53,7 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
 #[allow(dead_code)]
 pub fn field_kind_sql(kind: &FieldKind) -> &'static str {
     match kind {
-        FieldKind::Number => "INTEGER",
+        FieldKind::Number | FieldKind::Integer { .. } => "INTEGER",
         FieldKind::Boolean => "INTEGER",
         FieldKind::ForeignKey { .. } => "INTEGER",
         FieldKind::Date | FieldKind::DateTime => "TEXT",
@@ -69,7 +70,7 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",
         FieldKind::Url => "url",
-        FieldKind::Number => "number",
+        FieldKind::Number | FieldKind::Integer { .. } => "number",
         FieldKind::Password => "password",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime-local",
@@ -77,6 +78,16 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
         FieldKind::Enum { .. } => "select",
         _ => "text",
     }
+}
+
+/// Whether `field` is matched by the list search: a visible text, textarea,
+/// e-mail or URL column.
+pub(crate) fn is_searchable(field: &FieldMeta) -> bool {
+    !field.hidden
+        && matches!(
+            field.kind,
+            FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
+        )
 }
 
 /// Sanitizes an identifier name preventing SQL injection in dynamic DDL/DML.
@@ -134,17 +145,15 @@ pub fn build_table_query(
         let text_fields: Vec<String> = entry
             .fields
             .iter()
-            .filter(|f| {
-                !f.hidden
-                    && matches!(
-                        f.kind,
-                        FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
-                    )
-            })
+            .filter(|f| is_searchable(f))
             .map(|f| sanitize_identifier(f.name))
             .collect();
 
-        if !text_fields.is_empty() {
+        if text_fields.is_empty() {
+            // No column can match the query, so no row is a search result;
+            // unfiltered rows must not be presented as matches.
+            predicates.push("1 = 0".to_string());
+        } else {
             let where_clauses: Vec<String> = text_fields
                 .iter()
                 .enumerate()
@@ -189,12 +198,16 @@ pub fn build_table_query(
         sql.push_str(&predicates.join(" AND "));
     }
 
-    // Ordering by a Password column would reveal the order of stored secrets.
+    // Ordering by a Password or hidden column would reveal the order of
+    // values the panel never shows (a `password_hash`, a sealed column), so
+    // only the key and visible non-Password fields are sortable.
     let sort_col = sort_by
         .filter(|candidate| {
             *candidate == entry.pk
                 || entry.fields.iter().any(|field| {
-                    field.name == *candidate && !matches!(field.kind, FieldKind::Password)
+                    field.name == *candidate
+                        && !field.hidden
+                        && !matches!(field.kind, FieldKind::Password)
                 })
         })
         .unwrap_or(entry.pk);
@@ -292,6 +305,65 @@ mod tests {
         assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
         assert!(!sql.contains("api_key"), "{sql}");
         assert!(sql.contains("ORDER BY id asc"), "{sql}");
+    }
+
+    #[test]
+    fn search_without_a_searchable_column_matches_nothing() {
+        let entry = RegistryEntry {
+            table: "orders",
+            label: "Orders",
+            icon: "O",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+                FieldMeta::new("total", "Total", FieldKind::Number),
+                FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+            ],
+        };
+        let visible = vec![&entry.fields[0], &entry.fields[1]];
+        let (sql, binds) = build_table_query(&entry, &visible, "refunded", 1, None, None, None);
+        assert!(sql.contains(" WHERE 1 = 0 ORDER BY"), "{sql}");
+        assert!(!sql.contains("note"), "{sql}");
+        assert!(binds.is_empty());
+
+        // An empty query still lists every row.
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, None);
+        assert!(!sql.contains("WHERE"), "{sql}");
+    }
+
+    #[test]
+    fn hidden_columns_are_not_sortable() {
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "U",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number)
+                    .hidden()
+                    .readonly(),
+                FieldMeta::new("email", "E-mail", FieldKind::Email),
+                FieldMeta::new("password_hash", "Password hash", FieldKind::Text).hidden(),
+            ],
+        };
+        let visible = vec![&entry.fields[1]];
+        let (sql, _) = build_table_query(
+            &entry,
+            &visible,
+            "",
+            1,
+            Some("password_hash"),
+            Some("asc"),
+            None,
+        );
+        assert!(!sql.contains("password_hash"), "{sql}");
+        assert!(sql.contains("ORDER BY id asc LIMIT"), "{sql}");
+
+        // The key stays sortable even when it is hidden.
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, Some("id"), None, None);
+        assert!(sql.contains("ORDER BY id DESC LIMIT"), "{sql}");
     }
 
     #[test]

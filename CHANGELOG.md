@@ -246,6 +246,19 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Core and Security range-response follow-ups
+
+- Core PII masking replaces a `206 Partial Content` response that masking
+  would change with a no-store `502`, instead of a 206 without
+  `Content-Range`; clean ranges pass through unchanged.
+- Core PII masking and `DlpResponseLayer` inspect `multipart/byteranges`
+  responses part by part and withhold them with a no-store `502` when a
+  textual part would be masked or the body cannot be read within bounds
+  (256 parts, 8 KiB of headers per part).
+- `DbFeatureDriver::enabled` is false for an A/B split flag, as in the Env,
+  TOML and Memory drivers; a SQLite-backed contract test covers all four and
+  now runs in CI.
+
 ### Trusted-proxy client resolution
 
 - Add `rullst_core::security::TrustedProxyLayer` and
@@ -267,6 +280,24 @@ A prepared version section does not establish that its tag or crates exist.
   The hot-reload server now also supplies `ConnectInfo`.
 - Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
   `deploy:doctor` reviews configured networks (threat case `CORE-03`).
+
+### Capital and Messaging final-review fixes
+
+- MySQL/MariaDB quota tables compare tenant IDs, features and event keys
+  case-sensitively (`ascii_bin`); legacy tables fail closed until the
+  documented `ALTER TABLE` migration runs.
+- Live Razorpay pause sends `pause_at: "now"` and checks that the response is
+  the paused subscription; subscription IDs made only of dots are rejected; a
+  zero tier allowance returns `LimitExceeded`; Wise's
+  `waiting_recipient_input_to_proceed` state is accepted as in-flight
+  (`WaitingRecipientInput`). The default webhook replay store's 10,000-proof,
+  24-hour bound is documented.
+- The ORM outbox relay scopes broker idempotency keys by stream, so streams
+  sharing a topic no longer collide.
+- Encrypted SQLite messaging startup verifies prior storage key bytes, not
+  just IDs.
+- Redis Streams delivers messages available at the same time in publication
+  order (namespace format v2).
 
 ### Connect and messaging low-severity review fixes
 
@@ -486,6 +517,26 @@ A prepared version section does not establish that its tag or crates exist.
   legacy `init_telemetry` sends 64-span batches, honours the proxy variables
   and reports dropped batches.
 
+### Nexus and Studio final-review fixes
+
+- The Nexus list no longer sorts by hidden columns, and a search on a model
+  without a visible text-like field lists no rows instead of every row.
+- The debug loopback policies of Nexus, Studio and the Core error console
+  accept IPv4-mapped loopback peers. Nexus accepts `Origin: null` only with
+  `Sec-Fetch-Site: same-origin` and stamps `Referrer-Policy: same-origin` when
+  the app sets none.
+- Nexus validation errors are plain text, and the panel shows HTML error
+  bodies as text. Required audit records the primary key an administrator
+  entered on create. Local date-times are stored in the `CURRENT_TIMESTAMP`
+  text form.
+- The new `FieldKind::Integer { min, max }`, which `#[derive(Nexus)]` emits for
+  Rust integer fields, rejects fractions and out-of-range values; `FieldKind`
+  is now `#[non_exhaustive]`.
+- AI assistant replies can no longer contain resource-loading elements such
+  as `img`.
+- Studio's table view marks values it cannot decode as `unreadable` instead of
+  `NULL`.
+
 ### Core runtime low-severity review fixes
 
 - Validated extractors return 413 or 415 for oversized or wrongly typed bodies,
@@ -594,6 +645,25 @@ A prepared version section does not establish that its tag or crates exist.
 - PII masking keeps JSON numbers valid and leaves versioned CDN URLs and `@2x`
   asset names alone.
 
+### Security and Connect final-review fixes
+
+- `DlpResponseLayer` masks XML (`application/xml`, `+xml`), YAML and
+  `application/javascript` responses, and withholds a `206 Partial Content`
+  response that would need masking with a `no-store` 502 instead of emitting a
+  206 without `Content-Range`.
+- `redact_secrets` counts masked log records only as log redactions, so they no
+  longer inflate "DLP Leaks Blocked" or flood the live event feed.
+- RASP no longer rejects the stock PowerShell `User-Agent` product token, while
+  PowerShell execution syntax still blocks.
+- Honeypot bans with a TTL beyond the monotonic clock are enforced, and
+  honeypot telemetry records only bans that were stored, keyed by the
+  configured trap path.
+- `OidcProvider` accepts ID tokens and userinfo responses without the optional
+  `name` claim (falling back to `given_name`/`family_name`,
+  `preferred_username` or `nickname`), and verifies ID tokens without `kid`
+  when the issuer's JWK Set holds exactly one key that fits the token's
+  asymmetric algorithm.
+
 ### Security second-pass review fixes
 
 - `rate_limit_middleware` keys IPv6 peers per /64 (IPv4 per address,
@@ -628,6 +698,23 @@ A prepared version section does not establish that its tag or crates exist.
   so fresh desktop, Android and iOS builds cannot mix incompatible internal
   releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
   existing shells require an explicit application-owned dependency update.
+
+### AI final-review fixes
+
+- The Markdown image-beacon guardrail inspects every image even without a
+  literal `http(s)://` in the text, reads inline and reference images (with
+  their definitions anywhere in the text) the way CommonMark renders them,
+  including backslash escapes and character references, and treats
+  unclassifiable images as remote.
+- `RagPipeline` rejects a cross-tenant document even after the context budget
+  is used up.
+- `AnthropicProvider` requests up to 16,000 output tokens (configurable with
+  the new `with_max_tokens`) and reports a reply stopped by `max_tokens`,
+  `model_context_window_exceeded` or `refusal` as an error instead of returning
+  partial text. `OpenAiProvider` no longer caps vision replies at 1,024 tokens
+  and reports `finish_reason` `length` or `content_filter` as an error.
+- `OllamaProvider`/`AiClient::auto()` accept Ollama's scheme-less
+  `OLLAMA_HOST` form (`127.0.0.1:11434` means `http`, default port 11434).
 
 ### Auth, AI and IoT low-severity review fixes
 

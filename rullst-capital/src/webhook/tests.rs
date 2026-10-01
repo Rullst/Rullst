@@ -77,6 +77,41 @@ fn replay_store_rejects_duplicates_and_expires_entries() {
 }
 
 #[test]
+fn full_replay_store_fails_closed_until_proofs_expire() {
+    let store = InMemoryWebhookReplayStore::new(2, Duration::from_secs(300)).unwrap();
+    let start = Instant::now();
+    for key in ["first", "second"] {
+        assert!(store.check_and_record_at(key.to_string(), start).is_ok());
+    }
+    // An unexpired proof is never evicted to admit new work.
+    assert_eq!(
+        store.check_and_record_at("third".to_string(), start + Duration::from_secs(299)),
+        Err(CapitalError::WebhookReplayStoreFull)
+    );
+    // Expired proofs free their slots on the next check.
+    let later = start + Duration::from_secs(300);
+    assert!(
+        store
+            .check_and_record_at("third".to_string(), later)
+            .is_ok()
+    );
+    assert!(
+        store
+            .check_and_record_at("fourth".to_string(), later)
+            .is_ok()
+    );
+    assert!(matches!(
+        store.check_and_record_at("third".to_string(), later),
+        Err(CapitalError::WebhookReplay(_))
+    ));
+
+    // The documented default used by `verify_webhook` and its Actix twin.
+    let default = format!("{:?}", InMemoryWebhookReplayStore::default());
+    assert!(default.contains("max_entries: 10000"), "{default}");
+    assert!(default.contains("ttl: 86400s"), "{default}");
+}
+
+#[test]
 fn replay_store_is_bounded_and_provider_scoped() {
     let store = InMemoryWebhookReplayStore::new(2, Duration::from_secs(60)).unwrap();
     assert!(store.record_payload("stripe", b"same body").is_ok());

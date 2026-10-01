@@ -414,6 +414,10 @@ jobs:
                 --features strict-sqlite --test renderer_escaping --locked
               RULLST_REQUIRE_SQLITE_INBOX=1 cargo test -p rullst-capital \
                 --features webhook-sql,rullst-orm/strict-sqlite --test stripe_inbox_sql --locked
+              # --all-features selects the PostgreSQL pool, so the SQLite-backed
+              # feature-flag DB tests only run here.
+              cargo test -p rullst-core --features orm \
+                --test feature_db_cache --test feature_split_contract --locked
               ;;
             *)
               echo "Unknown strict database feature: $STRICT_DATABASE_FEATURE"

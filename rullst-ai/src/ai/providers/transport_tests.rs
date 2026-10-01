@@ -188,3 +188,95 @@ async fn native_provider_deadline_covers_stalled_response_body() {
     assert!(error.is_timeout());
     assert!(error.url().is_none());
 }
+
+#[tokio::test]
+async fn anthropic_reports_an_incomplete_reply_instead_of_returning_it() {
+    for stop_reason in ["max_tokens", "model_context_window_exceeded", "refusal"] {
+        let body = format!(
+            r#"{{"content":[{{"type":"text","text":"partial"}}],"stop_reason":"{stop_reason}"}}"#
+        );
+        let (endpoint, server) = serve(success(&body)).await;
+        let result = AnthropicProvider::new("fixture-api-key")
+            .with_base_url(endpoint)
+            .with_request_timeout(Duration::from_secs(3))
+            .prompt("hello")
+            .await;
+        assert!(server.await.unwrap().is_some());
+        assert!(
+            matches!(&result, Err(crate::ai::AiError::ApiError(message)) if message.contains(stop_reason)),
+            "{stop_reason} was returned as a complete reply"
+        );
+    }
+
+    // A complete reply is returned, after any thinking block, and the
+    // request carries the default output limit.
+    let body = r#"{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"complete"}],"stop_reason":"end_turn"}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    let answer = AnthropicProvider::new("fixture-api-key")
+        .with_base_url(endpoint)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt("hello")
+        .await
+        .unwrap();
+    assert_eq!(answer, "complete");
+    let request = server.await.unwrap().unwrap();
+    assert!(String::from_utf8_lossy(&request).contains(r#""max_tokens":16000"#));
+}
+
+#[tokio::test]
+async fn ollama_accepts_its_own_scheme_less_host_form() {
+    let body = r#"{"message":{"role":"assistant","content":"ok"}}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    // OLLAMA_HOST is commonly `127.0.0.1:11434`, without a scheme.
+    let host = endpoint.trim_start_matches("http://").to_string();
+    let answer = OllamaProvider::new(host, "fixture-model")
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt("hello")
+        .await
+        .unwrap();
+    assert_eq!(answer, "ok");
+    let request = server.await.unwrap().unwrap();
+    assert!(String::from_utf8_lossy(&request).starts_with("POST /api/chat "));
+}
+
+#[tokio::test]
+async fn openai_reports_an_incomplete_reply_on_text_and_vision_paths() {
+    const PNG: &[u8] = b"\x89PNG\r\n\x1a\nfixture";
+    for finish_reason in ["length", "content_filter"] {
+        for vision in [false, true] {
+            let body = format!(
+                r#"{{"choices":[{{"message":{{"content":"partial"}},"finish_reason":"{finish_reason}"}}]}}"#
+            );
+            let (endpoint, server) = serve(success(&body)).await;
+            let provider = OpenAiProvider::new("fixture-api-key")
+                .with_base_url(endpoint)
+                .with_request_timeout(Duration::from_secs(3));
+            let result = if vision {
+                provider.prompt_with_image("describe", PNG).await
+            } else {
+                provider.prompt("hello").await
+            };
+            assert!(server.await.unwrap().is_some());
+            assert!(
+                matches!(&result, Err(crate::ai::AiError::ApiError(message)) if message.contains(finish_reason)),
+                "{finish_reason} (vision: {vision}) was returned as a complete reply"
+            );
+        }
+    }
+
+    // A complete vision reply is returned, and the request leaves the output
+    // limit to the model instead of sending the deprecated `max_tokens`.
+    let body = r#"{"choices":[{"message":{"content":"a chart"},"finish_reason":"stop"}]}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    let answer = OpenAiProvider::new("fixture-api-key")
+        .with_base_url(endpoint)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt_with_image("describe", PNG)
+        .await
+        .unwrap();
+    assert_eq!(answer, "a chart");
+    let request = server.await.unwrap().unwrap();
+    let request = String::from_utf8_lossy(&request);
+    assert!(request.contains("image_url"));
+    assert!(!request.contains("max_tokens"));
+}

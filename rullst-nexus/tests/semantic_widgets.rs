@@ -23,6 +23,14 @@ impl NexusModel for SemanticModel {
             FieldMeta::new("description", "Description", FieldKind::Textarea),
             FieldMeta::new("is_published", "Published", FieldKind::Boolean),
             FieldMeta::new(
+                "stock",
+                "Stock",
+                FieldKind::Integer {
+                    min: 0,
+                    max: i64::from(u16::MAX),
+                },
+            ),
+            FieldMeta::new(
                 "status",
                 "Status",
                 FieldKind::Enum {
@@ -58,6 +66,7 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
     assert!(body.contains("<textarea name=\"description\""));
     assert!(body.contains("<input type=\"checkbox\" name=\"is_published\" value=\"1\""));
     assert!(body.contains("<select name=\"status\""));
+    assert!(body.contains("step=\"1\" min=\"0\" max=\"65535\""));
     assert!(body.contains("<option value=\"active\">active</option>"));
     assert!(body.contains("<option value=\"archived\">archived</option>"));
 
@@ -67,6 +76,10 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
         "is_published=maybe",
         "unknown_field=value",
         "status=active&status=archived",
+        "stock=2.5",
+        "stock=1e3",
+        "stock=-1",
+        "stock=65536",
     ] {
         let response = app
             .clone()
@@ -83,5 +96,42 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
             .await
             .expect("invalid semantic widget response");
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        // nexus.js shows error bodies as text: no markup or entities.
+        assert!(
+            response
+                .headers()
+                .get("content-type")
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.starts_with("text/plain")),
+            "{invalid_body}"
+        );
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("bounded validation body");
+        let body = String::from_utf8(body.to_vec()).expect("UTF-8 validation body");
+        assert!(
+            body.starts_with("Invalid Semantic Records form: "),
+            "{body}"
+        );
+        assert!(!body.contains(['<', '&']), "{body}");
     }
+
+    let empty = app
+        .oneshot(
+            local_request()
+                .method("POST")
+                .uri("/table/semantic_records")
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Cookie", format!("rullst_csrf={csrf}"))
+                .header("X-CSRF-Token", csrf)
+                .body(Body::empty())
+                .expect("empty create request"),
+        )
+        .await
+        .expect("empty create response");
+    assert_eq!(empty.status(), StatusCode::BAD_REQUEST);
+    let body = axum::body::to_bytes(empty.into_body(), 16 * 1024)
+        .await
+        .expect("bounded empty-create body");
+    assert_eq!(&body[..], b"No writable values were provided.");
 }

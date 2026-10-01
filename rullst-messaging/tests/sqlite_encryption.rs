@@ -353,6 +353,21 @@ async fn rotation_requires_old_keys_until_their_records_are_purged() {
         .await,
         Err(MessagingError::StorageKeyUnavailable)
     ));
+    // The probe is now sealed under the new primary, so only a retained record
+    // proves the prior key's bytes, not just its ID.
+    let wrong_prior = keyring("key-2026-02", 2)
+        .with_decryption_key(MessagingStorageKey::try_new("key-2026-01", [9; 32]).expect("key"))
+        .expect("rotation keyring");
+    assert!(matches!(
+        SqliteBroker::connect_encrypted_with_clock(
+            url.clone(),
+            config("encrypted-rotation"),
+            wrong_prior,
+            clock.clone(),
+        )
+        .await,
+        Err(MessagingError::StorageAuthenticationFailed)
+    ));
 
     let old_delivery = rotated
         .receive(receive("events"))

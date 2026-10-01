@@ -44,7 +44,9 @@ should do so before Studio serves requests.
 
 `Studio::new().into_router(LocalStudioAccess::loopback_only())` builds the same
 debug-only router for explicit composition. The serving stack must preserve
-Axum `ConnectInfo<SocketAddr>` or requests fail closed. Unsafe methods need a
+Axum `ConnectInfo<SocketAddr>` or requests fail closed. An IPv4-mapped peer
+(`::ffff:127.0.0.1`, reported by a dual-stack `::` listener) is checked as the
+IPv4 address it carries. Unsafe methods need a
 same-origin `Origin` header. Studio responses carry
 `Referrer-Policy: same-origin`, so browsers send the page's real origin on
 Studio's own form posts and no referrer to other origins. If a host layer
@@ -90,7 +92,10 @@ overhead.
   characters before it reaches Studio (key columns keep up to 16 KiB for row
   actions, and a longer key makes its row read-only), and search terms are
   limited to 256 bytes. Search matches the displayed columns (at most 256),
-  and the record count uses the same predicate.
+  and the record count uses the same predicate. A SQL NULL shows an italic
+  `NULL` marker; a present value Studio cannot decode as text, a number or a
+  Boolean (for example a BLOB that is not UTF-8) shows an amber `unreadable`
+  marker instead, and a stored text `NULL` is shown as an ordinary value.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is

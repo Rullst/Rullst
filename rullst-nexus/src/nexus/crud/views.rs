@@ -1,7 +1,7 @@
 //! HTML rendering components for Nexus CRUD views and forms.
 
 use crate::nexus::crud::batch::supports_deactivation;
-use crate::nexus::crud::query::build_table_query;
+use crate::nexus::crud::query::{build_table_query, is_searchable};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use std::fmt::Write as _;
 
@@ -38,6 +38,16 @@ pub async fn render_table_rows(
     tenant_id: Option<&str>,
 ) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
+    if !q.is_empty() && !entry.fields.iter().any(is_searchable) {
+        // The query would match nothing (see `build_table_query`); say why
+        // instead of reporting that no record matches.
+        return format!(
+            "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">Search is not available: \
+             `{}` has no visible text, textarea, e-mail or URL field.</td></tr>",
+            visible_fields.len() + 1,
+            rullst_core::html::escape_str(entry.table)
+        );
+    }
     let (sql, binds) =
         build_table_query(entry, &visible_fields, q, page, sort_by, order, tenant_id);
 
@@ -91,7 +101,7 @@ pub async fn render_table_rows(
                             .ok()
                             .map(|b| if b { "✅ Yes" } else { "❌ No" }.to_string())
                     }),
-                    FieldKind::Number | FieldKind::ForeignKey { .. } => decode_cell(&row, f.name, |row| {
+                    FieldKind::Number | FieldKind::Integer { .. } | FieldKind::ForeignKey { .. } => decode_cell(&row, f.name, |row| {
                         row.try_get::<i64, _>(f.name)
                             .map(|v| v.to_string())
                             .or_else(|_| row.try_get::<f64, _>(f.name).map(|v| v.to_string()))
@@ -318,17 +328,26 @@ pub(crate) async fn table_view(entry: &RegistryEntry, view: &TableView<'_>) -> S
         .collect::<String>();
     let region_swap = "hx-target=\"#nexus-table-region\" hx-select=\"#nexus-table-region\" \
          hx-swap=\"outerHTML\" hx-push-url=\"true\"";
+    // A model without a searchable column gets no search box: every query
+    // would match nothing.
+    let search_form = if entry.fields.iter().any(is_searchable) {
+        format!(
+            "<form class=\"nexus-search-wrap\" role=\"search\" method=\"GET\" action=\"/nexus/table/{table_path}\" \
+             hx-get=\"/nexus/table/{table_path}\" {region_swap}>\
+             <span class=\"nexus-search-icon\">&#128269;</span>\
+             <input type=\"text\" class=\"nexus-search-input\" id=\"nexus-search-{table_path}\" name=\"q\" \
+             value=\"{safe_q}\" placeholder=\"Search {safe_label}...\" aria-label=\"Search {safe_label}\" \
+             hx-get=\"/nexus/table/{table_path}\" hx-trigger=\"keyup changed delay:300ms\" \
+             hx-include=\"closest form\" {region_swap} />\
+             {sort_inputs}</form>"
+        )
+    } else {
+        String::new()
+    };
     let _ = write!(
         out,
         "<div class=\"nexus-toolbar\">\
-         <form class=\"nexus-search-wrap\" role=\"search\" method=\"GET\" action=\"/nexus/table/{table_path}\" \
-         hx-get=\"/nexus/table/{table_path}\" {region_swap}>\
-         <span class=\"nexus-search-icon\">&#128269;</span>\
-         <input type=\"text\" class=\"nexus-search-input\" id=\"nexus-search-{table_path}\" name=\"q\" \
-         value=\"{safe_q}\" placeholder=\"Search {safe_label}...\" aria-label=\"Search {safe_label}\" \
-         hx-get=\"/nexus/table/{table_path}\" hx-trigger=\"keyup changed delay:300ms\" \
-         hx-include=\"closest form\" {region_swap} />\
-         {sort_inputs}</form>\
+         {search_form}\
          <select name=\"action\" form=\"batch-form-{table_path}\" class=\"nexus-btn nexus-btn-ghost nexus-bulk-select\" \
          aria-label=\"Bulk action\">\
          <option value=\"\">Bulk Actions</option>\

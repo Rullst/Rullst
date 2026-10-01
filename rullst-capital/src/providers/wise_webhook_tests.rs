@@ -196,6 +196,11 @@ fn every_documented_state_is_typed_without_inventing_values() {
             Some(PayoutStatus::Processing),
         ),
         (
+            "waiting_recipient_input_to_proceed",
+            WiseTransferState::WaitingRecipientInput,
+            Some(PayoutStatus::Processing),
+        ),
+        (
             "processing",
             WiseTransferState::Processing,
             Some(PayoutStatus::Processing),

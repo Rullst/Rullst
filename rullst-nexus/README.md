@@ -12,7 +12,9 @@ patch when upgrading, while preserving their security layers. See the
 
 When used through the `rullst` umbrella with its `orm` and `nexus` features,
 `#[derive(Nexus)]` generates metadata for named-field models. Primitive widgets
-are inferred; semantic fields can use `#[nexus(kind = "textarea")]` or
+are inferred (a Rust integer field becomes `FieldKind::Integer` bounded by its
+type, with `u64`/`usize` capped at `i64::MAX`; `f32`/`f64` become `Number`);
+semantic fields can use `#[nexus(kind = "textarea")]` or
 `#[nexus(kind = "enum", options = "draft, published")]`. Models may also
 implement `NexusModel` manually. Batch deactivation is exposed only for a
 writable (neither `hidden` nor `readonly`) Boolean `is_active` or `active`
@@ -34,8 +36,15 @@ breaks or other control characters is shown read-only in a text area (declare
 empty with a note. An emptied number, relation, date, date-time, enum or JSON
 field is stored as NULL, never `''` (a new record omits it so the column default
 applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
-a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
-change.
+a `Z` or `±HH:MM` offset and use a `T` or space separator. A local date-time is
+stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text that `CURRENT_TIMESTAMP` and
+SQLx write, so text comparisons and ordering agree with application rows; a
+value with an offset is stored as entered. API clients should send only the fields they intend to
+change. A rejected value answers `422` with a plain-text reason, which the
+panel shows as a toast. A `FieldKind::Number` field accepts any finite number,
+while `FieldKind::Integer { min, max }` accepts only a whole number in that
+range (stored without a `+` sign or leading zeros) and renders `step="1"` with
+the bounds, so a fraction or out-of-range value never reaches an integer column.
 
 In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
 or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
@@ -46,7 +55,7 @@ Opening the edit form of a missing, other-tenant or misspelled key returns
 reads only the registered visible, non-password columns.
 
 Form values are bound as text. PostgreSQL has no assignment cast from text,
-so there Nexus writes `number` values through `NUMERIC`, relation values that
+so there Nexus writes `number` and `integer` values through `NUMERIC`, relation values that
 are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
 `'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
 and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
@@ -59,8 +68,8 @@ The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 with an action route. The older `/nexus/table/{table}/{key}` routes remain for
 other keys.
 
-Record keys follow the registered primary-key kind: a `number` (or relation)
-key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+Record keys follow the registered primary-key kind: a `number`, `integer` (or
+relation) key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
 
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
@@ -68,7 +77,13 @@ visible text, textarea, e-mail and URL columns. It is case-insensitive on
 PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
 collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
 page 1, rebuilds the sort and pagination links for the new query and records it
-in the URL, so saving a record refreshes the same view.
+in the URL, so saving a record refreshes the same view. A model without such a
+visible column shows no search box, and a search query sent to it lists no rows
+(with a note) instead of every row.
+
+The list sorts only by the record key and visible, non-`Password` columns. A
+`sort_by` naming a hidden or `Password` column orders by the key instead, so a
+crafted URL cannot reveal the relative order of values the panel never shows.
 
 ## Tenant-scoped CRUD and mutation audit
 
@@ -111,7 +126,8 @@ let nexus = rullst::nexus::Nexus::new()
 ```
 
 `rullst_nexus_audits` stores the authenticated Nexus actor, optional tenant,
-table, action, optional known record key, affected-row count, committed outcome,
+table, action, optional known record key (for a create, the key the administrator
+entered; a database-generated key is absent), affected-row count, committed outcome,
 bounded correlation ID, timestamp and format version. A record key that does
 not fit 1 to 256 bytes of unpadded text without control characters is recorded
 as absent. An unavailable audit table rolls the data mutation back and returns
@@ -195,11 +211,18 @@ header. The `NexusVerifiedTls` path keeps working unchanged.
 
 For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
-loopback socket peer, an unambiguous local `Host` authority, and a matching
+loopback socket peer (an IPv4-mapped peer such as `::ffff:127.0.0.1`, which a dual-stack `::`
+listener reports for IPv4 clients, counts as IPv4), an unambiguous local `Host` authority, and a matching
 `Origin` for unsafe methods, and is rejected in release builds. Non-browser
 clients can read without `Origin`; local mutation requests must supply their
 matching origin explicitly (for example, `Origin: http://localhost:3000` with
 `Host: localhost:3000`). Present cross-origin headers are rejected on every method.
+Its responses carry `Referrer-Policy: same-origin` unless the application sets
+one, so browsers send the real origin on the panel's own requests. When a host
+layer imposes `no-referrer`, browsers send `Origin: null`; the policy then
+accepts the request only with a single `Sec-Fetch-Site: same-origin`, a header
+page scripts cannot set, so documents of other origins or local ports stay
+rejected.
 
 Generated applications use
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select
@@ -234,6 +257,13 @@ with its history cache off (`historyCacheSize: 0`, `refreshOnHistoryMiss: true`)
 admin pages and open edit forms are never snapshotted into origin-wide
 `localStorage`, and Back reloads the page from the server.
 The asset routes sit behind the same authentication policy as the panel.
+
+AI assistant replies, from a provider or the built-in fallback, are untrusted.
+Nexus keeps only an explicit text-formatting allowlist (paragraphs, lists, code,
+tables, emphasis and links with `rel="noopener noreferrer"`). Scripts, event
+handlers, unsafe URL schemes and every element that loads a resource by itself,
+such as `img`, are removed, so a prompt-injected reply cannot render an image
+beacon even where no CSP restricts `img-src`.
 
 `assets/htmx-2.0.4.min.js` is the unmodified upstream
 [`dist/htmx.min.js`](https://github.com/bigskysoftware/htmx/blob/b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f/dist/htmx.min.js)

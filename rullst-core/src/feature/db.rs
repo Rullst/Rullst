@@ -45,6 +45,11 @@ enum Lookup {
 /// lookup succeeds. One lookup waits at most two seconds, and at most 4,096
 /// flag names are cached per driver.
 ///
+/// A row whose `variants` column holds an A/B split (`"a:50,b:50"`) is read
+/// with `variant`; as in the other drivers, `enabled_for` is true only for
+/// identifiers assigned a variant named `"enabled"`, and `enabled` (no
+/// identifier) is false.
+///
 /// # Note on Database Pool Initialization
 /// This driver requires a live database pool to function. If feature flags are evaluated before the
 /// database connection pool has been initialized (e.g., in early application startup or static constructors),
@@ -187,10 +192,14 @@ impl DbFeatureDriver {
 
         if let Some(vars_str) = variants {
             let vars = parse_variants(&vars_str);
-            if !vars.is_empty()
-                && let Some(ident) = identifier
-            {
-                return Some(split_variant(&vars, flag, ident));
+            if !vars.is_empty() {
+                // An A/B split evaluates to a variant name. Without an
+                // identifier there is no assignment, so `enabled` is false,
+                // as in the Env, TOML and Memory drivers.
+                return Some(match identifier {
+                    Some(ident) => split_variant(&vars, flag, ident),
+                    None => "disabled".to_string(),
+                });
             }
         }
 

@@ -310,3 +310,46 @@ async fn sqlite_concurrent_reservations_enforce_the_limit() {
 
     close_and_remove(store, &path).await;
 }
+
+// Keys are case-sensitive on every store: nanoid/base62 tenant IDs or event
+// keys that differ only by letter case must never share a counter or claim.
+async fn assert_case_sensitive_keys(store: &impl QuotaStore) {
+    let lower = subject("case-ab3x");
+    let upper = subject("case-AB3X");
+    for workspace in [&lower, &upper] {
+        let grant = store
+            .reserve(&request(workspace, "case-project", 1, 1))
+            .await
+            .expect("each tenant owns its limit");
+        assert!(!grant.is_replay());
+    }
+    assert_eq!(store.usage(&lower, "projects").await.unwrap(), 1);
+    assert_eq!(store.usage(&upper, "projects").await.unwrap(), 1);
+
+    let workspace = subject("case-keys");
+    for event_key in ["req-Ab", "req-aB"] {
+        let grant = store
+            .reserve(&request(&workspace, event_key, 1, 2))
+            .await
+            .expect("each event key is its own claim");
+        assert!(!grant.is_replay());
+    }
+    assert_eq!(store.usage(&workspace, "projects").await.unwrap(), 2);
+    let feature = QuotaRequest::try_new(workspace.clone(), "Projects", "req-Ab", 1, 1)
+        .expect("valid quota request");
+    assert!(!store.reserve(&feature).await.unwrap().is_replay());
+    assert_eq!(store.usage(&workspace, "Projects").await.unwrap(), 1);
+}
+
+#[tokio::test]
+async fn memory_keys_that_differ_only_by_case_stay_distinct() {
+    assert_case_sensitive_keys(&InMemoryQuotaStore::default()).await;
+}
+
+#[cfg(feature = "quota-sql")]
+#[tokio::test]
+async fn sqlite_keys_that_differ_only_by_case_stay_distinct() {
+    let (store, path) = sqlite_store("case").await;
+    assert_case_sensitive_keys(&store).await;
+    close_and_remove(store, &path).await;
+}

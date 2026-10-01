@@ -4,6 +4,8 @@
 mod bounds;
 #[path = "redis_support/faults.rs"]
 mod faults;
+#[path = "redis_support/ordering.rs"]
+mod ordering;
 #[cfg(feature = "orm-outbox")]
 #[path = "redis_support/outbox.rs"]
 mod outbox;

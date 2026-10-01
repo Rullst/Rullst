@@ -22,12 +22,14 @@ const MAX_TOKEN_BYTES: usize = 128;
 /// The boundary must satisfy RFC 2046: 1-70 characters from its `bchars`
 /// set, not ending in a space. A malformed or repeated parameter fails.
 pub(super) fn form_data_boundary(content_type: &str) -> Option<&str> {
+    multipart_boundary(content_type, "multipart/form-data")
+}
+
+/// Returns the boundary of a content type whose media type is `media_type`
+/// (compared in any ASCII case), under the rules of [`form_data_boundary`].
+pub(super) fn multipart_boundary<'a>(content_type: &'a str, media_type: &str) -> Option<&'a str> {
     let mut parameters = content_type.split(';');
-    if !parameters
-        .next()?
-        .trim()
-        .eq_ignore_ascii_case("multipart/form-data")
-    {
+    if !parameters.next()?.trim().eq_ignore_ascii_case(media_type) {
         return None;
     }
     let mut boundary = None;

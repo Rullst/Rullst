@@ -2,6 +2,7 @@
 
 #![cfg_attr(mutants, mutants::skip)]
 
+mod cells;
 pub mod db;
 pub mod handlers;
 mod identifiers;

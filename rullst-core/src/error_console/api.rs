@@ -19,6 +19,13 @@ pub struct ExplainQuery {
     err: String,
 }
 
+/// Loopback peers only. Dual-stack listeners report IPv4 clients as
+/// IPv4-mapped IPv6 (`::ffff:127.0.0.1`), so the address is canonicalized
+/// first, as the error-console middleware does.
+fn is_local_peer(addr: SocketAddr) -> bool {
+    addr.ip().to_canonical().is_loopback()
+}
+
 /// Asynchronous endpoint called by the browser to fetch the AI error explanation.
 ///
 /// **Security:** Validates that the target file resides within the project's working
@@ -28,7 +35,7 @@ pub async fn handle_explain(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Query(query): Query<ExplainQuery>,
 ) -> impl IntoResponse {
-    if !addr.ip().is_loopback() {
+    if !is_local_peer(addr) {
         return "Access denied: endpoint only accessible from localhost.".to_string();
     }
 
@@ -84,7 +91,7 @@ pub async fn handle_autofix(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<AutoFixPayload>,
 ) -> impl IntoResponse {
-    if !addr.ip().is_loopback() {
+    if !is_local_peer(addr) {
         return Json(serde_json::json!({
             "success": false,
             "error": "Access denied: endpoint only accessible from localhost"
@@ -166,7 +173,7 @@ pub async fn handle_autofix(
 pub async fn handle_run_migrations(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
-    if !addr.ip().is_loopback() {
+    if !is_local_peer(addr) {
         return (
             axum::http::StatusCode::FORBIDDEN,
             Json(serde_json::json!({
@@ -258,7 +265,12 @@ mod tests {
 
     #[tokio::test]
     async fn migration_button_never_reports_a_fabricated_success() {
-        for (peer, status) in [("127.0.0.1:43000", 501), ("192.0.2.30:43000", 403)] {
+        for (peer, status) in [
+            ("127.0.0.1:43000", 501),
+            ("[::ffff:127.0.0.1]:43000", 501),
+            ("192.0.2.30:43000", 403),
+            ("[::ffff:192.0.2.30]:43000", 403),
+        ] {
             let response =
                 handle_run_migrations(ConnectInfo(peer.parse::<SocketAddr>().expect("peer")))
                     .await

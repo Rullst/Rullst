@@ -3,7 +3,11 @@
 `rullst-security::rasp` applies bounded heuristic signatures to request targets,
 non-secret headers, and supported textual bodies. Its current signatures cover
 common SQL injection, path traversal, SSRF, shell/RCE, and JNDI indicators. It
-does not claim general exploit detection.
+does not claim general exploit detection. The `powershell` keyword is not
+matched against the stock PowerShell product token in `User-Agent`
+(`PowerShell/7.4.1`, `WindowsPowerShell/5.1…`), so `Invoke-WebRequest` and
+`Invoke-RestMethod` clients are served, while execution syntax such as
+`powershell -enc` or `powershell.exe` in that header still blocks.
 
 ---
 

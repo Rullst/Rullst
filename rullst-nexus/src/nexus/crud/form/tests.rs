@@ -198,3 +198,27 @@ fn multi_line_single_line_values_are_read_only_and_textareas_keep_leading_newlin
     let html = widget(FieldKind::Textarea, value("\nstarts with a blank line"));
     assert!(html.contains("rows=\"4\">\n\nstarts with a blank line</textarea>"));
 }
+
+#[test]
+fn integer_widgets_step_by_one_within_their_bounds() {
+    let kind = FieldKind::Integer {
+        min: -2_147_483_648,
+        max: 2_147_483_647,
+    };
+    let html = widget(kind.clone(), value("42"));
+    assert!(
+        html.contains(
+            "type=\"number\" name=\"field\" value=\"42\" class=\"nexus-input\" \
+             step=\"1\" min=\"-2147483648\" max=\"2147483647\" />"
+        ),
+        "{html}"
+    );
+    let html = widget(kind.clone(), StoredValue::Absent);
+    assert!(html.contains("type=\"number\"") && html.contains("step=\"1\""));
+    // A stored value a number input would alter is shown as text, unbounded.
+    let html = widget(kind, value("12 apples"));
+    assert!(
+        html.contains("type=\"text\"") && !html.contains("step="),
+        "{html}"
+    );
+}
