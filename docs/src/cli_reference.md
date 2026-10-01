@@ -1040,7 +1040,10 @@ See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
 setup, migration of existing shells and certificate/device verification.
 
 Runs the generated Tauri development client after `make:omni`. Android/iOS
-require their official SDK/toolchain and a reachable backend.
+require their official SDK/toolchain and a reachable backend. For `desktop`, the
+spinner lasts until the shell prints `Launching Omni interface...` (or 200
+output lines arrive); the command then prints the held lines and keeps streaming
+the shell's and its managed backend's standard output until the window closes.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
 
 ---

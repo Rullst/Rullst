@@ -366,6 +366,11 @@ mod tests {
         assert!(config.contains("https://api.example.com"));
         assert!(config.contains("com.acme.chat"));
         assert!(!config.contains("withGlobalTauri"));
+        // The desktop runner waited for a marker no runtime printed.
+        assert!(generated.contains(&format!(
+            "println!(\"{}\");",
+            super::super::runner::LAUNCH_MARKER
+        )));
         assert!(generated.contains("rullst-navigation-policy"));
         assert!(generated.contains("eq_ignore_ascii_case(BACKEND_HOST)"));
         assert!(generated.contains("const BACKEND_PORT: u16 = 443;"));

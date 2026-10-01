@@ -706,7 +706,20 @@ fn omni_scaffold_and_desktop_runner_use_pinned_local_tooling() {
         ],
     );
 
-    fixture.succeeds_with_path(&["omni", "desktop"], &tools);
+    // The runner must report the launch and keep the shell's and backend's
+    // output instead of consuming it while it waits for the marker.
+    fs::write(
+        tools.join("cargo"),
+        "#!/bin/sh\necho 'backend: serving on 3000'\necho 'Launching Omni interface...'\necho 'backend: GET / 200'\nexit 0\n",
+    )
+    .expect("Omni desktop cargo fixture");
+    let desktop = fixture.succeeds_with_path(&["omni", "desktop"], &tools);
+    assert!(
+        desktop.contains("Omni window launched successfully"),
+        "{desktop}"
+    );
+    assert!(desktop.contains("backend: serving on 3000"), "{desktop}");
+    assert!(desktop.contains("backend: GET / 200"), "{desktop}");
     assert!(
         fixture
             .command_with_path(&["omni", "unsupported"], &tools)

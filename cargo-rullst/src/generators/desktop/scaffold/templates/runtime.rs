@@ -140,6 +140,8 @@ pub fn run() {
         let backend_process = Arc::new(Mutex::new(child));
         let backend_for_cleanup = Arc::clone(&backend_process);
 
+        // `cargo rullst omni desktop` waits for this exact line.
+        println!("Launching Omni interface...");
         let run_result = tauri::Builder::default()
             .plugin(navigation_policy())
             .on_window_event(move |_window, event| {
