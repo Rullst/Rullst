@@ -76,10 +76,19 @@ async fn separately_safe_documents_are_judged_together_without_false_beacons() {
     assert_eq!(outcome, RagAuditOutcome::Succeeded);
     assert_eq!(prompts, 1);
 
-    // A combination the guardrail still blocks is context, not generation.
-    let (result, outcome, prompts) = answer_with([
+    // An undefined reference is literal text next to an unrelated link.
+    let (result, _, _) = answer_with([
         "The logo is ![logo][site-logo] in the header.",
         "See https://docs.rs for details.",
+    ])
+    .await;
+    assert_eq!(result.expect("answer").answer(), "grounded answer");
+
+    // A combination the guardrail still blocks is context, not generation:
+    // each passage is safe alone, but together they define a remote image.
+    let (result, outcome, prompts) = answer_with([
+        "The logo is ![logo][site-logo] in the header.",
+        "[site-logo]: https://example.invalid/logo.png",
     ])
     .await;
     assert!(matches!(

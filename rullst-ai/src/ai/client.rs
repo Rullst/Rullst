@@ -1,9 +1,9 @@
 //! Mandatory-guardrail high-level client and chat builder.
 
 use super::{
-    AiError, AiGuardrails, AiProvider, EgressFetcher, EgressResolver, LocalImagePolicy, Message,
-    ProviderCapabilities, StructuredOutputSchema, guardrails::prepare_messages,
-    structured::clean_json_markdown,
+    AiError, AiGuardrails, AiProvider, ChatCompletion, EgressFetcher, EgressResolver,
+    LocalImagePolicy, Message, ProviderCapabilities, StructuredOutputSchema,
+    guardrails::prepare_messages, structured::clean_json_markdown,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -45,6 +45,12 @@ impl ChatBuilder {
     pub async fn send(self) -> Result<String, AiError> {
         let messages = prepare_messages(&self.messages)?;
         self.provider.chat(&messages).await
+    }
+
+    /// Like [`Self::send`], plus the token usage the provider reported (v13).
+    pub async fn send_with_usage(self) -> Result<ChatCompletion, AiError> {
+        let messages = prepare_messages(&self.messages)?;
+        self.provider.chat_with_usage(&messages).await
     }
 }
 

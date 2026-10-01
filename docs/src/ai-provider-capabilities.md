@@ -13,8 +13,8 @@ falling back to another operation.
 | Provider transport | Text | Chat | Embeddings | Vision | JSON | JSON Schema | Streaming | Provider tools | Rullst timeout | Automatic retry | Explicit cancellation |
 | --- | :---: | :---: | :---: | :---: | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | OpenAI | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
-| Anthropic | yes | yes | no | yes | prompt only | no | no | no | yes | no | no |
-| Gemini | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
+| Anthropic | yes | yes | no | yes | prompt only | no | native SSE | no | yes | no | yes (stream) |
+| Gemini | yes | yes | yes | yes | native mode | yes | native SSE | no | yes | no | yes (stream) |
 | DeepSeek | yes | yes | no | no | native mode | default model only | no | no | yes | no | no |
 | Ollama | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
 | OpenAI-compatible | yes | yes | declared | declared | declared native mode | declared | declared SSE | no | yes | no | declared for SSE |
@@ -84,9 +84,34 @@ static dispatch. For an exact OpenAI-compatible configuration that declares
 `with_streaming()`, Rullst parses incremental UTF-8 SSE deltas, requires the
 terminal `[DONE]` marker, rejects an incorrect media type, malformed/truncated
 events and all configured byte/chunk overflows. The maximums are 4,096 chunks,
-64 KiB per chunk and 2 MiB of raw response and delivered text. DeepSeek and
-Ollama ordinary payloads still select `stream: false`; other provider-specific
-streaming protocols remain unimplemented rather than being treated as OpenAI-compatible.
+64 KiB per chunk and 2 MiB of raw response and delivered text.
+
+Anthropic and Gemini implement their native SSE protocols (v13) with the same
+bounds, guardrails and cancellation. Anthropic reads `message_start`,
+`content_block_delta` text deltas, `message_delta` and `message_stop`, ignores
+`ping` and unknown event types, maps an `error` event to its error type only,
+and requires `message_stop`. Gemini uses `streamGenerateContent?alt=sse`,
+skips thought parts, maps an `error` object or `promptFeedback.blockReason` to
+an error and requires a final `finishReason`. A truncated or withheld reply
+(Anthropic `max_tokens`, `model_context_window_exceeded` or `refusal`; Gemini
+`MAX_TOKENS` or a safety/recitation/blocklist reason) fails instead of being
+returned as complete, in both the streaming and the non-streaming paths.
+DeepSeek and Ollama ordinary payloads still select `stream: false`; DeepSeek
+streams through the OpenAI-compatible adapter.
+
+### Token usage (v13)
+
+| Provider transport | Fields read | Streamed usage |
+| --- | --- | --- |
+| OpenAI | `usage.prompt_tokens`, `completion_tokens`, `total_tokens`, `prompt_tokens_details.cached_tokens` | through the OpenAI-compatible adapter with `with_stream_usage()` |
+| DeepSeek | as OpenAI, with `prompt_cache_hit_tokens` | as OpenAI |
+| Anthropic | `usage.input_tokens` + cache creation/read input tokens, `output_tokens` | `message_start` usage updated by cumulative `message_delta` usage |
+| Gemini | `usageMetadata.promptTokenCount`, `candidatesTokenCount` + `thoughtsTokenCount`, `totalTokenCount`, `cachedContentTokenCount` | the latest `usageMetadata` of the stream |
+| Ollama | `prompt_eval_count`, `eval_count` | no streaming transport |
+| OpenAI-compatible | `usage` when the server sends it | final usage chunk when the server sends one; requested only with `with_stream_usage()` |
+
+Counts come only from these fields. A response without them reports `None`;
+Rullst never estimates tokens or prices them.
 
 ### Timeouts and cancellation
 
@@ -97,8 +122,9 @@ OpenAI-compatible transport. This bounds the local request future; it is not
 proof that an upstream provider stopped work or billing. The adapters still do
 not expose cancellation for ordinary `AiProvider` calls. `AiCancellation`
 provides an explicit cloneable signal for `StreamingAiClient`; the compatible
-transport races it against both the initial request and every streamed body
-read. Other provider protocols still use deadline/drop semantics.
+transport and the Anthropic and Gemini streams race it against both the initial
+request and every streamed body read. Other provider protocols still use
+deadline/drop semantics.
 
 ### Retries
 

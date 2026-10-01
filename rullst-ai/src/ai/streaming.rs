@@ -1,6 +1,6 @@
 //! Bounded static-dispatch streaming and explicit cancellation contracts.
 
-use super::{AiError, AiGuardrails, AiProvider, Message, ProviderCapabilities};
+use super::{AiError, AiGuardrails, AiProvider, Message, ProviderCapabilities, TokenUsage};
 use async_trait::async_trait;
 use tokio::sync::watch;
 
@@ -129,6 +129,7 @@ impl Default for StreamLimits {
 pub struct StreamSummary {
     chunks: usize,
     output_bytes: usize,
+    usage: Option<TokenUsage>,
 }
 
 impl StreamSummary {
@@ -143,12 +144,24 @@ impl StreamSummary {
     pub const fn output_bytes(self) -> usize {
         self.output_bytes
     }
+
+    /// Token usage the provider reported at the end of the stream (v13);
+    /// `None` when the transport or response reported none.
+    #[must_use]
+    pub const fn usage(self) -> Option<TokenUsage> {
+        self.usage
+    }
 }
 
 /// Application-owned destination for incremental text.
 pub trait AiStreamSink: Send {
     /// Accepts one non-empty UTF-8 chunk without retaining it inside Rullst.
     fn send(&mut self, chunk: &str) -> Result<(), AiError>;
+
+    /// Receives provider-reported token usage, normally once at the end of a
+    /// stream (v13). The default ignores it; [`StreamingAiClient`] also
+    /// returns it in [`StreamSummary::usage`].
+    fn usage(&mut self, _usage: TokenUsage) {}
 }
 
 impl<F> AiStreamSink for F
@@ -323,8 +336,14 @@ where
         self.summary = StreamSummary {
             chunks,
             output_bytes,
+            usage: self.summary.usage,
         };
         Ok(())
+    }
+
+    fn usage(&mut self, usage: TokenUsage) {
+        self.summary.usage = Some(usage);
+        self.sink.usage(usage);
     }
 }
 

@@ -3,13 +3,24 @@
 //! Images are read the way CommonMark renders them: inline destinations,
 //! full, collapsed and shortcut references with their link reference
 //! definitions, backslash escapes and entity or numeric character references.
-//! Whatever this bounded reader cannot classify counts as a remote image.
+//! Code spans and code blocks are skipped, because CommonMark renders neither
+//! images nor definitions inside code. Whatever this bounded reader cannot
+//! classify counts as a remote image.
+
+#[path = "markdown_code.rs"]
+mod code;
+#[path = "markdown_inline.rs"]
+mod inline;
 
 /// Most Markdown images inspected individually; more are treated as remote.
 pub(super) const MAX_INSPECTED_IMAGES: usize = 64;
 
 /// Most `]:` link reference definition candidates read; more are treated as remote.
 const MAX_DEFINITIONS: usize = 64;
+
+/// Most code spans or `<` constructs examined inside labels per text; more
+/// make the label ambiguous.
+const MAX_INLINE_CHECKS: usize = 64;
 
 /// CommonMark's longest link label.
 const MAX_LABEL_CHARS: usize = 999;
@@ -53,22 +64,27 @@ const NAMED_REFERENCES: &[(&str, char)] = &[
 /// remote resource, or one this check cannot classify.
 ///
 /// Inline images are judged by their destination. Reference images are judged
-/// by the matching definitions; an image with no matching definition (or whose
-/// label never closes) is remote when the text also names a remote
-/// destination, because the definition may be completed by whoever renders it.
+/// by the matching definitions. An ASCII label that matches no definition is
+/// rendered as literal text (CommonMark), as in Rust's `vec![x]`. A label that
+/// never closes, or a non-ASCII label that Unicode case folding could match
+/// to a definition this reader does not reproduce, is remote when the text
+/// also names a remote destination; that check reads the whole text, code
+/// included.
 pub(super) fn has_remote_image(text: &str) -> bool {
     if !text.contains("![") {
         return false;
     }
-    let Some(definitions) = Definitions::read(text) else {
+    let visible = code::blank_code(text);
+    let Some(definitions) = Definitions::read(&visible) else {
         return true;
     };
     let mut unresolved = false;
-    for (index, (start, _)) in text.match_indices("![").enumerate() {
+    let mut budget = MAX_INLINE_CHECKS;
+    for (index, (start, _)) in visible.match_indices("![").enumerate() {
         if index >= MAX_INSPECTED_IMAGES {
             return true;
         }
-        match classify(&text[start + 2..], &definitions) {
+        match classify(&visible[start + 2..], &definitions, &mut budget) {
             Image::Remote => return true,
             Image::Unresolved => unresolved = true,
             Image::Local | Image::Literal => {}
@@ -80,15 +96,17 @@ pub(super) fn has_remote_image(text: &str) -> bool {
 enum Image {
     Local,
     Remote,
-    /// A reference without a matching definition, or a label that never closes.
+    /// A non-ASCII reference without a matching definition, or a label that
+    /// never closes.
     Unresolved,
-    /// An empty shortcut such as `![]`, which CommonMark never renders as an image.
+    /// Text CommonMark never renders as an image: an empty shortcut such as
+    /// `![]`, or an ASCII reference label that matches no definition.
     Literal,
 }
 
 /// Classifies the image whose label starts at `label`.
-fn classify(label: &str, definitions: &Definitions) -> Image {
-    let end = match label_end(label) {
+fn classify(label: &str, definitions: &Definitions, budget: &mut usize) -> Image {
+    let end = match label_end(label, budget) {
         LabelEnd::At(end) => end,
         LabelEnd::Open => return Image::Unresolved,
         LabelEnd::Ambiguous => return Image::Remote,
@@ -112,10 +130,13 @@ fn classify(label: &str, definitions: &Definitions) -> Image {
     let reference = after
         .strip_prefix('[')
         .and_then(|reference| reference.get(..reference.find(']')?));
-    let resolutions = [Some(label), reference]
+    let labels = [Some(label), reference]
         .into_iter()
         .flatten()
         .filter(|label| !label.trim().is_empty())
+        .collect::<Vec<_>>();
+    let resolutions = labels
+        .iter()
         .map(|label| definitions.resolve(label, true))
         .collect::<Vec<_>>();
     if resolutions.is_empty() {
@@ -124,6 +145,9 @@ fn classify(label: &str, definitions: &Definitions) -> Image {
         Image::Remote
     } else if resolutions.contains(&Resolution::Local) {
         Image::Local
+    } else if labels.iter().all(|label| label.is_ascii()) {
+        // An unmatched reference is literal text, not an image.
+        Image::Literal
     } else {
         Image::Unresolved
     }
@@ -134,23 +158,52 @@ enum LabelEnd {
     At(usize),
     /// The label never closes.
     Open,
-    /// A code span, autolink or raw HTML may move where the label closes.
+    /// A code span, autolink or raw HTML may hide a bracket and so move
+    /// where the label closes.
     Ambiguous,
 }
 
-fn label_end(label: &str) -> LabelEnd {
+/// Uses one inline check; `true` once the budget is spent.
+fn exhausted(budget: &mut usize) -> bool {
+    match budget.checked_sub(1) {
+        Some(left) => {
+            *budget = left;
+            false
+        }
+        None => true,
+    }
+}
+
+fn label_end(label: &str, budget: &mut usize) -> LabelEnd {
+    let bytes = label.as_bytes();
     let mut depth = 0usize;
-    let mut escaped = false;
-    for (index, character) in label.char_indices() {
-        match character {
-            _ if escaped => escaped = false,
-            '\\' => escaped = true,
-            '`' | '<' => return LabelEnd::Ambiguous,
-            '[' => depth += 1,
-            ']' if depth == 0 => return LabelEnd::At(index),
-            ']' => depth -= 1,
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            // The escaped byte is skipped; a multi-byte character's remaining
+            // bytes are never ASCII, so they cannot be mistaken for syntax.
+            b'\\' => index += 1,
+            b'`' => {
+                if exhausted(budget) || inline::code_span_hides_bracket(&label[index..]) {
+                    return LabelEnd::Ambiguous;
+                }
+                index += bytes[index..]
+                    .iter()
+                    .take_while(|byte| **byte == b'`')
+                    .count();
+                continue;
+            }
+            b'<' => {
+                if exhausted(budget) || inline::raw_html_hides_bracket(&label[index..]) {
+                    return LabelEnd::Ambiguous;
+                }
+            }
+            b'[' => depth += 1,
+            b']' if depth == 0 => return LabelEnd::At(index),
+            b']' => depth -= 1,
             _ => {}
         }
+        index += 1;
     }
     LabelEnd::Open
 }
