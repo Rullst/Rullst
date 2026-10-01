@@ -9,6 +9,7 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::OnceCell;
 
+mod driver;
 mod settings;
 use settings::MailSettings;
 #[cfg(test)]
@@ -40,10 +41,14 @@ impl Mail {
     }
 
     /// Clears any custom mail driver, restoring default resolution from env/Rullst.toml.
+    ///
+    /// The driver built from those settings is reused across messages while
+    /// they stay the same; this also drops it, so the next send builds a new one.
     pub fn reset_driver() {
         if let Ok(mut lock) = CUSTOM_DRIVER.write() {
             *lock = None;
         }
+        driver::forget_configured_driver();
     }
 
     /// Initializes the global mail queue.
@@ -183,7 +188,7 @@ impl Mail {
         .into_message();
         let driver: Arc<dyn MailDriver> = match Self::custom_driver()? {
             Some(driver) => driver,
-            None => Arc::from(Self::resolve_driver_from(settings)?),
+            None => driver::configured_driver(settings)?,
         };
         match tenant_id {
             Some(tenant_id) => driver.send_for_tenant(tenant_id, &message).await,
@@ -229,164 +234,10 @@ impl Mail {
         Self::resolve_driver_from(&MailSettings::load().await?)
     }
 
-    #[cfg_attr(mutants, mutants::skip)]
+    /// Builds a fresh driver from `settings`, bypassing the reused one.
+    #[cfg(test)]
     fn resolve_driver_from(settings: &MailSettings) -> Result<Box<dyn MailDriver>, MailError> {
-        let driver_name = settings.driver_name()?;
-
-        match driver_name.as_str() {
-            "log" => Ok(Box::new(LogDriver)),
-            "memory" => Ok(Box::new(MemoryDriver::new())),
-            "smtp" => {
-                #[cfg(feature = "mail-smtp")]
-                {
-                    let host = settings
-                        .value("MAIL_HOST")?
-                        .unwrap_or_else(|| "127.0.0.1".to_string());
-                    // Port 25 only when the setting is absent or empty; a
-                    // malformed or out-of-range value fails closed.
-                    let port = match settings.value("MAIL_PORT")? {
-                        Some(port) if !port.trim().is_empty() => port
-                            .trim()
-                            .parse::<u16>()
-                            .ok()
-                            .filter(|port| *port != 0)
-                            .ok_or_else(|| {
-                                MailError::ConfigError(
-                                    "MAIL_PORT must be an integer from 1 to 65535".to_string(),
-                                )
-                            })?,
-                        _ => 25,
-                    };
-                    let username = settings.value("MAIL_USERNAME")?;
-                    let password = settings.value("MAIL_PASSWORD")?;
-
-                    Ok(Box::new(SmtpDriver::try_new(
-                        host, port, username, password,
-                    )?))
-                }
-                #[cfg(not(feature = "mail-smtp"))]
-                {
-                    Ok(Box::new(SmtpDriver))
-                }
-            }
-            "resend" => {
-                let api_key = settings.value("RESEND_API_KEY")?.unwrap_or_default();
-                Ok(Box::new(ResendDriver::try_new(api_key)?))
-            }
-            "sendpulse" => Ok(Box::new(SendPulseDriver::try_new(
-                settings.value("SENDPULSE_API_KEY")?.unwrap_or_default(),
-            )?)),
-            "mailjet" | "mailjet-sandbox" => {
-                let driver = MailjetDriver::try_new(
-                    settings.value("MAILJET_API_KEY")?.unwrap_or_default(),
-                    settings.value("MAILJET_SECRET_KEY")?.unwrap_or_default(),
-                )?;
-                Ok(Box::new(if driver_name == "mailjet-sandbox" {
-                    driver.with_sandbox()
-                } else {
-                    driver
-                }))
-            }
-            "mailtrap" => Ok(Box::new(MailtrapDriver::try_new(
-                settings.value("MAILTRAP_API_TOKEN")?.unwrap_or_default(),
-            )?)),
-            "mailtrap-sandbox" => {
-                let id = settings
-                    .value("MAILTRAP_SANDBOX_ID")?
-                    .and_then(|v| v.parse::<u64>().ok())
-                    .ok_or_else(|| {
-                        MailError::ConfigError(
-                            "MAILTRAP_SANDBOX_ID must be a positive integer".into(),
-                        )
-                    })?;
-                Ok(Box::new(MailtrapDriver::sandbox(
-                    settings.value("MAILTRAP_API_TOKEN")?.unwrap_or_default(),
-                    id,
-                )?))
-            }
-            "sendgrid" => {
-                let api_key = settings.value("SENDGRID_API_KEY")?.unwrap_or_default();
-                Ok(Box::new(SendGridDriver::try_new(api_key)?))
-            }
-            "postmark" => {
-                let server_token = match settings.value("POSTMARK_SERVER_TOKEN")? {
-                    Some(token) => token,
-                    None => settings.value("POSTMARK_API_KEY")?.unwrap_or_default(),
-                };
-                let message_stream = settings.value("POSTMARK_MESSAGE_STREAM")?;
-                let mut driver = PostmarkDriver::try_new(server_token)?;
-                if let Some(stream) = message_stream {
-                    driver = driver.with_message_stream(stream);
-                }
-                Ok(Box::new(driver))
-            }
-            "azure-acs" => {
-                let endpoint = settings
-                    .value("AZURE_COMMUNICATION_EMAIL_ENDPOINT")?
-                    .unwrap_or_default();
-                if endpoint.is_empty() || endpoint.starts_with("mock_") {
-                    Ok(Box::new(AzureCommunicationDriver::new(
-                        endpoint,
-                        StaticAzureMailCredential::new("mock_azure", 0)?,
-                    )?))
-                } else {
-                    Ok(Box::new(AzureCommunicationDriver::new(
-                        endpoint,
-                        AzureManagedIdentity::from_environment()?,
-                    )?))
-                }
-            }
-            "ses" | "aws_ses" => {
-                let region = settings
-                    .value("AWS_REGION")?
-                    .unwrap_or_else(|| "us-east-1".to_string());
-                let endpoint_override = settings.value("AWS_SES_ENDPOINT")?;
-                let access_key_id = settings.value("AWS_ACCESS_KEY_ID")?;
-                let secret_access_key = settings.value("AWS_SECRET_ACCESS_KEY")?;
-                let mut driver = match (access_key_id, secret_access_key) {
-                    (Some(access_key_id), Some(secret_access_key)) => {
-                        #[cfg(feature = "aws-ses")]
-                        {
-                            AwsSesDriver::try_native(
-                                region,
-                                access_key_id,
-                                secret_access_key,
-                                settings.value("AWS_SESSION_TOKEN")?,
-                            )?
-                        }
-                        #[cfg(not(feature = "aws-ses"))]
-                        {
-                            let _ = (region, access_key_id, secret_access_key);
-                            return Err(MailError::ConfigError(
-                                "native AWS SES credentials require the `aws-ses` feature"
-                                    .to_string(),
-                            ));
-                        }
-                    }
-                    (None, None) => {
-                        let auth_token = match settings.value("AWS_SES_TOKEN")? {
-                            Some(token) => token,
-                            None => settings.value("AWS_SES_BEARER_TOKEN")?.unwrap_or_default(),
-                        };
-                        AwsSesDriver::try_new(region, auth_token)?
-                    }
-                    _ => {
-                        return Err(MailError::ConfigError(
-                            "native AWS SES requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
-                                .to_string(),
-                        ));
-                    }
-                };
-                if let Some(endpoint) = endpoint_override {
-                    driver = driver.try_with_endpoint(endpoint)?;
-                }
-                Ok(Box::new(driver))
-            }
-            other => Err(MailError::ConfigError(format!(
-                "Unknown mail driver: {}",
-                other
-            ))),
-        }
+        driver::DriverSpec::from_settings(settings)?.build()
     }
 }
 

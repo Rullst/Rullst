@@ -514,6 +514,13 @@ production check uses the `Server` environment precedence (`RULLST_ENV`, then
 malformed `.env` fails with `MailError::ConfigError` without echoing its
 content.
 
+The settings are read on every facade call, but the driver built from them is
+reused while they stay the same, so its connection pools, native SES client
+and Azure managed-identity token (reused until five minutes before it expires)
+survive across messages and queue jobs. A changed setting builds a new driver
+for the next message, `Mail::reset_driver()` drops the reused one, and
+`MAIL_DRIVER=memory` still builds a fresh store per message. (v13)
+
 Environment variables:
 - `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`, `azure-acs`, `sendpulse`, `mailjet`, `mailjet-sandbox`,
   `mailtrap`, `mailtrap-sandbox`). When neither it nor `[mail] driver` is set,
