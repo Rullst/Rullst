@@ -35,7 +35,6 @@ SHARDS = (
 RUNTIME_JOBS = frozenset({
     "Code Quality & Format", "Check MSRV (Rust 1.96.0)",
     "Facade shared-local recovery composition", "Generated release access boundaries",
-    "Isolated Labs acceptance (Linux)",
     "Redis live contracts", "Versioned deterministic AI evals",
     *{f"ORM {feature}" for feature in ("strict-mysql", "strict-postgres", "strict-sqlite")},
     *{f"Run Tests (ubuntu-latest / {shard})" for shard in SHARDS},

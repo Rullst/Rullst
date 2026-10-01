@@ -155,7 +155,7 @@ rullst-media|
 rullst-media|bunny
 rullst-media|sqlite
 rullst-media|bunny,sqlite
-# Labs orchestration remains independent from the separately deployed runner.
+# Labs orchestration never depends on an executor; runners are application-owned.
 rullst-labs|
 rullst-labs|sqlite
 rullst-labs|receipt-signing

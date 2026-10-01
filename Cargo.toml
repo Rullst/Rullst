@@ -22,7 +22,6 @@ members = [
     "rullst-supervision",
     "rullst-media",
     "rullst-labs",
-    "rullst-labs-runner",
 ]
 exclude = [
     "benchmark/rullst",

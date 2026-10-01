@@ -1,14 +1,20 @@
 # Rullst Labs
 
 Unpublished v13 implementation candidate for trusted exercise orchestration and
-exact grading. The named Linux journey passed [targeted hosted acceptance](https://github.com/Rullst/Rullst/actions/runs/35582398251)
-at `977e40a3` and workspace/archive source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228).
-Final release admission and independent isolation review remain outstanding. Neither the candidate name nor a signed
-receipt establishes production readiness.
+exact grading. **Bring your own runner:** this crate never compiles, interprets
+or spawns learner code. An application-owned, separately deployed and isolated
+runner claims leased jobs and returns signed receipts through the documented
+[controller contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md).
+
+The experimental `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi
+executor) passed source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228)
+but was removed from the workspace for 13.0; its source remains in git history.
+Final release admission for this crate remains outstanding. Neither the
+candidate name nor a signed receipt establishes production readiness.
 
 The default feature provides bounded, versioned contracts with no executor or
 network/runtime dependency. `sqlite` adds a dedicated encrypted shared-local job
-plane; `receipt-signing` belongs to the separately deployed trusted controller.
+plane; `receipt-signing` belongs to the runner's trusted controller.
 The application must never spawn learner code or expose a container control socket.
 
 ## Implemented candidate surface
@@ -36,15 +42,16 @@ The application must never spawn learner code or expose a container control sock
 - An explicit simulation mode whose results are `Simulated`, never `Completed`
   or execution evidence. It does not evaluate source.
 
-## Application and controller boundary
+## Application and runner boundary
 
 The application registers an `Exercise`, submits a `Submission` through
 `SqliteLabs::submit`, reads `get_job` and records `cancel`. Submission IDs are
 idempotency keys shared by the course, so generate unpredictable random IDs;
 another learner's ID is a `Conflict` on submit and `NotFound` from `get_job`
-and `cancel` unless the caller may manage jobs. The dedicated controller
-uses `claim_next`, monitors `lease_status`, performs isolated execution and submits
-a `SignedReceipt` to `complete`. Cancellation and expiry fence late results.
+and `cancel` unless the caller may manage jobs. Your runner's trusted controller
+uses `claim_next`, monitors `lease_status`, has its isolated worker execute the
+attempt and submits a `SignedReceipt` to `complete`. Cancellation and expiry
+fence late results.
 A job expires at the earlier of its `ttl_seconds` and the Submit permission's
 expiry, and is claimed only while more than the exercise's wall limit plus 5
 seconds remain. Grant Submit for longer than expected queueing plus that time;
@@ -54,10 +61,10 @@ TTL, `Expired` for a too-short permission).
 A lost worker first requires a fenced attempt and confirmed whole-group teardown.
 `cleanup_candidates`/`abandon_attempt` and `reconcile_cleanup` provide that durable
 boundary. Only then may a controller deliberately request one bounded retry.
-The supplied first controller cancels abandoned work after cleanup by default.
-Cleanup is attested with the same `SignedReceipt` type, reporting
-`Rejected(WorkerLost)`; sent to `complete`, that outcome is a terminal `Failed`
-job without the retry. `complete` accepts a receipt only when `started_at` is
+The removed candidate and the example controller cancel abandoned work after
+cleanup instead of retrying. Cleanup is attested with the same `SignedReceipt`
+type, reporting `Rejected(WorkerLost)`; sent to `complete`, that outcome is a
+terminal `Failed` job without the retry. `complete` accepts a receipt only when `started_at` is
 not before the claim (sample it after `claim_next`, on a clock synchronized
 with the store), `finished_at` is not after the store's time and precedes the
 lease expiry; otherwise it returns `Protocol`.
@@ -80,25 +87,46 @@ application receives only the controller's pinned public key. The untrusted work
 receives neither key, the database nor expected answers. Keep these resources
 separate from application identity/session credentials and database state.
 
+## Examples
+
 The `course_app` example is a runnable **local operator** application fixture for
 registration/submission/status/cancel/withdrawal and authorized retention. Its stdin-selected actor and
 small fixture policy are not web authentication. A web application must supply
 its real authorization and protected transport. This example never starts an
-executor; the independently deployed runner consumes the shared job plane.
+executor; a separately deployed runner consumes the shared job plane.
 
-## First selected profile and limits
+The `byo_runner_controller` example is a minimal **non-executing** controller.
+It recovers leftover leases, claims a job, polls `lease_status` under the wall
+limit, signs a fixed `Rejected(Isolation)` verdict for `complete` and fences
+failures through `abandon_attempt`/`reconcile_cleanup`. It never compiles or
+runs learner code; `PLUG-IN POINT` comments mark where an isolated worker and
+its teardown belong. It runs as a test with the crate's suite:
 
-The experimental Linux x86-64 runner compiles a fixed Rust 1.96.0
-`solve(i64, i64) -> i64` exercise to import-free Wasm and uses Wasmi 2.0.0.
-Source is limited to 32 KiB, artifacts to 256 KiB, execution to 5–60 seconds,
-guest memory to 2–16 MiB and fuel to at most one million units per case.
-Native OS resource limits also cover compiler/translation work. No Cargo build
-scripts, extra packages, shell commands, WASI or native Rullst servers are included.
+```bash
+cargo run -p rullst-labs --example byo_runner_controller --features sqlite,receipt-signing
+```
 
-The [runner](https://github.com/Rullst/Rullst/blob/main/rullst-labs-runner/README.md) requires observed namespaces,
-cgroups v2, fixed read-only mounts, seccomp and a fully enforced Landlock policy.
-Unsupported environments refuse work; there is no weaker execution fallback.
-Independent security review and hostile-input acceptance are still required.
+## Profile and limits
+
+Protocol version 1 defines one profile, `rust-function-wasm-v1`: a pure
+`solve(i64, i64) -> i64` function evaluated over at most 64 instructor cases.
+Its identifiers name Rust 1.96.0 `wasm32-unknown-unknown` and Wasmi 2.0.0
+semantics and are bound into every exercise and profile digest. Source is
+limited to 32 KiB, execution to 5–60 seconds, guest memory to 2–16 MiB and fuel
+to at most one million units per case. A runner must enforce these limits; this
+crate only validates and binds them.
+
+## What your runner must provide
+
+The application never executes submissions. Your runner's isolated worker must
+receive only the bounded `WorkerInput`, without the job database, keys, expected
+answers, application secrets, network or control sockets, under enforced CPU,
+memory, process, disk and output limits and observed syscall/filesystem
+restrictions. Unsupported environments must refuse work with no weaker
+fallback. The removed candidate's [first-profile threat model](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-first-profile.md)
+records one Linux design (namespaces, cgroups v2, seccomp, Landlock) as a
+reference. Independent security review and hostile-input acceptance of your
+runner are required before any production claim.
 
 Application policy, instructor review, verified enrollment, privacy notices,
 backup retention/erasure and accessibility remain host responsibilities. This

@@ -78,8 +78,8 @@ in force throughout that transition.
 | `rullst-mail`, `rullst-ai`, `rullst-media` | Medium to high: external services, feedback/events, transport changes and provider-specific behavior. | Maintain common contracts and adapters justified by actual use. Prefer interoperable protocols where appropriate, while retaining provider-specific assertions and explicit unsupported operations. |
 | `rullst-privacy` | Bounded current foundations; broader legal or biometric promises would create high continuing cost. | Keep reusable consent, minimal-data and proportional age-policy mechanisms. Provider attestations remain separate from native declarations; global legal certification and a first-party facial model are not part of this direction. |
 | `rullst-supervision` | Specialized, sensitive application state; models, capture and operational expansion raise the cost. | Keep transparent observation contracts as an optional education/parental extension. Product workflows, verified relationships, media models and human review belong to the application or separately governed integration. |
-| `rullst-labs` | Bounded trusted orchestration with sensitive authorization, leases and grading contracts. | Keep separate from execution. Retain one useful Academy profile without making broader language or exercise support a framework release prerequisite. |
-| `rullst-labs-runner` | Very high security and operational burden despite its small source size. | Maintain separate deployment and plan a separate release lifecycle. Require the outstanding independent isolation review; never move execution into the web process or weaken containment to simplify maintenance. |
+| `rullst-labs` | Bounded trusted orchestration with sensitive authorization, leases and grading contracts. | Keep separate from execution: bring your own runner through the documented [controller contract](labs-runner-contract.md). Retain one useful Academy profile without making broader language or exercise support a framework release prerequisite. |
+| Labs execution (former `rullst-labs-runner`) | Very high security and operational burden despite its small source size. | **Removed from the 13.0 workspace** (30 September 2026); its source remains in git history. Applications deploy and review their own runner against the controller contract. Never move execution into the web process or weaken containment to simplify maintenance. |
 | `rullst-studio`, `rullst-nexus` | Medium, increasing with operational dashboards and autonomous administration. | Preserve useful local diagnostics and authorized administration. Avoid growth into a complete security-operations or autonomous infrastructure product. |
 | `rullst-iot` | The current helper surface is small; broad hardware and transport support would be expensive. | Preserve existing contracts and defer hardware expansion until there are named users, target devices and interoperability evidence. Treat future expansion as a specialized extension. |
 
@@ -234,14 +234,14 @@ apply; this decision does not promote unpublished code to a stable guarantee.
 | Framework foundations | Reusable identity, authorization helpers, persistence, queues, request protections and explicit extension contracts. |
 | Optional domain packages | Existing Supervision observation/session/collection contracts and Labs exercise/job/lease/grading contracts, maintained within their declared boundaries. |
 | Application | School or family workflows, authenticated membership and verified relationships, user interfaces, review decisions, exercise content, grading policies and model/provider selection. A developer or assistant may implement these through the documented contracts. |
-| Separately deployed execution | A reviewed runner and operator-owned isolation/resources for untrusted submissions. The application must not improvise execution in the web process. |
+| Separately deployed execution | An application-owned, reviewed runner implementing the Labs [controller contract](labs-runner-contract.md), with operator-owned isolation/resources for untrusted submissions. The application must not improvise execution in the web process. |
 
 Keep small tested examples and supported integration paths where they serve
 actual users. Developers should be able to compose existing capabilities rather
 than recreate sessions, leases or observation protocols. They still own domain
 authorization and deployment obligations. Observation signals do not establish
 cheating, and an AI-written integration does not prove model accuracy or safe
-code execution. The outstanding Labs isolation review remains required.
+code execution. Each deployed Labs runner still needs its own isolation review.
 
 ### Labs and the runner have different maintenance responsibilities
 
@@ -259,38 +259,31 @@ Two kinds of separation must not be confused:
   worker without application secrets and enforce CPU, memory, time and output
   limits. Merely putting code in another crate or process is not adequate
   containment; the runner's full observed isolation controls remain required.
-- **Independent maintenance/releases are a proposed governance choice.** The
+- **The runner's maintenance is no longer a framework obligation.** The
   Linux/compiler/sandbox matrix has different deployment and review obligations
-  from an ordinary web library. Its updates need not force unrelated consumers
-  to change. This can remain an official Rullst tool in the same repository;
-  neither removing the runner nor moving repositories is required by this plan.
+  from an ordinary web library. This plan originally considered a separately
+  maintained official runner in the same repository.
 
-There is no release-frequency evidence that the runner changes more often than
-the framework: it is still unpublished. Both Labs packages currently declare
-`13.0.0-alpha.1` with publication disabled and are not part of the published
-12.1.1 release. Keep that candidate versioning until a reviewed migration is
-needed. Independent patch releases can retain a shared major version; they do
-not require inventing an unrelated numbering scheme. Any future separation
-needs an explicit Labs/runner protocol and package compatibility matrix plus
-installation/upgrade tests. Some operating-system image updates may instead
-change a pinned deployment image without changing Rust source. Isolation
-evidence must match the deployed toolchain and image, regardless of versioning.
+**Decision of 30 September 2026:** the experimental `rullst-labs-runner`
+candidate is removed from the 13.0 workspace and is not published; its source
+remains in git history. `rullst-labs` becomes a bring-your-own-runner library:
+it keeps the trusted exercise, authorization, encrypted job, fenced lease,
+cancellation, retention and pinned-receipt contracts, and documents the
+[controller contract](labs-runner-contract.md) an application-owned, separately
+deployed runner must implement, with a minimal non-executing example. The
+application operator now owns the runner's isolation, review, deployment and
+updates. Isolation evidence must match the deployed toolchain and image.
 
-Retain the bounded Labs foundation. For the existing experimental runner,
-recommend a separately maintained optional implementation with its own release
-and security-review responsibilities, rather than requiring every application
-developer to write a sandbox. The application operator still configures and
-operates its infrastructure. A future third-party executor would require an
-adapter and validation of the same authorization, fencing, result and isolation
-requirements; interchangeable external executors are not implemented today.
+`rullst-labs` still declares `13.0.0-alpha.1` with publication disabled and is
+not part of the published 12.1.1 release. There is one wire protocol and no
+adapter layer; interchangeable external executors are not implemented. The
+removed candidate's [first-profile record](labs-first-profile.md) remains a
+reference design, not a supported runner.
 
-The current first profile is a restricted Rust pure-function exercise compiled
-to Wasm on Linux. It does not run arbitrary Rullst projects or support every
-language. Labs and its runner remain unpublished candidates outside the normal
-publication inventory, and the runner still needs independent isolation review.
-If a sustainable maintainer cannot be assigned, freeze runner expansion and
-document its experimental status rather than imply production support or ask
-applications to recreate isolation with an unrestricted process launcher.
+The current profile is a restricted Rust pure-function exercise named for Wasm
+on Linux. It does not run arbitrary Rullst projects or support every language.
+Do not imply production support for any runner, and do not ask applications to
+recreate isolation with an unrestricted process launcher.
 
 ## What belongs in the framework in an AI-assisted workflow
 
@@ -320,9 +313,10 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
    Stripe and Paddle, with crypto excluded. Other current providers need a
    reviewed compatibility transition; the selection does not remove code or
    waive current validation requirements.
-3. **Prioritize separation and expansion freezes.** Assess the Labs runner's
-   independent lifecycle first, then IoT hardware expansion, specialized
-   educational monitoring and Capital's fiscal domain. Keep their existing
+3. **Prioritize separation and expansion freezes.** The Labs runner's
+   assessment concluded with its removal from 13.0 in favor of a
+   bring-your-own-runner contract. Next assess IoT hardware expansion,
+   specialized educational monitoring and Capital's fiscal domain. Keep their existing
    bounded implementations and security duties visible. Reuse existing package
    boundaries where they already solve the problem.
 4. **Review one bounded migration at a time.** Demonstrate the benefit before
@@ -336,8 +330,9 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
    SST, manifests, release inventory, support documents and migration guide
    together when an actual boundary changes.
 
-The current synchronized release train remains authoritative. Labs and its
-runner are already excluded from normal publication; other crates in the
+The current synchronized release train remains authoritative. Labs is already
+excluded from normal publication and its runner candidate was removed; other
+crates in the
 inventory are not removed by calling them extensions. Their possible future
 independent release lifecycles must be explicitly implemented and validated.
 Unfinished optional roadmap work need not block a bounded v13 release, but

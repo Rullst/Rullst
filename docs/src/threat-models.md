@@ -352,6 +352,37 @@ limit startup boundary. Cross-subsystem tenant isolation, activity-specific
 score recomputation, Redis failover and domain-specific multi-account behavior
 remain outside that bounded evidence.
 
+## TM-LABS-1 — trusted grading and the host-owned runner boundary
+
+**Assets:** learner source, hidden grader cases and expected answers, job
+status and grades, the encrypted job database and content key, the receipt
+signing seed, and the hosts that execute submissions.
+
+**Actors and trust boundaries:** learner and instructor ↔ application;
+application ↔ `rullst-labs` shared-local job store; application-owned runner
+controller ↔ job store and signing seed; controller ↔ untrusted isolated
+worker. `rullst-labs` executes nothing. The `rullst-labs-runner` candidate was
+removed from the 13.0 workspace, so every execution, isolation and teardown
+control below the controller belongs to the application's own runner, described
+by the [controller contract](labs-runner-contract.md).
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `LABS-01` learner code runs in the web process or beside application secrets | Never execute in the HTTP process. The worker receives only bounded `WorkerInput` data, without identity, expected answers, keys, database, network or control sockets. | `check-labs-boundary.py` rejects an executor binary, an execution-engine dependency in any workspace member and a reintroduced runner crate. `one_lease_and_exact_trusted_grading_without_worker_answers_or_authoritative_pass_flag` checks the worker input. Worker isolation is host-owned and not verified by Rullst. |
+| `LABS-02` forged or self-awarded grade | Accept results only under the pinned controller key; grade worker values against stored answers on the trusted side; never accept a pass flag. | `pinned_receipt_key_exact_binding_and_teardown_control_experimental_grades` and `signed_mixed_outcomes_award_only_exact_answers_and_preserve_minimized_feedback`. Signing-seed custody is host-owned. |
+| `LABS-03` stale, replayed, cancelled or cross-job result | Bind receipts to the current lease nonce, revision and request/profile/source digests; refuse expired, cancelled or withdrawn work; treat an exact replay as an idempotent read. | `cancellation_fences_late_results_and_retention_waits_for_confirmed_cleanup`, `withdrawal_and_expiry_prevent_a_validly_signed_late_grade` and `failed_controller_fences_immediately_and_old_attempt_cannot_stop_a_retry`. |
+| `LABS-04` lost worker or uncertain teardown treated as success | Fence first; require a signed `WorkerLost` cleanup attestation with confirmed teardown; allow at most one deliberate retry with a fresh nonce. | `lost_worker_requires_cleanup_and_a_fresh_nonce_before_one_bounded_retry` and the `byo_runner_controller` example tests. Whether teardown actually happened is host-owned. |
+| `LABS-05` hidden cases or source disclosed | Encrypt source and graders at rest, redact Debug output, return keyed exercise digests and erase source at terminal states. | `source_and_grader_are_encrypted_and_record_index_tampering_is_detected`, `untrusted_source_and_expected_answers_are_bounded_and_not_debug_output` and `returned_views_never_carry_the_unkeyed_exercise_digest`. Runner-side workspaces, logs and backups are host-owned. |
+| `LABS-06` resource exhaustion through submissions | Bound source, cases and limits; enforce store-wide and per-learner job budgets; rate-limit `Submit` in host authorization; enforce CPU, memory, process, disk and output limits in the runner. | `one_learner_cannot_fill_the_store_wide_job_budget`, `submissions_that_could_never_be_claimed_are_refused` and `malformed_identity_and_expanded_execution_policy_are_rejected`. Runtime limits are host-owned. |
+
+**Host-owned runner boundary:** the removed candidate's
+[first-profile threat model](labs-first-profile.md) and hosted evidence describe
+software Rullst no longer ships. An operator deploying a runner must extend this
+model with its own platform threats (sandbox and kernel escape, network and
+cloud-metadata reachability, cross-tenant caches, toolchain provenance, resource
+exhaustion and incomplete teardown), test the negatives on the deployed host and
+obtain independent review before any production hostile-code claim.
+
 ## TM-DEPLOY-1 — CLI, artifacts and release/deployment
 
 **Assets:** source, generated projects, registry token, release tag, `.crate`
