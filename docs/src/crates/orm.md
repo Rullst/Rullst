@@ -241,6 +241,12 @@ cloned for all but the last such parent, so a related model without `Clone`
 loads normally until a row must be shared, and then `get()` fails with a
 `Validation` error instead of leaving a parent without its relation.
 
+A relation key may be a nullable foreign key (`author_id: Option<i32>`) on
+either model. A `None` key matches no row, like SQL `NULL`: the lazy loader
+returns `None` or an empty list without a query, an eager load gives such a
+parent `None` (or `Some(vec![])` for a to-many relation), and a related row
+whose key is `None` belongs to no parent.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL

@@ -167,6 +167,10 @@ pub mod __transaction_access;
 #[path = "eager_limit.rs"]
 pub mod __eager_limit;
 
+#[doc(hidden)]
+#[path = "relation_key.rs"]
+pub mod __relation_key;
+
 tokio::task_local! {
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;
 }

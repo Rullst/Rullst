@@ -1701,7 +1701,10 @@ PostgreSQL, `JSON` on MySQL, text on SQLite). SQLx implements `Json` only for
 the concrete drivers, so such models require a strict driver feature; the
 dynamic `Any` pool cannot decode them. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
-decoded shape drift from generated SQL. Soft-delete sentinel expressions are
+decoded shape drift from generated SQL. The same applies to struct-level
+SQLx metadata, which `FromRow` also reads: only `#[sqlx(default)]` is accepted
+on the model, and `rename_all` or any other container option fails
+compilation. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are
 capped at 128 bytes and reject statement separators, NUL, and SQL comments,
 while portability and semantic review remain the model author's responsibility.
@@ -1752,7 +1755,11 @@ while portability and semantic review remain the model author's responsibility.
 * `delete_all()` renders only the WHERE and soft-delete predicates. A builder
   with an explicit `limit()` (the implicit global cap does not count),
   `offset()`, `order_by()`, joins, `group_by()`/HAVING or CTEs fails with
-  `Validation` instead of silently deleting every matching row.
+  `Validation` instead of silently deleting every matching row. On a
+  soft-delete model, `with_trashed()` and `only_trashed()` fail the same way:
+  the soft-delete `UPDATE` matches only live rows, like the instance
+  `delete()`, so a trashed row keeps its deletion time. Purge trashed rows
+  with `force_delete()`.
 * Only PostgreSQL statements are renumbered. `delete_all()`, including the
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
@@ -1827,6 +1834,12 @@ while portability and semantic review remain the model author's responsibility.
   (the related model's key) applies to `belongs_to`, `belongs_to_many` and
   `morph_to`. Either option on another relation fails compilation instead of
   being ignored.
+* A relation key may be nullable (`Option<T>`, such as a nullable foreign
+  key) on either model; generated loaders compare its inner value. A `None`
+  key matches no row, like SQL `NULL`: the lazy loader returns `None` or an
+  empty list without a query, an eager load assigns `None` (or `Some(vec![])`
+  for a to-many relation) to such a parent, and a related row whose key is
+  `None` belongs to no parent. The `morph_to` id field stays non-optional.
 * SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
   typed `morph_to` targets. A polymorphic relation requires
   `morph_name = "..."` (`name` remains a legacy alias).
@@ -1848,6 +1861,11 @@ while portability and semantic review remain the model author's responsibility.
   `unsafe_unlimited()` is honored as written. A to-many eager load
   (`has_many`, `morph_many`, `belongs_to_many`) assigns `Some(vec![])` to a
   parent without related rows, so `None` always means "not loaded".
+* An eager `belongs_to_many` load hands each parent its related rows in the
+  order of the related query, so the `order_by` of
+  `with_<relation>_constrained` applies as it does to the lazy
+  `<relation>_constrained` loader; a related row linked by several pivot rows
+  appears once per pivot row. Without an `order_by` the order is unspecified.
 * Every parent receives the related rows it shares with other parents (one
   `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
   parent rows). The shared value is cloned for every such parent but the last;
@@ -1870,6 +1888,12 @@ while portability and semantic review remain the model author's responsibility.
   exactly as for mutations, instead of reaching a predicate that MySQL would
   compare numerically across tenants. Generated full/partial updates and
   instance delete/restore paths reject a model from another tenant.
+* The generated tenant predicate, the soft-delete filter and the
+  `chunk_by_id` keyset name their column with the model's table
+  (`<table>.<column>`), so a join with a table that has the same columns, such
+  as a tenant-scoped or soft-deletable `belongs_to_many` pivot, cannot make
+  them ambiguous. A model-wide `global_scope` is application code and
+  qualifies its own columns.
 * `Model::unscoped()` is the explicit global escape hatch. Deciding who may use
   it, deriving tenant identity from authenticated state, and database-level RLS
   remain host responsibilities.
@@ -1880,7 +1904,11 @@ while portability and semantic review remain the model author's responsibility.
   database-server cursor or a universal cross-shard snapshot. Without an
   `order_by`, `chunk(...)`/`chunk_with_tx(...)` order their pages by
   `<table>.id`, because SQL gives consecutive offset queries no stable order
-  (a PostgreSQL synchronized scan, for example, can start mid-table).
+  (a PostgreSQL synchronized scan, for example, can start mid-table). An
+  explicit `limit(n)` caps the rows every traversal hands to its handler in
+  total (the implicit global row cap does not), and an explicit `offset(k)`
+  is where `chunk(...)` starts and how many rows `chunk_by_id(...)` skips
+  before its first page.
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
@@ -2016,6 +2044,11 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Builders add `with_trashed()` (include trashed rows) and `only_trashed()`
+  (only trashed rows). A model without soft deletes has no trashed rows, so
+  its `only_trashed()` fails reads, counts, plucks and `delete_all()` with
+  `Validation` instead of treating every live row as trashed; a directly set
+  `only_trashed` field matches no row. `with_trashed()` changes nothing there.
 * Only `delete()`, `restore()` and `force_delete()` change the soft-delete
   marker of an existing row. Generated `save()` leaves that column out of its
   `UPDATE` (an `INSERT` still writes it), so a handle loaded before `delete()`

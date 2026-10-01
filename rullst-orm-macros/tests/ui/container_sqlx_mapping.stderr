@@ -1,0 +1,5 @@
+error: #[sqlx(rename_all)] is not supported by #[derive(Orm)]; use matching persisted field names and types
+ --> tests/ui/container_sqlx_mapping.rs:5:8
+  |
+5 | #[sqlx(rename_all = "camelCase")]
+  |        ^^^^^^^^^^
