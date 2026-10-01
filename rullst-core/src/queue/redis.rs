@@ -385,6 +385,17 @@ pub mod redis_driver {
             self.list_jobs(limit).await
         }
 
+        /// Lists like `list_all_jobs` with each payload and error cut to at
+        /// most `max_field_bytes` bytes inside one Lua script, so complete
+        /// payloads never leave Redis.
+        async fn list_job_previews(
+            &self,
+            limit: u32,
+            max_field_bytes: u32,
+        ) -> Result<Vec<super::super::QueuedJobPreview>, QueueError> {
+            self.list_previews(limit, max_field_bytes).await
+        }
+
         /// Moves a failed job to the tail of the pending list, keeping its
         /// attempt counter (as SQLite does) so older leases stay fenced.
         async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {

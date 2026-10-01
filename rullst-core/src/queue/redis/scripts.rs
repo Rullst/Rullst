@@ -207,3 +207,78 @@ return 1
 pub(super) const PENDING_COUNT_SCRIPT: &str = r#"
 return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
 "#;
+
+// Bounded monitoring projection in the order of `list_all_jobs`: failed jobs
+// and dead letters (newest first), then processing, pending and scheduled
+// jobs. KEYS: failed index, failed hash, dead letters, processing set, pending
+// list, scheduled set. ARGV[1] is the row limit and ARGV[2] the leading bytes
+// kept of each payload and error, so complete values never leave Redis. Each
+// row is { status, id, name, payload head, error head or false, attempts,
+// time score or false }. An envelope or failure record that does not decode
+// with the expected field types is listed raw, as `list_all_jobs` does.
+pub(super) const LIST_PREVIEWS_SCRIPT: &str = r#"
+local limit = tonumber(ARGV[1])
+local keep = tonumber(ARGV[2])
+local rows = {}
+if limit <= 0 then return rows end
+local function text(value)
+    if value == nil or value == cjson.null then return '' end
+    if type(value) == 'string' then return value end
+    return nil
+end
+local function add(raw, status, err, at)
+    local id, name, payload, attempts = '', '', raw, 0
+    local ok, envelope = pcall(cjson.decode, raw)
+    if ok and type(envelope) == 'table' then
+        local job_id, job_name, job_payload = text(envelope.id), text(envelope.name), text(envelope.payload)
+        local count = envelope.attempts
+        if count == nil or count == cjson.null then count = 0 end
+        if job_id and job_name and job_payload and type(count) == 'number'
+            and count >= 0 and count == math.floor(count) then
+            id, name, payload, attempts = job_id, job_name, job_payload, count
+        end
+    end
+    local error_head = false
+    if type(err) == 'string' then error_head = string.sub(err, 1, keep) end
+    rows[#rows + 1] = { status, id, name, string.sub(payload, 1, keep), error_head, attempts, at or false }
+end
+local function add_failure(entry, status, at)
+    local ok, failure = pcall(cjson.decode, entry)
+    if ok and type(failure) == 'table' and type(failure.raw) == 'string' then
+        local err = failure.error
+        if err == cjson.null then err = nil end
+        if err == nil or type(err) == 'string' then
+            add(failure.raw, status, err, at)
+            return
+        end
+    end
+    add(entry, status, nil, at)
+end
+local last = limit - 1
+local failed = redis.call('ZREVRANGE', KEYS[1], 0, last, 'WITHSCORES')
+for index = 1, #failed, 2 do
+    local entry = redis.call('HGET', KEYS[2], failed[index])
+    if entry then add_failure(entry, 'failed', failed[index + 1]) end
+end
+if #rows < limit then
+    local dead = redis.call('LRANGE', KEYS[3], -limit, -1)
+    for index = #dead, 1, -1 do
+        if #rows >= limit then break end
+        add_failure(dead[index], 'dead-letter', nil)
+    end
+end
+if #rows < limit then
+    local leased = redis.call('ZRANGE', KEYS[4], 0, last - #rows, 'WITHSCORES')
+    for index = 1, #leased, 2 do add(leased[index], 'processing', nil, leased[index + 1]) end
+end
+if #rows < limit then
+    for _, raw in ipairs(redis.call('LRANGE', KEYS[5], 0, last - #rows)) do
+        add(raw, 'pending', nil, nil)
+    end
+end
+if #rows < limit then
+    local due = redis.call('ZRANGE', KEYS[6], 0, last - #rows, 'WITHSCORES')
+    for index = 1, #due, 2 do add(due[index], 'pending', nil, due[index + 1]) end
+end
+return rows
+"#;

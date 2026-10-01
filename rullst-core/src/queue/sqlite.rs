@@ -399,6 +399,14 @@ impl QueueDriver for SqliteDriver {
         self.list_all_jobs(limit).await
     }
 
+    async fn list_job_previews(
+        &self,
+        limit: u32,
+        max_field_bytes: u32,
+    ) -> Result<Vec<super::QueuedJobPreview>, QueueError> {
+        SqliteDriver::list_job_previews(self, limit, max_field_bytes).await
+    }
+
     async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
         self.retry_failed_job(job_id).await
     }

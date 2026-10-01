@@ -36,6 +36,7 @@ pub mod worker;
 
 mod bounds;
 mod error;
+mod preview;
 #[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
 pub(crate) use bounds::unix_timestamp_millis_ceil;
 #[cfg(feature = "queue-sqlite")]
@@ -55,6 +56,7 @@ mod tests;
 mod worker_tests;
 
 pub use error::QueueError;
+pub use preview::QueuedJobPreview;
 #[cfg(feature = "queue-redis")]
 pub use redis::redis_driver::RedisDriver;
 #[cfg(feature = "queue-sqlite")]
@@ -258,6 +260,25 @@ pub trait QueueDriver: Send + Sync {
             "this queue driver does not expose job inspection".to_string(),
         ))
     }
+    /// Lists the records [`Self::list_all_jobs`] would, with each payload and
+    /// error cut to at most `max_field_bytes` bytes (see [`QueuedJobPreview`]).
+    ///
+    /// The SQLite and Redis drivers cut the values in SQL and Lua, so complete
+    /// payloads and errors never leave the store. The default projects
+    /// [`Self::list_all_jobs`] and still loads complete records first.
+    /// Unpublished v13 API.
+    async fn list_job_previews(
+        &self,
+        limit: u32,
+        max_field_bytes: u32,
+    ) -> Result<Vec<QueuedJobPreview>, QueueError> {
+        Ok(self
+            .list_all_jobs(limit)
+            .await?
+            .into_iter()
+            .map(|detail| QueuedJobPreview::from_detail(detail, max_field_bytes))
+            .collect())
+    }
     /// Retry a failed job
     async fn retry_failed_job(&self, _job_id: &str) -> Result<(), QueueError> {
         Err(QueueError::Unsupported(
@@ -393,6 +414,17 @@ impl Queue {
     /// List all recent jobs for visual monitoring
     pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
         self.driver.list_all_jobs(limit).await
+    }
+
+    /// Lists recent jobs with each payload and error cut to at most
+    /// `max_field_bytes` bytes; see [`QueueDriver::list_job_previews`].
+    /// Unpublished v13 API.
+    pub async fn list_job_previews(
+        &self,
+        limit: u32,
+        max_field_bytes: u32,
+    ) -> Result<Vec<QueuedJobPreview>, QueueError> {
+        self.driver.list_job_previews(limit, max_field_bytes).await
     }
 
     /// Retry a failed job in the queue

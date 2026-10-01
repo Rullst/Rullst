@@ -22,6 +22,15 @@ it), `retry_failed_job` moves a failed job to the tail of the pending list while
 keeping its attempt counter, and `purge_failed_jobs` deletes every failed job
 and dead letter.
 
+The unpublished v13 `list_job_previews(limit, max_field_bytes)` (on
+`QueueDriver` and the `Queue` facade) lists the same records as
+`QueuedJobPreview`s whose payload and error hold at most `max_field_bytes`
+bytes, cut on a UTF-8 boundary, with `payload_truncated`/`error_truncated`
+flags. SQLite cuts the values in SQL and Redis in one atomic Lua script that
+decodes at most `limit` envelopes, so complete payloads never leave the store.
+Custom drivers inherit a default that projects their `list_all_jobs` (and
+therefore still loads complete records).
+
 Cache diagnostics are driver-specific too. `Cache::inspect(limit)` accepts
 1–200 and returns sorted logical-key, UTF-8 value-length and remaining-TTL
 metadata for Memory and Redis without the value. Exact keys are still
