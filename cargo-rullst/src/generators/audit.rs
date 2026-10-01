@@ -1,318 +1,62 @@
 use colored::Colorize;
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
 use crate::generators::audit_compliance::{
     ComplianceEvidence, EvidenceStatus, write_compliance_report,
 };
+use crate::generators::audit_evidence::inspect_local_network_surface;
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
+use crate::generators::audit_idor::collect_rust_source_files;
+pub use crate::generators::audit_idor::scan_idor_vulnerabilities;
+use crate::generators::source_walk::rust_sources;
 
-const ACCESS_MARKER: &str = "rullst-access:";
-
-/// Recursively scans Rust source files for parameterized routes without an
-/// explicit public, owner, role, or administrator access classification.
-///
-/// This is a bounded source heuristic. It deliberately reports a finding when
-/// it cannot recognize the route boundary; a clean scan is not a proof that a
-/// domain resource lookup enforces ownership correctly at runtime.
-pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
-    let source_files = collect_rust_source_files(src_dir);
-    let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
-    let mut sources = Vec::new();
-    for path in source_files {
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let production = production_source(&content);
-        let source_root = source_root_for(&path).unwrap_or_else(|| src_dir.to_path_buf());
-        crate_evidence
-            .entry(source_root.clone())
-            .or_default()
-            .include(production);
-        sources.push((path, source_root, production.to_string()));
-    }
-
-    let mut warnings = Vec::new();
-    for (path, source_root, content) in sources {
-        let evidence = crate_evidence
-            .get(&source_root)
-            .copied()
-            .unwrap_or_default();
-        warnings.extend(scan_idor_source_with_evidence(&path, &content, evidence));
-    }
-    (warnings.len(), warnings)
-}
-
-fn collect_rust_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
-    let require_src_component = src_dir.file_name().and_then(|name| name.to_str()) != Some("src");
-    let mut source_files = Vec::new();
-
-    fn visit_dirs(
-        dir: &Path,
-        require_src_component: bool,
-        source_files: &mut Vec<std::path::PathBuf>,
-    ) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    let directory_name = path.file_name().and_then(|name| name.to_str());
-                    if matches!(
-                        directory_name,
-                        Some("target" | ".git" | ".agents" | ".codex")
-                    ) {
-                        continue;
-                    }
-                    visit_dirs(&path, require_src_component, source_files);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
-                    && path.file_name().and_then(|name| name.to_str()) != Some("tests.rs")
-                    && !path
-                        .components()
-                        .any(|component| component.as_os_str() == "tests")
-                    && (!require_src_component
-                        || path
-                            .components()
-                            .any(|component| component.as_os_str() == "src"))
-                {
-                    source_files.push(path);
-                }
-            }
-        }
-    }
-
-    if src_dir.exists() {
-        visit_dirs(src_dir, require_src_component, &mut source_files);
-    }
-    source_files
-}
-
-#[cfg(test)]
-fn scan_idor_source(path: &Path, content: &str) -> Vec<String> {
-    let production = production_source(content);
-    scan_idor_source_with_evidence(path, production, GuardEvidence::from_content(production))
-}
-
-#[derive(Clone, Copy, Default)]
-struct GuardEvidence {
-    owner: bool,
-    role: bool,
-    admin: bool,
-}
-
-impl GuardEvidence {
-    #[cfg(test)]
-    fn from_content(content: &str) -> Self {
-        let mut evidence = Self::default();
-        evidence.include(content);
-        evidence
-    }
-
-    fn include(&mut self, content: &str) {
-        self.owner |= content.contains("authorize_owner_or_role");
-        self.role |= self.owner
-            || content.contains("RbacGuard::authorize(")
-            || content.contains("RequireRoleLayer")
-            || content.contains("protect_router(");
-        self.admin |= content.contains("RequireRoleLayer") || content.contains("protect_router(");
-    }
-}
-
-fn production_source(content: &str) -> &str {
-    content
-        .split_once("\n#[cfg(test)]")
-        .map_or(content, |(production, _)| production)
-}
-
-fn source_root_for(path: &Path) -> Option<std::path::PathBuf> {
-    path.ancestors()
-        .find(|ancestor| ancestor.file_name().and_then(|name| name.to_str()) == Some("src"))
-        .map(Path::to_path_buf)
-}
-
-fn scan_idor_source_with_evidence(
-    path: &Path,
-    content: &str,
-    evidence: GuardEvidence,
-) -> Vec<String> {
-    let lines = content.lines().collect::<Vec<_>>();
-    let mut findings = Vec::new();
-    let mut route_call_continues = false;
-
-    for (index, line) in lines.iter().enumerate() {
-        let trimmed = line.trim();
-        let declares_route = contains_route_call(trimmed) || route_call_continues;
-        route_call_continues = trimmed.ends_with(".route(") || trimmed == "route(";
-        if !declares_route {
-            continue;
-        }
-
-        let Some(route) = quoted_parameterized_route(trimmed) else {
-            continue;
-        };
-        let marker_line = access_marker_line(&lines, index, trimmed);
-        let classification = marker_line.and_then(access_classification);
-        let reason = if marker_line.is_some_and(|marker| !access_marker_has_reason(marker)) {
-            Some("classification must include a concrete reason after its access level")
-        } else {
-            match classification {
-                Some("public") if route_is_read_only(trimmed) => None,
-                Some("public") => Some(
-                    "public classification is accepted only for a recognized GET route; classify the mutation as owner, role, or admin",
-                ),
-                Some("owner") if evidence.owner => None,
-                Some("owner") => Some(
-                    "owner classification requires RbacGuard::authorize_owner_or_role in this source file",
-                ),
-                Some("role") if evidence.role => None,
-                Some("role") => Some(
-                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this source file",
-                ),
-                Some("admin") if evidence.admin => None,
-                Some("admin") => Some(
-                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this source file",
-                ),
-                Some(_) => Some("unknown rullst-access classification"),
-                None => Some(
-                    "missing an adjacent `// rullst-access: public|owner|role|admin — reason` classification",
-                ),
-            }
-        };
-
-        if let Some(reason) = reason {
-            findings.push(format!(
-                "File '{}:{}': parameterized route `{route}` {reason}",
-                path.display(),
-                index + 1
-            ));
-        }
-    }
-
-    findings
-}
-
-fn contains_route_call(line: &str) -> bool {
-    [
-        "get(", "post(", "put(", "patch(", "delete(", "ws(", ".route(",
-    ]
-    .iter()
-    .any(|needle| line.contains(needle))
-}
-
-fn quoted_parameterized_route(line: &str) -> Option<&str> {
-    let quote_start = line.find('"')?;
-    let tail = &line[quote_start + 1..];
-    let quote_end = tail.find('"')?;
-    let candidate = &tail[..quote_end];
-    if candidate.starts_with('/') && candidate.split('/').any(is_parameter_segment) {
-        Some(candidate)
-    } else {
-        None
-    }
-}
-
-fn is_parameter_segment(segment: &str) -> bool {
-    if segment.starts_with(':') {
-        return segment.len() > 1;
-    }
-    let normalized = segment
-        .strip_prefix("{{")
-        .and_then(|value| value.strip_suffix("}}"))
-        .or_else(|| {
-            segment
-                .strip_prefix('{')
-                .and_then(|value| value.strip_suffix('}'))
-        });
-    normalized.is_some_and(|value| !value.is_empty() && !value.starts_with('*'))
-}
-
-fn access_marker_line<'a>(lines: &[&'a str], index: usize, current: &'a str) -> Option<&'a str> {
-    if current.contains(ACCESS_MARKER) {
-        return Some(current);
-    }
-    index
-        .checked_sub(1)
-        .and_then(|previous| lines.get(previous).copied())
-        .filter(|line| line.contains(ACCESS_MARKER))
-}
-
-fn access_classification(marker: &str) -> Option<&str> {
-    marker
-        .split_once(ACCESS_MARKER)
-        .and_then(|(_, suffix)| suffix.split_whitespace().next())
-        .map(|classification| {
-            classification.trim_matches(|character: char| !character.is_alphanumeric())
-        })
-}
-
-fn access_marker_has_reason(marker: &str) -> bool {
-    marker
-        .split_once(ACCESS_MARKER)
-        .map(|(_, suffix)| {
-            suffix
-                .split_whitespace()
-                .skip(1)
-                .any(|word| word.chars().any(char::is_alphanumeric))
-        })
-        .unwrap_or(false)
-}
-
-fn route_is_read_only(line: &str) -> bool {
-    line.contains("get(")
-        && !["post(", "put(", "patch(", "delete("]
-            .iter()
-            .any(|method| line.contains(method))
+/// A scan whose source walk hit a bound is reported as a finding, not as clean.
+pub(super) fn incomplete_walk_warning(root: &Path, reason: &str, subject: &str) -> String {
+    format!(
+        "Source walk under '{}' is incomplete ({reason}); {subject} beyond it were not scanned",
+        root.display()
+    )
 }
 
 /// Recursively scans Rust source files for `unsafe` blocks, functions, or implementations.
+///
+/// Symlinked files and directories are not followed; a walk that reaches its
+/// bound adds a finding instead of reporting a clean scan.
 pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
+    let sources = rust_sources(src_dir);
     let mut warnings = Vec::new();
-    let mut count = 0;
-
-    fn visit_dirs(dir: &Path, warnings: &mut Vec<String>, count: &mut usize) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    visit_dirs(&path, warnings, count);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
-                    && let Ok(content) = fs::read_to_string(&path)
-                {
-                    for (line_idx, line) in content.lines().enumerate() {
-                        let trimmed = line.trim();
-                        if trimmed.starts_with("//")
-                            || trimmed.starts_with("/*")
-                            || trimmed.starts_with('*')
-                        {
-                            continue;
-                        }
-                        if trimmed.contains("unsafe {")
-                            || trimmed.contains("unsafe fn")
-                            || trimmed.contains("unsafe impl")
-                            || trimmed.starts_with("unsafe ")
-                        {
-                            let msg = format!(
-                                "File '{}:{}': Unsafe Rust detected: `{}`",
-                                path.display(),
-                                line_idx + 1,
-                                trimmed
-                            );
-                            if !warnings.contains(&msg) {
-                                warnings.push(msg);
-                                *count += 1;
-                            }
-                        }
-                    }
+    if let Some(reason) = sources.incomplete {
+        warnings.push(incomplete_walk_warning(src_dir, &reason, "source files"));
+    }
+    for path in sources.files {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for (line_idx, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+                continue;
+            }
+            if trimmed.contains("unsafe {")
+                || trimmed.contains("unsafe fn")
+                || trimmed.contains("unsafe impl")
+                || trimmed.starts_with("unsafe ")
+            {
+                let msg = format!(
+                    "File '{}:{}': Unsafe Rust detected: `{}`",
+                    path.display(),
+                    line_idx + 1,
+                    trimmed
+                );
+                if !warnings.contains(&msg) {
+                    warnings.push(msg);
                 }
             }
         }
     }
 
-    if src_dir.exists() {
-        visit_dirs(src_dir, &mut warnings, &mut count);
-    }
-
-    (count, warnings)
+    (warnings.len(), warnings)
 }
 
 pub fn run_security_audit(
@@ -528,7 +272,7 @@ pub fn run_security_audit_with_exceptions(
     } else {
         Path::new(".")
     };
-    let idor_source_available = !collect_rust_source_files(idor_root).is_empty();
+    let idor_source_available = !collect_rust_source_files(idor_root).files.is_empty();
     let (idor_count, idor_warnings) = scan_idor_vulnerabilities(idor_root);
     if idor_mode || idor_count > 0 {
         println!(
@@ -590,23 +334,33 @@ pub fn run_security_audit_with_exceptions(
             "  {} Scanning local network surface & interface bindings (RustScan mode)...",
             "[NETWORK]".bright_magenta()
         );
-        let (net_issues, net_reports) = scan_local_network_surface();
-        if net_reports.is_empty() {
+        let surface = inspect_local_network_surface();
+        if surface.observations.is_empty() && surface.incomplete.is_empty() {
             println!(
                 "  {} No open local listening ports detected.",
                 "[OK]".green()
             );
-        } else {
-            for report in &net_reports {
-                if report.contains("should be '127.0.0.1'") {
-                    println!("  {} {}", "[NETWORK WARNING]".yellow().bold(), report);
-                } else {
-                    println!("  {} {}", "[ACTIVE SERVICE]".bright_cyan(), report);
-                }
+        }
+        for report in &surface.observations {
+            if report.contains("should be '127.0.0.1'") {
+                println!("  {} {}", "[NETWORK WARNING]".yellow().bold(), report);
+            } else {
+                println!("  {} {}", "[ACTIVE SERVICE]".bright_cyan(), report);
             }
         }
-        issues_found += net_issues;
-        network_evidence = EvidenceStatus::Observed(net_reports.len());
+        for reason in &surface.incomplete {
+            println!(
+                "  {} Network check incomplete: {}",
+                "[ERROR]".red().bold(),
+                reason
+            );
+        }
+        issues_found += surface.findings + surface.incomplete.len();
+        network_evidence = if surface.incomplete.is_empty() {
+            EvidenceStatus::Observed(surface.observations.len())
+        } else {
+            EvidenceStatus::Error(surface.incomplete.join("; "))
+        };
     }
 
     if ai_mode {
@@ -728,11 +482,6 @@ fn cargo_audit_arguments(audit_ignores: &[String]) -> Vec<String> {
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
-
-    fn findings(source: &str) -> Vec<String> {
-        scan_idor_source(Path::new("src/routes.rs"), source)
-    }
-
     #[test]
     fn advisory_exception_ids_are_strictly_validated() {
         assert!(validate_audit_ignores(&["RUSTSEC-2099-0001".to_string()]).is_ok());
@@ -763,97 +512,24 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
-    fn public_read_routes_require_an_explicit_adjacent_classification() {
-        let classified = r#"
-// rullst-access: public — published articles are intentionally public.
-get("/posts/{slug}" => show),
-"#;
-        assert!(findings(classified).is_empty());
+    fn source_scans_do_not_follow_a_symlinked_directory_loop() {
+        let project = tempfile::tempdir().expect("temporary project");
+        let src = project.path().join("src");
+        fs::create_dir_all(&src).expect("source directory");
+        fs::write(
+            src.join("lib.rs"),
+            "pub unsafe fn unchecked() {}\nfn routes() { get(\"/users/:id\" => show); }\n",
+        )
+        .expect("source fixture");
+        // The old walk followed this link until the kernel's symlink bound and
+        // reported one copy of every finding per level.
+        std::os::unix::fs::symlink(".", src.join("loop")).expect("loop link");
 
-        let unclassified = r#"get("/posts/{slug}" => show),"#;
-        let result = findings(unclassified);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("missing an adjacent"));
-        assert!(result[0].contains("/posts/{slug}"));
-    }
-
-    #[test]
-    fn public_classification_never_suppresses_a_mutating_route() {
-        let source = r#"
-// rullst-access: public — this annotation is unsafe for a mutation.
-delete("/documents/{id}" => destroy),
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("accepted only for a recognized GET"));
-    }
-
-    #[test]
-    fn classifications_require_a_concrete_adjacent_reason() {
-        let source = r#"
-// rullst-access: public
-get("/posts/{slug}" => show),
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("must include a concrete reason"));
-    }
-
-    #[test]
-    fn owner_routes_require_the_owner_or_role_guard() {
-        let guarded = r#"
-// rullst-access: owner — the handler compares the authenticated subject.
-get("/accounts/:account_id" => show_account),
-
-fn authorize(ctx: &UserContext, owner: &str) {
-    let _ = RbacGuard::authorize_owner_or_role(ctx, owner, "admin");
-}
-"#;
-        assert!(findings(guarded).is_empty());
-
-        let missing_guard = r#"
-// rullst-access: owner — no ownership check actually exists.
-get("/accounts/:account_id" => show_account),
-"#;
-        assert_eq!(findings(missing_guard).len(), 1);
-    }
-
-    #[test]
-    fn admin_routes_require_a_recognized_server_boundary() {
-        let protected = r#"
-// rullst-access: admin — protected as a group below.
-post("/products/{{id}}/add-stock" => add_stock),
-let protected = admin_access.protect_router(admin_routes.into_axum())?;
-"#;
-        assert!(findings(protected).is_empty());
-
-        let annotation_only = r#"
-// rullst-access: admin — a comment alone must not suppress the finding.
-post("/products/{id}/add-stock" => add_stock),
-"#;
-        assert_eq!(findings(annotation_only).len(), 1);
-    }
-
-    #[test]
-    fn unrelated_user_context_no_longer_hides_an_unclassified_route() {
-        let source = r#"
-get("/orders/{order_id}" => show_order),
-fn unrelated(_context: UserContext) {}
-"#;
-        assert_eq!(findings(source).len(), 1);
-    }
-
-    #[test]
-    fn multiline_axum_routes_and_generic_parameter_names_are_detected() {
-        let source = r#"
-Router::new().route(
-    "/invoices/{invoice_number}",
-    delete(remove_invoice),
-)
-"#;
-        let result = findings(source);
-        assert_eq!(result.len(), 1);
-        assert!(result[0].contains("/invoices/{invoice_number}"));
+        let (unsafe_count, _) = scan_unsafe_code(&src);
+        assert_eq!(unsafe_count, 1);
+        let (idor_count, warnings) = scan_idor_vulnerabilities(&src);
+        assert_eq!(idor_count, 1, "{warnings:?}");
     }
 }

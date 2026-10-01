@@ -14,11 +14,14 @@ cargo rullst make:k8s
 ```
 
 The command writes `deployment.yaml`, `service.yaml`, `configmap.yaml`,
-`hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml` under `k8s/`. It may overwrite
-files with those names, so run it in a clean worktree and review the diff.
+`hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml` under `k8s/`. It refuses to
+run when any of those files already exists, so move customized manifests aside
+to regenerate them, and review the diff.
 
-Replace the placeholder `image: <project>:latest` with an immutable registry
-reference (preferably a digest). The generated ConfigMap contains non-secret
+Resource names, the image and the ingress host use the `[package]` name as a
+lowercase RFC 1123 label, so a package named `my_app` becomes `my-app`. Replace
+the placeholder `image: <name>:latest` with an immutable registry reference
+(preferably a digest). The generated ConfigMap contains non-secret
 settings only; use a Kubernetes Secret/external secret manager for credentials.
 
 ---
