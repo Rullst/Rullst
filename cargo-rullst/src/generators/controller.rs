@@ -1,6 +1,8 @@
 // src/generators/controller.rs — Controller generator.
 
-use crate::generators::{is_rullst_project, to_camel_case, to_snake_case};
+use crate::generators::{
+    is_rullst_project, is_valid_rust_identifier, to_camel_case, to_snake_case,
+};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -24,6 +26,7 @@ pub fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::e
 
     let snake_name = to_snake_case(name);
     let camel_name = to_camel_case(name);
+    validate_controller_identifiers(name, &snake_name, &camel_name)?;
 
     println!(
         "{}",
@@ -238,9 +241,44 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     }
 }
 
+/// Rejects a name whose module or type would not be a non-keyword Rust
+/// identifier (for example `Bad.Name` → `pub mod bad.name_controller;`)
+/// before `src/controllers/mod.rs` is edited.
+fn validate_controller_identifiers(
+    name: &str,
+    snake_name: &str,
+    camel_name: &str,
+) -> std::io::Result<()> {
+    if !name.trim().is_empty()
+        && is_valid_rust_identifier(snake_name)
+        && is_valid_rust_identifier(camel_name)
+    {
+        return Ok(());
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        format!(
+            "controller name must produce valid non-keyword Rust identifiers (module `{snake_name}`, type `{camel_name}`); use letters, digits, `_` or `-`, for example Account"
+        ),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn controller_names_must_produce_rust_identifiers() {
+        let check = |name: &str| {
+            validate_controller_identifiers(name, &to_snake_case(name), &to_camel_case(name))
+        };
+        for valid in ["Account", "ApiAccount", "user-profile", "OrdersController"] {
+            assert!(check(valid).is_ok(), "{valid} must be accepted");
+        }
+        for invalid in ["Bad.Name", "../../notes", "a/b", "9Lives", ""] {
+            assert!(check(invalid).is_err(), "{invalid} must be rejected");
+        }
+    }
 
     #[test]
     fn api_controllers_extract_json_bodies() {

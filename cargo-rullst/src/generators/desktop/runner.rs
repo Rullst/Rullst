@@ -112,6 +112,11 @@ fn wait_for_launch(lines: impl Iterator<Item = String>) -> (bool, Vec<String>) {
 }
 
 fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    // Resolve the CLI before starting anything: a missing CLI must not leave a
+    // backend running on :3000 (`std::process::exit` would skip `ChildGuard`).
+    let mut tauri_cmd = get_tauri_command(omni_dir)
+        .map_err(|error| format!("Omni CLI is required for the {platform} target: {error}"))?;
+
     println!("🚀 Starting Rullst backend server in background...");
     let backend = std::process::Command::new("cargo")
         .arg("run")
@@ -157,23 +162,12 @@ fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error:
             });
     }
 
-    match get_tauri_command(omni_dir) {
-        Ok(mut tauri_cmd) => {
-            tauri_cmd.arg(platform).arg("dev").current_dir(omni_dir);
-            let status = tauri_cmd.status()?;
-
-            drop(backend_guard);
-            if !status.success() {
-                std::process::exit(1);
-            }
-        }
-        Err(e) => {
-            println!(
-                "{}",
-                format!("❌ Error: Omni CLI is required for mobile target: {}", e).red()
-            );
-            std::process::exit(1);
-        }
+    tauri_cmd.arg(platform).arg("dev").current_dir(omni_dir);
+    // An error returned here drops the guard, which stops the backend.
+    let status = tauri_cmd.status()?;
+    drop(backend_guard);
+    if !status.success() {
+        std::process::exit(1);
     }
     Ok(())
 }

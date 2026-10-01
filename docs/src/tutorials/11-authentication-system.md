@@ -29,7 +29,10 @@ fails before writing anything when one of those files exists or when a
 `*_create_users.rs`/`*_create_users_table.rs` migration already creates the
 users table (the blank database starter ships one); add the account columns
 with `cargo rullst make:migration` in that case. Turso-primary projects are not
-supported. It does not support an `auth --api` flag, and it does not silently
+supported, and neither is a project without a database migration runner (a
+`--no-database` starter): create the project with a database so `src/main.rs`
+declares `pub mod migrations;` and calls
+`rullst::artisan!(crate::migrations::get_migrations())`. It does not support an `auth --api` flag, and it does not silently
 register application routes. Review the generated diff before editing it.
 
 ---

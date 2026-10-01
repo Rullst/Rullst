@@ -4,21 +4,10 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-/// Keeps what `.gitignore` treats as local or secret out of the build context,
-/// which `COPY . .` would otherwise send to (possibly remote) builders and
-/// their layer cache. `.cargo/config.toml` holds the generating host's linker
-/// selection (mold/lld), which the builder image does not have.
-const DOCKERIGNORE: &str = "target
-.git
-coverage
-# Environment, deployment secrets and host-local configuration
-.env
-.env.*
-!.env.example
-Foundry.toml
-.cargo/config.toml
-# Local databases
-*.db
+/// Local SQLite and DuckDB databases and their journals, which may hold
+/// personal data. The generated `.gitignore` and `.dockerignore` share this
+/// list so neither Git nor the container build context picks them up.
+pub(super) const LOCAL_DATABASE_IGNORES: &str = "*.db
 *.db-shm
 *.db-wal
 *.sqlite
@@ -28,6 +17,26 @@ Foundry.toml
 *.duckdb
 *.duckdb.wal
 ";
+
+/// Keeps what `.gitignore` treats as local or secret out of the build context,
+/// which `COPY . .` would otherwise send to (possibly remote) builders and
+/// their layer cache. `.cargo/config.toml` holds the generating host's linker
+/// selection (mold/lld), which the builder image does not have.
+fn dockerignore_content() -> String {
+    format!(
+        "target
+.git
+coverage
+# Environment, deployment secrets and host-local configuration
+.env
+.env.*
+!.env.example
+Foundry.toml
+.cargo/config.toml
+# Local databases
+{LOCAL_DATABASE_IGNORES}"
+    )
+}
 
 pub fn generate_docker_files(
     project_path: &Path,
@@ -84,7 +93,7 @@ CMD ["/app/{project_name}"]
     fs::write(project_path.join("Dockerfile"), dockerfile)?;
     let dockerignore = project_path.join(".dockerignore");
     if !dockerignore.exists() {
-        fs::write(dockerignore, DOCKERIGNORE)?;
+        fs::write(dockerignore, dockerignore_content())?;
     }
     println!("{}", "  ✅ Dockerfile generated.".green());
     Ok(())
@@ -133,6 +142,36 @@ mod tests {
             );
         }
         assert!(dockerignore.lines().any(|line| line == "!.env.example"));
+    }
+
+    #[test]
+    fn gitignore_and_dockerignore_share_the_local_database_list() {
+        let root = tempfile::tempdir().expect("temporary project");
+        super::super::env_config::generate_env_and_configs(
+            root.path(),
+            false,
+            "Sqlite",
+            &[crate::generators::project::PolyglotIntegration::DuckDb],
+            crate::blueprints::BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        generate_docker_files(root.path(), "demo", Some("Sqlite"), Some(false))
+            .expect("Docker files");
+        let gitignore = fs::read_to_string(root.path().join(".gitignore")).expect("gitignore");
+        let dockerignore =
+            fs::read_to_string(root.path().join(".dockerignore")).expect("dockerignore");
+        // `--duckdb` writes `DUCKDB_PATH=analytics.duckdb` at the project root.
+        for database in ["*.duckdb", "*.duckdb.wal", "*.sqlite-shm", "*.sqlite-wal"] {
+            assert!(LOCAL_DATABASE_IGNORES.lines().any(|line| line == database));
+        }
+        for database in LOCAL_DATABASE_IGNORES.lines() {
+            assert!(gitignore.lines().any(|line| line == database), "{database}");
+            assert!(
+                dockerignore.lines().any(|line| line == database),
+                "{database}"
+            );
+        }
     }
 
     #[test]

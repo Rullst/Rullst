@@ -296,7 +296,7 @@ pub async fn register_submit(
     let registration = async {
         user.save_with_tx(&mut transaction).await?;
         // __RULLST_REGISTRATION_HOOK__
-        Ok::<(), rullst_orm::Error>(())
+        Ok::<(), rullst::orm::Error>(())
     }
     .await;
     if let Err(error) = registration {

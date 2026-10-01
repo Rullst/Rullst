@@ -323,7 +323,7 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
 
         let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
         let file_stem = format!("m{}_{}", timestamp, "auto_sync");
-        let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema) else {
+        let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema)? else {
             let destructive = destructive_differences(&ast_tables, &db_schema);
             if destructive.is_empty() {
                 println!("{}", "? Database is already in sync with AST!".green());
@@ -371,125 +371,9 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Tables owned by the ORM migration runner (`migrations`) or other Rullst
-/// subsystems (`rullst_*`); they never have a model and are never proposed
-/// for dropping.
-fn is_framework_table(table: &str) -> bool {
-    table == "migrations"
-        || table.starts_with("rullst_")
-        || table.starts_with("_rullst_")
-        || table.starts_with("sqlite_")
-}
-
-/// Application tables (`None`) and columns that exist only in the database,
-/// sorted for deterministic output.
-pub(crate) fn destructive_differences(
-    ast_tables: &[super::schema_diff::ParsedTable],
-    db_schema: &std::collections::HashMap<String, Vec<String>>,
-) -> Vec<(String, Option<String>)> {
-    let mut differences = Vec::new();
-    for (db_tname, db_cols) in db_schema {
-        if is_framework_table(db_tname) {
-            continue;
-        }
-        if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
-            for db_col in db_cols {
-                if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
-                    continue;
-                }
-                if !ast_table.fields.iter().any(|f| &f.name == db_col) {
-                    differences.push((db_tname.clone(), Some(db_col.clone())));
-                }
-            }
-        } else {
-            differences.push((db_tname.clone(), None));
-        }
-    }
-    differences.sort();
-    differences
-}
-
-/// Renders the reviewable auto-sync migration, or `None` when there is no
-/// additive change (destructive differences alone are reported separately).
-pub(crate) fn render_auto_migration(
-    file_stem: &str,
-    ast_tables: &[super::schema_diff::ParsedTable],
-    db_schema: &std::collections::HashMap<String, Vec<String>>,
-) -> Option<String> {
-    let mut up_queries = Vec::new();
-    let mut down_queries = Vec::new();
-
-    for ast_table in ast_tables {
-        let tname = &ast_table.table_name;
-        if !db_schema.contains_key(tname) {
-            let mut up_sql = format!(
-                "        Schema::create(\"{}\", |table| {{\n            table.id();\n",
-                tname
-            );
-            for field in &ast_table.fields {
-                if field.name == "id" || field.name == "created_at" || field.name == "updated_at" {
-                    continue;
-                }
-                up_sql.push_str(&format!("            table.string(\"{}\");\n", field.name));
-            }
-            // A plain literal: `format!` escaping does not apply to `push_str`.
-            up_sql.push_str("            table.timestamps();\n        }).await?;\n");
-            up_queries.push(up_sql);
-
-            down_queries.push(format!(
-                "        Schema::drop_if_exists(\"{}\").await?;\n",
-                tname
-            ));
-        } else if let Some(db_cols) = db_schema.get(tname) {
-            for field in &ast_table.fields {
-                if !db_cols.contains(&field.name) {
-                    up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
-                    down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
-                }
-            }
-        }
-    }
-
-    // Commented-out drops alone are not a migration: they would be registered
-    // and "applied" as a no-op on every run.
-    if up_queries.is_empty() {
-        return None;
-    }
-    for (db_tname, column) in destructive_differences(ast_tables, db_schema) {
-        up_queries.push(match column {
-            Some(db_col) => format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col),
-            None => format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname),
-        });
-    }
-    let up_body = up_queries.join("\n");
-    let down_body = down_queries.join("\n");
-
-    Some(format!(
-        r#"use rullst_orm::schema::{{Schema, Migration}};
-use rullst_orm::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {{
-    fn name(&self) -> &'static str {{
-        "{}"
-    }}
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
-{}
-        Ok(())
-    }}
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-{}
-        Ok(())
-    }}
-}}
-"#,
-        file_stem, up_body, down_body
-    ))
-}
+#[path = "migration_auto.rs"]
+mod auto;
+pub(crate) use auto::{destructive_differences, render_auto_migration};
 
 #[cfg(test)]
 #[path = "migration_tests.rs"]

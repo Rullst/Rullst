@@ -253,6 +253,37 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
     fixture.succeeds(&["make:live", "LiveCounter"]);
     fixture.succeeds(&["make:grpc", "Course"]);
 
+    // Names that cannot be Rust identifiers never reach the filesystem.
+    let live_index = fs::read_to_string(fixture.root.join("src/live/mod.rs")).expect("live index");
+    let controller_index =
+        fs::read_to_string(fixture.root.join("src/controllers/mod.rs")).expect("controller index");
+    let middleware_index =
+        fs::read_to_string(fixture.root.join("src/middlewares/mod.rs")).expect("middleware index");
+    for invalid in [
+        &["make:live", "../../notes"][..],
+        &["make:live", "self"],
+        &["make:controller", "Bad.Name"],
+        &["make:middleware", "../escape"],
+    ] {
+        assert!(
+            fixture.fails(invalid).contains("Rust identifier"),
+            "{invalid:?}"
+        );
+    }
+    assert!(!fixture.root.join("notes.rs").exists());
+    assert!(!fixture.root.join("src/live/self.rs").exists());
+    for (index, before) in [
+        ("src/live/mod.rs", &live_index),
+        ("src/controllers/mod.rs", &controller_index),
+        ("src/middlewares/mod.rs", &middleware_index),
+    ] {
+        assert_eq!(
+            &fs::read_to_string(fixture.root.join(index)).expect("module index"),
+            before,
+            "{index} changed"
+        );
+    }
+
     assert_files(
         &fixture.root,
         &[

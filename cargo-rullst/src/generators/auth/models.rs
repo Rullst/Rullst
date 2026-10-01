@@ -7,6 +7,32 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
+/// The `User` model written by `cargo rullst auth`.
+const USER_MODEL_SOURCE: &str = r##"use rullst::db::{Orm, FromRow};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "users")]
+pub struct User {
+    pub id: i32,
+    pub name: String,
+    pub email: String,
+    pub password_hash: Option<String>,
+    pub oauth_provider: Option<String>,
+    pub oauth_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl User {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst::orm::Error> {
+        Self::query()
+            .where_eq("email", email.to_owned())
+            .first()
+            .await
+    }
+}
+"##;
+
 pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create User Migration
     let migrations_dir = Path::new("src/migrations");
@@ -27,31 +53,7 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("user.rs");
-    let model_template = r##"use rullst::db::{Orm, FromRow};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "users")]
-pub struct User {
-    pub id: i32,
-    pub name: String,
-    pub email: String,
-    pub password_hash: Option<String>,
-    pub oauth_provider: Option<String>,
-    pub oauth_id: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-impl User {
-    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst_orm::Error> {
-        Self::query()
-            .where_eq("email", email.to_owned())
-            .first()
-            .await
-    }
-}
-"##;
-    write_new(&model_path, model_template.as_bytes())?;
+    write_new(&model_path, USER_MODEL_SOURCE.as_bytes())?;
     println!("{}", "  ✨ Created 'User' model.".green());
     register_mod_ast(&models_dir.join("mod.rs"), "user")?;
 
@@ -73,7 +75,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+    async fn up(&self) -> Result<(), rullst::orm::Error> {{
         Schema::create("users", |table| {{
             table.id();
             table.string("name").not_null();
@@ -91,7 +93,7 @@ impl Migration for MigrationImpl {{
         Ok(())
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
+    async fn down(&self) -> Result<(), rullst::orm::Error> {{
         Schema::drop_if_exists("users").await
     }}
 }}
@@ -113,5 +115,19 @@ mod tests {
         ));
         assert!(source.contains("CREATE UNIQUE INDEX users_email_unique ON users(email)"));
         assert!(source.contains("\"m20260101000000_create_users_table\""));
+    }
+
+    #[test]
+    fn account_sources_name_the_orm_through_the_rullst_facade() {
+        // `cargo rullst auth` enables the `orm` feature but adds no direct
+        // `rullst-orm` dependency.
+        let migration = user_migration_source("m20260101000000_create_users_table");
+        let controller = crate::generators::auth::controllers::render_auth_controller(None);
+        for source in [USER_MODEL_SOURCE, migration.as_str(), controller.as_str()] {
+            assert!(!source.contains("rullst_orm"), "{source}");
+            syn::parse_file(source).expect("account source must parse");
+        }
+        assert!(USER_MODEL_SOURCE.contains("Result<Option<Self>, rullst::orm::Error>"));
+        assert!(migration.contains("Result<(), rullst::orm::Error>"));
     }
 }

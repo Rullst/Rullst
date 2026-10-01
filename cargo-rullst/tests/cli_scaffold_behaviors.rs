@@ -125,6 +125,13 @@ fn sqlite_database_url(path: &Path) -> String {
 #[test]
 fn auth_resource_and_service_scaffolds_compose_in_one_project() {
     let project = Project::new();
+    // `auth` and `make:mfa` add migrations, so they need the migration runner.
+    assert!(!project.run(&["auth"]).status.success());
+    fs::write(
+        project.root.join("src/main.rs"),
+        "pub mod migrations;\n\nfn main() {\n    rullst::artisan!(crate::migrations::get_migrations());\n}\n",
+    )
+    .expect("migration runner entry point");
 
     project.succeeds(&["make:chat-session"]);
     assert!(!project.run(&["make:chat-session"]).status.success());
@@ -342,6 +349,26 @@ pub struct Marker;
     // filesystem traversal order differs across platforms.
     fs::remove_dir_all(project.root.join("src/introspected"))
         .expect("remove introspection-only models before schema diff");
+    // A field type without a column mapping is refused instead of becoming TEXT.
+    let refused = project.run(&["make:migration:auto"]);
+    let refused_text = String::from_utf8_lossy(&refused.stderr).to_string()
+        + &String::from_utf8_lossy(&refused.stdout);
+    assert!(!refused.status.success(), "{refused_text}");
+    assert!(
+        refused_text.contains("accounts.composite"),
+        "{refused_text}"
+    );
+    assert!(!project.root.join("src/migrations").exists());
+    let contract = fs::read_to_string(project.root.join("src/models/schema_contract.rs"))
+        .expect("schema contract");
+    fs::write(
+        project.root.join("src/models/schema_contract.rs"),
+        contract.replace(
+            "    pub composite: (String, String),\n",
+            "    #[orm(skip)]\n    pub composite: (String, String),\n",
+        ),
+    )
+    .expect("skip the unmappable field");
     project.succeeds(&["make:migration:auto"]);
     let migrations = fs::read_to_string(project.root.join("src/migrations/mod.rs"))
         .expect("auto-migration registry");
@@ -353,7 +380,8 @@ pub struct Marker;
         .expect("generated auto migration");
     let auto_migration = fs::read_to_string(auto_migration.path()).expect("auto migration source");
     assert!(auto_migration.contains("Schema::create(\"courses\""));
-    assert!(auto_migration.contains("ALTER TABLE accounts ADD COLUMN newly_added"));
+    assert!(auto_migration.contains("ALTER TABLE accounts ADD COLUMN newly_added TEXT\")"));
+    assert!(auto_migration.contains("table.string(\"title\").not_null();"));
     assert!(auto_migration.contains("Destructive operation detected"));
     syn::parse_file(&auto_migration).expect("auto migration with a new table must parse");
 }

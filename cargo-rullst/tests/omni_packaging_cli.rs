@@ -109,6 +109,39 @@ exit 0
     }
 
     #[test]
+    fn mobile_runner_without_the_omni_cli_starts_no_backend() {
+        let fixture = Fixture::new();
+        let root = fixture.temp.path();
+        fs::create_dir(root.join("omni-app")).unwrap();
+        // No node_modules/@tauri-apps/cli and no `cargo tauri`: the fake Cargo
+        // records every invocation and has no tauri subcommand.
+        let log = root.join("cargo.log");
+        let cargo = fixture.tools.join("cargo");
+        fs::write(
+            &cargo,
+            "#!/bin/sh\necho \"$*\" >> \"$CARGO_LOG\"\nif [ \"$1\" = tauri ]; then exit 1; fi\nexit 0\n",
+        )
+        .unwrap();
+        fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755)).unwrap();
+        for platform in ["ios", "android"] {
+            let output = fixture
+                .command()
+                .args(["omni", platform])
+                .env("CARGO_LOG", &log)
+                .output()
+                .unwrap();
+            let text = output_text(&output);
+            assert!(!output.status.success(), "{text}");
+            assert!(text.contains("Omni CLI is required"), "{text}");
+        }
+        // The old runner spawned `cargo run -q` first and then exited without
+        // stopping it, leaving the backend on port 3000.
+        let invocations = fs::read_to_string(&log).unwrap();
+        assert!(!invocations.contains("run"), "{invocations}");
+        assert!(invocations.contains("tauri --version"), "{invocations}");
+    }
+
+    #[test]
     fn mobile_icons_are_applied_after_init_and_existing_shells_are_not_overwritten() {
         let fixture = Fixture::new();
         let output = fixture.scaffold().output().unwrap();
