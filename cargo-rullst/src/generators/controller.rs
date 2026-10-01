@@ -68,9 +68,62 @@ pub fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::e
             .yellow()
         );
     } else {
-        let template = if api {
-            format!(
-                r#"use rullst::server::{{Path, Form, IntoResponse, Json}};
+        let template = render_controller_source(&camel_name, api);
+        fs::write(&controller_path, template)?;
+    }
+
+    // 6. Attempt to inject "pub mod controllers;" into src/main.rs if needed
+    let main_path = Path::new("src/main.rs");
+    if main_path.exists() {
+        let mut main_content = fs::read_to_string(main_path)?;
+        if !main_content.contains("pub mod controllers;")
+            && !main_content.contains("mod controllers;")
+        {
+            main_content = format!("pub mod controllers;\n{}", main_content);
+            fs::write(main_path, main_content)?;
+            println!(
+                "{}",
+                "ℹ️ Automatically added 'pub mod controllers;' to the top of src/main.rs.".cyan()
+            );
+        }
+    }
+
+    println!(
+        "{}",
+        format!(
+            "✨ Controller '{}' successfully created at '{}'!",
+            camel_name,
+            controller_path.display()
+        )
+        .green()
+        .bold()
+    );
+    println!("{}", "How to map in your routes:".cyan());
+    println!(
+        "{}",
+        format!("  1. Use: 'use crate::controllers::{};'", snake_name).cyan()
+    );
+    println!(
+        "{}",
+        format!(
+            "  2. Add: 'get(\"/url\" => {}::index)' inside your routes! macro.",
+            snake_name
+        )
+        .cyan()
+    );
+
+    Ok(())
+}
+
+/// Renders the controller module emitted by `make:controller`.
+///
+/// The `--api` variant extracts and returns `Json<T>`. Public so scaffold
+/// smoke tests can compile the exact generated source.
+#[doc(hidden)]
+pub fn render_controller_source(camel_name: &str, api: bool) -> String {
+    if api {
+        format!(
+            r#"use rullst::server::{{IntoResponse, Json, Path}};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -102,14 +155,14 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {{
 }}
 
 /// Creates a new resource
-pub async fn store(Form(_payload): Form<CreateDto>) -> impl IntoResponse {{
+pub async fn store(Json(_payload): Json<CreateDto>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "message": "Resource created successfully"
     }}))
 }}
 
 /// Atualiza um recurso existente
-pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> impl IntoResponse {{
+pub async fn update(Path(id): Path<i32>, Json(_payload): Json<UpdateDto>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "id": id,
         "message": "Resource updated successfully"
@@ -124,10 +177,10 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     }}))
 }}
 "#
-            )
-        } else {
-            format!(
-                r#"use rullst::{{html, server::{{Html, IntoResponse, Path, Form}}}};
+        )
+    } else {
+        format!(
+            r#"use rullst::{{html, server::{{Html, IntoResponse, Path, Form}}}};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -181,50 +234,23 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     Html(html! {{ <div>"Resource "{{id}}" deleted successfully"</div> }})
 }}
 "#
-            )
-        };
-        fs::write(&controller_path, template)?;
-    }
-
-    // 6. Attempt to inject "pub mod controllers;" into src/main.rs if needed
-    let main_path = Path::new("src/main.rs");
-    if main_path.exists() {
-        let mut main_content = fs::read_to_string(main_path)?;
-        if !main_content.contains("pub mod controllers;")
-            && !main_content.contains("mod controllers;")
-        {
-            main_content = format!("pub mod controllers;\n{}", main_content);
-            fs::write(main_path, main_content)?;
-            println!(
-                "{}",
-                "ℹ️ Automatically added 'pub mod controllers;' to the top of src/main.rs.".cyan()
-            );
-        }
-    }
-
-    println!(
-        "{}",
-        format!(
-            "✨ Controller '{}' successfully created at '{}'!",
-            camel_name,
-            controller_path.display()
         )
-        .green()
-        .bold()
-    );
-    println!("{}", "How to map in your routes:".cyan());
-    println!(
-        "{}",
-        format!("  1. Use: 'use crate::controllers::{};'", snake_name).cyan()
-    );
-    println!(
-        "{}",
-        format!(
-            "  2. Add: 'get(\"/url\" => {}::index)' inside your routes! macro.",
-            snake_name
-        )
-        .cyan()
-    );
+    }
+}
 
-    Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn api_controllers_extract_json_bodies() {
+        let source = render_controller_source("ProductController", true);
+        assert!(source.contains("pub async fn store(Json(_payload): Json<CreateDto>)"));
+        assert!(source.contains("Json(_payload): Json<UpdateDto>"));
+        assert!(!source.contains("Form"));
+        syn::parse_file(&source).expect("generated API controller should parse");
+
+        let html = render_controller_source("ProductController", false);
+        assert!(html.contains("Form(_payload): Form<CreateDto>"));
+    }
 }
