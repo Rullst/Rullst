@@ -53,7 +53,7 @@ impl Migration for CreatePortfolioTables {
 
         rullst::db::sqlx::query(
             "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url) VALUES 
-             (1, 'Vene Light', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'rullst@veneloius.de', 'https://rullst.github.io/', 'https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png', 'https://github.com/Rullst', 'https://linkedin.com')"
+             (1, 'Vene Light', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'rullst@veneloius.de', 'https://rullst.github.io/', '/static/rullst.png', 'https://github.com/Rullst', 'https://linkedin.com')"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
