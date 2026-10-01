@@ -43,8 +43,8 @@ token counts only.
 Any server that exposes the OpenAI chat API on your machine works: LM Studio
 (`http://127.0.0.1:1234/v1`, the default), llama.cpp server or LocalAI
 (`http://127.0.0.1:8080/v1`), vLLM (`http://127.0.0.1:8000/v1`) or Jan
-(`http://127.0.0.1:1337/v1`). Use a literal loopback IP, not `localhost`, and
-the model name exactly as the server lists it:
+(`http://127.0.0.1:1337/v1`). A `localhost` URL is pinned to `127.0.0.1`
+(remote hosts are refused). Use the model name exactly as the server lists it:
 
 ```bash
 cargo rullst ai connect --provider local --base-url http://127.0.0.1:8080/v1 --model qwen2.5-coder

@@ -71,16 +71,41 @@ fn ollama_loopback_base(host: &str) -> Option<String> {
         }
         url
     };
+    let url = pin_localhost(url);
     Some(format!("{}/v1", url.as_str().trim_end_matches('/')))
 }
 
+/// Rewrites a `localhost` host to `127.0.0.1`. The transport accepts plain
+/// HTTP only for a literal loopback IP (a name could be re-pointed by DNS),
+/// but local model servers commonly print `http://localhost:<port>`.
+fn pin_localhost(mut url: reqwest::Url) -> reqwest::Url {
+    if url
+        .host_str()
+        .is_some_and(|host| host.eq_ignore_ascii_case("localhost"))
+    {
+        // Setting a literal IPv4 host on an http(s) URL cannot fail.
+        let _ = url.set_host(Some("127.0.0.1"));
+    }
+    url
+}
+
 /// Builds the transport for a local OpenAI-compatible server. `try_local`
-/// accepts only a literal loopback IP, so a remote URL is refused here.
+/// accepts only a literal loopback IP, so a remote URL is refused here;
+/// `localhost` is pinned to `127.0.0.1` first.
 pub(super) fn local_provider(
     base_url: &str,
     model: &str,
 ) -> Result<OpenAiCompatibleProvider, AiError> {
-    OpenAiCompatibleProvider::try_local(base_url.trim(), model)
+    let base_url = base_url.trim();
+    let pinned = reqwest::Url::parse(base_url)
+        .map(|url| {
+            pin_localhost(url)
+                .as_str()
+                .trim_end_matches('/')
+                .to_string()
+        })
+        .unwrap_or_else(|_| base_url.to_string());
+    OpenAiCompatibleProvider::try_local(pinned, model)
 }
 
 impl Backend {
@@ -195,6 +220,19 @@ async fn guarded<S: AiStreamSink>(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn localhost_is_pinned_to_the_loopback_ip() {
+        assert!(super::local_provider("http://localhost:1234/v1", "local-model").is_ok());
+        assert!(super::local_provider("http://LOCALHOST:8080/v1/", "m").is_ok());
+        assert!(super::local_provider("http://127.0.0.1:1234/v1", "m").is_ok());
+        assert!(super::local_provider("http://example.com:1234/v1", "m").is_err());
+        assert!(super::local_provider("http://localhost.example.com/v1", "m").is_err());
+        assert_eq!(
+            super::ollama_loopback_base("localhost:11434").as_deref(),
+            Some("http://127.0.0.1:11434/v1")
+        );
+    }
+
     use super::*;
     use crate::ai::credentials::{KeySource, Secret};
 
@@ -246,11 +284,7 @@ mod tests {
     fn local_servers_must_be_on_a_loopback_address() {
         assert!(local_provider("http://127.0.0.1:8080/v1", "m").is_ok());
         assert!(local_provider("http://[::1]:8000/v1", "m").is_ok());
-        for url in [
-            "http://192.168.1.5:1234/v1",
-            "http://localhost:1234/v1",
-            "not a url",
-        ] {
+        for url in ["http://192.168.1.5:1234/v1", "not a url"] {
             assert!(local_provider(url, "m").is_err(), "{url}");
         }
         assert!(

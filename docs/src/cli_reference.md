@@ -1045,9 +1045,10 @@ cargo rullst ai disconnect             # delete the saved credentials file
   a local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM,
   LocalAI, Jan), all through `rullst-ai` and its mandatory
   prompt-injection/PII guardrails. Every provider streams its answers except an
-  Ollama host that is not a literal loopback address, which answers at once. A
-  local server must listen on a literal loopback IP (`http://127.0.0.1:...` or
-  `http://[::1]:...`); its model name must match the model the server loaded.
+  Ollama host that is not a loopback address, which answers at once. A local
+  server must listen on loopback (`http://127.0.0.1:...`, `http://[::1]:...`;
+  `localhost` is pinned to `127.0.0.1`); its model name must match the model
+  the server loaded.
 * **Credentials:** a provider environment variable (`OPENAI_API_KEY`,
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `OLLAMA_HOST`,
   `RULLST_AI_BASE_URL` for a local server) takes precedence over the user

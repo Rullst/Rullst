@@ -109,7 +109,10 @@ fn gather_endpoint(
     theme: &impl Theme,
 ) -> Result<String, AiCliError> {
     let (flag, prompt) = match provider {
-        Provider::Local => ("base-url", "Server base URL (literal loopback IP)"),
+        Provider::Local => (
+            "base-url",
+            "Server base URL (loopback, e.g. http://localhost:1234/v1)",
+        ),
         _ => ("host", "Ollama host"),
     };
     let default = provider.default_endpoint().unwrap_or_default();
