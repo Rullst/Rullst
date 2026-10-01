@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790882830328,
+  "lastUpdate": 1790885950165,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10484,6 +10484,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27e6047f2348dd5ba6587dfbab9169fd104ff4d8",
+          "message": "Merge pull request #389 from Rullst/fix/v13-cli-r2-generators\n\nfix(cli): second-round generator fixes for introspection, typed auto-migrations, auth facade and name validation",
+          "timestamp": "2026-10-01T16:51:06-03:00",
+          "tree_id": "28abeeae312fefe4afbe90eebd3a0678bd9440d2",
+          "url": "https://github.com/Rullst/Rullst/commit/27e6047f2348dd5ba6587dfbab9169fd104ff4d8"
+        },
+        "date": 1790885949080,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
