@@ -471,6 +471,79 @@ fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
     );
 }
 
+#[test]
+fn unknown_commands_completions_info_and_json_views_are_scriptable() {
+    let fixture = Fixture::new("cli-ux");
+
+    let unknown = fixture.command(&["make:modek", "Post"]);
+    assert_eq!(
+        unknown.status.code(),
+        Some(2),
+        "unknown commands are usage errors"
+    );
+    let stderr = String::from_utf8_lossy(&unknown.stderr);
+    assert!(
+        stderr.contains("error: Unknown command `make:modek`"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("Did you mean `cargo rullst make:model`?"),
+        "{stderr}"
+    );
+    assert!(
+        !stderr.contains('\u{1b}'),
+        "NO_COLOR keeps the report plain"
+    );
+    assert!(unknown.stdout.is_empty());
+
+    let completions = fixture.succeeds(&["completions", "bash"]);
+    assert!(completions.contains("_rullst()") && completions.contains("make:model"));
+
+    let info = fixture.command(&["info", "--json"]);
+    assert!(info.status.success());
+    let info: serde_json::Value = serde_json::from_slice(&info.stdout).expect("info JSON");
+    assert_eq!(info["schema_version"], "rullst.cli-info.v1");
+    assert_eq!(info["project"]["name"], "cli-fixture");
+    assert_eq!(info["project"]["rullst"], "12");
+
+    let routes = fixture.command(&["inspect", "routes", "--json"]);
+    assert!(routes.status.success());
+    let routes: serde_json::Value = serde_json::from_slice(&routes.stdout).expect("routes JSON");
+    assert_eq!(routes["schema_version"], "rullst.cli-routes.v1");
+    assert_eq!(routes["routes"][0]["path"], "/users/:id");
+    assert_eq!(routes["routes"][0]["handler"], "controllers::users::show");
+
+    // `audit --json` keeps stdout to one document; progress goes to stderr.
+    let audit = fixture.command(&["audit", "--json"]);
+    let summary: serde_json::Value =
+        serde_json::from_slice(&audit.stdout).expect("audit --json prints one JSON document");
+    assert_eq!(summary["schema_version"], "rullst.cli-audit.v1");
+    assert_eq!(summary["checks"][1]["id"], "dependency_audit");
+    assert_eq!(summary["checks"][1]["status"], "not_checked");
+    assert!(String::from_utf8_lossy(&audit.stderr).contains("Audit finished"));
+
+    // Generators end with concrete next steps; the friendly report covers
+    // project commands run outside a project.
+    let model = fixture.succeeds(&["make:model", "Invoice", "-m"]);
+    assert!(model.contains("Next steps") && model.contains("cargo rullst db:migrate"));
+    let outside = tempfile::tempdir().expect("outside directory");
+    let output = Command::new(env!("CARGO_BIN_EXE_rullst"))
+        .current_dir(outside.path())
+        .args(["make:controller", "Users"])
+        .env("RULLST_DISABLE_UPDATE_CHECK", "1")
+        .env("NO_COLOR", "1")
+        .output()
+        .expect("run outside a project");
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.starts_with("error: Not inside a Rullst project\n"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("cargo rullst new <name>"));
+    assert!(stderr.contains("https://rullst.github.io/Rullst/book/start-here.html"));
+}
+
 #[cfg(unix)]
 #[test]
 fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {

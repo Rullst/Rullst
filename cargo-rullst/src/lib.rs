@@ -62,6 +62,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             cli::run_cli_command(&cli.command)?;
         }
+        cli::next_steps::print_after_success(&matches);
     }
     Ok(())
 }

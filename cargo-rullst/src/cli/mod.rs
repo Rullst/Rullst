@@ -12,6 +12,7 @@ mod commands;
 pub(crate) mod completions;
 mod dispatch;
 pub(crate) mod info;
+pub(crate) mod next_steps;
 pub(crate) mod runtime;
 pub(crate) mod suggest;
 #[cfg(test)]
