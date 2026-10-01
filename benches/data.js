@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790866652689,
+  "lastUpdate": 1790867263540,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23961,6 +23961,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2305,
             "range": "± 46",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0fa35e32c865324bd7918b448682bd452c4d78a0",
+          "message": "Merge pull request #373 from Rullst/fix/v13-cli-blueprint-low-fixes\n\nfix(cli): atomic ERP orders, health routes in every starter, paged reads and container/Omni scaffold fixes",
+          "timestamp": "2026-10-01T12:00:48-03:00",
+          "tree_id": "48b79c57f455e22e1b4997e874b6461c6d81147c",
+          "url": "https://github.com/Rullst/Rullst/commit/0fa35e32c865324bd7918b448682bd452c4d78a0"
+        },
+        "date": 1790867261575,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1016,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 621,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2270,
+            "range": "± 99",
             "unit": "ns/iter"
           }
         ]
