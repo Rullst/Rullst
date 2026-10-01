@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790885522928,
+  "lastUpdate": 1790887735499,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14433,6 +14433,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2783,
             "range": "± 95",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "72728c5651e0951a7c3fd12f6df5fee038cd1564",
+          "message": "Merge pull request #390 from Rullst/fix/v13-cli-r2-ops\n\nfix(cli): second-round audit and operations fixes (cfg(test)-aware IDOR scan, no silent downgrade, loopback Foundry service)",
+          "timestamp": "2026-10-01T17:30:47-03:00",
+          "tree_id": "ae04eab0f2f106ebebdd63fef9877d484d54c5cd",
+          "url": "https://github.com/Rullst/Rullst/commit/72728c5651e0951a7c3fd12f6df5fee038cd1564"
+        },
+        "date": 1790887734804,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1025,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 798,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1842,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4450,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
