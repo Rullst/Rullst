@@ -38,7 +38,10 @@ use serde_json::Value;
 /// Registers this worker's job processor.
 pub fn register(worker: &mut Worker) {{
     worker.register("{job_name}", |payload: Value| async move {{
-        println!("🚀 [Worker] Processing '{job_name}' with payload: {{:?}}", payload);
+        // Never log the raw payload: jobs often carry e-mail addresses, reset
+        // tokens and other personal data. Log only explicitly redacted fields.
+        let field_count = payload.as_object().map_or(0, |fields| fields.len());
+        println!("🚀 [Worker] Processing '{job_name}' ({{field_count}} payload field(s))");
 
         // Add background task logic here (for example, email or image processing).
 
@@ -293,6 +296,17 @@ mod tests {
         assert!(!source.contains(".unwrap("));
         assert!(!source.contains(".expect("));
         assert!(!source.contains("panic!("));
+    }
+
+    #[test]
+    fn generated_handler_never_logs_the_job_payload() {
+        let source = render_worker_source("send_password_reset");
+        assert!(
+            !source.contains("{:?}"),
+            "payload must not be Debug-formatted"
+        );
+        assert!(!source.contains("payload);"));
+        assert!(source.contains("payload field(s)"));
     }
 
     #[test]
