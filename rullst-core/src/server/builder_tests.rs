@@ -1,7 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use super::environment::{resolve_environment, resolve_hot_reload_token};
+use super::shutdown::{mark_lifecycle_ready, mark_lifecycle_stopped};
 use super::*;
 use crate::config::{Environment, RullstConfig};
+use std::collections::HashMap;
 
 struct EnvironmentGuard {
     values: Vec<(&'static str, Option<std::ffi::OsString>)>,

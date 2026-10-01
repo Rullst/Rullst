@@ -80,7 +80,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "auth::tests::test_session_encryption_error_paths",
-      "source": "rullst-auth/src/auth.rs",
+      "source": "rullst-auth/src/auth/tests.rs",
       "marker": "TM-AUTH-01"
     },
     {

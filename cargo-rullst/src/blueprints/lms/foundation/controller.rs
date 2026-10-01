@@ -10,6 +10,22 @@ pub struct ProgressForm {
     pub idempotency_key: String,
 }
 
+/// A fresh key for each rendered player, so the next save is a new event
+/// while resubmitting the same page replays its save instead of repeating it.
+fn new_progress_key(user_id: i32, lesson_id: i32) -> String {
+    format!(
+        "progress:{user_id}:{lesson_id}:{}",
+        rullst::security::generate_csrf_token()
+    )
+}
+
+/// The player's 25/50/100% buttons share one page key, so each requested
+/// percentage is its own event: repeating a click replays it, while another
+/// button (even on a page restored with the back button) still records.
+fn progress_event_key(page_key: &str, progress_percent: i32) -> String {
+    format!("{page_key}:{progress_percent}")
+}
+
 fn error_response(error: LearningError) -> Response {
     match error {
         LearningError::NotFound(_) => StatusCode::NOT_FOUND.into_response(),
@@ -54,7 +70,7 @@ pub async fn play_lesson(
     };
     let csrf_token = csrf.as_ref().map(|Extension(value)| value.as_str()).unwrap_or_default();
     let nonce = csp_nonce.as_ref().map(|Extension(value)| value.as_str()).unwrap_or_default();
-    let progress_key = format!("progress:{user_id}:{lesson_id}:next");
+    let progress_key = new_progress_key(user_id, lesson_id);
     match lms::lesson_player_page(
         &lesson.title,
         &lesson.media_kind,
@@ -85,10 +101,29 @@ pub async fn record_progress(
         user_id,
         lesson_id,
         form.progress_percent,
-        &form.idempotency_key,
+        &progress_event_key(&form.idempotency_key, form.progress_percent),
     ).await {
         Ok(_) => Redirect::to(&format!("/lessons/{lesson_id}/play")).into_response(),
         Err(error) => error_response(error),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_render_and_requested_percentage_records_its_own_progress_event() {
+        let page = new_progress_key(7, 1);
+        assert!(page.starts_with("progress:7:1:"));
+        assert_ne!(page, new_progress_key(7, 1));
+        assert_eq!(progress_event_key(&page, 25), progress_event_key(&page, 25));
+        assert_ne!(progress_event_key(&page, 25), progress_event_key(&page, 50));
+        assert_ne!(progress_event_key(&page, 50), progress_event_key(&page, 100));
+        // The learning service accepts at most 128 bytes of [A-Za-z0-9_.:-].
+        let longest = progress_event_key(&new_progress_key(i32::MIN, i32::MIN), 100);
+        assert!(longest.len() <= 128);
+        assert!(longest.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b':' | b'-')));
     }
 }
 "##;

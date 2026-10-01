@@ -1,6 +1,6 @@
-use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
+use axum::extract::Request;
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicU8, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -10,6 +10,15 @@ const MONITORS_SHUT_DOWN: u8 = 2;
 
 #[path = "resilience_probe.rs"]
 mod db_probe;
+
+#[path = "resilience_rate_limit.rs"]
+mod rate_limit;
+#[path = "resilience_shield.rs"]
+mod shield;
+
+use rate_limit::refill_token_count;
+pub use rate_limit::{default_key_extractor, rate_limit_middleware};
+pub use shield::backpressure_middleware;
 
 /// Failures that can occur while managing Traffic Shield monitors.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
@@ -101,275 +110,8 @@ struct TrafficShieldMonitors {
     unavailable_log: shield_log::LogThrottle,
 }
 
-impl TrafficShieldMonitors {
-    fn abort_tasks(&self) {
-        self.state.store(MONITORS_SHUT_DOWN, Ordering::Release);
-        self.shutdown.notify_waiters();
-        let mut tasks = match self.tasks.lock() {
-            Ok(tasks) => tasks,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        for task in tasks.drain(..) {
-            task.abort();
-        }
-    }
-}
-
-impl Drop for TrafficShieldMonitors {
-    fn drop(&mut self) {
-        self.abort_tasks();
-    }
-}
-
-impl TrafficShield {
-    /// Creates a new inactive `TrafficShield`.
-    ///
-    /// Call [`TrafficShield::start`] from inside a Tokio runtime, attach the
-    /// shield to [`crate::Server`], or use [`backpressure_middleware`], which
-    /// starts it lazily on its first request. Keeping construction side-effect
-    /// free makes this API safe in synchronous setup code and tests.
-    pub fn new(config: TrafficShieldConfig) -> Self {
-        Self {
-            config,
-            event_loop_lag_ms: Arc::new(AtomicU64::new(0)),
-            db_latency_ms: Arc::new(AtomicU64::new(0)),
-            active_requests: Arc::new(AtomicUsize::new(0)),
-            monitors: Arc::new(TrafficShieldMonitors {
-                state: AtomicU8::new(MONITORS_IDLE),
-                shutdown: Arc::new(tokio::sync::Notify::new()),
-                tasks: Mutex::new(Vec::new()),
-                shed_log: shield_log::LogThrottle::new(),
-                unavailable_log: shield_log::LogThrottle::new(),
-            }),
-        }
-    }
-
-    /// Starts event-loop and optional database monitoring.
-    ///
-    /// The operation is idempotent while running and returns a typed error when
-    /// called outside Tokio or after [`TrafficShield::shutdown`]. All monitor
-    /// tasks are cancelled on explicit shutdown or when the final shield clone
-    /// is dropped.
-    ///
-    /// # Errors
-    /// Returns [`TrafficShieldError::RuntimeUnavailable`] without spawning when
-    /// no Tokio runtime is active, or [`TrafficShieldError::AlreadyShutDown`]
-    /// after the lifecycle has ended.
-    #[cfg_attr(mutants, mutants::skip)]
-    pub fn start(&self) -> Result<(), TrafficShieldError> {
-        match self.monitors.state.load(Ordering::Acquire) {
-            MONITORS_RUNNING => return Ok(()),
-            MONITORS_SHUT_DOWN => return Err(TrafficShieldError::AlreadyShutDown),
-            _ => {}
-        }
-        let runtime = tokio::runtime::Handle::try_current()
-            .map_err(|_| TrafficShieldError::RuntimeUnavailable)?;
-
-        match self.monitors.state.compare_exchange(
-            MONITORS_IDLE,
-            MONITORS_RUNNING,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => {}
-            Err(MONITORS_RUNNING) => return Ok(()),
-            Err(_) => return Err(TrafficShieldError::AlreadyShutDown),
-        }
-
-        let mut tasks = match self.monitors.tasks.lock() {
-            Ok(tasks) => tasks,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        if self.monitors.state.load(Ordering::Acquire) != MONITORS_RUNNING {
-            return Err(TrafficShieldError::AlreadyShutDown);
-        }
-
-        let lag_ms = self.event_loop_lag_ms.clone();
-        let lag_shutdown = Arc::clone(&self.monitors.shutdown);
-        tasks.push(runtime.spawn(async move {
-            let interval = Duration::from_millis(100);
-            loop {
-                let start = Instant::now();
-                tokio::select! {
-                    _ = tokio::time::sleep(interval) => {}
-                    _ = lag_shutdown.notified() => break,
-                }
-                let elapsed = start.elapsed();
-                let lag = elapsed.saturating_sub(interval);
-                lag_ms.store(duration_millis_u64(lag), Ordering::Relaxed);
-            }
-        }));
-
-        #[cfg(feature = "orm")]
-        if self.config.enable_db_probe {
-            let db_lat_ms = self.db_latency_ms.clone();
-            let db_shutdown = Arc::clone(&self.monitors.shutdown);
-            let deadline = self.config.max_db_latency;
-            tasks.push(runtime.spawn(async move {
-                let interval = Duration::from_millis(1000);
-                loop {
-                    tokio::select! {
-                        _ = tokio::time::sleep(interval) => {}
-                        _ = db_shutdown.notified() => break,
-                    }
-                    if let Some(pool) = crate::db::safe_pool() {
-                        // A probe that outlives the shedding threshold is
-                        // already critical; abandon it so a hung connection
-                        // cannot leave a stale healthy latency behind.
-                        let probe = sqlx::query("SELECT 1").execute(pool);
-                        let latency = db_probe::measure(deadline, probe).await;
-                        db_lat_ms.store(latency, Ordering::Relaxed);
-                    } else {
-                        db_lat_ms.store(0, Ordering::Relaxed);
-                    }
-                }
-            }));
-        }
-
-        Ok(())
-    }
-
-    /// Stops all background monitors and prevents this shared shield lifecycle
-    /// from being restarted. Calling this method more than once is harmless.
-    pub fn shutdown(&self) {
-        self.monitors.abort_tasks();
-    }
-
-    /// Returns whether monitor tasks have been started and not shut down.
-    pub fn is_running(&self) -> bool {
-        self.monitors.state.load(Ordering::Acquire) == MONITORS_RUNNING
-    }
-
-    /// Returns the most recently measured Tokio event-loop lag as a `Duration`.
-    /// Updated every 100ms by the background monitor task.
-    pub fn event_loop_lag(&self) -> Duration {
-        Duration::from_millis(self.event_loop_lag_ms.load(Ordering::Relaxed))
-    }
-
-    /// Returns the most recently measured database probe round-trip latency as a `Duration`.
-    /// Returns `Duration::ZERO` if `enable_db_probe` is `false`, the `orm`
-    /// feature is disabled, or the pool is uninitialized. A probe abandoned at
-    /// `max_db_latency` reports at least that latency.
-    pub fn db_latency(&self) -> Duration {
-        Duration::from_millis(self.db_latency_ms.load(Ordering::Relaxed))
-    }
-
-    /// Returns the current count of in-flight HTTP requests being tracked by this shield.
-    pub fn active_requests(&self) -> usize {
-        self.active_requests.load(Ordering::Relaxed)
-    }
-}
-
 fn duration_millis_u64(duration: Duration) -> u64 {
     u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum TrafficPressure {
-    Normal,
-    Moderate,
-    Critical,
-}
-
-fn classify_traffic_pressure(
-    config: &TrafficShieldConfig,
-    lag: Duration,
-    db_latency: Duration,
-    active_requests: usize,
-) -> TrafficPressure {
-    let critical = lag >= config.max_event_loop_lag
-        || (config.enable_db_probe && db_latency >= config.max_db_latency)
-        || active_requests >= config.max_active_requests;
-    if critical {
-        return TrafficPressure::Critical;
-    }
-
-    let moderate = lag >= config.max_event_loop_lag / 2
-        || (config.enable_db_probe && db_latency >= config.max_db_latency / 2)
-        || active_requests >= config.max_active_requests / 2;
-    if moderate {
-        TrafficPressure::Moderate
-    } else {
-        TrafficPressure::Normal
-    }
-}
-
-struct ActiveRequestGuard<'a>(&'a AtomicUsize);
-
-impl<'a> Drop for ActiveRequestGuard<'a> {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::SeqCst);
-    }
-}
-
-/// Router-level protection middleware that tracks load timing and drops requests under critical saturation.
-///
-/// Rejections are reported on stderr at most once per second per shield,
-/// with the number of rejections suppressed since the previous line, so
-/// overload never turns into one blocking log write per request.
-#[cfg_attr(mutants, mutants::skip)]
-pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: Next) -> Response {
-    if let Err(error) = shield.start() {
-        if let Some(suppressed) = shield
-            .monitors
-            .unavailable_log
-            .admit(Instant::now(), shield_log::LOG_INTERVAL)
-        {
-            crate::server::console::stderr_line(format_args!(
-                "Traffic Shield is unavailable: {error} ({suppressed} similar rejections suppressed)"
-            ));
-        }
-        let mut response = Response::new(axum::body::Body::from(
-            "Traffic Shield monitoring is unavailable.",
-        ));
-        *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-        return response;
-    }
-
-    let active = shield.active_requests.fetch_add(1, Ordering::SeqCst);
-    let _guard = ActiveRequestGuard(&shield.active_requests);
-
-    let lag = shield.event_loop_lag();
-    let db_lat = shield.db_latency();
-
-    let pressure = classify_traffic_pressure(&shield.config, lag, db_lat, active);
-
-    if pressure == TrafficPressure::Critical {
-        if let Some(suppressed) = shield
-            .monitors
-            .shed_log
-            .admit(Instant::now(), shield_log::LOG_INTERVAL)
-        {
-            crate::server::console::stderr_line(format_args!(
-                "⚠️ [Rullst Backpressure] Load shedding active! CPU lag: {:?}, DB latency: {:?}, Active requests: {} ({} more requests shed since the previous report)",
-                lag, db_lat, active, suppressed
-            ));
-        }
-
-        match Response::builder()
-            .status(StatusCode::SERVICE_UNAVAILABLE)
-            .header(axum::http::header::RETRY_AFTER, "5")
-            .header(
-                axum::http::header::CONTENT_TYPE,
-                "text/plain; charset=utf-8",
-            )
-            .body(axum::body::Body::from(
-                "Service Temporarily Saturated. Please try again soon.",
-            )) {
-            Ok(res) => return res,
-            Err(_) => {
-                let mut res = Response::new(axum::body::Body::empty());
-                *res.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-                return res;
-            }
-        }
-    }
-
-    if pressure == TrafficPressure::Moderate {
-        tokio::time::sleep(Duration::from_millis(25)).await;
-    }
-
-    next.run(req).await
 }
 
 /// Extensible configuration for the Token-Bucket Rate Limiter.
@@ -414,10 +156,6 @@ struct TokenBucket {
     last_refill: Instant,
 }
 
-fn refill_token_count(current_tokens: f64, elapsed_secs: f64, config: &RateLimitConfig) -> f64 {
-    (current_tokens + elapsed_secs * config.refill_rate).min(config.max_tokens)
-}
-
 /// Thread-safe Token-Bucket rate limiter powered by Shared-Memory DashMap.
 ///
 /// Clones share one bucket map. It tracks at most 100,000 keys: buckets that
@@ -432,105 +170,6 @@ pub struct RateLimiter {
     key_extractor: Arc<dyn Fn(&Request) -> String + Send + Sync>,
     new_keys: Arc<AtomicUsize>,
     max_buckets: usize,
-}
-
-impl RateLimiter {
-    /// Creates a new `RateLimiter` from the given config, using the transport
-    /// peer address as the default key (IPv4 per address, IPv6 per /64).
-    ///
-    /// Forwarded headers are untrusted and deliberately ignored. Deployments
-    /// behind a trusted proxy can install an explicit key extractor after
-    /// validating the proxy chain.
-    pub fn new(config: RateLimitConfig) -> Self {
-        Self {
-            config,
-            buckets: Arc::new(DashMap::new()),
-            key_extractor: Arc::new(default_key_extractor),
-            new_keys: Arc::new(AtomicUsize::new(0)),
-            max_buckets: buckets::MAX_RATE_LIMIT_BUCKETS,
-        }
-    }
-
-    /// Overrides the key extraction method (e.g. to limit by username or auth token).
-    pub fn with_key_extractor<F>(mut self, extractor: F) -> Self
-    where
-        F: Fn(&Request) -> String + Send + Sync + 'static,
-    {
-        self.key_extractor = Arc::new(extractor);
-        self
-    }
-
-    /// Evaluates if the bucket for `key` can consume 1 token, refilling dynamic tokens incrementally.
-    ///
-    /// A key longer than 128 bytes is stored as its SHA-256 digest, so a
-    /// custom extractor returning a long header value (an `Authorization`
-    /// token, say) cannot make each of the at most 100,000 buckets hold an
-    /// attacker-sized key.
-    pub fn check_and_consume(&self, key: &str) -> bool {
-        let now = Instant::now();
-        let key = buckets::bounded_bucket_key(key);
-        if !self.buckets.contains_key(key.as_ref()) {
-            self.make_room_for_new_key(now);
-        }
-        let mut entry = self
-            .buckets
-            .entry(key.into_owned())
-            .or_insert_with(|| TokenBucket {
-                tokens: self.config.max_tokens,
-                last_refill: now,
-            });
-
-        let elapsed = now.duration_since(entry.last_refill).as_secs_f64();
-        entry.tokens = refill_token_count(entry.tokens, elapsed, &self.config);
-        entry.last_refill = now;
-
-        if entry.tokens >= 1.0 {
-            entry.tokens -= 1.0;
-            true
-        } else {
-            false
-        }
-    }
-}
-
-/// Default key extractor based only on Axum's transport peer address.
-///
-/// IPv4 peers are keyed per address (`192.0.2.7`) and IPv6 peers per /64
-/// prefix (`2001:db8:1:2::/64`); IPv4-mapped IPv6 peers are keyed as IPv4.
-pub fn default_key_extractor(req: &Request) -> String {
-    if let Some(conn_info) = req
-        .extensions()
-        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
-    {
-        return buckets::peer_rate_limit_key(conn_info.0.ip());
-    }
-
-    "missing-peer-address".to_string()
-}
-
-/// Native Axum middleware enforcing rate limiting.
-pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Next) -> Response {
-    let key = (limiter.key_extractor)(&req);
-    if limiter.check_and_consume(&key) {
-        next.run(req).await
-    } else {
-        match Response::builder()
-            .status(StatusCode::TOO_MANY_REQUESTS)
-            .header(
-                axum::http::header::CONTENT_TYPE,
-                "text/plain; charset=utf-8",
-            )
-            .body(axum::body::Body::from(
-                "Rate limit exceeded. Please try again later.",
-            )) {
-            Ok(res) => res,
-            Err(_) => {
-                let mut res = Response::new(axum::body::Body::empty());
-                *res.status_mut() = StatusCode::TOO_MANY_REQUESTS;
-                res
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -554,6 +193,7 @@ mod rate_limit_tests;
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
+    use super::shield::{TrafficPressure, classify_traffic_pressure};
     use super::*;
 
     #[kani::proof]

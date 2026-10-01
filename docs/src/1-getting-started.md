@@ -129,6 +129,13 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 - Interactive Experience timeline and Skills tags.
 - Project cards showcase with live external links.
 
+The Portfolio and Blog pages bind their inline styles to the per-request CSP
+nonce and use system fonts, so they keep their styling under the production
+security headers. That policy admits only same-origin and `data:` images: put a
+custom avatar under `static/` (the default is `/static/rullst.png`) rather than
+linking a remote URL, or deliberately extend `img-src` in the `[security] csp`
+setting of `Rullst.toml`.
+
 ## 3. LMS Platform Starter
 **Use Case:** Online learning products and course platforms.
 A small, readable learning foundation featuring:
@@ -166,6 +173,11 @@ An inventory-oriented back-office starter. It features:
 - A complex relational database schema (Products and Orders).
 - Full CRUD operations with HTMX.
 - A sleek, split-pane dashboard for simultaneous product listing and order creation.
+
+The dashboard lists customer names and revenue, so every ERP route shares the
+Nexus administrator policy described below: loopback-only in a debug build and
+Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
+build. Per-employee accounts and roles remain application work.
 
 ---
 

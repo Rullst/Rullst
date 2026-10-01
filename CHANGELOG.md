@@ -239,6 +239,31 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Generated starter review fixes
+
+- Blog, ERP and Portfolio migrations no longer use SQLite-only
+  `datetime('now')`, and starter migrations that seed explicit ids advance
+  their PostgreSQL sequences.
+- SaaS, LMS, `make:auth` and SQLx `make:billing` index bounded `VARCHAR`
+  columns, so they migrate on PostgreSQL, MySQL and MariaDB.
+- The ERP dashboard requires the same administrator access as Nexus.
+- LMS progress uses a fresh idempotency key per render, so later saves no
+  longer return 409.
+- Generated login and registration bound concurrent Argon2 work and
+  rate-limit credential submissions per client.
+- Blog and Portfolio pages keep their styling under the production CSP.
+- The host-specific `.cargo/config.toml` linker selection is excluded from Git
+  and Docker builds.
+
+### Large module splits
+
+- Ten oversized production modules are split into focused submodules under the
+  ~500-line target: rullst-auth `auth`, rullst-core `server::builder` and
+  `resilience`, rullst-connect `extractors` and the Auth0 provider, rullst-orm
+  `privacy` and pool placeholders, rullst-capital `webhook` and its SQL replay
+  store, and rullst-messaging `model`. Public paths, signatures and behaviour
+  are unchanged; the `TM-AUTH-01` evidence source now points to
+  `rullst-auth/src/auth/tests.rs`.
 ### Project settings, queue previews and review follow-ups
 
 - `rullst::config::project_setting` reads one application setting from the

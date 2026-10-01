@@ -127,6 +127,181 @@ mod tests {
         assert!(blog.iter().any(|(path, _)| *path == "src/models/post.rs"));
     }
 
+    /// Every SQLx-backed blueprint manifest, in both hot-reload layouts.
+    fn sqlx_blueprint_manifests() -> Vec<(&'static str, Vec<(&'static str, String)>)> {
+        let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
+        let mut manifests = Vec::new();
+        for hot in [false, true] {
+            manifests.extend([
+                (
+                    "blank",
+                    blank::file_manifest("demo", "demo", false, hot, true, orm, frontend),
+                ),
+                ("lms", lms::file_manifest("demo", hot, orm, frontend)),
+                ("saas", saas::file_manifest("demo", hot, orm, frontend)),
+                ("blog", blog::file_manifest("demo", hot, orm, frontend)),
+                (
+                    "portfolio",
+                    portfolio::file_manifest("demo", hot, orm, frontend),
+                ),
+                ("erp", erp::file_manifest("demo", hot, orm, frontend)),
+            ]);
+        }
+        manifests
+    }
+
+    #[test]
+    fn sqlx_blueprints_avoid_sqlite_only_seed_functions() {
+        // `datetime('now')` exists only in SQLite and fails `db:migrate` on
+        // PostgreSQL/MySQL/MariaDB; `timestamps()` columns already default to
+        // CURRENT_TIMESTAMP on every driver.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                assert!(
+                    !source.contains("datetime("),
+                    "{blueprint}:{path} uses SQLite-only datetime()"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn explicit_id_seeds_resynchronize_postgres_sequences() {
+        let mut seeded_tables = 0;
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                for seed in source.split("INSERT INTO ").skip(1) {
+                    let Some(table) = seed
+                        .split_once(" (id,")
+                        .map(|(table, _)| table)
+                        .filter(|table| !table.contains(char::is_whitespace))
+                    else {
+                        continue;
+                    };
+                    seeded_tables += 1;
+                    let reset = format!(
+                        "setval(pg_get_serial_sequence('{table}', 'id'), (SELECT MAX(id) FROM {table}))"
+                    );
+                    assert!(
+                        source.contains(&reset),
+                        "{blueprint}:{path} seeds explicit {table} ids without advancing its PostgreSQL sequence"
+                    );
+                    assert!(source.contains("Orm::driver()? == \"postgres\""));
+                }
+            }
+        }
+        assert!(seeded_tables > 0, "no explicit-id seed was inspected");
+    }
+
+    #[test]
+    fn indexed_string_columns_are_bounded_for_mysql() {
+        // MySQL/MariaDB reject an index on a TEXT column without a prefix
+        // length, and `string()`/`timestamps()` columns are TEXT.
+        let mut indexed_strings = 0;
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                for statement in source.split("CREATE ").skip(1) {
+                    let Some((_, definition)) = statement
+                        .split_once("INDEX ")
+                        .filter(|(kind, _)| kind.is_empty() || *kind == "UNIQUE ")
+                    else {
+                        continue;
+                    };
+                    let Some(columns) = definition
+                        .split_once('(')
+                        .and_then(|(_, columns)| columns.split_once(')'))
+                        .map(|(columns, _)| columns)
+                    else {
+                        continue;
+                    };
+                    for column in columns.split(',').map(str::trim) {
+                        assert!(
+                            !matches!(column, "created_at" | "updated_at"),
+                            "{blueprint}:{path} indexes TEXT timestamp {column}"
+                        );
+                        let declaration = format!("table.string(\"{column}\")");
+                        for line in source.lines().filter(|line| line.contains(&declaration)) {
+                            indexed_strings += 1;
+                            assert!(
+                                line.contains(".col_type = \"VARCHAR("),
+                                "{blueprint}:{path} indexes TEXT column {column}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            indexed_strings > 0,
+            "no indexed string column was inspected"
+        );
+    }
+
+    #[test]
+    fn credential_submissions_are_rate_limited_in_auth_starters() {
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            if !matches!(blueprint, "lms" | "saas") {
+                continue;
+            }
+            let routers = manifest
+                .iter()
+                .filter(|(path, _)| matches!(*path, "src/main.rs" | "src/lib.rs"))
+                .map(|(_, source)| source.as_str())
+                .collect::<String>();
+            for (path, handler) in [("/login", "login_submit"), ("/register", "register_submit")] {
+                assert!(
+                    routers.contains(&format!(
+                        ".route(\"{path}\", rullst::routing::post(controllers::auth_controller::{handler})\n        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))"
+                    )),
+                    "{blueprint}: {path} submissions must be rate limited"
+                );
+                assert!(
+                    !routers.contains(&format!("post(\"{path}\" =>")),
+                    "{blueprint}: unthrottled {path} route"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn content_blueprints_render_under_the_production_csp() {
+        // Production headers send `style-src 'self' 'nonce-…'; font-src 'self';
+        // img-src 'self' data:`, which blocks style attributes, nonce-less
+        // inline styles, remote fonts and remote images.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            if !matches!(blueprint, "blog" | "portfolio") {
+                continue;
+            }
+            let mut styles = 0;
+            for (path, source) in &manifest {
+                for blocked in [
+                    "style=\"",
+                    "fonts.googleapis.com",
+                    "raw.githubusercontent.com",
+                ] {
+                    assert!(
+                        !source.contains(blocked),
+                        "{blueprint}:{path} uses {blocked}"
+                    );
+                }
+                styles += source.matches("<style").count();
+                assert_eq!(
+                    source.matches("<style").count(),
+                    source.matches("<style nonce={csp_nonce}>").count(),
+                    "{blueprint}:{path} has an inline style without the CSP nonce"
+                );
+            }
+            assert!(styles > 0, "{blueprint} renders no stylesheet");
+            assert!(
+                manifest
+                    .iter()
+                    .any(|(path, source)| path.starts_with("src/controllers/")
+                        && source
+                            .contains("csp_nonce: Option<Extension<rullst::security::CspNonce>>"))
+            );
+        }
+    }
+
     #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(
