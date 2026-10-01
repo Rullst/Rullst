@@ -93,6 +93,22 @@ impl Migration for MigrationImpl {
              (4, 2, 2, 'Building Interactive UIs with HTMX', 'audio', 'https://www.w3schools.com/html/horse.ogg', '', 'HTMX can request server-rendered fragments while Rust keeps validation and authorization on the server.', 'en', 20)"
         ).execute(pool).await?;
 
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('categories', 'id'), (SELECT MAX(id) FROM categories))",
+                "SELECT setval(pg_get_serial_sequence('courses', 'id'), (SELECT MAX(id) FROM courses))",
+                "SELECT setval(pg_get_serial_sequence('course_modules', 'id'), (SELECT MAX(id) FROM course_modules))",
+                "SELECT setval(pg_get_serial_sequence('lessons', 'id'), (SELECT MAX(id) FROM lessons))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 

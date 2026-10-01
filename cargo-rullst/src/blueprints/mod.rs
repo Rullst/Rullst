@@ -166,6 +166,34 @@ mod tests {
     }
 
     #[test]
+    fn explicit_id_seeds_resynchronize_postgres_sequences() {
+        let mut seeded_tables = 0;
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                for seed in source.split("INSERT INTO ").skip(1) {
+                    let Some(table) = seed
+                        .split_once(" (id,")
+                        .map(|(table, _)| table)
+                        .filter(|table| !table.contains(char::is_whitespace))
+                    else {
+                        continue;
+                    };
+                    seeded_tables += 1;
+                    let reset = format!(
+                        "setval(pg_get_serial_sequence('{table}', 'id'), (SELECT MAX(id) FROM {table}))"
+                    );
+                    assert!(
+                        source.contains(&reset),
+                        "{blueprint}:{path} seeds explicit {table} ids without advancing its PostgreSQL sequence"
+                    );
+                    assert!(source.contains("Orm::driver()? == \"postgres\""));
+                }
+            }
+        }
+        assert!(seeded_tables > 0, "no explicit-id seed was inspected");
+    }
+
+    #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(
             "rullst-unknown-blueprint-{}",

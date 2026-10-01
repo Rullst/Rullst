@@ -77,6 +77,22 @@ impl Migration for CreatePortfolioTables {
              (5, 'Docker & K8s', 'DevOps')"
         ).execute(pool).await?;
 
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('profiles', 'id'), (SELECT MAX(id) FROM profiles))",
+                "SELECT setval(pg_get_serial_sequence('projects', 'id'), (SELECT MAX(id) FROM projects))",
+                "SELECT setval(pg_get_serial_sequence('experiences', 'id'), (SELECT MAX(id) FROM experiences))",
+                "SELECT setval(pg_get_serial_sequence('skills', 'id'), (SELECT MAX(id) FROM skills))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 
