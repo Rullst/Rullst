@@ -1,6 +1,7 @@
 // src/ui/mod.rs — Visual layer of the Rullst CLI.
 // Everything terminal-related lives here: banners, spinners, dashboards, menus.
 
+mod command_palette;
 pub mod components;
 pub mod dash_tui;
 pub mod dashboard;

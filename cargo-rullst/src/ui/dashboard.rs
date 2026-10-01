@@ -1,5 +1,6 @@
 // src/ui/dashboard.rs — Interactive Rullst CLI dashboard (menus, logo, handlers).
 
+use super::command_palette::PaletteEntry;
 use super::dashboard_brand::print_opening;
 use super::home::{Home, HomeAction, home_entries, write_next_steps, write_summary};
 use super::terminal::TerminalProfile;
@@ -14,6 +15,8 @@ trait DashboardUi {
     fn show_home(&mut self, home: &Home) -> DashboardResult<()>;
     fn select(&mut self, prompt: &str, choices: &[String]) -> DashboardResult<usize>;
     fn input(&mut self, prompt: &str) -> DashboardResult<String>;
+    /// The fuzzy command palette: the chosen entry, or `None` for Esc.
+    fn palette(&mut self, entries: &[PaletteEntry]) -> DashboardResult<Option<usize>>;
     /// Whether `cargo geiger` runs; the audit item requests it only then,
     /// because a requested but missing Geiger fails the whole audit.
     fn geiger_available(&mut self) -> bool;
@@ -58,6 +61,11 @@ impl DashboardUi for DialoguerUi {
         Ok(dialoguer::Input::with_theme(&self.theme)
             .with_prompt(prompt)
             .interact_text()?)
+    }
+
+    fn palette(&mut self, entries: &[PaletteEntry]) -> DashboardResult<Option<usize>> {
+        let style = super::style::Style::with_depth(self.profile.color);
+        super::command_palette::run(entries, style).map_err(Into::into)
     }
 
     fn geiger_available(&mut self) -> bool {
@@ -355,6 +363,50 @@ where
     }
 }
 
+/// `program` and the words of `entry`, after asking for its required
+/// arguments (a menu when the values are fixed).
+fn palette_arguments<U: DashboardUi>(
+    ui: &mut U,
+    program: &str,
+    entry: &PaletteEntry,
+) -> DashboardResult<Vec<String>> {
+    let mut arguments = vec![program.to_string()];
+    arguments.extend(entry.path.iter().cloned());
+    for required in &entry.required {
+        let prompt = format!("{} (cargo rullst {})", required.prompt, entry.name);
+        let value = if required.choices.is_empty() {
+            ui.input(&prompt)?
+        } else {
+            let index = ui.select(&format!("{prompt}\n"), &required.choices)?;
+            match required.choices.get(index) {
+                Some(choice) => choice.clone(),
+                None => return Ok(Vec::new()),
+            }
+        };
+        arguments.extend(required.long.clone());
+        arguments.push(value);
+    }
+    Ok(arguments)
+}
+
+fn run_palette<U, F>(ui: &mut U, program: &str, home: &Home, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
+    let entries = super::command_palette::entries(&crate::command());
+    let Some(entry) = ui.palette(&entries)?.and_then(|index| entries.get(index)) else {
+        // Esc returns to the same home menu.
+        ui.show_home(home)?;
+        return run_dashboard(ui, program, home, run);
+    };
+    let arguments = palette_arguments(ui, program, entry)?;
+    if arguments.is_empty() {
+        return Ok(());
+    }
+    run(arguments)
+}
+
 fn run_dashboard<U, F>(ui: &mut U, program: &str, home: &Home, run: &mut F) -> DashboardResult<()>
 where
     U: DashboardUi,
@@ -374,6 +426,7 @@ where
         HomeAction::Database => handle_database_operations(ui, program, run),
         HomeAction::Deploy => handle_deploy(ui, program, run),
         HomeAction::ProjectOperations => handle_existing_project(ui, program, home, run),
+        HomeAction::Palette => run_palette(ui, program, home, run),
         HomeAction::NewProject => run(command("new")),
         HomeAction::Help => {
             super::help::show_help_reference();

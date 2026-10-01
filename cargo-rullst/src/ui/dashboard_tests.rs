@@ -3,14 +3,16 @@
 use std::{collections::VecDeque, io};
 
 use super::{
-    DashboardResult, DashboardUi, Home, handle_auth_billing, handle_database_operations,
-    handle_deploy, handle_existing_project, handle_scaffold_code, run_dashboard,
+    DashboardResult, DashboardUi, Home, PaletteEntry, handle_auth_billing,
+    handle_database_operations, handle_deploy, handle_existing_project, handle_scaffold_code,
+    run_dashboard,
 };
 
 #[derive(Default)]
 struct FakeUi {
     selections: VecDeque<usize>,
     inputs: VecDeque<String>,
+    palettes: VecDeque<Option<String>>,
     prompts: Vec<String>,
     brand_count: usize,
     geiger: bool,
@@ -53,10 +55,21 @@ impl DashboardUi for FakeUi {
         })
     }
 
+    fn palette(&mut self, entries: &[PaletteEntry]) -> DashboardResult<Option<usize>> {
+        self.prompts.push(format!("palette|{}", entries.len()));
+        let choice = self.palettes.pop_front().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::UnexpectedEof, "missing fake palette choice")
+        })?;
+        Ok(choice.and_then(|name| entries.iter().position(|entry| entry.name == name)))
+    }
+
     fn geiger_available(&mut self) -> bool {
         self.geiger
     }
 }
+
+#[path = "dashboard_palette_tests.rs"]
+mod palette;
 
 #[test]
 fn dashboard_never_indexes_an_empty_command() {
@@ -337,7 +350,7 @@ fn main_menu_reaches_new_existing_help_exit_and_unknown_paths() {
         vec![vec!["cargo-rullst".to_string(), "make:omni".to_string()]]
     );
 
-    for selection in [2, 3, usize::MAX] {
+    for selection in [3, 4, usize::MAX] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut run = |_| -> DashboardResult<()> { panic!("choice must not execute") };
         run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut run)
@@ -408,7 +421,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
         );
     }
 
-    for selection in [8, 9, usize::MAX] {
+    for selection in [9, 10, usize::MAX] {
         let mut ui = FakeUi::with_selections([selection]);
         let mut run = |_| -> DashboardResult<()> { panic!("choice must not execute") };
         run_dashboard(&mut ui, "cargo-rullst", &home, &mut run)
@@ -416,7 +429,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
     }
 
     // Back from all project operations returns to the same project home.
-    let mut ui = FakeUi::with_selections([6, 10, 9]);
+    let mut ui = FakeUi::with_selections([6, 10, 10]);
     let mut run = |_| -> DashboardResult<()> { panic!("back then exit must not execute") };
     run_dashboard(&mut ui, "cargo-rullst", &home, &mut run).expect("back returns home");
     assert_eq!(ui.brand_count, 1);
@@ -426,7 +439,7 @@ fn project_home_offers_quick_actions_and_every_submenu() {
 
 #[test]
 fn the_outside_home_leads_with_project_creation() {
-    let mut ui = FakeUi::with_selections([3]);
+    let mut ui = FakeUi::with_selections([4]);
     let mut run = |_| -> DashboardResult<()> { panic!("exit must not execute") };
     run_dashboard(&mut ui, "cargo-rullst", &Home::Outside, &mut run).expect("exit");
     let menu = &ui.prompts[0];

@@ -162,6 +162,42 @@ with tempfile.TemporaryDirectory(prefix="rullst-home-") as directory:
 
     case("no-color", outside, {"NO_COLOR": "1"}, exit_menu, no_color)
 
+    # The command palette: Down twice selects "Search All Commands" outside a
+    # project; typing filters, Esc redraws the same home, Enter runs a command.
+    down = b"\x1b[B"
+
+    def in_palette(output, _first_frame):
+        return b"Search commands" in output
+
+    def filtered(output, _first_frame):
+        return b"db:migrate" in ansi.sub(b"", output).split(b"Search commands")[-1]
+
+    def home_again(output, _first_frame):
+        parts = output.split(b"Start here")
+        return len(parts) >= 3 and menu in parts[-1]
+
+    def palette_escape(status, output, frames, restored):
+        assert status == 0 and restored, (status, restored)
+        text = ansi.sub(b"", output).decode()
+        assert "Search commands › migr" in text, text[-800:]
+        assert output.count(b"Start here") >= 2, "Esc returns to the home"
+
+    case("palette-filter-and-escape", outside, {"COLORTERM": "truecolor"},
+         [(at_menu, down + down + b"\r"), (in_palette, b"migr"), (filtered, b"\x1b"),
+          (home_again, b"\x1b[A"), (home_again, b"\r")], palette_escape)
+
+    def info_listed(output, _first_frame):
+        return b"info " in output.split(b"Search commands")[-1]
+
+    def palette_run(status, output, frames, restored):
+        assert status == 0 and restored, (status, restored)
+        text = ansi.sub(b"", output).decode()
+        assert f"cargo-rullst {version}" in text and "Platform" in text, text[-800:]
+
+    case("palette-runs-a-command", outside, {"NO_COLOR": "1"},
+         [(at_menu, down + down + b"\r"), (in_palette, b"info"), (info_listed, b"\r")],
+         palette_run)
+
     for name, extra in [("term-dumb", {"TERM": "dumb"}), ("ci", {"CI": "true"})]:
         def automation(status, output, frames, restored):
             assert status == 0 and output.startswith(plain) and menu not in output
