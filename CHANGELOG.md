@@ -249,6 +249,24 @@ A prepared version section does not establish that its tag or crates exist.
 - Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
   `deploy:doctor` reviews configured networks (threat case `CORE-03`).
 
+### Capital and Messaging final-review fixes
+
+- MySQL/MariaDB quota tables compare tenant IDs, features and event keys
+  case-sensitively (`ascii_bin`); legacy tables fail closed until the
+  documented `ALTER TABLE` migration runs.
+- Live Razorpay pause sends `pause_at: "now"` and checks that the response is
+  the paused subscription; subscription IDs made only of dots are rejected; a
+  zero tier allowance returns `LimitExceeded`; Wise's
+  `waiting_recipient_input_to_proceed` state is accepted as in-flight
+  (`WaitingRecipientInput`). The default webhook replay store's 10,000-proof,
+  24-hour bound is documented.
+- The ORM outbox relay scopes broker idempotency keys by stream, so streams
+  sharing a topic no longer collide.
+- Encrypted SQLite messaging startup verifies prior storage key bytes, not
+  just IDs.
+- Redis Streams delivers messages available at the same time in publication
+  order (namespace format v2).
+
 ### Connect and messaging low-severity review fixes
 
 - Connect: with `retry`, single-use token, device-poll and revocation POSTs are
