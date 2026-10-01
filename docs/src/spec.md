@@ -2334,7 +2334,8 @@ while portability and semantic review remain the model author's responsibility.
   never closes it for idleness or age (the Turso offline in-memory fallback
   does the same).
 * A SQLite file DSN without a `mode` parameter, or with `mode=rwc`, has its
-  missing database file (and directory) created before connecting. An explicit
+  missing database file (and directory) created before connecting, at the
+  percent-decoded path SQLx opens (`John%20Doe` is `John Doe`). An explicit
   `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails
   to open instead of becoming a new empty database.
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
