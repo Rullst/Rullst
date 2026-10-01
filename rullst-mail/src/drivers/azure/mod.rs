@@ -146,10 +146,10 @@ fn send_url(endpoint: &reqwest::Url) -> reqwest::Url {
 const API_VERSION_QUERY: &str = "api-version=2023-03-31";
 
 fn payload(message: &Message) -> Result<Vec<u8>, MailError> {
-    let from = message
-        .from
-        .as_deref()
-        .ok_or_else(|| MailError::ConfigError("Azure email requires a verified sender".into()))?;
+    let from = super::rest::required_sender(message)?;
+    // ACS takes a bare sender address; its display name belongs to the
+    // verified sender configured on the domain.
+    let (from, _) = super::rest::mailbox(from)?;
     if message
         .attachments
         .iter()
@@ -172,7 +172,7 @@ fn payload(message: &Message) -> Result<Vec<u8>, MailError> {
     }
     if let Some(header) = message.list_unsubscribe_header() {
         value["headers"] = json!({"List-Unsubscribe":header});
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             value["headers"]["List-Unsubscribe-Post"] = json!("List-Unsubscribe=One-Click");
         }
     }

@@ -99,7 +99,10 @@ let current = Event::find(event.id).await?;
 
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
-migrations, status, and rollback. Generated `make:model` and `make:migration`
+migrations, status, and rollback. An equality filter whose value encodes as
+`NULL` (such as `Option::None`) matches with `IS NULL`. `#[orm(encrypted)]`
+columns store randomized ciphertext, so filtering or ordering on them returns
+an error instead of silently matching nothing. Generated `make:model` and `make:migration`
 commands retain the Turso backend. It does not yet provide SQLx ORM relations,
 hooks, automatic timestamps, seed generation, schema auto-diff, or transparent
 embedded-replica synchronization. Those limits are why only the blank/API
@@ -315,11 +318,23 @@ Ok(())
 }
 ```
 
-The adapter uses SurrealDB's documented HTTP `/key`, `/sql`, and `/gql`
-protocol instead of embedding its BSL-licensed SDK. It disables redirects,
+The adapter uses SurrealDB's documented HTTP `/key`, `/sql`, `/rpc` and `/gql`
+protocol instead of embedding its BSL-licensed SDK. `replace` runs a typed
+`UPDATE type::record($table, $id)` through `/rpc` rather than `PUT /key`,
+which upserts: replacing a missing (for example concurrently deleted) document
+returns `PolyglotError::NotFound` instead of recreating it, as on MongoDB. This
+statement uses SurrealDB 3 function naming. It disables redirects,
 requires HTTPS outside loopback unless cleartext is explicitly enabled, redacts
 authentication in `Debug`, streams through a configurable 1 KiB–8 MiB memory
 ceiling, and sends namespace/database headers on every scoped request.
+
+Every `DocumentId` is stored as a string record key, including all-digit IDs
+such as `9` (sent as a quoted key; SurrealDB would otherwise parse them as
+numbers). Inventory pages therefore follow the portable string order, `10`
+before `9`, on SurrealDB as on MongoDB. Records written by earlier versions
+under an ID that SurrealDB parsed as a number, `NULL` or an exponent (for
+example `9`, `null` or `1e5`) keep that non-string key and are not found by
+these string IDs; rewrite them under their string key when upgrading.
 
 Graph queries must start with `MATCH`; semicolons, caller-provided `LIMIT`, and
 the `INSERT`, `SET`, `REMOVE`, and `DELETE` tokens are rejected. The adapter

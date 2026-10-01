@@ -155,7 +155,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
   Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  active tenant and table only after commit through a per-table key index,
+  tenant active at the write and its table only after commit (even when that
+  `with_tenant` scope ended before the commit) through a per-table key index,
   never a keyspace `SCAN`, so write latency does not grow with unrelated keys
   in a shared Redis database; cluster/failover evidence remains outside the
   current contract.
@@ -400,8 +401,9 @@ rullst-orm = { version = "12.1.0", default-features = false, features = ["strict
 `Orm::driver()` reads the SQL dialect from the DSN scheme, ignoring case:
 `postgres://` and `postgresql://` are PostgreSQL, and `mysql://` and
 `mariadb://` are MySQL/MariaDB. IPv6 literal hosts use brackets
-(`postgres://app@[2001:db8::10]:5432/app`); `Orm::init` rejects any other
-bracketed text, such as an unedited `[your-database-id]` template placeholder.
+(`postgres://app@[2001:db8::10]:5432/app`); every `Orm::init*` entrypoint
+rejects any other bracketed text, such as an unedited `[your-database-id]`
+template placeholder, before connecting.
 If an application previously disabled defaults without choosing a backend,
 enable `drivers-all` explicitly or select a strict backend when upgrading.
 

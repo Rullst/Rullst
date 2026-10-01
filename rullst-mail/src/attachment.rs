@@ -77,7 +77,14 @@ impl Attachment {
     }
 
     /// Reads an attachment directly from a file path on disk.
+    ///
+    /// At most [`MAX_ATTACHMENT_BYTES`] are read: a larger file, or an endless
+    /// one such as a device, fails with [`std::io::ErrorKind::FileTooLarge`]
+    /// before more is buffered. The read blocks the calling thread; call it
+    /// from a blocking task in async code.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, std::io::Error> {
+        use std::io::Read;
+
         let path = path.as_ref();
         let filename = path
             .file_name()
@@ -85,7 +92,22 @@ impl Attachment {
             .unwrap_or("attachment.bin")
             .to_string();
 
-        let content = std::fs::read(path)?;
+        let file = std::fs::File::open(path)?;
+        let too_large = || {
+            std::io::Error::new(
+                std::io::ErrorKind::FileTooLarge,
+                format!("attachment exceeds {MAX_ATTACHMENT_BYTES} bytes"),
+            )
+        };
+        if file.metadata()?.len() > MAX_ATTACHMENT_BYTES as u64 {
+            return Err(too_large());
+        }
+        let mut content = Vec::new();
+        file.take(MAX_ATTACHMENT_BYTES as u64 + 1)
+            .read_to_end(&mut content)?;
+        if content.len() > MAX_ATTACHMENT_BYTES {
+            return Err(too_large());
+        }
         let mime_type = match path.extension().and_then(|e| e.to_str()) {
             Some("pdf") => "application/pdf",
             Some("png") => "image/png",

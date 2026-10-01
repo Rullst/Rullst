@@ -32,6 +32,9 @@ fn live_provider_configuration_fails_closed() {
     assert!(MeilisearchEngine::new("http://search.example.test", "live-key").is_err());
     assert!(MeilisearchEngine::new("https://user@search.example.test", "live-key").is_err());
     assert!(MeilisearchEngine::local("https://search.example.test").is_err());
+    assert!(MeilisearchEngine::local("http://[::1]:7700").is_ok());
+    assert!(ElasticsearchEngine::local("http://[::1]:9200").is_ok());
+    assert!(MeilisearchEngine::local("http://[2001:db8::1]:7700").is_err());
     assert!(ElasticsearchEngine::new("https://search.example.test/path", "live-key").is_err());
     assert!(ElasticsearchEngine::new("https://search.example.test", "bad\nkey").is_err());
     assert!(AlgoliaEngine::new("bad_application!", "live-key").is_err());

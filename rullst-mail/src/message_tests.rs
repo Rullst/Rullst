@@ -180,3 +180,29 @@ fn plain_text_conversion_handles_structural_tags_entities_and_hidden_content() {
     assert!(plain.contains("two items"));
     assert!(plain.contains("\"quoted\" 'apostrophe' 'numeric'"));
 }
+
+#[test]
+fn plain_text_fallback_decodes_each_reference_once() {
+    let plain = strip_html_to_plain_text(
+        "<p>Welcome aboard, O&#x27;Brien!</p><p>Paid &bull; Billing &#8212; &euro;5</p><p>&amp;lt;b&amp;gt;</p>",
+    );
+    assert!(plain.contains("Welcome aboard, O'Brien!"));
+    assert!(plain.contains("Paid \u{2022} Billing \u{2014} \u{20ac}5"));
+    assert!(plain.contains("&lt;b&gt;"));
+    let message = Message::new().html(format!("<p>{}</p>", escape_html("Men's shirt & tie")));
+    assert_eq!(message.body_text.as_deref(), Some("Men's shirt & tie"));
+}
+
+#[test]
+fn one_click_unsubscribe_requires_https() {
+    let message = |url: &str| Message::new().unsubscribe_url(url);
+    assert!(message("https://example.com/unsub").has_one_click_unsubscribe());
+    assert!(message("HTTPS://example.com/unsub").has_one_click_unsubscribe());
+    assert!(!message("http://example.com/unsub").has_one_click_unsubscribe());
+    assert!(
+        !Message::new()
+            .unsubscribe_email("u@example.com")
+            .has_one_click_unsubscribe()
+    );
+    assert!(!Message::new().has_one_click_unsubscribe());
+}

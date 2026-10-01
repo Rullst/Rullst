@@ -5,10 +5,11 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
+use super::dialect::{RecordKey, ValueSql, placeholder, tenant_predicate, write_value_sql};
 use super::handlers::tenant_for_entry;
 use super::input::{FormInputError, FormMode, validate_form_values};
 use super::query::sanitize_identifier;
-use crate::nexus::audit::{MutationAudit, append_mutation, correlation_id};
+use crate::nexus::audit::{MutationAudit, append_mutation, auditable_record_key, correlation_id};
 use crate::nexus::{NexusAuditPolicy, NexusPrincipal, NexusState, RegistryEntry};
 use rullst_core::security::TenantContext;
 
@@ -29,7 +30,9 @@ pub(super) async fn create_record(
         Err(error) => return invalid_form_response(entry, error),
     };
 
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let mut keys = Vec::new();
+    let mut expressions = Vec::new();
     let mut values: Vec<Option<String>> = Vec::new();
     for value in data {
         if value.field.name == entry.pk
@@ -41,10 +44,22 @@ pub(super) async fn create_record(
             continue;
         }
         keys.push(value.field.name);
-        values.push(value.value);
+        match write_value_sql(
+            &value.field.kind,
+            value.value.as_deref(),
+            values.len() + 1,
+            driver,
+        ) {
+            ValueSql::Bind(expression) => {
+                expressions.push(expression);
+                values.push(value.value);
+            }
+            ValueSql::Literal(literal) => expressions.push(literal.to_string()),
+        }
     }
     if let (Some(tenant_column), Some(tenant_id)) = (entry.tenant_column, tenant_id) {
         keys.push(tenant_column);
+        expressions.push(placeholder(values.len() + 1, driver));
         values.push(Some(tenant_id.to_string()));
     }
     if keys.is_empty() {
@@ -55,8 +70,6 @@ pub(super) async fn create_record(
             .into_response();
     }
 
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let placeholders = placeholders(1, keys.len(), driver);
     let sql = format!(
         "INSERT INTO {} ({}) VALUES ({})",
         sanitize_identifier(entry.table),
@@ -64,7 +77,7 @@ pub(super) async fn create_record(
             .map(|key| sanitize_identifier(key))
             .collect::<Vec<_>>()
             .join(", "),
-        placeholders.join(", ")
+        expressions.join(", ")
     );
     let Some(pool) = rullst_core::db::safe_pool() else {
         return database_failure("create", entry.table);
@@ -128,6 +141,9 @@ pub(super) async fn update_record(
         Ok(value) => value,
         Err(error) => return error.into_response(),
     };
+    let Some(key) = RecordKey::parse(entry, id) else {
+        return record_not_found();
+    };
     let data = match validate_form_values(entry, data_vec, FormMode::Update) {
         Ok(data) => data,
         Err(error) => return invalid_form_response(entry, error),
@@ -137,23 +153,32 @@ pub(super) async fn update_record(
     }
 
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let updates = data
-        .iter()
-        .enumerate()
-        .map(|(index, value)| {
-            format!(
-                "{} = {}",
-                sanitize_identifier(value.field.name),
-                placeholder(index + 1, driver)
-            )
-        })
-        .collect::<Vec<_>>();
-    let pk_position = data.len() + 1;
+    let mut updates = Vec::with_capacity(data.len());
+    let mut bound_values = Vec::with_capacity(data.len());
+    for value in &data {
+        let column = sanitize_identifier(value.field.name);
+        match write_value_sql(
+            &value.field.kind,
+            value.value.as_deref(),
+            bound_values.len() + 1,
+            driver,
+        ) {
+            ValueSql::Bind(expression) => {
+                updates.push(format!("{column} = {expression}"));
+                bound_values.push(value.value.as_deref());
+            }
+            ValueSql::Literal(literal) => updates.push(format!("{column} = {literal}")),
+        }
+    }
+    let pk_position = bound_values.len() + 1;
     let tenant_predicate = tenant_id.map(|_| {
         format!(
-            " AND {} = {}",
-            sanitize_identifier(entry.tenant_column.unwrap_or_default()),
-            placeholder(pk_position + 1, driver)
+            " AND {}",
+            tenant_predicate(
+                entry.tenant_column.unwrap_or_default(),
+                &placeholder(pk_position + 1, driver),
+                driver
+            )
         )
     });
     let sql = format!(
@@ -173,14 +198,10 @@ pub(super) async fn update_record(
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
     // Only submitted fields are written; `None` stores SQL NULL.
-    for value in &data {
-        query = query.bind(value.value.as_deref());
+    for value in bound_values {
+        query = query.bind(value);
     }
-    if let Ok(numeric_id) = id.parse::<i64>() {
-        query = query.bind(numeric_id);
-    } else {
-        query = query.bind(id);
-    }
+    query = key.bind(query);
     if let Some(tenant_id) = tenant_id {
         query = query.bind(tenant_id);
     }
@@ -188,13 +209,14 @@ pub(super) async fn update_record(
         Ok(result) if result.rows_affected() > 0 => result,
         Ok(_) => {
             let _ = transaction.rollback().await;
-            return (StatusCode::NOT_FOUND, "Record not found.").into_response();
+            return record_not_found();
         }
         Err(_) => {
             let _ = transaction.rollback().await;
             return database_failure("update", entry.table);
         }
     };
+    let record_key = key.text();
     if state.audit_policy == NexusAuditPolicy::Required
         && append_mutation(
             &mut transaction,
@@ -203,7 +225,7 @@ pub(super) async fn update_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "update",
-                record_key: Some(id),
+                record_key: auditable_record_key(&record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -222,7 +244,7 @@ pub(super) async fn update_record(
         "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
          &#9989; {} #{} updated successfully!</div>",
         rullst_core::html::escape_str(entry.label),
-        rullst_core::html::escape_str(id)
+        rullst_core::html::escape_str(&record_key)
     ))
     .into_response()
 }
@@ -239,12 +261,18 @@ pub(super) async fn delete_record(
         Ok(value) => value,
         Err(error) => return error.into_response(),
     };
+    let Some(key) = RecordKey::parse(entry, id) else {
+        return record_not_found();
+    };
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let tenant_predicate = tenant_id.map(|_| {
         format!(
-            " AND {} = {}",
-            sanitize_identifier(entry.tenant_column.unwrap_or_default()),
-            placeholder(2, driver)
+            " AND {}",
+            tenant_predicate(
+                entry.tenant_column.unwrap_or_default(),
+                &placeholder(2, driver),
+                driver
+            )
         )
     });
     let sql = format!(
@@ -262,11 +290,7 @@ pub(super) async fn delete_record(
         Err(_) => return database_failure("delete", entry.table),
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    if let Ok(numeric_id) = id.parse::<i64>() {
-        query = query.bind(numeric_id);
-    } else {
-        query = query.bind(id);
-    }
+    query = key.bind(query);
     if let Some(tenant_id) = tenant_id {
         query = query.bind(tenant_id);
     }
@@ -274,13 +298,14 @@ pub(super) async fn delete_record(
         Ok(result) if result.rows_affected() > 0 => result,
         Ok(_) => {
             let _ = transaction.rollback().await;
-            return (StatusCode::NOT_FOUND, "Record not found.").into_response();
+            return record_not_found();
         }
         Err(_) => {
             let _ = transaction.rollback().await;
             return database_failure("delete", entry.table);
         }
     };
+    let record_key = key.text();
     if state.audit_policy == NexusAuditPolicy::Required
         && append_mutation(
             &mut transaction,
@@ -289,7 +314,7 @@ pub(super) async fn delete_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "delete",
-                record_key: Some(id),
+                record_key: auditable_record_key(&record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -306,18 +331,8 @@ pub(super) async fn delete_record(
     (StatusCode::OK, "Record deleted successfully.").into_response()
 }
 
-fn placeholders(start: usize, count: usize, driver: &str) -> Vec<String> {
-    (start..start.saturating_add(count))
-        .map(|position| placeholder(position, driver))
-        .collect()
-}
-
-fn placeholder(position: usize, driver: &str) -> String {
-    if driver == "postgres" {
-        format!("${position}")
-    } else {
-        "?".to_string()
-    }
+fn record_not_found() -> Response {
+    (StatusCode::NOT_FOUND, "Record not found.").into_response()
 }
 
 fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {
@@ -361,7 +376,7 @@ mod tests {
 
     #[test]
     fn placeholders_are_dialect_correct() {
-        assert_eq!(placeholders(1, 3, "postgres"), ["$1", "$2", "$3"]);
-        assert_eq!(placeholders(2, 2, "sqlite"), ["?", "?"]);
+        assert_eq!(placeholder(3, "postgres"), "$3");
+        assert_eq!(placeholder(2, "sqlite"), "?");
     }
 }

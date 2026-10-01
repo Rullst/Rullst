@@ -61,7 +61,11 @@ let broker = SqliteBroker::connect("sqlite://storage/messages.sqlite", config).a
 ```
 
 The adapter uses a fixed schema and `BEGIN IMMEDIATE` for mutations, so separate
-instances sharing a file serialize publication and claims. Cancellation-safe
+instances sharing a file serialize publication and claims. The URL must name a
+file: in-memory databases in any spelling (`:memory:` with or without a query
+string, `mode=memory`, SQLite `file:` URIs carrying parameters) and `vfs` or
+`immutable` overrides, which can keep data in RAM or disable locking, are
+rejected. Cancellation-safe
 SQLx transaction ownership rolls back unfinished writes before a pool
 connection is reused. Reopening the same namespace requires the exact
 persisted limits. SQLite commits survive process

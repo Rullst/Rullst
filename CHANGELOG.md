@@ -215,6 +215,30 @@ A prepared version section does not establish that its tag or crates exist.
 - Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
   `deploy:doctor` reviews configured networks (threat case `CORE-03`).
 
+### Connect and messaging low-severity review fixes
+
+- Connect: with `retry`, single-use token, device-poll and revocation POSTs are
+  retried only on HTTP 429, never after timeouts, resets or 5xx.
+- Connect: OAuth errors returned with HTTP 200 (GitHub token and device poll)
+  are `ConnectError::ProviderApiError { code, message }`, so pollers can match
+  `authorization_pending` and `slow_down`; code that matched the old `Token`
+  text must switch variants.
+- Connect: OIDC discovery accepts IdPs without `userinfo_endpoint`, and
+  `OidcProvider::discover_with_client` routes discovery through an explicit
+  proxy client.
+- Connect: Discord profiles without an id are rejected, `ConnectUser`
+  round-trips through serde, provider `email_verified` claims are parsed, OIDC
+  spans no longer record the nonce and the SQLite token store rejects
+  in-memory, `vfs` and `immutable` URLs.
+- Messaging: durable SQLite rejects every in-memory spelling plus
+  `vfs`/`immutable`, a plaintext reopen no longer loads all headers and
+  `InMemoryBroker` samples time after taking its lock.
+- Messaging webhooks and recurring publications: control records and bindings
+  follow the primary storage key, the webhook binding layout no longer depends
+  on serde_json features, configuration or keyring drift returns
+  `Configuration`, one short lease no longer fails a claim batch and
+  `retry_failed` reports a committed reset as success.
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or
@@ -389,6 +413,39 @@ A prepared version section does not establish that its tag or crates exist.
   the same stored challenge from a bounded form POST, and tutorial 42 explains
   the `SameSite=None; Secure` challenge cookie it needs.
 
+### Mail low-severity review fixes and configured sender
+
+- The Mail facade reads a default sender from `MAIL_FROM` or `[mail] from`
+  (`Mail::default_sender()` validates it). Real transports require an explicit
+  or configured sender instead of sending as `noreply@rullst.dev`, and new
+  projects list `MAIL_FROM` and `MAIL_DRIVER` in `.env`.
+- Mail settings and provider credentials resolve from the process environment,
+  then `./.env`, then `Rullst.toml`, like `DATABASE_URL`, through a hidden Core
+  `ProjectSettings` helper. `Mail` no longer silently logs mail in staging or
+  production when no driver is set.
+- Link checks read `href` values the way browsers do (any case, spacing or
+  quoting, entities decoded), security errors no longer echo the link, and the
+  secret filter covers every PEM private-key type and `ASIA` keys without
+  corrupting base64 content.
+- Click tracking rewrites only `<a>` links, signs the decoded destination,
+  escapes the tracker URL and leaves links that pre-flight would reject visible
+  to it; the plain-text fallback decodes entities exactly once.
+- Display-name senders are split for providers that need a bare address,
+  List-Unsubscribe values cannot inject extra entries and one-click unsubscribe
+  is declared only for HTTPS URLs.
+- Suppression, inspection and queue outages are retryable (`Transient`),
+  `FailoverDriver` stops at a permanent fallback error and keeps rate-limit
+  delays, Azure identity tokens are reused and throttling is retryable, and
+  native SES errors keep only the error code.
+- The worker tolerates 300 s of clock lag, SendGrid schedules beyond 72 h are
+  rejected up front, `TenantMailResolver` forwards the tenant and `.`/`..`
+  tenant IDs are rejected.
+- The attachment inspector rejects Outlook Level-1 extensions, active PDF forms
+  and actions and universal Mach-O binaries; suppression keys IDN domains by
+  A-label; the offline mock and `Attachment::from_file` are bounded; and
+  `MailFeedbackError::UnsupportedEvent` reports authentic but unhandled Resend
+  events.
+
 ### Mail, capital and messaging second-pass review fixes
 
 - Azure Communication Services sends work again: the driver no longer builds
@@ -466,6 +523,28 @@ A prepared version section does not establish that its tag or crates exist.
 - Add macro/facade regressions and an archive-only consumer compile probe.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
+
+### ORM low-severity review fixes
+
+- An update whose audit restore patch would exceed its bounds is saved and
+  audited as a non-restorable revision instead of being rolled back.
+- Generated writes clear the Redis query cache of the tenant active at the
+  write, even when that `with_tenant` scope ended before the commit.
+- Generated migrations compile; `status` and `rollback` ignore `migrations`
+  tables in other schemas; concurrent migrators are serialized on PostgreSQL
+  and MySQL/MariaDB; `sail:install` needs `--force` to replace a compose file
+  and binds ports to loopback.
+- Every `Orm::init*` rejects placeholder DSNs, out-of-range pool options return
+  an error instead of panicking, SQLite `mode=ro`/`mode=rw` never creates a
+  file and in-memory SQLite databases survive idle periods.
+- Outbox replays with reordered JSON keys count as the same event, conflict
+  errors no longer echo the stream or key, and claim/ack/fail are refused
+  inside `Orm::transaction`.
+- PostgreSQL enums with mixed-case type names bind and decode correctly.
+- Turso `None` filters match `IS NULL` and filtering or ordering on encrypted
+  columns is an error (`TursoModel::opaque_columns`); SurrealDB stores
+  all-digit document IDs as strings and `replace` no longer recreates a deleted
+  document; `[::1]` works in every loopback-only mode.
 
 ### ORM second-pass review fixes
 
@@ -594,6 +673,28 @@ A prepared version section does not establish that its tag or crates exist.
   credentials are rejected, and the offline mock is used only for empty or
   `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
   587 and 25 configurations deliver.
+
+### Nexus low-severity review fixes
+
+- Nexus create, update and batch work on PostgreSQL integer, numeric and
+  Boolean columns, including Rullst's INTEGER Booleans, and text primary keys
+  that look numeric are no longer bound as BIGINT.
+- Record keys follow the registered key kind: non-canonical numeric spellings
+  (`+1`, `01`, `1e3`) return 404, and the audit records the canonical key or,
+  for a key it cannot store, no key.
+- Tenant scope is byte-exact on MySQL/MariaDB; search treats `%` and `_`
+  literally and is case-insensitive on PostgreSQL; pagination is stable.
+- Bulk Delete and Deactivate work from the browser (CSRF `_token`), the
+  `_token` body field is accepted on create and update, and a hidden
+  `is_active` column is never batch-deactivated.
+- The edit form returns 404 or 500 instead of an empty editable form, the list
+  no longer shows NULL as `0`/`No`, readonly checkboxes and selects are
+  disabled, and multi-line text is no longer silently collapsed.
+- htmx no longer caches admin pages in `localStorage`, and Back or a cache miss
+  reloads the full page.
+- Live search keeps sort and pagination, records keyed `new`, `search` or
+  `batch` are editable through `/table/{t}/record/{id}`, and telemetry shows
+  the newest spans first with accurate wording.
 
 ### Nexus review fixes
 

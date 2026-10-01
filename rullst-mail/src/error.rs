@@ -8,7 +8,10 @@ use std::time::Duration;
 pub enum MailFailureClass {
     /// The same message/configuration must not be retried against another provider.
     Permanent,
-    /// A transport or provider availability failure may be retried or failed over.
+    /// An availability failure: the same message may be retried later.
+    ///
+    /// [`MailError::is_failover_eligible`] decides separately whether another
+    /// provider may receive it; fail-closed guard outcomes never fail over.
     Transient,
     /// The provider explicitly asked the sender to slow down.
     RateLimited,
@@ -68,6 +71,9 @@ pub enum MailError {
         reason: &'static str,
     },
     /// Suppression state could not be checked, so delivery failed closed.
+    ///
+    /// Classified as transient so a caller retries later, but never failover
+    /// eligible: another provider must not receive an unchecked recipient.
     SuppressionUnavailable,
     /// An attachment was rejected before any transport received it.
     AttachmentRejected {
@@ -75,6 +81,9 @@ pub enum MailError {
         reason: &'static str,
     },
     /// Attachment inspection could not complete, so delivery failed closed.
+    ///
+    /// Classified as transient so a caller retries later, but never failover
+    /// eligible: another provider must not receive uninspected attachments.
     AttachmentInspectionUnavailable,
 }
 
@@ -82,23 +91,30 @@ impl MailError {
     /// Classifies the error for deterministic failover and retry decisions.
     pub const fn failure_class(&self) -> MailFailureClass {
         match self {
-            Self::TransportError { .. } | Self::DriverError(_) => MailFailureClass::Transient,
+            Self::TransportError { .. }
+            | Self::DriverError(_)
+            | Self::SuppressionUnavailable
+            | Self::AttachmentInspectionUnavailable => MailFailureClass::Transient,
             Self::RateLimited { .. } => MailFailureClass::RateLimited,
             Self::ProviderResponse { status, .. } if *status >= 500 => MailFailureClass::Transient,
             Self::ConfigError(_)
             | Self::SendError(_)
             | Self::ValidationError(_)
             | Self::SuppressedRecipient { .. }
-            | Self::SuppressionUnavailable
             | Self::AttachmentRejected { .. }
-            | Self::AttachmentInspectionUnavailable
             | Self::ProviderResponse { .. } => MailFailureClass::Permanent,
         }
     }
 
     /// Returns whether another provider may safely receive this already validated message.
+    ///
+    /// Suppression and attachment-inspection outages are retryable but not
+    /// eligible: the guard that failed closed may not wrap the next provider.
     pub const fn is_failover_eligible(&self) -> bool {
-        matches!(
+        !matches!(
+            self,
+            Self::SuppressionUnavailable | Self::AttachmentInspectionUnavailable
+        ) && matches!(
             self.failure_class(),
             MailFailureClass::Transient | MailFailureClass::RateLimited
         )
@@ -238,6 +254,26 @@ mod tests {
     use super::*;
     use std::io::{Read, Write};
     use std::net::TcpListener;
+
+    #[test]
+    fn fail_closed_guard_outages_are_retryable_but_never_fail_over() {
+        for error in [
+            MailError::SuppressionUnavailable,
+            MailError::AttachmentInspectionUnavailable,
+        ] {
+            assert_eq!(error.failure_class(), MailFailureClass::Transient);
+            assert!(!error.is_failover_eligible());
+        }
+        assert!(MailError::transport("fixture", "down").is_failover_eligible());
+        for permanent in [
+            MailError::SuppressedRecipient { reason: "manual" },
+            MailError::AttachmentRejected {
+                reason: "type_mismatch",
+            },
+        ] {
+            assert_eq!(permanent.failure_class(), MailFailureClass::Permanent);
+        }
+    }
 
     #[tokio::test]
     async fn http_rate_limit_is_bounded_redacted_and_typed() {

@@ -239,8 +239,9 @@ impl AwsSesDriver {
 
         // The proxy receives the same SES v2 shape, so it gets the same bounds.
         limits::validate_message_limits(message)?;
+        let from = super::rest::required_sender(message)?;
         let client = super::http::client()?;
-        let payload = proxy_payload(message);
+        let payload = proxy_payload(message, from);
         let response = client
             .post(endpoint)
             .header("Content-Type", "application/json")
@@ -258,11 +259,11 @@ impl AwsSesDriver {
     }
 }
 
-fn proxy_payload(message: &Message) -> serde_json::Value {
+fn proxy_payload(message: &Message, from: &str) -> serde_json::Value {
     let mut headers = Vec::new();
     if let Some(unsubscribe) = message.list_unsubscribe_header() {
         headers.push(serde_json::json!({"Name": "List-Unsubscribe", "Value": unsubscribe}));
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             headers.push(serde_json::json!({
                 "Name": "List-Unsubscribe-Post",
                 "Value": "List-Unsubscribe=One-Click"
@@ -316,7 +317,7 @@ fn proxy_payload(message: &Message) -> serde_json::Value {
         simple["Attachments"] = serde_json::Value::Array(attachments);
     }
     serde_json::json!({
-        "FromEmailAddress": message.from.as_deref().unwrap_or("noreply@rullst.dev"),
+        "FromEmailAddress": from,
         "Destination": {"ToAddresses": [message.to]},
         "Content": {"Simple": simple}
     })

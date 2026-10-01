@@ -211,6 +211,13 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
   so concurrent evaluations never see a flag as unset mid-reload, and a
   `[features] # comment` header is recognized.
+- **Shared project settings (internal, v13):** `server::ProjectSettings` and
+  `server::read_project_setting` resolve a setting from the process
+  environment first and then the project's `.env`, which never overrides the
+  environment, and `ProjectSettings::environment` applies the `Server`
+  precedence for `RULLST_ENV`/`APP_ENV`/`[app].env`. Errors never contain
+  `.env` content. They are `#[doc(hidden)]` support for first-party crates such
+  as `rullst-mail`, not a stable extension point.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

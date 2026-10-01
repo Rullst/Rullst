@@ -4,7 +4,7 @@ use std::sync::atomic::Ordering;
 
 use crate::nexus::ai_chat::detect_ai_provider;
 use crate::nexus::types::NexusState;
-use crate::nexus::ui::{render_shell, render_sidebar};
+use crate::nexus::ui::{render_shell, render_sidebar, wants_fragment};
 
 const AUDIT_CHAIN_UNAVAILABLE: &str = "Unavailable";
 
@@ -328,7 +328,7 @@ pub async fn nexus_security_page(
 "#
     );
 
-    if headers.contains_key("hx-request") {
+    if wants_fragment(&headers) {
         Html(content)
     } else {
         Html(render_shell(

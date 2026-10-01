@@ -6,7 +6,9 @@ use std::fmt;
 use crate::{Error, FromRow, Orm};
 
 mod sql;
+mod transition;
 use sql::*;
+use transition::{Transition, transition};
 
 const MAX_KEY_LEN: usize = 128;
 const MAX_PAYLOAD_BYTES: usize = 1_048_576;
@@ -220,16 +222,22 @@ impl Outbox {
                             .to_string(),
                     )
                 })?;
-        if stored_kind != event_kind || stored_payload != payload_json {
-            return Err(Error::Validation(format!(
-                "outbox idempotency key '{event_key}' already exists in stream '{stream}' with different content"
-            )));
+        if stored_kind != event_kind || !same_payload(&stored_payload, &payload_json) {
+            // The stream and key stay out of the message, as in the redacted
+            // `ClaimedOutboxEvent` debug output.
+            return Err(Error::Validation(
+                "outbox idempotency key already exists in this stream with different content"
+                    .to_string(),
+            ));
         }
         let inserted = stored_insert_token == insert_token;
         Ok(EnqueuedOutboxEvent { id, inserted })
     }
 
     /// Claims one pending or lease-expired event for a stream.
+    ///
+    /// The claim commits independently, so it is refused (`Validation`)
+    /// inside an active [`Orm::transaction`].
     pub async fn claim_next(
         stream: impl Into<String>,
         worker_id: impl Into<String>,
@@ -275,6 +283,7 @@ impl Outbox {
         lease_seconds: i64,
         max_attempts: i32,
     ) -> Result<Option<ClaimedOutboxEvent>, Error> {
+        ensure_outside_managed_transaction()?;
         validate_key("stream", stream)?;
         validate_key("worker_id", worker_id)?;
         if now_epoch_seconds <= 0
@@ -373,12 +382,19 @@ impl Outbox {
     }
 
     /// Marks an event delivered only when the exact claim token still owns it.
+    ///
+    /// Acknowledge after the handler's own work has committed: the update
+    /// commits independently and is refused inside an active
+    /// [`Orm::transaction`].
     pub async fn acknowledge(id: i64, claim_key: impl Into<String>) -> Result<bool, Error> {
         let claim_key = claim_key.into();
         transition(id, &claim_key, Transition::Delivered).await
     }
 
     /// Releases an event for retry or dead-letters it at the attempt limit.
+    ///
+    /// Like [`Self::acknowledge`], it is refused inside an active
+    /// [`Orm::transaction`].
     pub async fn fail(
         id: i64,
         claim_key: impl Into<String>,
@@ -405,82 +421,19 @@ impl Outbox {
     }
 }
 
-enum Transition<'a> {
-    Delivered,
-    Failed {
-        error: &'a str,
-        max_attempts: i32,
-        retry_at_epoch: i64,
-        retry_delay_seconds: i64,
-    },
-}
-
-async fn transition(id: i64, claim_key: &str, transition: Transition<'_>) -> Result<bool, Error> {
-    if id <= 0 {
-        return Err(Error::Validation("outbox id must be positive".to_string()));
-    }
-    validate_key("claim_key", claim_key)?;
-    let driver = Orm::driver()?;
-    let now_epoch_seconds = unix_now()?;
-    let result = match transition {
-        Transition::Delivered => {
-            let sql = if driver == "postgres" {
-                POSTGRES_ACK
-            } else {
-                PORTABLE_ACK
-            };
-            sqlx::query(sql)
-                .bind("delivered")
-                .bind("")
-                .bind("")
-                .bind(0_i64)
-                .bind(now_epoch_seconds)
-                .bind(id)
-                .bind("processing")
-                .bind(claim_key)
-                .bind(now_epoch_seconds)
-                .execute(Orm::pool()?)
-                .await?
-        }
-        Transition::Failed {
-            error,
-            max_attempts,
-            retry_at_epoch,
-            retry_delay_seconds,
-        } => {
-            if !(1..=100).contains(&max_attempts)
-                || !(0..=86_400).contains(&retry_delay_seconds)
-                || error.is_empty()
-                || error.len() > MAX_ERROR_LEN
-                || error.chars().any(char::is_control)
-            {
-                return Err(Error::Validation(
-                    "outbox failure policy is outside its bound".to_string(),
-                ));
-            }
-            let sql = if driver == "postgres" {
-                POSTGRES_FAIL
-            } else {
-                PORTABLE_FAIL
-            };
-            sqlx::query(sql)
-                .bind(max_attempts)
-                .bind("dead_letter")
-                .bind("pending")
-                .bind(retry_at_epoch)
-                .bind("")
-                .bind("")
-                .bind(0_i64)
-                .bind(error)
-                .bind(id)
-                .bind("processing")
-                .bind(claim_key)
-                .bind(now_epoch_seconds)
-                .execute(Orm::pool()?)
-                .await?
-        }
-    };
-    Ok(result.rows_affected() == 1)
+/// Compares a stored payload with a replayed one as JSON values, so object
+/// key order is not content: with serde_json's `preserve_order` feature
+/// (enabled by feature unification, for example through `mongodb`) a replay
+/// built from a `HashMap` can serialize the same object in another order.
+fn same_payload(stored: &str, replayed: &str) -> bool {
+    stored == replayed
+        || matches!(
+            (
+                serde_json::from_str::<Value>(stored),
+                serde_json::from_str::<Value>(replayed),
+            ),
+            (Ok(stored), Ok(replayed)) if stored == replayed
+        )
 }
 
 fn validate_key(field: &str, value: &str) -> Result<(), Error> {
@@ -505,9 +458,34 @@ fn unix_now() -> Result<i64, Error> {
         .map_err(|_| Error::Internal("Unix timestamp exceeds i64".to_string()))
 }
 
+/// Claims, acknowledgements and failures are independent lease operations
+/// that commit on their own connection. Inside a managed `Orm::transaction`
+/// they would commit before, and regardless of, the handler's work (a
+/// rolled-back handler would leave its event acknowledged), and on SQLite
+/// they would wait on that transaction's own write lock, so they are refused.
+fn ensure_outside_managed_transaction() -> Result<(), Error> {
+    let active = crate::CURRENT_TX
+        .try_with(|transaction| match transaction.try_lock() {
+            Ok(guard) => guard.is_some(),
+            // A held handle belongs to a transaction that is still running.
+            Err(_) => true,
+        })
+        .unwrap_or(false);
+    if active {
+        return Err(Error::Validation(
+            "Outbox::claim_next, acknowledge and fail are independent lease operations; call them outside Orm::transaction, after the handler's work has committed"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn missing_transaction_error() -> Error {
     Error::Validation(
         "Outbox::enqueue must run inside Orm::transaction; use enqueue_with_tx for a caller-owned transaction"
             .to_string(),
     )
 }
+
+#[cfg(test)]
+mod tests;

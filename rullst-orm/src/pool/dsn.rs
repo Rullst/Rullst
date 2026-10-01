@@ -55,6 +55,65 @@ pub(super) fn ensure_configured_dsn(database_url: &str) -> Result<(), crate::Err
     Ok(())
 }
 
+/// Path and query string of a `sqlite:` DSN, or `None` for another scheme.
+fn sqlite_parts(database_url: &str) -> Option<(&str, &str)> {
+    if !database_url.starts_with("sqlite") {
+        return None;
+    }
+    let rest = database_url
+        .trim_start_matches("sqlite:")
+        .trim_start_matches("//")
+        .trim_start_matches("file:");
+    Some(rest.split_once('?').unwrap_or((rest, "")))
+}
+
+/// The `mode` query parameter of a SQLite DSN, if any.
+fn sqlite_mode(query: &str) -> Option<&str> {
+    query.split('&').find_map(|parameter| {
+        parameter
+            .split_once('=')
+            .filter(|(key, _)| key.eq_ignore_ascii_case("mode"))
+            .map(|(_, mode)| mode)
+    })
+}
+
+/// Reports a SQLite DSN naming an in-memory database (`:memory:` or
+/// `mode=memory`), which exists only while one of its connections is open.
+pub(super) fn is_sqlite_memory(database_url: &str) -> bool {
+    sqlite_parts(database_url).is_some_and(|(path, query)| {
+        path == ":memory:"
+            || sqlite_mode(query).is_some_and(|mode| mode.eq_ignore_ascii_case("memory"))
+    })
+}
+
+/// Touch-creates a missing SQLite database file and its directory, so drivers
+/// without implicit `mode=rwc` support never hit `SQLITE_CANTOPEN`.
+///
+/// This happens only when the DSN permits creation: without a `mode`
+/// parameter or with `mode=rwc`. An explicit `mode=ro`/`mode=rw` asks SQLite
+/// to open an existing database, so a wrong or unmounted path stays an open
+/// error instead of silently becoming a new empty database.
+pub(super) fn prepare_sqlite_file(database_url: &str) {
+    let Some((path_part, query)) = sqlite_parts(database_url) else {
+        return;
+    };
+    if path_part.is_empty()
+        || is_sqlite_memory(database_url)
+        || sqlite_mode(query).is_some_and(|mode| !mode.eq_ignore_ascii_case("rwc"))
+    {
+        return;
+    }
+    let path = std::path::Path::new(path_part);
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if !path.exists() {
+        let _ = std::fs::File::create(path);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{driver_for_url, ensure_configured_dsn};

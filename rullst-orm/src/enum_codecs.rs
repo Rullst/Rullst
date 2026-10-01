@@ -51,15 +51,18 @@ macro_rules! __rullst_enum_mysql {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __rullst_enum_postgres {
+    // The schema builder creates the type as a quoted, case-preserving
+    // identifier, so the codec names it quoted too: SQLx resolves an unquoted
+    // name through `to_regtype`, which folds a mixed-case name to lowercase.
     ($name:ident, $type_name:literal) => {
         impl $crate::_sqlx::Type<$crate::_sqlx::Postgres> for $name {
             fn type_info() -> $crate::_sqlx::postgres::PgTypeInfo {
-                $crate::_sqlx::postgres::PgTypeInfo::with_name($type_name)
+                $crate::_sqlx::postgres::PgTypeInfo::with_name(concat!("\"", $type_name, "\""))
             }
         }
         impl $crate::_sqlx::postgres::PgHasArrayType for $name {
             fn array_type_info() -> $crate::_sqlx::postgres::PgTypeInfo {
-                $crate::_sqlx::postgres::PgTypeInfo::array_of($type_name)
+                $crate::_sqlx::postgres::PgTypeInfo::array_of(concat!("\"", $type_name, "\""))
             }
         }
     };

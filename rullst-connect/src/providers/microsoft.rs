@@ -1,3 +1,14 @@
+//! Microsoft identity platform adapter (Microsoft Graph `/me`).
+//!
+//! It uses the multi-tenant `common` authority: any Entra tenant and personal
+//! Microsoft accounts can sign in, and the returned user carries no tenant ID.
+//! `email` is Graph `mail` or, when absent, `userPrincipalName`; tenant
+//! administrators control both, a UPN may not be a mailbox (B2B guests have
+//! `#EXT#` UPNs), and `email_verified` is therefore `None`. Do not link
+//! accounts or grant tenant membership on this email. To restrict sign-in to
+//! one tenant, use `OidcProvider` with the tenant-specific
+//! `https://login.microsoftonline.com/<tenant-id>/v2.0` issuer.
+
 use crate::client::HttpClientExt;
 use crate::provider::Provider;
 use crate::user::ConnectUser;

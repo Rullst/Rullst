@@ -75,11 +75,14 @@ unrelated transaction.
 When the application already owns a raw SQLx transaction, use
 `enqueue_with_tx(&mut transaction, ...)`.
 
-`(stream, event_key)` is unique. Repeating the same kind and serialized JSON
+`(stream, event_key)` is unique. Repeating the same kind and an equal JSON
 payload returns the existing event ID with `inserted == false`, also when a
 concurrent transaction committed that key after your transaction's first read
-(MySQL/MariaDB read the row back with a locking read). Reusing that key for
-different content is an error; it does not overwrite the original event.
+(MySQL/MariaDB read the row back with a locking read). Payloads are compared as
+JSON values, so an object serialized with its keys in another order (for
+example one built from a `HashMap`) is the same content; array order and every
+value still count. Reusing that key for different content is an error; it does
+not overwrite the original event, and the error does not echo the stream or key.
 
 Streams and event keys are case-sensitive on every backend: `order:aB3x` and
 `order:Ab3X` are different keys, and a worker for `tenant-a` does not claim
@@ -135,6 +138,11 @@ claim token. A failed delivery becomes pending after the bounded delay, or
 `dead_letter` when its attempt limit is reached. If a worker dies during its
 final claim, the next claim sweep moves that expired event to dead-letter
 instead of retrying forever.
+
+Claims, acknowledgements and failures commit on their own. Calling them inside
+`Orm::transaction` returns a validation error, because an acknowledgement there
+would already be durable if the handler's transaction later rolled back. Commit
+the handler's database work first, then acknowledge.
 
 ## 4. Understand the guarantee
 

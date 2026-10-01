@@ -148,6 +148,12 @@ pub trait Provider: Send + Sync {
 
     /// Polls the provider for the access token during a device authorization flow.
     /// Returns the user's profile if the user has authorized the device.
+    ///
+    /// A pending or refused authorization is returned as
+    /// [`crate::error::ConnectError::ProviderApiError`] whose `code` is the
+    /// RFC 8628 error: keep polling on `authorization_pending`, add five
+    /// seconds to the interval on `slow_down`, and stop on `access_denied` or
+    /// `expired_token`.
     async fn poll_device_token(
         &self,
         _device_code: &str,

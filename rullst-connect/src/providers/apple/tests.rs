@@ -284,6 +284,7 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         "iat": exp - 3600,
         "sub": "apple_sub_123",
         "email": "apple@example.com",
+        "email_verified": "true",
         "nonce": "test_nonce"
     });
 
@@ -361,6 +362,7 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
 
     assert_eq!(user.id, "apple_sub_123");
     assert_eq!(user.email.as_deref(), Some("apple@example.com"));
+    assert_eq!(user.email_verified, Some(true));
 
     let err = provider
         .get_user_from_form(&form_data, Some("wrong_nonce"))

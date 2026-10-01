@@ -31,7 +31,9 @@ pub fn validate_credential(field: &str, value: &str) -> Result<(), Error> {
 pub fn endpoint(value: &str) -> Result<Url, Error> {
     let url = Url::parse(value)
         .map_err(|_| Error::Validation("Scout endpoint must be an absolute URL".to_string()))?;
-    let loopback = matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"));
+    let loopback = url
+        .host_str()
+        .is_some_and(crate::loopback::is_loopback_host);
     if url.scheme() != "https" && !(url.scheme() == "http" && loopback) {
         return Err(Error::Validation(
             "Scout endpoint must use HTTPS, except for an explicit loopback HTTP service"

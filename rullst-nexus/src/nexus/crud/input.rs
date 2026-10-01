@@ -10,6 +10,8 @@ const MAX_SHORT_TEXT_BYTES: usize = 4 * 1024;
 const MAX_LONG_TEXT_BYTES: usize = 64 * 1024;
 const MAX_EMAIL_BYTES: usize = 320;
 const MAX_URL_BYTES: usize = 2 * 1024;
+/// The body field Core's CSRF middleware reads when no header is sent.
+const CSRF_FORM_FIELD: &str = "_token";
 
 #[derive(Clone, Copy)]
 pub(super) enum FormMode {
@@ -64,6 +66,11 @@ pub(super) fn validate_form_values<'a>(
 
     let mut grouped = BTreeMap::<String, Vec<String>>::new();
     for (name, value) in pairs {
+        // Core's CSRF middleware accepts the double-submit token in the form
+        // body and has already verified it; it is not model data.
+        if name == CSRF_FORM_FIELD {
+            continue;
+        }
         let Some(field) = entry.fields.iter().find(|field| field.name == name) else {
             return Err(FormInputError::UnknownOrProtectedField);
         };

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use rullst_core::queue::{Queue, QueueDriver, QueueError, QueuedJob};
-use rullst_mail::{Mail, Message};
+use rullst_mail::{Mail, MailError, MailFailureClass, Message};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -87,4 +87,62 @@ async fn mail_facade_preserves_schedule_and_tenant_in_durable_envelope() {
             target.timestamp_subsec_nanos(),
         );
     assert_eq!(*available_at, target_system_time);
+}
+
+/// Fails every push the way an unreachable Redis or a locked SQLite does.
+struct OutageDriver(fn() -> QueueError);
+
+#[async_trait]
+impl QueueDriver for OutageDriver {
+    async fn push(&self, _id: &str, _job_name: &str, _payload: &str) -> Result<(), QueueError> {
+        Err((self.0)())
+    }
+
+    async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+        Ok(None)
+    }
+
+    async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn pending_count(&self) -> Result<u64, QueueError> {
+        Ok(0)
+    }
+}
+
+#[tokio::test]
+async fn queue_outages_are_transient_and_other_queue_errors_permanent() {
+    let message = || {
+        Message::new()
+            .to("user@example.com")
+            .subject("Queued")
+            .text("safe")
+    };
+    let outage = Queue::custom(Box::new(OutageDriver(|| {
+        QueueError::Driver("connection refused".to_string())
+    })));
+    let error = Mail::enqueue(&outage, message())
+        .await
+        .expect_err("queue outage");
+    assert!(matches!(
+        error,
+        MailError::TransportError {
+            provider: "queue",
+            ..
+        }
+    ));
+    assert_eq!(error.failure_class(), MailFailureClass::Transient);
+
+    let unsupported = Queue::custom(Box::new(OutageDriver(|| {
+        QueueError::Unsupported("push".to_string())
+    })));
+    let error = Mail::enqueue(&unsupported, message())
+        .await
+        .expect_err("unsupported queue");
+    assert_eq!(error.failure_class(), MailFailureClass::Permanent);
 }

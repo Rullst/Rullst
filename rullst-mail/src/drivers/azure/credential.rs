@@ -60,11 +60,23 @@ impl AzureMailCredential for StaticAzureMailCredential {
 
 /// Container Apps/App Service local identity endpoint. No long-lived ACS key is
 /// stored. Environment variables must be supplied by the trusted Azure host.
+///
+/// A token is reused until five minutes before its `expires_on`, so a burst of
+/// sends does not call the identity endpoint once per message.
 pub struct AzureManagedIdentity {
     endpoint: reqwest::Url,
     identity_header: SecretString,
     client_id: Option<String>,
+    cached: std::sync::Mutex<Option<CachedToken>>,
 }
+
+struct CachedToken {
+    value: SecretString,
+    expires_at: u64,
+}
+
+/// A cached token is refreshed this long before it expires.
+const TOKEN_REFRESH_MARGIN_SECS: u64 = 300;
 
 impl AzureManagedIdentity {
     pub fn from_environment() -> Result<Self, MailError> {
@@ -113,12 +125,43 @@ impl AzureManagedIdentity {
             endpoint,
             identity_header: SecretString::from(identity_header),
             client_id,
+            cached: std::sync::Mutex::new(None),
         })
     }
+
+    /// Returns the cached token while it stays valid past the refresh margin.
+    /// A poisoned cache or unreadable clock only disables reuse.
+    fn cached_token(&self, now: Option<u64>) -> Option<AzureMailAccessToken> {
+        let now = now?;
+        let cached = self.cached.lock().ok()?;
+        let token = cached.as_ref()?;
+        (token.expires_at > now.saturating_add(TOKEN_REFRESH_MARGIN_SECS))
+            .then(|| AzureMailAccessToken::new(token.value.expose_secret(), token.expires_at).ok())
+            .flatten()
+    }
+
+    fn remember(&self, token: &AzureMailAccessToken) {
+        if let Ok(mut cached) = self.cached.lock() {
+            *cached = Some(CachedToken {
+                value: SecretString::from(token.value.expose_secret()),
+                expires_at: token.expires_at,
+            });
+        }
+    }
+}
+
+fn unix_now() -> Option<u64> {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|elapsed| elapsed.as_secs())
 }
 
 impl AzureMailCredential for AzureManagedIdentity {
     async fn access_token(&self) -> Result<AzureMailAccessToken, MailError> {
+        if let Some(token) = self.cached_token(unix_now()) {
+            return Ok(token);
+        }
         let mut endpoint = self.endpoint.clone();
         endpoint
             .query_pairs_mut()
@@ -136,7 +179,13 @@ impl AzureMailCredential for AzureManagedIdentity {
             .send()
             .await
             .map_err(|_| MailError::transport("azure-identity", "identity endpoint unavailable"))?;
-        if !response.status().is_success() {
+        let status = response.status();
+        // Throttling and endpoint outages are retryable; other refusals mean
+        // the identity is not authorized or the host is misconfigured.
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
+            return Err(crate::error::provider_http_error("azure-identity", response).await);
+        }
+        if !status.is_success() {
             return Err(MailError::ConfigError(
                 "Azure managed identity rejected the token request".into(),
             ));
@@ -156,7 +205,9 @@ impl AzureMailCredential for AzureManagedIdentity {
             .as_str()
             .filter(|token| !token.is_empty() && !token.starts_with("mock_"))
             .ok_or_else(config)?;
-        AzureMailAccessToken::new(token, expires)
+        let token = AzureMailAccessToken::new(token, expires)?;
+        self.remember(&token);
+        Ok(token)
     }
 }
 

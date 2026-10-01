@@ -34,7 +34,7 @@ pub struct Message {
     pub body_text: Option<String>,
     /// Optional sender email address.
     pub from: Option<String>,
-    /// Optional RFC 8058 One-Click List-Unsubscribe URL.
+    /// Optional List-Unsubscribe URL; RFC 8058 one-click is declared only for HTTPS.
     pub unsubscribe_url: Option<String>,
     /// Optional RFC 8058 List-Unsubscribe email address.
     pub unsubscribe_email: Option<String>,
@@ -164,6 +164,9 @@ impl Message {
     }
 
     /// Reads and attaches a local file from disk.
+    ///
+    /// Like [`Attachment::from_file`], it reads at most `MAX_ATTACHMENT_BYTES`
+    /// and blocks the calling thread while it does.
     pub fn attach_file(
         mut self,
         path: impl AsRef<std::path::Path>,
@@ -173,7 +176,8 @@ impl Message {
         Ok(self)
     }
 
-    /// Sets the RFC 8058 One-Click List-Unsubscribe URL.
+    /// Sets the List-Unsubscribe URL. Transports add the RFC 8058 one-click
+    /// `List-Unsubscribe-Post` header only when it uses HTTPS.
     pub fn unsubscribe_url(mut self, url: impl Into<String>) -> Self {
         self.unsubscribe_url = Some(url.into());
         self
@@ -193,6 +197,15 @@ impl Message {
             (Some(email), None) => Some(format!("<mailto:{}>", email)),
             (None, None) => None,
         }
+    }
+
+    /// Whether RFC 8058 `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
+    /// may accompany the header: one-click unsubscription requires an HTTPS URI.
+    pub(crate) fn has_one_click_unsubscribe(&self) -> bool {
+        self.unsubscribe_url
+            .as_deref()
+            .and_then(|url| url.get(..8))
+            .is_some_and(|scheme| scheme.eq_ignore_ascii_case("https://"))
     }
 
     /// Redacts accidental secrets. Body action URLs retain opaque `token` query
@@ -386,15 +399,9 @@ pub fn strip_html_to_plain_text(html: &str) -> String {
         }
     }
 
-    // Decode standard HTML entities
-    let decoded = result
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'");
+    // Decode numeric and common named references in one pass, so each is
+    // decoded once (`&amp;lt;` stays `&lt;`).
+    let decoded = crate::entities::decode(&result);
 
     // Normalize multiple newlines and spaces
     let mut normalized = String::new();

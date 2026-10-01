@@ -9,12 +9,13 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 use crate::nexus::NexusPrincipal;
+use crate::nexus::crud::form::record_form;
 use crate::nexus::crud::mutation::{create_record, delete_record, update_record};
 use crate::nexus::crud::query::{PaginationParams, find_entry};
-use crate::nexus::crud::views::{render_record_form, render_table_rows, render_table_view};
+use crate::nexus::crud::views::{TableView, render_record_form, render_table_rows, table_view};
 use crate::nexus::types::{NexusState, RegistryEntry};
-use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html};
-use rullst_core::security::TenantContext;
+use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html, wants_fragment};
+use rullst_core::security::{CsrfToken, TenantContext};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct MissingTenantContext;
@@ -81,7 +82,7 @@ pub async fn nexus_dashboard(
     content.push_str("<a href=\"/nexus/chat\" class=\"nexus-btn nexus-btn-ai\" hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">&#129302; Open AI Query Assistant</a>");
     content.push_str("</div>");
 
-    if headers.contains_key("hx-request") {
+    if wants_fragment(&headers) {
         Html(content)
     } else {
         Html(render_shell(&state, &models_sidebar, &content))
@@ -95,6 +96,7 @@ pub async fn nexus_table_view(
     Query(params): Query<PaginationParams>,
     headers: axum::http::HeaderMap,
     tenant: Option<Extension<TenantContext>>,
+    csrf: Option<Extension<CsrfToken>>,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -116,8 +118,16 @@ pub async fn nexus_table_view(
     let sort_by = params.sort_by.as_deref();
     let order = params.order.as_deref();
 
-    let content = render_table_view(&state, entry, page, &q, sort_by, order, tenant_id).await;
-    if headers.contains_key("hx-request") {
+    let view = TableView {
+        page,
+        q: &q,
+        sort_by,
+        order,
+        tenant_id,
+        csrf_token: csrf.as_ref().map(|token| token.0.as_str()),
+    };
+    let content = table_view(entry, &view).await;
+    if wants_fragment(&headers) {
         Html(content).into_response()
     } else {
         Html(render_shell(
@@ -209,7 +219,12 @@ pub async fn nexus_edit_form(
         Ok(tenant_id) => tenant_id,
         Err(error) => return error.into_response(),
     };
-    Html(render_record_form(&state, entry, Some(&id), tenant_id).await).into_response()
+    // A missing, other-tenant or unloadable record is an error, never an
+    // empty form that invites re-typing values.
+    match record_form(&state, entry, Some(&id), tenant_id).await {
+        Ok(form) => Html(form).into_response(),
+        Err(error) => error.into_response(),
+    }
 }
 
 /// PUT /nexus/table/{table}/{id} — Update a record.

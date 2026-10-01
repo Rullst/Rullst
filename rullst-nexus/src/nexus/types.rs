@@ -50,7 +50,9 @@ pub struct FieldMeta {
     pub label: &'static str,
     /// Semantic type that determines which input widget to render.
     pub kind: FieldKind,
-    /// If true, hides this field from list/table views (still visible on edit forms).
+    /// If true, hides this field from list/table views, search and the
+    /// create/edit forms. Nexus also treats it as protected: a submitted value
+    /// is rejected and batch deactivation never writes it.
     pub hidden: bool,
     /// If true, the field is displayed but cannot be modified via the edit form.
     pub readonly: bool,

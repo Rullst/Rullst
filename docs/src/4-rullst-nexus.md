@@ -67,10 +67,45 @@ pub struct User {
 The edit form sends only the fields you change, so an edit never rewrites a
 value its widget cannot show: NULL (shown as an empty `NULL` input), an enum
 value that is not a registered option (kept selected but disabled), a date-time
-with an offset (shown as text) or a value that cannot be decoded. Emptying a
+with an offset (shown as text), a text, e-mail or URL value with line breaks
+or other control characters (shown read-only; declare `kind = "textarea"` to
+edit multi-line text) or a value that cannot be decoded. Emptying a
 number, relation, date, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
 `NOT NULL` constraint therefore rejects clearing a required typed column.
+
+In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
+or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
+cannot be decoded exactly has no batch checkbox or edit/delete actions.
+
+Opening the edit form of a missing, other-tenant or misspelled key returns
+`404` (and a failed query `500`) instead of an empty editable form. The form
+reads only the registered visible, non-password columns.
+
+Form values are bound as text. PostgreSQL has no assignment cast from text,
+so there Nexus writes `number` values through `NUMERIC`, relation values that
+are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
+`'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
+and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
+are written as text, so keep dates, date-times, JSON and enum values in text
+columns, as Rullst's schema builder does; native `DATE`, `TIMESTAMP`, `JSONB`,
+`UUID` or enum columns are not supported by Nexus.
+
+The panel addresses records under `/nexus/table/{table}/record/{key}` (with
+`/edit` for the form), so a key named `new`, `search` or `batch` never collides
+with an action route. The older `/nexus/table/{table}/{key}` routes remain for
+other keys.
+
+Record keys follow the registered primary-key kind: a `number` (or relation)
+key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+other kind is compared as text, even when it looks numeric.
+
+Search matches the typed text literally (`%` and `_` are not wildcards) in the
+visible text, textarea, e-mail and URL columns. It is case-insensitive on
+PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
+collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
+page 1, rebuilds the sort and pagination links for the new query and records it
+in the URL, so saving a record refreshes the same view.
 
 A `password` field is never displayed: the list shows a fixed mask and the
 edit form an empty input, and leaving it empty keeps the stored value. Nexus
@@ -94,8 +129,10 @@ On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
 `#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
-widget kinds. Implementing `NexusModel` manually remains available when an
-application needs metadata that cannot be derived.
+widget kinds. A `hidden` field is left out of the list, search and the
+create/edit forms, and a submitted value for it is rejected; `readonly` keeps a
+field visible but rejects submitted values. Implementing `NexusModel` manually
+remains available when an application needs metadata that cannot be derived.
 
 Then select an explicit access policy in your routing file (usually `src/lib.rs`
 or `src/main.rs`) and mount the resulting router:
@@ -176,8 +213,9 @@ pub struct Project {
 Authentication middleware must resolve membership and install a trusted
 `rullst::security::TenantContext`. Do not construct it directly from
 `X-Tenant-ID`, a query parameter or another client assertion. Nexus applies the
-exact scope to list/search/edit/create/update/delete and batch routes; missing
-context denies a scoped model. A model without the attribute remains global by
+exact scope to list/search/edit/create/update/delete and batch routes (as a
+binary-string comparison on MySQL/MariaDB, whose default collations ignore
+case); missing context denies a scoped model. A model without the attribute remains global by
 design.
 
 `#[derive(Nexus)]` reads only `table` (or its ORM alias `table_name`) and
@@ -207,7 +245,8 @@ Each successful mutation and its minimized `rullst_nexus_audits` row commit in
 one database transaction. Audit failure rolls the mutation back. The record
 contains actor, optional tenant, table/action, optional known key, affected-row
 count, committed outcome, optional bounded request ID, timestamp and format
-version. `verify_nexus_audit_table()` checks deployment readiness and
+version. A key that does not fit 1 to 256 bytes of unpadded text without
+control characters is recorded as absent instead of blocking the change. `verify_nexus_audit_table()` checks deployment readiness and
 `recent_nexus_audits()` reads at most 1,000 newest rows, optionally tenant
 filtered; the application must authorize that export separately.
 
@@ -257,8 +296,9 @@ that reads those fields on each request can show the persisted values without a
 code change or redeployment; cache policy remains application-owned.
 
 Batch deletion is available for every registered model. Batch deactivation is
-shown only when the model declares a writable Boolean `is_active` or `active`
-field; Nexus never guesses which arbitrary status value means inactive.
+shown only when the model declares a writable (neither `hidden` nor
+`readonly`) Boolean `is_active` or `active` field; Nexus never guesses which
+arbitrary status value means inactive.
 
 ## Content Security Policy
 
@@ -270,7 +310,9 @@ applies to the panel unchanged, so there is no reason to add `'unsafe-inline'`,
 `'unsafe-eval'` or a CDN to the application-wide `security.csp`. A custom
 policy must keep `'self'` for scripts, styles and `connect-src`, and `data:`
 for images. Nothing is requested from GitHub, unpkg or Google Fonts; the panel
-uses system fonts.
+uses system fonts. htmx's history cache is disabled, so admin pages and open
+edit forms are never snapshotted into origin-wide `localStorage`; Back reloads
+the page from the server.
 
 ## Benefits of Nexus
 

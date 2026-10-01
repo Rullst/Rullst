@@ -97,6 +97,14 @@ already reverted are no longer recorded as applied, while the failed migration
 and the rest of the batch stay recorded. Fix the cause and run `db:rollback`
 again to continue from that point.
 
+`db:migrate` and `db:rollback` hold a runner lock for the whole run on
+PostgreSQL (`pg_advisory_lock`) and MySQL/MariaDB (`GET_LOCK`), on a dedicated
+connection outside the pool. Replicas that start together therefore apply each
+pending migration once: a second runner waits, then finds it already recorded.
+The lock is released when the run ends or its process exits. A newly created
+`migrations` table also declares the migration name `UNIQUE`. SQLite has no
+cross-process advisory lock, so run a single migrator per SQLite database.
+
 ---
 
 ## Step 3: Define and register a seeder

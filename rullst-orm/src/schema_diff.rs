@@ -40,7 +40,13 @@ fn extract_tables_from_root(root: impl AsRef<Path>) -> Vec<ParsedTable> {
                         for attr in &item_struct.attrs {
                             if attr.path().is_ident("derive") {
                                 let _ = attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("Orm") {
+                                    // `Orm`, `rullst_orm::Orm` or another path to it.
+                                    if meta
+                                        .path
+                                        .segments
+                                        .last()
+                                        .is_some_and(|last| last.ident == "Orm")
+                                    {
                                         has_orm_derive = true;
                                     }
                                     Ok(())
@@ -48,13 +54,15 @@ fn extract_tables_from_root(root: impl AsRef<Path>) -> Vec<ParsedTable> {
                             }
                             if attr.path().is_ident("orm") {
                                 let _ = attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("table")
-                                        && let Ok(value) = meta.value()
-                                        && let Ok(lit) = value.parse::<syn::LitStr>()
+                                    if (meta.path.is_ident("table")
+                                        || meta.path.is_ident("table_name"))
+                                        && meta.input.peek(syn::Token![=])
                                     {
-                                        table_name = Some(lit.value());
+                                        table_name =
+                                            Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                                        return Ok(());
                                     }
-                                    Ok(())
+                                    skip_meta_value(&meta)
                                 });
                             }
                         }
@@ -84,7 +92,7 @@ fn extract_tables_from_root(root: impl AsRef<Path>) -> Vec<ParsedTable> {
                                                     if meta.path.is_ident("skip") {
                                                         skip = true;
                                                     }
-                                                    Ok(())
+                                                    skip_meta_value(&meta)
                                                 });
                                             }
                                         }
@@ -113,6 +121,18 @@ fn extract_tables_from_root(root: impl AsRef<Path>) -> Vec<ParsedTable> {
         }
     }
     tables
+}
+
+/// Consumes the value of an option this extractor does not read, so the
+/// options after it (for example `table` after `tenant_column = "..."`) are
+/// still visited instead of aborting the attribute at the first value.
+fn skip_meta_value(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
+    if meta.input.peek(syn::Token![=]) {
+        meta.value()?.parse::<syn::Expr>()?;
+    } else if meta.input.peek(syn::token::Paren) {
+        meta.parse_nested_meta(|nested| skip_meta_value(&nested))?;
+    }
+    Ok(())
 }
 
 #[cfg_attr(mutants, mutants::skip)]
@@ -216,6 +236,46 @@ mod tests {
         assert_eq!(tables[1].fields[1].name, "name");
         assert_eq!(tables[1].fields[1].rust_type, "String");
         assert!(tables[1].fields[1].is_option);
+
+        std::fs::remove_dir_all(&directory).unwrap();
+    }
+
+    #[test]
+    fn table_options_after_other_values_and_qualified_derives_are_extracted() {
+        let directory =
+            std::env::temp_dir().join(format!("rullst-schema-diff-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&directory).unwrap();
+        std::fs::write(
+            directory.join("models.rs"),
+            r#"
+                #[derive(FromRow, Orm)]
+                #[orm(tenant_column = "account_id", soft_delete(column = "removed_at"), table = "user_projects")]
+                struct Project {
+                    id: i64,
+                    account_id: String,
+                    #[orm(encrypted, skip)]
+                    cached: String,
+                }
+
+                #[derive(rullst_orm::Orm)]
+                #[orm(table_name = "audit_events", auditable)]
+                struct AuditEvent { id: i64 }
+            "#,
+        )
+        .unwrap();
+
+        let mut tables = extract_tables_from_root(&directory);
+        tables.sort_by(|left, right| left.table_name.cmp(&right.table_name));
+        let names: Vec<_> = tables
+            .iter()
+            .map(|table| table.table_name.as_str())
+            .collect();
+        assert_eq!(names, ["audit_events", "user_projects"]);
+        assert_eq!(
+            tables[1].fields.len(),
+            2,
+            "the skipped field must be omitted"
+        );
 
         std::fs::remove_dir_all(&directory).unwrap();
     }

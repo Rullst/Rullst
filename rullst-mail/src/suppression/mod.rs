@@ -326,7 +326,14 @@ impl<D, S> SuppressionGuard<D, S> {
             .store
             .lookup(recipient)
             .await
-            .map_err(|_| MailError::SuppressionUnavailable)?;
+            .map_err(|error| match error {
+                // The recipient cannot be keyed (for example a non-ASCII local
+                // part): a message problem, not an unavailable store.
+                SuppressionError::InvalidEvent(_) => MailError::ValidationError(
+                    "recipient cannot be checked against suppression state".to_string(),
+                ),
+                _ => MailError::SuppressionUnavailable,
+            })?;
         if let Some(record) = record {
             return Err(MailError::SuppressedRecipient {
                 reason: record.reason().as_str(),
@@ -374,19 +381,42 @@ where
 /// delivery pipeline, so `Name <a@b>` and `a@b` share one suppression entry.
 /// Padding and anything that parser rejects fail closed instead of missing
 /// the lookup.
+///
+/// The domain is compared case-insensitively, and an internationalized domain
+/// is keyed by its IDNA A-label (`bücher.de` and `xn--bcher-kva.de` share one
+/// entry). The local part stays exact and must be ASCII: Unicode
+/// normalization variants of one internationalized mailbox would otherwise
+/// get different keys.
 pub(crate) fn normalize_recipient(recipient: &str) -> Result<String, SuppressionError> {
+    let invalid = || SuppressionError::InvalidEvent("recipient");
     if recipient.trim() != recipient {
-        return Err(SuppressionError::InvalidEvent("recipient"));
+        return Err(invalid());
     }
-    let address =
-        recipient_address(recipient).map_err(|_| SuppressionError::InvalidEvent("recipient"))?;
-    if address.is_empty() || address.len() > MAX_EMAIL_BYTES || !address.is_ascii() {
-        return Err(SuppressionError::InvalidEvent("recipient"));
+    let address = recipient_address(recipient).map_err(|_| invalid())?;
+    let (local, domain) = address.rsplit_once('@').ok_or_else(invalid)?;
+    if local.is_empty() || !local.is_ascii() {
+        return Err(invalid());
     }
-    let (local, domain) = address
-        .rsplit_once('@')
-        .ok_or(SuppressionError::InvalidEvent("recipient"))?;
-    Ok(format!("{local}@{}", domain.to_ascii_lowercase()))
+    let key = format!("{local}@{}", ascii_domain(domain).ok_or_else(invalid)?);
+    if key.len() > MAX_EMAIL_BYTES {
+        return Err(invalid());
+    }
+    Ok(key)
+}
+
+/// Lowercases an ASCII domain, or maps an internationalized one to its
+/// lowercase A-label form with the URL host parser's IDNA processing.
+fn ascii_domain(domain: &str) -> Option<String> {
+    if domain.is_ascii() {
+        return Some(domain.to_ascii_lowercase());
+    }
+    // Only a bare host may reach the parser, so nothing is dropped as a path.
+    if domain.contains(['/', '?', '#', '%', '\\']) {
+        return None;
+    }
+    let url = reqwest::Url::parse(&format!("http://{domain}/")).ok()?;
+    let host = url.host_str()?;
+    (url.path() == "/" && url.port().is_none() && !host.is_empty()).then(|| host.to_string())
 }
 
 pub(crate) fn validate_limits(

@@ -7,8 +7,7 @@
 use std::{marker::PhantomData, time::Duration};
 
 use async_trait::async_trait;
-use futures::StreamExt;
-use reqwest::{Client, Method, RequestBuilder, Url, redirect::Policy};
+use reqwest::{Client, Method, Url, redirect::Policy};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
@@ -19,6 +18,7 @@ use super::{
 
 mod config;
 mod graph;
+mod live;
 #[cfg(test)]
 mod tests;
 
@@ -186,11 +186,17 @@ where
             return surreal_mock(self)?.replace(collection, id, entity).await;
         };
         let body = encode_document(entity)?;
+        // `PUT /key/...` upserts, which would recreate a deleted document.
+        // `UPDATE` never creates a record; `type::record` (SurrealDB 3) with
+        // the string `$id` addresses the same key as `record_route`.
         let envelopes = live
-            .send(
-                Method::PUT,
-                &record_route(live, collection, id)?,
-                Some(body),
+            .rpc_query(
+                "UPDATE type::record($table, $id) CONTENT $data RETURN AFTER",
+                serde_json::json!({
+                    "table": collection.as_str(),
+                    "id": id.as_str(),
+                    "data": body,
+                }),
             )
             .await?;
         if result_values(statement_result(envelopes, false)?)?.is_empty() {
@@ -262,101 +268,6 @@ where
             ));
         }
         Ok(values)
-    }
-}
-
-impl LiveSurreal {
-    fn route(&self, segments: &[&str]) -> Result<Url, PolyglotError> {
-        let mut url = self.endpoint.clone();
-        let mut path =
-            url.path_segments_mut()
-                .map_err(|_| PolyglotError::InvalidConfiguration {
-                    backend: "SurrealDB",
-                    reason: "endpoint cannot be used as an HTTP base URL",
-                })?;
-        path.pop_if_empty();
-        for segment in segments {
-            path.push(segment);
-        }
-        drop(path);
-        Ok(url)
-    }
-
-    async fn send(
-        &self,
-        method: Method,
-        url: &Url,
-        body: Option<Value>,
-    ) -> Result<Vec<StatementEnvelope>, PolyglotError> {
-        let request = self.request(method, url);
-        let request = if let Some(body) = body {
-            request.json(&body)
-        } else {
-            request
-        };
-        self.execute(request).await
-    }
-
-    async fn send_text(
-        &self,
-        method: Method,
-        url: &Url,
-        body: &str,
-    ) -> Result<Vec<StatementEnvelope>, PolyglotError> {
-        self.execute(
-            self.request(method, url)
-                .header(reqwest::header::CONTENT_TYPE, "text/plain")
-                .body(body.to_owned()),
-        )
-        .await
-    }
-
-    fn request(&self, method: Method, url: &Url) -> RequestBuilder {
-        let request = self
-            .client
-            .request(method, url.clone())
-            .header(reqwest::header::ACCEPT, "application/json")
-            .header("Surreal-NS", self.namespace.as_str())
-            .header("Surreal-DB", self.database.as_str());
-        match &self.auth {
-            SurrealAuth::None => request,
-            SurrealAuth::Basic { username, password } => {
-                request.basic_auth(username, Some(password))
-            }
-            SurrealAuth::Bearer(token) => request.bearer_auth(token),
-        }
-    }
-
-    async fn execute(
-        &self,
-        request: RequestBuilder,
-    ) -> Result<Vec<StatementEnvelope>, PolyglotError> {
-        let response = request
-            .send()
-            .await
-            .map_err(|error| PolyglotError::driver("SurrealDB", error))?;
-        if !response.status().is_success() {
-            return Err(PolyglotError::Driver {
-                backend: "SurrealDB",
-                message: format!("HTTP status {}", response.status()),
-            });
-        }
-        if response
-            .content_length()
-            .is_some_and(|length| length > self.response_limit as u64)
-        {
-            return Err(response_too_large(self.response_limit));
-        }
-        let mut bytes = Vec::new();
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|error| PolyglotError::driver("SurrealDB", error))?;
-            if bytes.len().saturating_add(chunk.len()) > self.response_limit {
-                return Err(response_too_large(self.response_limit));
-            }
-            bytes.extend_from_slice(&chunk);
-        }
-        serde_json::from_slice(&bytes).map_err(PolyglotError::serialization)
     }
 }
 
@@ -454,12 +365,18 @@ fn decode_document_entry<T: DeserializeOwned>(
     Ok(DocumentEntry::new(id, entity))
 }
 
+/// The `/key/:table/:id` route of one document. SurrealDB parses the `:id`
+/// segment as a value, so an all-digit ID such as `9` would become a numeric
+/// key that sorts numerically, unlike the portable string order of
+/// `DocumentId`. The ID is therefore sent as a quoted string literal; the
+/// `DocumentId` grammar contains no quote or backslash to escape.
 fn record_route(
     live: &LiveSurreal,
     collection: &CollectionName,
     id: &DocumentId,
 ) -> Result<Url, PolyglotError> {
-    live.route(&["key", collection.as_str(), id.as_str()])
+    let key = format!("\"{}\"", id.as_str());
+    live.route(&["key", collection.as_str(), &key])
 }
 
 fn surreal_mock<T>(store: &SurrealDbStore<T>) -> Result<&MockDocumentStore<T>, PolyglotError> {

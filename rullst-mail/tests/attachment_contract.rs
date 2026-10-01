@@ -141,3 +141,39 @@ fn preflight_caps_individual_and_aggregate_attachment_bytes() {
         Err(MailError::ValidationError(message)) if message.contains("aggregate attachment")
     ));
 }
+
+#[test]
+fn from_file_reads_at_most_the_attachment_bound() {
+    let directory = std::env::temp_dir().join(format!(
+        "rullst-mail-attachment-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    std::fs::create_dir(&directory).expect("fixture directory");
+    let at_limit = directory.join("limit.pdf");
+    let oversized = directory.join("oversized.bin");
+    // Sparse files: the length is set without writing the bytes.
+    std::fs::File::create(&at_limit)
+        .and_then(|file| file.set_len(MAX_ATTACHMENT_BYTES as u64))
+        .expect("limit fixture");
+    std::fs::File::create(&oversized)
+        .and_then(|file| file.set_len(MAX_ATTACHMENT_BYTES as u64 + 1))
+        .expect("oversized fixture");
+
+    let attachment = Attachment::from_file(&at_limit).expect("file at the bound");
+    assert_eq!(attachment.content.len(), MAX_ATTACHMENT_BYTES);
+    assert_eq!(attachment.mime_type, "application/pdf");
+    let error = Attachment::from_file(&oversized).expect_err("oversized file");
+    assert_eq!(error.kind(), std::io::ErrorKind::FileTooLarge);
+    std::fs::remove_dir_all(&directory).expect("remove fixtures");
+}
+
+#[cfg(unix)]
+#[test]
+fn from_file_stops_reading_an_endless_device() {
+    let error = Attachment::from_file("/dev/zero").expect_err("endless device");
+    assert_eq!(error.kind(), std::io::ErrorKind::FileTooLarge);
+}

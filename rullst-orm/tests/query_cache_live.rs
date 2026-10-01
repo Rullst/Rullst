@@ -286,8 +286,61 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .del(&cache_key)
         .await
         .expect("remove isolated live cache key");
+    exercise_tenant_scoped_invalidation(&mut redis).await;
     exercise_secret_string_cache(&mut redis).await;
     let _ = std::fs::remove_file(database_path);
+}
+
+/// The post-commit invalidation runs after the transaction closure returns,
+/// outside a `with_tenant` scope entered inside it, and must still remove the
+/// keys of the tenant that performed the write.
+async fn exercise_tenant_scoped_invalidation(
+    redis: &mut rullst_orm::_redis::aio::ConnectionManager,
+) {
+    let tenant_query = || QueryCacheLiveRecord::query().where_id(1).limit(1);
+    let tenant_key = rullst_orm::with_tenant("acme", async {
+        let query = tenant_query();
+        rullst_orm::query_cache::query_key(
+            "query_cache_live_records",
+            &query.to_sql(),
+            &query.bindings,
+        )
+    })
+    .await
+    .expect("derive tenant cache key");
+    rullst_orm::with_tenant("acme", tenant_query().remember(30).first())
+        .await
+        .expect("populate tenant cache")
+        .expect("fixture should exist");
+    assert!(redis.exists::<_, bool>(&tenant_key).await.unwrap());
+
+    Orm::transaction(|_| {
+        Box::pin(async move {
+            rullst_orm::with_tenant("acme", async move {
+                let mut row = QueryCacheLiveRecord::find(1).await?.ok_or_else(|| {
+                    rullst_orm::Error::DatabaseError("live cache fixture disappeared".to_string())
+                })?;
+                row.name = "tenant scoped".to_string();
+                row.save().await
+            })
+            .await
+        })
+    })
+    .await
+    .expect("commit tenant-scoped write");
+    assert!(
+        !redis.exists::<_, bool>(&tenant_key).await.unwrap(),
+        "the commit must invalidate the writing tenant's keys"
+    );
+    let fresh = rullst_orm::with_tenant("acme", tenant_query().remember(30).first())
+        .await
+        .expect("read tenant cache after commit")
+        .expect("fixture should exist");
+    assert_eq!(fresh.name, "tenant scoped");
+    let _: usize = redis
+        .del(&tenant_key)
+        .await
+        .expect("remove isolated tenant cache key");
 }
 
 /// Cached `SecretString` values are ciphertext in Redis and still decrypt to
