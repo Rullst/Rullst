@@ -150,6 +150,26 @@ fn merged_module_index(
     Ok(Some(merged))
 }
 
+// PostgreSQL 12+ reports `information_schema` names as `sql_identifier`, a
+// domain over `name` that the Any driver cannot decode, and MySQL 8 labels
+// unaliased metadata columns in upper case. Every metadata column is therefore
+// cast to a portable string type and aliased to the lower-case label the row
+// mapping reads.
+const POSTGRES_TABLES_SQL: &str = "SELECT CAST(table_name AS TEXT) AS table_name \
+     FROM information_schema.tables \
+     WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name";
+const MYSQL_TABLES_SQL: &str = "SELECT CAST(TABLE_NAME AS CHAR) AS table_name \
+     FROM information_schema.tables \
+     WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name";
+const POSTGRES_COLUMNS_SQL: &str = "SELECT CAST(column_name AS TEXT) AS column_name, \
+     CAST(data_type AS TEXT) AS data_type, CAST(is_nullable AS TEXT) AS is_nullable \
+     FROM information_schema.columns \
+     WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position";
+const MYSQL_COLUMNS_SQL: &str = "SELECT CAST(COLUMN_NAME AS CHAR) AS column_name, \
+     CAST(DATA_TYPE AS CHAR) AS data_type, CAST(IS_NULLABLE AS CHAR) AS is_nullable \
+     FROM information_schema.columns \
+     WHERE table_name = ? AND table_schema = DATABASE() ORDER BY ordinal_position";
+
 async fn get_sqlite_tables(connection: &mut AnyConnection) -> Result<Vec<String>, sqlx::Error> {
     let rows = sqlx::query(
         "SELECT name FROM sqlite_master \
@@ -157,27 +177,25 @@ async fn get_sqlite_tables(connection: &mut AnyConnection) -> Result<Vec<String>
     )
     .fetch_all(connection)
     .await?;
-    Ok(rows.into_iter().map(|row| row.get("name")).collect())
+    string_column(&rows, "name")
 }
 
 async fn get_postgres_tables(connection: &mut AnyConnection) -> Result<Vec<String>, sqlx::Error> {
-    let rows = sqlx::query(
-        "SELECT table_name FROM information_schema.tables \
-         WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name",
-    )
-    .fetch_all(connection)
-    .await?;
-    Ok(rows.into_iter().map(|row| row.get("table_name")).collect())
+    let rows = sqlx::query(POSTGRES_TABLES_SQL)
+        .fetch_all(connection)
+        .await?;
+    string_column(&rows, "table_name")
 }
 
 async fn get_mysql_tables(connection: &mut AnyConnection) -> Result<Vec<String>, sqlx::Error> {
-    let rows = sqlx::query(
-        "SELECT table_name FROM information_schema.tables \
-         WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name",
-    )
-    .fetch_all(connection)
-    .await?;
-    Ok(rows.into_iter().map(|row| row.get("table_name")).collect())
+    let rows = sqlx::query(MYSQL_TABLES_SQL).fetch_all(connection).await?;
+    string_column(&rows, "table_name")
+}
+
+/// Reads one string column from every row; a missing or undecodable column is
+/// an error, never a panic.
+fn string_column(rows: &[sqlx::any::AnyRow], column: &str) -> Result<Vec<String>, sqlx::Error> {
+    rows.iter().map(|row| row.try_get(column)).collect()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -199,57 +217,52 @@ async fn get_sqlite_columns(
     .fetch_all(connection)
     .await?;
 
-    Ok(rows
-        .into_iter()
+    rows.iter()
         .map(|row| {
-            let not_null: i64 = row.get("is_not_null");
-            let primary_key: i64 = row.get("pk");
-            ColumnInfo {
-                name: row.get("name"),
-                data_type: row.get("type"),
+            let not_null: i64 = row.try_get("is_not_null")?;
+            let primary_key: i64 = row.try_get("pk")?;
+            Ok(ColumnInfo {
+                name: row.try_get("name")?,
+                data_type: row.try_get("type")?,
                 not_null: not_null > 0 || primary_key > 0,
-            }
+            })
         })
-        .collect())
+        .collect()
 }
 
 async fn get_postgres_columns(
     connection: &mut AnyConnection,
     table: &str,
 ) -> Result<Vec<ColumnInfo>, sqlx::Error> {
-    let rows = sqlx::query(
-        "SELECT column_name, data_type, is_nullable FROM information_schema.columns \
-         WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position",
-    )
-    .bind(table)
-    .fetch_all(connection)
-    .await?;
-    Ok(map_information_schema_columns(rows))
+    let rows = sqlx::query(POSTGRES_COLUMNS_SQL)
+        .bind(table)
+        .fetch_all(connection)
+        .await?;
+    map_information_schema_columns(&rows)
 }
 
 async fn get_mysql_columns(
     connection: &mut AnyConnection,
     table: &str,
 ) -> Result<Vec<ColumnInfo>, sqlx::Error> {
-    let rows = sqlx::query(
-        "SELECT column_name, data_type, is_nullable FROM information_schema.columns \
-         WHERE table_name = ? AND table_schema = DATABASE() ORDER BY ordinal_position",
-    )
-    .bind(table)
-    .fetch_all(connection)
-    .await?;
-    Ok(map_information_schema_columns(rows))
+    let rows = sqlx::query(MYSQL_COLUMNS_SQL)
+        .bind(table)
+        .fetch_all(connection)
+        .await?;
+    map_information_schema_columns(&rows)
 }
 
-fn map_information_schema_columns(rows: Vec<sqlx::any::AnyRow>) -> Vec<ColumnInfo> {
-    rows.into_iter()
+fn map_information_schema_columns(
+    rows: &[sqlx::any::AnyRow],
+) -> Result<Vec<ColumnInfo>, sqlx::Error> {
+    rows.iter()
         .map(|row| {
-            let is_nullable: String = row.get("is_nullable");
-            ColumnInfo {
-                name: row.get("column_name"),
-                data_type: row.get("data_type"),
+            let is_nullable: String = row.try_get("is_nullable")?;
+            Ok(ColumnInfo {
+                name: row.try_get("column_name")?,
+                data_type: row.try_get("data_type")?,
                 not_null: is_nullable == "NO",
-            }
+            })
         })
         .collect()
 }

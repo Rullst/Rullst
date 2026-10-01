@@ -34,6 +34,7 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
     reject_turso_primary("cargo rullst auth")?;
+    require_migration_runner("cargo rullst auth")?;
     reject_existing_outputs()?;
     let root_module = project_root_module()?;
     let manifest_path = Path::new("Cargo.toml");
@@ -81,6 +82,41 @@ pub(super) fn reject_turso_primary(command: &str) -> Result<(), IoError> {
     Ok(())
 }
 
+/// The account store's migration only runs when the crate root declares the
+/// `migrations` module and an entry point passes `migrations::get_migrations()`
+/// to the runner, as `cargo rullst new --database ...` generates. Without them
+/// (for example `--no-database`) the scaffold would add a migration nothing
+/// compiles or applies, so it refuses before writing.
+pub(super) fn require_migration_runner(command: &str) -> Result<(), IoError> {
+    let roots = ["src/main.rs", "src/lib.rs"]
+        .into_iter()
+        .filter_map(|path| fs::read_to_string(path).ok())
+        .collect::<Vec<_>>();
+    if has_migration_runner(&roots) {
+        return Ok(());
+    }
+    Err(IoError::new(
+        ErrorKind::InvalidInput,
+        format!(
+            "{command} adds a SQL migration, but this project has no migration runner: declare `pub mod migrations;` in src/main.rs or src/lib.rs and call `rullst::artisan!(crate::migrations::get_migrations());` at startup, with a DATABASE_URL in .env (projects created with `cargo rullst new <name> --database sqlite` include them)"
+        ),
+    ))
+}
+
+fn has_migration_runner(roots: &[String]) -> bool {
+    let declares_migrations = roots.iter().any(|source| {
+        syn::parse_file(source).is_ok_and(|file| {
+            file.items
+                .iter()
+                .any(|item| matches!(item, syn::Item::Mod(module) if module.ident == "migrations"))
+        })
+    });
+    declares_migrations
+        && roots
+            .iter()
+            .any(|source| source.contains("get_migrations("))
+}
+
 fn reject_existing_outputs() -> Result<(), IoError> {
     let outputs = AUTH_OUTPUTS.map(PathBuf::from);
     reject_existing(
@@ -119,4 +155,30 @@ pub(super) fn project_root_module() -> Result<PathBuf, IoError> {
                 "Rullst project has neither src/lib.rs nor src/main.rs",
             )
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migration_runner_requires_the_module_and_its_registration() {
+        let main = |source: &str| vec![source.to_string()];
+        assert!(!has_migration_runner(&main("fn main() {}\n")));
+        assert!(!has_migration_runner(&main(
+            "pub mod migrations;\nfn main() {}\n"
+        )));
+        assert!(!has_migration_runner(&main(
+            "fn main() { rullst::artisan!(crate::migrations::get_migrations()); }\n"
+        )));
+        assert!(has_migration_runner(&main(
+            "pub mod migrations;\nfn main() { rullst::artisan!(crate::migrations::get_migrations()); }\n"
+        )));
+        // Hot-reload starters declare the module in lib.rs and run it in main.rs.
+        assert!(has_migration_runner(&[
+            "pub mod migrations;\n".to_string(),
+            "fn main() { rullst::artisan!(crate::migrations::get_migrations()); }\n".to_string(),
+        ]));
+        assert!(!has_migration_runner(&main("not rust get_migrations(")));
+    }
 }

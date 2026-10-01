@@ -1,10 +1,18 @@
+use crate::generators::{is_rullst_project, is_valid_rust_identifier};
 use colored::*;
 use std::fs;
+use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
 
 pub fn create_new_live_component(name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let struct_name = to_camel_case(name);
-    let file_name = to_snake_case(name);
+    if !is_rullst_project() {
+        return Err(IoError::new(
+            ErrorKind::InvalidInput,
+            "make:live must run in the root of a Rullst project (a Cargo.toml with a rullst dependency)",
+        )
+        .into());
+    }
+    let (struct_name, file_name) = live_component_names(name)?;
     let live_dir = Path::new("src/live");
 
     if !live_dir.exists() {
@@ -58,6 +66,23 @@ pub fn create_new_live_component(name: &str) -> Result<(), Box<dyn std::error::E
     );
 
     Ok(())
+}
+
+/// Returns the component's type and module names, rejecting a name whose
+/// module or type would not be a non-keyword Rust identifier (for example
+/// `../notes`, `self` or `Bad.Name`) before anything is written.
+fn live_component_names(name: &str) -> Result<(String, String), IoError> {
+    let struct_name = to_camel_case(name);
+    let file_name = to_snake_case(name);
+    if is_valid_rust_identifier(&file_name) && is_valid_rust_identifier(&struct_name) {
+        return Ok((struct_name, file_name));
+    }
+    Err(IoError::new(
+        ErrorKind::InvalidInput,
+        format!(
+            "LiveComponent name must produce valid non-keyword Rust identifiers (module `{file_name}`, type `{struct_name}`); use letters, digits, `_` or `-`, for example LiveCounter"
+        ),
+    ))
 }
 
 /// Renders the LiveComponent module emitted by `make:live`.
@@ -140,6 +165,32 @@ fn to_snake_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_component_names_must_be_rust_identifiers() {
+        assert_eq!(
+            live_component_names("LiveCounter").unwrap(),
+            ("LiveCounter".to_string(), "live_counter".to_string())
+        );
+        assert_eq!(
+            live_component_names("chat-room").unwrap(),
+            ("ChatRoom".to_string(), "chat_room".to_string())
+        );
+        for invalid in [
+            "../../notes",
+            "self",
+            "Bad.Name",
+            "9lives",
+            "",
+            "a/b",
+            "match",
+        ] {
+            assert!(
+                live_component_names(invalid).is_err(),
+                "{invalid} must be rejected"
+            );
+        }
+    }
 
     #[test]
     fn live_component_imports_async_trait_through_the_rullst_facade() {

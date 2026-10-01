@@ -69,7 +69,8 @@ the generated application:
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
-    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals) and the
+    (`*.db`, `*.sqlite`, `*.sqlite3`, `*.duckdb` and their journals, one list
+    shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
     `.dockerignore` is kept unchanged. The runtime
@@ -588,7 +589,9 @@ Generates a new Controller in the `src/controllers/` directory. It creates
 placeholder CRUD methods (`index`, `show`, `store`, `update`, `delete`) and
 registers the Rust module in `main.rs` when that file exists; it does not add
 application routes automatically.
-* **Arguments:** `<name>` (e.g., `UsersController` or `users`).
+* **Arguments:** `<name>` (e.g., `UsersController` or `users`). A name whose
+  module or type would not be a non-keyword Rust identifier (for example
+  `Bad.Name`) is rejected before any file is edited.
 * **Optional Flags:**
   * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`.
 
@@ -628,6 +631,8 @@ existing chat scaffold.
 
 ### `cargo rullst make:middleware <name>`
 Generates a standard Axum/Rullst Middleware struct in `src/middlewares/`. Perfect for injecting headers, checking authentication, rate limiting, or logging.
+A name whose module and function would not be a non-keyword Rust identifier is
+rejected before any file is edited.
 
 ### `cargo rullst make:island <name>`
 Creates a frontend interactive "Islands Architecture" component (similar to Fresh or Astro) in `src/islands/`. It generates the Rust infrastructure that, during build, will be transparently compiled to WebAssembly to run in the browser.
@@ -654,7 +659,16 @@ compares the `#[derive(Orm)]` models under `src/` with the database. It ignores
 framework tables (`migrations` and `rullst_*`) and writes a migration only for
 additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive
-differences remain, it lists them and writes no migration.
+differences remain, it lists them and writes no migration. Column types follow
+the field's Rust type: `i8`/`i16`/`i32` use `integer`, `i64` `big_integer`,
+`f32`/`f64` `float`, `bool` `boolean`, and `String`, `SecretString`, chrono
+date/time types and `Json` use `string`. A new table declares non-`Option`
+fields `NOT NULL`. A required field added to an existing table is declared
+`NOT NULL DEFAULT 0`, `0.0` or `''` (a commented backfill to review); a
+required date, encrypted or JSON field added to an existing table has no
+neutral value and is refused. Any other type (for example `Vec<u8>`, `Uuid` or
+an application enum) is refused, naming the field, and nothing is written; add
+such columns with `make:migration`.
 
 ### `cargo rullst make:billing`
 Scaffolds a SaaS billing starting point with subscription models, authenticated
@@ -889,7 +903,10 @@ the application.
 Scaffolds a LiveView-style server component at `src/live/<name>.rs` using a
 WebSocket and HTMX out-of-band swaps. Application JavaScript may be unnecessary,
 but HTMX remains client-side JavaScript and the generated transport requires
-origin, reconnect, and backpressure review.
+origin, reconnect, and backpressure review. It must run in a Rullst project
+root, and a name whose module or type would not be a non-keyword Rust
+identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
+anything is written.
 
 ### `cargo rullst make:grpc <ServiceName>`
 Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
@@ -922,7 +939,13 @@ anything when `src/models/user.rs`, `src/controllers/auth_controller.rs`,
 `src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists, or
 when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
 the users table (the blank database starter and the SaaS/LMS blueprints ship
-one). Mounting routes and the security baseline remains application work.
+one). It also refuses a project without a SQL migration runner (`pub mod
+migrations;` in `src/main.rs` or `src/lib.rs` plus a
+`rullst::artisan!(crate::migrations::get_migrations())` call, which database
+starters include), such as a `--no-database` starter, because nothing would
+compile or apply the users migration. Generated code names the ORM through the
+`rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
+routes and the security baseline remains application work.
 
 ### `cargo rullst make:mfa`
 Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
@@ -936,7 +959,8 @@ most once. Setup returns the secret and `otpauth://` URI once with
 `Cache-Control: no-store`; enrollment stays pending until `mfa_confirm`
 accepts a current code.
 
-The command targets the SQLx ORM (Turso-primary projects are rejected), enables
+The command targets the SQLx ORM (Turso-primary projects and projects without
+a migration runner are rejected, as for `cargo rullst auth`), enables
 the `orm` and `security` umbrella features, registers the module, refreshes the
 migration registry and refuses to overwrite an existing `src/controllers/mfa.rs`
 or `*_create_user_mfa_factors_table.rs` migration. Mount the handlers as POST
@@ -992,6 +1016,13 @@ Scans recognizable route declarations in `src/main.rs` and `src/lib.rs` and
 emits `rullst-client.ts` with unchecked request/response placeholders. Axum
 `{name}` and `{*name}` captures (and legacy `:name` segments) become method
 arguments interpolated with `encodeURIComponent` (per segment for a wildcard).
+State-changing requests (anything but `GET`, `HEAD`, `OPTIONS` and `TRACE`)
+follow the CSRF middleware's double-submit contract: the client echoes the
+`rullst_csrf` cookie in the `X-CSRF-Token` header and sends cookies with
+`credentials: 'same-origin'`. The cookie is set by a `GET`/`HEAD` response, so
+load a page or issue a `GET` before the first state-changing call. Outside a
+browser, or for a cross-origin `baseUrl`, pass
+`new RullstClient(baseUrl, { csrfToken: () => token, credentials: 'include' })`.
 Review the output before use; route scanning does not establish DTO shapes,
 serialization or authorization.
 
@@ -1011,8 +1042,11 @@ symlink, so move it aside to regenerate the diagram.
 ### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
 Connects to an existing database and generates reviewable starter structs from
 the tables and columns visible in SQLite or the current PostgreSQL/MySQL schema.
-Table lookups are parameterized and SQL identifiers are allowlisted. Table
-module names are normalized, while collisions and database columns that would
+Table lookups are parameterized and SQL identifiers are allowlisted.
+PostgreSQL and MySQL metadata columns are cast to text and aliased, so
+PostgreSQL 12+ `sql_identifier` columns and MySQL 8 upper-case labels are read
+portably; a missing or undecodable metadata column fails with an error rather
+than a panic. Table module names are normalized, while collisions and database columns that would
 require an unsupported ORM field remapping fail before the output directory is
 written. Existing model files are never replaced: if any `<table>.rs` target
 already exists, the command fails before writing anything. An existing
@@ -1074,7 +1108,7 @@ Scans source files and prints structural summaries in the terminal without
 starting a server, expanding macros or connecting to a database.
 * **Arguments:**
   * `[target]`: The item or file to inspect:
-    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line under `src/`.
+    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line in the regular `.rs` files under `src/`. Like `audit` and `generate:diagram`, the walk does not follow symlinks and is bounded in depth and entries; it reports when a bound left the table incomplete.
     * `model` or `models`: Lists the structs, enums and `pub` fields declared in `src/models`.
     * `schema`: Prints, as JSON, the table, fields, Rust types and optionality of every `#[derive(Orm)]` struct under `src/` (the extractor `make:migration:auto` uses). It describes the models, not the live database. A project-provided `rullst-schema.json` is printed instead when present; Rullst does not generate that file.
     * `<path/to/file.rs>`: Displays the first 40 lines of any target Rust file with line numbers.
@@ -1222,6 +1256,10 @@ require their official SDK/toolchain and a reachable backend. For `desktop`, the
 spinner lasts until the shell prints `Launching Omni interface...` (or 200
 output lines arrive); the command then prints the held lines and keeps streaming
 the shell's and its managed backend's standard output until the window closes.
+For `android` and `ios`, the command resolves the Tauri CLI (the local
+`omni-app/node_modules/@tauri-apps/cli` or `cargo tauri`) before it starts the
+backend with `cargo run`, so a missing CLI fails without leaving a backend
+process on port 3000; the backend is stopped when the mobile client exits.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
 
 ---

@@ -1,6 +1,6 @@
 // cargo-rullst/src/generators/auth/mfa.rs — Server-side TOTP second-factor scaffold.
 
-use super::{project_root_module, reject_turso_primary};
+use super::{project_root_module, reject_turso_primary, require_migration_runner};
 use crate::generators::chat::ensure_rullst_features;
 use crate::generators::migration::regenerate_migrations_mod;
 use crate::generators::output_guard::{existing_migrations, reject_existing, write_new};
@@ -35,6 +35,7 @@ pub fn scaffold_mfa_system() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
     reject_turso_primary("make:mfa")?;
+    require_migration_runner("make:mfa")?;
     let mut outputs = vec![PathBuf::from(CONTROLLER_PATH)];
     outputs.extend(existing_migrations(&[MIGRATION_SUFFIX.to_string()])?);
     reject_existing(

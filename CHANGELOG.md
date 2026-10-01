@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Facade and examples second-round fixes
+
+- The blog showcase registers `Post` with Nexus as tenant-scoped
+  (`nexus_tenant_column`), so `/nexus` lists and changes only the request
+  tenant's posts and never accepts a submitted `tenant_id`; its pricing,
+  billing and checkout pages read provider credential presence once at start-up
+  instead of re-reading `.env` on every request.
+- The feature matrix lists the umbrella defaults correctly (`orm`,
+  `drivers-all`, `queue-sqlite`), states that `orm` alone selects no SQLx
+  driver and documents every umbrella feature; `check-feature-boundaries.sh`
+  keeps that table in step with `rullst/Cargo.toml`.
+- The facade server test asserts the real production stack (secure headers,
+  CSRF, WAF), and the empty `jules_tests` were removed.
+
 ### CLI opening and context-aware home
 
 - `cargo rullst` without a subcommand opens with the v13 wordmark (24-bit or
@@ -421,6 +435,22 @@ A prepared version section does not establish that its tag or crates exist.
   arguments, and its tagline shows the installed version instead of "v12".
 - `sync-badges` escapes prerelease versions and is no longer installed by
   `cargo install` (new `maintainer-tools` feature).
+
+### CLI generator second-round fixes
+
+- `generate:models` reads PostgreSQL 12+ and MySQL 8 metadata (cast and
+  aliased columns) and reports bad metadata as an error instead of panicking.
+- `make:migration:auto` derives column types from the Rust field type:
+  new-table fields are `NOT NULL` unless `Option`, required columns added to
+  existing tables get a typed default, and unmappable types are refused.
+- `cargo rullst auth` and `make:mfa` use the `rullst::orm` facade and refuse
+  projects without a migration runner.
+- `inspect routes` no longer follows symlinks; `generate:ts` clients send
+  `X-CSRF-Token` from the `rullst_csrf` cookie; `make:live`,
+  `make:controller` and `make:middleware` validate names.
+- Generated `.gitignore` files ignore DuckDB databases and SQLite journals,
+  and `omni android|ios` no longer leaves the backend running when the Tauri
+  CLI is missing.
 
 ### CLI generator and operations review fixes
 

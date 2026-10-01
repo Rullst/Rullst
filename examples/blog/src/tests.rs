@@ -1,6 +1,7 @@
 //! Router-level tests of the blog showcase.
 
 mod csp;
+mod nexus;
 
 use axum::body::{Body, to_bytes};
 use axum::extract::ConnectInfo;
