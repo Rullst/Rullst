@@ -969,6 +969,13 @@ Scans recognizable route declarations in `src/main.rs` and `src/lib.rs` and
 emits `rullst-client.ts` with unchecked request/response placeholders. Axum
 `{name}` and `{*name}` captures (and legacy `:name` segments) become method
 arguments interpolated with `encodeURIComponent` (per segment for a wildcard).
+State-changing requests (anything but `GET`, `HEAD`, `OPTIONS` and `TRACE`)
+follow the CSRF middleware's double-submit contract: the client echoes the
+`rullst_csrf` cookie in the `X-CSRF-Token` header and sends cookies with
+`credentials: 'same-origin'`. The cookie is set by a `GET`/`HEAD` response, so
+load a page or issue a `GET` before the first state-changing call. Outside a
+browser, or for a cross-origin `baseUrl`, pass
+`new RullstClient(baseUrl, { csrfToken: () => token, credentials: 'include' })`.
 Review the output before use; route scanning does not establish DTO shapes,
 serialization or authorization.
 
