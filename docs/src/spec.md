@@ -776,6 +776,11 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Builders add `with_trashed()` (include trashed rows) and `only_trashed()`
+  (only trashed rows). A model without soft deletes has no trashed rows, so
+  its `only_trashed()` fails reads, counts, plucks and `delete_all()` with
+  `Validation` instead of treating every live row as trashed; a directly set
+  `only_trashed` field matches no row. `with_trashed()` changes nothing there.
 * `force_delete()` and `restore()` check the tenant and their policy
   (`can_force_delete`/`can_restore`) before the transaction, then run in a
   savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
