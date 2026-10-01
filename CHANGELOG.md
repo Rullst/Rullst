@@ -389,6 +389,24 @@ A prepared version section does not establish that its tag or crates exist.
 - Generated workers no longer log payloads, and fixture billing no longer
   returns database error text.
 
+### CLI audit and operations second-round fixes
+
+- `audit --idor`/`--network` skip only the item each top-level `#[cfg(test)]`
+  annotates instead of the rest of the file, check every route path on a line
+  and across comment lines inside `.route(`, ignore guard names in comments and
+  test items (evidence is crate-wide), and scan workspace member `src` trees
+  from a package directory; four Studio row-mutation routes this surfaced are
+  classified `admin`.
+- `cargo rullst upgrade` refuses to downgrade requirements or the lockfile.
+- `foundry:deploy` passes `PORT` and a loopback `HOST` to the service and
+  uploads the executable Cargo actually built.
+- `dev`/`dash` stop the application on SIGTERM/SIGHUP, `dev --ts-sync`
+  regenerates the SDK after each rebuild, and process supervision uses
+  `waitid` instead of `ps` outside Linux.
+- `dockerize`/`generate:buildah` parse the package name, the dashboard audit
+  requests Geiger only when installed, `pkg add` supports virtual workspaces,
+  and project updates accept the SELinux label.
+
 ### CLI operations low-severity fixes
 
 - Scaffold refreshes and `generate:diagram` no longer overwrite a hand-written
