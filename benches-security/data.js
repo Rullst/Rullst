@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790828414616,
+  "lastUpdate": 1790831828840,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13322,6 +13322,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27ead7f102189385a7b3f61acbe93fcf52d578b3",
+          "message": "Merge pull request #368 from Rullst/fix/v13-cli-blueprint-review-fixes\n\nfix(cli): portable starter migrations, protected ERP dashboard, bounded auth hashing and CSP-safe pages",
+          "timestamp": "2026-10-01T01:55:28-03:00",
+          "tree_id": "5cffdc81f297e4bcf99a8f1d65fab692d163abdd",
+          "url": "https://github.com/Rullst/Rullst/commit/27ead7f102189385a7b3f61acbe93fcf52d578b3"
+        },
+        "date": 1790831828313,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5673,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 534,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
             "range": "± 0",
             "unit": "ns/iter"
           }
