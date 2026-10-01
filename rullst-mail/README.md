@@ -531,6 +531,15 @@ declared type it does not inspect other than `application/octet-stream` (so a
 `allowing_opaque()` still accepts HTML and other opaque content. PDF names written with `#xx` escapes or inside compressed streams are
 not decoded.
 
+Markup is classified the way a browser parses it, not by its first bytes: a
+document opening with `<` is SVG or active (X)HTML by its root element after
+any XML declaration, processing instruction, comment or DOCTYPE, matched after
+an optional `prefix:` (`<s:svg>`, `<h:html>`), and by the SVG or XHTML
+namespace URI anywhere in it, also when written with character references.
+Markup that declares DTD entities, which can assemble a namespace URI from
+pieces, is treated as SVG unless its root is `html`, and a UTF-16 document is
+read by its byte-order mark. (v13)
+
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
 aggregate before transport encoding. Provider/account limits can be lower. The
 base pipeline validates metadata but treats bytes as opaque. The opt-in local
