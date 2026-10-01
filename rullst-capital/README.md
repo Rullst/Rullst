@@ -565,6 +565,14 @@ sent a fixed `total_count` of 12 for every plan period. Handle
 argument is recorded in the subscription `notes` only; the adapter does not
 send it as a callback or return URL. Offline fixtures need no count.
 
+Live `pause_subscription` sends Razorpay's documented
+`{"pause_at": "now"}` body and succeeds only when the response is the same
+subscription with status `paused`. Razorpay can pause only an `active`
+subscription and cancels an `authenticated` one instead; that outcome returns
+`SubscriptionError`. See the
+[pause reference](https://razorpay.com/docs/api/payments/subscriptions/pause-subscription/).
+Earlier releases sent an empty body and accepted any successful status.
+
 ---
 
 ## Outbound Provider Safety and Retry Evidence
