@@ -23,6 +23,14 @@ impl NexusModel for SemanticModel {
             FieldMeta::new("description", "Description", FieldKind::Textarea),
             FieldMeta::new("is_published", "Published", FieldKind::Boolean),
             FieldMeta::new(
+                "stock",
+                "Stock",
+                FieldKind::Integer {
+                    min: 0,
+                    max: i64::from(u16::MAX),
+                },
+            ),
+            FieldMeta::new(
                 "status",
                 "Status",
                 FieldKind::Enum {
@@ -58,6 +66,7 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
     assert!(body.contains("<textarea name=\"description\""));
     assert!(body.contains("<input type=\"checkbox\" name=\"is_published\" value=\"1\""));
     assert!(body.contains("<select name=\"status\""));
+    assert!(body.contains("step=\"1\" min=\"0\" max=\"65535\""));
     assert!(body.contains("<option value=\"active\">active</option>"));
     assert!(body.contains("<option value=\"archived\">archived</option>"));
 
@@ -67,6 +76,10 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
         "is_published=maybe",
         "unknown_field=value",
         "status=active&status=archived",
+        "stock=2.5",
+        "stock=1e3",
+        "stock=-1",
+        "stock=65536",
     ] {
         let response = app
             .clone()

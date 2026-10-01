@@ -158,10 +158,18 @@ fn generates_readonly_hidden_tenant_scope_from_orm_metadata() {
     assert!(tenant_field.contains("readonly : true"));
 }
 
-/// The generated `FieldMeta` of `name`, or `None` when it is not emitted.
+/// The generated `FieldMeta` of `name` up to its `readonly` flag, or `None`
+/// when it is not emitted. (A kind such as `Integer { .. }` has its own braces.)
 fn field_meta(output: &str, name: &str) -> Option<String> {
     let rest = output.split(&format!("name : \"{name}\"")).nth(1)?;
-    Some(rest.split('}').next().unwrap_or_default().to_string())
+    let flag = rest.find("readonly : ")? + "readonly : ".len();
+    let end = flag
+        + if rest[flag..].starts_with("true") {
+            4
+        } else {
+            5
+        };
+    Some(rest[..end].to_string())
 }
 
 #[test]
@@ -362,4 +370,53 @@ fn infers_chrono_widgets_from_any_path_spelling() {
     // An offset other than UTC is not a datetime-local value.
     let local = field_meta(&output, "local_at").expect("local metadata");
     assert!(local.contains("FieldKind :: Text"), "{local}");
+}
+
+#[test]
+fn integer_fields_carry_their_type_range() {
+    let input: DeriveInput = parse_quote! {
+        struct Product {
+            id: i64,
+            stock: i32,
+            views: Option<u32>,
+            rank: u8,
+            total: u64,
+            price: f64,
+            #[nexus(kind = "number")]
+            level: i16,
+            #[nexus(kind = "number")]
+            code: String,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    // Compared without spaces: a negative literal may print as `- 1i64`.
+    let kind = |name: &str| {
+        field_meta(&output, name)
+            .expect("field metadata")
+            .replace(' ', "")
+    };
+    for (name, expected) in [
+        (
+            "id",
+            "FieldKind::Integer{min:::core::primitive::i64::MIN,max:::core::primitive::i64::MAX}",
+        ),
+        (
+            "stock",
+            "FieldKind::Integer{min:-2147483648i64,max:2147483647i64}",
+        ),
+        ("views", "FieldKind::Integer{min:0i64,max:4294967295i64}"),
+        ("rank", "FieldKind::Integer{min:0i64,max:255i64}"),
+        (
+            "total",
+            "FieldKind::Integer{min:0i64,max:::core::primitive::i64::MAX}",
+        ),
+        ("price", "FieldKind::Number,"),
+        ("level", "FieldKind::Integer{min:-32768i64,max:32767i64}"),
+        ("code", "FieldKind::Number,"),
+    ] {
+        let meta = kind(name);
+        assert!(meta.contains(expected), "{name}: {meta}");
+    }
 }

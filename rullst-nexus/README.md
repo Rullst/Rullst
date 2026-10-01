@@ -12,7 +12,9 @@ patch when upgrading, while preserving their security layers. See the
 
 When used through the `rullst` umbrella with its `orm` and `nexus` features,
 `#[derive(Nexus)]` generates metadata for named-field models. Primitive widgets
-are inferred; semantic fields can use `#[nexus(kind = "textarea")]` or
+are inferred (a Rust integer field becomes `FieldKind::Integer` bounded by its
+type, with `u64`/`usize` capped at `i64::MAX`; `f32`/`f64` become `Number`);
+semantic fields can use `#[nexus(kind = "textarea")]` or
 `#[nexus(kind = "enum", options = "draft, published")]`. Models may also
 implement `NexusModel` manually. Batch deactivation is exposed only for a
 writable (neither `hidden` nor `readonly`) Boolean `is_active` or `active`
