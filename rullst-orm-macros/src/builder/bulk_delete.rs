@@ -3,7 +3,8 @@
 //! The statement renders only the WHERE and soft-delete predicates, so builder
 //! clauses that would bound or reshape a SELECT (an explicit `limit()`,
 //! `offset()`, `order_by()`, joins, grouping or CTEs) are rejected instead of
-//! being silently dropped into an unbounded delete.
+//! being silently dropped into an unbounded delete. A soft-delete model also
+//! rejects `with_trashed()`/`only_trashed()`, which would re-stamp trashed rows.
 
 use crate::parser::{ParsedModel, SoftDeleteConfig};
 use proc_macro2::TokenStream;
@@ -65,6 +66,27 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
     let table_name = &parsed.table_name;
     let delete_all_logic = generate_delete_all_logic(parsed);
     let has_policy = !parsed.policy.is_empty();
+    // The soft-delete UPDATE must match only live rows, like the instance
+    // `delete()`: trashed rows keep their deletion time.
+    let trashed_guard = if parsed.has_soft_deletes {
+        quote! {
+            let trashed_clause = if self.only_trashed {
+                Some("only_trashed()")
+            } else if self.with_trashed {
+                Some("with_trashed()")
+            } else {
+                None
+            };
+            if let Some(clause) = trashed_clause {
+                return Err(rullst_orm::Error::Validation(format!(
+                    "delete_all() does not support {} on a soft-delete model; it would re-stamp the deletion time of rows that are already trashed. Bulk-delete live rows without it, or force_delete() each trashed row",
+                    clause
+                )));
+            }
+        }
+    } else {
+        quote! {}
+    };
     quote! {
     #[rullst_orm::_tracing::instrument(
         name = "rullst.orm.query",
@@ -98,6 +120,7 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
                 clause
             )));
         }
+        #trashed_guard
         if #has_policy {
             return Err(rullst_orm::Error::Validation(
                 "delete_all() cannot authorize a policy-protected model; load the records and call each model's delete() inside Orm::transaction(...)".to_string()

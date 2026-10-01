@@ -1754,7 +1754,11 @@ while portability and semantic review remain the model author's responsibility.
 * `delete_all()` renders only the WHERE and soft-delete predicates. A builder
   with an explicit `limit()` (the implicit global cap does not count),
   `offset()`, `order_by()`, joins, `group_by()`/HAVING or CTEs fails with
-  `Validation` instead of silently deleting every matching row.
+  `Validation` instead of silently deleting every matching row. On a
+  soft-delete model, `with_trashed()` and `only_trashed()` fail the same way:
+  the soft-delete `UPDATE` matches only live rows, like the instance
+  `delete()`, so a trashed row keeps its deletion time. Purge trashed rows
+  with `force_delete()`.
 * Only PostgreSQL statements are renumbered. `delete_all()`, including the
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
