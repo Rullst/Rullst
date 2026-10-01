@@ -24,6 +24,7 @@ fn service(router: axum::Router) -> HotSwapService {
         limiter: None,
         lifecycle: None,
         trusted_proxy: None,
+        machine_endpoints: None,
     }
 }
 
@@ -245,4 +246,43 @@ async fn escaped_panics_show_details_only_to_loopback_peers() {
             "{peer}"
         );
     }
+}
+
+#[tokio::test]
+async fn machine_endpoint_policy_authenticates_hot_swapped_routes() {
+    use crate::security::{MachineEndpoint, MachineEndpointPolicy};
+    use axum::http::{Method, header};
+
+    const MACHINE_TOKEN: &str = "hot-reload-machine-token-0123456789abcdef";
+    let router = axum::Router::new().route(
+        "/webhooks/billing",
+        axum::routing::post(|| async { "processed" }),
+    );
+    let mut service = service(router);
+    service.machine_endpoints = Some(
+        MachineEndpointPolicy::new(vec![
+            MachineEndpoint::bearer(Method::POST, "/webhooks/billing", MACHINE_TOKEN).unwrap(),
+        ])
+        .unwrap(),
+    );
+    let request = |authorization: Option<&str>| {
+        let mut builder = Request::post("/webhooks/billing");
+        if let Some(value) = authorization {
+            builder = builder.header(header::AUTHORIZATION, value);
+        }
+        builder.body(Body::empty()).unwrap()
+    };
+
+    for authorization in [None, Some("Bearer wrong-machine-token-0123456789abcdef")] {
+        let response = service.call(request(authorization)).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert!(!body_text(response).await.contains("processed"));
+    }
+
+    let response = service
+        .call(request(Some(&format!("Bearer {MACHINE_TOKEN}"))))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(body_text(response).await, "processed");
 }

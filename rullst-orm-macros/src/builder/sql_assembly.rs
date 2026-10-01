@@ -3,15 +3,14 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
+/// `soft_delete_filters` holds the live and trashed predicates of a
+/// soft-delete model, and is `None` for a model without soft deletes.
 pub fn generate_sql_assembly_methods(
     table_name: &str,
-    has_soft_deletes: bool,
-    soft_delete_filter_unset: &str,
-    soft_delete_filter_set: &str,
+    soft_delete_filters: Option<(&str, &str)>,
 ) -> TokenStream {
     let table_lit = table_name;
-    let unset_lit = soft_delete_filter_unset;
-    let set_lit = soft_delete_filter_set;
+    let push_soft_deletes = generate_push_soft_deletes(soft_delete_filters);
 
     quote! {
         fn push_ctes(&self, sql: &mut String) {
@@ -77,6 +76,26 @@ pub fn generate_sql_assembly_methods(
             }
         }
 
+        /// A generated predicate (the tenant scope or the keyset cursor) on
+        /// one of this model's own columns, qualified with its table so a
+        /// join with a table that has the same column cannot make it
+        /// ambiguous. The column name was validated when the model was
+        /// derived; the column guards still apply.
+        fn __rullst_where_own<T: Into<rullst_orm::RullstValue>>(
+            mut self,
+            column: &'static str,
+            operator: &'static str,
+            value: T,
+        ) -> Self {
+            self.reject_skipped_column(column);
+            self.wheres.push((
+                "AND".to_string(),
+                format!("{}.{} {} {}", #table_lit, column, operator, Self::__rullst_bind_marker(column)),
+            ));
+            self.bindings.push(value.into());
+            self
+        }
+
         /// Freezes the filters added so far, such as a relation's ownership
         /// predicate, into their own AND group before a caller's modifier runs.
         #[doc(hidden)]
@@ -98,20 +117,7 @@ pub fn generate_sql_assembly_methods(
             false
         }
 
-        fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {
-            if #has_soft_deletes && !self.with_trashed {
-                if first_where {
-                    sql.push_str(" WHERE ");
-                } else {
-                    sql.push_str(" AND ");
-                }
-                if self.only_trashed {
-                    sql.push_str(#set_lit);
-                } else {
-                    sql.push_str(#unset_lit);
-                }
-            }
-        }
+        #push_soft_deletes
 
         fn push_group_by(&self, sql: &mut String) {
             if let Some(group) = &self.group_by {
@@ -274,5 +280,30 @@ pub fn generate_sql_assembly_methods(
 
             self.format_postgres(&sql)
         }
+    }
+}
+
+fn generate_push_soft_deletes(soft_delete_filters: Option<(&str, &str)>) -> TokenStream {
+    match soft_delete_filters {
+        Some((live, trashed)) => quote! {
+            fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {
+                if self.with_trashed {
+                    return;
+                }
+                sql.push_str(if first_where { " WHERE " } else { " AND " });
+                sql.push_str(if self.only_trashed { #trashed } else { #live });
+            }
+        },
+        // No row of a model without soft deletes is trashed, so a trashed-only
+        // statement matches nothing, even when the public `only_trashed` field
+        // was set directly instead of through `only_trashed()`.
+        None => quote! {
+            fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {
+                if self.only_trashed && !self.with_trashed {
+                    sql.push_str(if first_where { " WHERE " } else { " AND " });
+                    sql.push_str("1 = 0");
+                }
+            }
+        },
     }
 }

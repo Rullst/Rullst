@@ -132,6 +132,10 @@ def exercise(base, database, restart, report):
            payload={"body": "spoofed", "tenant_id": "org-b"}), 422)
     expect("bounded-resource", alice.request("PUT", path, tenant="org-a",
            payload={"body": "a" * 257}), 422)
+    expect("reject-control-character-create", alice.request("POST", "/journey/notes", tenant="org-a",
+           payload={"body": "\u0000note"}), 422)
+    expect("reject-control-character-update", alice.request("PUT", path, tenant="org-a",
+           payload={"body": "\u0000note"}), 422)
     with sqlite3.connect(database) as db:
         check("denials-left-state-unchanged", db.execute(
             "SELECT tenant_id, owner_id, body FROM journey_notes").fetchall() ==

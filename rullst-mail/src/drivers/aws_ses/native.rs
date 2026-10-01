@@ -43,11 +43,15 @@ impl NativeSesConfig {
         } else {
             &self.client
         };
-        let destination = Destination::builder().to_addresses(&message.to).build();
+        // SES needs 7-bit ASCII addresses (no SMTPUTF8); see `address`.
+        let destination = Destination::builder()
+            .to_addresses(super::address::recipient(&message.to)?)
+            .build();
+        let from = super::address::sender(crate::drivers::rest::required_sender(message)?)?;
         let content = build_content(message)?;
         let result = client
             .send_email()
-            .from_email_address(crate::drivers::rest::required_sender(message)?)
+            .from_email_address(from)
             .destination(destination)
             .content(content)
             .send()

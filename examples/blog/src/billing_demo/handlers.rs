@@ -12,7 +12,7 @@ use rullst_capital::fiscal::models::{FiscalCustomer, FiscalEmitter, NfseDps, Tax
 
 use super::gateways::simulate_provider_checkout;
 use super::views::render_pricing_page;
-use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
+use crate::showcase_nav::{render_head_assets, render_showcase_nav};
 
 /// Example SaaS Subscriber implementing the `Billable` trait.
 pub struct Subscriber {
@@ -53,13 +53,13 @@ pub async fn pricing_page(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
 ) -> impl IntoResponse {
     let nav = render_showcase_nav("/pricing");
-    let styles = render_shared_styles();
+    let head_assets = render_head_assets();
 
     let (free_can_post, xml_snippet) = compute_demo_data();
 
     let body = render_pricing_page(
         nav,
-        styles,
+        head_assets,
         free_can_post,
         xml_snippet,
         csrf_token.as_str(),
@@ -94,7 +94,7 @@ pub async fn checkout_handler_post(
 
 async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) -> Html<String> {
     let nav = render_showcase_nav("/pricing");
-    let styles = render_shared_styles();
+    let head_assets = render_head_assets();
 
     let provider = params.provider.unwrap_or_else(|| "infinitepay".to_string());
     let plan = params.plan.unwrap_or_else(|| "pro_plan".to_string());
@@ -117,7 +117,7 @@ async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) 
 
     let body = render_pricing_page(
         nav,
-        styles,
+        head_assets,
         free_can_post,
         xml_snippet,
         &csrf_token,

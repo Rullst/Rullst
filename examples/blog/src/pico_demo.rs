@@ -1,14 +1,15 @@
 //! Pico.css semantic CSS demonstration without a Node.js build pipeline.
-//! Small inline browser handlers remain for the showcase controls.
+//! Pico.css is a vendored same-origin stylesheet and the two interactive
+//! controls use the shared `data-action` module instead of inline handlers.
 
-use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
+use crate::showcase_nav::{render_head_assets, render_showcase_nav};
 use axum::response::Html;
 use rullst::html;
 
 /// Renders the Pico.css Semantic CSS demo page as an Axum HTML response.
 pub async fn render_pico_demo_page() -> Html<String> {
     let showcase_nav = render_showcase_nav("/pico-demo");
-    let shared_styles = render_shared_styles();
+    let head_assets = render_head_assets();
 
     let page_html = html! {
         <html lang="en" data-theme="dark">
@@ -16,65 +17,29 @@ pub async fn render_pico_demo_page() -> Html<String> {
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Pico.css &mdash; Zero-Build Semantic CSS Engine"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.slate.min.css" />
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-                <style>
-                    { rullst::html::RawHtml(shared_styles) }
-                    "
-                    body {
-                        font-family: 'Outfit', sans-serif;
-                        margin: 0;
-                        padding: 0;
-                        min-height: 100vh;
-                    }
-                    .pico-container {
-                        max-width: 1000px;
-                        margin: 0 auto;
-                        padding: 2.5rem 1.5rem 4rem 1.5rem;
-                    }
-                    .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
-                    .badge {
-                        display: inline-block;
-                        padding: 0.3rem 0.8rem;
-                        background: rgba(16, 185, 129, 0.15);
-                        border: 1px solid rgba(16, 185, 129, 0.3);
-                        color: #34d399;
-                        font-weight: 700;
-                        border-radius: 9999px;
-                        font-size: 0.75rem;
-                        letter-spacing: 0.05em;
-                        text-transform: uppercase;
-                    }
-                    .comparison-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-                        gap: 1.5rem;
-                        margin-top: 2rem;
-                    }
-                    "
-                </style>
+                <link rel="stylesheet" href="/assets/vendor/pico-2.1.1.slate.min.css" />
+                { rullst::html::RawHtml(head_assets) }
             </head>
             <body>
                 { rullst::html::RawHtml(showcase_nav) }
 
                 <div class="pico-container">
-                    <div style="text-align: center; margin-bottom: 2.5rem;">
-                        <span class="badge">"🎨 Zero-Build Semantic CSS (Pico.css v2)"</span>
-                        <h1 style="font-size: 2.75rem; font-weight: 800; margin: 0.75rem 0 0.5rem 0; letter-spacing: -0.025em;">
+                    <div class="pico-hero">
+                        <span class="pico-badge">"🎨 Zero-Build Semantic CSS (Pico.css v2)"</span>
+                        <h1>
                             "Pico.css: Zero-Build Semantic CSS in Rust"
                         </h1>
-                        <p style="color: #94a3b8; max-width: 760px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6;">
-                            "Write semantic HTML5 tags in your <code style=\"color:#34d399;\">html!</code> macros and let Pico.css style standard controls. This page adds a few layout classes and inline handlers, so it is a practical integration example rather than a classless or JavaScript-free claim."
+                        <p>
+                            "Write semantic HTML5 tags in your <code class=\"pico-code-emerald\">html!</code> macros and let Pico.css style standard controls. This page adds a few layout classes and a small same-origin script for the dialog and progress buttons, so it is a practical integration example rather than a classless or JavaScript-free claim."
                         </p>
                     </div>
 
                     <article>
                         <header>
-                            <h3 style="margin: 0; font-weight: 700;">"🧪 Interactive Semantic Controls"</h3>
+                            <h3 class="pico-heading">"🧪 Interactive Semantic Controls"</h3>
                         </header>
-                        <p style="color: #94a3b8; font-size: 0.95rem;">
-                            "Pico.css supplies the baseline styling for standard <code style=\"color:#38bdf8;\">&lt;input&gt;</code>, <code style=\"color:#38bdf8;\">&lt;select&gt;</code>, <code style=\"color:#38bdf8;\">&lt;button&gt;</code>, <code style=\"color:#38bdf8;\">&lt;progress&gt;</code>, and <code style=\"color:#38bdf8;\">&lt;dialog&gt;</code> elements."
+                        <p class="pico-note">
+                            "Pico.css supplies the baseline styling for standard <code class=\"pico-code-sky\">&lt;input&gt;</code>, <code class=\"pico-code-sky\">&lt;select&gt;</code>, <code class=\"pico-code-sky\">&lt;button&gt;</code>, <code class=\"pico-code-sky\">&lt;progress&gt;</code>, and <code class=\"pico-code-sky\">&lt;dialog&gt;</code> elements."
                         </p>
 
                         <div class="grid">
@@ -95,11 +60,11 @@ pub async fn render_pico_demo_page() -> Html<String> {
                         <label for="health_progress">"Real-time Telemetry Buffer Saturation"</label>
                         <progress id="health_progress" value="78" max="100"></progress>
 
-                        <div class="grid" style="margin-top: 1.25rem;">
-                            <button type="button" onclick="document.getElementById('demo-modal').showModal()">
+                        <div class="grid pico-actions">
+                            <button type="button" data-action="open-dialog" data-target="demo-modal">
                                 "✨ Open Native Semantic Dialog (&lt;dialog&gt;)"
                             </button>
-                            <button type="button" class="secondary" onclick="var p = document.getElementById('health_progress'); p.value = (p.value >= 100) ? 20 : p.value + 15;">
+                            <button type="button" class="secondary" data-action="advance-progress" data-target="health_progress">
                                 "⚡ Simulate Buffer Load (+15%)"
                             </button>
                         </div>
@@ -108,39 +73,39 @@ pub async fn render_pico_demo_page() -> Html<String> {
                     <dialog id="demo-modal">
                         <article>
                             <header>
-                                <button aria-label="Close" rel="prev" onclick="document.getElementById('demo-modal').close()" style="float: right;"></button>
-                                <h3 style="margin: 0; font-weight: 700;">"🛡️ Native HTML5 &lt;dialog&gt; Modal"</h3>
+                                <button type="button" aria-label="Close" rel="prev" class="pico-close" data-action="close-dialog" data-target="demo-modal"></button>
+                                <h3 class="pico-heading">"🛡️ Native HTML5 &lt;dialog&gt; Modal"</h3>
                             </header>
                             <p>
-                                "This modal is a standard HTML5 <code style=\"color:#38bdf8;\">&lt;dialog&gt;</code> element. Pico.css provides built-in backdrop blurring, animations, and typography with zero JavaScript UI libraries."
+                                "This modal is a standard HTML5 <code class=\"pico-code-sky\">&lt;dialog&gt;</code> element. Pico.css provides built-in backdrop blurring, animations, and typography with zero JavaScript UI libraries."
                             </p>
                             <footer>
-                                <button type="button" onclick="document.getElementById('demo-modal').close()">"Close Dialog"</button>
+                                <button type="button" data-action="close-dialog" data-target="demo-modal">"Close Dialog"</button>
                             </footer>
                         </article>
                     </dialog>
 
                     <div class="comparison-grid">
-                        <article style="border-top: 4px solid #10b981;">
+                        <article class="comparison-htmx">
                             <header>
-                                <h4 style="margin: 0; font-weight: 700; color: #10b981;">"⚡ HTMX + Tailwind SSR"</h4>
-                                <span style="font-size: 0.8rem; color: #94a3b8;">"One option for application interfaces"</span>
+                                <h4 class="comparison-title">"⚡ HTMX + Tailwind SSR"</h4>
+                                <span class="comparison-subtitle">"One option for application interfaces"</span>
                             </header>
-                            <ul style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; padding-left: 1.25rem;">
+                            <ul class="comparison-list">
                                 <li><strong>"Partial Updates"</strong>": HTMX can request and swap server-rendered fragments without a full navigation."</li>
                                 <li><strong>"Tailwind CSS Utility"</strong>": Pixel-perfect custom designs with utility classes."</li>
                                 <li><strong>"Consider For"</strong>": Server-oriented forms, CRUD surfaces, and progressively enhanced dashboards."</li>
                             </ul>
                         </article>
 
-                        <article style="border-top: 4px solid #38bdf8;">
+                        <article class="comparison-pico">
                             <header>
-                                <h4 style="margin: 0; font-weight: 700; color: #38bdf8;">"🎨 Zero-Build Semantic CSS (Pico.css)"</h4>
-                                <span style="font-size: 0.8rem; color: #94a3b8;">"A lightweight semantic-CSS option"</span>
+                                <h4 class="comparison-title">"🎨 Zero-Build Semantic CSS (Pico.css)"</h4>
+                                <span class="comparison-subtitle">"A lightweight semantic-CSS option"</span>
                             </header>
-                            <ul style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; padding-left: 1.25rem;">
+                            <ul class="comparison-list">
                                 <li><strong>"Semantic Defaults"</strong>": Standard controls receive useful baseline styling."</li>
-                                <li><strong>"No Node.js Pipeline"</strong>": The CDN-backed example needs no local NPM build step."</li>
+                                <li><strong>"No Node.js Pipeline"</strong>": The vendored stylesheet needs no local NPM build step."</li>
                                 <li><strong>"Consider For"</strong>": Prototypes, documentation, and restrained internal interfaces."</li>
                             </ul>
                         </article>

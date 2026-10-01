@@ -59,8 +59,13 @@ pub(super) fn rewrite_links(
 /// pipeline later sees only the tracker URL, so a destination it would reject
 /// (homograph host) or redact (credentials) keeps its original `href`, where
 /// the pipeline then rejects or redacts it as it does for untracked mail.
+///
+/// The target is checked as one link, never as text: whitespace or a control
+/// character (which a browser strips) leaves it untracked, so a tab inside
+/// the host cannot split it into harmless-looking words.
 fn passes_pipeline_checks(target: &str) -> bool {
-    crate::security::scan_content_security(target).is_ok()
+    !target.chars().any(|c| c.is_whitespace() || c.is_control())
+        && crate::security::is_safe_link(target)
         && crate::action::redact_body_secrets(target) == target
 }
 
