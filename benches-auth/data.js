@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790846781709,
+  "lastUpdate": 1790849631114,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14097,6 +14097,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4516,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79e2f9b0d25eba44b5292de204b07f06fd8d68fd",
+          "message": "Merge pull request #374 from Rullst/fix/v13-cli-ops-low-fixes\n\nfix(cli): bounded symlink-safe audit, protected diagram, RFC 1123 names and honest pkg/deploy exits",
+          "timestamp": "2026-10-01T06:54:43-03:00",
+          "tree_id": "570cc750f6c570495f96142d183730a50b9640dc",
+          "url": "https://github.com/Rullst/Rullst/commit/79e2f9b0d25eba44b5292de204b07f06fd8d68fd"
+        },
+        "date": 1790849630099,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1023,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 794,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1837,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4591,
+            "range": "± 68",
             "unit": "ns/iter"
           }
         ]
