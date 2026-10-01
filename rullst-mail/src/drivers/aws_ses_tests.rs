@@ -196,6 +196,44 @@ async fn bearer_proxy_sends_the_complete_ses_payload_and_maps_provider_failures(
 }
 
 #[tokio::test]
+async fn bearer_proxy_sends_seven_bit_ascii_addresses() {
+    let (endpoint, capture) = spawn_response(200, &[], "{}");
+    let driver = AwsSesDriver::try_new("sa-east-1", "proxy-secret")
+        .unwrap()
+        .try_with_endpoint(endpoint)
+        .unwrap();
+    let message = Message::new()
+        .to("Maria <maria@b\u{fc}cher.de>")
+        .from("Jos\u{e9} Silva <no-reply@acme.com.br>")
+        .subject("IDN")
+        .text("body");
+    driver.send(&message).await.unwrap();
+    let request = String::from_utf8(capture.join().unwrap()).unwrap();
+    let body: serde_json::Value =
+        serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(
+        body["FromEmailAddress"],
+        "=?UTF-8?B?Sm9zw6kgU2lsdmE=?= <no-reply@acme.com.br>"
+    );
+    assert_eq!(
+        body["Destination"]["ToAddresses"][0],
+        "maria@xn--bcher-kva.de"
+    );
+
+    // A Unicode local part cannot be expressed without SMTPUTF8.
+    let error = driver
+        .send(
+            &Message::new()
+                .to("jos\u{e9}@example.com")
+                .from("a@example.com")
+                .text("x"),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(error, MailError::ValidationError(_)));
+}
+
+#[tokio::test]
 async fn bearer_proxy_carries_attachments_and_inline_cid_assets() {
     use base64::prelude::*;
     let (endpoint, capture) = spawn_response(200, &[], "{}");
@@ -318,6 +356,7 @@ fn configuration_payload_and_debug_paths_are_bounded_and_secret_free() {
             .from("sender@example.com")
             .subject("subject"),
         "sender@example.com",
+        "recipient@example.com",
     );
     assert_eq!(payload["FromEmailAddress"], "sender@example.com");
     assert!(payload["Content"]["Simple"].get("Headers").is_none());
@@ -357,6 +396,7 @@ fn one_click_post_header_is_limited_to_https_unsubscribe_urls() {
                 .from("sender@example.com")
                 .unsubscribe_url(url),
             "sender@example.com",
+            "recipient@example.com",
         )
     };
     let names = |payload: serde_json::Value| -> Vec<String> {

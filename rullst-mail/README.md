@@ -427,6 +427,13 @@ limits and 40 MiB encoded estimate as native mode before any request, and
 failures return `MailError::ValidationError`. The proxy must forward
 attachments or reject the request; Rullst never drops them.
 
+SES does not support SMTPUTF8, so native and proxy requests carry 7-bit ASCII
+addresses: an internationalized domain becomes its IDNA A-label
+(`maria@bücher.de` is sent as `maria@xn--bcher-kva.de`) and a non-ASCII sender
+display name becomes RFC 2047 encoded-words (`=?UTF-8?B?...?=`), while an
+all-ASCII sender is sent unchanged. A non-ASCII local part cannot be expressed
+and fails before any request with `MailError::ValidationError`. (v13)
+
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
 
