@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790818587076,
+  "lastUpdate": 1790821350408,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13857,6 +13857,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4432,
             "range": "± 67",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef865d4f63fde2c26a8e731361d584d61f86cb7f",
+          "message": "Merge pull request #366 from Rullst/fix/v13-orm-macros-low-fixes-b\n\nfix(orm-macros,nexus): low-severity model mutation, audit, test harness and Nexus derive fixes",
+          "timestamp": "2026-09-30T23:06:40-03:00",
+          "tree_id": "bcf141e16969db4d483a806972d2e7838db1e7d2",
+          "url": "https://github.com/Rullst/Rullst/commit/ef865d4f63fde2c26a8e731361d584d61f86cb7f"
+        },
+        "date": 1790821349526,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 712,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 606,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1366,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3281,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
