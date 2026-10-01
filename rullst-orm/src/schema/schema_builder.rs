@@ -38,10 +38,7 @@ impl Schema {
                 ensure_postgres_enum(&definition).await?;
             }
         }
-        let escaped_table = match driver {
-            "mysql" => format!("`{}`", table_name),
-            _ => format!("\"{}\"", table_name),
-        };
+        let escaped_table = quoted_table(driver, table_name);
 
         let sql = format!(
             "CREATE TABLE IF NOT EXISTS {} (\n    {}\n);",
@@ -60,10 +57,7 @@ impl Schema {
     pub async fn drop_if_exists(table_name: &str) -> Result<(), Error> {
         validate_table_name(table_name)?;
         let driver = crate::Orm::driver()?;
-        let escaped_table = match driver {
-            "mysql" => format!("`{}`", table_name),
-            _ => format!("\"{}\"", table_name),
-        };
+        let escaped_table = quoted_table(driver, table_name);
 
         let sql = format!("DROP TABLE IF EXISTS {};", escaped_table);
         let mut query_builder = sqlx::query_builder::QueryBuilder::new("");
@@ -89,6 +83,19 @@ impl Schema {
         let query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
         crate::execute_query!(query, execute, pool)?;
         Ok(())
+    }
+}
+
+/// Quotes a validated table name for the DDL dialect. PostgreSQL folds the
+/// unquoted names that generated model SQL uses to lower case, so the quoted
+/// DDL name is folded the same way and `Schema::create("UserProfiles")`
+/// creates the `userprofiles` relation that `SELECT * FROM UserProfiles`
+/// resolves to. Quoting still admits reserved words such as `order`.
+fn quoted_table(driver: &str, table_name: &str) -> String {
+    match driver {
+        "mysql" => format!("`{table_name}`"),
+        "postgres" => format!("\"{}\"", table_name.to_ascii_lowercase()),
+        _ => format!("\"{table_name}\""),
     }
 }
 
@@ -125,4 +132,17 @@ async fn ensure_postgres_enum(definition: &NativeEnumDefinition) -> Result<(), E
         )));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod quoting_tests {
+    use super::quoted_table;
+
+    #[test]
+    fn postgres_table_ddl_matches_unquoted_generated_sql() {
+        assert_eq!(quoted_table("postgres", "UserProfiles"), "\"userprofiles\"");
+        assert_eq!(quoted_table("postgres", "order"), "\"order\"");
+        assert_eq!(quoted_table("mysql", "UserProfiles"), "`UserProfiles`");
+        assert_eq!(quoted_table("sqlite", "UserProfiles"), "\"UserProfiles\"");
+    }
 }

@@ -1681,7 +1681,11 @@ check does not make a name portable: a word the target database reserves
 struct) passes compilation and fails, or on PostgreSQL may even resolve to a
 built-in such as `current_user`, at runtime. The derive does not check
 reserved words; rename such a column or choose a non-reserved
-`#[orm(table = "...")]`.
+`#[orm(table = "...")]`. Because PostgreSQL folds those unquoted names to
+lower case, `Schema::create` and `Schema::drop_if_exists` quote the table name
+lower-cased on PostgreSQL, so `Schema::create("UserProfiles", ...)` creates the
+`userprofiles` relation that a model with `#[orm(table = "UserProfiles")]`
+queries. MySQL/MariaDB and SQLite keep the name as written.
 
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
 are compatible with generated ORM persistence in v12. `#[orm(skip)]` removes

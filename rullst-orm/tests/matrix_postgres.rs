@@ -36,6 +36,15 @@ struct TenantComment {
     pub status: String,
 }
 
+/// Generated SQL names the table unquoted, which PostgreSQL folds to lower
+/// case; `Schema::create` must create the folded relation.
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "PgMixedCaseRecords")]
+struct MixedCaseRecord {
+    pub id: i32,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "pg_flags")]
 struct Flag {
@@ -187,6 +196,7 @@ async fn test_matrix_postgres_crud() {
     partial_update_contract::exercise().await;
     exercise_tenant_subqueries().await;
     exercise_boolean_columns().await;
+    exercise_mixed_case_table().await;
 
     #[cfg(feature = "strict-postgres")]
     exercise_native_enum().await;
@@ -239,6 +249,40 @@ async fn exercise_boolean_columns() {
     Schema::drop_if_exists("pg_flags")
         .await
         .expect("drop PostgreSQL boolean table");
+}
+
+/// A mixed-case table created through `Schema` is reachable by the model's
+/// unquoted generated SQL and removed by `drop_if_exists`.
+async fn exercise_mixed_case_table() {
+    Schema::create("PgMixedCaseRecords", |table: &mut Blueprint| {
+        table.id();
+        table.string("name").not_null();
+    })
+    .await
+    .expect("create mixed-case table");
+    let mut record = MixedCaseRecord {
+        id: 0,
+        name: "folded".into(),
+    };
+    record
+        .save()
+        .await
+        .expect("generated INSERT reaches the table");
+    let found = MixedCaseRecord::find(record.id)
+        .await
+        .expect("generated SELECT reaches the table")
+        .expect("stored record");
+    assert_eq!(found.name, "folded");
+    Schema::drop_if_exists("PgMixedCaseRecords")
+        .await
+        .expect("drop mixed-case table");
+    let (remaining,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND lower(table_name) = 'pgmixedcaserecords'",
+    )
+    .fetch_one(Orm::pool().expect("PostgreSQL pool"))
+    .await
+    .expect("count mixed-case tables");
+    assert_eq!(remaining, 0);
 }
 
 /// Tenant scope, typed CTEs and EXISTS subqueries must share one `$n` sequence.
