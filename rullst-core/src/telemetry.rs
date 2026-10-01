@@ -48,14 +48,26 @@ impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
     }
 }
 
+/// Spans per legacy export request unless `OTEL_BSP_MAX_EXPORT_BATCH_SIZE`
+/// is set. Legacy spans keep their attributes and events, so the SDK default
+/// of 512 can exceed the exporter's 1 MiB request limit.
+#[cfg(feature = "telemetry")]
+const LEGACY_EXPORT_BATCH: usize = 64;
+
 #[cfg(feature = "telemetry")]
 #[cfg_attr(mutants, mutants::skip)]
 /// Initializes the OpenTelemetry OTLP pipeline for distributed tracing.
 /// This legacy subscriber exports OTLP/HTTP protobuf to port 4318 by default.
 /// Use `distributed` for an owned lifecycle and an operation/metadata allowlist.
 /// Returns a Result which can be gracefully ignored if the collector is unavailable.
+///
+/// Spans are exported in batches of at most 64 (or
+/// `OTEL_BSP_MAX_EXPORT_BATCH_SIZE`), each request body is limited to 1 MiB,
+/// the `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` environment variables are
+/// honoured, and failed batches are reported on stderr at most once a minute.
 pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
+    use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor};
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT").unwrap_or_else(|_| {
@@ -77,8 +89,21 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with_service_name("rullst-app")
         .build();
 
+    // The builder reads the OTEL_BSP_* variables; a valid explicit batch size
+    // is kept, otherwise batches stay small enough for the request limit.
+    let mut batch = BatchConfigBuilder::default();
+    let explicit_batch = std::env::var("OTEL_BSP_MAX_EXPORT_BATCH_SIZE")
+        .ok()
+        .and_then(|size| size.parse::<usize>().ok());
+    if explicit_batch.is_none() {
+        batch = batch.with_max_export_batch_size(LEGACY_EXPORT_BATCH);
+    }
+    let processor = BatchSpanProcessor::builder(exporter)
+        .with_batch_config(batch.build())
+        .build();
+
     let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
-        .with_batch_exporter(exporter)
+        .with_span_processor(processor)
         .with_resource(resource)
         .build();
 

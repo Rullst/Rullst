@@ -5,9 +5,17 @@ use prost::Message;
 use std::{
     fmt,
     io::Read,
-    sync::{Arc, OnceLock, atomic::Ordering},
-    time::Duration,
+    sync::{
+        Arc, Mutex, OnceLock, PoisonError,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{Duration, Instant},
 };
+
+/// Largest request body sent to the collector.
+const MAX_REQUEST_BYTES: usize = 1024 * 1024;
+/// Minimum time between two stderr reports of failed legacy exports.
+const FAILURE_REPORT_INTERVAL: Duration = Duration::from_secs(60);
 
 /// This private client is polled only by the SDK's dedicated exporter thread.
 /// Its lazy blocking client is created there, never on an async request task.
@@ -18,7 +26,11 @@ pub(in crate::telemetry) struct BoundedOtlpClient {
     timeout: Duration,
     client: OnceLock<Result<reqwest::blocking::Client, TelemetryError>>,
     counters: Arc<Counters>,
-    legacy_headers: bool,
+    /// The `init_telemetry` profile: it forwards SDK headers and honours the
+    /// proxy environment variables, and since its counters are not observable
+    /// it reports failed exports on stderr instead.
+    legacy: bool,
+    failures: FailureReport,
 }
 
 impl fmt::Debug for BoundedOtlpClient {
@@ -42,7 +54,8 @@ impl BoundedOtlpClient {
             timeout: config.timeout,
             client: OnceLock::new(),
             counters,
-            legacy_headers: false,
+            legacy: false,
+            failures: FailureReport::default(),
         })
     }
 
@@ -54,12 +67,13 @@ impl BoundedOtlpClient {
             timeout: Duration::from_secs(3),
             client: OnceLock::new(),
             counters: Arc::default(),
-            legacy_headers: true,
+            legacy: true,
+            failures: FailureReport::default(),
         }
     }
 
     fn send(&self, request: Request<Bytes>) -> Result<Response<Bytes>, TelemetryError> {
-        if request.body().len() > 1024 * 1024
+        if request.body().len() > MAX_REQUEST_BYTES
             || request.method() != http::Method::POST
             || request
                 .headers()
@@ -74,8 +88,12 @@ impl BoundedOtlpClient {
         let client = self
             .client
             .get_or_init(|| {
-                let mut builder = reqwest::blocking::Client::builder()
-                    .no_proxy()
+                let mut builder = reqwest::blocking::Client::builder();
+                if !self.legacy {
+                    // The minimized profile never follows ambient proxies.
+                    builder = builder.no_proxy();
+                }
+                let mut builder = builder
                     .tls_backend_rustls()
                     .redirect(reqwest::redirect::Policy::none())
                     .timeout(self.timeout)
@@ -96,7 +114,7 @@ impl BoundedOtlpClient {
         let mut outbound = client
             .post(&self.endpoint)
             .header(http::header::CONTENT_TYPE, "application/x-protobuf");
-        if self.legacy_headers {
+        if self.legacy {
             outbound = outbound.headers(request.headers().clone());
         }
         if let Some(token) = &self.token {
@@ -143,6 +161,7 @@ impl BoundedOtlpClient {
 #[async_trait::async_trait]
 impl HttpClient for BoundedOtlpClient {
     async fn send_bytes(&self, request: Request<Bytes>) -> Result<Response<Bytes>, HttpError> {
+        let bytes = request.body().len();
         match self.send(request) {
             Ok(response) => {
                 self.counters
@@ -152,8 +171,59 @@ impl HttpClient for BoundedOtlpClient {
             }
             Err(error) => {
                 self.counters.failed_batches.fetch_add(1, Ordering::Relaxed);
+                if self.legacy {
+                    self.failures.report(bytes, Instant::now());
+                }
                 Err(Box::new(error))
             }
         }
     }
+}
+
+/// Rate-limited stderr report of failed legacy exports. It never includes
+/// the endpoint, span data or the collector's response.
+#[derive(Default)]
+struct FailureReport {
+    last: Mutex<Option<Instant>>,
+    suppressed: AtomicU64,
+}
+
+impl FailureReport {
+    fn report(&self, bytes: usize, now: Instant) {
+        let Some(suppressed) = self.admit(now) else {
+            return;
+        };
+        let cause = if bytes > MAX_REQUEST_BYTES {
+            format!("the {bytes}-byte batch exceeds the {MAX_REQUEST_BYTES}-byte request limit")
+        } else {
+            "the collector request failed or was rejected".to_string()
+        };
+        crate::server::console::stderr_line(format_args!(
+            "Rullst telemetry: dropped a span batch because {cause} ({suppressed} more failed batches since the previous report)"
+        ));
+    }
+
+    /// Returns the number of failures suppressed since the previous report
+    /// when a report is due, counting this one as suppressed otherwise.
+    fn admit(&self, now: Instant) -> Option<u64> {
+        let mut last = self.last.lock().unwrap_or_else(PoisonError::into_inner);
+        if last.is_some_and(|last| now.saturating_duration_since(last) < FAILURE_REPORT_INTERVAL) {
+            self.suppressed.fetch_add(1, Ordering::Relaxed);
+            return None;
+        }
+        *last = Some(now);
+        Some(self.suppressed.swap(0, Ordering::Relaxed))
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn failure_reports_are_rate_limited_and_count_suppressed_batches() {
+    let report = FailureReport::default();
+    let start = Instant::now();
+    assert_eq!(report.admit(start), Some(0));
+    assert_eq!(report.admit(start + Duration::from_secs(1)), None);
+    assert_eq!(report.admit(start + Duration::from_secs(59)), None);
+    assert_eq!(report.admit(start + FAILURE_REPORT_INTERVAL), Some(2));
+    assert_eq!(report.admit(start + FAILURE_REPORT_INTERVAL), None);
 }
