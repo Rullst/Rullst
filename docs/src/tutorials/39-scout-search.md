@@ -81,6 +81,9 @@ let results = Article::search("transactional outbox").await.get().await?;
 # }
 ```
 
+With an engine, the results follow the provider's ranking (best hit first,
+also for `first()` and `paginate()`) unless you add `order_by(...)`.
+
 Without a configured engine, `Article::search(...)` falls back to a SQL
 `LIKE` over the model's persisted columns, excluding `#[orm(hidden)]`,
 `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString` fields. `%` and `_`

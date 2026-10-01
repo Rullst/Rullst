@@ -2225,7 +2225,13 @@ while portability and semantic review remain the model author's responsibility.
   answer of that size is treated as truncated: `search()` answers from the SQL
   fallback instead, so one tenant's hits can never push another tenant's
   matches out of the result. Below the cap the scoped provider IDs are used;
-  engine-side tenant filtering and relevance order are not provided.
+  engine-side tenant filtering is not provided.
+* Provider matches keep the provider's ranking: `search()` orders them with an
+  `ORDER BY CASE <table>.id WHEN ? THEN 0 ...` over the bound IDs, so `get()`,
+  `first()`, `paginate()` and `pluck_*` follow relevance. An explicit
+  `order_by` replaces that order, DISTINCT and GROUP BY statements omit it,
+  and `delete_all()` does not treat it as a rejected `order_by()`. The SQL
+  fallback has no relevance order.
 * Index names, positive IDs, object payloads, queries, response bytes and hit
   counts are bounded. Meilisearch/Algolia tasks use bounded polling;
   Elasticsearch requests use `refresh=wait_for`. Provider response bodies and

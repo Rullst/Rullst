@@ -22,14 +22,15 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
     let scoped = !parsed.tenant_column.is_empty()
         || !parsed.global_scope.is_empty()
         || parsed.has_soft_deletes;
+    // The engine's ranking is kept as the default order of the matches.
     let engine_result = if scoped {
         quote! {
             if ids.len() < rullst_orm::scout::MAX_SEARCH_HITS {
-                return base_builder.where_in("id", ids);
+                return base_builder.__rullst_order_by_relevance(&ids).where_in("id", ids);
             }
         }
     } else {
-        quote! { return base_builder.where_in("id", ids); }
+        quote! { return base_builder.__rullst_order_by_relevance(&ids).where_in("id", ids); }
     };
     quote! {
         pub async fn search(query: &str) -> #builder_name {
@@ -277,6 +278,8 @@ mod tests {
         let builder = quote::format_ident!("ArticleQueryBuilder");
         let generated = generate_search_method(&parsed, &builder).to_string();
         assert!(!generated.contains("MAX_SEARCH_HITS"));
-        assert!(generated.contains("return base_builder . where_in (\"id\" , ids)"));
+        assert!(generated.contains(
+            "return base_builder . __rullst_order_by_relevance (& ids) . where_in (\"id\" , ids)"
+        ));
     }
 }

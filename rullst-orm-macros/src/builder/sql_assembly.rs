@@ -142,6 +142,9 @@ pub fn generate_sql_assembly_methods(
         }
 
         fn push_order_by(&self, sql: &mut String) {
+            if self.__rullst_relevance_omitted() {
+                return;
+            }
             if let Some(order) = &self.order_by {
                 sql.push_str(" ORDER BY ");
                 sql.push_str(order);
