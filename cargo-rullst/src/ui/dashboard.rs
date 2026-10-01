@@ -1,33 +1,42 @@
 // src/ui/dashboard.rs — Interactive Rullst CLI dashboard (menus, logo, handlers).
 
-use super::dashboard_brand::{play_launch_pulse, print_neon_logo};
+use super::dashboard_brand::print_opening;
+use super::home::{Home, HomeAction, home_entries, write_next_steps, write_summary};
+use super::terminal::TerminalProfile;
 use colored::*;
+use std::io::Write;
+use std::path::Path;
 
 type DashboardResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 trait DashboardUi {
-    fn show_brand(&mut self) -> DashboardResult<()>;
+    /// Draws the opening and the context summary for `home`.
+    fn show_home(&mut self, home: &Home) -> DashboardResult<()>;
     fn select(&mut self, prompt: &str, choices: &[String]) -> DashboardResult<usize>;
     fn input(&mut self, prompt: &str) -> DashboardResult<String>;
 }
 
 struct DialoguerUi {
     theme: dialoguer::theme::ColorfulTheme,
+    profile: TerminalProfile,
 }
 
 impl DialoguerUi {
-    fn new() -> Self {
+    fn new(profile: TerminalProfile) -> Self {
         Self {
             theme: dialoguer::theme::ColorfulTheme::default(),
+            profile,
         }
     }
 }
 
 impl DashboardUi for DialoguerUi {
-    fn show_brand(&mut self) -> DashboardResult<()> {
-        print!("\x1B[2J\x1B[1;1H");
-        print_neon_logo()?;
-        play_launch_pulse()?;
+    fn show_home(&mut self, home: &Home) -> DashboardResult<()> {
+        let mut stdout = std::io::stdout();
+        write!(stdout, "\x1B[2J\x1B[1;1H")?;
+        print_opening(&self.profile, &mut stdout)?;
+        write_summary(&mut stdout, home, self.profile.color)?;
+        stdout.flush()?;
         if let Some(version) = super::update_check::check_update_available() {
             super::update_check::print_update_banner(&version);
         }
@@ -50,6 +59,11 @@ impl DashboardUi for DialoguerUi {
 }
 
 pub fn execute_command(cmd_args: Vec<String>) -> DashboardResult<()> {
+    execute_command_in(None, cmd_args)
+}
+
+/// Runs a menu command, optionally from `directory` (the project root).
+fn execute_command_in(directory: Option<&Path>, cmd_args: Vec<String>) -> DashboardResult<()> {
     let Some((program, arguments)) = cmd_args.split_first() else {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -57,9 +71,12 @@ pub fn execute_command(cmd_args: Vec<String>) -> DashboardResult<()> {
         )
         .into());
     };
-    let status = std::process::Command::new(program)
-        .args(arguments)
-        .status()?;
+    let mut command = std::process::Command::new(program);
+    command.args(arguments);
+    if let Some(directory) = directory {
+        command.current_dir(directory);
+    }
+    let status = command.status()?;
     if !status.success() {
         return Err(std::io::Error::other(format!(
             "dashboard command `{program}` failed with status {status}"
@@ -249,7 +266,12 @@ where
     run(vec![program.to_string(), cmd.to_string()])
 }
 
-fn handle_existing_project<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+fn handle_existing_project<U, F>(
+    ui: &mut U,
+    program: &str,
+    home: &Home,
+    run: &mut F,
+) -> DashboardResult<()>
 where
     U: DashboardUi,
     F: FnMut(Vec<String>) -> DashboardResult<()>,
@@ -312,59 +334,79 @@ where
         8 => handle_deploy(ui, program, run),
         9 => run(vec![program.to_string(), "upgrade".to_string()]),
         10 => {
-            ui.show_brand()?;
-            run_dashboard(ui, program, run)
+            ui.show_home(home)?;
+            run_dashboard(ui, program, home, run)
         }
         _ => Ok(()),
     }
 }
 
-fn run_dashboard<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+fn run_dashboard<U, F>(ui: &mut U, program: &str, home: &Home, run: &mut F) -> DashboardResult<()>
 where
     U: DashboardUi,
     F: FnMut(Vec<String>) -> DashboardResult<()>,
 {
-    let choices = [
-        format!(
-            "✨  Create New Project       {}",
-            "(API, Fullstack or Dockerized)".dimmed()
-        ),
-        format!(
-            "📁  Already have a project?  {}",
-            "(Dev, Scaffold, DB, Auth, Deploy...)".dimmed()
-        ),
-        format!(
-            "💡  View Help & Commands     {}",
-            "(Framework Reference)".dimmed()
-        ),
-        format!(
-            "❌  Exit                     {}",
-            "(Close interactive menu)".dimmed()
-        ),
-    ];
-
+    let entries = home_entries(home);
+    let choices: Vec<String> = entries.iter().map(|entry| entry.label()).collect();
     let selection = ui.select("Navigate with ↑↓, confirm with Enter\n", &choices)?;
+    let Some(entry) = entries.get(selection) else {
+        return Ok(());
+    };
+    let command = |name: &str| vec![program.to_string(), name.to_string()];
 
-    match selection {
-        0 => run(vec![program.to_string(), "new".to_string()]),
-        1 => handle_existing_project(ui, program, run),
-        2 => {
+    match entry.action {
+        HomeAction::Command(name) => run(command(name)),
+        HomeAction::Scaffold => handle_scaffold_code(ui, program, run),
+        HomeAction::Database => handle_database_operations(ui, program, run),
+        HomeAction::Deploy => handle_deploy(ui, program, run),
+        HomeAction::ProjectOperations => handle_existing_project(ui, program, home, run),
+        HomeAction::NewProject => run(command("new")),
+        HomeAction::Help => {
             super::help::show_help_reference();
             Ok(())
         }
-        3 => {
+        HomeAction::Exit => {
             println!("{}", "Exiting. Happy coding with Rullst! 🦀🚀".dimmed());
             Ok(())
         }
-        _ => Ok(()),
     }
 }
 
+/// A relative `argv[0]` with a directory part would break once a command
+/// runs from the project root, so it is anchored to `current_dir`.
+fn resolve_program(program: &str, current_dir: &Path) -> String {
+    let path = Path::new(program);
+    if path.is_relative() && path.components().count() > 1 {
+        current_dir.join(path).display().to_string()
+    } else {
+        program.to_string()
+    }
+}
+
+/// The no-argument entry point: the opening, a context-aware home and the
+/// menu. Without a fully interactive terminal (pipes, CI, `TERM=dumb`) it
+/// prints the plain home with command equivalents and never prompts.
 pub fn show_interactive_dashboard() -> DashboardResult<()> {
-    let program = std::env::args().next().unwrap_or_default();
-    let mut ui = DialoguerUi::new();
-    ui.show_brand()?;
-    run_dashboard(&mut ui, &program, &mut execute_command)
+    let profile = TerminalProfile::detect();
+    let home = Home::detect();
+    if !profile.interactive {
+        let mut stdout = std::io::stdout();
+        print_opening(&profile, &mut stdout)?;
+        write_summary(&mut stdout, &home, profile.color)?;
+        write_next_steps(&mut stdout, &home)?;
+        return Ok(());
+    }
+
+    let argv0 = std::env::args().next().unwrap_or_default();
+    let program = match std::env::current_dir() {
+        Ok(current_dir) => resolve_program(&argv0, &current_dir),
+        Err(_) => argv0,
+    };
+    let mut ui = DialoguerUi::new(profile);
+    ui.show_home(&home)?;
+    let mut run =
+        |arguments: Vec<String>| execute_command_in(home.command_directory(&arguments), arguments);
+    run_dashboard(&mut ui, &program, &home, &mut run)
 }
 
 #[cfg(test)]

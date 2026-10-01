@@ -10,6 +10,41 @@ documents the principal version 12 commands and their security boundaries.
 
 ## 🏗️ 1. Project Initialization & Maintenance
 
+### `cargo rullst` (no arguments): home screen
+Running the CLI without a subcommand opens the v13 home: the RULLST wordmark in
+a blue → green → orange gradient, the slogan line with the installed version,
+and a summary of where you are.
+
+* **Inside a Rullst project** (the current directory or a parent has a
+  `Cargo.toml` whose package depends on `rullst`): the package name, the
+  enabled `rullst` features (`default` when default features are on), the
+  database family and where it is configured (the process `DATABASE_URL`, then
+  `.env`, then `[database].url` in `Rullst.toml`; `TURSO_DATABASE_URL` for a
+  Turso-primary project), the number of `src/migrations` files and the latest
+  one, and the Git branch. Connection URLs are never displayed. The menu leads
+  with dev, dash, scaffolding, database, `doctor` and deploy, and keeps every
+  project operation of earlier releases. Started from a subdirectory, menu
+  commands run at the project root (except `new`). The migration count is the
+  files on disk; run `cargo rullst db:status` for the applied state.
+* **Outside a project**: project creation comes first, followed by the docs
+  links ([start here](start-here.md) and this reference).
+
+The opening animates for about 0.7 s only on the first run of each day; later
+runs draw the final frame instantly and any key skips the animation. The day
+of the last animation is kept in the user cache directory
+(`$XDG_CACHE_HOME/rullst-ui-v1` or `~/.cache/rullst-ui-v1`;
+`%LOCALAPPDATA%\rullst-ui-v1` on Windows), never in the project. If that file
+cannot be read or written, the opening is static.
+
+Colours use 24-bit RGB when `COLORTERM` is `truecolor` or `24bit` and the
+nearest xterm 256-colour entry otherwise. `RULLST_REDUCED_MOTION=1` (or
+`true`/`yes`) keeps the colours without animation. `NO_COLOR` prints the plain
+line `RULLST v<version> · SECURE, FAST AND AI-NATIVE RUST FRAMEWORK` while the
+menu stays interactive. When standard input, output or error is not a
+terminal, `CI` is set or `TERM=dumb`, the CLI prints the plain line, the
+summary and the equivalent commands, then exits successfully without
+prompting.
+
 ### `cargo rullst new <name>`
 Creates a Rullst project from scratch. Version 12 intentionally generates one
 audited application architecture: Active Record for database-backed code and

@@ -333,20 +333,7 @@ fn database_profile_from_env(contents: &str) -> String {
             continue;
         }
         let value = raw_value.trim().trim_matches(['"', '\'']);
-        let provider = if value.starts_with("postgres://") || value.starts_with("postgresql://") {
-            "PostgreSQL"
-        } else if value.starts_with("mysql://") {
-            "MySQL/MariaDB"
-        } else if value.starts_with("sqlite:") {
-            "SQLite"
-        } else if value.starts_with("libsql://") {
-            "Turso/libSQL"
-        } else if value.is_empty() {
-            "empty DATABASE_URL"
-        } else {
-            "custom URL"
-        };
-        return format!("configured: {provider}");
+        return format!("configured: {}", database_kind(value));
     }
 
     if contents.lines().any(|line| {
@@ -357,6 +344,24 @@ fn database_profile_from_env(contents: &str) -> String {
         return "configured: Turso/libSQL".to_string();
     }
     "not configured".to_string()
+}
+
+/// Names the database family of a connection URL without exposing any part
+/// of the URL itself (credentials, hosts or file paths).
+pub(super) fn database_kind(url: &str) -> &'static str {
+    if url.starts_with("postgres://") || url.starts_with("postgresql://") {
+        "PostgreSQL"
+    } else if url.starts_with("mysql://") {
+        "MySQL/MariaDB"
+    } else if url.starts_with("sqlite:") {
+        "SQLite"
+    } else if url.starts_with("libsql://") {
+        "Turso/libSQL"
+    } else if url.is_empty() {
+        "empty DATABASE_URL"
+    } else {
+        "custom URL"
+    }
 }
 
 fn reduced_motion_requested() -> bool {
