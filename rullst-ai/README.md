@@ -94,9 +94,14 @@ formatted or unformatted), card-like digit runs and email usernames are masked b
 transmission; alphanumeric CNPJs and other identifiers are not recognized. Markdown images are
 read the way CommonMark renders them, after backslash escapes and character references are decoded:
 an inline or reference image whose destination has a scheme or a `//` (or backslash) authority is
-blocked as `data_exfiltration`, as is an image the bounded reader cannot classify. A reference image
-without a matching definition is blocked only when the text also names a remote URL. Raw HTML
-`<img>` tags are not inspected. Like all heuristic filters, this is one boundary in a
+blocked as `data_exfiltration`, as is an image the bounded reader cannot classify. Images and
+link reference definitions inside code spans and closed fenced or indented code blocks are ignored,
+as CommonMark never renders them; code whose extent depends on an ambiguous layout (HTML blocks,
+list or quote containers, unclosed fences, multi-line spans) is still read. A reference image whose
+ASCII label matches no definition renders as literal text and is not blocked (so `vec![x]` next to
+a link passes); a non-ASCII label, which Unicode case folding could match to a definition, or an
+unterminated label is blocked when the text also names a remote URL. Raw HTML `<img>` tags are not
+inspected. Like all heuristic filters, this is one boundary in a
 defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
 ## Bounded streaming and explicit cancellation
@@ -276,8 +281,8 @@ ungrounded answer. Each passage is guarded on its own and the assembled prompt a
 that only the combined passages trigger returns `RagError::Generation` with the guardrail
 error, is audited as `ContextRejected` and never reaches the provider. The Markdown-image
 heuristic judges each image: a relative image such as `![logo](assets/logo.png)` next to an
-unrelated link is not treated as a beacon, while an undefined reference image such as
-`![logo][site-logo]` next to one is.
+unrelated link is not treated as a beacon, while `![logo][site-logo]` in one passage and its
+remote definition `[site-logo]: https://...` in another are.
 
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production

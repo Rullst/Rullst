@@ -62,7 +62,9 @@ mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
 Markdown image beacons (inline or reference images with a remote or unclassifiable destination,
-read with CommonMark escapes and character references; raw HTML `<img>` is not inspected), and
+read with CommonMark escapes and character references and outside code spans and code blocks;
+an unmatched ASCII reference such as `vec![x]` is literal text; raw HTML `<img>` is not
+inspected), and
 invisible Unicode controls, including zero-width, bidirectional
 embedding/isolate, tag and other default-ignorable characters with no ordinary use in text. Soft
 hyphens, bidirectional marks and emoji variation selectors are removed before phrase matching

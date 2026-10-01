@@ -3,7 +3,12 @@
 //! Images are read the way CommonMark renders them: inline destinations,
 //! full, collapsed and shortcut references with their link reference
 //! definitions, backslash escapes and entity or numeric character references.
-//! Whatever this bounded reader cannot classify counts as a remote image.
+//! Code spans and code blocks are skipped, because CommonMark renders neither
+//! images nor definitions inside code. Whatever this bounded reader cannot
+//! classify counts as a remote image.
+
+#[path = "markdown_code.rs"]
+mod code;
 
 /// Most Markdown images inspected individually; more are treated as remote.
 pub(super) const MAX_INSPECTED_IMAGES: usize = 64;
@@ -53,22 +58,26 @@ const NAMED_REFERENCES: &[(&str, char)] = &[
 /// remote resource, or one this check cannot classify.
 ///
 /// Inline images are judged by their destination. Reference images are judged
-/// by the matching definitions; an image with no matching definition (or whose
-/// label never closes) is remote when the text also names a remote
-/// destination, because the definition may be completed by whoever renders it.
+/// by the matching definitions. An ASCII label that matches no definition is
+/// rendered as literal text (CommonMark), as in Rust's `vec![x]`. A label that
+/// never closes, or a non-ASCII label that Unicode case folding could match
+/// to a definition this reader does not reproduce, is remote when the text
+/// also names a remote destination; that check reads the whole text, code
+/// included.
 pub(super) fn has_remote_image(text: &str) -> bool {
     if !text.contains("![") {
         return false;
     }
-    let Some(definitions) = Definitions::read(text) else {
+    let visible = code::blank_code(text);
+    let Some(definitions) = Definitions::read(&visible) else {
         return true;
     };
     let mut unresolved = false;
-    for (index, (start, _)) in text.match_indices("![").enumerate() {
+    for (index, (start, _)) in visible.match_indices("![").enumerate() {
         if index >= MAX_INSPECTED_IMAGES {
             return true;
         }
-        match classify(&text[start + 2..], &definitions) {
+        match classify(&visible[start + 2..], &definitions) {
             Image::Remote => return true,
             Image::Unresolved => unresolved = true,
             Image::Local | Image::Literal => {}
@@ -80,9 +89,11 @@ pub(super) fn has_remote_image(text: &str) -> bool {
 enum Image {
     Local,
     Remote,
-    /// A reference without a matching definition, or a label that never closes.
+    /// A non-ASCII reference without a matching definition, or a label that
+    /// never closes.
     Unresolved,
-    /// An empty shortcut such as `![]`, which CommonMark never renders as an image.
+    /// Text CommonMark never renders as an image: an empty shortcut such as
+    /// `![]`, or an ASCII reference label that matches no definition.
     Literal,
 }
 
@@ -112,10 +123,13 @@ fn classify(label: &str, definitions: &Definitions) -> Image {
     let reference = after
         .strip_prefix('[')
         .and_then(|reference| reference.get(..reference.find(']')?));
-    let resolutions = [Some(label), reference]
+    let labels = [Some(label), reference]
         .into_iter()
         .flatten()
         .filter(|label| !label.trim().is_empty())
+        .collect::<Vec<_>>();
+    let resolutions = labels
+        .iter()
         .map(|label| definitions.resolve(label, true))
         .collect::<Vec<_>>();
     if resolutions.is_empty() {
@@ -124,6 +138,9 @@ fn classify(label: &str, definitions: &Definitions) -> Image {
         Image::Remote
     } else if resolutions.contains(&Resolution::Local) {
         Image::Local
+    } else if labels.iter().all(|label| label.is_ascii()) {
+        // An unmatched reference is literal text, not an image.
+        Image::Literal
     } else {
         Image::Unresolved
     }
