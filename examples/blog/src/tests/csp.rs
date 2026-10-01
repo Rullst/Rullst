@@ -83,7 +83,9 @@ async fn get(app: &axum::Router, path: &str) -> axum::response::Response {
 
 #[tokio::test]
 async fn every_page_renders_under_the_production_content_security_policy() {
-    database().await;
+    if !database().await {
+        return;
+    }
     let app = test_router().into_axum();
     let mut same_origin_assets = Vec::new();
 

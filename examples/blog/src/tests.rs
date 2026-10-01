@@ -11,8 +11,27 @@ use tower::ServiceExt;
 
 static DATABASE: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
 
-/// Opens one file-backed SQLite database per test process and creates the schema.
-async fn database() {
+/// Name of the database the compiled ORM pool speaks: "SQLite" or "Any"
+/// normally, "PostgreSQL" or "MySQL" when Cargo feature unification (for
+/// example `cargo test --workspace --all-features`) enables a strict driver.
+fn compiled_pool_database<DB: rullst_orm::sqlx::Database>(
+    _: Option<&rullst_orm::sqlx::Pool<DB>>,
+) -> &'static str {
+    DB::NAME
+}
+
+/// Opens one file-backed SQLite database per test process and creates the
+/// schema. Returns `false`, so the caller skips, when a strict non-SQLite ORM
+/// driver is compiled in and the SQLite showcase database cannot be opened.
+#[must_use]
+async fn database() -> bool {
+    let compiled = compiled_pool_database(None::<&rullst_orm::RullstPool>);
+    if !matches!(compiled, "SQLite" | "Any") {
+        eprintln!(
+            "skipping: the blog showcase needs SQLite, but the ORM is compiled for {compiled}"
+        );
+        return false;
+    }
     DATABASE
         .get_or_init(|| async {
             let path = std::env::temp_dir().join(format!(
@@ -26,6 +45,7 @@ async fn database() {
             crate::app::create_schema().await.expect("posts schema");
         })
         .await;
+    true
 }
 
 fn csrf_post(path: &str, tenant: &str, form: &str) -> Request<Body> {
@@ -96,7 +116,9 @@ async fn honeypot_button_hits_the_real_deception_middleware() {
 
 #[tokio::test]
 async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
-    database().await;
+    if !database().await {
+        return;
+    }
     // `Server` applies the canonical production baseline around the app. Model
     // that composition here so the example never regresses to two divergent
     // CSRF cookies when it also mounts the middleware explicitly.
@@ -208,7 +230,9 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
 
 #[tokio::test]
 async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
-    database().await;
+    if !database().await {
+        return;
+    }
     let app = test_router().into_axum();
     for path in ["/editor", "/wasm-counter"] {
         let response = app
@@ -232,7 +256,9 @@ async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
 
 #[tokio::test]
 async fn post_queries_fail_closed_outside_a_tenant_scope() {
-    database().await;
+    if !database().await {
+        return;
+    }
     let error = crate::app::Post::all()
         .await
         .expect_err("an unscoped query must not return every tenant's rows");
@@ -241,7 +267,9 @@ async fn post_queries_fail_closed_outside_a_tenant_scope() {
 
 #[tokio::test]
 async fn posts_and_repository_views_stay_inside_the_selected_tenant() {
-    database().await;
+    if !database().await {
+        return;
+    }
     let app = test_router().into_axum();
     let title = format!("Startup-only story {}", std::process::id());
 
@@ -281,7 +309,9 @@ async fn seeding_is_idempotent_and_never_deletes_visitor_posts() {
     use crate::app::{PATTERNS_TITLE, Post, SEED_TENANT, WELCOME_TITLE, seed_showcase_posts};
     use rullst_orm::with_tenant;
 
-    database().await;
+    if !database().await {
+        return;
+    }
     // Matches the title and body patterns the old startup cleanup deleted.
     let lookalike = format!(
         "Architecture Deep Dive: our migration {}",
@@ -324,7 +354,9 @@ async fn seeding_is_idempotent_and_never_deletes_visitor_posts() {
 
 #[tokio::test]
 async fn story_submissions_are_bounded() {
-    database().await;
+    if !database().await {
+        return;
+    }
     let app = test_router().into_axum();
     let long_title = "t".repeat(crate::app::MAX_TITLE_CHARS + 1);
     let long_body = "b".repeat(crate::app::MAX_BODY_CHARS + 1);
@@ -354,7 +386,9 @@ async fn tenants_keep_a_bounded_number_of_stories_and_listings() {
     use crate::app::{CreatePostError, LISTED_POSTS, MAX_POSTS_PER_TENANT};
     use crate::repository_demo::{BODY_PREVIEW_CHARS, PostRepository, REPOSITORY_ROWS};
 
-    database().await;
+    if !database().await {
+        return;
+    }
     let tenant = format!("quota-{}", std::process::id());
     let body = "x".repeat(crate::app::MAX_BODY_CHARS);
     for number in 0..MAX_POSTS_PER_TENANT {
