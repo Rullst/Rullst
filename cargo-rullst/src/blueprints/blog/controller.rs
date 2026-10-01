@@ -12,6 +12,9 @@ use serde::Deserialize;
 
 /// Posts listed on each index page, newest first.
 const POSTS_PER_PAGE: usize = 20;
+/// The deepest index page served. A larger `?page=` is a 404 instead of an
+/// overflowing OFFSET that would be reported as a database outage.
+const MAX_PAGE: usize = 100_000;
 
 /// The production security headers allow only nonce-bound inline styles; the
 /// nonce is absent (and unneeded) when no CSP is sent, as in development.
@@ -37,6 +40,9 @@ pub async fn index(
     csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> Response {
     let page = query.page.unwrap_or(1).max(1);
+    if page > MAX_PAGE {
+        return (StatusCode::NOT_FOUND, "Page not found").into_response();
+    }
     match Post::query().order_by_desc("id").paginate(page, POSTS_PER_PAGE).await {
         Ok(posts) => Html(blog::index_page(posts, nonce(&csp_nonce))).into_response(),
         Err(error) => unavailable(error),

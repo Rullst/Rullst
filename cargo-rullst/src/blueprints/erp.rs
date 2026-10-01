@@ -185,5 +185,8 @@ mod tests {
         assert!(!page.contains("orders.len()"));
         assert!(!page.contains(".sum()"));
         assert!(page.contains("summary.revenue"));
+        // An unbounded `?page=` overflowed the OFFSET and became a 503.
+        assert!(controller.contains("if page > MAX_PAGE {\n        return rejected(StatusCode::NOT_FOUND, \"Page not found\");"));
+        assert!(controller.contains("match load_dashboard(page).await {"));
     }
 }

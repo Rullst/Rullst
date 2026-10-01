@@ -21,6 +21,9 @@ const MAX_TEXT_BYTES: usize = 255;
 const PRODUCTS_PER_PAGE: usize = 50;
 /// Orders listed under "Recent Orders", newest first.
 const RECENT_ORDERS: usize = 20;
+/// The deepest dashboard page served. A larger `?page=` is a 404 instead of
+/// an overflowing OFFSET that would be reported as a database outage.
+const MAX_PAGE: usize = 100_000;
 
 #[derive(Debug, Deserialize)]
 pub struct DashboardQuery {
@@ -56,7 +59,11 @@ pub async fn index(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
     Extension(csp_nonce): Extension<rullst::security::CspNonce>,
 ) -> Response {
-    match load_dashboard(query.page.unwrap_or(1).max(1)).await {
+    let page = query.page.unwrap_or(1).max(1);
+    if page > MAX_PAGE {
+        return rejected(StatusCode::NOT_FOUND, "Page not found");
+    }
+    match load_dashboard(page).await {
         Ok((products, orders, summary)) => Html(erp::dashboard_page(
             products,
             orders,

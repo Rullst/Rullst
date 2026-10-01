@@ -429,6 +429,10 @@ mod tests {
             );
             assert!(page.contains("posts: rullst_orm::PaginationResult<Post>"));
             assert!(page.contains("href={format!(\"/?page={page}\")}"));
+            // An unbounded `?page=` overflowed the OFFSET and became a 503.
+            assert!(controller.contains(
+                "if page > MAX_PAGE {\n        return (StatusCode::NOT_FOUND, \"Page not found\").into_response();"
+            ));
         }
     }
 
