@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790854589458,
+  "lastUpdate": 1790869692277,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11985,6 +11985,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 426,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d86d576b8783dc161a03457ccc78ba41afc6fb1d",
+          "message": "Merge pull request #385 from Rullst/fix/v13-final-ai-tail\n\nfix(ai): final-review fixes for image-beacon parsing, RAG tenant checks and provider output limits",
+          "timestamp": "2026-10-01T12:23:53-03:00",
+          "tree_id": "482dd58b820b5d8ad29581297367e609e58fc64a",
+          "url": "https://github.com/Rullst/Rullst/commit/d86d576b8783dc161a03457ccc78ba41afc6fb1d"
+        },
+        "date": 1790869691516,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 2176,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 407,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 428,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
