@@ -5,8 +5,20 @@ use super::{
     tokens_match, validate_replay,
 };
 use async_trait::async_trait;
-use rullst_orm::sqlx::{Any, AnyPool, Row, Transaction, any::AnyPoolOptions};
+use rullst_orm::sqlx::{Any, AnyPool, Executor, Row, Transaction, any::AnyPoolOptions};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::Duration;
+
+mod mysql;
+mod statements;
+
+use statements::{
+    decrement_counter_sql, delete_claim_sql, insert_claim_sql, insert_counter_sql, schema_sql,
+    select_claim_sql, select_usage_sql, update_claim_usage_sql, update_counter_sql,
+};
 
 /// SQL dialect used by [`SqlQuotaStore`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +38,8 @@ pub enum SqlQuotaBackend {
 pub struct SqlQuotaStore {
     pool: AnyPool,
     backend: SqlQuotaBackend,
+    // Set once the MySQL/MariaDB key columns were seen to compare case-sensitively.
+    keys_verified: Arc<AtomicBool>,
 }
 
 impl std::fmt::Debug for SqlQuotaStore {
@@ -57,12 +71,16 @@ impl SqlQuotaStore {
             .connect(&database_url)
             .await
             .map_err(|_| QuotaError::StorageUnavailable)?;
-        Ok(Self { pool, backend })
+        Ok(Self::from_pool(pool, backend))
     }
 
     /// Wraps an application-created pool with an explicit matching dialect.
     pub fn from_pool(pool: AnyPool, backend: SqlQuotaBackend) -> Self {
-        Self { pool, backend }
+        Self {
+            pool,
+            backend,
+            keys_verified: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     /// Returns the selected SQL dialect.
@@ -79,6 +97,14 @@ impl SqlQuotaStore {
     ///
     /// Release migrations should normally own this DDL. It is never run
     /// implicitly by a request path.
+    ///
+    /// On MySQL/MariaDB the subject, feature and event-key columns use the
+    /// binary `ascii_bin` collation, so keys that differ only by letter case
+    /// stay distinct as on PostgreSQL and SQLite. An existing table is never
+    /// altered. If one of its key columns folds case (a table created by an
+    /// earlier release), this method and every store operation return
+    /// [`QuotaError::StorageUnavailable`] until the documented migration
+    /// converts those columns.
     pub async fn prepare_schema(&self) -> Result<(), QuotaError> {
         let (counters, claims) = schema_sql(self.backend);
         rullst_orm::sqlx::query(counters)
@@ -89,7 +115,7 @@ impl SqlQuotaStore {
             .execute(&self.pool)
             .await
             .map_err(|_| QuotaError::StorageUnavailable)?;
-        Ok(())
+        self.ensure_case_sensitive_keys(&self.pool).await
     }
 
     /// Reserves quota inside a caller-owned transaction.
@@ -101,6 +127,7 @@ impl SqlQuotaStore {
         transaction: &mut Transaction<'_, Any>,
         request: &QuotaRequest,
     ) -> Result<QuotaGrant, QuotaError> {
+        self.ensure_case_sensitive_keys(&mut **transaction).await?;
         let claim_token = random_claim_token()?;
         rullst_orm::sqlx::query(insert_claim_sql(self.backend))
             .bind(request.subject.kind())
@@ -206,6 +233,7 @@ impl SqlQuotaStore {
         transaction: &mut Transaction<'_, Any>,
         grant: &QuotaGrant,
     ) -> Result<bool, QuotaError> {
+        self.ensure_case_sensitive_keys(&mut **transaction).await?;
         let request = grant.request();
         let row = rullst_orm::sqlx::query(select_claim_sql(self.backend))
             .bind(request.subject.kind())
@@ -244,6 +272,29 @@ impl SqlQuotaStore {
             return Err(QuotaError::CorruptState);
         }
         Ok(true)
+    }
+
+    /// Fails closed while a MySQL/MariaDB quota key column folds letter case.
+    ///
+    /// Only a successful check is remembered, so a store recovers once the
+    /// operator has migrated a legacy table.
+    async fn ensure_case_sensitive_keys<'e, E>(&self, executor: E) -> Result<(), QuotaError>
+    where
+        E: Executor<'e, Database = Any>,
+    {
+        if self.backend != SqlQuotaBackend::Mysql || self.keys_verified.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        let case_sensitive =
+            rullst_orm::sqlx::query_scalar::<_, i64>(mysql::CASE_SENSITIVE_KEY_COLUMNS)
+                .fetch_one(executor)
+                .await
+                .map_err(|_| QuotaError::StorageUnavailable)?;
+        if case_sensitive != mysql::KEY_COLUMNS {
+            return Err(QuotaError::StorageUnavailable);
+        }
+        self.keys_verified.store(true, Ordering::Release);
+        Ok(())
     }
 
     async fn usage_with_transaction(
@@ -285,6 +336,9 @@ impl SqlQuotaStore {
 #[async_trait]
 impl QuotaStore for SqlQuotaStore {
     async fn reserve(&self, request: &QuotaRequest) -> Result<QuotaGrant, QuotaError> {
+        // Checked before the transaction starts, so the first read does not
+        // open the MySQL/MariaDB snapshot ahead of the claim insert.
+        self.ensure_case_sensitive_keys(&self.pool).await?;
         let mut transaction = self
             .pool
             .begin()
@@ -312,6 +366,7 @@ impl QuotaStore for SqlQuotaStore {
     }
 
     async fn release(&self, grant: &QuotaGrant) -> Result<bool, QuotaError> {
+        self.ensure_case_sensitive_keys(&self.pool).await?;
         let mut transaction = self
             .pool
             .begin()
@@ -337,6 +392,7 @@ impl QuotaStore for SqlQuotaStore {
 
     async fn usage(&self, subject: &BillingSubject, feature: &str) -> Result<u64, QuotaError> {
         super::validate_identifier("quota feature", feature, super::MAX_FEATURE_BYTES)?;
+        self.ensure_case_sensitive_keys(&self.pool).await?;
         let value = rullst_orm::sqlx::query_scalar::<_, i64>(select_usage_sql(self.backend))
             .bind(subject.kind())
             .bind(subject.id())
@@ -373,96 +429,3 @@ fn read_u64(row: &rullst_orm::sqlx::any::AnyRow, column: &str) -> Result<u64, Qu
 fn to_i64(value: u64) -> Result<i64, QuotaError> {
     i64::try_from(value).map_err(|_| QuotaError::InvalidRequest("quota quantity overflow".into()))
 }
-
-fn schema_sql(backend: SqlQuotaBackend) -> (&'static str, &'static str) {
-    match backend {
-        SqlQuotaBackend::Postgres => (POSTGRES_COUNTERS, POSTGRES_CLAIMS),
-        SqlQuotaBackend::Mysql => (MYSQL_COUNTERS, MYSQL_CLAIMS),
-        SqlQuotaBackend::Sqlite => (SQLITE_COUNTERS, SQLITE_CLAIMS),
-    }
-}
-
-fn insert_claim_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_INSERT_CLAIM,
-        SqlQuotaBackend::Mysql => MYSQL_INSERT_CLAIM,
-        SqlQuotaBackend::Sqlite => SQLITE_INSERT_CLAIM,
-    }
-}
-
-fn insert_counter_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_INSERT_COUNTER,
-        SqlQuotaBackend::Mysql => MYSQL_INSERT_COUNTER,
-        SqlQuotaBackend::Sqlite => SQLITE_INSERT_COUNTER,
-    }
-}
-
-fn select_claim_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_SELECT_CLAIM,
-        _ => PORTABLE_SELECT_CLAIM,
-    }
-}
-
-fn update_counter_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_UPDATE_COUNTER,
-        _ => PORTABLE_UPDATE_COUNTER,
-    }
-}
-
-fn update_claim_usage_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_UPDATE_CLAIM_USAGE,
-        _ => PORTABLE_UPDATE_CLAIM_USAGE,
-    }
-}
-
-fn select_usage_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_SELECT_USAGE,
-        _ => PORTABLE_SELECT_USAGE,
-    }
-}
-
-fn delete_claim_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_DELETE_CLAIM,
-        _ => PORTABLE_DELETE_CLAIM,
-    }
-}
-
-fn decrement_counter_sql(backend: SqlQuotaBackend) -> &'static str {
-    match backend {
-        SqlQuotaBackend::Postgres => POSTGRES_DECREMENT_COUNTER,
-        _ => PORTABLE_DECREMENT_COUNTER,
-    }
-}
-
-const POSTGRES_COUNTERS: &str = "CREATE TABLE IF NOT EXISTS rullst_capital_quota_counters (subject_kind VARCHAR(32) NOT NULL, subject_id VARCHAR(128) NOT NULL, feature VARCHAR(128) NOT NULL, used_units BIGINT NOT NULL DEFAULT 0 CHECK (used_units >= 0), PRIMARY KEY (subject_kind, subject_id, feature))";
-const POSTGRES_CLAIMS: &str = "CREATE TABLE IF NOT EXISTS rullst_capital_quota_claims (subject_kind VARCHAR(32) NOT NULL, subject_id VARCHAR(128) NOT NULL, feature VARCHAR(128) NOT NULL, event_key VARCHAR(128) NOT NULL, units BIGINT NOT NULL CHECK (units > 0), limit_at_claim BIGINT NOT NULL CHECK (limit_at_claim > 0), used_after BIGINT NOT NULL CHECK (used_after >= 0), claim_token VARCHAR(32) NOT NULL, PRIMARY KEY (subject_kind, subject_id, feature, event_key))";
-const MYSQL_COUNTERS: &str = "CREATE TABLE IF NOT EXISTS rullst_capital_quota_counters (subject_kind VARCHAR(32) NOT NULL, subject_id VARCHAR(128) NOT NULL, feature VARCHAR(128) NOT NULL, used_units BIGINT NOT NULL DEFAULT 0 CHECK (used_units >= 0), PRIMARY KEY (subject_kind, subject_id, feature)) ENGINE=InnoDB";
-const MYSQL_CLAIMS: &str = "CREATE TABLE IF NOT EXISTS rullst_capital_quota_claims (subject_kind VARCHAR(32) NOT NULL, subject_id VARCHAR(128) NOT NULL, feature VARCHAR(128) NOT NULL, event_key VARCHAR(128) NOT NULL, units BIGINT NOT NULL CHECK (units > 0), limit_at_claim BIGINT NOT NULL CHECK (limit_at_claim > 0), used_after BIGINT NOT NULL CHECK (used_after >= 0), claim_token VARCHAR(32) NOT NULL, PRIMARY KEY (subject_kind, subject_id, feature, event_key)) ENGINE=InnoDB";
-const SQLITE_COUNTERS: &str = "CREATE TABLE IF NOT EXISTS rullst_capital_quota_counters (subject_kind TEXT NOT NULL, subject_id TEXT NOT NULL, feature TEXT NOT NULL, used_units INTEGER NOT NULL DEFAULT 0 CHECK (used_units >= 0), PRIMARY KEY (subject_kind, subject_id, feature))";
-const SQLITE_CLAIMS: &str = "CREATE TABLE IF NOT EXISTS rullst_capital_quota_claims (subject_kind TEXT NOT NULL, subject_id TEXT NOT NULL, feature TEXT NOT NULL, event_key TEXT NOT NULL, units INTEGER NOT NULL CHECK (units > 0), limit_at_claim INTEGER NOT NULL CHECK (limit_at_claim > 0), used_after INTEGER NOT NULL CHECK (used_after >= 0), claim_token TEXT NOT NULL, PRIMARY KEY (subject_kind, subject_id, feature, event_key))";
-
-const POSTGRES_INSERT_CLAIM: &str = "INSERT INTO rullst_capital_quota_claims (subject_kind, subject_id, feature, event_key, units, limit_at_claim, used_after, claim_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (subject_kind, subject_id, feature, event_key) DO NOTHING";
-const MYSQL_INSERT_CLAIM: &str = "INSERT INTO rullst_capital_quota_claims (subject_kind, subject_id, feature, event_key, units, limit_at_claim, used_after, claim_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE subject_id = VALUES(subject_id)";
-const SQLITE_INSERT_CLAIM: &str = "INSERT INTO rullst_capital_quota_claims (subject_kind, subject_id, feature, event_key, units, limit_at_claim, used_after, claim_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (subject_kind, subject_id, feature, event_key) DO NOTHING";
-const POSTGRES_INSERT_COUNTER: &str = "INSERT INTO rullst_capital_quota_counters (subject_kind, subject_id, feature, used_units) VALUES ($1, $2, $3, $4) ON CONFLICT (subject_kind, subject_id, feature) DO NOTHING";
-const MYSQL_INSERT_COUNTER: &str = "INSERT INTO rullst_capital_quota_counters (subject_kind, subject_id, feature, used_units) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE subject_id = VALUES(subject_id)";
-const SQLITE_INSERT_COUNTER: &str = "INSERT INTO rullst_capital_quota_counters (subject_kind, subject_id, feature, used_units) VALUES (?, ?, ?, ?) ON CONFLICT (subject_kind, subject_id, feature) DO NOTHING";
-
-const POSTGRES_SELECT_CLAIM: &str = "SELECT units, limit_at_claim, used_after, claim_token FROM rullst_capital_quota_claims WHERE subject_kind = $1 AND subject_id = $2 AND feature = $3 AND event_key = $4";
-const PORTABLE_SELECT_CLAIM: &str = "SELECT units, limit_at_claim, used_after, claim_token FROM rullst_capital_quota_claims WHERE subject_kind = ? AND subject_id = ? AND feature = ? AND event_key = ?";
-const POSTGRES_UPDATE_COUNTER: &str = "UPDATE rullst_capital_quota_counters SET used_units = used_units + $1 WHERE subject_kind = $2 AND subject_id = $3 AND feature = $4 AND used_units <= $5";
-const PORTABLE_UPDATE_COUNTER: &str = "UPDATE rullst_capital_quota_counters SET used_units = used_units + ? WHERE subject_kind = ? AND subject_id = ? AND feature = ? AND used_units <= ?";
-const POSTGRES_UPDATE_CLAIM_USAGE: &str = "UPDATE rullst_capital_quota_claims SET used_after = $1 WHERE subject_kind = $2 AND subject_id = $3 AND feature = $4 AND event_key = $5 AND claim_token = $6";
-const PORTABLE_UPDATE_CLAIM_USAGE: &str = "UPDATE rullst_capital_quota_claims SET used_after = ? WHERE subject_kind = ? AND subject_id = ? AND feature = ? AND event_key = ? AND claim_token = ?";
-const POSTGRES_SELECT_USAGE: &str = "SELECT used_units FROM rullst_capital_quota_counters WHERE subject_kind = $1 AND subject_id = $2 AND feature = $3";
-const PORTABLE_SELECT_USAGE: &str = "SELECT used_units FROM rullst_capital_quota_counters WHERE subject_kind = ? AND subject_id = ? AND feature = ?";
-const POSTGRES_DELETE_CLAIM: &str = "DELETE FROM rullst_capital_quota_claims WHERE subject_kind = $1 AND subject_id = $2 AND feature = $3 AND event_key = $4 AND claim_token = $5";
-const PORTABLE_DELETE_CLAIM: &str = "DELETE FROM rullst_capital_quota_claims WHERE subject_kind = ? AND subject_id = ? AND feature = ? AND event_key = ? AND claim_token = ?";
-const POSTGRES_DECREMENT_COUNTER: &str = "UPDATE rullst_capital_quota_counters SET used_units = used_units - $1 WHERE subject_kind = $2 AND subject_id = $3 AND feature = $4 AND used_units >= $5";
-const PORTABLE_DECREMENT_COUNTER: &str = "UPDATE rullst_capital_quota_counters SET used_units = used_units - ? WHERE subject_kind = ? AND subject_id = ? AND feature = ? AND used_units >= ?";

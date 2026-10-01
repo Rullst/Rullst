@@ -566,6 +566,36 @@ that same transaction and commit once. See the
 [SaaS billing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/19-saas-billing-capital.md#8-enforce-one-shared-workspace-quota-before-creation)
 for the complete flow.
 
+Subject kinds and IDs, features and event keys are case-sensitive on every
+backend, so tenants such as `aB3x` and `Ab3X` keep separate counters. New
+MySQL/MariaDB tables declare those columns `CHARACTER SET ascii COLLATE
+ascii_bin`. `prepare_schema` never alters an existing table: while a key column
+of either quota table still folds case, `prepare_schema` and every store
+operation return `QuotaError::StorageUnavailable`.
+
+#### Upgrading MySQL/MariaDB quota tables
+
+Tables created by an earlier release use the server's case-insensitive default
+collation, so keys that differ only by letter case shared one counter or claim.
+The migration cannot split rows merged that way; review subjects and event keys
+that differ only by case first. Stop quota writers, back up both tables, then
+convert the key columns:
+
+```sql
+ALTER TABLE rullst_capital_quota_counters
+  MODIFY subject_kind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY subject_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY feature VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+ALTER TABLE rullst_capital_quota_claims
+  MODIFY subject_kind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY subject_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY feature VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY event_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+```
+
+Any binary or case-sensitive (`_bin`/`_cs`) collation also passes the check.
+The MySQL 8.0 and MariaDB contract tests run this migration on legacy tables.
+
 Membership/authentication, tier persistence and webhook reconciliation,
 migrations, cleanup policy for abandoned standalone reservations, and
 Turso/NoSQL adapters remain application responsibilities. Writes outside the
