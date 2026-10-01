@@ -6,6 +6,26 @@ use std::fs;
 use std::io::{Error as IoError, ErrorKind, Write};
 use std::path::Path;
 
+/// The controller emitted by `make:scalar`. Axum is reached through the
+/// `rullst::web` re-export because generated projects do not depend on it.
+const SCALAR_CONTROLLER: &str = r###"// src/controllers/docs_controller.rs — Scalar Interactive API Documentation
+use rullst::scalar::scalar_docs_router;
+use rullst::web::axum::Router;
+
+/// Mounts the interactive Scalar API documentation router at `/docs`.
+pub fn router() -> Router {
+    scalar_docs_router("/openapi.json")
+}
+"###;
+
+/// Returns the exact controller source emitted by `make:scalar`.
+///
+/// Public so scaffold smoke tests can compile the generated module.
+#[doc(hidden)]
+pub fn scalar_controller_source() -> &'static str {
+    SCALAR_CONTROLLER
+}
+
 fn write_new(path: &Path, contents: &[u8]) -> Result<(), IoError> {
     let mut output = fs::OpenOptions::new()
         .write(true)
@@ -50,17 +70,7 @@ pub fn generate_scalar_docs() -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(parent)?;
     }
 
-    let code_content = r###"// src/controllers/docs_controller.rs — Scalar Interactive API Documentation
-use axum::Router;
-use rullst::scalar::scalar_docs_router;
-
-/// Mounts the interactive Scalar API documentation router at `/docs`.
-pub fn router() -> Router {
-    scalar_docs_router("/openapi.json")
-}
-"###;
-
-    write_new(target_path, code_content.as_bytes())?;
+    write_new(target_path, SCALAR_CONTROLLER.as_bytes())?;
     if let Err(error) = register_mod_ast(Path::new("src/controllers/mod.rs"), "docs_controller") {
         let _ = fs::remove_file(target_path);
         return Err(error);
@@ -89,6 +99,14 @@ pub fn router() -> Router {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn scalar_controller_reaches_axum_through_the_rullst_facade() {
+        let source = scalar_controller_source();
+        assert!(source.contains("use rullst::web::axum::Router;"));
+        assert!(!source.contains("use axum::"));
+        syn::parse_file(source).expect("generated Scalar controller should parse");
+    }
 
     #[test]
     fn scalar_controller_output_never_overwrites_an_existing_file() {

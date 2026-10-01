@@ -28,7 +28,7 @@ The following controller fragment expects the generated
 `crate::live::counter_component` module from Step 1:
 
 ```rust
-use async_trait::async_trait;
+use rullst::async_trait;
 use rullst::live::LiveComponent;
 use serde_json::Value;
 

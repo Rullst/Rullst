@@ -93,7 +93,9 @@ The browser defaults to at most 1 GiB, accepted video MIME types, 1 MiB chunks,
 4096 HTTP requests, 30-second request/authorization waits and a 15-minute run.
 The host may lower the byte limit. It checks renewal identity/origin and omits
 cookies and library keys from provider requests. The server caps upload grants
-at 3600 seconds and current permission expiry. These client limits are **not
+at 3600 seconds and current permission expiry; the module refuses a grant that
+expires more than 3600 seconds plus a 300-second clock-skew allowance after its
+own clock. These client limits are **not
 cryptographic provider quotas**: a copied TUS bearer may be reusable until expiry.
 Configure library quotas; cancellation stops local transfer and needs a separate
 authorized deletion request to remove the remote asset. Ambiguous TUS creation
@@ -107,8 +109,8 @@ is independent of TUS byte acceptance. Show processing/failure state, allow
 `playback` checks current entitlement, reads current provider readiness and
 fences local withdrawal/deletion in the transaction that issues a grant bounded
 by permission expiry and at most 900 seconds. It is a read, not a leased
-mutation: concurrent viewers never block one another, and a failed, timed-out
-or dropped request leaves no durable intent. It records a changed observation
+mutation: concurrent viewers never wait for one another's provider reads or
+leases, and a failed, timed-out or dropped request leaves no durable intent. It records a changed observation
 only when the revision is unchanged and no lease is live; a video that is no
 longer ready withdraws publication. Rate-limit the playback route per actor.
 Supported kinds are `Embed`, directory-protected `Hls`, and `Mp4_720p` only when
@@ -156,7 +158,7 @@ ledger. API and webhook numeric status mappings differ and are handled separatel
 | Result/state | Required handling |
 | --- | --- |
 | `Conflict` | Reload current revision/state before a deliberate new action |
-| `Busy` | Respect the in-flight lease; retry with bounded backoff |
+| `Busy` | Respect the in-flight lease or local store contention; retry with bounded backoff |
 | `Unavailable`, `Uncertain`, timeout or process death | Inspect persisted intent; `reconcile` after its 45-second lease, rechecking management authorization |
 | Unknown create result | Search the persisted opaque marker; zero or multiple matches stop the intent as `CreationUnconfirmed`; never generate another create request automatically |
 | `Asset.failure` set (stopped create/update) | Never retried automatically; mutations, `reconcile` and upload return `Conflict` while withdrawal and playback still work. Fix the cause, then call `retry_failed` or `discard_failed` with the current revision |
@@ -166,6 +168,11 @@ ledger. API and webhook numeric status mappings differ and are handled separatel
 | `Capacity` | Review retention/capacity without deleting active or uncertain operations |
 
 Mutations are journaled before dispatch; no DB write lock is held during HTTP.
+Every operation, reads and playback included, runs short serialized
+`BEGIN IMMEDIATE` transactions on a pool of four connections. A read commits
+no change unless the stored clock high-water mark advances, so a burst within
+one second adds no durable write. A SQLite lock or connection wait over 3
+seconds returns `Busy`, not `Storage`: nothing was committed, so retry.
 Remote metadata updates and deletions are reconciled using authoritative reads.
 Every public operation has a 20-second total timeout; provider calls have bounded
 request and response sizes, with at most one GET retry and no automatic mutation

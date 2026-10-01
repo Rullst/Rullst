@@ -15,10 +15,13 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
     /// issues it. No stale cached ready state is used on provider outage.
     ///
     /// Playback is a read. It takes no mutation lease, so concurrent viewers
-    /// never serialize, and a failed, timed-out or dropped request leaves no
-    /// durable intent behind. A changed observation is recorded only if the
-    /// revision is unchanged since the initial load and no live lease is held;
-    /// a video that is no longer ready withdraws publication.
+    /// never wait for one another's provider reads, and a failed, timed-out or
+    /// dropped request leaves no durable intent behind. Its two short local
+    /// transactions still serialize with every other store operation; a lock
+    /// or connection wait over 3 seconds returns `Busy`. A changed observation
+    /// is recorded only if the revision is unchanged since the initial load
+    /// and no live lease is held; a video that is no longer ready withdraws
+    /// publication.
     pub async fn playback<A: Authorization>(
         &self,
         auth: &A,

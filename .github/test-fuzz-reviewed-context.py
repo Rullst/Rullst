@@ -24,6 +24,10 @@ class ContextTests(unittest.TestCase):
         self.git("init", "-q")
         self.git("config", "user.email", "fixture@example.invalid")
         self.git("config", "user.name", "Fixture")
+        # A detached `git gc --auto` can still be writing objects/pack when the
+        # temporary directory is removed (ENOTEMPTY), so keep git in the foreground.
+        self.git("config", "gc.auto", "0")
+        self.git("config", "maintenance.auto", "false")
         self.contract = "reviewed execution"
         for path in DOCUMENT_PATHS - {"GOVERNANCE.md", "docs/src/openssf-scorecard.md"}:
             self.write(path, "old document " + path)
