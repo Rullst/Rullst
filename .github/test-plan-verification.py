@@ -93,6 +93,10 @@ class GitPolicyTests(unittest.TestCase):
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.name", "Verification Fixture")
         self.git("config", "user.email", "fixture@example.invalid")
+        # A detached `git gc --auto` can still be writing objects/pack when the
+        # temporary directory is removed (ENOTEMPTY), so keep git in the foreground.
+        self.git("config", "gc.auto", "0")
+        self.git("config", "maintenance.auto", "false")
         self.write("Cargo.toml", '''[workspace]
 members = ["leaf", "bridge", "app", "other"]
 resolver = "2"

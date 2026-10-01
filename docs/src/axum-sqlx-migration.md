@@ -41,14 +41,16 @@ async fn active_names(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
 }
 ```
 
-## Generate an escape-hatch snapshot
+## Generate an escape-hatch template
 
 ```bash
 cargo rullst eject
 cargo check
 ```
 
-The command writes an inspectable Axum/Tokio entry-point snapshot. Review it;
+The command writes a reviewable Axum/Tokio entry-point template: a placeholder
+route behind the configured Rullst security baseline, compiled through the
+`rullst::web::axum` re-export. It does not copy the application's routes;
 ORM models, migrations, authentication policy, Studio/Nexus integration and
 other selected subsystems can still require deliberate migration work. Use
 `--force` only when replacing `src/main.rs` is intended and the worktree is

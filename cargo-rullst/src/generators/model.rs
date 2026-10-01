@@ -2,7 +2,7 @@
 #![cfg_attr(mutants, mutants::skip)]
 
 use crate::generators::{
-    ProjectOrmBackend, is_rullst_project,
+    ProjectOrmBackend, is_rullst_project, is_valid_rust_identifier,
     migration::{regenerate_migrations_mod, render_migration},
     model_to_pascal_case, model_to_snake_case,
     output_guard::existing_migrations,
@@ -34,6 +34,7 @@ pub fn create_new_model(
 
     let snake_name = model_to_snake_case(name);
     let pascal_name = model_to_pascal_case(name);
+    validate_model_identifiers(&snake_name, &pascal_name)?;
     let plural_name = pluralize(&snake_name);
     let orm_backend = project_orm_backend();
 
@@ -199,10 +200,44 @@ pub struct {pascal_name} {{
     Ok(())
 }
 
+/// Rejects names whose module or type would not be a non-keyword Rust identifier
+/// (for example `Match` → `pub mod match;`) before anything is written.
+fn validate_model_identifiers(snake_name: &str, pascal_name: &str) -> std::io::Result<()> {
+    if is_valid_rust_identifier(snake_name) && is_valid_rust_identifier(pascal_name) {
+        return Ok(());
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        format!(
+            "model name must produce valid non-keyword Rust identifiers (module `{snake_name}`, type `{pascal_name}`); choose another name such as `{pascal_name}Record`"
+        ),
+    ))
+}
+
 /// Returns existing migrations that already create `table` with a generator name.
 fn existing_create_migrations(table: &str) -> std::io::Result<Vec<std::path::PathBuf>> {
     existing_migrations(&[
         format!("_create_{table}.rs"),
         format!("_create_{table}_table.rs"),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyword_and_invalid_model_names_are_rejected_before_writing() {
+        for name in ["Match", "Type", "Impl", "Use", "Move"] {
+            let snake = model_to_snake_case(name);
+            let pascal = model_to_pascal_case(name);
+            assert!(
+                validate_model_identifiers(&snake, &pascal).is_err(),
+                "{name} must be rejected"
+            );
+        }
+        let invalid = model_to_snake_case("Bad.Name");
+        assert!(validate_model_identifiers(&invalid, "BadName").is_err());
+        assert!(validate_model_identifiers("blog_post", "BlogPost").is_ok());
+    }
 }

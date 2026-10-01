@@ -12,7 +12,7 @@ This fragment expects the `crate::live::analytics_dashboard` module created in
 Step 1 to be registered by the generated application:
 
 ```rust
-use async_trait::async_trait;
+use rullst::async_trait;
 use rullst::live::LiveComponent;
 use serde_json::Value;
 
