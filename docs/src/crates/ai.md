@@ -22,6 +22,11 @@ tenant-aware RAG pipeline.
 Unsupported capabilities return `AiError::UnsupportedCapability`; the client does not silently
 switch to an unrelated endpoint or represent a fixture as a live-provider result.
 
+Anthropic requests allow up to 16,000 output tokens (the Messages API requires a limit, and
+adaptive thinking counts toward it). A reply the API reports as cut short (`stop_reason`
+`max_tokens` or `model_context_window_exceeded`) or declined (`refusal`) returns
+`AiError::ApiError` instead of the partial text.
+
 `OpenAiCompatibleProvider` covers servers implementing the named OpenAI
 `/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
 vision, embeddings, JSON mode, and JSON Schema must be declared for the exact

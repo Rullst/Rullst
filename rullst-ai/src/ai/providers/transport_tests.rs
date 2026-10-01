@@ -188,3 +188,37 @@ async fn native_provider_deadline_covers_stalled_response_body() {
     assert!(error.is_timeout());
     assert!(error.url().is_none());
 }
+
+#[tokio::test]
+async fn anthropic_reports_an_incomplete_reply_instead_of_returning_it() {
+    for stop_reason in ["max_tokens", "model_context_window_exceeded", "refusal"] {
+        let body = format!(
+            r#"{{"content":[{{"type":"text","text":"partial"}}],"stop_reason":"{stop_reason}"}}"#
+        );
+        let (endpoint, server) = serve(success(&body)).await;
+        let result = AnthropicProvider::new("fixture-api-key")
+            .with_base_url(endpoint)
+            .with_request_timeout(Duration::from_secs(3))
+            .prompt("hello")
+            .await;
+        assert!(server.await.unwrap().is_some());
+        assert!(
+            matches!(&result, Err(crate::ai::AiError::ApiError(message)) if message.contains(stop_reason)),
+            "{stop_reason} was returned as a complete reply"
+        );
+    }
+
+    // A complete reply is returned, after any thinking block, and the
+    // request carries the default output limit.
+    let body = r#"{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"complete"}],"stop_reason":"end_turn"}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    let answer = AnthropicProvider::new("fixture-api-key")
+        .with_base_url(endpoint)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt("hello")
+        .await
+        .unwrap();
+    assert_eq!(answer, "complete");
+    let request = server.await.unwrap().unwrap();
+    assert!(String::from_utf8_lossy(&request).contains(r#""max_tokens":16000"#));
+}

@@ -27,6 +27,11 @@ endpoint directly; redirected prompts, credentials and bodies are not replayed.
 These are local transport invariants, not proof of provider availability,
 prompt-injection immunity or upstream request cancellation.
 
+Anthropic requests allow up to 16,000 output tokens (the Messages API requires
+a limit, and adaptive thinking counts toward it). A reply the API reports as
+cut short (`stop_reason` `max_tokens` or `model_context_window_exceeded`) or
+declined (`refusal`) returns `AiError::ApiError` instead of the partial text.
+
 `OpenAiCompatibleProvider` covers servers implementing the named OpenAI
 `/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
 vision, embeddings, JSON mode, and JSON Schema must be declared for the exact
