@@ -88,7 +88,10 @@ impl RadarSnapshot {
     }
 }
 
-/// Reads real RSS memory consumption of the active process in Megabytes (Windows, Linux, macOS).
+/// Reads real RSS memory consumption of the active process in Megabytes.
+///
+/// Probes exist for Windows (working set) and Linux (`VmRSS`); every other
+/// platform, including macOS, returns `None`.
 pub fn get_process_memory_mb() -> Option<f64> {
     #[cfg(target_os = "windows")]
     {

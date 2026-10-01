@@ -154,7 +154,8 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
-  process uptime. Unsupported probes return `None`. On Linux, RSS comes from
+  process uptime. Unsupported probes return `None`: RSS and CPU have probes
+  on Linux and Windows only, so macOS reports neither. On Linux, RSS comes from
   `VmRSS` in `/proc/self/status` (correct on 16/64 KiB page kernels), and CPU
   percent is process CPU time over wall time: the host-wide `/proc/stat` delta
   is scaled by its host CPU count, not by the cgroup-limited
