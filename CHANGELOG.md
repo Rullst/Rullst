@@ -350,6 +350,24 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Generated starter second-round fixes
+
+- The SaaS `User.password_hash` is hidden from model JSON. SaaS, LMS and
+  `make:auth` registration and generated billing rows store real UTC
+  timestamps; registration counts the name and minimum password length like
+  the form and keeps the 72-byte hashing maximum.
+- The Blank home page probes one database row instead of the whole users
+  table. Portfolio shows the first profile, or 404/503, instead of a
+  hard-coded placeholder person.
+- LMS progress saves claim their idempotency key first, so double submissions
+  replay instead of returning 503, and lesson media/caption fields accept
+  same-origin paths in Nexus.
+- Blog `robots.txt`/`sitemap.xml` use absolute URLs from
+  `RULLST_PUBLIC_ORIGIN` and list posts; Blog and ERP answer out-of-range
+  pages with 404, and ERP text limits count like the browser form.
+- `deploy --platform vps` pins its Caddy proxy and trusts it in `Rullst.toml`,
+  so clients no longer share one rate-limit bucket.
+
 ### Generated starter low-severity fixes
 
 - LMS progress idempotency keys are unique per learner, and ERP orders reserve
