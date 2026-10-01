@@ -2692,7 +2692,10 @@ opt-in `quota-sql` feature supplies `SqlQuotaStore` for SQLite, PostgreSQL,
 MySQL and MariaDB. Its conditional counter update and unique event claim prevent
 concurrent members from exceeding the same limit. Exact retries return a replay
 grant without consuming or executing again; a key reused with different units
-or limit fails closed. A replay proves only that the key is claimed, not that
+or limit fails closed. Subjects, features and event keys are case-sensitive on
+every backend: MySQL/MariaDB key columns use `ascii_bin`, and the store refuses
+a legacy table whose key columns fold case until its documented migration runs.
+A replay proves only that the key is claimed, not that
 the guarded work finished: the claim may belong to an in-flight call that later
 fails and releases it, or to an abandoned call. `QuotaGate::execute` blocks the callback before an
 over-limit creation and compensates an ordinary callback error.

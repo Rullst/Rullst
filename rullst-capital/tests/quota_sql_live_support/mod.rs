@@ -12,6 +12,8 @@ use std::time::Duration;
 #[path = "../stripe_inbox_support/mod.rs"]
 mod stripe_inbox_support;
 
+mod case;
+
 pub fn handle_container_start_error(provider: &str, error: impl std::fmt::Display) {
     if std::env::var_os("RULLST_REQUIRE_TESTCONTAINERS").is_some() {
         panic!("{provider} testcontainer is required but unavailable: {error}");
@@ -20,6 +22,9 @@ pub fn handle_container_start_error(provider: &str, error: impl std::fmt::Displa
 }
 
 pub async fn exercise_sql_quota(database_url: &str, backend: SqlQuotaBackend) {
+    if backend == SqlQuotaBackend::Mysql {
+        case::exercise_legacy_mysql_tables(database_url).await;
+    }
     let store = SqlQuotaStore::connect(database_url)
         .await
         .expect("live SQL quota store");
@@ -49,6 +54,7 @@ pub async fn exercise_sql_quota(database_url: &str, backend: SqlQuotaBackend) {
     assert!(store.release(&grant).await.expect("exact release"));
     assert_eq!(store.usage(&workspace, "projects").await.unwrap(), 0);
 
+    case::exercise_case_sensitive_keys(&store).await;
     exercise_concurrency(&store).await;
     exercise_concurrent_release(&store).await;
 }
