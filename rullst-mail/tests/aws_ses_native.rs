@@ -77,6 +77,36 @@ async fn native_driver_signs_ses_v2_payload_and_preserves_message_capabilities()
 }
 
 #[tokio::test]
+async fn native_driver_sends_seven_bit_ascii_addresses() {
+    let (endpoint, request_rx, fixture) =
+        fixture_server(200, r#"{"MessageId":"ses-fixture-id"}"#, "application/json");
+    let driver = AwsSesDriver::try_native("us-east-1", ACCESS_KEY_ID, SECRET_ACCESS_KEY, None)
+        .expect("valid native credentials")
+        .try_with_endpoint(endpoint)
+        .expect("loopback endpoint");
+    let message = Message::new()
+        .to("maria@b\u{fc}cher.de")
+        .from("Jos\u{e9} Silva <no-reply@acme.com.br>")
+        .subject("IDN")
+        .text("body");
+
+    driver.send(&message).await.expect("fixture accepts mail");
+    let request = request_rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("captured request");
+    fixture.join().expect("fixture thread");
+    let payload: Value = serde_json::from_str(request_body(&request)).expect("SES JSON payload");
+    assert_eq!(
+        payload["FromEmailAddress"],
+        "=?UTF-8?B?Sm9zw6kgU2lsdmE=?= <no-reply@acme.com.br>"
+    );
+    assert_eq!(
+        payload["Destination"]["ToAddresses"][0],
+        "maria@xn--bcher-kva.de"
+    );
+}
+
+#[tokio::test]
 async fn native_driver_maps_and_redacts_provider_rejections() {
     let (endpoint, request_rx, fixture) = fixture_server(
         400,

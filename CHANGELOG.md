@@ -254,6 +254,21 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Facade and examples low-severity fixes
+
+- The `rullst` facade guards its native-only re-exports on wasm32, and the
+  wasm matrix checks the default and generated-app feature sets.
+- The blog showcase selects its database like `Server` and Artisan, scopes
+  posts with fail-closed `tenant_column` and `TenantContext`, bounds story
+  writes and listings, seeds without deleting visitor posts, and renders every
+  page under the unrelaxed production CSP with same-origin, vendored HTMX and
+  Pico.css assets.
+- The blog's non-working Wasm island page, stale Tauri shell and Dioxus
+  `omni-app` were removed, double HTML escaping was fixed and the examples
+  guide no longer claims Tera.
+- The SaaS example answers 422 for note bodies with control characters, and
+  its membership command rejects dot-only tenants.
+
 ### CLI generator low-severity fixes
 
 - `make:live`, `make:scalar` and `eject` import async-trait and Axum through the
@@ -323,6 +338,23 @@ A prepared version section does not establish that its tag or crates exist.
 - Blog and Portfolio pages keep their styling under the production CSP.
 - The host-specific `.cargo/config.toml` linker selection is excluded from Git
   and Docker builds.
+
+### Mail final-review fixes
+
+- Attachment inspection classifies markup the way browsers parse it (root
+  element after any prologue or DOCTYPE, namespace prefixes, SVG/XHTML
+  namespace URIs including character-reference spellings, DTD entities,
+  UTF-16), so namespaced SVG or XHTML labelled `application/xml` is rejected.
+- The homograph check resolves links with WHATWG URL parsing (tab/newline
+  removal, backslashes, `https:host`, scheme-relative, percent-encoded and
+  A-label hosts), and click tracking checks each destination as one link.
+- The `Mail` facade reuses its configured driver while settings are unchanged,
+  so managed-identity tokens and connection pools are shared, and an invalid
+  `MAIL_PORT` is a `ConfigError`.
+- SES requests carry 7-bit ASCII addresses (IDNA A-labels, RFC 2047 sender
+  names), and direct Resend schedules beyond 30 days fail before any request.
+- Tracking tokens sign the bare recipient address, and the derived plain-text
+  part keeps HTTP(S) link targets as `label <URL>`.
 
 ### Large module splits
 

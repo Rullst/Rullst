@@ -18,12 +18,17 @@ The blog package demonstrates:
 
 - server-rendered HTML and Active Record persistence;
 - a parameterized repository query;
-- LiveView/WebSocket and Wasm-island presentation examples;
-- Pico CSS and Tera presentation paths;
+- a LiveView/WebSocket presentation example (Wasm islands are covered by
+  `cargo rullst make:island` and the [islands tutorial](tutorials/18-wasm-islands-rust.md),
+  not by this showcase);
+- Pico CSS and a small embedded file-template fixture (`include_str!` plus
+  fixed placeholder replacement; not Tera or another template engine);
 - `Billable` quota evaluation and payment-adapter mock fixtures;
 - an escaped, unsigned DPS XML preview that is explicitly not an NFS-e
   authorization;
 - bounded security-helper demonstrations and a local AI/vector fixture;
+- pages that render under the unrelaxed production Content Security Policy,
+  with same-origin stylesheets, scripts and vendored HTMX/Pico.css files;
 - a debug-only standalone Studio and Nexus access that is loopback-only in
   debug builds and credential-protected in release builds.
 
@@ -54,7 +59,10 @@ resource; it is not a duplicate checked-in copy of a generated application.
 The blog example inserts a static test-only `TenantMembership` before the tenant layer.
 The `X-Tenant-ID` header can select only one of those fixed memberships. This
 models the separation between an untrusted selector and trusted authenticated
-claims.
+claims. Handlers read the membership-checked `TenantContext` that `TenantLayer`
+inserts. The `Post` model declares `tenant_column`, so its generated queries fail
+closed outside `with_tenant(...)`; the hand-written repository SQL binds the same
+tenant itself.
 
 In a real application, authentication middleware must derive membership from a
 verified session or token. Never construct membership from the same client header
@@ -72,12 +80,14 @@ capability, pricing, tax treatment, or regional availability.
 ## Running locally
 
 ```bash
-touch examples/blog/blog.db
+cd examples/blog
 cargo run -p rullst-blog-example
 ```
 
-Before local startup, configure `APP_KEY` and `DATABASE_URL` as documented in the
-example README. The debug build needs no Nexus password, but verifies the socket
+Before local startup, configure `APP_KEY` in `examples/blog/.env` as documented
+in the example README. The showcase selects its database like `Server` and the
+Artisan commands (`DATABASE_URL`, `.env`, then `Rullst.toml`), so `DATABASE_URL`
+is optional locally and honored in deployments. The debug build needs no Nexus password, but verifies the socket
 peer as loopback. A release build does not start Studio and refuses to construct
 Nexus without validated `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`
 values. Studio is local developer tooling; keep it on a trusted interface.

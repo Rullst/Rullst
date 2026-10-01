@@ -26,24 +26,23 @@ impl CounterComponent {
     }
 
     pub fn render(&self) -> String {
-        // Renderizamos a interface.
-        // O hx-ext="ws" no root será fornecido pelo Live::mount wrapper,
-        // mas devemos colocar um ID no container principal para que o HTMX saiba o que substituir via WebSocket DOM Swap.
+        // `Live::mount` supplies the `hx-ext="ws"` wrapper; the root needs a
+        // stable id so HTMX can swap the re-rendered markup it receives.
         html! {
-            <div id="live-counter-component" style="background: #1e293b; padding: 2rem; border-radius: 12px; text-align: center; max-width: 400px; margin: 3rem auto; color: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);">
-                <h2 style="margin-top: 0; font-size: 1.5rem; color: #38bdf8;">"Rullst Live (Server-Driven UI)"</h2>
+            <div id="live-counter-component" class="live-counter">
+                <h2 class="live-counter-title">"Rullst Live (Server-Driven UI)"</h2>
 
-                <div style="font-size: 4rem; font-weight: 800; margin: 2rem 0; color: #fff;">
+                <div class="live-counter-value">
                     {self.count}
                 </div>
 
-                <form ws-send="true" style="display: flex; gap: 1rem; justify-content: center; margin: 0;">
+                <form ws-send="true" class="live-counter-actions">
                     <button
                         type="submit"
                         name="rullst_event"
                         value="decrement"
                         aria-label="Decrease counter"
-                        style="padding: 0.75rem 1.5rem; background: #e11d48; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
+                        class="counter-btn counter-btn-dec"
                     >
                         "- Decrease"
                     </button>
@@ -52,14 +51,14 @@ impl CounterComponent {
                         name="rullst_event"
                         value="increment"
                         aria-label="Increase counter"
-                        style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
+                        class="counter-btn counter-btn-inc"
                     >
                         "+ Increase"
                     </button>
                 </form>
 
-                <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem;">
-                    "✨ Rust Magic: Zero JS files created. All state is maintained on the server and re-renders are sent via WebSockets by Rullst!"
+                <p class="live-counter-note">
+                    "All state is maintained on the server; the same-origin HTMX WebSocket extension sends events and applies the re-rendered markup."
                 </p>
             </div>
         }
