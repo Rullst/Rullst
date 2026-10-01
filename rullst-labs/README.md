@@ -81,6 +81,11 @@ bounds submissions per rolling day. One learner may retain at most 100 jobs per
 course, or `max_jobs` when lower; `StoreConfig::learner_jobs` selects another
 bound that every opener must share. Rate-limit submissions in
 `Authorization::check` for `Submit`, and consider one store per tenant.
+`max_exercises` (at most 1,000) is store-wide too: every registered revision,
+enabled or withdrawn, counts until `remove_exercise`, so one tenant's
+instructors could otherwise register all of it. A store shared by several
+tenants should add `StoreConfig::tenant_exercises(n)`, which bounds the
+revisions one tenant holds and is persisted like the other capacities.
 
 Use a dedicated random content key and a separate controller signing seed. The
 application receives only the controller's pinned public key. The untrusted worker
@@ -98,7 +103,8 @@ executor; a separately deployed runner consumes the shared job plane.
 The `byo_runner_controller` example is a minimal **non-executing** controller.
 It recovers leftover leases, claims a job, polls `lease_status` under the wall
 limit, signs a fixed `Rejected(Isolation)` verdict for `complete` and fences
-failures through `abandon_attempt`/`reconcile_cleanup`. It never compiles or
+every failure after the claim, clock and signing errors included, through
+`abandon_attempt`/`reconcile_cleanup`. It never compiles or
 runs learner code; `PLUG-IN POINT` comments mark where an isolated worker and
 its teardown belong. It runs as a test with the crate's suite:
 

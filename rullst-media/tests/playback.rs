@@ -1,6 +1,7 @@
 #![cfg(all(feature = "bunny", feature = "sqlite"))]
 mod support;
 use rullst_media::{bunny::BunnyStream, sqlite::*, *};
+use sqlx::{Connection, SqliteConnection, sqlite::SqliteConnectOptions};
 use std::{sync::Arc, time::Duration};
 use support::*;
 
@@ -9,12 +10,13 @@ type Gate = Arc<(tokio::sync::Notify, tokio::sync::Notify)>;
 async fn published(
     fixture: &Fixture,
     dir: &tempfile::TempDir,
+    clock: TestClock,
 ) -> (Arc<MediaService<BunnyStream, TestClock>>, Arc<Auth>, Asset) {
     let provider = fixture.provider();
     let store = SqliteMedia::initialize(
         dir.path().join("video.sqlite"),
         StoreConfig::testing(provider.binding(), 32).unwrap(),
-        TestClock::new(),
+        clock,
     )
     .await
     .unwrap();
@@ -81,7 +83,7 @@ async fn gated(
 async fn concurrent_or_abandoned_viewers_never_lock_out_other_learners() {
     let fixture = Fixture::new().await;
     let dir = tempfile::tempdir().unwrap();
-    let (app, auth, asset) = published(&fixture, &dir).await;
+    let (app, auth, asset) = published(&fixture, &dir, TestClock::new()).await;
     let (learner, teacher, id, scope) = (
         reference("learner"),
         reference("teacher"),
@@ -124,5 +126,53 @@ async fn concurrent_or_abandoned_viewers_never_lock_out_other_learners() {
     // Reads of an unchanged ready asset never mutate its revision.
     let after = app.get(auth.as_ref(), &teacher, &scope, &id).await.unwrap();
     assert_eq!(after, asset);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn reads_write_nothing_until_the_clock_moves() {
+    let fixture = Fixture::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let clock = TestClock::new();
+    let (app, auth, _) = published(&fixture, &dir, clock.clone()).await;
+    let (learner, teacher, id, scope) = (
+        reference("learner"),
+        reference("teacher"),
+        reference("lesson"),
+        scope(),
+    );
+    let mut db = SqliteConnection::connect_with(
+        &SqliteConnectOptions::new().filename(dir.path().join("video.sqlite")),
+    )
+    .await
+    .unwrap();
+    // `data_version` changes when another connection commits a change.
+    let version = || sqlx::query_scalar::<_, i64>("PRAGMA data_version");
+    let before = version().fetch_one(&mut db).await.unwrap();
+    // A burst of viewers within one second commits no durable write.
+    for _ in 0..3 {
+        app.playback(
+            auth.as_ref(),
+            &learner,
+            &scope,
+            &id,
+            60,
+            PlaybackKind::Embed,
+        )
+        .await
+        .unwrap();
+    }
+    app.get(auth.as_ref(), &teacher, &scope, &id).await.unwrap();
+    assert_eq!(version().fetch_one(&mut db).await.unwrap(), before);
+    // A read at a later time still advances the clock high-water mark.
+    clock.advance(1);
+    app.get(auth.as_ref(), &teacher, &scope, &id).await.unwrap();
+    assert_ne!(version().fetch_one(&mut db).await.unwrap(), before);
+    let last: i64 = sqlx::query_scalar("SELECT last_now FROM media_meta")
+        .fetch_one(&mut db)
+        .await
+        .unwrap();
+    assert_eq!(last, NOW + 1);
+    db.close().await.unwrap();
     app.close().await;
 }

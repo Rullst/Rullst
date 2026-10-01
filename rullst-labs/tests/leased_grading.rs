@@ -399,6 +399,9 @@ async fn withdrawal_and_expiry_prevent_a_validly_signed_late_grade() {
             .unwrap_err(),
         LabError::Denied
     );
+    // Withdrawal changes no job record: recovery finds the job only once its
+    // lease runs out (see the controller contract, step 1).
+    assert!(f.store.cleanup_candidates(32).await.unwrap().is_empty());
     f.store
         .set_exercise_enabled(
             &f.policy,
@@ -418,5 +421,6 @@ async fn withdrawal_and_expiry_prevent_a_validly_signed_late_grade() {
             .unwrap_err(),
         LabError::Expired
     );
+    assert_eq!(f.store.cleanup_candidates(32).await.unwrap().len(), 1);
     f.store.close().await;
 }

@@ -334,6 +334,20 @@ A prepared version section does not establish that its tag or crates exist.
 - The threat-model release minimum includes CORE-03 and NEXUS-03, and its
   TENANT-04 evidence path is fixed.
 
+### Education candidates final-review fixes
+
+- `rullst-supervision` limits one learner (tenant and subject) to 4096
+  unexpired events across sessions, or the store-wide event limit when lower,
+  and adds `Limits::subject_events`.
+- `rullst-media` maps SQLite lock and connection-pool timeouts to
+  `MediaError::Busy` instead of `Storage`, and its upload module accepts a
+  maximum-length grant when the browser clock is up to 300 seconds behind the
+  server.
+- `rullst-labs` adds the optional `StoreConfig::tenant_exercises` quota for
+  shared stores. Its bring-your-own-runner controller example abandons and
+  reconciles the attempt on clock and signing failures, and the controller
+  contract says when withdrawn running jobs reach `cleanup_candidates`.
+
 ### Labs: bring your own runner
 
 - The unpublished experimental `rullst-labs-runner` candidate (a Linux

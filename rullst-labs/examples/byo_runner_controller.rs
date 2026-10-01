@@ -77,7 +77,7 @@ fn tear_down_attempt(_nonce: &Reference) -> Result<(), LabError> {
 async fn recover(store: &SqliteLabs, signer: &ReceiptSigner) -> Result<usize, LabError> {
     let pending = store.cleanup_candidates(32).await?;
     for job in &pending {
-        reconcile(store, signer, job).await?;
+        reconcile(store, signer, &SystemClock, job).await?;
     }
     Ok(pending.len())
 }
@@ -90,39 +90,44 @@ async fn process_one(
     let Some(job) = store.claim_next().await? else {
         return Ok(None);
     };
-    execute_claimed(store, signer, &job).await.map(Some)
+    execute_claimed(store, signer, &SystemClock, &job)
+        .await
+        .map(Some)
 }
 
 async fn execute_claimed(
     store: &SqliteLabs,
     signer: &ReceiptSigner,
+    clock: &impl Clock,
     job: &LeasedJob,
 ) -> Result<JobView, LabError> {
-    // Sample after `claim_next` returns, on a clock synchronized with the
-    // store's: `complete` refuses a receipt that starts before the claim.
-    let started_at = SystemClock.now()?;
-    let result = match attempt(store, job).await {
-        Ok(attempt) => {
-            let signed = signer.sign(ExecutionReceipt {
-                output: attempt.output,
-                started_at,
-                // Must not be later than the store's time on receipt and must
-                // precede `job.expires_at()`, the lease expiry.
-                finished_at: SystemClock.now()?,
-                observation_digest: attempt.observations,
-                teardown: Teardown::Confirmed,
-            })?;
-            store.complete(job.scope(), job.id(), &signed).await
-        }
-        Err(error) => Err(error),
+    // Every fallible step after the claim, clock reads and signing included,
+    // stays inside this block: an error must reach the fencing branch below
+    // rather than leave a `Running` job under a lease nobody owns.
+    let report = async {
+        // Sample after `claim_next` returns, on a clock synchronized with the
+        // store's: `complete` refuses a receipt that starts before the claim.
+        let started_at = clock.now()?;
+        let attempt = attempt(store, job).await?;
+        let signed = signer.sign(ExecutionReceipt {
+            output: attempt.output,
+            started_at,
+            // Must not be later than the store's time on receipt and must
+            // precede `job.expires_at()`, the lease expiry. A wall clock that
+            // steps back makes `sign` refuse the receipt.
+            finished_at: clock.now()?,
+            observation_digest: attempt.observations,
+            teardown: Teardown::Confirmed,
+        })?;
+        store.complete(job.scope(), job.id(), &signed).await
     };
-    match result {
+    match report.await {
         Ok(view) => Ok(view),
         Err(error) => {
             // Fence first, then confirm teardown and attest it. A failed,
             // cancelled, timed-out or lost attempt never becomes a grade.
             let cleanup = store.abandon_attempt(job).await?;
-            reconcile(store, signer, &cleanup).await?;
+            reconcile(store, signer, clock, &cleanup).await?;
             Err(error)
         }
     }
@@ -157,9 +162,10 @@ async fn attempt(store: &SqliteLabs, job: &LeasedJob) -> Result<IsolatedAttempt,
 async fn reconcile(
     store: &SqliteLabs,
     signer: &ReceiptSigner,
+    clock: &impl Clock,
     job: &CleanupJob,
 ) -> Result<JobView, LabError> {
-    let started_at = SystemClock.now()?;
+    let started_at = clock.now()?;
     tear_down_attempt(&job.binding.nonce)?;
     let receipt = signer.sign(ExecutionReceipt {
         output: WorkerOutput {
@@ -167,7 +173,7 @@ async fn reconcile(
             outcome: WorkerOutcome::Rejected(ExecutionFailure::WorkerLost),
         },
         started_at,
-        finished_at: SystemClock.now()?,
+        finished_at: clock.now()?,
         observation_digest: ContentHash::of(b"byo-example: confirmed attempt absence"),
         teardown: Teardown::Confirmed,
     })?;
@@ -353,6 +359,41 @@ async fn main() -> std::process::ExitCode {
 mod tests {
     use super::*;
     use rullst_labs::sqlite::{JobResult, JobState, ResultEvidence};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    /// The wall clock, except that its second read steps back 30 seconds
+    /// like an NTP correction.
+    struct SteppedClock(AtomicUsize);
+    impl Clock for SteppedClock {
+        fn now(&self) -> Result<i64, LabError> {
+            let now = SystemClock.now()?;
+            Ok(if self.0.fetch_add(1, Ordering::SeqCst) == 1 {
+                now - 30
+            } else {
+                now
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn a_receipt_that_cannot_be_signed_still_fences_and_reconciles_the_attempt() {
+        let demo = Demo::start().await.unwrap();
+        let queued = demo.submit().await.unwrap();
+        let job = demo.controller.claim_next().await.unwrap().unwrap();
+        let clock = SteppedClock(AtomicUsize::new(0));
+        // `finished_at` precedes `started_at`, so `sign` refuses the receipt.
+        let error = execute_claimed(&demo.controller, &demo.signer, &clock, &job)
+            .await
+            .unwrap_err();
+        assert_eq!(error, LabError::Protocol);
+        // The attempt is fenced and attested at once instead of staying
+        // `Running` under a live lease until a later recovery pass.
+        let view = demo.status(&queued.id).await.unwrap();
+        assert_eq!(view.state, JobState::Cancelled);
+        assert!(!view.cleanup_pending && view.result.is_none());
+        assert_eq!(recover(&demo.controller, &demo.signer).await.unwrap(), 0);
+        demo.close().await;
+    }
 
     #[tokio::test]
     async fn fixed_verdict_receipt_is_accepted_and_never_graded_as_executed() {
@@ -385,7 +426,7 @@ mod tests {
             )
             .await
             .unwrap();
-        let error = execute_claimed(&demo.controller, &demo.signer, &job)
+        let error = execute_claimed(&demo.controller, &demo.signer, &SystemClock, &job)
             .await
             .unwrap_err();
         assert_eq!(error, LabError::Conflict);
