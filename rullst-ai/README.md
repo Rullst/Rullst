@@ -94,7 +94,8 @@ formatted or unformatted), card-like digit runs and email usernames are masked b
 transmission; alphanumeric CNPJs and other identifiers are not recognized. Markdown images are
 read the way CommonMark renders them, after backslash escapes and character references are decoded:
 an inline or reference image whose destination has a scheme or a `//` (or backslash) authority is
-blocked as `data_exfiltration`, as is an image the bounded reader cannot classify. Images and
+blocked as `data_exfiltration`, as is an image the bounded reader cannot classify, including a label
+whose end a code span, raw HTML or autolink could move by hiding a bracket. Images and
 link reference definitions inside code spans and closed fenced or indented code blocks are ignored,
 as CommonMark never renders them; code whose extent depends on an ambiguous layout (HTML blocks,
 list or quote containers, unclosed fences, multi-line spans) is still read. A reference image whose

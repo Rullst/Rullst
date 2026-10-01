@@ -9,12 +9,18 @@
 
 #[path = "markdown_code.rs"]
 mod code;
+#[path = "markdown_inline.rs"]
+mod inline;
 
 /// Most Markdown images inspected individually; more are treated as remote.
 pub(super) const MAX_INSPECTED_IMAGES: usize = 64;
 
 /// Most `]:` link reference definition candidates read; more are treated as remote.
 const MAX_DEFINITIONS: usize = 64;
+
+/// Most code spans or `<` constructs examined inside labels per text; more
+/// make the label ambiguous.
+const MAX_INLINE_CHECKS: usize = 64;
 
 /// CommonMark's longest link label.
 const MAX_LABEL_CHARS: usize = 999;
@@ -73,11 +79,12 @@ pub(super) fn has_remote_image(text: &str) -> bool {
         return true;
     };
     let mut unresolved = false;
+    let mut budget = MAX_INLINE_CHECKS;
     for (index, (start, _)) in visible.match_indices("![").enumerate() {
         if index >= MAX_INSPECTED_IMAGES {
             return true;
         }
-        match classify(&visible[start + 2..], &definitions) {
+        match classify(&visible[start + 2..], &definitions, &mut budget) {
             Image::Remote => return true,
             Image::Unresolved => unresolved = true,
             Image::Local | Image::Literal => {}
@@ -98,8 +105,8 @@ enum Image {
 }
 
 /// Classifies the image whose label starts at `label`.
-fn classify(label: &str, definitions: &Definitions) -> Image {
-    let end = match label_end(label) {
+fn classify(label: &str, definitions: &Definitions, budget: &mut usize) -> Image {
+    let end = match label_end(label, budget) {
         LabelEnd::At(end) => end,
         LabelEnd::Open => return Image::Unresolved,
         LabelEnd::Ambiguous => return Image::Remote,
@@ -151,23 +158,52 @@ enum LabelEnd {
     At(usize),
     /// The label never closes.
     Open,
-    /// A code span, autolink or raw HTML may move where the label closes.
+    /// A code span, autolink or raw HTML may hide a bracket and so move
+    /// where the label closes.
     Ambiguous,
 }
 
-fn label_end(label: &str) -> LabelEnd {
+/// Uses one inline check; `true` once the budget is spent.
+fn exhausted(budget: &mut usize) -> bool {
+    match budget.checked_sub(1) {
+        Some(left) => {
+            *budget = left;
+            false
+        }
+        None => true,
+    }
+}
+
+fn label_end(label: &str, budget: &mut usize) -> LabelEnd {
+    let bytes = label.as_bytes();
     let mut depth = 0usize;
-    let mut escaped = false;
-    for (index, character) in label.char_indices() {
-        match character {
-            _ if escaped => escaped = false,
-            '\\' => escaped = true,
-            '`' | '<' => return LabelEnd::Ambiguous,
-            '[' => depth += 1,
-            ']' if depth == 0 => return LabelEnd::At(index),
-            ']' => depth -= 1,
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            // The escaped byte is skipped; a multi-byte character's remaining
+            // bytes are never ASCII, so they cannot be mistaken for syntax.
+            b'\\' => index += 1,
+            b'`' => {
+                if exhausted(budget) || inline::code_span_hides_bracket(&label[index..]) {
+                    return LabelEnd::Ambiguous;
+                }
+                index += bytes[index..]
+                    .iter()
+                    .take_while(|byte| **byte == b'`')
+                    .count();
+                continue;
+            }
+            b'<' => {
+                if exhausted(budget) || inline::raw_html_hides_bracket(&label[index..]) {
+                    return LabelEnd::Ambiguous;
+                }
+            }
+            b'[' => depth += 1,
+            b']' if depth == 0 => return LabelEnd::At(index),
+            b']' => depth -= 1,
             _ => {}
         }
+        index += 1;
     }
     LabelEnd::Open
 }

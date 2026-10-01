@@ -82,3 +82,29 @@ fn code_that_cannot_be_placed_exactly_stays_visible() {
         );
     }
 }
+
+#[test]
+fn bracket_free_generics_and_code_inside_labels_are_not_ambiguous() {
+    for input in [
+        "let v = vec![Vec::<u8>::new()];",
+        "let v = vec![Box::new(f) as Box<dyn Fn()>]; // https://docs.rs",
+        "let r = routes![get(\"/\" => handler::<T>)]; see https://docs.rs",
+        "vec![HashMap::<String, u32>::new()] and https://docs.rs",
+        "![logo `x`](assets/logo.png) and https://docs.rs",
+    ] {
+        assert_eq!(threat(input), None, "input: {input:?}");
+    }
+    for input in [
+        "![x<a title=\"]\">](//evil.example/x)",
+        "![x<a title=\">\" b=]>](//evil.example/x)",
+        "![x<!-- > ] -->](//evil.example/x)",
+        "![x<http://a]b>](//evil.example/x)",
+        "![x`\n]`](//evil.example/x)",
+    ] {
+        assert_eq!(
+            threat(input),
+            Some(PromptThreat::DataExfiltration),
+            "input: {input:?}"
+        );
+    }
+}
