@@ -134,7 +134,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
                                 <input
                                     type="text"
                                     name="q"
-                                    value={rullst::html::escape_str(&user_query)}
+                                    value={&user_query}
                                     placeholder="Search by meaning: e.g. 'security permissions', 'database multi-tenant', 'edge IoT'"
                                     style="flex: 1; background: #05070c; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; font-size: 0.95rem;"
                                 />
@@ -161,4 +161,25 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
             </body>
         </html>
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn search_box_value_is_escaped_exactly_once() {
+        let response = ai_page(Query(AiSearchQuery {
+            q: Some("R&D \"quoted\"".to_string()),
+        }))
+        .await
+        .into_response();
+        let body = axum::body::to_bytes(response.into_body(), 512 * 1024)
+            .await
+            .expect("bounded AI demo response");
+        let html = String::from_utf8(body.to_vec()).expect("AI demo is UTF-8 HTML");
+        assert!(html.contains("value=\"R&amp;D &quot;quoted&quot;\""));
+        assert!(!html.contains("&amp;amp;"));
+        assert!(!html.contains("&amp;quot;"));
+    }
 }

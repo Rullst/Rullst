@@ -356,8 +356,6 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
 /// Renders the result of a simulated checkout creation if triggered.
 fn render_checkout_result(simulated: Option<(String, String)>) -> String {
     if let Some((provider, url)) = simulated {
-        let safe_url = rullst::html::escape_str(&url);
-
         html! {
             <div id="offline-fixture-result" style="margin-bottom: 1.5rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -368,7 +366,7 @@ fn render_checkout_result(simulated: Option<(String, String)>) -> String {
                 </div>
                 <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0.25rem 0;">"Adapter output (no live request was made):"</p>
                 <div class="code-box" style="margin-top: 0.35rem; color: #a7f3d0;">
-                    {safe_url}
+                    {&url}
                 </div>
                 <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem; align-items: center;">
                     <a href="/pricing" class="btn" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
@@ -379,5 +377,20 @@ fn render_checkout_result(simulated: Option<(String, String)>) -> String {
         }
     } else {
         String::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::render_checkout_result;
+
+    #[test]
+    fn offline_fixture_url_is_escaped_exactly_once() {
+        let html = render_checkout_result(Some((
+            "wise".to_string(),
+            "https://example.invalid/pay?recipient=a&plan=pro_plan".to_string(),
+        )));
+        assert!(html.contains("recipient=a&amp;plan=pro_plan"));
+        assert!(!html.contains("&amp;amp;"));
     }
 }
