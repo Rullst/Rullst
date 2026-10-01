@@ -181,7 +181,25 @@ impl IntoResponse for HtmxResponse {
 ///   CLI scaffolds supply `/static/htmx-1.9.12.min.js`; manually built
 ///   applications must serve that asset themselves. `content` is trusted HTML:
 ///   escape untrusted values before constructing this fragment.
+///
+/// The page declares `lang="pt-BR"`, kept for compatibility; use
+/// [`render_page_with_lang`] to declare the language the content is written
+/// in.
 pub fn render_page(htmx: &HtmxRequest, title: &str, content: String) -> Html<String> {
+    render_page_with_lang(htmx, "pt-BR", title, content)
+}
+
+/// [`render_page`] with the document language (a BCP 47 tag such as `en` or
+/// `pt-BR`) declared on `<html lang>`, which screen readers, translation and
+/// spell-checking use. The tag is HTML-escaped.
+///
+/// Unpublished v13 API.
+pub fn render_page_with_lang(
+    htmx: &HtmxRequest,
+    lang: &str,
+    title: &str,
+    content: String,
+) -> Html<String> {
     if htmx.is_htmx {
         Html(content)
     } else {
@@ -195,7 +213,7 @@ pub fn render_page(htmx: &HtmxRequest, title: &str, content: String) -> Html<Str
             }
         };
         let html_content = crate::html! {
-            <html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
+            <html lang={lang} class="h-full bg-slate-950 text-slate-100">
                 <head>
                     <meta charset="utf-8" />
                     <title>{title}</title>
@@ -410,6 +428,26 @@ mod tests {
         assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
         malformed.insert("HX-Prompt", HeaderValue::from_static("%FF"));
         assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
+    }
+
+    #[test]
+    fn page_language_defaults_to_pt_br_and_can_be_declared() {
+        let request = HtmxRequest {
+            is_htmx: false,
+            trigger: None,
+            target: None,
+            prompt: None,
+            current_url: None,
+            csp_nonce: None,
+        };
+        let page = render_page(&request, "Painel", String::new());
+        assert!(page.0.contains("<html lang=\"pt-BR\""), "{}", page.0);
+
+        let page = render_page_with_lang(&request, "en", "Dashboard", String::new());
+        assert!(page.0.contains("<html lang=\"en\""), "{}", page.0);
+
+        let page = render_page_with_lang(&request, "\"><script>", "x", String::new());
+        assert!(!page.0.contains("\"><script>"), "{}", page.0);
     }
 
     #[tokio::test]
