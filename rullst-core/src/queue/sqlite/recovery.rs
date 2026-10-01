@@ -26,7 +26,7 @@ pub(super) async fn recover_stalled(
 ) -> Result<u64, QueueError> {
     let driver_error =
         |error: sqlx::Error| QueueError::Driver(format!("Failed to recover stalled jobs: {error}"));
-    let stale_seconds = stale_after.as_secs().max(1);
+    let stale_seconds = lease_free_cutoff_seconds(stale_after);
     let modifier = format!("-{stale_seconds} seconds");
     let reason = format!(
         "lease stalled {max_stalled_leases} times without finishing; failed instead of requeued"
@@ -64,4 +64,46 @@ pub(super) async fn recover_stalled(
     Ok(failed
         .rows_affected()
         .saturating_add(requeued.rows_affected()))
+}
+
+/// Recorded expiry of a claim made at `now_ms` (rounded down) with `lease`.
+/// Both are rounded up, so recovery, which compares the expiry with the
+/// current millisecond rounded down, never treats the lease as stalled before
+/// `lease` has fully passed.
+pub(super) fn lease_deadline_ms(now_ms: i64, lease: Duration) -> i64 {
+    let lease_ms = i64::try_from(lease.as_nanos().div_ceil(1_000_000)).unwrap_or(i64::MAX);
+    now_ms.saturating_add(1).saturating_add(lease_ms)
+}
+
+/// Whole seconds subtracted from `datetime('now')` for claims without a
+/// recorded lease. `updated_at` and the cutoff are truncated to whole seconds,
+/// so a claim near the end of a second could otherwise be recovered almost a
+/// second before `stale_after`: round the age up and add one second so such a
+/// lease is never recovered early (it may be up to two seconds late).
+fn lease_free_cutoff_seconds(stale_after: Duration) -> u64 {
+    stale_after
+        .as_secs()
+        .saturating_add(u64::from(stale_after.subsec_nanos() > 0))
+        .saturating_add(1)
+}
+
+#[cfg(test)]
+#[test]
+fn lease_deadlines_round_up() {
+    assert_eq!(lease_deadline_ms(1_000, Duration::ZERO), 1_001);
+    assert_eq!(lease_deadline_ms(1_000, Duration::from_millis(5)), 1_006);
+    assert_eq!(
+        lease_deadline_ms(1_000, Duration::from_micros(5_001)),
+        1_007
+    );
+    assert_eq!(lease_deadline_ms(1_000, Duration::MAX), i64::MAX);
+}
+
+#[cfg(test)]
+#[test]
+fn lease_free_cutoffs_round_up_and_add_one_second() {
+    assert_eq!(lease_free_cutoff_seconds(Duration::ZERO), 1);
+    assert_eq!(lease_free_cutoff_seconds(Duration::from_secs(5)), 6);
+    assert_eq!(lease_free_cutoff_seconds(Duration::from_millis(5_900)), 7);
+    assert_eq!(lease_free_cutoff_seconds(Duration::MAX), u64::MAX);
 }

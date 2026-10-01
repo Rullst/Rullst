@@ -147,10 +147,8 @@ impl SqliteDriver {
     /// that lease; without one, after the recovering worker's age.
     async fn claim(&self, lease: Option<Duration>) -> Result<Option<QueuedJob>, QueueError> {
         let now_ms = current_unix_millis()?;
-        let lease_expires_at_ms = lease.map_or(0, |lease| {
-            let lease_ms = i64::try_from(lease.as_millis()).unwrap_or(i64::MAX).max(1);
-            now_ms.saturating_add(lease_ms)
-        });
+        let lease_expires_at_ms =
+            lease.map_or(0, |lease| recovery::lease_deadline_ms(now_ms, lease));
         // Atomically select and mark the oldest pending job as 'processing'
         let row: Option<(String, String, String, i32)> = sqlx::query_as(
             r#"UPDATE rullst_jobs

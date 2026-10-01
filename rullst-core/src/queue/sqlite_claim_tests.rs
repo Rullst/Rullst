@@ -40,3 +40,38 @@ async fn a_handed_back_job_is_claimed_before_later_immediate_jobs() {
     assert_eq!(driver.pop().await.unwrap().unwrap().id, "export");
     assert_eq!(driver.pop().await.unwrap().unwrap().id, "email");
 }
+
+#[tokio::test]
+async fn a_lease_free_claim_is_never_recovered_before_its_age() {
+    let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+    driver
+        .push("report", "generate_report", "{}")
+        .await
+        .unwrap();
+    driver.pop().await.unwrap().unwrap();
+    // `updated_at` has whole-second precision: a claim recorded five seconds
+    // ago may have been made only just over four seconds ago.
+    sqlx::query("UPDATE rullst_jobs SET updated_at = datetime('now', '-5 seconds')")
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        driver
+            .recover_stalled(Duration::from_millis(5_900))
+            .await
+            .unwrap(),
+        0
+    );
+
+    sqlx::query("UPDATE rullst_jobs SET updated_at = datetime('now', '-7 seconds')")
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        driver
+            .recover_stalled(Duration::from_millis(5_900))
+            .await
+            .unwrap(),
+        1
+    );
+}
