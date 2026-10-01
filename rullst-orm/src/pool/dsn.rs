@@ -103,7 +103,13 @@ pub(super) fn prepare_sqlite_file(database_url: &str) {
     {
         return;
     }
-    let path = std::path::Path::new(path_part);
+    // SQLx percent-decodes the path before opening it (sqlx-sqlite
+    // `SqliteConnectOptions::from_db_and_params`), so the file prepared here
+    // must be the decoded one; a path SQLx rejects is left to its error.
+    let Some(decoded) = percent_decode_utf8(path_part) else {
+        return;
+    };
+    let path = std::path::Path::new(&decoded);
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
@@ -114,9 +120,68 @@ pub(super) fn prepare_sqlite_file(database_url: &str) {
     }
 }
 
+/// Percent-decodes a DSN path like `percent_encoding::percent_decode_str`
+/// followed by a strict UTF-8 conversion: each `%` followed by two hex digits
+/// becomes that byte and any other `%` stays literal. Returns `None` when the
+/// decoded bytes are not UTF-8.
+fn percent_decode_utf8(encoded: &str) -> Option<String> {
+    fn hex_value(digit: u8) -> Option<u8> {
+        char::from(digit)
+            .to_digit(16)
+            .and_then(|value| u8::try_from(value).ok())
+    }
+    let bytes = encoded.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while let Some(&byte) = bytes.get(index) {
+        let escaped = (byte == b'%')
+            .then(|| {
+                let high = hex_value(*bytes.get(index + 1)?)?;
+                let low = hex_value(*bytes.get(index + 2)?)?;
+                Some((high << 4) | low)
+            })
+            .flatten();
+        match escaped {
+            Some(value) => {
+                decoded.push(value);
+                index += 3;
+            }
+            None => {
+                decoded.push(byte);
+                index += 1;
+            }
+        }
+    }
+    String::from_utf8(decoded).ok()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{driver_for_url, ensure_configured_dsn};
+    use super::{driver_for_url, ensure_configured_dsn, percent_decode_utf8};
+
+    #[test]
+    fn dsn_paths_decode_like_sqlx() {
+        for (encoded, decoded) in [
+            ("data/app.db", Some("data/app.db")),
+            (
+                "C:/Users/John%20Doe/app/data.db",
+                Some("C:/Users/John Doe/app/data.db"),
+            ),
+            ("data%3Fdir/a%23b.db", Some("data?dir/a#b.db")),
+            ("caf%C3%A9.db", Some("café.db")),
+            ("100%.db", Some("100%.db")),
+            ("bad%zz.db", Some("bad%zz.db")),
+            ("tail%2", Some("tail%2")),
+            ("%25", Some("%")),
+            ("invalid%FF.db", None),
+        ] {
+            assert_eq!(
+                percent_decode_utf8(encoded).as_deref(),
+                decoded,
+                "{encoded}"
+            );
+        }
+    }
 
     #[test]
     fn driver_follows_the_dsn_scheme_and_its_aliases() {

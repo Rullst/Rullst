@@ -258,7 +258,9 @@ impl Migration for MigrationImpl {
             "CREATE INDEX enrollments_course_status_idx ON enrollments(course_id, status)",
             "CREATE UNIQUE INDEX lesson_progress_user_lesson_unique ON lesson_progress(user_id, lesson_id)",
             "CREATE INDEX lesson_progress_lesson_idx ON lesson_progress(lesson_id)",
-            "CREATE UNIQUE INDEX lesson_progress_events_key_unique ON lesson_progress_events(event_key)",
+            // Idempotency keys are scoped to their learner: one learner's key can
+            // never replay or block another learner's progress.
+            "CREATE UNIQUE INDEX lesson_progress_events_subject_key_unique ON lesson_progress_events(subject_user_id, event_key)",
             "CREATE INDEX lesson_progress_events_subject_idx ON lesson_progress_events(subject_user_id, lesson_id, id)",
         ] {
             sqlx::query(sqlx::AssertSqlSafe(statement)).execute(pool).await?;

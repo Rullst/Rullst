@@ -179,6 +179,14 @@ Nexus administrator policy described below: loopback-only in a debug build and
 Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
 build. Per-employee accounts and roles remain application work.
 
+An order reserves its stock with one conditional `UPDATE` and records the order
+in the same transaction, so concurrent sales cannot oversell and a failed
+insert leaves the stock untouched. Quantities must be 1–10,000; invalid input,
+missing products and insufficient stock return `422`, `404` and `409`, and a
+database failure returns `503` instead of redirecting as if it succeeded. The
+dashboard pages through products, lists the 20 newest orders and computes its
+revenue, order and low-stock totals in SQL over every row.
+
 ---
 
 > [!TIP]
@@ -240,9 +248,10 @@ cargo rullst new learning_portal --default --blueprint lms \
 
 For a blank application with no primary relational database, use the explicit
 `--no-database` flag. It cannot be combined with `--database`.
-Generated SQLx profiles disable Rullst's umbrella defaults and select exactly
-one strict relational backend, so a chosen PostgreSQL/MySQL/MariaDB profile is
-not accidentally compiled through an implicit SQLite default.
+Generated SQLx profiles disable the default features of Rullst's umbrella and
+`rullst-orm` dependencies and select exactly one strict relational backend, so
+a chosen PostgreSQL/MySQL/MariaDB profile is not accidentally compiled through
+an implicit SQLite default.
 
 To create a Turso-primary API using the current bounded blank starter:
 

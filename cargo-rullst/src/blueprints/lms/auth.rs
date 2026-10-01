@@ -2,29 +2,15 @@
 
 pub fn get_files() -> Vec<(&'static str, String)> {
     vec![
-        (
-            "src/controllers/auth_controller.rs",
-            school_scoped_controller(),
-        ),
+        ("src/controllers/auth_controller.rs", identity_controller()),
         ("src/pages/auth.rs", AUTH_PAGES.to_string()),
     ]
 }
 
-pub(super) fn identity_controller() -> String {
+/// Registration creates only the account: the starter has no schools or
+/// memberships, and learners enroll in courses from the catalog.
+fn identity_controller() -> String {
     crate::generators::auth::controllers::render_auth_controller(None)
-}
-
-fn school_scoped_controller() -> String {
-    crate::generators::auth::controllers::render_auth_controller(Some(
-        r#"crate::services::school_service::provision_self_registration_with_tx(
-            user.id,
-            &mut transaction,
-        )
-        .await
-        .map_err(|error| rullst_orm::Error::Internal(format!(
-            "default school membership provisioning failed: {error}",
-        )))?;"#,
-    ))
 }
 
 const AUTH_PAGES: &str = r##"use rullst::response::Html;
@@ -81,7 +67,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> 
 
 pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Html<String> {
     Html(format!(
-        r#"<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="/static/rullst.png"><title>Learner dashboard</title><style nonce="{nonce}">body{{background:#080b11;color:#f8fafc;font:16px system-ui;padding:3rem}}main{{max-width:760px;margin:auto}}a{{color:#34d399}}button{{padding:.7rem 1rem;border:0;border-radius:.5rem;background:#ef4444;color:white;cursor:pointer}}</style></head><body><main><p>🎓 Rullst Academy Starter</p><h1>Welcome, {user}</h1><p>Your encrypted session is active and this starter assigned your account to its default demo school.</p><p><a href="/">Open application</a></p><form method="post" action="/logout"><input type="hidden" name="_token" value="{csrf}"><button type="submit">Sign out</button></form></main></body></html>"#,
+        r#"<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="/static/rullst.png"><title>Learner dashboard</title><style nonce="{nonce}">body{{background:#080b11;color:#f8fafc;font:16px system-ui;padding:3rem}}main{{max-width:760px;margin:auto}}a{{color:#34d399}}button{{padding:.7rem 1rem;border:0;border-radius:.5rem;background:#ef4444;color:white;cursor:pointer}}</style></head><body><main><p>🎓 Rullst Academy Starter</p><h1>Welcome, {user}</h1><p>Your encrypted session is active. Enroll in a course from the catalog to open its lessons and save your progress.</p><p><a href="/">Browse courses</a></p><form method="post" action="/logout"><input type="hidden" name="_token" value="{csrf}"><button type="submit">Sign out</button></form></main></body></html>"#,
         user = rullst::html::escape_str(user_name),
         csrf = rullst::html::escape_str(csrf_token),
         nonce = rullst::html::escape_str(csp_nonce),

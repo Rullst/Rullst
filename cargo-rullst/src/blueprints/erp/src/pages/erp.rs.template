@@ -1,21 +1,23 @@
 __FE_IMPORTS__use crate::models::product::Product;
 use crate::models::order::Order;
 
+/// Totals over every order and product, computed in SQL.
+pub struct DashboardSummary {
+    pub revenue: f64,
+    pub orders: i64,
+    pub low_stock: i64,
+}
+
 pub fn dashboard_page(
-    products: Vec<Product>,
+    products: rullst_orm::PaginationResult<Product>,
     orders: Vec<Order>,
+    summary: DashboardSummary,
     csrf_token: &str,
     csp_nonce: &str,
 ) -> String {
-    let total_sales: f64 = orders.iter()
-        .filter(|o| o.status == "Paid")
-        .map(|o| o.total_price)
-        .sum();
-    let low_stock_alerts = products.iter().filter(|p| p.stock <= 5).count();
-    let total_orders = orders.len();
 
     let document = html! {
-        <html lang="pt-BR" class="dark">
+        <html lang="en" class="dark">
             <head>
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,14 +29,14 @@ pub fn dashboard_page(
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-6xl mx-auto px-4 pt-8">
                     { rullst::html::RawHtml::new(render_header()) }
-                    { rullst::html::RawHtml::new(render_kpi_cards(total_sales, total_orders, low_stock_alerts)) }
+                    { rullst::html::RawHtml::new(render_kpi_cards(&summary)) }
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div class="lg:col-span-2 flex flex-col gap-8">
                             { rullst::html::RawHtml::new(render_products_table(&products, csrf_token)) }
                             { rullst::html::RawHtml::new(render_orders_table(&orders)) }
                         </div>
                         <div class="flex flex-col gap-8">
-                            { rullst::html::RawHtml::new(render_forms(&products, csrf_token)) }
+                            { rullst::html::RawHtml::new(render_forms(&products.data, csrf_token)) }
                         </div>
                     </div>
                 </div>
@@ -63,29 +65,32 @@ fn render_header() -> String {
     }
 }
 
-fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usize) -> String {
+fn render_kpi_cards(summary: &DashboardSummary) -> String {
     html! {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                 <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Total Revenue"</span>
-                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", total_sales)}</span>
+                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", summary.revenue)}</span>
                 <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Confirmed revenues"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                 <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Orders Placed"</span>
-                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
+                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", summary.orders)}</span>
                 <span class="text-xs text-orange-400/80 mt-1">"Active sales flow"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                 <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Critical Stock Alerts"</span>
-                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", low_stock_alerts)}</span>
+                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", summary.low_stock)}</span>
                 <span class="text-xs text-rose-400/80 mt-1">"Items with stock &le; 5 units"</span>
             </div>
         </div>
     }
 }
 
-fn render_products_table(products: &[Product], csrf_token: &str) -> String {
+fn render_products_table(page: &rullst_orm::PaginationResult<Product>, csrf_token: &str) -> String {
+    let products = &page.data;
+    let previous = (page.current_page > 1).then(|| page.current_page - 1);
+    let next = (page.current_page < page.last_page).then(|| page.current_page + 1);
     html! {
         <div class="glass p-6 rounded-2xl">
             <h2 class="text-xl font-bold mb-4 text-slate-200">"Product Inventory"</h2>
@@ -127,6 +132,11 @@ fn render_products_table(products: &[Product], csrf_token: &str) -> String {
                     </tbody>
                 </table>
             </div>
+            <nav class="flex justify-between items-center mt-4 text-xs text-slate-400" aria-label="Product pages">
+                <span>{ rullst::html::RawHtml::new(previous.map_or_else(String::new, |page| html! { <a class="text-orange-400" href={format!("/?page={page}")}>"&larr; Previous"</a> })) }</span>
+                <span>{format!("Page {} of {} ({} products)", page.current_page, page.last_page.max(1), page.total)}</span>
+                <span>{ rullst::html::RawHtml::new(next.map_or_else(String::new, |page| html! { <a class="text-orange-400" href={format!("/?page={page}")}>"Next &rarr;"</a> })) }</span>
+            </nav>
         </div>
     }
 }
@@ -172,11 +182,12 @@ fn render_forms(products: &[Product], csrf_token: &str) -> String {
         <div class="flex flex-col">
             <div class="glass p-6 rounded-2xl border border-indigo-900/20">
                 <h3 class="text-lg font-bold mb-4 text-indigo-400">"Register New Sale"</h3>
+                <p class="text-xs text-slate-500 mb-4">"Lists the products on this inventory page."</p>
                 <form action="/orders" method="POST" class="space-y-4">
                     <input type="hidden" name="_token" value={csrf_token} />
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Customer Name"</label>
-                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="e.g., John Doe" />
+                        <input type="text" name="customer_name" maxlength="255" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="e.g., John Doe" />
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Select Product"</label>
@@ -191,7 +202,7 @@ fn render_forms(products: &[Product], csrf_token: &str) -> String {
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Quantity"</label>
-                        <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
+                        <input type="number" name="quantity" min="1" max="10000" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
                     </div>
                     <button type="submit" aria-label="Complete Order" aria-busy="false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                         "Complete Order"
@@ -205,21 +216,21 @@ fn render_forms(products: &[Product], csrf_token: &str) -> String {
                     <input type="hidden" name="_token" value={csrf_token} />
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Product Name"</label>
-                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="e.g., Hario V60 Filter" />
+                        <input type="text" name="name" maxlength="255" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="e.g., Hario V60 Filter" />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
-                            <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
+                            <input type="text" name="sku" maxlength="255" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-slate-400 font-medium mb-1">"Unit Price"</label>
-                            <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
+                            <input type="number" step="0.01" min="0" max="1000000" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Initial Stock"</label>
-                        <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
+                        <input type="number" name="stock" min="0" max="1000000" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
                     </div>
                     <button type="submit" aria-label="Save Product" aria-busy="false" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                         "Save Product"

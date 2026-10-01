@@ -1,5 +1,5 @@
 use rullst::{html, routes, Server, response::{Html, IntoResponse}, server::Extension};
-use rullst::htmx::{HtmxRequest, render_page};
+use rullst::htmx::{HtmxRequest, render_page_with_lang};
 
 __MIGRATIONS_MOD_DECLARATION____RPC_MODULE__
 
@@ -42,7 +42,8 @@ __DB_STATUS_CODE__
         </div>
     };
 
-    render_page(&htmx, "Welcome to Rullst", content)
+    // The page is written in English; plain `render_page` declares Portuguese.
+    render_page_with_lang(&htmx, "en", "Welcome to Rullst", content)
 }
 
 // State for counter
@@ -87,6 +88,8 @@ __ARTISAN_CALL__
     ]
     .merge_axum(rpc::increment_counter_rpc_router().into_axum())
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
     .layer(rullst::server::from_fn(rullst::security::headers_middleware));
 
     Server::new(router)

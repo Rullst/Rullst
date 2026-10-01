@@ -2,6 +2,10 @@
 
 use super::common;
 
+mod controller;
+
+use controller::BLOG_CONTROLLER;
+
 pub fn file_manifest(
     project_name_safe: &str,
     hot_reload: bool,
@@ -38,7 +42,10 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
-    ].nest_axum("/nexus", nexus))
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
@@ -127,7 +134,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
-    ].nest_axum("/nexus", nexus);
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus);
 
     #[cfg(debug_assertions)]
     {{
@@ -251,73 +261,10 @@ impl NexusModel for Post {
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
 
     // 4. Controller
-    let repo_import = if is_repo {
-        "use crate::repositories::post_repository::PostRepository;"
-    } else {
-        "use crate::models::post::Post;"
-    };
-    let all_call = if is_repo {
-        "PostRepository::find_all().await.unwrap_or_default()"
-    } else {
-        "Post::all().await.unwrap_or_default()"
-    };
-
-    let blog_controller = format!(
-        r##"use rullst::server::{{Extension, Path, IntoResponse}};
-use rullst::response::Html;
-{repo_import}
-use crate::pages::blog;
-
-/// The production security headers allow only nonce-bound inline styles; the
-/// nonce is absent (and unneeded) when no CSP is sent, as in development.
-fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {{
-    csp_nonce
-        .as_ref()
-        .map(|Extension(nonce)| nonce.as_str())
-        .unwrap_or_default()
-}}
-
-pub async fn index(
-    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
-) -> impl IntoResponse {{
-    let posts = {all_call};
-    Html(blog::index_page(posts, nonce(&csp_nonce)))
-}}
-
-pub async fn show(
-    Path(slug): Path<String>,
-    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
-) -> impl IntoResponse {{
-    let posts = {all_call};
-    let Some(post) = posts.into_iter().find(|post| post.slug == slug) else {{
-        return (
-            rullst::http::StatusCode::NOT_FOUND,
-            "Blog post not found",
-        )
-            .into_response();
-    }};
-    Html(blog::detail_page(post, nonce(&csp_nonce))).into_response()
-}}
-
-pub async fn robots_txt() -> impl IntoResponse {{
-    (
-        rullst::http::StatusCode::OK,
-        "User-agent: *\nDisallow: /nexus\nSitemap: /sitemap.xml\n",
-    )
-}}
-
-pub async fn sitemap_xml() -> impl IntoResponse {{
-    (
-        rullst::http::StatusCode::OK,
-        [(rullst::http::header::CONTENT_TYPE, "application/xml")],
-        r#"<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>/</loc></url></urlset>"#,
-    )
-}}
-"##,
-        repo_import = repo_import,
-        all_call = all_call,
-    );
-    manifest.push(("src/controllers/blog_controller.rs", blog_controller));
+    manifest.push((
+        "src/controllers/blog_controller.rs",
+        BLOG_CONTROLLER.to_string(),
+    ));
 
     let controllers_mod = r##"pub mod blog_controller;
 "##;
@@ -339,7 +286,9 @@ pub async fn sitemap_xml() -> impl IntoResponse {{
     let page_header = common::frontend_page_imports(frontend_engine);
     let blog_page_body = r##"use crate::models::post::Post;
 
-pub fn index_page(posts: Vec<Post>, csp_nonce: &str) -> String {
+pub fn index_page(posts: rullst_orm::PaginationResult<Post>, csp_nonce: &str) -> String {
+    let newer = (posts.current_page > 1).then(|| posts.current_page - 1);
+    let older = (posts.current_page < posts.last_page).then(|| posts.current_page + 1);
     html! {
         <html lang="en" class="dark">
             <head>
@@ -368,6 +317,8 @@ pub fn index_page(posts: Vec<Post>, csp_nonce: &str) -> String {
                     .card p { color: #9ca3af; font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem; }
                     .read-more { color: #f97316; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
                     .read-more:hover { text-decoration: underline; }
+                    .pager { display: flex; justify-content: space-between; margin-top: 3rem; }
+                    .pager a { color: #f97316; text-decoration: none; font-weight: 600; }
                     "
                 </style>
             </head>
@@ -387,7 +338,7 @@ pub fn index_page(posts: Vec<Post>, csp_nonce: &str) -> String {
                         </div>
                     </header>
                     <div class="post-list">
-                        { rullst::html::RawHtml::new(posts.into_iter().map(|p| html! {
+                        { rullst::html::RawHtml::new(posts.data.into_iter().map(|p| html! {
                             <div class="card">
                                 <h2>{&p.title}</h2>
                                 <p>{p.content.chars().take(100).collect::<String>()} "..."</p>
@@ -395,6 +346,10 @@ pub fn index_page(posts: Vec<Post>, csp_nonce: &str) -> String {
                             </div>
                         }).collect::<Vec<_>>().join("")) }
                     </div>
+                    <nav class="pager" aria-label="Pagination">
+                        <span>{ rullst::html::RawHtml::new(newer.map_or_else(String::new, |page| html! { <a href={format!("/?page={page}")}>"&larr; Newer posts"</a> })) }</span>
+                        <span>{ rullst::html::RawHtml::new(older.map_or_else(String::new, |page| html! { <a href={format!("/?page={page}")}>"Older posts &rarr;"</a> })) }</span>
+                    </nav>
                 </div>
             </body>
         </html>
@@ -441,4 +396,39 @@ pub fn detail_page(post: Post, csp_nonce: &str) -> String {
     manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
 
     manifest
+}
+
+#[cfg(test)]
+mod tests {
+    use super::file_manifest;
+
+    fn source<'a>(manifest: &'a [(&'static str, String)], name: &str) -> &'a str {
+        manifest
+            .iter()
+            .find_map(|(path, source)| (*path == name).then_some(source.as_str()))
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn posts_are_read_by_slug_and_paged_without_the_row_cap() {
+        for orm_pattern in ["Active Record", "Repository"] {
+            let manifest = file_manifest("blog_app", false, orm_pattern, "Zero-Bundle HTMX");
+            let controller = source(&manifest, "src/controllers/blog_controller.rs");
+            let page = source(&manifest, "src/pages/blog.rs");
+            // `all()` stops at the ORM's 1000-row cap without ORDER BY, and
+            // `unwrap_or_default` turned a database outage into a 404.
+            assert!(!controller.contains("::all()"));
+            assert!(!controller.contains("find_all()"));
+            assert!(controller.contains("Post::query().where_eq(\"slug\", slug).first().await"));
+            assert!(controller.contains(".order_by_desc(\"id\").paginate(page, POSTS_PER_PAGE)"));
+            assert_eq!(
+                controller
+                    .matches("Err(error) => unavailable(error)")
+                    .count(),
+                2
+            );
+            assert!(page.contains("posts: rullst_orm::PaginationResult<Post>"));
+            assert!(page.contains("href={format!(\"/?page={page}\")}"));
+        }
+    }
 }

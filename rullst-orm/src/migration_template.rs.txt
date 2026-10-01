@@ -9,6 +9,12 @@ impl Migration for MigrationImpl {
         "m{timestamp}_{name}"
     }
 
+    // `Schema` calls run in one transaction with this migration's record.
+    // Return `false` if `up`/`down` send queries to `Orm::pool()` directly.
+    fn within_transaction(&self) -> bool {
+        true
+    }
+
     async fn up(&self) -> Result<(), rullst_orm::Error> {
         Schema::create("{name}", |table| {
             table.id();

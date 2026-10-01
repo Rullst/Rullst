@@ -86,6 +86,22 @@ impl std::fmt::Display for BackendStartError {
     }
 }
 
+/// The Rullst project this shell was generated in, fixed when it was compiled.
+/// The working directory is never consulted: launching a packaged app from
+/// inside another Cargo project must not build and run that project.
+#[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
+fn development_project_root() -> Option<&'static std::path::Path> {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .filter(|root| root.join("Cargo.toml").is_file())
+}
+
+/// Release builds always start the bundled `server` executable.
+#[cfg(all(not(debug_assertions), not(any(target_os = "android", target_os = "ios"))))]
+fn development_project_root() -> Option<&'static std::path::Path> {
+    None
+}
+
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn start_managed_backend() -> Result<Option<Child>, BackendStartError> {
     if !MANAGES_LOCAL_BACKEND {
@@ -95,9 +111,9 @@ fn start_managed_backend() -> Result<Option<Child>, BackendStartError> {
         return Err(BackendStartError::PortAlreadyInUse);
     }
 
-    let mut command = if std::path::Path::new("../Cargo.toml").exists() {
+    let mut command = if let Some(project_root) = development_project_root() {
         let mut command = Command::new("cargo");
-        command.arg("run").arg("-q").current_dir("..");
+        command.arg("run").arg("-q").current_dir(project_root);
         command
     } else {
         let executable_directory = std::env::current_exe()
@@ -140,6 +156,8 @@ pub fn run() {
         let backend_process = Arc::new(Mutex::new(child));
         let backend_for_cleanup = Arc::clone(&backend_process);
 
+        // `cargo rullst omni desktop` waits for this exact line.
+        println!("Launching Omni interface...");
         let run_result = tauri::Builder::default()
             .plugin(navigation_policy())
             .on_window_event(move |_window, event| {

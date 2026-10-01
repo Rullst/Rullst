@@ -131,3 +131,138 @@ pub async fn exercise_concurrent_migration_runners() {
         .await
         .expect("roll the concurrent migration back");
 }
+
+const ATOMIC_MIGRATION: &str = "m20261001_000001_atomic_record";
+const ATOMIC_TABLE: &str = "rullst_atomic_migration_probe";
+
+/// A transactional migration that creates a table through `Schema`. It can
+/// make the runner's tracking INSERT fail after `up()` succeeded (by
+/// recording its own name first, as a lost connection would leave the record
+/// missing) or fail its `down()` after dropping the table.
+struct AtomicMigration {
+    break_record: bool,
+    fail_down: bool,
+}
+
+#[rullst_orm::async_trait]
+impl Migration for AtomicMigration {
+    fn name(&self) -> &'static str {
+        ATOMIC_MIGRATION
+    }
+
+    fn within_transaction(&self) -> bool {
+        true
+    }
+
+    async fn up(&self) -> Result<(), rullst_orm::Error> {
+        rullst_orm::schema::Schema::create(ATOMIC_TABLE, |table| {
+            table.id();
+        })
+        .await?;
+        if self.break_record {
+            let sql = if Orm::driver()? == "postgres" {
+                "INSERT INTO migrations (migration, batch) VALUES ($1, 0)"
+            } else {
+                "INSERT INTO migrations (migration, batch) VALUES (?, 0)"
+            };
+            let record = sqlx::query(sql).bind(ATOMIC_MIGRATION);
+            rullst_orm::execute_query!(record, execute, pool)?;
+        }
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst_orm::Error> {
+        rullst_orm::schema::Schema::drop_if_exists(ATOMIC_TABLE).await?;
+        if self.fail_down {
+            return Err(rullst_orm::Error::Internal(
+                "intentional rollback failure".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn atomic(break_record: bool, fail_down: bool) -> Vec<Box<dyn Migration>> {
+    vec![Box::new(AtomicMigration {
+        break_record,
+        fail_down,
+    })]
+}
+
+async fn atomic_state() -> (i64, i64) {
+    let driver = Orm::driver().expect("driver");
+    let (table_sql, record_sql) = match driver {
+        "postgres" => (
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1",
+            "SELECT COUNT(*) FROM migrations WHERE migration = $1",
+        ),
+        "mysql" => (
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+            "SELECT COUNT(*) FROM migrations WHERE migration = ?",
+        ),
+        _ => (
+            "SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name = ?",
+            "SELECT COUNT(*) FROM migrations WHERE migration = ?",
+        ),
+    };
+    let pool = Orm::pool().expect("pool");
+    let (tables,): (i64,) = sqlx::query_as(table_sql)
+        .bind(ATOMIC_TABLE)
+        .fetch_one(pool)
+        .await
+        .expect("count probe tables");
+    let (records,): (i64,) = sqlx::query_as(record_sql)
+        .bind(ATOMIC_MIGRATION)
+        .fetch_one(pool)
+        .await
+        .expect("count probe records");
+    (tables, records)
+}
+
+/// A migration with `within_transaction()` commits its change and its record
+/// together. PostgreSQL and SQLite roll the DDL back when the record (or a
+/// `down()`) fails; MySQL/MariaDB commit DDL implicitly, so there only the
+/// successful apply/rollback round trip is asserted.
+#[allow(dead_code)]
+pub async fn exercise_transactional_migrations() {
+    let transactional_ddl = Orm::driver().expect("driver") != "mysql";
+    if transactional_ddl {
+        run_artisan_with_args(&artisan("migrate"), atomic(true, false), Vec::new())
+            .await
+            .expect_err("a failed tracking INSERT must fail the run");
+        assert_eq!(
+            atomic_state().await,
+            (0, 0),
+            "the applied change must roll back with its failed record"
+        );
+    }
+
+    run_artisan_with_args(&artisan("migrate"), atomic(false, false), Vec::new())
+        .await
+        .expect("apply the transactional migration");
+    assert_eq!(atomic_state().await, (1, 1));
+
+    if transactional_ddl {
+        run_artisan_with_args(
+            &artisan("migrate:rollback"),
+            atomic(false, true),
+            Vec::new(),
+        )
+        .await
+        .expect_err("a failed down() must fail the rollback");
+        assert_eq!(
+            atomic_state().await,
+            (1, 1),
+            "a failed down() must leave the table and its record in place"
+        );
+    }
+
+    run_artisan_with_args(
+        &artisan("migrate:rollback"),
+        atomic(false, false),
+        Vec::new(),
+    )
+    .await
+    .expect("roll the transactional migration back");
+    assert_eq!(atomic_state().await, (0, 0));
+}

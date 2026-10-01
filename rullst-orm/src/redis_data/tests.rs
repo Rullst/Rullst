@@ -163,3 +163,39 @@ fn bracketed_ipv6_loopback_is_a_local_endpoint() {
             .is_err()
     );
 }
+
+/// Like Redis `ZREVRANGE`, members with equal scores come in descending
+/// lexicographic order, so a limit that cuts through a tie keeps the same
+/// members offline and live.
+#[tokio::test]
+async fn mock_breaks_sorted_set_ties_like_zrevrange() {
+    let store = RedisDataStore::connect_or_mock(RedisDataConfig::new("", "test-app", "", ""))
+        .await
+        .expect("empty credentials should select the mock");
+    let key = RedisDataKey::new("leaderboard:ties").expect("valid key");
+    for (member, score) in [("alice", 10.0), ("bob", 10.0), ("carol", 5.0)] {
+        store
+            .sorted_set_add(
+                &key,
+                &RedisMember::new(member).expect("valid member"),
+                score,
+            )
+            .await
+            .expect("sorted-set insert should succeed");
+    }
+    let top = |limit| {
+        let store = &store;
+        let key = &key;
+        async move {
+            store
+                .sorted_set_top(key, RedisScanLimit::new(limit).expect("valid scan limit"))
+                .await
+                .expect("ranking should succeed")
+                .into_iter()
+                .map(|row| row.member().as_str().to_owned())
+                .collect::<Vec<_>>()
+        }
+    };
+    assert_eq!(top(1).await, ["bob"]);
+    assert_eq!(top(3).await, ["bob", "alice", "carol"]);
+}

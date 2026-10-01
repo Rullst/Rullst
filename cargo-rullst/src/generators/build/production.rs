@@ -1,5 +1,6 @@
 // src/generators/build/production.rs — Production binary build + static asset pre-compression.
 
+use super::precompressed::COMPRESSED_EXTENSIONS;
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
@@ -69,10 +70,7 @@ pub fn run_production_build(release: bool) -> Result<(), Box<dyn std::error::Err
                     .and_then(|e| e.to_str())
                     .unwrap_or("")
                     .to_lowercase();
-                if matches!(
-                    ext.as_str(),
-                    "html" | "css" | "js" | "json" | "svg" | "wasm" | "xml" | "txt"
-                ) {
+                if COMPRESSED_EXTENSIONS.contains(&ext.as_str()) {
                     file_count += 1;
                     let input_bytes = fs::read(path)?;
 

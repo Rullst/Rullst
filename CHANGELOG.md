@@ -165,6 +165,25 @@ A prepared version section does not establish that its tag or crates exist.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
 
+### ORM runtime final-review fixes
+
+- Remote Turso blob cells decode the unpadded base64 that libSQL server sends,
+  and Turso `rollback_last` refuses migrations whose recorded digest changed.
+- The Redis query-cache table index is a sorted set scored by entry expiry
+  (keys move to `rullst:orm:cache:v4:`); expired members are pruned and no
+  longer count toward the 10,000-key `PostCommit` cap.
+- On PostgreSQL, `Schema::create` and `drop_if_exists` lower-case the quoted
+  table name to match generated SQL.
+- Pre-v12 `SecretString` ciphertext also decrypts through
+  `RULLST_ENCRYPTION_KEYRING`.
+- The offline Redis mock breaks score ties like `ZREVRANGE`, SQLite file
+  preparation percent-decodes the DSN path, and auto-healing no longer suggests
+  `CREATE TABLE` for constraint or "already exists" errors.
+- New in v13: `deserialize_plaintext_secret` and
+  `deserialize_optional_plaintext_secret` reject serde envelopes in client
+  input, and `Migration::within_transaction()` applies a migration and its
+  record atomically where the database supports transactional DDL.
+
 ### Storage, uploads and macro hardening
 
 - `Storage::url` and `LocalDriver::url` percent-encode key segments, and the
@@ -272,6 +291,23 @@ A prepared version section does not establish that its tag or crates exist.
   on serde_json features, configuration or keyring drift returns
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
+
+### Generated starter low-severity fixes
+
+- LMS progress idempotency keys are unique per learner, and ERP orders reserve
+  stock atomically in one transaction and report 404/409/422/503 instead of
+  redirecting.
+- Blog and ERP page their reads and compute ERP totals in SQL instead of
+  loading `Model::all()`, and every starter mounts `/health` and `/ready`.
+- Blank and ERP pages declare `lang="en"`, and the LMS dashboard no longer
+  mentions a demo school.
+- Strict-database projects disable `rullst-orm`'s default drivers, and the
+  interactive wizard keeps `--api`.
+- `.dockerignore` mirrors `.gitignore`, the Kubernetes Ingress has a TLS
+  section, and k8s and Buildah names are lowercase RFC 1123 labels.
+- `cargo rullst dev` removes outdated `.br`/`.zst` siblings, and Omni prints
+  and detects its launch line, streams the app's output and runs Cargo for its
+  backend only in debug builds.
 
 ### Facade and examples low-severity fixes
 

@@ -2,33 +2,59 @@ use sha2::{Digest, Sha256};
 
 use crate::{Error, Orm, RullstValue};
 
-const KEY_PREFIX: &str = "rullst:orm:cache:v3:";
+/// Version 4 indexes entries in a sorted set; version 3 entries, indexed in a
+/// plain set, are never read again and expire through their TTL.
+const KEY_PREFIX: &str = "rullst:orm:cache:v4:";
 const HASH_KEY_PREFIX: &str = "rullst:orm:hash:v1:";
 const MAX_NAMESPACE_LEN: usize = 64;
 const MAX_INVALIDATION_KEYS: usize = 10_000;
-/// Suffix of the per-table set that indexes the table's cached entries. It is
-/// not hexadecimal, so it can never equal an entry's digest segment.
-const INDEX_SUFFIX: &str = "keys";
+/// Suffix of the per-table sorted set that indexes the table's cached
+/// entries. It is not hexadecimal, so it can never equal an entry's digest
+/// segment.
+const INDEX_SUFFIX: &str = "index";
 
-/// Stores an entry, records its key in the table index and extends the
-/// index's lifetime to the longest entry TTL, as one atomic step.
-const STORE_SCRIPT: &str = r"
+/// Lua prelude shared by the index scripts: `now_ms` is the Redis server
+/// clock in milliseconds, the unit of key expiry, and index members scored
+/// below it belong to entries that have already expired. Redis 5+ replicates
+/// script effects, so a write after `TIME` is allowed; `replicate_commands`
+/// keeps that true on older servers and is a no-op where it is deprecated.
+const NOW_PRELUDE: &str = r"
+if redis.replicate_commands then redis.replicate_commands() end
+local clock = redis.call('TIME')
+local now_ms = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[#KEYS], '-inf', string.format('(%.0f', now_ms))
+";
+
+/// Stores an entry, scores its key in the table index by the entry's expiry
+/// time, prunes members of already-expired entries and extends the index's
+/// lifetime to the longest entry TTL, as one atomic step. `KEYS[2]` is the
+/// index (the prelude prunes `KEYS[#KEYS]`).
+const STORE_BODY: &str = r"
+local ttl = tonumber(ARGV[2])
 redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
-redis.call('SADD', KEYS[2], KEYS[1])
-if redis.call('TTL', KEYS[2]) < tonumber(ARGV[2]) then
+redis.call('ZADD', KEYS[2], string.format('%.0f', now_ms + ttl * 1000), KEYS[1])
+if redis.call('TTL', KEYS[2]) < ttl then
   redis.call('EXPIRE', KEYS[2], ARGV[2])
 end
 return 1
 ";
 
-/// Removes one batch of indexed entries together with their index members.
-/// Keys added concurrently either leave in this batch or stay indexed.
-const INVALIDATE_SCRIPT: &str = r"
-local keys = redis.call('SPOP', KEYS[1], ARGV[1])
-if #keys > 0 then
-  redis.call('UNLINK', unpack(keys))
+/// Removes at most `ARGV[1]` live indexed entries together with their index
+/// members, after pruning the members of expired entries, and returns the
+/// number removed and the number of live members left. Keys added
+/// concurrently either leave in this batch or stay indexed.
+const INVALIDATE_BODY: &str = r"
+local limit = tonumber(ARGV[1])
+local removed = 0
+if limit > 0 then
+  local keys = redis.call('ZRANGE', KEYS[1], 0, limit - 1)
+  removed = #keys
+  if removed > 0 then
+    redis.call('ZREM', KEYS[1], unpack(keys))
+    redis.call('UNLINK', unpack(keys))
+  end
 end
-return #keys
+return {removed, redis.call('ZCARD', KEYS[1])}
 ";
 const INVALIDATION_BATCH: usize = 500;
 
@@ -143,7 +169,7 @@ pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Re
     let index = entry_index_key(cache_key)?;
     let mut connection = Orm::redis_manager()?;
     let _: i64 = crate::_redis::cmd("EVAL")
-        .arg(STORE_SCRIPT)
+        .arg(format!("{NOW_PRELUDE}{STORE_BODY}"))
         .arg(2)
         .arg(cache_key)
         .arg(&index)
@@ -190,34 +216,32 @@ pub async fn invalidate_model_table(
     drain_indexes(&indexes).await
 }
 
-/// Pops and unlinks the entries of each index in batches, at most
+/// Removes and unlinks the live entries of each index in batches, at most
 /// `MAX_INVALIDATION_KEYS` in total; entries beyond the cap stay indexed.
+/// Members whose entries already expired are pruned without counting toward
+/// the cap.
 async fn drain_indexes(indexes: &[String]) -> Result<usize, Error> {
-    use crate::_redis::AsyncCommands;
-
+    let script = format!("{NOW_PRELUDE}{INVALIDATE_BODY}");
     let mut connection = Orm::redis_manager()?;
     let mut deleted = 0_usize;
     for index in indexes {
         loop {
-            if deleted >= MAX_INVALIDATION_KEYS {
-                let remaining: usize = connection.scard(index).await?;
-                if remaining > 0 {
-                    return Err(Error::CacheError(format!(
-                        "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys; the rest expire by TTL"
-                    )));
-                }
-                break;
-            }
-            let removed: usize = crate::_redis::cmd("EVAL")
-                .arg(INVALIDATE_SCRIPT)
+            let batch = INVALIDATION_BATCH.min(MAX_INVALIDATION_KEYS.saturating_sub(deleted));
+            let (removed, remaining): (usize, usize) = crate::_redis::cmd("EVAL")
+                .arg(&script)
                 .arg(1)
                 .arg(index)
-                .arg(INVALIDATION_BATCH)
+                .arg(batch)
                 .query_async(&mut connection)
                 .await?;
-            deleted += removed;
-            if removed < INVALIDATION_BATCH {
+            deleted = deleted.saturating_add(removed);
+            if remaining == 0 {
                 break;
+            }
+            if deleted >= MAX_INVALIDATION_KEYS {
+                return Err(Error::CacheError(format!(
+                    "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys; the rest expire by TTL"
+                )));
             }
         }
     }
@@ -264,7 +288,8 @@ fn build_model_hash_key(
     ))
 }
 
-/// The set indexing one namespace, tenant scope and table's cache entries.
+/// The sorted set indexing one namespace, tenant scope and table's cache
+/// entries.
 fn index_key(namespace: &str, tenant: Option<&RullstValue>, table: &str) -> Result<String, Error> {
     Ok(format!(
         "{}:{INDEX_SUFFIX}",
@@ -364,7 +389,7 @@ mod tests {
         for foreign in [
             "",
             "session:abc",
-            "rullst:orm:cache:v3:academy:global:table-x:not-a-digest",
+            "rullst:orm:cache:v4:academy:global:table-x:not-a-digest",
             index.as_str(),
         ] {
             assert!(entry_index_key(foreign).is_err(), "{foreign}");
@@ -388,7 +413,7 @@ mod tests {
         .expect("typed cache key");
 
         assert_eq!(first, repeated);
-        assert!(first.starts_with("rullst:orm:cache:v3:academy:global:table-"));
+        assert!(first.starts_with("rullst:orm:cache:v4:academy:global:table-"));
         assert_ne!(first, typed);
     }
 

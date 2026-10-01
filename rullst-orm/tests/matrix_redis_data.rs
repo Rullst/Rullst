@@ -115,6 +115,28 @@ async fn redis_native_structures_pass_a_live_namespaced_lifecycle() {
     assert_eq!(ranking[0].member(), &admin);
     assert_eq!(ranking[0].score(), 50.0);
 
+    // Equal scores come in descending lexicographic order, which the
+    // offline mock mirrors.
+    let ties = RedisDataKey::new("matrix:ties").expect("valid key");
+    for (member, score) in [("alice", 10.0), ("bob", 10.0), ("carol", 5.0)] {
+        store
+            .sorted_set_add(
+                &ties,
+                &RedisMember::new(member).expect("valid member"),
+                score,
+            )
+            .await
+            .expect("tied score should be stored");
+    }
+    let tied = store
+        .sorted_set_top(&ties, RedisScanLimit::new(3).expect("valid scan limit"))
+        .await
+        .expect("bounded tied ZREVRANGE should succeed")
+        .into_iter()
+        .map(|row| row.member().as_str().to_owned())
+        .collect::<Vec<_>>();
+    assert_eq!(tied, ["bob", "alice", "carol"]);
+
     let isolated = RedisDataStore::connect_or_mock(RedisDataConfig::unauthenticated_local(
         &endpoint,
         "matrix-isolated",

@@ -355,7 +355,8 @@ fn run_project_wizard_with_ui<U: ProjectWizardUi>(
             portfolio_title,
             "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)".to_string(),
         ];
-        if blueprint_override.is_none() {
+        // `--api` exists only for the Blank starter, so it already chose it.
+        if blueprint_override.is_none() && !api {
             blueprint_selection = ui.select("👉 Select a Starter Blueprint", &blueprint_choices)?;
         }
 
@@ -368,12 +369,17 @@ fn run_project_wizard_with_ui<U: ProjectWizardUi>(
         }
 
         if blueprint_selection == BLANK_BLUEPRINT_ID {
-            let build_options = [
-                "Full-Stack Web App (SaaS, Portfolio, Blog, Etc)".to_string(),
-                "Headless REST API".to_string(),
-            ];
-            let build_selection = ui.select("🏗️ What would you like to build?", &build_options)?;
-            api = build_selection == 1;
+            // An explicit `--api` is the answer; asking would let the
+            // Full-Stack default silently replace it.
+            if !api {
+                let build_options = [
+                    "Full-Stack Web App (SaaS, Portfolio, Blog, Etc)".to_string(),
+                    "Headless REST API".to_string(),
+                ];
+                let build_selection =
+                    ui.select("🏗️ What would you like to build?", &build_options)?;
+                api = build_selection == 1;
+            }
 
             db_needed = ui.confirm("🗄️ Will your project need a Database?", true)?;
         } else {

@@ -54,6 +54,8 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
         .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus))
 }}
@@ -165,6 +167,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
         .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus);
 

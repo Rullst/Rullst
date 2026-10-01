@@ -13,6 +13,10 @@ pub(super) fn relevant(event: &Event, root: &Path) -> bool {
         let Ok(relative) = path.strip_prefix(root) else {
             return false;
         };
+        // Pre-compressed siblings are build outputs (and pruned by `dev`).
+        if crate::generators::build::precompressed::sibling_source(relative).is_some() {
+            return false;
+        }
         let mut parts = relative.components();
         match parts.next() {
             Some(Component::Normal(first))
@@ -86,6 +90,8 @@ mod tests {
             ".git/index",
             "db.sqlite-wal",
             "logs/debug.log",
+            "static/new.css.br",
+            "static/app.js.zst",
         ] {
             let event = Event::new(EventKind::Any).add_path(root.join(path));
             assert!(!relevant(&event, root), "{path}");

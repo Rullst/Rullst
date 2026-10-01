@@ -29,8 +29,13 @@ Desktop development derives a `com.example.<package>` identifier when none is
 provided. That namespace is a visible placeholder, not a distributable product
 identity.
 
-The default `http://localhost:3000` profile starts the parent Rullst server,
-waits for it and owns only the child process it created. It refuses to attach
+The default `http://localhost:3000` profile starts the Rullst server, waits for
+it and owns only the child process it created. A debug build runs `cargo run`
+in the project that contains `omni-app/`, a path fixed when the shell is
+compiled; the working directory is never used, so launching the shell from
+inside another Cargo project cannot build or run that project. A release build
+never invokes Cargo: it starts the `server` (`server.exe` on Windows)
+executable placed next to the Omni executable. It refuses to attach
 when port 3000 was already occupied, stops if the child exits before readiness
 and fails after a bounded timeout. This prevents the shell from silently
 connecting to an unrelated local process.
