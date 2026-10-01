@@ -1,5 +1,7 @@
 //! `delete_all()` renders only WHERE predicates, so clauses that would bound
-//! or reshape the selection fail instead of widening the delete.
+//! or reshape the selection fail instead of widening the delete. On
+//! soft-delete models, `with_trashed()`/`only_trashed()` fail instead of
+//! re-stamping rows that are already trashed.
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -134,5 +136,33 @@ async fn bounded_or_joined_bulk_deletes_fail_instead_of_deleting_everything() {
         .await
         .expect("filtered soft delete");
     assert_eq!(trashed, 1);
+    assert_eq!(BoundedNote::query().count().await.expect("live notes"), 2);
+
+    // A soft-delete bulk delete that includes trashed rows would re-stamp
+    // their deletion time (so age-based purges never see them expire).
+    let stamp = "2000-01-01 00:00:00";
+    rullst_orm::_sqlx::query("UPDATE bounded_notes SET deleted_at = ? WHERE body = 'a'")
+        .bind(stamp)
+        .execute(pool)
+        .await
+        .expect("age the trashed note");
+    assert_rejected(
+        BoundedNote::query()
+            .only_trashed()
+            .where_lt("deleted_at", "2001-01-01")
+            .delete_all()
+            .await,
+        "only_trashed()",
+    );
+    assert_rejected(
+        BoundedNote::query().with_trashed().delete_all().await,
+        "with_trashed()",
+    );
+    let kept: Option<String> =
+        rullst_orm::_sqlx::query_scalar("SELECT deleted_at FROM bounded_notes WHERE body = 'a'")
+            .fetch_one(pool)
+            .await
+            .expect("read deletion time");
+    assert_eq!(kept.as_deref(), Some(stamp));
     assert_eq!(BoundedNote::query().count().await.expect("live notes"), 2);
 }

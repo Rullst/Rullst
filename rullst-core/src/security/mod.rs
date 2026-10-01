@@ -32,6 +32,7 @@ pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
 pub use headers::{
     CspNonce, DEFAULT_CSP_TEMPLATE, apply_referrer_policy, headers_middleware, render_csp_policy,
 };
+pub(crate) use machine::require_machine_authentication;
 pub use machine::{
     MachineAuthentication, MachineEndpoint, MachineEndpointError, MachineEndpointPolicy,
     MachineRequestVerifier,

@@ -262,6 +262,7 @@ impl Server {
             limiter: self.limiter.clone(),
             lifecycle: self.lifecycle.clone(),
             trusted_proxy: self.trusted_proxy_layer(),
+            machine_endpoints: self.machine_endpoints.clone(),
         };
 
         println!(

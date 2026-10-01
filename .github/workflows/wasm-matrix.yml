@@ -43,7 +43,12 @@ jobs:
 
       - name: Verify WebAssembly compilation for framework and client components
         # Verify Core, the public facade, and macros compile without native OS APIs.
+        # The facade is also checked with its default features and with the
+        # feature set of CLI-generated applications: native-only optional crates
+        # must not leave unresolved re-exports on wasm32.
         run: |
           cargo check -p rullst-core --target ${{ matrix.target }} --no-default-features
           cargo check -p rullst --target ${{ matrix.target }} --no-default-features
+          cargo check -p rullst --target ${{ matrix.target }}
+          cargo check -p rullst --target ${{ matrix.target }} --features studio,nexus,auth,capital
           cargo check -p rullst-macros --target ${{ matrix.target }}

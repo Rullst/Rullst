@@ -112,6 +112,48 @@ async fn safe_http_methods_do_not_require_a_token() {
 }
 
 #[tokio::test]
+async fn head_requests_receive_the_get_token_and_cookie() {
+    use axum::{Extension, routing::get};
+
+    let app = Router::new()
+        .route(
+            "/form",
+            get(|Extension(token): Extension<CsrfToken>| async move { token.as_str().to_owned() }),
+        )
+        .layer(axum::middleware::from_fn(csrf_middleware));
+
+    // Axum answers HEAD with the GET handler, which extracts the token.
+    let response = app
+        .clone()
+        .oneshot(Request::head("/form").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let cookies = response.headers().get_all(header::SET_COOKIE);
+    assert_eq!(cookies.iter().count(), 1);
+    let cookie = cookies.iter().next().unwrap().to_str().unwrap();
+    assert!(cookie.starts_with("rullst_csrf="));
+    let body = axum::body::to_bytes(response.into_body(), 128)
+        .await
+        .unwrap();
+    assert!(body.is_empty());
+
+    // An existing cookie is reused without a new Set-Cookie, as for GET.
+    let token = generate_csrf_token();
+    let response = app
+        .oneshot(
+            Request::head("/form")
+                .header(header::COOKIE, format!("rullst_csrf={token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(response.headers().get(header::SET_COOKIE).is_none());
+}
+
+#[tokio::test]
 async fn production_like_environment_sets_secure_cookie() {
     let app = Router::new()
         .route("/", any(|| async { StatusCode::OK }))

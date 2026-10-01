@@ -232,7 +232,10 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   valid TOML falls back to the earlier line reader. When an A/B split's weights
   sum to less than 100, an identifier outside them gets the variant
   `"disabled"` from the driver that defines the flag; it no longer falls
-  through to a lower-priority driver's split. The unpublished v13
+  through to a lower-priority driver's split. Every driver evaluates an A/B
+  flag for an identifier to its variant name, so `enabled_for` is true only
+  for identifiers assigned a variant named `"enabled"`; gate code on
+  `variant`. The unpublished v13
   `FeatureManager::overrides()` returns the first-priority
   `MemoryFeatureDriver` of `FeatureManager::default()` (and of the global
   `feature::manager()` when it uses the default pipeline), so programmatic

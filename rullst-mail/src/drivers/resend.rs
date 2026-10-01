@@ -8,6 +8,11 @@ use crate::message::Message;
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
+/// Furthest ahead Resend accepts `scheduled_at`: "Emails can be scheduled up
+/// to 30 days in advance" (<https://resend.com/docs/dashboard/emails/schedule-email>).
+/// Later schedules need a durable Rullst queue.
+const MAX_PROVIDER_SCHEDULE: chrono::TimeDelta = chrono::TimeDelta::days(30);
+
 /// A Resend HTTP REST API driver
 pub struct ResendDriver {
     /// Resend API token.
@@ -65,6 +70,16 @@ impl ResendDriver {
         let message = prepared.message();
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("resend", message);
+        }
+        if message
+            .send_at
+            .as_ref()
+            .is_some_and(|send_at| *send_at > chrono::Utc::now() + MAX_PROVIDER_SCHEDULE)
+        {
+            return Err(MailError::ConfigError(
+                "Resend schedules delivery at most 30 days ahead; initialize a durable Rullst queue for later delivery"
+                    .to_string(),
+            ));
         }
 
         let client = super::http::client()?;
