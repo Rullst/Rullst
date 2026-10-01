@@ -293,3 +293,17 @@ async fn test_toml_driver_empty_lines() {
     driver.load_from_str("\n\n[features]\nflag = true\n# comment\n");
     assert_eq!(driver.enabled("flag").await, Some(true));
 }
+
+#[test]
+fn oversized_variant_weights_saturate_instead_of_overflowing() {
+    let variants = parse_variants("a:10,b:4294967290,c:50");
+    assert_eq!(resolve_variant(&variants, 5), Some("a".to_string()));
+    assert_eq!(resolve_variant(&variants, 99), Some("b".to_string()));
+    assert_eq!(
+        resolve_variant(
+            &[("x".to_string(), u32::MAX), ("y".to_string(), u32::MAX)],
+            0
+        ),
+        Some("x".to_string())
+    );
+}

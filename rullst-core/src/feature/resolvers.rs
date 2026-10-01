@@ -52,10 +52,14 @@ pub fn parse_variants(s: &str) -> Vec<(String, u32)> {
 }
 
 /// Evaluates a hash bucket index against a list of variants and returns the matching name.
+///
+/// Weights accumulate with saturation, so oversized weights (for example a
+/// mistyped database row) cannot overflow: a weight that reaches `u32::MAX`
+/// covers every remaining bucket.
 pub fn resolve_variant(variants: &[(String, u32)], bucket: u32) -> Option<String> {
-    let mut accumulator = 0;
+    let mut accumulator = 0_u32;
     for (name, pct) in variants {
-        accumulator += pct;
+        accumulator = accumulator.saturating_add(*pct);
         if bucket < accumulator {
             return Some(name.clone());
         }
