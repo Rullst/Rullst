@@ -1001,12 +1001,13 @@ local profile; `deployment_verified` remains false. See the
 [input and output contract](deployment-diagnostic.md) before using it in CI.
 
 ### `cargo rullst inspect [target]`
-Statically expands and inspects macro code or structural definitions directly in the terminal without starting a server. Useful for debugging proc-macro output, reviewing route tables, and validating database schemas.
+Scans source files and prints structural summaries in the terminal without
+starting a server, expanding macros or connecting to a database.
 * **Arguments:**
   * `[target]`: The item or file to inspect:
-    * `route` or `routes`: Renders the active route table (methods, paths, and handlers).
-    * `model` or `models`: Renders ORM struct models and field attributes.
-    * `schema`: Outputs the project's structural JSON schema (`rullst-schema.json`).
+    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line under `src/`.
+    * `model` or `models`: Lists the structs, enums and `pub` fields declared in `src/models`.
+    * `schema`: Prints, as JSON, the table, fields, Rust types and optionality of every `#[derive(Orm)]` struct under `src/` (the extractor `make:migration:auto` uses). It describes the models, not the live database. A project-provided `rullst-schema.json` is printed instead when present; Rullst does not generate that file.
     * `<path/to/file.rs>`: Displays the first 40 lines of any target Rust file with line numbers.
 
 ---
@@ -1170,10 +1171,11 @@ linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`,
 missing components.
 
 ### `cargo rullst inspect [target]`
-Expands macros and displays structural insights in the terminal:
-* `cargo rullst inspect route`: Lists all registered HTTP, WebSocket, and gRPC endpoints.
-* `cargo rullst inspect model`: Inspects ORM model columns, primary keys, and relationships.
-* `cargo rullst inspect schema`: Displays the synchronized database schema.
+Prints static structural summaries in the terminal (the analyzer entry above
+describes the exact scope):
+* `cargo rullst inspect route`: Lists the recognized one-line `get`/`post`/`put`/`delete` route declarations.
+* `cargo rullst inspect model`: Lists the structs and public fields in `src/models`.
+* `cargo rullst inspect schema`: Prints the ORM model schema derived from `#[derive(Orm)]` structs as JSON.
 
 ---
 

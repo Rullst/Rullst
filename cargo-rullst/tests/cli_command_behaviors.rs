@@ -350,6 +350,17 @@ fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
     ] {
         fixture.succeeds(&["inspect", target]);
     }
+    // Without a project-provided snapshot, the schema comes from the models.
+    fs::remove_file(fixture.root.join("rullst-schema.json")).expect("remove schema snapshot");
+    fs::write(
+        fixture.root.join("src/models/person.rs"),
+        "#[derive(Orm)]\n#[orm(soft_delete, table_name = \"people\")]\npub struct Person {\n    pub id: i64,\n    pub nickname: Option<String>,\n}\n",
+    )
+    .expect("ORM model fixture");
+    let schema = fixture.succeeds(&["inspect", "schema"]);
+    assert!(schema.contains("\"table\": \"people\""), "{schema}");
+    assert!(schema.contains("\"optional\": true"), "{schema}");
+    assert!(!schema.contains("not found"), "{schema}");
 
     fixture.succeeds(&["dockerize"]);
     fixture.succeeds(&["generate:buildah"]);
