@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790847115305,
+  "lastUpdate": 1790849959863,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11889,6 +11889,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 423,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79e2f9b0d25eba44b5292de204b07f06fd8d68fd",
+          "message": "Merge pull request #374 from Rullst/fix/v13-cli-ops-low-fixes\n\nfix(cli): bounded symlink-safe audit, protected diagram, RFC 1123 names and honest pkg/deploy exits",
+          "timestamp": "2026-10-01T06:54:43-03:00",
+          "tree_id": "570cc750f6c570495f96142d183730a50b9640dc",
+          "url": "https://github.com/Rullst/Rullst/commit/79e2f9b0d25eba44b5292de204b07f06fd8d68fd"
+        },
+        "date": 1790849958785,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1659,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 359,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 428,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
