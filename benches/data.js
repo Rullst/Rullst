@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790884783990,
+  "lastUpdate": 1790887019470,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24339,6 +24339,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1925,
             "range": "± 113",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "72728c5651e0951a7c3fd12f6df5fee038cd1564",
+          "message": "Merge pull request #390 from Rullst/fix/v13-cli-r2-ops\n\nfix(cli): second-round audit and operations fixes (cfg(test)-aware IDOR scan, no silent downgrade, loopback Foundry service)",
+          "timestamp": "2026-10-01T17:30:47-03:00",
+          "tree_id": "ae04eab0f2f106ebebdd63fef9877d484d54c5cd",
+          "url": "https://github.com/Rullst/Rullst/commit/72728c5651e0951a7c3fd12f6df5fee038cd1564"
+        },
+        "date": 1790887016882,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 732,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 986,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 597,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2431,
+            "range": "± 43",
             "unit": "ns/iter"
           }
         ]
