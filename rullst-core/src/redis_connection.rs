@@ -6,8 +6,9 @@
 //! failing operation still returns its error and the next one reconnects.
 
 use redis::aio::{ConnectionLike, MultiplexedConnection};
-use redis::{Cmd, Pipeline, RedisError, RedisFuture, RedisResult, Value};
+use redis::{AsyncConnectionConfig, Cmd, Pipeline, RedisError, RedisFuture, RedisResult, Value};
 use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 
 #[cfg(test)]
 #[path = "redis_connection_tests.rs"]
@@ -16,6 +17,7 @@ mod tests;
 /// Lazily connected, reusable multiplexed connection owned by one driver.
 pub(crate) struct SharedRedisConnection {
     client: redis::Client,
+    config: AsyncConnectionConfig,
     cached: Mutex<CachedConnection>,
 }
 
@@ -26,10 +28,26 @@ struct CachedConnection {
 }
 
 impl SharedRedisConnection {
-    /// Wraps a client without opening a network connection.
+    /// Wraps a client without opening a network connection. Commands use the
+    /// redis-rs default response timeout (500 ms).
+    #[cfg_attr(not(feature = "cache-redis"), allow(dead_code))]
     pub(crate) fn new(client: redis::Client) -> Self {
+        Self::with_config(client, AsyncConnectionConfig::new())
+    }
+
+    /// Like [`Self::new`], waiting up to `timeout` for each response.
+    #[cfg_attr(not(feature = "queue-redis"), allow(dead_code))]
+    pub(crate) fn with_response_timeout(client: redis::Client, timeout: Duration) -> Self {
+        Self::with_config(
+            client,
+            AsyncConnectionConfig::new().set_response_timeout(Some(timeout)),
+        )
+    }
+
+    fn with_config(client: redis::Client, config: AsyncConnectionConfig) -> Self {
         Self {
             client,
+            config,
             cached: Mutex::new(CachedConnection::default()),
         }
     }
@@ -45,7 +63,10 @@ impl SharedRedisConnection {
         if let Some(handle) = self.cached_handle() {
             return Ok(handle);
         }
-        let connection = self.client.get_multiplexed_async_connection().await?;
+        let connection = self
+            .client
+            .get_multiplexed_async_connection_with_config(&self.config)
+            .await?;
         let mut cached = self.lock();
         let (generation, inner) = match &cached.connection {
             Some(existing) => (cached.generation, existing.clone()),

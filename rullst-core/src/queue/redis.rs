@@ -19,6 +19,12 @@ pub mod redis_driver {
     mod inspection;
     mod transitions;
 
+    /// How long a queue command or script may take before the client gives
+    /// up. A claim whose reply times out has still been applied by Redis, and
+    /// its job then waits for stalled-lease recovery, so this is far longer
+    /// than the 500 ms redis-rs default that ordinary latency spikes exceed.
+    const RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
+
     /// Failed jobs and dead letters each retained by default (newest kept).
     pub const DEFAULT_FAILURE_RETENTION: usize = 10_000;
     /// Upper bound accepted by [`RedisDriver::try_with_failure_retention`].
@@ -37,6 +43,7 @@ pub mod redis_driver {
     ///
     /// Operations share one lazily opened multiplexed connection. If it breaks,
     /// the failing operation returns its error and the next one reconnects.
+    /// Each command waits up to 10 seconds for its reply.
     ///
     /// Failed jobs (with their payloads) and dead letters are retained up to
     /// [`DEFAULT_FAILURE_RETENTION`] each; the oldest are evicted atomically
@@ -144,7 +151,7 @@ pub mod redis_driver {
                 failed_index_key: format!("{queue_key}:failed:index"),
                 dead_letter_key: format!("{queue_key}:dead-letter"),
                 queue_key,
-                shared: SharedRedisConnection::new(client),
+                shared: SharedRedisConnection::with_response_timeout(client, RESPONSE_TIMEOUT),
                 failed_retention: DEFAULT_FAILURE_RETENTION,
                 dead_letter_retention: DEFAULT_FAILURE_RETENTION,
                 max_stalled_leases: super::super::DEFAULT_MAX_STALLED_LEASES,

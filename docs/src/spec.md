@@ -1517,6 +1517,10 @@ the same server-authoritative controls.
 * Redis stalled-lease recovery measures each lease's age with Redis server
   time, the clock that scored the claim, so a worker host's clock skew cannot
   recover a running job early or postpone recovery of a crashed one.
+* The Redis queue waits up to 10 seconds for each command's reply (the cache
+  keeps the 500 ms redis-rs default). Redis still applies a script whose reply
+  times out, so a claim lost that way is returned only by stalled-lease
+  recovery; the longer deadline keeps ordinary latency spikes from causing it.
 * SQLite never recovers a lease early. A claim with a lease stalls once its
   millisecond expiry has passed; a claim made without one (`pop`) records only
   whole seconds, so it is recovered between `stalled_after` and about two
