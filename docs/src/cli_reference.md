@@ -897,9 +897,12 @@ Dynamic routes, custom extractors, and semantic constraints may require manual
 edits; validate the result with an OpenAPI validator before publishing it.
 
 ### `cargo rullst generate:ts`
-Scans recognizable route declarations and emits `rullst-client.ts` with unchecked
-request/response placeholders. Review the output before use; route scanning does
-not establish DTO shapes, serialization or authorization.
+Scans recognizable route declarations in `src/main.rs` and `src/lib.rs` and
+emits `rullst-client.ts` with unchecked request/response placeholders. Axum
+`{name}` and `{*name}` captures (and legacy `:name` segments) become method
+arguments interpolated with `encodeURIComponent` (per segment for a wildcard).
+Review the output before use; route scanning does not establish DTO shapes,
+serialization or authorization.
 
 ### `cargo rullst generate:api` (v13 candidate)
 Consumes one explicit bounded OpenAPI 3.1 profile and generates Rust DTOs/codecs,
