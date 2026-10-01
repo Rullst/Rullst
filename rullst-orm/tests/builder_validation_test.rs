@@ -85,3 +85,82 @@ fn joins_and_vector_helpers_reject_dynamic_sql_fragments_that_are_not_safe() {
         .where_similar("embedding", vec![f64::NAN], -1.0);
     assert!(invalid_vector.errors.len() >= 3);
 }
+
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "secret_customers")]
+struct SecretCustomer {
+    id: i32,
+    name: String,
+    tax_id: rullst_orm::SecretString,
+}
+
+#[derive(Clone, Debug, Default, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "cached_records")]
+struct CachedRecord {
+    id: i32,
+    #[allow(dead_code)]
+    #[sqlx(default, skip)]
+    session_cache: String,
+    // `#[orm(skip)]` alone would leave SQLx reading a missing column.
+    #[allow(dead_code)]
+    #[orm(skip)]
+    #[sqlx(skip)]
+    draft: String,
+}
+
+fn rejects_secret_string(query: &SecretCustomerQueryBuilder) -> bool {
+    matches!(
+        query.errors.first(),
+        Some(rullst_orm::Error::Validation(message)) if message.contains("SecretString")
+    )
+}
+
+#[test]
+fn secret_string_columns_cannot_be_filtered_ordered_or_grouped() {
+    // Each write encrypts with a fresh nonce: a plaintext filter would never match.
+    for query in [
+        SecretCustomer::query().where_eq("tax_id", "123"),
+        SecretCustomer::query().where_in("tax_id", vec!["123"]),
+        SecretCustomer::query().where_like("secret_customers.tax_id", "%1%"),
+        SecretCustomer::query().where_tax_id("123"),
+        SecretCustomer::query().order_by("tax_id"),
+        SecretCustomer::query().group_by("tax_id"),
+    ] {
+        assert!(rejects_secret_string(&query), "{:?}", query.errors);
+    }
+    // Column names are case-insensitive in SQL, and so are the guards.
+    let mixed_case = SecretCustomer::query().where_eq("Tax_Id", "123");
+    assert!(
+        rejects_secret_string(&mixed_case),
+        "{:?}",
+        mixed_case.errors
+    );
+    for query in [
+        CachedRecord::query().where_eq("SESSION_CACHE", "x"),
+        CachedRecord::query().select(&["cached_records.Session_Cache"]),
+        CachedRecord::query().order_by("draft"),
+    ] {
+        assert!(
+            query
+                .errors
+                .iter()
+                .any(|error| error.to_string().contains("does not exist in the table")),
+            "{:?}",
+            query.errors
+        );
+    }
+    // The SQLx codec decrypts a selected column while decoding the model.
+    let selected = SecretCustomer::query().select(&["id", "name", "tax_id"]);
+    assert!(selected.errors.is_empty(), "{:?}", selected.errors);
+}
+
+#[tokio::test]
+async fn secret_string_columns_cannot_be_plucked() {
+    for column in ["tax_id", "secret_customers.tax_id"] {
+        let plucked = SecretCustomer::query().pluck_string(column).await;
+        assert!(
+            matches!(&plucked, Err(rullst_orm::Error::Validation(message)) if message.contains("SecretString")),
+            "{plucked:?}"
+        );
+    }
+}

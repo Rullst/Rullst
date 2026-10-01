@@ -62,6 +62,10 @@ pub(crate) enum ArtisanError {
     #[error("{0}")]
     Command(String),
 
+    /// The `studio` command could not bind or serve its local port.
+    #[error("Rullst Studio could not serve on 127.0.0.1:5555: {0}")]
+    Studio(#[source] std::io::Error),
+
     /// `Server::run` intercepted a `db:*` command, but the application never
     /// supplied its migrations and seeders.
     #[error(
@@ -171,8 +175,7 @@ pub(crate) async fn run_artisan_command(
     let _ = dotenvy::from_path(project_dir.join(".env"));
 
     if command == "studio" {
-        start_studio_server().await;
-        return Ok(());
+        return start_studio_server().await.map_err(ArtisanError::Studio);
     }
 
     let (migrations, seeders) = registry.unwrap_or_default();

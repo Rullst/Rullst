@@ -305,7 +305,10 @@ async fn mock_results_are_deterministic_distinct_and_debug_redacts_inputs() {
         "https://app.example/pay?x=1",
         "https://app.example/pay#x",
     ] {
-        assert!(PaddleCheckoutRequest::new(CUSTOMER, PRICE, "owner", "attempt", url).is_err());
+        assert!(matches!(
+            PaddleCheckoutRequest::new(CUSTOMER, PRICE, "owner", "attempt", url),
+            Err(CapitalError::ConfigurationError(_))
+        ));
     }
     for (customer, price, owner, attempt) in [
         ("ctm_bad", PRICE, "owner", "attempt"),

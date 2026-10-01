@@ -46,9 +46,15 @@ impl super::StripeProvider {
         return_url: &str,
     ) -> Result<String, CapitalError> {
         if !stripe_contract::valid_reference(customer, "cus_", 200) {
-            return Err(mismatch());
+            return Err(invalid_input(
+                "Stripe customer ID must be a bounded cus_ reference",
+            ));
         }
-        super::validate_checkout_url("portal-return", return_url)?;
+        super::validate_checkout_url("portal-return", return_url).map_err(|_| {
+            CapitalError::ConfigurationError(
+                "Stripe portal return URL must be a bounded credential-free HTTPS URL without a fragment".into(),
+            )
+        })?;
         if self.usage_api_key().is_empty() || self.usage_api_key().starts_with("mock_") {
             return Ok(format!("https://mock.stripe.invalid/portal/{customer}"));
         }
@@ -79,11 +85,12 @@ impl super::StripeProvider {
     /// Checks the platform account before using persisted billing state.
     /// Connected-account impersonation is outside this contract.
     pub async fn verify_account(&self, account: &str, livemode: bool) -> Result<(), CapitalError> {
-        if !stripe_contract::valid_reference(account, "acct_", 200)
-            || stripe_contract::credential_mode(self.usage_api_key()) != Some(livemode)
-        {
-            return Err(mismatch());
+        if !stripe_contract::valid_reference(account, "acct_", 200) {
+            return Err(invalid_input(
+                "Stripe account ID must be a bounded acct_ reference",
+            ));
         }
+        self.require_read_mode(livemode)?;
         let body = self.billing_read("account").await?;
         if body["id"].as_str() != Some(account) || body["object"].as_str() != Some("account") {
             return Err(mismatch());
@@ -99,7 +106,9 @@ impl super::StripeProvider {
         customer: &str,
     ) -> Result<StripeCustomerReceipt, CapitalError> {
         if !stripe_contract::valid_reference(customer, "cus_", 200) {
-            return Err(mismatch());
+            return Err(invalid_input(
+                "Stripe customer ID must be a bounded cus_ reference",
+            ));
         }
         let body = self.billing_read(&format!("customers/{customer}")).await?;
         let result = super::stripe_customer::parse_response(
@@ -152,11 +161,11 @@ impl super::StripeProvider {
         livemode: bool,
     ) -> Result<StripeCheckoutSnapshot, CapitalError> {
         if !stripe_contract::valid_reference(session, "cs_", 255) {
-            return Err(mismatch());
+            return Err(invalid_input(
+                "Stripe checkout session ID must be a bounded cs_ reference",
+            ));
         }
-        if stripe_contract::credential_mode(self.usage_api_key()) != Some(livemode) {
-            return Err(mismatch());
-        }
+        self.require_read_mode(livemode)?;
         let body = self
             .billing_read(&format!("checkout/sessions/{session}?expand[0]=line_items"))
             .await?;
@@ -176,12 +185,14 @@ impl super::StripeProvider {
         subscription: Option<&str>,
         livemode: bool,
     ) -> Result<Option<StripeCheckoutSnapshot>, CapitalError> {
-        if stripe_contract::credential_mode(self.usage_api_key()) != Some(livemode)
-            || created_after <= 0
+        if created_after <= 0
             || subscription.is_some_and(|id| !stripe_contract::valid_reference(id, "sub_", 200))
         {
-            return Err(mismatch());
+            return Err(invalid_input(
+                "checkout recovery requires a positive creation time and a bounded sub_ reference",
+            ));
         }
+        self.require_read_mode(livemode)?;
         let mut path = format!(
             "checkout/sessions?customer={}&created[gte]={}&limit=100&expand[0]=data.line_items",
             url_encode(request.customer_id()),
@@ -209,10 +220,32 @@ impl super::StripeProvider {
         Ok(found)
     }
 
-    async fn billing_read(&self, path: &str) -> Result<Value, CapitalError> {
-        if stripe_contract::credential_mode(self.usage_api_key()).is_none() {
-            return Err(mismatch());
+    // Local input, offline and mode problems are classified before any request;
+    // only provider responses produce a contract mismatch.
+    fn read_mode(&self) -> Result<bool, CapitalError> {
+        let key = self.usage_api_key();
+        if key.is_empty() || key.starts_with("mock_") {
+            return Err(CapitalError::UnsupportedOperation(
+                "Stripe reconciliation reads have no offline fixture; use an sk_test_ or rk_test_ key"
+                    .into(),
+            ));
         }
+        stripe_contract::credential_mode(key).ok_or_else(|| {
+            invalid_input("Stripe reconciliation reads require an sk_ or rk_ live or test key")
+        })
+    }
+
+    fn require_read_mode(&self, livemode: bool) -> Result<(), CapitalError> {
+        if self.read_mode()? != livemode {
+            return Err(invalid_input(
+                "requested Stripe live/test mode does not match the configured key",
+            ));
+        }
+        Ok(())
+    }
+
+    async fn billing_read(&self, path: &str) -> Result<Value, CapitalError> {
+        self.read_mode()?;
         let request = http_client()?
             .get(format!("https://api.stripe.com/v1/{path}"))
             .bearer_auth(self.usage_api_key())
@@ -298,147 +331,10 @@ fn mismatch() -> CapitalError {
     crate::ProviderFailure::contract_mismatch("stripe", "reconcile billing").into()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-    fn request() -> StripeCheckoutRequest {
-        StripeCheckoutRequest::new(
-            "cus_owner",
-            "price_pro",
-            "owner_opaque",
-            "attempt_fixed",
-            "https://app.example/return",
-            "https://app.example/cancel",
-        )
-        .unwrap()
-    }
-    fn body() -> Value {
-        json!({"id":"cs_fixed", "object":"checkout.session", "mode":"subscription", "status":"complete",
-            "customer":"cus_owner", "client_reference_id":"owner_opaque", "livemode":false,
-            "metadata":{"rullst_owner_reference":"owner_opaque","rullst_attempt_reference":"attempt_fixed"},
-            "success_url":"https://app.example/return", "cancel_url":"https://app.example/cancel",
-            "subscription":"sub_owner", "url":null, "expires_at":1800000000,
-            "line_items":{"object":"list","has_more":false,"data":[{"quantity":1,"price":{"id":"price_pro","type":"recurring"}}]}})
-    }
-    #[tokio::test]
-    async fn confused_mode_and_unsafe_identifiers_fail_before_http() {
-        let provider = super::super::StripeProvider::new("sk_test_fixture", "whsec_fixture");
-        assert!(
-            provider
-                .retrieve_checkout(&request(), "cs_fixed", true)
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .retrieve_checkout(&request(), "cs_../other", false)
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .find_checkout(&request(), 1800000000, None, true)
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .find_checkout(&request(), 0, None, false)
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .find_checkout(&request(), 1800000000, Some("sub_?query"), false)
-                .await
-                .is_err()
-        );
-        assert!(provider.verify_account("acct_other", true).await.is_err());
-        assert!(
-            provider
-                .create_bound_customer_portal("cus_../other", "https://app.example")
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .create_bound_customer_portal("cus_owner", "http://app.example")
-                .await
-                .is_err()
-        );
-        let customer = StripeCustomerRequest::new("owner", "intent").unwrap();
-        assert!(
-            provider
-                .retrieve_bound_customer(&customer, "cus_../other")
-                .await
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn completed_checkout_binds_every_identity_without_contact_data() {
-        let request = request();
-        let original = body();
-        let snapshot = parse_checkout(&request, &original, false).unwrap();
-        assert_eq!(snapshot.subscription_id(), Some("sub_owner"));
-        assert!(snapshot.url().is_none());
-        for path in [
-            "/id",
-            "/customer",
-            "/client_reference_id",
-            "/metadata/rullst_owner_reference",
-            "/metadata/rullst_attempt_reference",
-            "/subscription",
-            "/mode",
-            "/status",
-            "/line_items/data/0/price/id",
-            "/line_items/data/0/price/type",
-            "/success_url",
-            "/cancel_url",
-        ] {
-            let mut changed = original.clone();
-            *changed.pointer_mut(path).unwrap() = json!("wrong");
-            assert!(parse_checkout(&request, &changed, false).is_err(), "{path}");
-        }
-        assert!(parse_checkout(&request, &original, true).is_err());
-        for (path, value) in [
-            ("/line_items/has_more", json!(true)),
-            ("/line_items/data/0/quantity", json!(2)),
-            ("/subscription", Value::Null),
-            ("/expires_at", json!(0)),
-        ] {
-            let mut changed = original.clone();
-            *changed.pointer_mut(path).unwrap() = value;
-            assert!(parse_checkout(&request, &changed, false).is_err());
-        }
-    }
-    #[test]
-    fn open_expired_and_truncated_recovery_contracts() {
-        let mut body = body();
-        body["status"] = json!("open");
-        body["subscription"] = Value::Null;
-        assert!(parse_checkout(&request(), &body, false).is_err());
-        body["url"] = json!("https://checkout.stripe.com/c/pay/cs_fixed#opaque");
-        assert!(
-            parse_checkout(&request(), &body, false)
-                .unwrap()
-                .url()
-                .unwrap()
-                .ends_with("#opaque")
-        );
-        body["status"] = json!("expired");
-        assert!(
-            parse_checkout(&request(), &body, false)
-                .unwrap()
-                .url()
-                .is_none()
-        );
-        assert!(bounded_list(&json!({"object":"list","data":[],"has_more":true})).is_err());
-        assert!(
-            bounded_list(&json!({"object":"list","data":[],"has_more":false}))
-                .unwrap()
-                .is_empty()
-        );
-    }
+fn invalid_input(message: &str) -> CapitalError {
+    CapitalError::ConfigurationError(message.into())
 }
+
+#[cfg(test)]
+#[path = "stripe_reconcile_tests.rs"]
+mod tests;

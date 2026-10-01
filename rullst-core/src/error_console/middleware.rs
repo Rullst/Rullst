@@ -1,5 +1,6 @@
 //! Development middleware catching application panic unwinds.
 
+use crate::error_console::capture::spawn_capturing;
 use crate::error_console::renderer::render_console_html;
 use axum::{
     body::Body,
@@ -18,19 +19,13 @@ use std::net::SocketAddr;
 /// panic payload or backtrace. `Server` mounts this middleware only in debug
 /// builds running in Development.
 #[cfg_attr(mutants, mutants::skip)]
-pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response {
-    // Same lookup order as the `ConnectInfo` extractor used by `/_rullst/*`.
-    let extensions = req.extensions();
-    let peer = extensions
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|ConnectInfo(peer)| *peer)
-        .or_else(|| {
-            extensions
-                .get::<MockConnectInfo<SocketAddr>>()
-                .map(|MockConnectInfo(peer)| *peer)
-        });
-    let render_details = peer.is_none_or(|peer| peer.ip().to_canonical().is_loopback());
-    let handle = tokio::spawn(async move { next.run(req).await });
+pub async fn catch_panic_middleware(mut req: Request<Body>, next: Next) -> Response {
+    let render_details = console_details_allowed(req.extensions());
+    // Shared with the security headers middleware, which reuses a nonce that
+    // is already present, so the console's inline style and script match the
+    // emitted CSP.
+    let nonce = crate::security::CspNonce::get_or_insert(req.extensions_mut());
+    let (handle, panic_slot) = spawn_capturing(async move { next.run(req).await });
 
     match handle.await {
         Ok(response) => response,
@@ -45,8 +40,8 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
                     "Unhandled application panic".to_string()
                 };
 
-                let backtrace = std::backtrace::Backtrace::capture();
-                let html_content = render_console_html(&message, &backtrace).await;
+                let html_content =
+                    render_console_html(&message, &panic_slot.take(), Some(nonce.as_str())).await;
 
                 match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -61,4 +56,19 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
             }
         }
     }
+}
+
+/// Whether panic details may be shown for a request: its peer is loopback, or
+/// no peer metadata exists (in-process dispatch such as `TestApp`).
+pub(crate) fn console_details_allowed(extensions: &axum::http::Extensions) -> bool {
+    // Same lookup order as the `ConnectInfo` extractor used by `/_rullst/*`.
+    let peer = extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(peer)| *peer)
+        .or_else(|| {
+            extensions
+                .get::<MockConnectInfo<SocketAddr>>()
+                .map(|MockConnectInfo(peer)| *peer)
+        });
+    peer.is_none_or(|peer| peer.ip().to_canonical().is_loopback())
 }

@@ -190,4 +190,29 @@ mod tests {
             assert!(invoice.bind_succeeded_charge(&invalid).is_err());
         }
     }
+
+    #[test]
+    fn zero_and_three_decimal_currencies_bind_in_provider_minor_units() {
+        for (total, currency, amount_minor) in [(2_500.0, "JPY", 2_500), (12.34, "KWD", 12_340)] {
+            let invoice = Invoice {
+                items: vec![InvoiceItem {
+                    description: "Subscription".to_string(),
+                    amount: total,
+                }],
+                total,
+                currency: currency.to_string(),
+                ..invoice()
+            };
+            let receipt = ChargeReceipt::from_verified_provider_response(
+                "fixture",
+                "charge_42",
+                ChargeStatus::Succeeded,
+                amount_minor,
+                currency.to_ascii_lowercase(),
+                "owner@example.com",
+            )
+            .expect("structural fixture");
+            assert!(invoice.bind_succeeded_charge(&receipt).is_ok());
+        }
+    }
 }

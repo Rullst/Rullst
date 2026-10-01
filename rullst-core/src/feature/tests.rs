@@ -293,3 +293,83 @@ async fn test_toml_driver_empty_lines() {
     driver.load_from_str("\n\n[features]\nflag = true\n# comment\n");
     assert_eq!(driver.enabled("flag").await, Some(true));
 }
+
+#[test]
+fn oversized_variant_weights_saturate_instead_of_overflowing() {
+    let variants = parse_variants("a:10,b:4294967290,c:50");
+    assert_eq!(resolve_variant(&variants, 5), Some("a".to_string()));
+    assert_eq!(resolve_variant(&variants, 99), Some("b".to_string()));
+    assert_eq!(
+        resolve_variant(
+            &[("x".to_string(), u32::MAX), ("y".to_string(), u32::MAX)],
+            0
+        ),
+        Some("x".to_string())
+    );
+}
+
+/// An identifier whose bucket for `flag` is at least `minimum`.
+fn identifier_in_bucket_at_least(flag: &str, minimum: u32) -> String {
+    (0..1_000)
+        .map(|index| format!("user-{index}"))
+        .find(|identifier| calculate_hash_bucket(flag, identifier) >= minimum)
+        .expect("some identifier lands in the upper buckets")
+}
+
+#[tokio::test]
+async fn identifiers_outside_a_narrowed_split_never_fall_through() {
+    let flag = "pricing-ab";
+    let outside = identifier_in_bucket_at_least(flag, 20);
+
+    // String drivers (Env, TOML) answer for every identifier.
+    assert_eq!(
+        parse_feature_string_value("control:10,treatment:10", flag, Some(&outside)),
+        Some("disabled".to_string())
+    );
+
+    let narrowed = MemoryFeatureDriver::new();
+    narrowed.override_variants(
+        flag,
+        vec![("control".to_string(), 10), ("treatment".to_string(), 10)],
+    );
+    let broad = MemoryFeatureDriver::new();
+    broad.override_variants(
+        flag,
+        vec![("control".to_string(), 50), ("treatment".to_string(), 50)],
+    );
+    let manager = FeatureManager::new()
+        .add_driver(Box::new(narrowed))
+        .add_driver(Box::new(broad));
+    assert_eq!(
+        manager.variant(flag, &outside).await,
+        Some("disabled".to_string())
+    );
+}
+
+#[tokio::test]
+async fn toml_features_accept_quoted_keys_spaced_headers_and_hashes_in_strings() {
+    let driver = TomlFeatureDriver::new();
+    driver.load_from_str(
+        "[app]\nenv = \"test\"\n\n[ features ] # flags\n\"checkout.v2\" = \"100%\"\nbeta.ui = true\nlabel = \"a#b\" # comment\nrollout = 0\n\n[features.billing]\nnew-invoices = false\n",
+    );
+    assert_eq!(driver.value("checkout.v2").as_deref(), Some("100%"));
+    assert_eq!(driver.enabled_for("checkout.v2", "user").await, Some(true));
+    assert_eq!(driver.value("beta.ui").as_deref(), Some("true"));
+    assert_eq!(driver.value("label").as_deref(), Some("a#b"));
+    assert_eq!(driver.value("rollout").as_deref(), Some("0"));
+    assert_eq!(driver.enabled("billing.new-invoices").await, Some(false));
+    assert_eq!(driver.value("env"), None);
+}
+
+#[tokio::test]
+async fn the_default_pipeline_exposes_its_override_layer() {
+    let manager = FeatureManager::default();
+    let overrides = manager.overrides().expect("default memory layer");
+    assert!(!manager.enabled("override-only-flag").await);
+    overrides.override_enabled("override-only-flag", true);
+    assert!(manager.enabled("override-only-flag").await);
+    overrides.override_enabled("override-only-flag", false);
+    assert!(!manager.enabled("override-only-flag").await);
+
+    assert!(FeatureManager::new().overrides().is_none());
+}

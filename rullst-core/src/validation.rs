@@ -9,7 +9,11 @@ pub use validator::Validate;
 
 /// Error type returned by [`ValidatedForm`] and [`ValidatedJson`] extractors.
 /// Automatically renders HTMX-friendly HTML error components for HTMX requests,
-/// or standard JSON `422`/`400` responses for REST clients.
+/// or standard JSON responses for REST clients: `422` for a payload that fails
+/// its `validator` constraints, and for an extraction failure `413` (body too
+/// large), `415` (unsupported content type) or `400` (any other unreadable or
+/// mistyped payload, including Axum's `422` data errors, so that `422` always
+/// means a constraint failure).
 ///
 /// HTMX 1.x and 2.x swap only successful responses by default, so an HTMX
 /// request (`HX-Request: true`) receives the fragment with `200 OK` and the
@@ -24,7 +28,11 @@ pub use validator::Validate;
 /// [`ValidationError::ExtractionError`]; they use a fixed message chosen from the
 /// rejection's status and log the detail server-side at `debug` level on the
 /// `rullst::validation` target.
-#[derive(Debug)]
+///
+/// `Display` and `Debug` list only field paths and validator codes. The
+/// `validator` derive stores each rejected input as a `value` parameter, so
+/// the raw errors (which can hold a password or other personal data) are
+/// never formatted.
 pub enum ValidationError {
     /// A deserialization error occurred before validation could run (e.g. malformed JSON body).
     ExtractionError {
@@ -50,13 +58,63 @@ impl std::fmt::Display for ValidationError {
                 write!(f, "Extraction error: {}", message)
             }
             ValidationError::ValidationError { errors, .. } => {
-                write!(f, "Validation error: {:?}", errors)
+                f.write_str("Validation error: ")?;
+                for (index, (path, codes)) in error_codes(errors).iter().enumerate() {
+                    if index > 0 {
+                        f.write_str(", ")?;
+                    }
+                    write!(f, "{path} ({})", codes.join(", "))?;
+                }
+                Ok(())
             }
         }
     }
 }
 
+impl std::fmt::Debug for ValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ValidationError::ExtractionError { message, is_htmx } => f
+                .debug_struct("ExtractionError")
+                .field("message", message)
+                .field("is_htmx", is_htmx)
+                .finish(),
+            ValidationError::ValidationError { errors, is_htmx } => f
+                .debug_struct("ValidationError")
+                .field("errors", &error_codes(errors))
+                .field("is_htmx", is_htmx)
+                .finish(),
+        }
+    }
+}
+
+/// Field paths and their validator codes, sorted; never parameters or values.
+fn error_codes(
+    errors: &validator::ValidationErrors,
+) -> std::collections::BTreeMap<String, Vec<String>> {
+    let mut codes = std::collections::BTreeMap::<String, Vec<String>>::new();
+    visit_field_errors(errors, "", &mut |path, field_error| {
+        codes
+            .entry(path.to_string())
+            .or_default()
+            .push(field_error.code.to_string());
+    });
+    codes
+}
+
 impl std::error::Error for ValidationError {}
+
+/// REST status of an extraction failure, recovered from its fixed message.
+/// Any other message, such as one built by application code, maps to `400`.
+fn extraction_status(message: &str) -> StatusCode {
+    [
+        StatusCode::PAYLOAD_TOO_LARGE,
+        StatusCode::UNSUPPORTED_MEDIA_TYPE,
+    ]
+    .into_iter()
+    .find(|status| extraction_failure_message(*status) == message)
+    .unwrap_or(StatusCode::BAD_REQUEST)
+}
 
 /// Fixed client-facing text for an extraction failure.
 ///
@@ -97,20 +155,47 @@ fn htmx_fragment(status: StatusCode, html: String) -> Response {
     response
 }
 
-fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
-    let mut map = HashMap::new();
-    for (field, field_errors) in errors.field_errors() {
-        let messages: Vec<String> = field_errors
-            .iter()
-            .map(|fe| {
-                fe.message
-                    .as_ref()
-                    .map(|m| m.to_string())
-                    .unwrap_or_else(|| format!("Invalid value for field '{}'", field))
-            })
-            .collect();
-        map.insert(field.to_string(), messages);
+/// Visits every field error, including those of `#[validate(nested)]`
+/// structs (`address.zip`) and lists (`items[0].name`), with its field path.
+fn visit_field_errors(
+    errors: &validator::ValidationErrors,
+    prefix: &str,
+    visit: &mut impl FnMut(&str, &validator::ValidationError),
+) {
+    for (field, kind) in errors.errors() {
+        let path = if prefix.is_empty() {
+            field.to_string()
+        } else {
+            format!("{prefix}.{field}")
+        };
+        match kind {
+            validator::ValidationErrorsKind::Field(field_errors) => {
+                for field_error in field_errors {
+                    visit(&path, field_error);
+                }
+            }
+            validator::ValidationErrorsKind::Struct(inner) => {
+                visit_field_errors(inner, &path, visit);
+            }
+            validator::ValidationErrorsKind::List(items) => {
+                for (index, inner) in items {
+                    visit_field_errors(inner, &format!("{path}[{index}]"), visit);
+                }
+            }
+        }
     }
+}
+
+fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    visit_field_errors(errors, "", &mut |path, field_error| {
+        let message = field_error
+            .message
+            .as_ref()
+            .map(|message| message.to_string())
+            .unwrap_or_else(|| format!("Invalid value for field '{path}'"));
+        map.entry(path.to_string()).or_default().push(message);
+    });
     map
 }
 
@@ -118,6 +203,7 @@ impl IntoResponse for ValidationError {
     fn into_response(self) -> Response {
         match self {
             ValidationError::ExtractionError { message, is_htmx } => {
+                let status = extraction_status(&message);
                 if is_htmx {
                     let html_error = format!(
                         r#"<div class="p-4 mb-4 rounded-lg bg-red-950/50 border border-red-500/30 text-red-200 text-sm">
@@ -125,11 +211,11 @@ impl IntoResponse for ValidationError {
                         </div>"#,
                         crate::html::escape_str(&message)
                     );
-                    htmx_fragment(StatusCode::BAD_REQUEST, html_error)
+                    htmx_fragment(status, html_error)
                 } else {
                     let mut err_map = HashMap::new();
                     err_map.insert("error".to_string(), vec![message]);
-                    (StatusCode::BAD_REQUEST, Json(err_map)).into_response()
+                    (status, Json(err_map)).into_response()
                 }
             }
             ValidationError::ValidationError { errors, is_htmx } => {
@@ -240,220 +326,5 @@ where
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use axum::http::Request;
-    use serde::Deserialize;
-    use validator::Validate;
-
-    #[derive(Debug, Deserialize, Validate, Clone)]
-    struct TestPayload {
-        #[validate(length(min = 3, message = "Username too short"))]
-        username: String,
-        #[validate(email(message = "Must be a valid email"))]
-        email: String,
-    }
-
-    #[tokio::test]
-    async fn test_validation_success() {
-        let _payload = TestPayload {
-            username: "venelouis".to_string(),
-            email: "vene@rullst.dev".to_string(),
-        };
-
-        // Form success
-        let req = Request::builder()
-            .method("POST")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(axum::body::Body::from(
-                "username=venelouis&email=vene%40rullst.dev",
-            ))
-            .unwrap();
-
-        let validated = ValidatedForm::<TestPayload>::from_request(req, &())
-            .await
-            .unwrap();
-        assert_eq!(validated.0.username, "venelouis");
-        assert_eq!(validated.0.email, "vene@rullst.dev");
-
-        // Json success
-        let req_json = Request::builder()
-            .header("content-type", "application/json")
-            .body(axum::body::Body::from(
-                r#"{"username": "venelouis", "email": "vene@rullst.dev"}"#,
-            ))
-            .unwrap();
-
-        let validated_json = ValidatedJson::<TestPayload>::from_request(req_json, &())
-            .await
-            .unwrap();
-        assert_eq!(validated_json.0.username, "venelouis");
-    }
-
-    #[tokio::test]
-    async fn test_validation_failure_json() {
-        let req = Request::builder()
-            .header("content-type", "application/json")
-            .body(axum::body::Body::from(
-                r#"{"username": "ab", "email": "invalid-email"}"#,
-            ))
-            .unwrap();
-
-        let err = ValidatedJson::<TestPayload>::from_request(req, &())
-            .await
-            .unwrap_err();
-
-        match err {
-            ValidationError::ValidationError { errors, is_htmx } => {
-                assert!(!is_htmx);
-                let formatted = format_errors(&errors);
-                assert!(formatted.contains_key("username"));
-                assert!(formatted.contains_key("email"));
-                assert_eq!(formatted.get("username").unwrap()[0], "Username too short");
-                assert_eq!(formatted.get("email").unwrap()[0], "Must be a valid email");
-            }
-            _ => panic!("Expected ValidationError"),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_validation_failure_htmx() {
-        let req = Request::builder()
-            .method("POST")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .header("HX-Request", "true")
-            .body(axum::body::Body::from("username=ab&email=invalid-email"))
-            .unwrap();
-
-        let err = ValidatedForm::<TestPayload>::from_request(req, &())
-            .await
-            .unwrap_err();
-
-        match err {
-            ValidationError::ValidationError { errors, is_htmx } => {
-                assert!(is_htmx);
-                let response = ValidationError::ValidationError { errors, is_htmx }.into_response();
-                // htmx swaps only 2xx/3xx responses, so the fragment is a 200.
-                assert_eq!(response.status(), StatusCode::OK);
-                assert_eq!(response.headers()[VALIDATION_STATUS_HEADER], "422");
-
-                let body_bytes = axum::body::to_bytes(response.into_body(), 10000)
-                    .await
-                    .unwrap();
-                let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-                assert!(body_str.contains("Validation Failed"));
-                assert!(body_str.contains("username"));
-                assert!(body_str.contains("email"));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_extraction_error_responses() {
-        let err_htmx = ValidationError::ExtractionError {
-            message: "Malformed form data".to_string(),
-            is_htmx: true,
-        };
-        assert!(format!("{}", err_htmx).contains("Malformed form data"));
-
-        let resp_htmx = err_htmx.into_response();
-        assert_eq!(resp_htmx.status(), StatusCode::OK);
-        assert_eq!(resp_htmx.headers()[VALIDATION_STATUS_HEADER], "400");
-
-        let err_json = ValidationError::ExtractionError {
-            message: "Invalid JSON syntax".to_string(),
-            is_htmx: false,
-        };
-        let resp_json = err_json.into_response();
-        assert_eq!(resp_json.status(), StatusCode::BAD_REQUEST);
-        assert!(!resp_json.headers().contains_key(VALIDATION_STATUS_HEADER));
-    }
-
-    #[derive(Debug, Deserialize, Validate)]
-    struct RolePayload {
-        #[allow(dead_code)]
-        role: Role,
-    }
-
-    #[derive(Debug, Deserialize)]
-    #[serde(rename_all = "lowercase")]
-    enum Role {
-        Admin,
-    }
-
-    async fn body_string(response: Response) -> String {
-        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
-            .await
-            .unwrap();
-        String::from_utf8(bytes.to_vec()).unwrap()
-    }
-
-    #[tokio::test]
-    async fn htmx_extraction_error_does_not_echo_request_input() {
-        let payload = "%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E";
-        let req = Request::builder()
-            .method("POST")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .header("HX-Request", "true")
-            .body(axum::body::Body::from(format!("role={payload}")))
-            .unwrap();
-        let err = ValidatedForm::<RolePayload>::from_request(req, &())
-            .await
-            .unwrap_err();
-        let body = body_string(err.into_response()).await;
-        assert!(!body.contains("<img"), "{body}");
-        assert!(!body.contains("onerror"), "{body}");
-        assert!(body.contains("could not be read"), "{body}");
-
-        let req = Request::builder()
-            .header("content-type", "application/json")
-            .header("HX-Request", "true")
-            .body(axum::body::Body::from(r#"{"role":"<div hx-get=\"/x\">"}"#))
-            .unwrap();
-        let err = ValidatedJson::<RolePayload>::from_request(req, &())
-            .await
-            .unwrap_err();
-        let body = body_string(err.into_response()).await;
-        assert!(!body.contains("hx-get"), "{body}");
-
-        let req = Request::builder()
-            .header("content-type", "text/plain")
-            .body(axum::body::Body::from("{}"))
-            .unwrap();
-        let err = ValidatedJson::<RolePayload>::from_request(req, &())
-            .await
-            .unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            "Extraction error: Unsupported request content type."
-        );
-    }
-
-    #[tokio::test]
-    async fn htmx_fragments_escape_messages_and_fields() {
-        let err = ValidationError::ExtractionError {
-            message: "<script>alert(1)</script>".to_string(),
-            is_htmx: true,
-        };
-        let body = body_string(err.into_response()).await;
-        assert!(!body.contains("<script>"), "{body}");
-        assert!(body.contains("&lt;script&gt;"), "{body}");
-
-        let mut errors = validator::ValidationErrors::new();
-        let mut field_error = validator::ValidationError::new("custom");
-        field_error.message = Some("<b onmouseover=x>bad</b>".into());
-        errors.add("name", field_error);
-        let body = body_string(
-            ValidationError::ValidationError {
-                errors,
-                is_htmx: true,
-            }
-            .into_response(),
-        )
-        .await;
-        assert!(!body.contains("<b onmouseover"), "{body}");
-        assert!(body.contains("&lt;b onmouseover=x&gt;"), "{body}");
-    }
-}
+#[path = "validation_tests.rs"]
+mod tests;

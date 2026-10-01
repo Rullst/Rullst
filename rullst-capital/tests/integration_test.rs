@@ -59,7 +59,8 @@ async fn test_all_12_payment_and_payout_providers() {
         .create_checkout_session("alice@stripe.com", "price_pro", "https://app.com/ok")
         .await
         .unwrap();
-    assert!(url.contains("mock_session") && url.contains("alice%40stripe.com"));
+    assert!(url.starts_with("https://mock.stripe.invalid/checkout/mock_session?plan=price_pro"));
+    assert!(!url.contains("alice"));
     let portal = stripe
         .create_customer_portal("alice@stripe.com", "https://app.com")
         .await
@@ -88,7 +89,7 @@ async fn test_all_12_payment_and_payout_providers() {
         .create_customer_portal("bob@ls.com", "https://app.com")
         .await
         .unwrap();
-    assert!(portal.contains("lemonsqueezy.com/my-orders"));
+    assert!(portal.starts_with("https://mock.lemonsqueezy.invalid/"));
     assert!(ls.cancel_subscription("sub_ls").await.is_ok());
     assert!(ls.pause_subscription("sub_ls").await.is_ok());
     assert!(ls.report_usage("sub_ls", "seats", 5).await.is_ok());
@@ -126,7 +127,7 @@ async fn test_all_12_payment_and_payout_providers() {
         .create_customer_portal("dev@github.com", "https://app.com")
         .await
         .unwrap();
-    assert!(portal.contains("polar.sh/purchases"));
+    assert!(portal.starts_with("https://mock.polar.invalid/"));
     assert!(polar.cancel_subscription("sub_pol").await.is_ok());
     assert!(polar.pause_subscription("sub_pol").await.is_ok());
     assert!(polar.report_usage("sub_pol", "events", 100).await.is_ok());
@@ -147,7 +148,7 @@ async fn test_all_12_payment_and_payout_providers() {
         .create_customer_portal("user@paddle.com", "https://app.com")
         .await
         .unwrap();
-    assert!(portal.contains("paddle.com"));
+    assert!(portal.starts_with("https://mock.paddle.invalid/"));
     assert!(paddle.cancel_subscription("sub_pad").await.is_ok());
     assert!(paddle.pause_subscription("sub_pad").await.is_ok());
     assert!(paddle.report_usage("sub_pad", "gb", 10).await.is_ok());
@@ -172,7 +173,7 @@ async fn test_all_12_payment_and_payout_providers() {
         .create_customer_portal("cliente@mercadopago.com", "https://app.com")
         .await
         .unwrap();
-    assert!(portal.contains("mercadopago.com/subscriptions"));
+    assert!(portal.starts_with("https://mock.mercadopago.invalid/"));
     assert!(mp.cancel_subscription("sub_mp").await.is_ok());
     assert!(mp.pause_subscription("sub_mp").await.is_ok());
     assert!(mp.report_usage("sub_mp", "vendas", 10).await.is_ok());

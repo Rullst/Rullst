@@ -239,6 +239,33 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Core runtime low-severity review fixes
+
+- Validated extractors return 413 or 415 for oversized or wrongly typed bodies,
+  report nested errors as `address.zip` and `items[0].name`, and
+  `ValidationError` formatting no longer includes submitted values.
+- The development panic console shows the real panic location, works under the
+  default nonce CSP without external fonts and shows details only to loopback
+  clients on the hot-reload path too.
+- TOML feature flags are read with a real TOML parser, users outside an A/B
+  split get `"disabled"`, weight sums cannot overflow and a negative database
+  rollout means 0%; `FeatureManager::overrides()` exposes the memory override
+  layer.
+- Security configuration rejects empty User-Agent blocklist entries and CORS
+  origins a browser never sends, and `ReplicationError` and `Inject` failures
+  no longer expose URLs or type paths.
+- `HOST` accepts bare IPv6 and `localhost`, uptime starts at server start,
+  `RullstConfig::environment()` matches the environment the Server enforces,
+  and dev-reload polls are neither logged nor rate limited.
+- Traffic Shield logs at most one line per second under overload, long
+  rate-limit keys are stored as digests and `.zst` assets are never served as
+  `application/octet-stream`.
+- htmx headers keep non-ASCII text, Wasm RPC works without a CSRF cookie in
+  development and marks 429/503/`Retry-After` responses retryable, and
+  `render_page_with_lang` and `EdgeRequest::query` are new.
+- `studio` exits 1 when its port is taken, and
+  `error_console::handle_run_migrations` no longer reports a fake success.
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or
@@ -294,6 +321,31 @@ A prepared version section does not establish that its tag or crates exist.
 - Radar reads Linux RSS from `VmRSS` and scales CPU by the host CPU count.
 - `Debug` for `DatabaseConfig`, `RullstConfig` and `db::ReplicationConfig`
   redacts database URLs and auth tokens.
+
+### Security low-severity review fixes
+
+- `AuditChain::try_resume` lets a restarted writer continue its persisted audit
+  trail, and `StdoutAuditLogger` lines can no longer be forged through CR/LF
+  in field values.
+- RASP and the Core WAF inspect obs-text header values and the decoded request
+  path (traversal only), and the WAF inspects cookies pair by pair, ending the
+  lockout caused by cookies named `ls*`.
+- CSWSH matches the HTTP/2 `:authority` and, when known, the request scheme;
+  session fingerprints bind IPv4-mapped peers per /24.
+- The AI firewall catches word joiners, bidi isolates and tag characters and
+  attributes blocks to the peer; CEF export normalizes events and gives
+  `XSS_SANITIZED` severity 7; DLP and log redaction cover `rediss://`,
+  `apiKey` and JSON embedded in a string.
+- Global rate-limit entries expire per policy, the Redis offline mock is
+  bounded, sub-millisecond Redis windows are rejected and
+  `generate_totp_at_counter` never returns `000000` for short secrets.
+- Core CSRF accepts `_token` in multipart forms and honours the global
+  `csrf_same_site`; machine bearer tokens need 8 distinct bytes.
+- Subdomain tenant selection works over HTTP/2, ignores `www` and gains
+  `TenantConfig::with_base_domain`; local `TenantStorage` refuses case-variant
+  or trailing-dot aliases.
+- PII masking keeps JSON numbers valid and leaves versioned CDN URLs and `@2x`
+  asset names alone.
 
 ### Security second-pass review fixes
 
@@ -470,6 +522,31 @@ A prepared version section does not establish that its tag or crates exist.
 - Recurring publication instances tolerate up to 5 s of cross-host clock skew
   instead of failing with `Clock`.
 
+### Capital low-severity review fixes
+
+- PicPay live callbacks fail closed, Coinbase charge events no longer invent
+  plans, identities or access periods, and offline checkout and portal
+  fixtures use reserved `.invalid` hosts without the customer's email.
+- Invoices bind zero- and three-decimal currencies (JPY, KWD) with their real
+  minor units.
+- Local input and offline-key mistakes return `ConfigurationError` or
+  `UnsupportedOperation` instead of provider contract failures, and Lemon
+  Squeezy pause and cancel send the JSON:API headers.
+- In-memory SQLite replay and quota stores keep their data, a concurrent
+  duplicate quota release returns `Ok(false)`, and the in-memory replay store's
+  `Debug` output no longer prints its ledger.
+- NFS-e: a real SEFIN authorization carrying the signed DPS validates and is
+  bound to the signed DPS Id and environment; schema checks require a DPS root
+  and redact personal data from errors; the legacy DPS preview is escaped and
+  uses the official codes.
+- Fiscal journal: HTTP 500 answers stay pending, space is reserved for answers,
+  new journals are durable on Unix and partial-write recovery works on
+  Windows.
+- New: `try_init_provider`, `try_init_payout_provider`,
+  `verify_checkpoint_prefix`,
+  `NfseIssueRequest::try_from_dps_xml_gzip_base64` and the journal errors
+  `EnvironmentMismatch`, `ClockRegression` and `IndeterminateResponse`.
+
 ### Capital review fixes
 
 - `WiseProvider::parse_webhook_payload` performs no signature check and now
@@ -498,6 +575,28 @@ A prepared version section does not establish that its tag or crates exist.
 - Add macro/facade regressions and an archive-only consumer compile probe.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
+
+### ORM macros low-severity review fixes (builder, relations, parser)
+
+- A `*_constrained` modifier's `or_where` can no longer return other parents'
+  rows, eager `belongs_to_many` gives parents with no related rows
+  `Some(vec![])`, `belongs_to` without `foreign_key` defaults to
+  `<related model>_id`, and `local_key`/`related_key` on a relation that
+  ignores them is a compile error.
+- `count()` and `paginate()` totals count DISTINCT rows and GROUP BY groups, an
+  uncapped `offset()` is valid SQL on SQLite and MySQL/MariaDB, and offset
+  `chunk()` pages are ordered by primary key unless `order_by` is set.
+- ORM calls on a transaction while one of its `stream()`s is open return
+  `Validation` instead of hanging.
+- `SecretString` columns are rejected in builder filters, ordering, grouping
+  and `pluck_*`, and the skipped, encrypted and `SecretString` column guards
+  ignore ASCII case.
+- Non-array or undecryptable query-cache entries fall back to the database, and
+  models without a `tenant_column` share one global cache partition that writes
+  from any tenant scope invalidate.
+- An explicit `#[orm(table)]` rescues struct names whose default table name is
+  invalid, `searchable` models need a lowercase Scout-valid table name, and
+  `#[orm(skip)]` and `#[sqlx(skip)]` can be combined.
 
 ### ORM low-severity review fixes
 

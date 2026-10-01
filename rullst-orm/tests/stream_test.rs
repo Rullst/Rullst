@@ -2,7 +2,7 @@
 
 use futures::StreamExt;
 use rullst_orm::{
-    FromRow, Orm,
+    Error, FromRow, Orm,
     schema::{Blueprint, Schema},
 };
 use std::fs;
@@ -72,5 +72,50 @@ async fn test_stream_methods() {
     }
     tx.commit().await.expect("commit");
 
+    transactional_stream_rejects_reentrant_calls().await;
+
     let _ = fs::remove_file(DB_FILE);
+}
+
+/// A stream inside `Orm::transaction` keeps the transaction locked between
+/// rows. Other ORM calls on it must fail fast instead of waiting forever.
+async fn transactional_stream_rejects_reentrant_calls() {
+    let outcome = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        Orm::transaction(|_| {
+            Box::pin(async {
+                let mut first = {
+                    let query = StreamUser::query().order_by("id");
+                    let mut stream = std::pin::pin!(query.stream());
+                    let mut first = stream.next().await.expect("a streamed row")?;
+                    first.name = "renamed while streaming".to_string();
+                    let save = first.save().await;
+                    assert!(
+                        matches!(&save, Err(Error::Validation(message)) if message.contains("open stream()")),
+                        "{save:?}"
+                    );
+                    let count = StreamUser::query().count().await;
+                    assert!(matches!(count, Err(Error::Validation(_))), "{count:?}");
+                    let nested_query = StreamUser::query();
+                    let mut nested = std::pin::pin!(nested_query.stream());
+                    assert!(matches!(
+                        nested.next().await,
+                        Some(Err(Error::Validation(_)))
+                    ));
+                    first
+                };
+                // Dropping the stream released the transaction.
+                first.save().await?;
+                Ok::<_, Error>(first.id)
+            })
+        }),
+    )
+    .await
+    .expect("a call during a transactional stream must not wait for its lock");
+    let id = outcome.expect("transaction after the stream was dropped");
+    let saved = StreamUser::find(id)
+        .await
+        .expect("find renamed row")
+        .expect("renamed row exists");
+    assert_eq!(saved.name, "renamed while streaming");
 }

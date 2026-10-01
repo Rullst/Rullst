@@ -11,10 +11,25 @@ struct ApiResponse {
     message: String,
 }
 
+/// Serves the legacy Studio on `127.0.0.1:5555` until the server stops.
+///
+/// # Errors
+/// Returns the bind or serve failure, for example when the port is in use.
 #[cfg_attr(mutants, mutants::skip)]
-pub(crate) async fn start_studio_server() {
-    println!("📊 Starting Rullst Studio on http://127.0.0.1:5555/studio...");
-    let app = axum::Router::new()
+pub(crate) async fn start_studio_server() -> std::io::Result<()> {
+    serve_studio_at(std::net::SocketAddr::from(([127, 0, 0, 1], 5555))).await
+}
+
+pub(crate) async fn serve_studio_at(address: std::net::SocketAddr) -> std::io::Result<()> {
+    let listener = tokio::net::TcpListener::bind(address).await?;
+    crate::server::console::stdout_line(format_args!(
+        "📊 Starting Rullst Studio on http://{address}/studio..."
+    ));
+    axum::serve(listener, studio_router()).await
+}
+
+fn studio_router() -> axum::Router {
+    axum::Router::new()
         .route(
             "/",
             axum::routing::get(|| async { axum::response::Redirect::permanent("/studio") }),
@@ -46,11 +61,7 @@ pub(crate) async fn start_studio_server() {
         .route(
             "/studio/api/seeders/run",
             axum::routing::post(handle_run_seeders),
-        );
-
-    if let Ok(listener) = tokio::net::TcpListener::bind("127.0.0.1:5555").await {
-        let _ = axum::serve(listener, app).await;
-    }
+        )
 }
 
 pub(crate) async fn handle_run_migrations() -> impl axum::response::IntoResponse {

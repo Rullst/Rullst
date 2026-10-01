@@ -68,8 +68,11 @@ let app = Router::new()
 ```
 
 The continuation is application code because its error type and provider
-adapter belong to the project. If the requested type or container extension is
-missing, `Inject<T>` fails closed with a `500` rejection.
+adapter belong to the project. `Inject<T>` takes `T` from the container and,
+when the container lacks it (or there is none), from an `Extension<Arc<T>>`
+layer. If neither provides it, `Inject<T>` fails closed with a `500` whose body
+is a fixed message; the missing type name is logged on the `rullst::di`
+target, never returned to the client.
 
 ---
 

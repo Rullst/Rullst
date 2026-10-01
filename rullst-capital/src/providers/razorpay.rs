@@ -1,6 +1,6 @@
 use super::{
-    BillingProvider, WebhookEvent, WebhookVerificationMode, url_encode,
-    verify_explicit_mock_signature, webhook_mode_from_secret,
+    BillingProvider, WebhookEvent, WebhookVerificationMode, verify_explicit_mock_signature,
+    webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
@@ -128,12 +128,7 @@ impl BillingProvider for RazorpayProvider {
         }
 
         if self.key_id.is_empty() || self.key_id.starts_with("mock_") {
-            return Ok(format!(
-                "https://razorpay.com/checkout/mock_session?email={}&plan={}&callback_url={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
+            return Ok(super::fixture::checkout_url(self.name(), plan_id));
         }
 
         let total_count = self.subscription_total_count.ok_or_else(|| {
@@ -195,10 +190,7 @@ impl BillingProvider for RazorpayProvider {
 
         super::require_mock_operation(&self.key_id, self.name(), "create customer portal")?;
 
-        Ok(format!(
-            "https://dashboard.razorpay.com/portal?email={}",
-            url_encode(customer_email)
-        ))
+        Ok(super::fixture::portal_url(self.name()))
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -315,7 +307,8 @@ mod tests {
             )
             .await
             .unwrap();
-        assert!(url.contains("razorpay.com/checkout"));
+        assert!(url.starts_with("https://mock.razorpay.invalid/checkout/mock_session?plan="));
+        assert!(!url.contains("%40") && !url.contains("callback") && !url.contains("app.com"));
         assert!(url.contains("plan_sub_pro"));
 
         // 2. Checkout validation
@@ -337,7 +330,7 @@ mod tests {
             .create_customer_portal("user@razorpay.com", "https://app.com")
             .await
             .unwrap();
-        assert!(portal.contains("dashboard.razorpay.com/portal"));
+        assert_eq!(portal, "https://mock.razorpay.invalid/portal/mock_portal");
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // 4. Subscription actions

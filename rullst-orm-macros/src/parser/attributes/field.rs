@@ -72,8 +72,10 @@ impl FieldAttributes {
                 mark_once(seen, "hidden", &meta)?;
                 self.is_hidden = true;
             }
+            // Tracked apart from `#[sqlx(skip)]`: `#[orm(skip)]` does not stop
+            // SQLx's `FromRow` from reading the column, so the two combine.
             "skip" => {
-                mark_once(seen, "skip", &meta)?;
+                mark_once(seen, "orm_skip", &meta)?;
                 self.is_skipped = true;
             }
             "masked" => {
@@ -150,10 +152,12 @@ impl FieldAttributes {
         let key = path_name(&meta)?;
         match key.as_str() {
             "skip" => {
-                mark_once(seen, "skip", &meta)?;
+                mark_once(seen, "sqlx_skip", &meta)?;
                 self.is_skipped = true;
             }
             "default" => mark_once(seen, "sqlx_default", &meta)?,
+            // Decoding only: generated writes bind the field's own type, which
+            // must therefore encode as JSON itself (see spec §5.1).
             "json" => {
                 mark_once(seen, "json", &meta)?;
                 if meta.input.peek(syn::token::Paren) {
@@ -197,6 +201,27 @@ impl FieldAttributes {
             return Err(syn::Error::new(
                 span,
                 "relationship options require exactly one relation declaration",
+            ));
+        }
+        // A belongs_to/morph_to key on the related model is `related_key`;
+        // the other relations match the related table's key to `local_key`.
+        if seen.contains("local_key")
+            && matches!(self.relation_type.as_str(), "belongs_to" | "morph_to")
+        {
+            return Err(syn::Error::new(
+                span,
+                "local_key does not apply to belongs_to or morph_to relations; name the related model's key with related_key",
+            ));
+        }
+        if seen.contains("related_key")
+            && !matches!(
+                self.relation_type.as_str(),
+                "belongs_to" | "belongs_to_many" | "morph_to"
+            )
+        {
+            return Err(syn::Error::new(
+                span,
+                "related_key is supported only on belongs_to, belongs_to_many or morph_to relations",
             ));
         }
         if self.cascade_soft_delete
@@ -257,6 +282,109 @@ impl Default for FieldAttributes {
             local_key: "id".to_string(),
             morph_name: String::new(),
             cascade_soft_delete: false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn relation_keys_that_a_relation_ignores_fail_compilation() {
+        use syn::parse_quote;
+
+        let inputs: [syn::DeriveInput; 4] = [
+            parse_quote! {
+                struct Post {
+                    id: i32,
+                    author_ref: i32,
+                    #[orm(belongs_to = "User", foreign_key = "author_ref", local_key = "legacy_id")]
+                    author: Option<User>,
+                }
+            },
+            parse_quote! {
+                struct Comment {
+                    id: i32,
+                    commentable_id: i32,
+                    commentable_type: String,
+                    #[orm(morph_to = "Post", morph_name = "commentable", local_key = "id")]
+                    post: Option<Post>,
+                }
+            },
+            parse_quote! {
+                struct User {
+                    id: i32,
+                    #[orm(has_many = "Post", related_key = "author_ref")]
+                    posts: Option<Vec<Post>>,
+                }
+            },
+            parse_quote! {
+                struct Post {
+                    id: i32,
+                    #[orm(morph_one = "Image", morph_name = "imageable", related_key = "r_id")]
+                    image: Option<Image>,
+                }
+            },
+        ];
+        for input in inputs {
+            let error = match crate::parser::parse(&input) {
+                Ok(_) => panic!("an ignored relation key must fail for `{}`", input.ident),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("_key"), "{error}");
+        }
+
+        let applicable: syn::DeriveInput = parse_quote! {
+            struct Post {
+                id: i32,
+                user_ref: i32,
+                #[orm(belongs_to = "User", foreign_key = "user_ref", related_key = "legacy_id")]
+                user: Option<User>,
+                #[orm(has_many = "Comment", foreign_key = "post_ref", local_key = "id")]
+                comments: Option<Vec<Comment>>,
+                #[orm(belongs_to_many = "Tag", pivot_table = "post_tags", local_key = "id", related_key = "tag_id")]
+                tags: Option<Vec<Tag>>,
+            }
+        };
+        assert!(crate::parser::parse(&applicable).is_ok());
+    }
+
+    #[test]
+    fn orm_and_sqlx_skip_combine_but_each_stays_unique() {
+        use syn::parse_quote;
+
+        let combined: syn::DeriveInput = parse_quote! {
+            struct Account {
+                id: i32,
+                #[orm(skip)]
+                #[sqlx(skip)]
+                session_cache: String,
+            }
+        };
+        let parsed =
+            crate::parser::parse(&combined).expect("orm(skip) with sqlx(skip) should parse");
+        assert!(
+            parsed
+                .skipped_fields
+                .iter()
+                .any(|field| field == "session_cache")
+        );
+        assert!(
+            !parsed
+                .normal_fields
+                .iter()
+                .any(|field| field == "session_cache")
+        );
+
+        for duplicate in [
+            parse_quote! { struct Account { id: i32, #[orm(skip, skip)] cache: String } },
+            parse_quote! { struct Account { id: i32, #[sqlx(skip)] #[sqlx(skip)] cache: String } },
+        ] {
+            let duplicate: syn::DeriveInput = duplicate;
+            let error = match crate::parser::parse(&duplicate) {
+                Ok(_) => panic!("a repeated skip option must fail"),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("duplicate"), "{error}");
         }
     }
 }

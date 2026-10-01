@@ -42,7 +42,9 @@ impl Server {
         let trusted_proxy = self.trusted_proxy_layer();
         let is_dev = environment.allows_development_tools();
         let mut app = self.router.into_axum();
-        app = super::dev_reload::mount(app, is_dev, std::env::var("RULLST_DEV_GENERATION").ok());
+        let generation = std::env::var("RULLST_DEV_GENERATION").ok();
+        let dev_reload = super::dev_reload::is_enabled(is_dev, generation.as_deref());
+        app = super::dev_reload::mount(app, is_dev, generation);
 
         app = app.layer(axum::middleware::from_fn(
             super::console::access_log_middleware,
@@ -72,8 +74,9 @@ impl Server {
                 ));
         }
 
-        // Exact GET/HEAD `/health` and `/ready` probes bypass both controls.
-        app = super::traffic::apply_traffic_controls(app, self.limiter, self.shield);
+        // Exact GET/HEAD `/health` and `/ready` probes (and the development
+        // reload poll, when mounted) bypass both controls.
+        app = super::traffic::apply_traffic_controls(app, self.limiter, self.shield, dev_reload);
 
         if let Some(lifecycle) = self.lifecycle {
             app = apply_lifecycle(app, lifecycle);

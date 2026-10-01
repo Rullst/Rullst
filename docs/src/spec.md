@@ -72,7 +72,7 @@ source of truth until individual migrations are reviewed and validated.
 
 | Crate | Responsibilities | Status & Capabilities |
 | :--- | :--- | :--- |
-| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. The process-local `RateLimiter` keys IPv6 peers per /64 and tracks at most 100,000 buckets, dropping refilled ones and evicting the least recently used beyond that cap. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. The Redis cache and queue drivers share one lazily opened multiplexed connection per driver and reconnect after a connection-level failure instead of opening a connection per operation. Execution starts on the first later worker poll and is at-least-once. The worker never cancels an in-flight claim; graceful shutdown requeues a job claimed after the request. Timeout and shutdown record a handler's own result when it finishes before cancellation takes effect, so only a cancelled handler is failed as timed out or requeued. Stalled-lease recovery runs at worker start and then every `min(stalled_after, 60 s)` over every processing lease of the shared SQLite table or Redis namespace, and in the unpublished v13 source workers claim with `QueueDriver::pop_with_lease` so SQLite and Redis store each claim's own `stalled_after` lease and recovery honours it; only claims without a lease need every sharing worker's `stalled_after` to exceed the longest `job_timeout` among them; SQLite and Redis count stalled leases per job and fail the job at its fifth stalled lease instead of requeuing it forever (`retry_failed_job` restarts the count; the unpublished v13 `try_with_max_stalled_leases` driver builders accept 1–1,000). Worker transitions are fenced by the claimed attempt number in SQLite and Redis, so a stale lease cannot complete, fail or requeue a recovered and re-claimed job; custom drivers inherit unfenced defaults, and SQLite and Redis `retry_failed_job` keep the counter so the fence holds across retries. A worker without a handler for a claimed job's name hands it back with a five-second delay in SQLite and Redis instead of failing it, until the claim's 720th attempt fails it (section 4.3); custom drivers without `requeue_attempt_after` still fail it. Redis retains at most 10,000 failed jobs and 10,000 dead letters by default (1–100,000 via `try_with_failure_retention`), evicting the oldest atomically, and implements bounded `list_all_jobs` (at most 1,000 rows), `retry_failed_job` and `purge_failed_jobs`. Worker and scheduler handles buffer at most 256 undrained errors; overflow is dropped, counted by `dropped_errors()` and logged as a `tracing` warning. `Server` drains the scheduler handle it owns, logging each task failure, and returns a scheduler error at shutdown only for a failed scheduler loop. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. `BroadcastManager` retains a channel only while it has a subscriber or an outstanding handle (publishing never creates one) and `PresenceTracker` counts connections per user and drops empty rooms, so neither registry grows with abandoned names. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not multipart streaming, a deep parser, remote persistence or a production malware engine.<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV`, then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly. The opt-in v13 `Server::trusted_proxies` stage resolves clients behind listed reverse-proxy networks outside that baseline (section 4.1).<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🟢 **`[Implemented / Bounded, unpublished v13]`**: Optional `storage-s3` private S3/R2 operations passed hosted source/package admission in PR #236; final release admission and actual owner-account interoperability remain outstanding. See section 4.4. |
+| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. The process-local `RateLimiter` keys IPv6 peers per /64 and tracks at most 100,000 buckets, dropping refilled ones and evicting the least recently used beyond that cap. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. The Redis cache and queue drivers share one lazily opened multiplexed connection per driver and reconnect after a connection-level failure instead of opening a connection per operation. Execution starts on the first later worker poll and is at-least-once. The worker never cancels an in-flight claim; graceful shutdown requeues a job claimed after the request. Timeout and shutdown record a handler's own result when it finishes before cancellation takes effect, so only a cancelled handler is failed as timed out or requeued. Stalled-lease recovery runs at worker start and then every `min(stalled_after, 60 s)` over every processing lease of the shared SQLite table or Redis namespace, and in the unpublished v13 source workers claim with `QueueDriver::pop_with_lease` so SQLite and Redis store each claim's own `stalled_after` lease and recovery honours it; only claims without a lease need every sharing worker's `stalled_after` to exceed the longest `job_timeout` among them; SQLite and Redis count stalled leases per job and fail the job at its fifth stalled lease instead of requeuing it forever (`retry_failed_job` restarts the count; the unpublished v13 `try_with_max_stalled_leases` driver builders accept 1–1,000). Worker transitions are fenced by the claimed attempt number in SQLite and Redis, so a stale lease cannot complete, fail or requeue a recovered and re-claimed job; custom drivers inherit unfenced defaults, and SQLite and Redis `retry_failed_job` keep the counter so the fence holds across retries. A worker without a handler for a claimed job's name hands it back with a five-second delay in SQLite and Redis instead of failing it, until the claim's 720th attempt fails it (section 4.3); custom drivers without `requeue_attempt_after` still fail it. Redis retains at most 10,000 failed jobs and 10,000 dead letters by default (1–100,000 via `try_with_failure_retention`), evicting the oldest atomically, and implements bounded `list_all_jobs` (at most 1,000 rows), `retry_failed_job` and `purge_failed_jobs`. Worker and scheduler handles buffer at most 256 undrained errors; overflow is dropped, counted by `dropped_errors()` and logged as a `tracing` warning. `Server` drains the scheduler handle it owns, logging each task failure, and returns a scheduler error at shutdown only for a failed scheduler loop. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. `BroadcastManager` retains a channel only while it has a subscriber or an outstanding handle (publishing never creates one) and `PresenceTracker` counts connections per user and drops empty rooms, so neither registry grows with abandoned names. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not multipart streaming, a deep parser, remote persistence or a production malware engine.<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV` (from the process, then from the `.env` that `Server` reads, which `RullstConfig::environment` also honours once a `Server` has started), then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly. The opt-in v13 `Server::trusted_proxies` stage resolves clients behind listed reverse-proxy networks outside that baseline (section 4.1).<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🟢 **`[Implemented / Bounded, unpublished v13]`**: Optional `storage-s3` private S3/R2 operations passed hosted source/package admission in PR #236; final release admission and actual owner-account interoperability remain outstanding. See section 4.4. |
 | **`rullst-orm`** | Active Record & Repository patterns, parameterized SQLx connection pool (PostgreSQL, MySQL/MariaDB, SQLite), typed Turso/libSQL primary profile, schema migrations, AES-256-GCM privacy, Scout search, typed pgvector/Qdrant queries, Redis native structures, and optional capability-oriented persistence adapters. | 🟢 **`[Implemented / Bounded]`**: Relational CRUD, eager loading, type-safe queries, migration runner, versioned field encryption, and connection-pool resilience for supported SQLx drivers/features. PostgreSQL, MySQL, MariaDB and SQLite have distinct executable matrix contracts, while MariaDB intentionally shares SQLx's MySQL protocol/backend.<br/>🟢 **`[Implemented / Bounded]`**: `#[derive(Orm)] #[orm(backend = "turso")]` supplies typed CRUD, equality filters, ordering, pagination/counts and generated/app-assigned keys through a process-wide `TursoOrm`. Its migrations are ordered, checksummed, drift-detecting and reversible. The blank/API CLI profile generates, compiles, migrates, reports status and rolls back locally, while the same typed contract passes against the official remote libSQL server. Unsupported SQLx-specific model behaviors fail during macro expansion rather than being ignored. Other SQLx-specific blueprints, ORM relations/hooks, schema auto-diff, seed generation and transparent embedded-replica synchronization are not part of this bounded Turso profile.<br/>🟢 **`[Implemented / Bounded]`**: The optional persistence boundary supplies portable document CRUD for MongoDB and SurrealDB, parameterized OLAP queries through in-process DuckDB, explicit parameterized Turso/libSQL SQL/transactions, and bounded read-only ISO GQL through SurrealDB. These capability APIs do not claim shared semantics or cross-store transactions. External adapters select deterministic offline behavior for empty or `mock_*` credentials where documented; SurrealDB uses its HTTP protocol rather than embedding the BSL-licensed SDK.<br/>🟢 **`[Implemented / Feature-gated]`**: `scout-http` provides bounded Meilisearch, Elasticsearch and Algolia indexing/search adapters plus deterministic mocks. Meilisearch has a digest-pinned live lifecycle; Elasticsearch/Algolia have protocol fixtures, not hosted-provider certification. Generated projections are process-local post-commit effects unless the application explicitly composes the transactional outbox.<br/>🟢 **`[Implemented / Feature-gated]`**: `pgvector` with `strict-postgres` supplies typed SQL vector helpers. `qdrant` supplies a separate bounded dense-vector collection/upsert/delete/cosine-query contract, while `redis` supplies namespaced Hash, Set and Sorted Set operations. All three have digest-pinned live lifecycles; RAG orchestration, authorization, production ANN tuning and Redis cluster/failover remain application/deployment boundaries.<br/>🟢 **`[Implemented / Benchmark Evidence]`**: A lockfile-pinned Criterion target compares five equivalent typed-SQLite shapes through one Rullst, Diesel and SeaORM connection under the same schema, seed and SQLite policy. It is per-run evidence, not a superiority, negligible-overhead, networked-database or full-application claim. |
 | **`rullst-auth`** | Argon2id password hashing, encrypted cookie sessions (AES-256-GCM), opt-in application JWTs, Passkey ceremony foundations, RBAC context guards. | 🟢 **`[Implemented / Bounded]`**: Non-blocking `spawn_blocking` Argon2id hashing, versioned expiring AES-256-GCM sessions, fail-closed `RequireRoleLayer`, compile-validated `#[rullst::require_role]`, named `Policy<User, Resource>` decisions, and a feature-gated application JWT policy with required versioned claims, bounded TTL/scopes, strong HS256 keys, `kid` rotation and revocation contracts that reject process-local state in production mode.<br/>🟢 **`[Implemented / Feature-gated]`**: `sqlite` supplies bounded shared local auth state. `SqliteJwtRevocationStore` persists JTI expiry and monotonic subject session versions through serialized transactions, stored quota/configuration and async verification. `SqlitePasskeyStore` persists validated public credentials, bounded device inventory/rename/revocation and optimistic signature-counter CAS; executable restart, replay, quota, corruption/configuration and two-instance contention evidence covers both stores. Authentication, role persistence, resource/tenant/device ownership, trusted file permissions/encryption, backup and multi-host replication remain application/deployment boundaries.<br/>🟠 **`[Partial]`**: Passkey registration/assertion validates the documented ES256/`none`-attestation scope; the compatible `PasskeyAuth` challenge state remains process-local. The optional `passkey-postgres` v13 candidate adds a separate shared manager with bound single-use PostgreSQL ceremonies; independent-process/database-restart and Chromium virtual-authenticator contracts pass, and PR #223 passed hosted workspace/archive source acceptance. Final release admission remains separate. The v13 opaque-session inventory/logout increment extends the recovery store with process/database evidence and passed hosted source/package admission in PR #236. Final release admission remains separate. Normative WebAuthn conformance or adoption of an audited full server library, refresh tokens and complete recovery/session UX remain required before a general stable claim. |
 | **`rullst-security`** | Explicit extended defense-in-depth layers: bounded RASP, authenticated Vault, Login Jail, Secure Headers, rate limiting, DLP and security telemetry. | 🟢 **`[Implemented / Bounded]`**: AES-256-GCM envelopes with rotation/AAD, bounded URI/header/body RASP heuristics, local abuse controls, CSWSH origin guard, OS-random TOTP with SVG enrollment QR, strict JSON transport inspection plus an explicitly mounted reusable JSON Schema 2020-12/OpenAPI 3.1-component policy, explicit log redaction, file-backed SRI hashes, and a versioned/bounded `LiveSecurityEvent` v1 dashboard envelope. `DurableSiemSpool` preserves the compatible unsigned local format, while `AuthenticatedSiemSpool` offers an explicit HMAC-SHA256-chained format with named active/historical keys, zeroized key material, sequence/predecessor validation and byte/record quotas. Restart, forgery, wrong/missing keys, reordering, interior deletion, quota, symlink and external-length-change paths fail closed. Whole valid-tail rollback requires a separately trusted checkpoint, and the caller owns directory/key trust, permissions, retention and exclusive-writer operation. Schema construction caps bytes/nodes/depth, accepts only local references, disables network/filesystem resolution and uses linear-time regexes; auth/ownership/domain rules and query/header/form validation remain application contracts. A deterministic Sentinel classifies three caller-supplied aggregate patterns and can issue HMAC-authenticated, subject-bound, expiring, one-shot process-local proof-of-work challenges; it is not AI attribution, automatic blocking or distributed replay protection. The CLI emits bounded fail-closed evidence and a CycloneDX 1.5 Cargo SBOM; it does not certify the application.<br/>🟢 **`[Implemented / Feature-gated]`**: `redis-rate-limit` provides namespaced atomic Redis fixed-window counters over one lazily opened multiplexed connection per limiter (shared by its clones and reopened after a connection-level failure), hashes client keys and exposes an explicit process-local offline mode that production can reject with `require_distributed()`.<br/>🟠 **`[Partial]`**: Recovery-code consumption must be persisted transactionally by the application. Real Redis cross-instance/eviction/failover evidence is still required. CSP nonce composition is shared, but Core and Security are not yet one canonical Server stack; WebSocket CSRF tickets/frame crypto, trusted rollback checkpoints, spool compaction/remote acknowledgement and external SIEM delivery are not implemented. |
@@ -1014,7 +1014,8 @@ on `Server` exempts only exact write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
 verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
 size is bounded and WAF/secure headers remain composed. Wildcards and weak
-secrets fail at construction. Applications own ingress limits, replay storage,
+secrets fail at construction; a static bearer token needs 32–200 printable
+ASCII bytes with at least 8 distinct values. Applications own ingress limits, replay storage,
 certificate trust and authorization; an unverified proxy header is not mTLS.
 
 The current [release audit](v12-release-audit.md) reopens earlier readiness
@@ -1424,7 +1425,10 @@ the same server-authoritative controls.
   request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
   and preserves it after a valid state-changing request. Server-rendered forms
   must echo that value in `_token`; HTMX/JavaScript may instead send it through
-  `X-CSRF-Token`. Nested application and `Server` baseline composition is
+  `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
+  place its `_token` field before any file input: the middleware reads at most
+  the first 64 KiB of that body to find the field, compares it in constant
+  time and then passes the whole body on unchanged. Nested application and `Server` baseline composition is
   request-idempotent: exactly one CSRF layer owns token validation/cookie
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
@@ -1668,14 +1672,37 @@ The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
 errors. Every SQLx model requires a persisted named `id` field. Explicit
 table/column/relation identifiers use the 1–64 byte portable ASCII identifier
-grammar, and declared hook, scope, policy, relation-model, tenant, soft-delete,
+grammar; the derived `<struct>s` default table name must match it only when
+no explicit `table` replaces it (for example for a non-ASCII struct name), and
+declared hook, scope, policy, relation-model, tenant, soft-delete,
 and embedding references are validated before code generation. A relation
 field accepts exactly one relation declaration; options that do not apply to
 that relation fail compilation. `belongs_to_many` requires `pivot_table` and
 defaults omitted owner/related pivot keys from the two model names.
 
+Generated SQL emits table and column identifiers unquoted, so the grammar
+check does not make a name portable: a word the target database reserves
+(for example `order`, `group`, `desc` or `user` on PostgreSQL, or `groups` and
+`rows` on MySQL 8, including a derived default such as `groups` for a `Group`
+struct) passes compilation and fails, or on PostgreSQL may even resolve to a
+built-in such as `current_user`, at runtime. The derive does not check
+reserved words; rename such a column or choose a non-reserved
+`#[orm(table = "...")]`.
+
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
-are compatible with generated ORM persistence in v12. `rename`, `try_from`,
+are compatible with generated ORM persistence in v12. `#[orm(skip)]` removes
+a field from generated SQL (writes, filters and projections) but not from the
+application's SQLx `FromRow`, which still reads the column from `SELECT *`. A
+field without a table column therefore needs `#[sqlx(skip)]` (alone or
+together with `#[orm(skip)]`, which are distinct options) or
+`#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
+generated writes must not touch. `json` and `json(nullable)` change only how
+that `FromRow` decodes the column: generated INSERT/UPDATE statements bind the
+field's own Rust type, not a `Json(...)` wrapper. Such a field therefore
+needs a type that SQLx itself encodes as the column's JSON type on the
+selected driver (for example `serde_json::Value` under a strict driver
+feature); with a type that only implements Serde the derive fails to compile
+at the generated bind. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
 decoded shape drift from generated SQL. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are
@@ -1707,9 +1734,17 @@ while portability and semantic review remain the model author's responsibility.
   before FROM would take the tenant or model-wide scope binding.
 * Generated builders start with the global row cap from
   `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
-  clamps to it and `unsafe_unlimited()` removes it for one query.
+  clamps to it and `unsafe_unlimited()` removes it for one query. An
+  `offset()` without a limit is emitted after `LIMIT -1` on SQLite and
+  `LIMIT 18446744073709551615` on MySQL/MariaDB, which accept `OFFSET` only
+  after `LIMIT`; PostgreSQL receives `OFFSET` alone.
   `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
   effective value in `PaginationResult::per_page` and `last_page`.
+* `count()` and the `paginate()` total count the rows `get()` would return
+  without its limit and offset. With `distinct()` or `group_by()` they count
+  that row query as a derived table (`SELECT COUNT(*) FROM (...) AS
+  __rullst_count`, keeping a DISTINCT select list); otherwise they count the
+  filtered rows directly.
 * `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
   subquery with portable `?` markers, even when its own `to_sql()` rendered
   PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
@@ -1749,6 +1784,9 @@ while portability and semantic review remain the model author's responsibility.
   reference under the reserved `__rullst_` prefix and emits no setter for a
   column named `save` or `save_with_tx`.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
+  The builder's encrypted, `SecretString` and skipped-column guards compare
+  the (unqualified) column name ignoring ASCII case, like unquoted SQL
+  identifiers, and `pluck_string` decrypts with the declared column name.
 * Generated secondary projections never carry `#[orm(encrypted)]` or
   `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
   `ModelCommittedEvent`/Redis `orm:events:*` payloads) omits `#[orm(hidden)]`
@@ -1773,10 +1811,25 @@ while portability and semantic review remain the model author's responsibility.
   `SecretString`/`Option<SecretString>` model fields are audited, excluded and
   change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
   on a model therefore emits the envelope; call `reveal_audited()` for
-  deliberate exposure.
+  deliberate exposure. Each write encrypts a `SecretString` column with a
+  fresh nonce, so generated builder filters, ordering and grouping on it
+  (including `where_<column>` helpers) fail with `Validation` instead of never
+  matching, and `pluck_string`/`pluck_i32` reject it rather than return
+  envelopes. An explicit `select` of the column remains available because the
+  codec decrypts it while decoding the model.
 
 ### 5.3. Generated Relationship Contract
 
+* An omitted `foreign_key` defaults to a lowercased model name plus `_id`:
+  `belongs_to` reads `<related model>_id` from the declaring model (`post_id`
+  for `belongs_to = "Post"`), while `has_one`/`has_many` and the owner side of
+  `belongs_to_many` match `<declaring model>_id` on the other table. Models
+  whose names are not single words usually need an explicit `foreign_key`.
+  `local_key` (this model's matched key, default `id`) applies to `has_one`,
+  `has_many`, `morph_one`, `morph_many` and `belongs_to_many`; `related_key`
+  (the related model's key) applies to `belongs_to`, `belongs_to_many` and
+  `morph_to`. Either option on another relation fails compilation instead of
+  being ignored.
 * SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
   typed `morph_to` targets. A polymorphic relation requires
   `morph_name = "..."` (`name` remains a legacy alias).
@@ -1795,12 +1848,19 @@ while portability and semantic review remain the model author's responsibility.
   `Validation` error if the cap would truncate it, so no parent silently
   receives an empty or partial relation. A constrained eager load that sets an
   explicit smaller `limit(n)` (applied to the whole batch) or
-  `unsafe_unlimited()` is honored as written.
+  `unsafe_unlimited()` is honored as written. A to-many eager load
+  (`has_many`, `morph_many`, `belongs_to_many`) assigns `Some(vec![])` to a
+  parent without related rows, so `None` always means "not loaded".
 * Every parent receives the related rows it shares with other parents (one
   `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
   parent rows). The shared value is cloned for every such parent but the last;
   when the related model does not implement `Clone`, a shared row fails the
   load with a `Validation` error instead of leaving a parent empty.
+* The relation's ownership predicate (foreign key, morph id/type pair or
+  pivot key) forms its own `AND` group before a lazy `<relation>_constrained`
+  or eager `with_<relation>_constrained` modifier runs, like the tenant and
+  model-wide scopes, so an `or_where` in the modifier cannot return another
+  parent's rows.
 
 ### 5.4. Tenant Scope Contract
 
@@ -1820,7 +1880,10 @@ while portability and semantic review remain the model author's responsibility.
   fallible `chunk_by_id(...)`/`chunk_by_id_with_tx(...)` for stable ascending
   keyset traversal over the generated `i32` primary key. This prevents deletes
   of processed rows from shifting later rows behind an offset; it is not a
-  database-server cursor or a universal cross-shard snapshot.
+  database-server cursor or a universal cross-shard snapshot. Without an
+  `order_by`, `chunk(...)`/`chunk_with_tx(...)` order their pages by
+  `<table>.id`, because SQL gives consecutive offset queries no stable order
+  (a PostgreSQL synchronized scan, for example, can start mid-table).
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
@@ -1926,6 +1989,11 @@ while portability and semantic review remain the model author's responsibility.
   savepoint rolls back instead of releasing, a managed transaction rolls back
   and returns an error instead of committing, and the ORM pool closes a
   connection returned while SQLx still reports an open transaction.
+* A generated `stream()` running on a managed or task-scoped transaction keeps
+  that transaction locked between rows until it is consumed or dropped. While
+  it is open, every other generated ORM call, `Orm::transaction` and
+  `Outbox::enqueue` on that transaction fails with `Validation` instead of
+  waiting for the lock (the query timeout does not cover that wait).
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
@@ -2023,14 +2091,21 @@ while portability and semantic review remain the model author's responsibility.
   reads. `Orm::init_redis_with_namespace(url, application_namespace)` is the
   recommended initializer when a Redis database is shared; the compatibility
   `init_redis(url)` initializer uses the literal namespace `default`.
-* Versioned SHA-256 cache keys bind the validated application namespace, an
-  opaque digest of the active tenant scope when present, table, generated SQL,
-  and typed bindings. Raw tenant identifiers are not emitted in keys.
+* Versioned SHA-256 cache keys bind the validated application namespace, a
+  partition, table, generated SQL, and typed bindings. A model with a
+  `tenant_column` partitions its entries by an opaque digest of the active
+  tenant scope (`global` outside `with_tenant`); any other model keeps one
+  `global` copy whatever tenant scope its reads run in. Raw tenant
+  identifiers are not emitted in keys.
 * Generated reads always bypass Redis inside explicit and task-scoped database
   transactions, so cached state cannot replace the transaction's own view.
   `remember(0)` is invalid. Outside transactions, explicitly requesting cache
   without initializing Redis fails closed as a configuration error; transport
-  failures and corrupt cached JSON fail open to the authoritative database.
+  failures and corrupt cached values fail open to the authoritative database,
+  whose result replaces the entry. Only a JSON array whose rows all decode and
+  decrypt is a hit: `null`, an object or a row whose encrypted or
+  `SecretString` field no longer decrypts (for example after key retirement)
+  is a miss, not an empty result or an error.
 * Cache writes occur only after a successful database read and retain encrypted
   model fields as ciphertext; `SecretString` fields are cached as serde
   envelopes and decrypted on a cache hit, and a result that cannot be
@@ -2038,10 +2113,14 @@ while portability and semantic review remain the model author's responsibility.
   generated cache write also records its key in a per-namespace/tenant/table
   Redis set in the same `EVAL` script, extending that set's TTL to the longest
   entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the tenant/table active at the write only after
-  commit (the tenant is captured when the callback is registered, so a
+  operations invalidate the table's `global` partition and, for a
+  tenant-scoped model, the partition of the tenant active at the write, only
+  after commit (the tenant is captured when the callback is registered, so a
   `with_tenant` scope that ended inside the transaction closure still has its
-  keys removed) by popping that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  keys removed). An `unscoped()` read of a tenant-scoped model inside another
+  tenant's `with_tenant` scope is cached in that scope's partition and is not
+  refreshed by other tenants' writes before its TTL. Invalidation pops each
+  index in batches of 500 and `UNLINK`s its keys (at most 10,000 per
   write); they never `SCAN` the Redis keyspace, so their cost does not grow
   with unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the
@@ -2124,7 +2203,10 @@ while portability and semantic review remain the model author's responsibility.
   the query match literally, and the query uses the provider bounds (1,024
   bytes, no control characters).
 * `#[orm(searchable)]` projects generated save/delete operations only after a
-  managed relational commit. The indexed document omits `#[orm(hidden)]`,
+  managed relational commit. The table name is the Scout index, so a
+  searchable model whose (explicit or default) table name does not start with
+  a lowercase ASCII letter followed by lowercase letters, digits or
+  underscores fails compilation instead of failing every projection. The indexed document omits `#[orm(hidden)]`,
   `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed
   query is not silently treated as an empty result, and `PostCommit` means a
   projection failed after the database mutation became durable.
@@ -2292,7 +2374,9 @@ public error. Rullst deliberately does not retry billing mutations: callers may
 retry a transient or rate-limited result only when that exact operation has a
 persisted provider-forwarded idempotency key and a reconciliation policy.
 Returned checkout locations are accepted only as bounded, absolute,
-credential-free HTTPS URLs. Stripe's documented opaque hosted-URL fragment is
+credential-free HTTPS URLs. Offline legacy checkout and portal fixtures use
+reserved `mock.<provider>.invalid` hosts and omit the customer email and
+return URL. Stripe's documented opaque hosted-URL fragment is
 preserved; other adapters reject fragments. Provider/account sandbox acceptance
 remains external evidence.
 
@@ -2579,7 +2663,9 @@ opt-in `quota-sql` feature supplies `SqlQuotaStore` for SQLite, PostgreSQL,
 MySQL and MariaDB. Its conditional counter update and unique event claim prevent
 concurrent members from exceeding the same limit. Exact retries return a replay
 grant without consuming or executing again; a key reused with different units
-or limit fails closed. `QuotaGate::execute` blocks the callback before an
+or limit fails closed. A replay proves only that the key is claimed, not that
+the guarded work finished: the claim may belong to an in-flight call that later
+fails and releases it, or to an abandoned call. `QuotaGate::execute` blocks the callback before an
 over-limit creation and compensates an ordinary callback error.
 
 The convenience gate cannot make two unrelated storage systems atomic. A
@@ -2594,8 +2680,11 @@ explicit application work.
 
 `Invoice::generate_html` remains the source-compatible escaped HTML renderer.
 Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
-accepts only bounded finite positive values with at most two decimal places,
-converts them to integer minor units, and requires the exact item sum.
+accepts only bounded finite positive values with no more decimals than the
+currency's ISO 4217 minor unit (none for JPY, three for KWD, two by default),
+converts them to integer minor units of that currency, and requires the exact
+item sum. HTML and PDF amounts use the same number of decimals, so the minor
+units match a provider receipt for zero- and three-decimal currencies too.
 
 The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its
 embedded Helvetica subset supports WinAnsi text; other scripts require a
@@ -2620,6 +2709,21 @@ sending.
   explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
   not evidence that the provider signs that protocol. Enabling live processing
   requires order/merchant/amount binding and provider reconciliation first.
+* PicPay's legacy `handle_webhook` checks the static `x-seller-token` in
+  constant time, but that token does not authenticate the body and PicPay's
+  callback carries only reference and authorization IDs. A live delivery with
+  the correct token returns `UnsupportedOperation` instead of trusting a body
+  `status`; enabling it requires an authoritative payment-status lookup bound to
+  the stored order, amount and currency. The explicit `mock_*` fixture never
+  uses the buyer's CPF as `customer_id`.
+* Coinbase Commerce `charge:confirmed`, `charge:resolved` and `charge:failed`
+  are one-off charge notifications, not subscription snapshots: the bounded
+  charge ID fills `subscription_id` and `ends_at` is always `None`, because the
+  charge's `expires_at` is its payment window. A confirmed or resolved charge
+  requires the application's `metadata.customer_id` and `metadata.plan_id`
+  instead of defaulting them. The adapter does not bind the settled
+  `pricing`/`payments` amount and currency; the host must match them to its own
+  order before granting access.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,
@@ -2704,6 +2808,13 @@ sending.
 * Timestamped protocols enforce a bounded freshness window. The default replay
   store is bounded and process-local and fails closed instead of evicting an
   unexpired proof when full.
+* Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body, and their
+  adapters check no delivery timestamp (provider retries can span hours or
+  days). An exact captured body therefore verifies again after its replay claim
+  expires (24 hours by default, at most 30 days) or, with the process-local
+  store, after a restart. Hosts must record the provider's event or
+  subscription state durably and reject stale or repeated transitions instead
+  of relying on the replay window alone.
 * The opt-in `webhook-sql` store shares bounded payload-digest or semantic-event
   claims across processes on SQLite, PostgreSQL, MySQL, and MariaDB. Its schema
   profile is immutable, claims serialize through one configuration lock, expiry
@@ -2809,11 +2920,11 @@ sending.
   never the duplicate-payment or ownership boundary.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
-* 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.
-* 🟢 **`[Implemented / Bounded]` Pinned Schema Validation:** Production profile `v1.01-20260209` and restricted profile `v1.01-20260727` carry immutable archive/file SHA-256 values. `NfseDpsSchemaValidator` reads only the expected bounded files and resolves imports from an in-memory catalogue; it never downloads schemas or follows instance hints.
+* 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only; it escapes every interpolated value, always declares homologation (`tpAmb` 2) with a `+00:00` `dhEmi`, uses the official `opSimpNac`/`regApTribSN` and `tribISSQN`/`tpRetISSQN` codes, and builds a zero-padded 45-character Id when none is supplied.
+* 🟢 **`[Implemented / Bounded]` Pinned Schema Validation:** Production profile `v1.01-20260209` and restricted profile `v1.01-20260727` carry immutable archive/file SHA-256 values. `NfseDpsSchemaValidator` reads only the expected bounded files and resolves imports from an in-memory catalogue; it never downloads schemas or follows instance hints. `validate` first requires the official `DPS` root with `versao="1.01"` and no `xsi:type`, because the compiled set would otherwise assess any global declaration (such as `ds:Signature`) or an `xsi:type` root as valid.
 * 🟢 **`[Implemented / Bounded]` Local XMLDSig and mTLS Preparation:** `sign_dps_xml` parses a protected PKCS#12 A1 container, rejects malformed/duplicate/already-signed envelopes and emits an enveloped inclusive-C14N 1.0 RSA-SHA256 signature over the unique `infDPS/@Id`. The matching certificate chain is embedded and tested with independent local verification. The same container can construct a rustls mTLS identity/client with HTTPS-only, no redirects, and bounded timeouts.
-* 🟢 **`[Implemented / Bounded]` Offline SEFIN Issuance Codec:** `NfseIssueRequest` accepts only one structurally bound and cryptographically valid embedded DPS XMLDSig, emits deterministic GZip/Base64 inside the exact `dpsXmlGZipB64` JSON object, and parses at most four MiB. HTTP 201 can become `Authorized` only when environment, submitted DPS ID, 50-digit access key, `infNFSe/@Id` and the embedded NFS-e XMLDSig agree; HTTP 400/403/500 become a separate bounded `Rejected` variant. Unknown fields, malformed JSON/XML/Base64/GZip, duplicate/confused IDs, invalid signatures and decompression amplification fail closed. Embedded-signature validity does not establish ICP-Brasil trust or emitter ownership.
-* 🟢 **`[Implemented / Bounded]` Local Fiscal Command Journal:** The `nfse` feature exposes a single-active-writer `FiscalCommandJournal` that accepts only a homologation/production command whose selected environment equals the signed `infDPS/tpAmb`. It synchronously records a prepared command before any caller-owned transport and then one bound authorized or rejected terminal result. Exact command/request/result replays do not append; key reuse with different material, invalid transitions, external file growth, quota exhaustion, wrong keys, symlinks, corruption and durability uncertainty fail closed. The append-only v1 file is bounded to 16 MiB and 4,096 events, uses a named 256-bit HMAC key and chains every frame to the prior tag. It stores the caller's opaque command ID, request/result digests, environment, state and bounded times, never the DPS/NFS-e XML, access key, certificate, response body or processing messages. `pending()` recovers minimized unresolved descriptors after restart. A serializable exact-tip checkpoint can detect valid-prefix truncation only when retained independently. The host owns a non-PII command namespace, key custody/rotation, a trusted directory, one active writer, secure storage of the actual request, checkpoint persistence, backup/retention, authority reconciliation and retry policy; this journal does not transmit, retry, prove cross-system exactly-once or establish tax authorization.
+* 🟢 **`[Implemented / Bounded]` Offline SEFIN Issuance Codec:** `NfseIssueRequest` accepts only one structurally bound and cryptographically valid embedded DPS XMLDSig, emits deterministic GZip/Base64 inside the exact `dpsXmlGZipB64` JSON object, and parses at most four MiB. The compressed bytes are deterministic only for one deflate backend of the GZip library, which Cargo feature unification can change between builds, so recovery rebuilds a request from its stored value with the v13 `try_from_dps_xml_gzip_base64`, keeping the journal's request digest stable. HTTP 201 can become `Authorized` only when environment, submitted DPS ID, 50-digit access key, `infNFSe/@Id` and the embedded NFS-e XMLDSig agree; HTTP 400/403/500 become a separate bounded `Rejected` variant. Inside the signed `infNFSe`, the embedded DPS must carry the submitted `infDPS/@Id` and the requested `tpAmb`, so the unsigned JSON `idDps`/`tipoAmbiente` alone cannot bind another invoice or environment. The authority's signature must be the single direct child of the `NFSe` root and is selected explicitly for verification; the only other signature accepted is the submitted DPS's own inside `infNFSe/DPS`, which the authority's digest covers and which is not verified again. Unknown fields, malformed JSON/XML/Base64/GZip, duplicate/confused IDs, invalid signatures and decompression amplification fail closed. Embedded-signature validity does not establish ICP-Brasil trust or emitter ownership.
+* 🟢 **`[Implemented / Bounded]` Local Fiscal Command Journal:** The `nfse` feature exposes a single-active-writer `FiscalCommandJournal` that accepts only a homologation/production command whose selected environment equals the signed `infDPS/tpAmb`. It synchronously records a prepared command before any caller-owned transport and then one bound authorized or rejected terminal result. An HTTP 500 answer is indeterminate: recording it returns `IndeterminateResponse` and the command stays in `pending()`. A recorded rejection is final, so a rejection that answers a retransmission after an uncertain outcome (for example a duplicate-DPS error) must be reconciled by consultation before it is recorded. Exact command/request/result replays do not append; key reuse with different material, invalid transitions, external file growth, quota exhaustion, wrong keys, symlinks, corruption and durability uncertainty fail closed. A preparation is refused unless the remaining records and bytes can still hold a worst-case terminal event for it and for every other pending command. Creating a journal syncs the new file and, on Unix, its parent directory. A crash during an append can leave an unacknowledged final frame without its terminator; `try_open` then fails closed with `CorruptRecord`, and restoring a backup or truncating after the last complete frame is an audited operator action, never automatic. The append-only v1 file is bounded to 16 MiB and 4,096 events, uses a named 256-bit HMAC key and chains every frame to the prior tag. It stores the caller's opaque command ID, request/result digests, environment, state and bounded times, never the DPS/NFS-e XML, access key, certificate, response body or processing messages. `pending()` recovers minimized unresolved descriptors after restart. A serializable exact-tip checkpoint can detect valid-prefix truncation only when retained independently. The v13 `verify_checkpoint_prefix` accepts a retained checkpoint that is an authenticated prefix of the current chain and returns how many events follow it, so a crash between a synchronized append and persisting its checkpoint is distinguishable from truncation or substitution. The host owns a non-PII command namespace, key custody/rotation, a trusted directory, one active writer, secure storage of the actual request, checkpoint persistence, backup/retention, authority reconciliation and retry policy; this journal does not transmit, retry, prove cross-system exactly-once or establish tax authorization.
 * 🟡 **`[Simulado]` Offline Mock Environment:** `NfseEnvironment::Mock` produces deterministic test fixtures for local sandboxing.
 * 🔵 **`[Roadmap / External Evidence]` Official SEFIN Homologation & Production:** `Homologation` and `Production` validate credentials and then return `FiscalError::Unsupported` without network I/O. Enabling transmission requires emitter-certificate/ICP-Brasil lifecycle checks, deployment of the local journal plus authoritative request/outbox and reconciliation storage, retained protocol fixtures, real restricted-environment tests with an authorized contributor and municipality, independent review, and successful official homologation.
 
@@ -2830,7 +2941,7 @@ sending.
 * **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
-* **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
+* **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Header values are decoded lossily in RASP and Core's WAF, so an obs-text byte (0x80-0xFF) that hyper accepts cannot hide the rest of a value. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
 * **Login Guard Tarpit:** `record_login_failure` returns progressive delay
   decisions and `record_login_failure_and_wait` applies them asynchronously;
   both share bounded, temporary in-memory jails keyed by a hashed identity.

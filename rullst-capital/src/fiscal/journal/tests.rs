@@ -24,6 +24,9 @@ const DPS_ID: &str = "DPS355030821122233300018100001000000000000101";
 const SECOND_DPS_ID: &str = "DPS355030821122233300018100001000000000000102";
 const ACCESS_KEY: &str = "35503082112223330001810000100000000000010112345678";
 
+#[path = "checkpoint_tests.rs"]
+mod checkpoint;
+
 struct TempJournal(PathBuf);
 
 impl TempJournal {
@@ -74,7 +77,8 @@ fn authorization() -> NfseIssueResponse {
         let id = format!("NFS{ACCESS_KEY}");
         sign_fixture(
             &format!(
-                "<NFSe xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infNFSe Id=\"{id}\"/></NFSe>"
+                "<NFSe xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infNFSe Id=\"{id}\">{}</infNFSe></NFSe>",
+                signed_dps(DPS_ID)
             ),
             &id,
         )
@@ -106,6 +110,19 @@ fn rejection() -> NfseIssueResponse {
     request()
         .parse_response(400, NfseEnvironment::Homologation, &body)
         .expect("rejection")
+}
+
+fn server_error() -> NfseIssueResponse {
+    let body = serde_json::to_vec(&json!({
+        "tipoAmbiente": 2,
+        "versaoAplicativo": "SefinNacional_1.0",
+        "dataHoraProcessamento": "2026-08-30T21:47:12-03:00",
+        "erros": [{"Codigo": "E999", "Descricao": "Internal error fixture"}]
+    }))
+    .expect("server error JSON");
+    request()
+        .parse_response(500, NfseEnvironment::Homologation, &body)
+        .expect("server error")
 }
 
 fn signed_dps(id: &str) -> &'static str {
@@ -260,7 +277,7 @@ fn pending_recovery_and_conflicting_transitions_fail_closed() {
             request(),
             30
         ),
-        Err(FiscalJournalError::ResponseMismatch)
+        Err(FiscalJournalError::EnvironmentMismatch)
     );
     assert_eq!(
         journal.record_response_at("missing", request(), &rejection(), 30),
@@ -268,7 +285,7 @@ fn pending_recovery_and_conflicting_transitions_fail_closed() {
     );
     assert_eq!(
         journal.record_response_at("invoice:one", request(), &rejection(), 9),
-        Err(FiscalJournalError::ResponseMismatch)
+        Err(FiscalJournalError::ClockRegression)
     );
 
     journal
@@ -334,28 +351,94 @@ fn authentication_tampering_capacity_and_competing_writers_are_explicit() {
         MIN_FISCAL_JOURNAL_BYTES,
     )
     .expect("bounded journal");
-    bounded
-        .prepare_at(
+    // 512 bytes hold a header and a preparation but not its terminal result,
+    // so the preparation is refused before anything could be transmitted.
+    assert_eq!(
+        bounded.prepare_at(
             "invoice:capacity",
             NfseEnvironment::Homologation,
             request(),
             1,
-        )
-        .expect("first bounded record");
-    assert_eq!(
-        bounded.prepare_at(
-            "invoice:overflow",
-            NfseEnvironment::Homologation,
-            request(),
-            2,
         ),
         Err(FiscalJournalError::CapacityExceeded)
     );
+    assert_eq!(bounded.snapshot().expect("snapshot").records(), 0);
     assert!(FiscalJournalKey::try_new("bad:key", [1_u8; 32]).is_err());
     assert!(FiscalJournalKey::try_new("key", [1_u8; 31]).is_err());
     assert_eq!(
         bounded.status("contains whitespace"),
         Err(FiscalJournalError::InvalidCommandId)
+    );
+}
+
+#[test]
+fn preparation_reserves_room_for_every_pending_terminal_result() {
+    let file = TempJournal::new("reservation");
+    let journal = FiscalCommandJournal::try_open_with_max_bytes(file.path(), key(16), 1_024)
+        .expect("bounded journal");
+    journal
+        .prepare_at("invoice:first", NfseEnvironment::Homologation, request(), 1)
+        .expect("first preparation with its terminal reserve");
+    // A second preparation would leave no room for both terminal results.
+    assert_eq!(
+        journal.prepare_at(
+            "invoice:second",
+            NfseEnvironment::Homologation,
+            request(),
+            2
+        ),
+        Err(FiscalJournalError::CapacityExceeded)
+    );
+    let receipt = journal
+        .record_response_at("invoice:first", request(), &authorization(), 3)
+        .expect("reserved terminal result fits");
+    assert_eq!(receipt.status(), FiscalCommandStatus::Authorized);
+    assert!(journal.snapshot().expect("snapshot").bytes() <= 1_024);
+}
+
+#[test]
+fn server_error_keeps_the_command_pending_for_reconciliation() {
+    let file = TempJournal::new("indeterminate");
+    let journal = FiscalCommandJournal::try_open(file.path(), key(15)).expect("open journal");
+    journal
+        .prepare_at("invoice:500", NfseEnvironment::Homologation, request(), 10)
+        .expect("prepare");
+    assert_eq!(
+        journal.record_response_at("invoice:500", request(), &server_error(), 20),
+        Err(FiscalJournalError::IndeterminateResponse)
+    );
+    assert_eq!(journal.pending().expect("pending").len(), 1);
+    // Reconciliation later finds the NFS-e that the lost answer carried.
+    let receipt = journal
+        .record_response_at("invoice:500", request(), &authorization(), 30)
+        .expect("authorization after an indeterminate answer");
+    assert_eq!(receipt.status(), FiscalCommandStatus::Authorized);
+    assert_eq!(journal.snapshot().expect("snapshot").records(), 2);
+}
+
+#[test]
+fn backward_wall_clock_step_is_clamped_not_a_response_mismatch() {
+    let file = TempJournal::new("clock");
+    let journal = FiscalCommandJournal::try_open(file.path(), key(14)).expect("open journal");
+    // Preparation observed one day ahead of the current wall clock.
+    let prepared_at = unix_now_ms().expect("clock") + 86_400_000;
+    journal
+        .prepare_at(
+            "invoice:clock",
+            NfseEnvironment::Homologation,
+            request(),
+            prepared_at,
+        )
+        .expect("prepare");
+    let receipt = journal
+        .record_response("invoice:clock", request(), &authorization())
+        .expect("system-time response is clamped to the preparation time");
+    assert_eq!(receipt.status(), FiscalCommandStatus::Authorized);
+    drop(journal);
+    let reopened = FiscalCommandJournal::try_open(file.path(), key(14)).expect("reopen");
+    assert_eq!(
+        reopened.status("invoice:clock").expect("status"),
+        Some(FiscalCommandStatus::Authorized)
     );
 }
 

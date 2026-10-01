@@ -38,8 +38,13 @@ telemetry.
 
 The generated server bootstrap loads `.env` before applying its runtime policy.
 Standalone utilities must load a dotenv file themselves or receive exported
-process variables. Environment precedence is exact: `RULLST_ENV`, legacy
-`APP_ENV`, then `[app].env` in `Rullst.toml`. Unknown values are configuration
+process variables. Environment precedence is exact: the process `RULLST_ENV`,
+legacy `APP_ENV`, then `RULLST_ENV` or `APP_ENV` in `.env`, then `[app].env` in
+`Rullst.toml`. `Server` never exports `.env` into the process environment;
+`RullstConfig::environment()` includes the `.env` step once a `Server` has
+started in the process, so it reports the environment the server enforces.
+Before that, and in standalone utilities, it reads only the process variables
+and `[app].env`, as `Environment::detect` always does. Unknown values are configuration
 errors rather than silently becoming development. `rullst-auth` cookie helpers
 also consult `.env` below the process variables and skip reading it when either
 is set; a malformed `.env` yields a fixed error that never quotes file content.
@@ -65,7 +70,9 @@ coep = "require-corp"
 ```
 
 Wildcard, path-bearing, credential-bearing, queried or duplicate CORS origins
-are configuration errors. When credentials are enabled, Core still grants them
+are configuration errors, as are spellings a browser never sends: an uppercase
+scheme or host, or an explicit default port (`:443` for HTTPS, `:80` for HTTP).
+CORS compares the configured origin with the `Origin` header byte for byte. When credentials are enabled, Core still grants them
 only to an origin in the exact allowlist. Test the final policy behind the real
 TLS proxy because an intermediary can change headers and cookie behavior.
 

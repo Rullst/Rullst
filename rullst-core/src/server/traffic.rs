@@ -11,17 +11,24 @@ use axum::middleware::Next;
 /// admission: a saturated database or an exhausted bucket must not make the
 /// process-only liveness probe fail and trigger orchestrator restarts. The
 /// limiter stays inside the shield, preserving the previous layer order.
+/// When `dev_reload_mounted`, the development reload script and its
+/// generation poll (every open page polls twice a second) bypass both too.
 pub(crate) fn apply_traffic_controls(
     mut router: axum::Router,
     limiter: Option<RateLimiter>,
     shield: Option<TrafficShield>,
+    dev_reload_mounted: bool,
 ) -> axum::Router {
+    let exempt = move |request: &Request| {
+        is_health_probe(request)
+            || (dev_reload_mounted && super::dev_reload::is_reload_request(request))
+    };
     if let Some(limiter) = limiter {
         router = router.layer(axum::middleware::from_fn(
             move |request: Request, next: Next| {
                 let limiter = limiter.clone();
                 async move {
-                    if is_health_probe(&request) {
+                    if exempt(&request) {
                         next.run(request).await
                     } else {
                         crate::resilience::rate_limit_middleware(limiter, request, next).await
@@ -35,7 +42,7 @@ pub(crate) fn apply_traffic_controls(
             move |request: Request, next: Next| {
                 let shield = shield.clone();
                 async move {
-                    if is_health_probe(&request) {
+                    if exempt(&request) {
                         next.run(request).await
                     } else {
                         crate::resilience::backpressure_middleware(shield, request, next).await
@@ -85,7 +92,7 @@ mod tests {
                 .with_db_probe(false)
                 .with_max_active_requests(0),
         );
-        let router = apply_traffic_controls(application(), None, Some(shield.clone()));
+        let router = apply_traffic_controls(application(), None, Some(shield.clone()), false);
 
         assert_eq!(
             status(&router, Method::GET, "/work").await,
@@ -117,7 +124,7 @@ mod tests {
     #[tokio::test]
     async fn an_exhausted_rate_limit_bucket_still_admits_health_probes() {
         let limiter = RateLimiter::new(RateLimitConfig::per_hour(1.0));
-        let router = apply_traffic_controls(application(), Some(limiter), None);
+        let router = apply_traffic_controls(application(), Some(limiter), None, false);
 
         assert_eq!(status(&router, Method::GET, "/work").await, StatusCode::OK);
         assert_eq!(
@@ -131,5 +138,48 @@ mod tests {
             );
             assert_eq!(status(&router, Method::GET, "/ready").await, StatusCode::OK);
         }
+    }
+
+    #[tokio::test]
+    async fn development_reload_polls_bypass_the_limiter_only_when_mounted() {
+        let application = || {
+            application()
+                .route(
+                    "/_rullst/dev-generation",
+                    axum::routing::get(|| async { "generation" }),
+                )
+                .route(
+                    "/_rullst/dev-reload.js",
+                    axum::routing::get(|| async { "script" }),
+                )
+        };
+        let limiter = RateLimiter::new(RateLimitConfig::per_hour(1.0));
+        let mounted = apply_traffic_controls(application(), Some(limiter), None, true);
+        assert_eq!(status(&mounted, Method::GET, "/work").await, StatusCode::OK);
+        for _ in 0..3 {
+            assert_eq!(
+                status(&mounted, Method::GET, "/_rullst/dev-generation").await,
+                StatusCode::OK
+            );
+            assert_eq!(
+                status(&mounted, Method::GET, "/_rullst/dev-reload.js").await,
+                StatusCode::OK
+            );
+        }
+        assert_eq!(
+            status(&mounted, Method::GET, "/work").await,
+            StatusCode::TOO_MANY_REQUESTS
+        );
+
+        let limiter = RateLimiter::new(RateLimitConfig::per_hour(1.0));
+        let unmounted = apply_traffic_controls(application(), Some(limiter), None, false);
+        assert_eq!(
+            status(&unmounted, Method::GET, "/_rullst/dev-generation").await,
+            StatusCode::OK
+        );
+        assert_eq!(
+            status(&unmounted, Method::GET, "/_rullst/dev-generation").await,
+            StatusCode::TOO_MANY_REQUESTS
+        );
     }
 }

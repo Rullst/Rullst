@@ -57,11 +57,15 @@ impl Invoice {
     }
 
     /// Generates an escaped HTML string for the invoice that can be emailed or rendered.
+    ///
+    /// Amounts use the currency's ISO 4217 minor-unit decimals (for example
+    /// none for JPY and three for KWD).
     pub fn generate_html(&self) -> String {
+        let decimals = crate::currency::minor_unit_exponent(&self.currency) as usize;
         let mut items_html = String::new();
         for item in &self.items {
             items_html.push_str(&format!(
-                "<tr><td style='padding: 8px; border-bottom: 1px solid #ddd;'>{}</td><td style='padding: 8px; border-bottom: 1px solid #ddd; text-align: right;'>{:.2} {}</td></tr>",
+                "<tr><td style='padding: 8px; border-bottom: 1px solid #ddd;'>{}</td><td style='padding: 8px; border-bottom: 1px solid #ddd; text-align: right;'>{:.decimals$} {}</td></tr>",
                 escape_html(&item.description),
                 item.amount,
                 escape_html(&self.currency)
@@ -99,7 +103,7 @@ impl Invoice {
                         <tfoot>
                             <tr>
                                 <td style="padding: 8px; font-weight: bold;">Total</td>
-                                <td style="padding: 8px; font-weight: bold; text-align: right;">{:.2} {}</td>
+                                <td style="padding: 8px; font-weight: bold; text-align: right;">{:.decimals$} {}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -127,6 +131,7 @@ impl Invoice {
                 "currency must be exactly three ASCII letters",
             ));
         }
+        let exponent = crate::currency::minor_unit_exponent(&self.currency);
         if self.items.is_empty() || self.items.len() > MAX_INVOICE_ITEMS {
             return Err(invalid_invoice(format!(
                 "invoice must contain 1 to {MAX_INVOICE_ITEMS} items"
@@ -142,14 +147,14 @@ impl Invoice {
                 &item.description,
                 MAX_INVOICE_TEXT_LEN,
             )?;
-            let amount_minor = money_to_minor(item.amount)?;
+            let amount_minor = money_to_minor(item.amount, exponent)?;
             calculated_total = calculated_total.checked_add(amount_minor).ok_or_else(|| {
                 invalid_invoice("invoice item sum overflowed the supported amount")
             })?;
             #[cfg(feature = "invoice-pdf")]
             item_amounts_minor.push(amount_minor);
         }
-        let total_minor = money_to_minor(self.total)?;
+        let total_minor = money_to_minor(self.total, exponent)?;
         if calculated_total != total_minor {
             return Err(invalid_invoice(
                 "invoice total must exactly equal the sum of its items in minor units",
@@ -202,17 +207,19 @@ impl Invoice {
     }
 }
 
-fn money_to_minor(value: f64) -> Result<u64, crate::error::CapitalError> {
+// Scales by the currency's ISO 4217 exponent so the result is in the same
+// minor units as a provider receipt (whole yen for JPY, thousandths of a dinar for KWD).
+fn money_to_minor(value: f64, exponent: u32) -> Result<u64, crate::error::CapitalError> {
     if !value.is_finite() || value <= 0.0 {
         return Err(invalid_invoice(
             "amounts must be finite and greater than zero",
         ));
     }
-    let scaled = value * 100.0;
+    let scaled = value * 10_f64.powi(exponent as i32);
     let rounded = scaled.round();
     if (scaled - rounded).abs() > 1e-7 || rounded > MAX_INVOICE_AMOUNT_MINOR as f64 {
         return Err(invalid_invoice(
-            "amounts must fit 1 to 99,999,999 minor units with at most two decimal places",
+            "amounts must fit 1 to 99,999,999 minor units with no more decimal places than the currency's ISO 4217 minor unit",
         ));
     }
     Ok(rounded as u64)
@@ -357,6 +364,33 @@ mod tests {
                 Err(crate::error::CapitalError::InvalidInvoice(_))
             ));
         }
+    }
+
+    #[test]
+    fn minor_units_follow_the_currency_exponent() {
+        let single = |amount: f64, currency: &str| Invoice {
+            items: vec![InvoiceItem {
+                description: "Plan".to_string(),
+                amount,
+            }],
+            total: amount,
+            currency: currency.to_string(),
+            ..valid_invoice()
+        };
+        assert_eq!(single(2_500.0, "JPY").total_minor().unwrap(), 2_500);
+        assert_eq!(single(12.34, "KWD").total_minor().unwrap(), 12_340);
+        assert_eq!(single(12.345, "kwd").total_minor().unwrap(), 12_345);
+        assert!(single(2_500.5, "JPY").validate().is_err());
+        assert!(single(12.3456, "KWD").validate().is_err());
+
+        let html = single(2_500.0, "JPY").generate_html();
+        assert!(html.contains(">2500 JPY<"));
+        assert!(!html.contains("2500.00"));
+        assert!(
+            single(12.345, "KWD")
+                .generate_html()
+                .contains(">12.345 KWD<")
+        );
     }
 }
 

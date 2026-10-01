@@ -8,8 +8,8 @@ use oxixml_schema::{ResolvedSchema, SchemaResolver, SchemaSet};
 use ring::digest::{SHA256, digest};
 
 use crate::fiscal::contract::{
-    MAX_DPS_XML_BYTES, NFSE_PRODUCTION_V1_01_20260209, NFSE_RESTRICTED_V1_01_20260727,
-    NfseArtifactManifest,
+    MAX_DPS_XML_BYTES, NFSE_NAMESPACE, NFSE_PRODUCTION_V1_01_20260209,
+    NFSE_RESTRICTED_V1_01_20260727, NfseArtifactManifest,
 };
 use crate::fiscal::models::FiscalError;
 
@@ -18,6 +18,7 @@ const PRODUCTION_SIMPLE_TYPES_SHA256: &str =
     "830ea116c34d7310699e34b214b7214a65f7e5d3b1f09aeaa702f7e3f4283b17";
 const OFFICIAL_SERIES_PATTERN: &str = "value=\"^0{0,4}\\d{1,5}$\"";
 const XSD_COMPATIBLE_SERIES_PATTERN: &str = "value=\"0{0,4}\\d{1,5}\"";
+const XML_SCHEMA_INSTANCE_NAMESPACE: &str = "http://www.w3.org/2001/XMLSchema-instance";
 
 const PRODUCTION_FILES: [(&str, &str); 10] = [
     (
@@ -152,6 +153,10 @@ impl NfseDpsSchemaValidator {
     }
 
     /// Validates a bounded DPS XML without following instance-provided hints.
+    ///
+    /// The root must be the official `DPS` element with `versao="1.01"` and no
+    /// `xsi:type`; otherwise any global declaration in the schema set (such as
+    /// `ds:Signature`) or an `xsi:type` root would be assessed as valid.
     pub fn validate(&self, xml: &str) -> Result<(), FiscalError> {
         if xml.is_empty() || xml.len() > MAX_DPS_XML_BYTES {
             return Err(FiscalError::InvalidInput {
@@ -165,6 +170,7 @@ impl NfseDpsSchemaValidator {
                 reason: "DOCTYPE is forbidden in fiscal XML".to_string(),
             });
         }
+        validate_dps_root(xml)?;
         let outcome = self.schema.validate_str(xml);
         if outcome.valid {
             return Ok(());
@@ -179,9 +185,31 @@ impl NfseDpsSchemaValidator {
         Err(FiscalError::XmlValidation {
             code: bounded(error.code(), 96),
             path: bounded(error.path(), 256),
-            message: bounded(error.message(), 512),
+            message: bounded(&redact_quoted_values(error.message()), 512),
         })
     }
+}
+
+fn validate_dps_root(xml: &str) -> Result<(), FiscalError> {
+    let document = roxmltree::Document::parse(xml).map_err(|_| FiscalError::InvalidInput {
+        field: "dps.xml",
+        reason: "document is not well-formed XML".to_string(),
+    })?;
+    let root = document.root_element();
+    if root.tag_name().name() != "DPS"
+        || root.tag_name().namespace() != Some(NFSE_NAMESPACE)
+        || root.attribute("versao") != Some("1.01")
+        || root
+            .attribute((XML_SCHEMA_INSTANCE_NAMESPACE, "type"))
+            .is_some()
+    {
+        return Err(FiscalError::InvalidInput {
+            field: "dps.xml",
+            reason: "expected a DPS 1.01 root in the official NFS-e namespace without xsi:type"
+                .to_string(),
+        });
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -277,6 +305,22 @@ fn schema_assembly_error(error: oxixml_schema::SchemaError) -> FiscalError {
         bounded(error.code(), 96),
         bounded(error.message(), 512)
     ))
+}
+
+// oxixml quotes offending instance values in backticks, for example
+// "`529.982.247-25` does not match the pattern ...". Those can be a taker's
+// CPF, phone or address, so every quoted span is replaced; the constraint
+// code and element path still identify the failure.
+fn redact_quoted_values(message: &str) -> String {
+    let mut redacted = String::with_capacity(message.len());
+    for (index, part) in message.split('`').enumerate() {
+        if index % 2 == 0 {
+            redacted.push_str(part);
+        } else {
+            redacted.push_str("`[redacted]`");
+        }
+    }
+    redacted
 }
 
 fn bounded(value: &str, maximum: usize) -> String {

@@ -196,6 +196,20 @@ async fn close_and_remove(store: SqlQuotaStore, path: &std::path::Path) {
 
 #[cfg(feature = "quota-sql")]
 #[tokio::test]
+async fn in_memory_sqlite_keeps_its_only_connection() {
+    let store = SqlQuotaStore::connect("sqlite::memory:")
+        .await
+        .expect("SQLite quota store");
+    let options = store.pool().options();
+    assert_eq!(options.get_max_connections(), 1);
+    assert_eq!(options.get_min_connections(), 1);
+    assert_eq!(options.get_idle_timeout(), None);
+    assert_eq!(options.get_max_lifetime(), None);
+    store.pool().close().await;
+}
+
+#[cfg(feature = "quota-sql")]
+#[tokio::test]
 async fn sqlite_store_persists_replay_conflict_and_exact_release() {
     let (store, path) = sqlite_store("lifecycle").await;
     let workspace = subject("sql-workspace");

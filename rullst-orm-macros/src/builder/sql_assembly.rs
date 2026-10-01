@@ -77,6 +77,14 @@ pub fn generate_sql_assembly_methods(
             }
         }
 
+        /// Freezes the filters added so far, such as a relation's ownership
+        /// predicate, into their own AND group before a caller's modifier runs.
+        #[doc(hidden)]
+        pub fn __rullst_freeze_scope(mut self) -> Self {
+            self.freeze_scope();
+            self
+        }
+
         fn push_wheres(&self, sql: &mut String) -> bool {
             if self.scope_wheres.is_empty() && self.wheres.is_empty() {
                 return true;
@@ -144,6 +152,14 @@ pub fn generate_sql_assembly_methods(
             if let Some(limit) = self.limit {
                 sql.push_str(" LIMIT ");
                 sql.push_str(&limit.to_string());
+            } else if self.offset.is_some() {
+                // SQLite and MySQL/MariaDB accept OFFSET only after LIMIT, so an
+                // uncapped offset query names each dialect's "no limit" value.
+                match rullst_orm::Orm::driver() {
+                    Ok("sqlite") => sql.push_str(" LIMIT -1"),
+                    Ok("mysql") => sql.push_str(" LIMIT 18446744073709551615"),
+                    Ok(_) | Err(_) => {}
+                }
             }
             if let Some(offset) = self.offset {
                 sql.push_str(" OFFSET ");
@@ -187,15 +203,50 @@ pub fn generate_sql_assembly_methods(
             let mut sql = String::with_capacity(estimated_capacity);
 
             self.push_ctes(&mut sql);
-            sql.push_str("SELECT COUNT(*)");
+            // DISTINCT and GROUP BY decide which rows the query returns, so
+            // their count wraps that row query instead of counting table rows.
+            let wrapped = self.__rullst_count_wraps_rows();
+            if !wrapped {
+                sql.push_str("SELECT COUNT(*)");
+            } else if self.is_distinct {
+                sql.push_str("SELECT COUNT(*) FROM (");
+                self.push_select(&mut sql);
+            } else {
+                sql.push_str("SELECT COUNT(*) FROM (SELECT 1");
+            }
             self.push_from(&mut sql);
             self.push_joins(&mut sql);
             let first_where = self.push_wheres(&mut sql);
             self.push_soft_deletes(&mut sql, first_where);
             self.push_group_by(&mut sql);
             self.push_havings(&mut sql);
+            if wrapped {
+                sql.push_str(") AS __rullst_count");
+            }
 
             self.format_postgres(&sql)
+        }
+
+        fn __rullst_count_wraps_rows(&self) -> bool {
+            self.is_distinct || self.group_by.is_some()
+        }
+
+        /// Bindings of `to_count_sql`: a wrapped DISTINCT count keeps the
+        /// select list, including a `select_raw_bindings` fragment's values.
+        fn __rullst_count_query_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+            let select_raw: &[rullst_orm::RullstValue] = if self.is_distinct {
+                self.__rullst_select_raw_bindings()
+            } else {
+                &[]
+            };
+            self.cte_bindings
+                .iter()
+                .chain(select_raw.iter())
+                .chain(self.join_bindings.iter())
+                .chain(self.scope_bindings.iter())
+                .chain(self.bindings.iter())
+                .cloned()
+                .collect()
         }
 
         pub fn to_pluck_sql(&self, column: &str) -> String {

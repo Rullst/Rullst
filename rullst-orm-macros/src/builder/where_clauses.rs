@@ -76,7 +76,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
 
         pub fn select(mut self, columns: &[&str]) -> Self {
             for col in columns {
-                self.reject_skipped_column(col);
+                self.__rullst_reject_selected_column(col);
                 if let Err(e) = rullst_orm::schema::validate_identifier(col) {
                     self.errors.push(rullst_orm::Error::Validation(format!("select() — invalid column identifier: {}", e)));
                 }
@@ -87,7 +87,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
 
         pub fn select_cols(mut self, cols: &[#column_enum_name]) -> Self {
             for col in cols {
-                self.reject_skipped_column(col.as_str());
+                self.__rullst_reject_selected_column(col.as_str());
             }
             let s = cols.iter().map(|c| c.as_str()).collect::<Vec<_>>().join(", ");
             self.selects = Some(s);

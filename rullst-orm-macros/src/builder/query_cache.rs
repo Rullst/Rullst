@@ -1,19 +1,27 @@
 // src/builder/query_cache.rs — Generated Redis cache-aside fragments.
 
+use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-pub fn generate_cache_read(
-    name: &syn::Ident,
-    table_name: &str,
-    decrypt_results: &TokenStream,
-) -> TokenStream {
+pub fn generate_cache_read(parsed: &ParsedModel) -> TokenStream {
+    let name = &parsed.name;
+    let table_name = &parsed.table_name;
+    let tenant_scoped = !parsed.tenant_column.is_empty();
+    let decrypt_model = if parsed.encrypted_fields.is_empty() {
+        quote! {}
+    } else {
+        quote! { model.__rullst_decrypt_encrypted_fields()?; }
+    };
     let redis_cfg = crate::feature_gates::redis();
     quote! {
         #redis_cfg
+        // Only a tenant-scoped model partitions its entries by tenant; the
+        // writes of any other model invalidate its single global copy.
         let cache_key = if _allow_cache && self.remember_ttl.is_some() {
-            Some(rullst_orm::query_cache::query_key(
+            Some(rullst_orm::query_cache::query_key_for_model(
                 #table_name,
+                #tenant_scoped,
                 &query_str,
                 &query_bindings,
             )?)
@@ -26,9 +34,21 @@ pub fn generate_cache_read(
             use rullst_orm::_redis::AsyncCommands;
             let mut conn = rullst_orm::Orm::redis_manager()?;
             if let Ok(cached_data) = conn.get::<_, String>(cache_key).await {
-                if !cached_data.is_empty() {
-                    if let Ok(mut results) = #name::from_cache_json_array(&cached_data) {
-                        #decrypt_results
+                // Only a JSON array of rows that all decode and decrypt is a
+                // hit. Anything else (for example `null`, or ciphertext under
+                // a retired key) is a miss that the database read overwrites.
+                if let Ok(rullst_orm::_serde_json::Value::Array(items)) =
+                    rullst_orm::_serde_json::from_str::<rullst_orm::_serde_json::Value>(&cached_data)
+                {
+                    let decoded: Result<Vec<#name>, rullst_orm::Error> = items
+                        .into_iter()
+                        .map(|item| {
+                            let mut model = #name::from_json_value(item)?;
+                            #decrypt_model
+                            Ok(model)
+                        })
+                        .collect();
+                    if let Ok(results) = decoded {
                         return Ok(results);
                     }
                 }

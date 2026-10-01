@@ -27,17 +27,32 @@ valid Rust identifiers. Persisted Rust field names follow that same portable
 SQL grammar: raw identifiers, non-ASCII names, and names longer than 64 bytes
 are rejected before SQL generation. A field that cannot form its generated
 Rust column-enum variant receives a compile error instead of a macro panic.
+Generated SQL emits these identifiers unquoted and the derive does not check
+reserved words, so a table or column named like a keyword of the target
+database (`order`, `desc`, `user` on PostgreSQL, `groups` on MySQL 8, a
+default `groups` table for a `Group` struct) compiles but fails at runtime;
+rename it or set `#[orm(table = "...")]`.
 
 Exactly one relation declaration is accepted per relation field. Orphan
-relation options are rejected, `belongs_to_many` requires a pivot table,
+relation options are rejected, `local_key` is rejected on `belongs_to`/`morph_to`
+and `related_key` on has-one/has-many/morph-one/morph-many relations (which
+would ignore them), `belongs_to_many` requires a pivot table,
 `cascade_soft_delete` is limited to has-one/has-many whose related model also
 uses soft deletes (otherwise the generated cascade fails to compile at the
 relation field rather than hard-deleting the children), and polymorphic metadata
 is limited to morph relations. The generated many-to-many foreign/related keys
-default to the owner and related model names when omitted.
+default to the owner and related model names when omitted; an omitted
+`foreign_key` defaults to `<related model>_id` on `belongs_to` and to
+`<owner model>_id` on has-one/has-many (lowercased model names).
 
 The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
-`#[sqlx(json(nullable))]`. SQLx mappings such as `rename`, `try_from`, and
+`#[sqlx(json(nullable))]`. `#[orm(skip)]` only removes a field from generated
+SQL; the application's `FromRow` still reads it, so a field without a table
+column also needs `#[sqlx(skip)]` (the two may be combined) or
+`#[sqlx(default)]`. `#[sqlx(json)]` affects only that decoding: generated
+writes bind the field's own type, so it must itself encode as JSON on the
+selected SQLx driver (for example `serde_json::Value` under a strict driver
+feature); a Serde-only type fails to compile at the generated bind. SQLx mappings such as `rename`, `try_from`, and
 `flatten` fail compilation because the generated persistence SQL cannot honor
 them safely. The parser also rejects unsupported model shapes, unknown
 backends, missing or unbindable tenant columns, invalid encrypted field types,
@@ -64,8 +79,9 @@ opt-in (an older runtime) the output keeps the legacy
 `#[cfg(feature = "redis")]`/`#[cfg(feature = "ai")]` attributes, which the
 invoking crate evaluates.
 
-Randomized encrypted fields cannot be used as ordinary generated filter/order
-columns. Tenant scope and model policies are generated only when explicitly
+Randomized encrypted fields and `SecretString` columns cannot be used as
+ordinary generated filter/order/group columns or plucked (`SecretString`
+columns can still be selected, because their codec decrypts them). Tenant scope and model policies are generated only when explicitly
 declared; the macro does not authenticate a principal or authorize `unscoped`
 access. Post-commit callbacks are process-local unless the application composes
 the transactional outbox.
@@ -80,7 +96,7 @@ for the explicit raw-transaction and streaming limitations.
 ## Verification
 
 The unit suite inspects generated SQL/bind ordering and zero-panic production
-tokens. Twenty-four `trybuild` compile-fail cases exercise the actual parser
+tokens. Twenty-six `trybuild` compile-fail cases exercise the actual parser
 diagnostics, including duplicate/unknown options and cross-field invariants,
 rather than an unresolved import:
 

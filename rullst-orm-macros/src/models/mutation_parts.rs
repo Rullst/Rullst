@@ -193,17 +193,19 @@ pub(super) fn execute_mutation() -> TokenStream {
     }
 }
 
-/// Invalidates the query cache of the tenant that was active when the write
+/// Invalidates the written table's global query-cache partition and, for a
+/// tenant-scoped model, that of the tenant that was active when the write
 /// registered its post-commit callback. The callback runs when the managed
 /// transaction commits, which may be after a `with_tenant` scope entered
-/// inside the transaction closure has ended. Expects `event` and
+/// inside the transaction closure has ended. A model without a tenant column
+/// caches only globally, whatever scope its reads ran in. Expects `event` and
 /// `cache_tenant` bindings in scope and binds `invalidated`.
 pub(super) fn tenant_scoped_invalidation() -> TokenStream {
     quote! {
-        let invalidation = rullst_orm::query_cache::invalidate_table(event.table);
-        let invalidated = match cache_tenant {
-            Some(tenant) => rullst_orm::with_tenant(tenant, invalidation).await,
-            None => invalidation.await,
-        };
+        let invalidated = rullst_orm::query_cache::invalidate_model_table(
+            event.table,
+            if Self::__RULLST_TENANT_SCOPED_CACHE { cache_tenant } else { None },
+        )
+        .await;
     }
 }

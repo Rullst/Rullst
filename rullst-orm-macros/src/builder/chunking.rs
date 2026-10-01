@@ -8,11 +8,15 @@ use quote::quote;
 pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
+    // Qualified, so a join cannot make the default order ambiguous.
+    let default_order = format!("{table_name}.id ASC");
 
     vec![quote! {
         /// Processes rows in offset-based pages.
         ///
-        /// Prefer [`Self::chunk_by_id`] when the handler mutates the same table;
+        /// Without an `order_by`, pages follow the primary key, because SQL
+        /// gives consecutive offset queries no stable order otherwise. Prefer
+        /// [`Self::chunk_by_id`] when the handler mutates the same table;
         /// offset pagination can skip rows after deletes or reordering.
         #[rullst_orm::_tracing::instrument(
             name = "rullst.orm.query",
@@ -37,6 +41,10 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             let mut offset = 0usize;
             let mut builder = self.clone();
             builder.limit = Some(size);
+            if builder.order_by.is_none() {
+                builder.order_bindings.clear();
+                builder.order_by = Some(#default_order.to_string());
+            }
             loop {
                 builder.offset = Some(offset);
                 let results = builder.get().await?;
@@ -53,6 +61,8 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             Ok(())
         }
 
+        /// Transaction-aware counterpart of [`Self::chunk`], with the same
+        /// default primary-key order.
         pub async fn chunk_with_tx<F, Fut>(&self, size: usize, tx: &mut rullst_orm::db::Transaction<'static>, mut handler: F) -> Result<(), rullst_orm::Error>
         where
             F: FnMut(Vec<#name>) -> Fut + Send,
@@ -66,6 +76,10 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             let mut offset = 0usize;
             let mut builder = self.clone();
             builder.limit = Some(size);
+            if builder.order_by.is_none() {
+                builder.order_bindings.clear();
+                builder.order_by = Some(#default_order.to_string());
+            }
             loop {
                 builder.offset = Some(offset);
                 let results = builder.get_with_tx(tx).await?;

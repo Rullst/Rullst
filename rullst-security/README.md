@@ -73,19 +73,23 @@
   compile one bounded JSON Schema 2020-12 document or one explicit OpenAPI 3.1
   component into route-scoped middleware. References stay local, pattern
   matching uses the linear-time regex engine, and schema construction performs
-  no filesystem or network retrieval.
+  no filesystem or network retrieval. An empty `GET`, `HEAD` or `OPTIONS`
+  body (and, for the global guard, `DELETE`) passes even when the client sends
+  a JSON `Content-Type`.
 - **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask
   complete PEM private-key blocks (PKCS#8 plain or encrypted, RSA, EC, DSA,
-  OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`
+  OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`/`rediss`
   URL passwords in bounded textual responses (at most 2 MiB). Every pass is
   linear in the body length. A URL password is recognized only inside the URL
   authority: credentials must be percent-encoded, and the authority ends at
   the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or control
   character, or after 2,048 bytes.
 - **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
-  AWS, and database patterns, including escaped quoted values, in time linear
-  in the record length. An assignment key (`password`, `passwd`, `secret`,
-  `api_key`, `token`, `authorization`, `cookie`, `session`) also matches as
+  AWS, and database patterns, including escaped quoted values and keys and
+  values of JSON embedded in a JSON string (`{"body":"{\"password\":\"..\"}"}`),
+  in time linear in the record length. An assignment key (`password`,
+  `passwd`, `secret`, `api_key`/`api-key`, `apikey`, `token`,
+  `authorization`, `cookie`, `session`, in any ASCII case) also matches as
   the final component of a compound name joined by `_`, `-` or `.`
   (`DB_PASSWORD`, `access_token`, `client-secret`, `app.db.password`) or when
   a final `key`/`id` component follows it (`SECRET_KEY`, `session_id`).
@@ -219,6 +223,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+A new chain starts at sequence 1 from the genesis predecessor. After a
+restart, continue the persisted trail with `AuditChain::try_resume(secret,
+logger, &tip)` (unpublished v13), where `tip` is the newest persisted record
+and must verify with the key; otherwise `verify_sequence` rejects the retained
+trail. One writer must own each persisted chain.
 
 ### 5. TOTP Enrollment QR
 

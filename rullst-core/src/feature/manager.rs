@@ -4,6 +4,8 @@ use super::driver::FeatureDriver;
 use super::env::EnvFeatureDriver;
 use super::memory::MemoryFeatureDriver;
 use super::toml::TomlFeatureDriver;
+use async_trait::async_trait;
+use std::sync::Arc;
 
 // ─── Feature Manager & Facade ────────────────────────────────────────────────
 
@@ -11,6 +13,25 @@ use super::toml::TomlFeatureDriver;
 #[non_exhaustive]
 pub struct FeatureManager {
     drivers: Vec<Box<dyn FeatureDriver>>,
+    overrides: Option<Arc<MemoryFeatureDriver>>,
+}
+
+/// The default pipeline's override layer, shared with [`FeatureManager::overrides`].
+struct SharedOverrides(Arc<MemoryFeatureDriver>);
+
+#[async_trait]
+impl FeatureDriver for SharedOverrides {
+    async fn enabled(&self, flag: &str) -> Option<bool> {
+        self.0.enabled(flag).await
+    }
+
+    async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
+        self.0.enabled_for(flag, identifier).await
+    }
+
+    async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
+        self.0.variant(flag, identifier).await
+    }
 }
 
 impl FeatureManager {
@@ -18,7 +39,18 @@ impl FeatureManager {
     pub fn new() -> Self {
         Self {
             drivers: Vec::new(),
+            overrides: None,
         }
+    }
+
+    /// The first-priority `MemoryFeatureDriver` of the [`Default`] pipeline,
+    /// for programmatic and test overrides through this manager (including the
+    /// global [`crate::feature::manager`]). `None` for a manager built with
+    /// [`FeatureManager::new`], whose drivers are all supplied by the caller.
+    ///
+    /// Unpublished v13 API.
+    pub fn overrides(&self) -> Option<&MemoryFeatureDriver> {
+        self.overrides.as_deref()
     }
 
     /// Adds a driver to the evaluation pipeline.
@@ -65,11 +97,15 @@ impl Default for FeatureManager {
     /// 3. `TomlFeatureDriver` (local TOML file configuration via `Rullst.toml`)
     /// 4. `DbFeatureDriver` when the `orm` feature is enabled (database-backed
     ///    flags, requires an initialized database pool)
+    ///
+    /// The memory layer is reachable through [`FeatureManager::overrides`].
     fn default() -> Self {
-        let manager = Self::new()
-            .add_driver(Box::new(MemoryFeatureDriver::new()))
+        let overrides = Arc::new(MemoryFeatureDriver::new());
+        let mut manager = Self::new()
+            .add_driver(Box::new(SharedOverrides(Arc::clone(&overrides))))
             .add_driver(Box::new(EnvFeatureDriver::new()))
             .add_driver(Box::new(TomlFeatureDriver::new()));
+        manager.overrides = Some(overrides);
 
         #[cfg(feature = "orm")]
         let manager = manager.add_driver(Box::new(DbFeatureDriver::new()));

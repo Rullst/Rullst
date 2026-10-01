@@ -27,7 +27,9 @@ pub enum MachineEndpointError {
     #[error("machine endpoint requires an exact canonical path and a write method")]
     InvalidRoute,
     /// Missing, weak or structurally unsafe credential.
-    #[error("machine bearer credential must contain 32–200 non-whitespace ASCII bytes")]
+    #[error(
+        "machine bearer credential must contain 32–200 non-whitespace ASCII bytes with at least 8 distinct values"
+    )]
     InvalidCredential,
     /// Ambiguous or oversized endpoint registry.
     #[error("machine endpoint policy exceeds 32 routes or contains a duplicate")]
@@ -50,6 +52,17 @@ pub trait MachineRequestVerifier: Send + Sync {
     async fn verify(&self, request: Request) -> Result<Request, MachineEndpointError>;
 }
 
+/// Fewest distinct byte values accepted in a static bearer token.
+const MIN_DISTINCT_BEARER_BYTES: usize = 8;
+
+fn distinct_bytes(bytes: &[u8]) -> usize {
+    let mut seen = [false; 256];
+    for byte in bytes {
+        seen[usize::from(*byte)] = true;
+    }
+    seen.into_iter().filter(|present| *present).count()
+}
+
 enum Credential {
     Bearer([u8; 32]),
     Verified(Arc<dyn MachineRequestVerifier>),
@@ -70,13 +83,22 @@ impl MachineEndpoint {
     }
 
     /// Registers a strong bearer credential. Only its SHA-256 digest is retained.
+    ///
+    /// The token must be 32–200 printable, non-whitespace ASCII bytes with at
+    /// least 8 distinct byte values, so a repeated or low-diversity string
+    /// such as `"a".repeat(32)` fails. The floor rejects only obviously weak
+    /// tokens; generate the token from a CSPRNG (a random 32-character hex
+    /// token passes with overwhelming probability).
     pub fn bearer(
         method: Method,
         path: impl Into<String>,
         token: impl Into<String>,
     ) -> Result<Self, MachineEndpointError> {
         let token = token.into();
-        if !(32..=200).contains(&token.len()) || !token.bytes().all(|b| b.is_ascii_graphic()) {
+        if !(32..=200).contains(&token.len())
+            || !token.bytes().all(|b| b.is_ascii_graphic())
+            || distinct_bytes(token.as_bytes()) < MIN_DISTINCT_BEARER_BYTES
+        {
             return Err(MachineEndpointError::InvalidCredential);
         }
         Self::new(

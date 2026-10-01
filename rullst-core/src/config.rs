@@ -207,6 +207,8 @@ pub struct SecurityConfig {
     /// Case-insensitive User-Agent substrings to block in the WAF middleware.
     /// Defaults cover selected crawlers, not general HTTP clients or health probes.
     /// This forgeable header is a traffic preference, never authentication.
+    /// An empty or whitespace-only entry is rejected by [`SecurityConfig::validate`],
+    /// because every User-Agent contains it.
     #[serde(default = "default_user_agent_blocklist")]
     pub user_agent_blocklist: Vec<String>,
     /// Enable global automatic PII masking middleware on all textual responses (heavy performance cost).
@@ -312,6 +314,16 @@ impl SecurityConfig {
                 self.coep
             )));
         }
+        if let Some(position) = self
+            .user_agent_blocklist
+            .iter()
+            .position(|agent| agent.trim().is_empty())
+        {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "user_agent_blocklist entry {} is empty; it would block every request",
+                position + 1
+            )));
+        }
         let mut unique_origins = std::collections::HashSet::new();
         for origin in &self.cors_allow_origins {
             let uri = origin.parse::<http::Uri>().map_err(|_| {
@@ -332,6 +344,11 @@ impl SecurityConfig {
             if !valid_origin {
                 return Err(ConfigError::InvalidSecurityConfiguration(format!(
                     "CORS origin `{origin}` must be an exact HTTP(S) origin without path, query, credentials, wildcard, or trailing slash"
+                )));
+            }
+            if !is_serialized_origin(origin, &uri) {
+                return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                    "CORS origin `{origin}` must be written as browsers send it: lowercase scheme and host, without the default port"
                 )));
             }
             if !unique_origins.insert(origin) {
@@ -366,7 +383,53 @@ impl SecurityConfig {
     }
 }
 
+/// Whether `origin` is byte-for-byte the `Origin` a browser sends for `uri`:
+/// lowercase scheme and host and no default port. CORS matching compares the
+/// configured value with that header exactly, so any other spelling never
+/// matches.
+fn is_serialized_origin(origin: &str, uri: &http::Uri) -> bool {
+    let (Some(scheme), Some(host)) = (uri.scheme_str(), uri.host()) else {
+        return false;
+    };
+    let default_port = match scheme {
+        "http" => 80,
+        "https" => 443,
+        _ => return false,
+    };
+    let port = match uri.port_u16() {
+        Some(port) if port == default_port => return false,
+        Some(port) => format!(":{port}"),
+        None => String::new(),
+    };
+    origin
+        == format!(
+            "{}://{}{port}",
+            scheme.to_ascii_lowercase(),
+            host.to_ascii_lowercase()
+        )
+}
+
 static GLOBAL_CONFIG: std::sync::OnceLock<RullstConfig> = std::sync::OnceLock::new();
+
+/// `RULLST_ENV` (else `APP_ENV`) from the `.env` the last started `Server`
+/// read, which `Server` places between the process variables and `[app].env`.
+static PROJECT_ENVIRONMENT_SELECTOR: std::sync::RwLock<Option<String>> =
+    std::sync::RwLock::new(None);
+
+/// Records the `.env` environment selector of a starting `Server`.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub(crate) fn record_project_environment_selector(selector: Option<String>) {
+    *PROJECT_ENVIRONMENT_SELECTOR
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = selector;
+}
+
+fn project_environment_selector() -> Option<String> {
+    PROJECT_ENVIRONMENT_SELECTOR
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
 
 impl RullstConfig {
     /// Gets the global configuration reference, initializing it with default values if not set.
@@ -414,8 +477,22 @@ impl RullstConfig {
     }
 
     /// Resolves the validated runtime environment for this configuration.
+    ///
+    /// The precedence is the process `RULLST_ENV`, then the process `APP_ENV`,
+    /// then — once a [`crate::Server`] has started in this process —
+    /// `RULLST_ENV` or `APP_ENV` from the `.env` file it read, then
+    /// `[app].env`. This is the environment the `Server` enforces. Before a
+    /// `Server` starts (or without one) no `.env` is consulted, exactly like
+    /// [`Environment::detect`], which itself never reads `.env`.
     pub fn environment(&self) -> Result<Environment, ConfigError> {
-        Environment::detect(self.app.env.as_deref())
+        let selector = project_environment_selector();
+        let rullst_env = read_environment_variable("RULLST_ENV")?;
+        let app_env = read_environment_variable("APP_ENV")?;
+        Environment::resolve(
+            rullst_env.as_deref(),
+            app_env.as_deref(),
+            selector.as_deref().or(self.app.env.as_deref()),
+        )
     }
 
     /// Loads and parses the configuration from a TOML file.
@@ -429,223 +506,5 @@ impl RullstConfig {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::field_reassign_with_default
-)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_global_config_access() {
-        let config1 = RullstConfig::global();
-        let config2 = RullstConfig::global();
-        assert!(
-            std::ptr::eq(config1, config2),
-            "global() should return the same instance"
-        );
-        assert_eq!(config1.security.csrf_same_site, "Lax");
-    }
-
-    #[test]
-    fn parse_errors_report_position_without_configuration_content() {
-        let canary = "sk_live_toml_redaction_canary";
-        for (content, line) in [
-            (
-                format!(
-                    "[app]\nenv = \"production\"\n[database]\nurl = \"postgres://owner:{canary}@db\n"
-                ),
-                4,
-            ),
-            (format!("[app]\nport = \"{canary}\"\n"), 2),
-            (format!("app_key = \"{canary}\"\n[app\n"), 2),
-        ] {
-            let error = RullstConfig::from_toml(&content).unwrap_err();
-            let rendered = format!("{error} {error:?}");
-            assert!(!rendered.contains(canary), "{rendered}");
-            assert!(!rendered.contains("postgres://"), "{rendered}");
-            assert!(
-                matches!(&error, ConfigError::Parse(message) if message.contains(&format!("line {line},"))),
-                "{rendered}"
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn test_load_config_from_file() {
-        let temp_dir = "test_config_dir";
-        let _ = std::fs::create_dir_all(temp_dir);
-        let path = format!("{}/Rullst.toml", temp_dir);
-
-        let toml_content = r#"
-[app]
-env = "production"
-port = 8080
-
-[database]
-url = "sqlite::memory:"
-
-[security]
-csrf_same_site = "Strict"
-cors_allow_origins = ["https://example.com"]
-"#;
-        tokio::fs::write(&path, toml_content).await.unwrap();
-
-        let config = RullstConfig::load_from_file(&path).await.unwrap();
-
-        assert_eq!(config.app.env.unwrap(), "production");
-        assert_eq!(config.app.port.unwrap(), 8080);
-        assert_eq!(config.database.url.unwrap(), "sqlite::memory:");
-        assert_eq!(config.security.csrf_same_site, "Strict");
-        assert_eq!(config.security.cors_allow_origins.len(), 1);
-        assert_eq!(config.security.cors_allow_origins[0], "https://example.com");
-        assert!(!config.security.cors_allow_credentials);
-
-        let _ = std::fs::remove_dir_all(temp_dir);
-    }
-
-    #[test]
-    fn test_default_security_config() {
-        let config = SecurityConfig::default();
-        assert_eq!(config.csrf_same_site, "Lax");
-        assert_eq!(config.coep, "require-corp");
-        assert!(config.csp.contains("default-src"));
-        assert!(!config.csp.contains("unsafe-inline"));
-        assert!(!config.csp.contains("unsafe-eval"));
-        assert!(config.user_agent_blocklist.contains(&"gptbot".to_string()));
-        assert!(config.csrf_signed_webhook_paths.is_empty());
-    }
-
-    #[test]
-    fn test_set_global_config() {
-        let mut config = RullstConfig::new();
-        config.app.env = Some("test_env".to_string());
-        let result = RullstConfig::set_global(config);
-        match result {
-            Ok(_) => assert_eq!(RullstConfig::global().app.env.as_deref(), Some("test_env")),
-            Err(c) => assert_eq!(c.app.env.as_deref(), Some("test_env")),
-        }
-    }
-
-    #[test]
-    fn database_url_debug_output_is_redacted() {
-        let mut config = RullstConfig::default();
-        config.database.url = Some("postgres://app:S3cr3t@db.internal/prod?sslmode=require".into());
-        let debug = format!("{config:?} {:?}", config.database);
-        assert!(!debug.contains("S3cr3t"), "{debug}");
-        assert!(!debug.contains("db.internal"), "{debug}");
-        assert!(debug.contains("postgres://<redacted>"), "{debug}");
-
-        assert_eq!(redacted_url("app:S3cr3t@db/prod"), "<redacted>");
-        assert_eq!(redacted_url("sqlite://rullst.db"), "sqlite://<redacted>");
-        assert_eq!(redacted_url("a b://x"), "<redacted>");
-        assert!(format!("{:?}", DatabaseConfig::default()).contains("url: None"));
-    }
-
-    #[test]
-    fn test_deserialize_security_config_defaults() {
-        let config: SecurityConfig = toml::from_str("").unwrap();
-        assert!(!config.enable_pii_masking);
-        assert_eq!(config.coep, "require-corp");
-    }
-
-    #[test]
-    fn environment_resolution_has_one_precedence_and_validated_aliases() {
-        assert_eq!(
-            Environment::resolve(Some("prod"), Some("test"), Some("development")).unwrap(),
-            Environment::Production
-        );
-        assert_eq!(
-            Environment::resolve(None, Some("STAGE"), Some("development")).unwrap(),
-            Environment::Staging
-        );
-        assert_eq!(
-            Environment::resolve(None, None, Some("testing")).unwrap(),
-            Environment::Test
-        );
-        assert_eq!(
-            Environment::resolve(None, None, None).unwrap(),
-            Environment::Development
-        );
-        assert!(Environment::resolve(Some("unknown"), None, None).is_err());
-    }
-
-    #[test]
-    fn only_development_exposes_developer_tools() {
-        assert!(Environment::Development.allows_development_tools());
-        assert!(!Environment::Test.allows_development_tools());
-        assert!(Environment::Staging.requires_secure_defaults());
-        assert!(Environment::Production.requires_secure_defaults());
-    }
-
-    #[test]
-    fn signed_webhook_csrf_exemptions_must_be_exact_paths() {
-        let mut config = SecurityConfig::default();
-        config.csrf_signed_webhook_paths = vec!["/billing/webhook".to_owned()];
-        assert!(config.validate().is_ok());
-
-        for invalid in [
-            "billing/webhook",
-            "/billing/:provider",
-            "/billing/{provider}",
-            "/billing/*path",
-            "/billing/../admin",
-            "/billing/webhook?provider=x",
-        ] {
-            config.csrf_signed_webhook_paths = vec![invalid.to_owned()];
-            assert!(config.validate().is_err(), "{invalid} must be rejected");
-        }
-
-        config.csrf_signed_webhook_paths =
-            vec!["/billing/webhook".to_owned(), "/billing/webhook".to_owned()];
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn browser_security_configuration_is_strict_and_exact() {
-        let mut config = SecurityConfig::default();
-        config.cors_allow_origins = vec![
-            "https://academy.example".to_string(),
-            "http://localhost:3000".to_string(),
-        ];
-        assert!(config.validate().is_ok());
-
-        for invalid in [
-            "*",
-            "academy.example",
-            "ftp://academy.example",
-            "https://academy.example/",
-            "https://academy.example/path",
-            "https://user@academy.example",
-            "https://academy.example?x=1",
-        ] {
-            config.cors_allow_origins = vec![invalid.to_string()];
-            assert!(config.validate().is_err(), "{invalid} must be rejected");
-        }
-        config.cors_allow_origins = vec![
-            "https://academy.example".to_string(),
-            "https://academy.example".to_string(),
-        ];
-        assert!(config.validate().is_err());
-        config.cors_allow_origins.clear();
-        config.csrf_same_site = "relaxed".to_string();
-        assert!(config.validate().is_err());
-        config.csrf_same_site = "Lax".to_string();
-        config.csp = "default-src 'self'\r\nx-injected: yes".to_string();
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn coep_policy_is_explicit_and_closed() {
-        let mut config = SecurityConfig::default();
-        for policy in ["require-corp", "credentialless", "unsafe-none"] {
-            config.coep = policy.to_string();
-            assert!(config.validate().is_ok(), "{policy} must be accepted");
-        }
-        for invalid in ["", "off", "cross-origin", "require-corp\nunsafe-none"] {
-            config.coep = invalid.to_string();
-            assert!(config.validate().is_err(), "{invalid:?} must be rejected");
-        }
-    }
-}
+#[path = "config_tests.rs"]
+mod tests;

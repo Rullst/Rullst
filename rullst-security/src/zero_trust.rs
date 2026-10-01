@@ -86,11 +86,14 @@ fn bounded_observation<'a>(label: &str, value: &'a str) -> Result<&'a str, Secur
     Ok(value)
 }
 
+/// IPv4 addresses bind their /24 and IPv6 addresses their /64. An
+/// IPv4-mapped IPv6 address (a dual-stack listener's view of an IPv4 client)
+/// is treated as IPv4, since its first 64 bits are the same for every client.
 fn normalized_subnet(value: &str) -> Result<String, SecurityError> {
     let address = value.parse::<IpAddr>().map_err(|_| {
         SecurityError::General("session fingerprint client IP is invalid".to_string())
     })?;
-    Ok(match address {
+    Ok(match address.to_canonical() {
         IpAddr::V4(address) => {
             let octets = address.octets();
             format!("{}.{}.{}.0/24", octets[0], octets[1], octets[2])
@@ -135,6 +138,32 @@ mod tests {
             Some("192.168.1.88"),
             Some("en-US")
         ));
+    }
+
+    #[test]
+    fn ipv4_mapped_peers_bind_their_ipv4_subnet() {
+        let mapped = generate_fingerprint(
+            KEY,
+            Some("Mozilla/5.0"),
+            Some("::ffff:203.0.113.7"),
+            Some("en-US"),
+        );
+        assert!(!verify_fingerprint(
+            &mapped,
+            KEY,
+            Some("Mozilla/5.0"),
+            Some("::ffff:198.51.100.9"),
+            Some("en-US")
+        ));
+        for same_subnet in ["::ffff:203.0.113.200", "203.0.113.9"] {
+            assert!(verify_fingerprint(
+                &mapped,
+                KEY,
+                Some("Mozilla/5.0"),
+                Some(same_subnet),
+                Some("en-US")
+            ));
+        }
     }
 
     #[test]

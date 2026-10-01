@@ -3,10 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 use subtle::ConstantTimeEq;
-use tokio::sync::OnceCell;
 
 pub mod alipay;
 pub mod coinbase;
+mod fixture;
+mod global;
 mod http;
 pub mod infinitepay;
 pub mod lemonsqueezy;
@@ -45,6 +46,10 @@ mod wise_webhook;
 
 pub use alipay::AlipayProvider;
 pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
+pub use global::{
+    init_payout_provider, init_provider, payout_provider, provider, try_init_payout_provider,
+    try_init_provider,
+};
 pub(crate) use http::validate_checkout_url;
 pub(crate) use http::{execute as execute_http, read_json as read_http_json};
 pub(crate) use http::{send as send_http, send_json as send_http_json};
@@ -150,31 +155,9 @@ pub(crate) fn ensure_fresh_timestamp(
     Ok(())
 }
 
-static BILLING_PROVIDER: OnceCell<Box<dyn BillingProvider>> = OnceCell::const_new();
-static PAYOUT_PROVIDER: OnceCell<Box<dyn PayoutProvider>> = OnceCell::const_new();
 /// Returns the fail-closed shared client used by reviewed live provider adapters.
 pub(crate) fn http_client() -> Result<&'static reqwest::Client, crate::error::CapitalError> {
     http::client()
-}
-
-/// Initializes the global billing provider.
-pub fn init_provider(provider: Box<dyn BillingProvider>) {
-    let _ = BILLING_PROVIDER.set(provider);
-}
-
-/// Retrieves the active billing provider, or `None` if not initialized.
-pub fn provider() -> Option<&'static dyn BillingProvider> {
-    BILLING_PROVIDER.get().map(|p| p.as_ref())
-}
-
-/// Initializes the global payout provider.
-pub fn init_payout_provider(provider: Box<dyn PayoutProvider>) {
-    let _ = PAYOUT_PROVIDER.set(provider);
-}
-
-/// Retrieves the active payout provider, or `None` if not initialized.
-pub fn payout_provider() -> Option<&'static dyn PayoutProvider> {
-    PAYOUT_PROVIDER.get().map(|p| p.as_ref())
 }
 
 /// The semantic status of a SaaS Subscription.
@@ -496,5 +479,17 @@ mod tests {
         init_payout_provider(Box::new(wise));
         assert!(payout_provider().is_some());
         assert_eq!(payout_provider().unwrap().name(), "wise");
+
+        // A second initialization is reported and never replaces the first.
+        assert!(matches!(
+            try_init_provider(Box::new(PaddleProvider::new("pdl_live", "secret"))),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+        init_provider(Box::new(PaddleProvider::new("pdl_live", "secret")));
+        assert_eq!(provider().unwrap().name(), "stripe");
+        assert!(matches!(
+            try_init_payout_provider(Box::new(WiseProvider::new("live", "profile"))),
+            Err(CapitalError::ConfigurationError(_))
+        ));
     }
 }

@@ -1,9 +1,24 @@
-use crate::parser::ParsedModel;
+use crate::parser::{ParsedModel, ParsedRelation};
 use proc_macro2::TokenStream;
 use quote::quote;
 
 mod eager_assign;
 use eager_assign::generate_eager_load_assignment;
+
+/// The foreign-key field of a relation. An omitted `foreign_key` names the
+/// model on the other side of the key: a `belongs_to` key lives on this model
+/// and defaults to `<related model>_id` (`post_id` for `belongs_to = "Post"`),
+/// while a has-one/has-many key lives on the related table and defaults to
+/// `<this model>_id`.
+fn foreign_key_field(name: &syn::Ident, rel: &ParsedRelation) -> String {
+    if !rel.foreign_key.is_empty() {
+        rel.foreign_key.clone()
+    } else if rel.rel_type == "belongs_to" {
+        format!("{}_id", rel.rel_model.to_lowercase())
+    } else {
+        format!("{}_id", name.to_string().to_lowercase())
+    }
+}
 
 pub struct GeneratedRelationships {
     pub flags: Vec<TokenStream>,
@@ -63,14 +78,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         let rel_model_ident = syn::Ident::new(rel_model, field_name.span());
         let method_name = quote::format_ident!("{}", field_name);
         let method_name_constrained = quote::format_ident!("{}_constrained", field_name);
-        let fk_ident = quote::format_ident!(
-            "{}",
-            if foreign_key.is_empty() {
-                format!("{}_id", name.to_string().to_lowercase())
-            } else {
-                foreign_key.clone()
-            }
-        );
+        let fk_ident = quote::format_ident!("{}", foreign_key_field(name, rel));
         let lk_ident = quote::format_ident!(
             "{}",
             if local_key.is_empty() {
@@ -118,7 +126,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone());
+                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.get().await
                     })
@@ -135,7 +144,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone());
+                        let mut q = #rel_model_ident::query().where_eq(stringify!(#fk_ident), self.#lk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -152,7 +162,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let mut q = #rel_model_ident::query().where_eq(stringify!(#pk_ident), self.#fk_ident.clone());
+                        let mut q = #rel_model_ident::query().where_eq(stringify!(#pk_ident), self.#fk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -174,7 +185,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         #lazy_load_check
                         let mut q = #rel_model_ident::query()
                             .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.get().await
                     })
@@ -196,7 +208,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         #lazy_load_check
                         let mut q = #rel_model_ident::query()
                             .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
-                            .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                            .where_eq(stringify!(#morph_type_ident), stringify!(#name))
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -223,7 +236,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                             return Ok(None);
                         }
                         let mut q = #rel_model_ident::query()
-                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone());
+                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.first().await
                     })
@@ -253,7 +267,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         let mut q = #rel_model_ident::query()
                             .select_raw(&select_raw)
                             .join(#pivot_table, &related_pk, "=", #pivot_rk)
-                            .where_eq(&#pivot_fk, self.#lk_ident.clone());
+                            .where_eq(&#pivot_fk, self.#lk_ident.clone())
+                            .__rullst_freeze_scope();
                         q = modifier(q);
                         q.get().await
                     })
@@ -277,7 +292,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         let method_name = quote::format_ident!("{}", field_name);
 
         let rel_model_ident = syn::Ident::new(rel_model, field_name.span());
-        let fk_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", name.to_string().to_lowercase()) } else { foreign_key.clone() });
+        let fk_ident = quote::format_ident!("{}", foreign_key_field(name, rel));
         let lk_ident = quote::format_ident!("{}", if local_key.is_empty() { "id".to_string() } else { local_key.clone() });
         let pk_ident = quote::format_ident!("{}", if related_key.is_empty() { "id".to_string() } else { related_key.clone() });
         let morph_id_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", morph_name) } else { foreign_key.clone() });
@@ -303,7 +318,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 if self.#load_flag {
                     let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();
                     if !parent_ids.is_empty() {
-                        let mut query = #rel_model_ident::query().where_in(stringify!(#fk_ident), parent_ids);
+                        let mut query = #rel_model_ident::query().where_in(stringify!(#fk_ident), parent_ids).__rullst_freeze_scope();
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
@@ -317,7 +332,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 if self.#load_flag {
                     let parent_ids: Vec<_> = results.iter().map(|m| m.#fk_ident.clone()).collect();
                     if !parent_ids.is_empty() {
-                        let mut query = #rel_model_ident::query().where_in(stringify!(#pk_ident), parent_ids);
+                        let mut query = #rel_model_ident::query().where_in(stringify!(#pk_ident), parent_ids).__rullst_freeze_scope();
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
@@ -337,7 +352,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         .collect();
                     if !target_ids.is_empty() {
                         let mut query = #rel_model_ident::query()
-                            .where_in(stringify!(#pk_ident), target_ids);
+                            .where_in(stringify!(#pk_ident), target_ids)
+                            .__rullst_freeze_scope();
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
@@ -368,7 +384,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         if !parent_ids.is_empty() {
                             let mut query = #rel_model_ident::query()
                                 .where_in(stringify!(#morph_id_ident), parent_ids)
-                                .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                                .where_eq(stringify!(#morph_type_ident), stringify!(#name))
+                                .__rullst_freeze_scope();
                             if let Some(ref filter) = self.#filter_flag {
                                 query = filter(query);
                             }
@@ -424,13 +441,16 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 pivot_query.fetch_all(executor).await
                             })?;
 
+                            // Build parent_id -> Vec<model> from pivot pairs
+                            let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
+                                std::collections::HashMap::with_capacity(results.len());
                             if !pivot_pairs.is_empty() {
                                 // Deduplicate related IDs for Q2
                                 let mut related_ids: Vec<i32> = pivot_pairs.iter().map(|(_, rid)| *rid).collect();
                                 related_ids.sort_unstable();
                                 related_ids.dedup();
 
-                                let mut query = #rel_model_ident::query().where_in("id", related_ids);
+                                let mut query = #rel_model_ident::query().where_in("id", related_ids).__rullst_freeze_scope();
                                 if let Some(ref filter) = self.#filter_flag {
                                     query = filter(query);
                                 }
@@ -440,10 +460,6 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 let mut related_map: std::collections::HashMap<i32, #rel_model_ident> =
                                     all_related.into_iter().map(|m| (m.id, m)).collect();
 
-                                // Build parent_id -> Vec<model> from pivot pairs
-                                let mut parent_to_related: std::collections::HashMap<i32, Vec<#rel_model_ident>> =
-                                    std::collections::HashMap::with_capacity(results.len());
-
                                 for (parent_id, related_id) in &pivot_pairs {
                                     if let Some(m) = related_map.get(related_id) {
                                         parent_to_related
@@ -452,11 +468,15 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                             .push(m.clone());
                                     }
                                 }
+                            }
 
-                                // Parents that share a local key each receive the group.
-                                for model in &mut results {
-                                    model.#method_name = parent_to_related.get(&model.#lk_ident).cloned();
-                                }
+                            // Every parent is loaded: one without related rows gets
+                            // an empty list, and parents sharing a local key each
+                            // receive the group.
+                            for model in &mut results {
+                                model.#method_name = Some(
+                                    parent_to_related.get(&model.#lk_ident).cloned().unwrap_or_default()
+                                );
                             }
                         }
                     }

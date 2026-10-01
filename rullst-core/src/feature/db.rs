@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use super::driver::FeatureDriver;
-use super::resolvers::{calculate_hash_bucket, parse_variants, resolve_variant};
+use super::resolvers::{calculate_hash_bucket, parse_variants, split_variant};
 
 // ─── Database Driver (with local TTL caching) ───────────────────────────────
 
@@ -112,8 +112,8 @@ impl DbFeatureDriver {
 
         let rollout_percentage = row
             .try_get::<i32, _>("rollout_percentage")
-            .map(|v| Some(v as u32))
-            .unwrap_or(None);
+            .ok()
+            .map(rollout_from_column);
 
         let variants = row.try_get::<String, _>("variants").ok();
 
@@ -190,8 +190,7 @@ impl DbFeatureDriver {
             if !vars.is_empty()
                 && let Some(ident) = identifier
             {
-                let bucket = calculate_hash_bucket(flag, ident);
-                return resolve_variant(&vars, bucket);
+                return Some(split_variant(&vars, flag, ident));
             }
         }
 
@@ -242,6 +241,13 @@ impl FeatureDriver for DbFeatureDriver {
         let (enabled, rollout, variants) = self.resolve_flag(flag).await?;
         self.evaluate(enabled, rollout, variants, flag, Some(identifier))
     }
+}
+
+/// A stored rollout percentage. A negative value (a common "paused"
+/// sentinel) rolls out to nobody instead of wrapping to `u32::MAX`, which
+/// would enable the flag for everyone.
+fn rollout_from_column(value: i32) -> u32 {
+    u32::try_from(value).unwrap_or(0)
 }
 
 #[cfg(test)]

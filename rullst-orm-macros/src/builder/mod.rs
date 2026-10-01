@@ -6,6 +6,7 @@ use proc_macro2::TokenStream;
 mod bulk_delete;
 pub mod chunking;
 pub mod clauses;
+mod column_guards;
 mod enum_columns;
 pub mod execution;
 pub mod magic_methods;
