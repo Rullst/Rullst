@@ -1054,7 +1054,7 @@ Scans source files and prints structural summaries in the terminal without
 starting a server, expanding macros or connecting to a database.
 * **Arguments:**
   * `[target]`: The item or file to inspect:
-    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line under `src/`.
+    * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line in the regular `.rs` files under `src/`. Like `audit` and `generate:diagram`, the walk does not follow symlinks and is bounded in depth and entries; it reports when a bound left the table incomplete.
     * `model` or `models`: Lists the structs, enums and `pub` fields declared in `src/models`.
     * `schema`: Prints, as JSON, the table, fields, Rust types and optionality of every `#[derive(Orm)]` struct under `src/` (the extractor `make:migration:auto` uses). It describes the models, not the live database. A project-provided `rullst-schema.json` is printed instead when present; Rullst does not generate that file.
     * `<path/to/file.rs>`: Displays the first 40 lines of any target Rust file with line numbers.
