@@ -194,7 +194,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   bounded in bytes too. State is process-local, not a distributed limit. When attached to
   `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
   and `/ready` probes through, so load shedding or an exhausted bucket cannot
-  fail a liveness probe.
+  fail a liveness probe. In a debug Development server with `cargo rullst dev`
+  reloading, its `/_rullst/dev-generation` poll and `/_rullst/dev-reload.js`
+  also bypass both and are not access-logged.
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.
   Only a socket peer inside the listed networks may report the client through

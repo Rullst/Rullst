@@ -226,6 +226,7 @@ impl Service<axum::extract::Request> for HotSwapService {
             router,
             self.limiter.clone(),
             self.shield.clone(),
+            false,
         );
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
