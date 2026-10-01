@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790814950998,
+  "lastUpdate": 1790818903598,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11601,6 +11601,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 338,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f790903399442605c09c489fefee90d0715ba6f4",
+          "message": "Merge pull request #359 from Rullst/fix/v13-security-low-fixes\n\nfix(security,core): low-severity WAF, CSWSH, redaction, CSRF, tenancy and PII review fixes",
+          "timestamp": "2026-09-30T22:21:57-03:00",
+          "tree_id": "3ff10dd5394f4381ccff5fbf7ab0580b3e5df7b2",
+          "url": "https://github.com/Rullst/Rullst/commit/f790903399442605c09c489fefee90d0715ba6f4"
+        },
+        "date": 1790818903098,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1654,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 369,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 434,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
