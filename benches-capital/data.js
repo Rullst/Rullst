@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790871545451,
+  "lastUpdate": 1790882830328,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10442,6 +10442,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "43552fadc4d8947dae6cc4b00f4946ee0264c4dc",
+          "message": "Merge pull request #387 from Rullst/feat/v13-cli-opening-home\n\nfeat(cli): approved v13 opening and context-aware home",
+          "timestamp": "2026-10-01T16:00:05-03:00",
+          "tree_id": "aeac8f796bde4441dc62500dbcc09d44ea8f0be7",
+          "url": "https://github.com/Rullst/Rullst/commit/43552fadc4d8947dae6cc4b00f4946ee0264c4dc"
+        },
+        "date": 1790882829455,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 24,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
