@@ -38,6 +38,8 @@ pub mod worker;
 mod lease_tests;
 #[cfg(all(test, feature = "queue-sqlite", not(miri)))]
 mod recovery_tests;
+#[cfg(all(test, feature = "queue-sqlite", not(miri)))]
+mod sqlite_claim_tests;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
 #[cfg(test)]

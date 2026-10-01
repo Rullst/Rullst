@@ -1502,6 +1502,10 @@ the same server-authoritative controls.
 * SQLite and Redis persist `dispatch_at` for at most 366 days and never claim a
   job before its stored millisecond due time. Execution remains poll-dependent
   and at-least-once.
+* SQLite claims pending jobs in order of their due time, and an immediately
+  dispatched job is due at its enqueue time. A scheduled job, or one handed
+  back for lack of a handler, that became due earlier is therefore claimed
+  before later immediate jobs instead of waiting for the backlog to drain.
 * Successful SQLite jobs are deleted by default. The explicit
   `Queue::sqlite_with_completed_history` constructor validates a 1–100,000 row
   limit, changes a processing row to `completed`, and prunes excess history in
