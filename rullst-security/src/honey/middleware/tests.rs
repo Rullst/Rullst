@@ -259,3 +259,42 @@ async fn page_initiated_trap_loads_are_refused_without_banning_the_visitor() {
     assert!(state.is_banned("192.0.2.46"));
     assert!(state.is_banned("192.0.2.47"));
 }
+
+#[tokio::test]
+async fn a_ban_ttl_beyond_the_clock_still_bans_the_peer() {
+    let state = HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::MAX, 10)
+        .expect("a permanent ban request is valid configuration");
+
+    state.ban_ip("192.0.2.62".to_string());
+    assert!(state.is_banned("192.0.2.62"));
+
+    let app = Router::new()
+        .route("/{*path}", get(|| async { StatusCode::OK }))
+        .layer(HoneypotLayer::new(state.clone()));
+    let response = app
+        .clone()
+        .oneshot(trap_request("192.0.2.61:5000", &[]))
+        .await
+        .expect("response");
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert!(state.is_banned("192.0.2.61"));
+    assert_eq!(state.banned_count(), 2);
+
+    // Enforcement and the SOC view agree: the peer is banned in both.
+    assert!(
+        crate::telemetry::SecurityStore::global()
+            .banned_ips
+            .contains_key("192.0.2.61")
+    );
+    let mut later = Request::builder()
+        .uri("/safe")
+        .body(Body::empty())
+        .expect("valid request");
+    later.extensions_mut().insert(ConnectInfo(
+        "192.0.2.61:5001"
+            .parse::<SocketAddr>()
+            .expect("valid socket address"),
+    ));
+    let response = app.oneshot(later).await.expect("response");
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}

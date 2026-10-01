@@ -81,7 +81,11 @@ impl HoneypotState {
         )
     }
 
-    /// Creates a honeypot state with explicit finite ban lifetime and cardinality limits.
+    /// Creates a honeypot state with explicit ban lifetime and cardinality limits.
+    ///
+    /// A `ban_ttl` longer than the monotonic clock can represent, such as
+    /// `Duration::MAX` for a "permanent" ban, is shortened to the furthest
+    /// deadline the clock can hold, so the ban is still enforced.
     pub fn try_with_limits(
         trap_paths: Vec<String>,
         ban_ttl: Duration,
@@ -145,20 +149,21 @@ impl HoneypotState {
 
     pub fn ban_ip(&self, ip: String) {
         if let Ok(ip) = ip.parse::<IpAddr>() {
-            self.ban_peer(ip);
+            let _ = self.ban_peer(ip);
         }
     }
 
-    fn ban_peer(&self, ip: IpAddr) {
+    /// Bans `ip` and returns the lifetime actually stored, or `None` when no
+    /// ban could be recorded.
+    fn ban_peer(&self, ip: IpAddr) -> Option<Duration> {
         let now = Instant::now();
-        let Some(expires_at) = now.checked_add(self.ban_ttl) else {
-            return;
-        };
+        let expires_at = crate::login_guard::saturating_deadline(now, self.ban_ttl);
         let Ok(mut bans) = self.banned_ips.lock() else {
-            return;
+            return None;
         };
         bans.prune_expired(now);
         bans.insert(ip, expires_at, self.max_bans);
+        Some(expires_at.saturating_duration_since(now))
     }
 
     /// Matches only a complete configured URI path; substrings and prefixes are not traps.
@@ -281,13 +286,17 @@ where
             // can make any visitor's browser load a trap URL.
             let page_initiated = is_page_initiated(req.headers());
             let telemetry = crate::telemetry::SecurityStore::global();
-            if page_initiated {
-                telemetry.record_honeypot_observation(&client_ip, &path);
+            // Telemetry reports a ban only when one was actually stored.
+            let stored_ban = if page_initiated {
+                None
             } else {
-                if let Some(ip) = peer_ip {
-                    self.state.ban_peer(ip);
+                peer_ip.and_then(|ip| self.state.ban_peer(ip))
+            };
+            match stored_ban {
+                Some(ban_ttl) => {
+                    telemetry.record_honeypot_trap_with_ttl(&client_ip, &path, ban_ttl)
                 }
-                telemetry.record_honeypot_trap_with_ttl(&client_ip, &path, self.state.ban_ttl);
+                None => telemetry.record_honeypot_observation(&client_ip, &path),
             }
             tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, page_initiated, "Honeypot trap triggered");
             let response = (
