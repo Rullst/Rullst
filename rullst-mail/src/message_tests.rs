@@ -241,3 +241,26 @@ fn tracking_tokens_sign_the_bare_delivered_address() {
         assert_eq!(click.target_url, "https://example.com/next");
     }
 }
+
+#[test]
+fn plain_text_fallback_keeps_http_link_targets() {
+    let message = Message::new().to("a@example.com").html(
+        r#"<p>Reset: <a href="https://app.example/reset?token=abc&amp;x=1">Reset password</a></p>"#,
+    );
+    assert_eq!(
+        message.body_text.as_deref(),
+        Some("Reset: Reset password <https://app.example/reset?token=abc&x=1>")
+    );
+    let plain = strip_html_to_plain_text(concat!(
+        r#"<a class="btn" HREF='https://rullst.dev/docs'>Docs</a> "#,
+        r#"<a href="https://rullst.dev">https://rullst.dev</a> "#,
+        r#"<a data-href="https://evil.example" href="mailto:team@rullst.dev">Email us</a> "#,
+        r#"<a href="javascript:alert(1)">x</a> "#,
+        r#"<a href="/relative">relative</a> "#,
+        r#"<a href=https://rullst.dev/logo><img src="cid:logo"></a>"#,
+    ));
+    assert_eq!(
+        plain,
+        "Docs <https://rullst.dev/docs> https://rullst.dev Email us x relative <https://rullst.dev/logo>"
+    );
+}
