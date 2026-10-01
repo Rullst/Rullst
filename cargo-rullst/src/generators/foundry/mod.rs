@@ -7,25 +7,62 @@ mod service;
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
-use std::io::{Error as IoError, ErrorKind};
+use std::io::{Error as IoError, ErrorKind, Write};
+use std::path::Path;
 
-fn add_foundry_to_gitignore() -> Result<(), Box<dyn std::error::Error>> {
-    let gitignore_path = std::path::Path::new(".gitignore");
-    if gitignore_path.exists() {
-        let content = fs::read_to_string(gitignore_path)?;
-        if !content.contains("Foundry.toml") {
-            let mut new_content = content;
-            if !new_content.ends_with('\n') {
-                new_content.push('\n');
-            }
-            new_content.push_str("# Rullst Foundry (contains server secrets)\nFoundry.toml\n");
-            fs::write(gitignore_path, new_content)?;
-            println!(
-                "{}",
-                "🔒 Automatically added Foundry.toml to .gitignore to protect your secrets."
-                    .green()
-            );
-        }
+/// Whether `.gitignore` content ends up ignoring the root `Foundry.toml`.
+///
+/// Only exact pattern lines count, and the last matching line wins, so a
+/// comment, a substring or a later `!Foundry.toml` negation is not mistaken
+/// for protection.
+fn gitignore_ignores_foundry_manifest(content: &str) -> bool {
+    content
+        .lines()
+        .fold(false, |ignored, line| match line.trim_end() {
+            "Foundry.toml" | "/Foundry.toml" => true,
+            "!Foundry.toml" | "!/Foundry.toml" => false,
+            _ => ignored,
+        })
+}
+
+/// Ensures `.gitignore` (created when missing) ignores `Foundry.toml`.
+fn add_foundry_to_gitignore(gitignore_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let content = match fs::read_to_string(gitignore_path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
+    if gitignore_ignores_foundry_manifest(&content) {
+        return Ok(());
+    }
+    let mut new_content = content;
+    if !new_content.is_empty() && !new_content.ends_with('\n') {
+        new_content.push('\n');
+    }
+    new_content.push_str("# Rullst Foundry (contains server secrets)\nFoundry.toml\n");
+    fs::write(gitignore_path, new_content)?;
+    println!(
+        "{}",
+        "🔒 Automatically added Foundry.toml to .gitignore to protect your secrets.".green()
+    );
+    Ok(())
+}
+
+/// Creates `Foundry.toml` without replacing an existing entry; on Unix it is
+/// readable only by its owner because operators add deployment secrets to it.
+fn write_private_manifest(path: &Path, contents: &str) -> std::io::Result<()> {
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path)?;
+    if let Err(error) = file.write_all(contents.as_bytes()) {
+        drop(file);
+        let _ = fs::remove_file(path);
+        return Err(error);
     }
     Ok(())
 }
@@ -77,8 +114,10 @@ pub fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
             )
         })?;
 
+    // Protect the manifest before it exists, so a failure never leaves it unignored.
+    add_foundry_to_gitignore(Path::new(".gitignore"))?;
     let foundry_toml = config::generate_foundry_toml_template(project_name);
-    fs::write(foundry_path, &foundry_toml)?;
+    write_private_manifest(foundry_path, &foundry_toml)?;
 
     println!(
         "{}",
@@ -90,16 +129,14 @@ pub fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
         "Foundry.toml".cyan()
     );
     println!(
-        "  2. Add {} to your {} to keep secrets safe.",
+        "  2. Confirm {} is ignored ({}) and was never committed.",
         "Foundry.toml".cyan(),
-        ".gitignore".yellow()
+        "git check-ignore Foundry.toml".yellow()
     );
     println!(
         "  3. Run {} to deploy to your cloud provider.\n",
         "cargo rullst foundry:deploy".magenta().bold()
     );
-
-    add_foundry_to_gitignore()?;
     Ok(())
 }
 
@@ -162,4 +199,68 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
 
     deploy::print_deployment_success(&cfg);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_effective_exact_patterns_count_as_ignoring_the_manifest() {
+        assert!(gitignore_ignores_foundry_manifest(
+            "target/\nFoundry.toml\n"
+        ));
+        assert!(gitignore_ignores_foundry_manifest("/Foundry.toml"));
+        assert!(!gitignore_ignores_foundry_manifest(""));
+        assert!(!gitignore_ignores_foundry_manifest(
+            "# keep Foundry.toml private\n"
+        ));
+        assert!(!gitignore_ignores_foundry_manifest(
+            "Foundry.toml\n!Foundry.toml\n"
+        ));
+        assert!(!gitignore_ignores_foundry_manifest(
+            "Foundry.toml.example\n"
+        ));
+        assert!(gitignore_ignores_foundry_manifest(
+            "!Foundry.toml\nFoundry.toml\n"
+        ));
+    }
+
+    #[test]
+    fn a_missing_or_negating_gitignore_is_fixed() {
+        let directory = tempfile::tempdir().unwrap();
+        let gitignore = directory.path().join(".gitignore");
+        add_foundry_to_gitignore(&gitignore).unwrap();
+        assert!(gitignore_ignores_foundry_manifest(
+            &fs::read_to_string(&gitignore).unwrap()
+        ));
+
+        fs::write(&gitignore, "target/\n!Foundry.toml").unwrap();
+        add_foundry_to_gitignore(&gitignore).unwrap();
+        let content = fs::read_to_string(&gitignore).unwrap();
+        assert!(content.starts_with("target/\n!Foundry.toml\n"));
+        assert!(gitignore_ignores_foundry_manifest(&content));
+        add_foundry_to_gitignore(&gitignore).unwrap();
+        assert_eq!(fs::read_to_string(&gitignore).unwrap(), content);
+    }
+
+    #[test]
+    fn the_manifest_is_private_and_never_replaced() {
+        let directory = tempfile::tempdir().unwrap();
+        let manifest = directory.path().join("Foundry.toml");
+        write_private_manifest(&manifest, "[app]\n").unwrap();
+        assert_eq!(
+            write_private_manifest(&manifest, "other")
+                .unwrap_err()
+                .kind(),
+            ErrorKind::AlreadyExists
+        );
+        assert_eq!(fs::read_to_string(&manifest).unwrap(), "[app]\n");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&manifest).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
+    }
 }

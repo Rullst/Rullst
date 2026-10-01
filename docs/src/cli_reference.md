@@ -1055,8 +1055,10 @@ move a customized file aside to regenerate its template.
 ### `cargo rullst foundry:init`
 Generates the `Foundry.toml` deployment manifest at the project root containing
 SSH access settings and environment variables for a compatible systemd-based
-Linux VPS. It adds `Foundry.toml` to `.gitignore`; operators must still verify
-that secrets were never committed.
+Linux VPS. Before writing it, the command creates `.gitignore` when missing and
+appends `Foundry.toml` unless an exact, non-negated `Foundry.toml` line already
+ignores it. The manifest is created owner-readable only (`0600` on Unix);
+operators must still verify that secrets were never committed.
 
 ### `cargo rullst foundry:deploy`
 Executes an SSH deployment pipeline: local release build, remote directory and
