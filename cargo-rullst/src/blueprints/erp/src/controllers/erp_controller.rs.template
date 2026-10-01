@@ -1,5 +1,5 @@
 use rullst::server::{
-    Path,
+    Path, Query,
     IntoResponse, Redirect, Response, StatusCode,
     Extension, Form
 };
@@ -17,19 +17,56 @@ const MAX_STOCK: i32 = 1_000_000;
 const MAX_PRICE: f64 = 1_000_000.0;
 /// The longest name, SKU or customer name, in bytes.
 const MAX_TEXT_BYTES: usize = 255;
+/// Products listed on each dashboard page.
+const PRODUCTS_PER_PAGE: usize = 50;
+/// Orders listed under "Recent Orders", newest first.
+const RECENT_ORDERS: usize = 20;
+
+#[derive(Debug, Deserialize)]
+pub struct DashboardQuery {
+    pub page: Option<usize>,
+}
+
+/// The KPIs aggregate every row in SQL instead of the capped lists the page
+/// shows.
+async fn dashboard_summary() -> Result<erp::DashboardSummary, rullst_orm::Error> {
+    let revenue = rullst::db::sqlx::query_scalar::<_, Option<f64>>(
+        "SELECT SUM(total_price) FROM orders WHERE status = 'Paid'",
+    )
+    .fetch_one(rullst::db::Orm::read_pool()?)
+    .await?
+    .unwrap_or(0.0);
+    Ok(erp::DashboardSummary {
+        revenue,
+        orders: Order::query().count().await?,
+        low_stock: Product::query().where_lt("stock", 6).count().await?,
+    })
+}
+
+async fn load_dashboard(
+    page: usize,
+) -> Result<(rullst_orm::PaginationResult<Product>, Vec<Order>, erp::DashboardSummary), rullst_orm::Error> {
+    let products = Product::query().order_by("id").paginate(page, PRODUCTS_PER_PAGE).await?;
+    let orders = Order::query().order_by_desc("id").limit(RECENT_ORDERS).get().await?;
+    Ok((products, orders, dashboard_summary().await?))
+}
 
 pub async fn index(
+    Query(query): Query<DashboardQuery>,
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
     Extension(csp_nonce): Extension<rullst::security::CspNonce>,
-) -> impl IntoResponse {
-    let products = Product::all().await.unwrap_or_default();
-    let orders = Order::all().await.unwrap_or_default();
-    Html(erp::dashboard_page(
-        products,
-        orders,
-        csrf_token.as_str(),
-        csp_nonce.as_str(),
-    ))
+) -> Response {
+    match load_dashboard(query.page.unwrap_or(1).max(1)).await {
+        Ok((products, orders, summary)) => Html(erp::dashboard_page(
+            products,
+            orders,
+            summary,
+            csrf_token.as_str(),
+            csp_nonce.as_str(),
+        ))
+        .into_response(),
+        Err(error) => unavailable(error),
+    }
 }
 
 fn unavailable(error: rullst_orm::Error) -> Response {

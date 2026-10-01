@@ -1,18 +1,20 @@
 __FE_IMPORTS__use crate::models::product::Product;
 use crate::models::order::Order;
 
+/// Totals over every order and product, computed in SQL.
+pub struct DashboardSummary {
+    pub revenue: f64,
+    pub orders: i64,
+    pub low_stock: i64,
+}
+
 pub fn dashboard_page(
-    products: Vec<Product>,
+    products: rullst_orm::PaginationResult<Product>,
     orders: Vec<Order>,
+    summary: DashboardSummary,
     csrf_token: &str,
     csp_nonce: &str,
 ) -> String {
-    let total_sales: f64 = orders.iter()
-        .filter(|o| o.status == "Paid")
-        .map(|o| o.total_price)
-        .sum();
-    let low_stock_alerts = products.iter().filter(|p| p.stock <= 5).count();
-    let total_orders = orders.len();
 
     let document = html! {
         <html lang="pt-BR" class="dark">
@@ -27,14 +29,14 @@ pub fn dashboard_page(
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-6xl mx-auto px-4 pt-8">
                     { rullst::html::RawHtml::new(render_header()) }
-                    { rullst::html::RawHtml::new(render_kpi_cards(total_sales, total_orders, low_stock_alerts)) }
+                    { rullst::html::RawHtml::new(render_kpi_cards(&summary)) }
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div class="lg:col-span-2 flex flex-col gap-8">
                             { rullst::html::RawHtml::new(render_products_table(&products, csrf_token)) }
                             { rullst::html::RawHtml::new(render_orders_table(&orders)) }
                         </div>
                         <div class="flex flex-col gap-8">
-                            { rullst::html::RawHtml::new(render_forms(&products, csrf_token)) }
+                            { rullst::html::RawHtml::new(render_forms(&products.data, csrf_token)) }
                         </div>
                     </div>
                 </div>
@@ -63,29 +65,32 @@ fn render_header() -> String {
     }
 }
 
-fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usize) -> String {
+fn render_kpi_cards(summary: &DashboardSummary) -> String {
     html! {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                 <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Total Revenue"</span>
-                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", total_sales)}</span>
+                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", summary.revenue)}</span>
                 <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Confirmed revenues"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                 <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Orders Placed"</span>
-                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
+                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", summary.orders)}</span>
                 <span class="text-xs text-orange-400/80 mt-1">"Active sales flow"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                 <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Critical Stock Alerts"</span>
-                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", low_stock_alerts)}</span>
+                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", summary.low_stock)}</span>
                 <span class="text-xs text-rose-400/80 mt-1">"Items with stock &le; 5 units"</span>
             </div>
         </div>
     }
 }
 
-fn render_products_table(products: &[Product], csrf_token: &str) -> String {
+fn render_products_table(page: &rullst_orm::PaginationResult<Product>, csrf_token: &str) -> String {
+    let products = &page.data;
+    let previous = (page.current_page > 1).then(|| page.current_page - 1);
+    let next = (page.current_page < page.last_page).then(|| page.current_page + 1);
     html! {
         <div class="glass p-6 rounded-2xl">
             <h2 class="text-xl font-bold mb-4 text-slate-200">"Product Inventory"</h2>
@@ -127,6 +132,11 @@ fn render_products_table(products: &[Product], csrf_token: &str) -> String {
                     </tbody>
                 </table>
             </div>
+            <nav class="flex justify-between items-center mt-4 text-xs text-slate-400" aria-label="Product pages">
+                <span>{ rullst::html::RawHtml::new(previous.map_or_else(String::new, |page| html! { <a class="text-orange-400" href={format!("/?page={page}")}>"&larr; Previous"</a> })) }</span>
+                <span>{format!("Page {} of {} ({} products)", page.current_page, page.last_page.max(1), page.total)}</span>
+                <span>{ rullst::html::RawHtml::new(next.map_or_else(String::new, |page| html! { <a class="text-orange-400" href={format!("/?page={page}")}>"Next &rarr;"</a> })) }</span>
+            </nav>
         </div>
     }
 }
@@ -172,6 +182,7 @@ fn render_forms(products: &[Product], csrf_token: &str) -> String {
         <div class="flex flex-col">
             <div class="glass p-6 rounded-2xl border border-indigo-900/20">
                 <h3 class="text-lg font-bold mb-4 text-indigo-400">"Register New Sale"</h3>
+                <p class="text-xs text-slate-500 mb-4">"Lists the products on this inventory page."</p>
                 <form action="/orders" method="POST" class="space-y-4">
                     <input type="hidden" name="_token" value={csrf_token} />
                     <div>
