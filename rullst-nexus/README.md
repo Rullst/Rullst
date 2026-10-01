@@ -35,7 +35,8 @@ empty with a note. An emptied number, relation, date, date-time, enum or JSON
 field is stored as NULL, never `''` (a new record omits it so the column default
 applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
-change.
+change. A rejected value answers `422` with a plain-text reason, which the
+panel shows as a toast.
 
 In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
 or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or

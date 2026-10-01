@@ -83,5 +83,42 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
             .await
             .expect("invalid semantic widget response");
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        // nexus.js shows error bodies as text: no markup or entities.
+        assert!(
+            response
+                .headers()
+                .get("content-type")
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.starts_with("text/plain")),
+            "{invalid_body}"
+        );
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("bounded validation body");
+        let body = String::from_utf8(body.to_vec()).expect("UTF-8 validation body");
+        assert!(
+            body.starts_with("Invalid Semantic Records form: "),
+            "{body}"
+        );
+        assert!(!body.contains(['<', '&']), "{body}");
     }
+
+    let empty = app
+        .oneshot(
+            local_request()
+                .method("POST")
+                .uri("/table/semantic_records")
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Cookie", format!("rullst_csrf={csrf}"))
+                .header("X-CSRF-Token", csrf)
+                .body(Body::empty())
+                .expect("empty create request"),
+        )
+        .await
+        .expect("empty create response");
+    assert_eq!(empty.status(), StatusCode::BAD_REQUEST);
+    let body = axum::body::to_bytes(empty.into_body(), 16 * 1024)
+        .await
+        .expect("bounded empty-create body");
+    assert_eq!(&body[..], b"No writable values were provided.");
 }

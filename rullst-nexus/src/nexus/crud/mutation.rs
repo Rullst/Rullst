@@ -63,11 +63,7 @@ pub(super) async fn create_record(
         values.push(Some(tenant_id.to_string()));
     }
     if keys.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Html("<p class=\"nexus-error\">No writable values were provided.</p>".to_string()),
-        )
-            .into_response();
+        return (StatusCode::BAD_REQUEST, "No writable values were provided.").into_response();
     }
 
     let sql = format!(
@@ -335,15 +331,12 @@ fn record_not_found() -> Response {
     (StatusCode::NOT_FOUND, "Record not found.").into_response()
 }
 
+/// A plain-text `422`: `nexus.js` shows error bodies as text, so markup
+/// would reach the administrator literally.
 fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {
     (
         StatusCode::UNPROCESSABLE_ENTITY,
-        Html(format!(
-            "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-             &#10060; Invalid {} form: {}</div>",
-            rullst_core::html::escape_str(entry.label),
-            rullst_core::html::escape_str(&error.to_string())
-        )),
+        format!("Invalid {} form: {error}", entry.label),
     )
         .into_response()
 }

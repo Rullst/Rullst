@@ -27,6 +27,24 @@
         setTimeout(() => host.replaceChildren(), 3500);
     }
 
+    // Error bodies are plain text, but a proxy or error page may answer with
+    // HTML: show its text, never its markup. DOMParser documents run no
+    // scripts and load no resources.
+    function messageText(text, contentType) {
+        const raw = String(text || "");
+        const plain = /html/i.test(contentType || "")
+            ? new DOMParser().parseFromString(raw, "text/html").body.textContent || ""
+            : raw;
+        return plain.trim().slice(0, 200);
+    }
+
+    function reportFailure(prefix, response) {
+        response.text().then(text => {
+            const message = messageText(text, response.headers.get("content-type"));
+            toast(prefix + (message || String(response.status)), "danger");
+        });
+    }
+
     const modal = () => document.getElementById("nexus-modal");
     function openModal() {
         const dialog = modal();
@@ -50,7 +68,7 @@
                 button.closest("tr")?.remove();
                 toast("Record #" + id + " deleted.", "success");
             } else {
-                response.text().then(text => toast("Delete failed: " + text, "danger"));
+                reportFailure("Delete failed: ", response);
             }
         }).catch(error => toast("Network error: " + error, "danger"));
     }
@@ -131,7 +149,7 @@
                     swap: "innerHTML",
                 });
             } else {
-                response.text().then(text => toast("Save failed: " + text, "danger"));
+                reportFailure("Save failed: ", response);
             }
         }).catch(error => {
             restore();
@@ -182,7 +200,7 @@
     // the page unchanged (for example the edit form of a missing record).
     document.addEventListener("htmx:responseError", event => {
         const xhr = event.detail?.xhr;
-        const text = String(xhr?.responseText || "").trim().slice(0, 200);
+        const text = messageText(xhr?.responseText, xhr?.getResponseHeader("content-type"));
         toast("Request failed: " + (text || String(xhr?.status || "")), "danger");
     });
 
