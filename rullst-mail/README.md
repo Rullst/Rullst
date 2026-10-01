@@ -541,6 +541,8 @@ Environment variables:
 - `AWS_SES_ENDPOINT`: Native SDK base endpoint or complete proxy send URL;
   HTTPS is required except for loopback integration tests.
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
+  `MAIL_PORT` defaults to 25 only when unset or empty; any other value must be
+  an integer from 1 to 65535, or the facade returns `MailError::ConfigError`.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
 For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the SES

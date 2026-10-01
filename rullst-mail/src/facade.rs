@@ -242,10 +242,21 @@ impl Mail {
                     let host = settings
                         .value("MAIL_HOST")?
                         .unwrap_or_else(|| "127.0.0.1".to_string());
-                    let port = settings
-                        .value("MAIL_PORT")?
-                        .and_then(|p| p.parse().ok())
-                        .unwrap_or(25);
+                    // Port 25 only when the setting is absent or empty; a
+                    // malformed or out-of-range value fails closed.
+                    let port = match settings.value("MAIL_PORT")? {
+                        Some(port) if !port.trim().is_empty() => port
+                            .trim()
+                            .parse::<u16>()
+                            .ok()
+                            .filter(|port| *port != 0)
+                            .ok_or_else(|| {
+                                MailError::ConfigError(
+                                    "MAIL_PORT must be an integer from 1 to 65535".to_string(),
+                                )
+                            })?,
+                        _ => 25,
+                    };
                     let username = settings.value("MAIL_USERNAME")?;
                     let password = settings.value("MAIL_PASSWORD")?;
 
