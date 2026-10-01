@@ -37,7 +37,7 @@ fn null_and_unreadable_values_render_empty_with_an_explanation() {
         assert!(html.contains("Stored value not shown"), "{kind:?}");
     }
     let html = widget(FieldKind::Json, StoredValue::Null);
-    assert!(html.contains("placeholder=\"NULL\"></textarea>"));
+    assert!(html.contains("placeholder=\"NULL\">\n</textarea>"));
     let html = widget(FieldKind::Boolean, StoredValue::Null);
     assert!(!html.contains("checked"));
 }
@@ -120,7 +120,81 @@ async fn forms_declare_their_mode_for_change_only_submission() {
     };
     let create = render_record_form(&state, &entry, None, None).await;
     assert!(create.contains("data-nexus-mode=\"create\""));
-    let edit = render_record_form(&state, &entry, Some("7"), None).await;
+    let edit = form_html(&entry, Some("7"), None);
     assert!(edit.contains("data-nexus-mode=\"edit\""));
-    assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/7\""));
+    assert!(edit.contains("data-nexus-action=\"/nexus/table/articles/record/7\""));
+}
+
+#[tokio::test]
+async fn unloadable_records_render_an_error_instead_of_an_empty_edit_form() {
+    let entry = RegistryEntry {
+        table: "articles",
+        label: "Articles",
+        icon: "A",
+        pk: "id",
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+        ],
+    };
+    let state = NexusState {
+        registry: std::sync::Arc::new(vec![entry.clone()]),
+        brand: std::sync::Arc::new("Nexus".to_owned()),
+        audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
+    };
+    // A non-canonical numeric key names no record, before any query runs.
+    assert_eq!(
+        record_form(&state, &entry, Some("+7"), None).await,
+        Err(RecordFormError::NotFound)
+    );
+    let html = render_record_form(&state, &entry, Some("+7"), None).await;
+    assert_eq!(html, "<p class=\"nexus-error\">Record not found.</p>");
+    assert!(!html.contains("<form"));
+}
+
+#[test]
+fn readonly_checkboxes_and_selects_are_disabled_rather_than_interactive() {
+    let enum_kind = FieldKind::Enum {
+        options: vec!["draft", "published"],
+    };
+    for (kind, stored) in [(FieldKind::Boolean, "1"), (enum_kind, "draft")] {
+        let field = FieldMeta::new("locked", "Locked", kind.clone()).readonly();
+        let html = render_field_widget(&field, &value(stored), true, "id");
+        assert!(!html.contains("name=\"locked\""), "{kind:?}");
+        assert!(html.contains(" disabled"), "{kind:?}");
+        assert!(!html.contains(" readonly"), "{kind:?}");
+
+        let editable = FieldMeta::new("open", "Open", kind.clone());
+        let html = render_field_widget(&editable, &value(stored), true, "id");
+        assert!(html.contains("name=\"open\""), "{kind:?}");
+        assert!(!html.contains("disabled"), "{kind:?}");
+    }
+    let text = FieldMeta::new("title", "Title", FieldKind::Text).readonly();
+    let html = render_field_widget(&text, &value("kept"), true, "id");
+    assert!(html.contains(" readonly") && !html.contains("disabled"));
+}
+
+#[test]
+fn multi_line_single_line_values_are_read_only_and_textareas_keep_leading_newlines() {
+    for (kind, stored) in [
+        (FieldKind::Text, "Line one\nLine two\n\nPara 2"),
+        (FieldKind::Email, "ada@example.com\r\n"),
+        (FieldKind::Url, "https://example.com/\nnext"),
+        (FieldKind::Text, "tab\tseparated"),
+    ] {
+        let html = widget(kind.clone(), value(stored));
+        assert!(!html.contains("name=\"field\""), "{kind:?}");
+        assert!(!html.contains("<input"), "{kind:?}");
+        assert!(
+            html.starts_with("<textarea class=\"nexus-input\" rows=\"4\" readonly>\n"),
+            "{kind:?}"
+        );
+        assert!(html.contains("nexus-field-note"), "{kind:?}");
+    }
+    let html = widget(FieldKind::Text, value("single line"));
+    assert!(html.contains("type=\"text\" name=\"field\" value=\"single line\""));
+
+    let html = widget(FieldKind::Textarea, value("\nstarts with a blank line"));
+    assert!(html.contains("rows=\"4\">\n\nstarts with a blank line</textarea>"));
 }

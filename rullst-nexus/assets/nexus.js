@@ -41,7 +41,7 @@
         const table = button.dataset.nexusTable || "";
         const id = button.dataset.nexusRecord || "";
         if (!confirm("Are you sure you want to delete record #" + id + "?")) return;
-        fetch("/nexus/table/" + encodeURIComponent(table) + "/" + encodeURIComponent(id), {
+        fetch("/nexus/table/" + encodeURIComponent(table) + "/record/" + encodeURIComponent(id), {
             method: "DELETE",
             credentials: "same-origin",
             headers: { "X-CSRF-Token": csrfToken() },
@@ -125,7 +125,11 @@
             if (response.ok) {
                 closeModal();
                 toast("Saved successfully!", "success");
-                window.htmx?.ajax("GET", window.location.pathname, { target: "#nexus-content", swap: "innerHTML" });
+                // Keep the current search, sort and page (pushed into the URL).
+                window.htmx?.ajax("GET", window.location.pathname + window.location.search, {
+                    target: "#nexus-content",
+                    swap: "innerHTML",
+                });
             } else {
                 response.text().then(text => toast("Save failed: " + text, "danger"));
             }
@@ -172,6 +176,14 @@
 
     document.addEventListener("htmx:afterSwap", event => {
         if (event.detail?.target?.id === "nexus-modal-body") openModal();
+    });
+
+    // htmx does not swap 4xx/5xx responses, so report them instead of leaving
+    // the page unchanged (for example the edit form of a missing record).
+    document.addEventListener("htmx:responseError", event => {
+        const xhr = event.detail?.xhr;
+        const text = String(xhr?.responseText || "").trim().slice(0, 200);
+        toast("Request failed: " + (text || String(xhr?.status || "")), "danger");
     });
 
     document.addEventListener("htmx:afterRequest", event => {

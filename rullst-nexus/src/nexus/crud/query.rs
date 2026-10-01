@@ -1,5 +1,6 @@
 //! Query building and parameter extraction for Nexus CRUD.
 
+use super::dialect::{contains_pattern, search_predicate, tenant_predicate};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use serde::Deserialize;
 
@@ -116,7 +117,7 @@ pub fn build_table_query(
 
     let clean_pk = sanitize_identifier(entry.pk);
     if !select_cols.contains(&clean_pk) {
-        select_cols.insert(0, clean_pk);
+        select_cols.insert(0, clean_pk.clone());
     }
 
     let mut select_list = select_cols.join(", ");
@@ -148,17 +149,19 @@ pub fn build_table_query(
                 .iter()
                 .enumerate()
                 .map(|(idx, col)| {
-                    if driver == "postgres" {
-                        format!("{} LIKE ${}", col, binds.len() + idx + 1)
+                    let placeholder = if driver == "postgres" {
+                        format!("${}", binds.len() + idx + 1)
                     } else {
-                        format!("{} LIKE ?", col)
-                    }
+                        "?".to_string()
+                    };
+                    search_predicate(col, &placeholder, driver)
                 })
                 .collect();
 
             predicates.push(format!("({})", where_clauses.join(" OR ")));
 
-            let search_term = format!("%{}%", q);
+            // `%` and `_` typed by the administrator are literal characters.
+            let search_term = contains_pattern(q);
             for _ in 0..text_fields.len() {
                 binds.push(search_term.clone());
             }
@@ -172,11 +175,7 @@ pub fn build_table_query(
             } else {
                 "?".to_string()
             };
-            predicates.push(format!(
-                "{} = {}",
-                sanitize_identifier(tenant_column),
-                placeholder
-            ));
+            predicates.push(tenant_predicate(tenant_column, &placeholder, driver));
             binds.push(tenant_id.to_string());
         } else {
             // Public rendering helpers also fail closed if called outside the
@@ -203,12 +202,19 @@ pub fn build_table_query(
         .filter(|&o| o.eq_ignore_ascii_case("asc") || o.eq_ignore_ascii_case("desc"))
         .unwrap_or("DESC");
     let clean_sort_col = sanitize_identifier(sort_col);
+    // A non-unique sort column has no stable order between separate page
+    // queries; the primary key breaks ties so rows neither repeat nor vanish.
+    let tie_breaker = if clean_sort_col == clean_pk {
+        String::new()
+    } else {
+        format!(", {clean_pk} {sort_dir}")
+    };
 
     let _ = std::fmt::Write::write_fmt(
         &mut sql,
         format_args!(
-            " ORDER BY {} {} LIMIT {} OFFSET {}",
-            clean_sort_col, sort_dir, limit, offset
+            " ORDER BY {} {}{} LIMIT {} OFFSET {}",
+            clean_sort_col, sort_dir, tie_breaker, limit, offset
         ),
     );
 
@@ -250,7 +256,10 @@ mod tests {
             Some("tenant-a"),
         );
 
-        assert!(sql.contains("(title LIKE ?)") || sql.contains("(title LIKE $1)"));
+        assert!(
+            sql.contains("(title LIKE ? ESCAPE '!')")
+                || sql.contains("(CAST(title AS TEXT) ILIKE $1 ESCAPE '!')")
+        );
         assert!(sql.contains("tenant_id = ?") || sql.contains("tenant_id = $2"));
         assert_eq!(binds, ["%needle%", "tenant-a"]);
     }
@@ -283,6 +292,31 @@ mod tests {
         assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
         assert!(!sql.contains("api_key"), "{sql}");
         assert!(sql.contains("ORDER BY id asc"), "{sql}");
+    }
+
+    #[test]
+    fn pages_sorted_by_a_non_unique_column_break_ties_by_primary_key() {
+        let entry = tenant_entry();
+        let visible = vec![&entry.fields[0], &entry.fields[2]];
+        let (sql, _) = build_table_query(
+            &entry,
+            &visible,
+            "",
+            2,
+            Some("title"),
+            Some("asc"),
+            Some("tenant-a"),
+        );
+        assert!(
+            sql.ends_with(" ORDER BY title asc, id asc LIMIT 15 OFFSET 15"),
+            "{sql}"
+        );
+
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, Some("tenant-a"));
+        assert!(
+            sql.ends_with(" ORDER BY id DESC LIMIT 15 OFFSET 0"),
+            "{sql}"
+        );
     }
 
     #[test]

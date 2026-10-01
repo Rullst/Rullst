@@ -7044,6 +7044,8 @@ dependencies = [
  "serde",
  "serde_json",
  "subtle",
+ "testcontainers",
+ "testcontainers-modules",
  "tokio",
  "tower",
  "tracing",

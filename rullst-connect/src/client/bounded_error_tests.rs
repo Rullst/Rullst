@@ -90,15 +90,19 @@ fn short_localized_errors_are_preserved_exactly() {
 fn successful_json_error_responses_are_bounded() {
     let description = format!("{}ç", "d".repeat(2048));
     let error = crate::error::provider_returned_error("invalid_grant", &description);
-    let ConnectError::Token(message) = error else {
-        panic!("expected a token error");
+    let ConnectError::ProviderApiError { code, message } = error else {
+        panic!("expected a structured provider error");
     };
-    assert!(message.starts_with("Provider returned error: invalid_grant - "));
-    assert!(message.len() < 700, "{} bytes", message.len());
+    assert_eq!(code, "invalid_grant");
+    assert!(message.starts_with("ddd"));
+    assert!(message.len() < 600, "{} bytes", message.len());
 
     let code = format!("{}ç", "c".repeat(127));
-    let ConnectError::Token(message) = crate::error::provider_returned_error(&code, "") else {
-        panic!("expected a token error");
+    let ConnectError::ProviderApiError { code, message } =
+        crate::error::provider_returned_error(&code, "")
+    else {
+        panic!("expected a structured provider error");
     };
-    assert!(message.contains(&format!("{}{MARKER}", "c".repeat(127))));
+    assert_eq!(code, format!("{}{MARKER}", "c".repeat(127)));
+    assert_eq!(message, "Unknown error");
 }

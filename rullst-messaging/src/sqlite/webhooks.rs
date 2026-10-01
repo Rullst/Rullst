@@ -1,11 +1,82 @@
 //! Private composition boundaries for the outgoing webhook outbox.
 use super::{
     SqliteBroker,
+    storage::MessageBinding,
     transaction::{finish, storage_error},
 };
 use crate::{Clock, Delivery, MessagingError, Result};
+use zeroize::Zeroizing;
+
+/// The control topic holds one record; this bounds the work of one re-seal.
+const MAX_RESEALED_CONTROL_ROWS: i64 = 8;
 
 impl<C: Clock> SqliteBroker<C> {
+    /// Re-encrypts the private control records of `topic` under the primary
+    /// storage key, so the key that first sealed them can later be retired.
+    /// Content, identity and fingerprint are unchanged.
+    pub(crate) async fn reseal_webhook_control(&self, topic: &str) -> Result<()> {
+        if self.storage.primary_key_id().is_none() {
+            return Ok(());
+        }
+        let mut tx = self.begin_write("begin webhook control rotation").await?;
+        let result = async {
+            type Row = (i64, String, String, String, String, i64, Vec<u8>);
+            let rows: Vec<Row> = sqlx::query_as(
+                "SELECT sequence,message_id,event_kind,content_type,headers_json,published_at_ms,payload
+                FROM rullst_messaging_messages WHERE namespace=? AND topic=? ORDER BY sequence LIMIT ?",
+            )
+            .bind(self.config.namespace().as_str())
+            .bind(topic)
+            .bind(MAX_RESEALED_CONTROL_ROWS)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(|_| storage_error("read webhook control record"))?;
+            for (sequence, id, kind, content_type, marker, published_at_ms, payload) in rows {
+                if self.storage.is_primary_marker(&marker) {
+                    continue;
+                }
+                let binding = MessageBinding::message(
+                    self.config.namespace(),
+                    topic,
+                    sequence,
+                    &id,
+                    &kind,
+                    &content_type,
+                    published_at_ms,
+                );
+                let (headers, plaintext) = self.storage.decode_message(
+                    binding,
+                    marker.clone(),
+                    payload,
+                    self.config.max_payload_bytes(),
+                )?;
+                let plaintext = Zeroizing::new(plaintext);
+                let (primary_marker, sealed) =
+                    self.storage.encode_message(binding, &headers, &plaintext)?;
+                let updated = sqlx::query(
+                    "UPDATE rullst_messaging_messages SET headers_json=?,payload=?
+                    WHERE namespace=? AND topic=? AND sequence=? AND headers_json=?",
+                )
+                .bind(primary_marker)
+                .bind(sealed)
+                .bind(self.config.namespace().as_str())
+                .bind(topic)
+                .bind(sequence)
+                .bind(marker)
+                .execute(&mut *tx)
+                .await
+                .map_err(|_| storage_error("rotate webhook control record"))?;
+                if updated.rows_affected() != 1 {
+                    return Err(MessagingError::CorruptStorage {
+                        context: "webhook control rotation",
+                    });
+                }
+            }
+            Ok(())
+        }
+        .await;
+        finish(tx, result, "finish webhook control rotation").await
+    }
     pub(crate) async fn validate_webhook_delivery(
         &self,
         delivery: &Delivery,

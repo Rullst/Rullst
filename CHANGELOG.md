@@ -215,6 +215,30 @@ A prepared version section does not establish that its tag or crates exist.
 - Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
   `deploy:doctor` reviews configured networks (threat case `CORE-03`).
 
+### Connect and messaging low-severity review fixes
+
+- Connect: with `retry`, single-use token, device-poll and revocation POSTs are
+  retried only on HTTP 429, never after timeouts, resets or 5xx.
+- Connect: OAuth errors returned with HTTP 200 (GitHub token and device poll)
+  are `ConnectError::ProviderApiError { code, message }`, so pollers can match
+  `authorization_pending` and `slow_down`; code that matched the old `Token`
+  text must switch variants.
+- Connect: OIDC discovery accepts IdPs without `userinfo_endpoint`, and
+  `OidcProvider::discover_with_client` routes discovery through an explicit
+  proxy client.
+- Connect: Discord profiles without an id are rejected, `ConnectUser`
+  round-trips through serde, provider `email_verified` claims are parsed, OIDC
+  spans no longer record the nonce and the SQLite token store rejects
+  in-memory, `vfs` and `immutable` URLs.
+- Messaging: durable SQLite rejects every in-memory spelling plus
+  `vfs`/`immutable`, a plaintext reopen no longer loads all headers and
+  `InMemoryBroker` samples time after taking its lock.
+- Messaging webhooks and recurring publications: control records and bindings
+  follow the primary storage key, the webhook binding layout no longer depends
+  on serde_json features, configuration or keyring drift returns
+  `Configuration`, one short lease no longer fails a claim batch and
+  `retry_failed` reports a committed reset as success.
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or
@@ -624,6 +648,28 @@ A prepared version section does not establish that its tag or crates exist.
   credentials are rejected, and the offline mock is used only for empty or
   `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
   587 and 25 configurations deliver.
+
+### Nexus low-severity review fixes
+
+- Nexus create, update and batch work on PostgreSQL integer, numeric and
+  Boolean columns, including Rullst's INTEGER Booleans, and text primary keys
+  that look numeric are no longer bound as BIGINT.
+- Record keys follow the registered key kind: non-canonical numeric spellings
+  (`+1`, `01`, `1e3`) return 404, and the audit records the canonical key or,
+  for a key it cannot store, no key.
+- Tenant scope is byte-exact on MySQL/MariaDB; search treats `%` and `_`
+  literally and is case-insensitive on PostgreSQL; pagination is stable.
+- Bulk Delete and Deactivate work from the browser (CSRF `_token`), the
+  `_token` body field is accepted on create and update, and a hidden
+  `is_active` column is never batch-deactivated.
+- The edit form returns 404 or 500 instead of an empty editable form, the list
+  no longer shows NULL as `0`/`No`, readonly checkboxes and selects are
+  disabled, and multi-line text is no longer silently collapsed.
+- htmx no longer caches admin pages in `localStorage`, and Back or a cache miss
+  reloads the full page.
+- Live search keeps sort and pagination, records keyed `new`, `search` or
+  `batch` are editable through `/table/{t}/record/{id}`, and telemetry shows
+  the newest spans first with accurate wording.
 
 ### Nexus review fixes
 

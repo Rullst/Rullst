@@ -57,10 +57,15 @@ and optionally an owned test CA; production configuration rejects that mode.
 record and subscribes its private delivery group. The encrypted control record
 binds destination, key identity/fingerprint, mode, retention quota and delivery
 window. Configuration/key drift fails instead of sending old payloads to a new
-receiver. Changing destination or signing key requires an explicitly new namespace
+receiver: reopening with a changed destination, signing key, window, mode or
+retention, or with a storage keyring that cannot open the namespace, returns
+`WebhookError::Configuration`. Changing destination or signing key requires an explicitly new namespace
 and an application-owned drain/cutover policy; receiver key overlap is managed by
 the host. Storage keyrings can retain old decryption keys while new writes use a
-new primary. Do not remove keys while retained records depend on them.
+new primary. Do not remove keys while retained records depend on them. Opening
+with a new primary re-seals the private control record under it, so once events
+sealed under an old key are acknowledged or dead-lettered and purged, that key
+can be removed.
 
 Enqueue preserves exact JSON bytes up to 64 KiB and a bounded event kind.
 Reusing a retained application event key with different bytes or kind fails;

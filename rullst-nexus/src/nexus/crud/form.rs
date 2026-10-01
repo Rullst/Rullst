@@ -6,6 +6,10 @@
 //! `data-nexus-mode="edit"` so `nexus.js` submits only the controls the
 //! administrator changed.
 
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+
+use crate::nexus::crud::dialect::{RecordKey, placeholder, tenant_predicate};
 use crate::nexus::crud::input::{datetime_local_value, is_local_date};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -25,13 +29,133 @@ pub(super) enum StoredValue {
     Value(String),
 }
 
+type StoredRow = <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Row;
+
+/// Why an edit form could not be rendered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RecordFormError {
+    /// No record of this model (and tenant) has that key.
+    NotFound,
+    /// The database is not configured or the query failed.
+    Unavailable,
+}
+
+impl RecordFormError {
+    fn message(self) -> &'static str {
+        match self {
+            Self::NotFound => "Record not found.",
+            Self::Unavailable => "The record could not be loaded.",
+        }
+    }
+}
+
+impl IntoResponse for RecordFormError {
+    fn into_response(self) -> Response {
+        let status = match self {
+            Self::NotFound => StatusCode::NOT_FOUND,
+            Self::Unavailable => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        (status, self.message()).into_response()
+    }
+}
+
 /// Renders HTML form for creating or editing records in the modal dialog.
+///
+/// An edit form for a record that does not exist or cannot be loaded renders
+/// a short error message instead of an empty, editable form.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn render_record_form(
+    state: &NexusState,
+    entry: &RegistryEntry,
+    record_id: Option<&str>,
+    tenant_id: Option<&str>,
+) -> String {
+    record_form(state, entry, record_id, tenant_id)
+        .await
+        .unwrap_or_else(|error| {
+            format!(
+                "<p class=\"nexus-error\">{}</p>",
+                escape_str(error.message())
+            )
+        })
+}
+
+/// Loads the columns the edit form shows: registered fields that are neither
+/// hidden nor `Password`, so undeclared columns and stored secrets are never
+/// read.
+async fn load_record(
+    entry: &RegistryEntry,
+    id: &str,
+    tenant_id: Option<&str>,
+) -> Result<StoredRow, RecordFormError> {
+    let key = RecordKey::parse(entry, id).ok_or(RecordFormError::NotFound)?;
+    let pool = rullst_core::db::safe_pool().ok_or(RecordFormError::Unavailable)?;
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    let columns = entry
+        .fields
+        .iter()
+        .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
+        .map(|field| sanitize_identifier(field.name))
+        .collect::<Vec<_>>();
+    let select_list = if columns.is_empty() {
+        sanitize_identifier(entry.pk)
+    } else {
+        columns.join(", ")
+    };
+    let tenant_predicate = match (entry.tenant_column, tenant_id) {
+        (Some(column), Some(_)) => {
+            format!(
+                " AND {}",
+                tenant_predicate(column, &placeholder(2, driver), driver)
+            )
+        }
+        (Some(_), None) => " AND 1 = 0".to_string(),
+        (None, _) => String::new(),
+    };
+    let sql = format!(
+        "SELECT {select_list} FROM {} WHERE {} = {}{tenant_predicate} LIMIT 1",
+        sanitize_identifier(entry.table),
+        sanitize_identifier(entry.pk),
+        placeholder(1, driver),
+    );
+    let mut query = key.bind(rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(
+        sql.as_str(),
+    )));
+    if entry.tenant_column.is_some()
+        && let Some(tenant_id) = tenant_id
+    {
+        query = query.bind(tenant_id.to_owned());
+    }
+    match query.fetch_optional(pool).await {
+        Ok(Some(row)) => Ok(row),
+        Ok(None) => Err(RecordFormError::NotFound),
+        Err(_) => {
+            tracing::error!(table = entry.table, "Nexus record query failed");
+            Err(RecordFormError::Unavailable)
+        }
+    }
+}
+
+/// Renders the create form (`record_id` is `None`) or the edit form for an
+/// existing record.
+pub(crate) async fn record_form(
     _state: &NexusState,
     entry: &RegistryEntry,
     record_id: Option<&str>,
     tenant_id: Option<&str>,
+) -> Result<String, RecordFormError> {
+    let row = match record_id {
+        Some(id) => Some(load_record(entry, id, tenant_id).await?),
+        None => None,
+    };
+    Ok(form_html(entry, record_id, row.as_ref()))
+}
+
+/// Renders the form for `record_id` from its loaded `row`.
+pub(super) fn form_html(
+    entry: &RegistryEntry,
+    record_id: Option<&str>,
+    row_data: Option<&StoredRow>,
 ) -> String {
     let is_edit = record_id.is_some();
     let title = if is_edit {
@@ -44,50 +168,6 @@ pub async fn render_record_form(
     let pk = entry.pk;
 
     use rullst_orm::_sqlx::{Row, ValueRef};
-    let row_data = if let Some(id) = record_id {
-        if let Some(pool) = rullst_core::db::safe_pool() {
-            let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-            let clean_table = sanitize_identifier(t);
-            let clean_pk = sanitize_identifier(pk);
-            let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
-            let tenant_predicate = match (entry.tenant_column, tenant_id) {
-                (Some(column), Some(_)) if driver == "postgres" => {
-                    format!(" AND {} = $2", sanitize_identifier(column))
-                }
-                (Some(column), Some(_)) => {
-                    format!(" AND {} = ?", sanitize_identifier(column))
-                }
-                (Some(_), None) => " AND 1 = 0".to_string(),
-                (None, _) => String::new(),
-            };
-            let sql = format!(
-                "SELECT * FROM {} WHERE {} = {}{} LIMIT 1",
-                clean_table, clean_pk, pk_placeholder, tenant_predicate
-            );
-            let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-            if let Ok(num_id) = id.parse::<i64>() {
-                q = q.bind(num_id);
-            } else {
-                q = q.bind(id);
-            }
-            if entry.tenant_column.is_some()
-                && let Some(tenant_id) = tenant_id
-            {
-                q = q.bind(tenant_id);
-            }
-            match q.fetch_optional(pool).await {
-                Ok(row) => row,
-                Err(_) => {
-                    tracing::error!(table = entry.table, "Nexus record query failed");
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    } else {
-        None
-    };
 
     let fields_html =
         entry
@@ -96,7 +176,7 @@ pub async fn render_record_form(
             .filter(|field| !field.hidden)
             .fold(String::new(), |mut acc, f| {
                 let fname = f.name;
-                let stored = match row_data.as_ref() {
+                let stored = match row_data {
                     None => StoredValue::Absent,
                     // The stored secret or hash never reaches the browser.
                     Some(_) if matches!(f.kind, FieldKind::Password) => StoredValue::Absent,
@@ -138,7 +218,10 @@ pub async fn render_record_form(
 
     let table_path = urlencoding::encode(t);
     let action_url = if let Some(id) = record_id {
-        format!("/nexus/table/{table_path}/{}", urlencoding::encode(id))
+        format!(
+            "/nexus/table/{table_path}/record/{}",
+            urlencoding::encode(id)
+        )
     } else {
         format!("/nexus/table/{table_path}")
     };
@@ -164,8 +247,9 @@ pub async fn render_record_form(
 /// `datetime-local`, `email`, `url`) when that widget shows it unchanged;
 /// otherwise a text input shows the raw value, because browsers silently
 /// replace unrepresentable values with `''`. NULL and undecodable values
-/// render empty with an explanatory placeholder. `Password` values are never
-/// rendered.
+/// render empty with an explanatory placeholder. A single-line value with line
+/// breaks or control characters is shown read-only in a text area. `Password`
+/// values are never rendered.
 pub(super) fn render_field_widget(
     f: &FieldMeta,
     stored: &StoredValue,
@@ -175,6 +259,9 @@ pub(super) fn render_field_widget(
     let safe_fname = escape_str(f.name);
     let is_readonly = f.readonly || (is_edit && f.name == pk);
     let readonly_attr = if is_readonly { " readonly" } else { "" };
+    // `readonly` does not apply to checkboxes or selects: they would stay
+    // interactive while their unnamed value is never submitted.
+    let locked_attr = if is_readonly { " disabled" } else { "" };
     let name_attr = if is_readonly {
         String::new()
     } else {
@@ -193,8 +280,10 @@ pub(super) fn render_field_widget(
     };
 
     match &f.kind {
+        // The HTML parser drops one newline right after `<textarea>`; the
+        // emitted newline keeps a value's own leading line break.
         FieldKind::Textarea | FieldKind::Json => format!(
-            "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}{placeholder}>{}</textarea>",
+            "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}{placeholder}>\n{}</textarea>",
             escape_str(text)
         ),
         FieldKind::Boolean => {
@@ -205,7 +294,7 @@ pub(super) fn render_field_widget(
             };
             format!(
                 "<input type=\"hidden\"{name_attr} value=\"0\" />\
-                 <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} class=\"nexus-checkbox\" />"
+                 <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{locked_attr} class=\"nexus-checkbox\" />"
             )
         }
         FieldKind::Password => {
@@ -245,8 +334,17 @@ pub(super) fn render_field_widget(
                     "<option value=\"{option}\"{selected}>{option}</option>"
                 );
             }
-            format!("<select{name_attr} class=\"nexus-input\"{readonly_attr}>{opts}</select>")
+            format!("<select{name_attr} class=\"nexus-input\"{locked_attr}>{opts}</select>")
         }
+        // A single-line input strips line breaks, so editing the field would
+        // silently join the lines, and a tab or other control character could
+        // never be saved back. Show such values read-only instead.
+        _ if text.chars().any(char::is_control) => format!(
+            "<textarea class=\"nexus-input\" rows=\"4\" readonly>\n{}</textarea>\
+             <p class=\"nexus-field-note\">This stored value has line breaks or control \
+             characters, which this single-line field cannot keep, so it is read-only here.</p>",
+            escape_str(text)
+        ),
         kind => {
             let (input_type, value) = typed_input(kind, text);
             format!(

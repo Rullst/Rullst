@@ -293,7 +293,7 @@ impl AppleProvider {
             name: String::with_capacity(256), // Developer needs to extract this from the form_post on first login
             email: payload["email"].as_str().map(String::from),
             avatar_url: None, // Apple does not provide avatars
-            email_verified: None,
+            email_verified: crate::user::email_verified_claim(&payload["email_verified"]),
             raw_data: payload,
             access_token: id_token_str.to_string().into(),
             refresh_token: None,

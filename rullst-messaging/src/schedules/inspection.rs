@@ -99,7 +99,11 @@ impl<C: Clock> PostgresRecurringStore<C> {
             .await
             .map_err(|_| RecurringError::Storage)?;
             let expires = expires.ok_or(RecurringError::InvalidLease)?;
-            self.commit(tx, now, Some(expires)).await
+            // Once the reset is committed the retry happened; report it even if
+            // the delivery window closes immediately afterwards.
+            self.commit_observed(tx, now, Some(expires))
+                .await
+                .map(|_| ())
         })
         .await
     }

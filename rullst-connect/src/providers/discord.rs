@@ -50,8 +50,9 @@ impl Provider for DiscordProvider {
 
         let id = user_res["id"]
             .as_str()
+            .filter(|id| !id.trim().is_empty())
             .map(String::from)
-            .unwrap_or_default();
+            .ok_or_else(|| crate::error::ConnectError::Provider("Missing user id".to_string()))?;
         let avatar_hash = user_res["avatar"].as_str();
         let avatar_url = avatar_hash.map(|hash| {
             format!(
@@ -261,18 +262,41 @@ mod tests {
             user_body: json!({"username": "No ID User"}),
         }));
 
-        let user = provider
+        let error = provider
             .get_user(crate::provider::ExchangeParams {
                 auth_code: "code",
                 ..Default::default()
             })
             .await
-            .unwrap();
+            .unwrap_err();
 
-        // Discord gracefully degrades if `id` is missing in some implementations,
-        // Wait, looking at the code: `let id = user_res["id"].as_str().map(String::from).unwrap_or_default();`
-        // So it shouldn't be an error, it will just return empty id.
-        assert_eq!(user.id, "");
+        // An account key must never collapse to an empty identifier.
+        assert!(
+            matches!(&error, crate::error::ConnectError::Provider(message) if message == "Missing user id")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_discord_blank_or_non_user_body_is_rejected() {
+        for user_body in [
+            json!({"id": "", "username": "Blank"}),
+            json!({"id": "   ", "username": "Blank"}),
+            json!("<html>interstitial</html>"),
+        ] {
+            let provider = DiscordProvider::new(
+                "client_id".to_string(),
+                secrecy::SecretString::from("client_secret".to_string()),
+                "https://redirect.url".to_string(),
+            )
+            .with_http_client(Arc::new(MockDiscordClient {
+                token_status: 200,
+                token_body: json!({"access_token": "mock_access_token"}),
+                user_status: 200,
+                user_body,
+            }));
+
+            assert!(provider.get_user_from_token("token").await.is_err());
+        }
     }
 
     #[tokio::test]
