@@ -549,7 +549,9 @@ Generates a new Controller in the `src/controllers/` directory. It creates
 placeholder CRUD methods (`index`, `show`, `store`, `update`, `delete`) and
 registers the Rust module in `main.rs` when that file exists; it does not add
 application routes automatically.
-* **Arguments:** `<name>` (e.g., `UsersController` or `users`).
+* **Arguments:** `<name>` (e.g., `UsersController` or `users`). A name whose
+  module or type would not be a non-keyword Rust identifier (for example
+  `Bad.Name`) is rejected before any file is edited.
 * **Optional Flags:**
   * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`.
 
@@ -589,6 +591,8 @@ existing chat scaffold.
 
 ### `cargo rullst make:middleware <name>`
 Generates a standard Axum/Rullst Middleware struct in `src/middlewares/`. Perfect for injecting headers, checking authentication, rate limiting, or logging.
+A name whose module and function would not be a non-keyword Rust identifier is
+rejected before any file is edited.
 
 ### `cargo rullst make:island <name>`
 Creates a frontend interactive "Islands Architecture" component (similar to Fresh or Astro) in `src/islands/`. It generates the Rust infrastructure that, during build, will be transparently compiled to WebAssembly to run in the browser.
@@ -859,7 +863,10 @@ the application.
 Scaffolds a LiveView-style server component at `src/live/<name>.rs` using a
 WebSocket and HTMX out-of-band swaps. Application JavaScript may be unnecessary,
 but HTMX remains client-side JavaScript and the generated transport requires
-origin, reconnect, and backpressure review.
+origin, reconnect, and backpressure review. It must run in a Rullst project
+root, and a name whose module or type would not be a non-keyword Rust
+identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
+anything is written.
 
 ### `cargo rullst make:grpc <ServiceName>`
 Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
