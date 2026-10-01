@@ -52,15 +52,28 @@ pub fn parse_variants(s: &str) -> Vec<(String, u32)> {
 }
 
 /// Evaluates a hash bucket index against a list of variants and returns the matching name.
+///
+/// Weights accumulate with saturation, so oversized weights (for example a
+/// mistyped database row) cannot overflow: a weight that reaches `u32::MAX`
+/// covers every remaining bucket.
 pub fn resolve_variant(variants: &[(String, u32)], bucket: u32) -> Option<String> {
-    let mut accumulator = 0;
+    let mut accumulator = 0_u32;
     for (name, pct) in variants {
-        accumulator += pct;
+        accumulator = accumulator.saturating_add(*pct);
         if bucket < accumulator {
             return Some(name.clone());
         }
     }
     None
+}
+
+/// The variant of `identifier` in an A/B split, or `"disabled"` when its
+/// bucket lies outside weights summing to less than 100. A driver that knows
+/// the flag always answers, so lower-priority drivers never decide for
+/// identifiers outside a narrowed split.
+pub(crate) fn split_variant(variants: &[(String, u32)], flag: &str, identifier: &str) -> String {
+    resolve_variant(variants, calculate_hash_bucket(flag, identifier))
+        .unwrap_or_else(|| "disabled".to_string())
 }
 
 /// Helper function to parse feature toggles string formats uniformly
@@ -105,8 +118,7 @@ pub(crate) fn parse_feature_string_value(
         if !variants.is_empty()
             && let Some(ident) = identifier
         {
-            let bucket = calculate_hash_bucket(flag, ident);
-            return resolve_variant(&variants, bucket);
+            return Some(split_variant(&variants, flag, ident));
         }
     }
 

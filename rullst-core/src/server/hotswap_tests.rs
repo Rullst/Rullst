@@ -138,7 +138,7 @@ async fn panic_and_cancellation_errors_become_bounded_error_responses() {
     })
     .await
     .unwrap_err();
-    let response = HotSwapService::handle_panic_error(string_panic)
+    let response = HotSwapService::handle_panic_error(string_panic, Default::default(), true)
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
@@ -147,7 +147,7 @@ async fn panic_and_cancellation_errors_become_bounded_error_responses() {
     let opaque_panic = tokio::spawn(async { std::panic::panic_any(7_u8) })
         .await
         .unwrap_err();
-    let response = HotSwapService::handle_panic_error(opaque_panic)
+    let response = HotSwapService::handle_panic_error(opaque_panic, Default::default(), true)
         .await
         .unwrap();
     assert!(
@@ -158,9 +158,10 @@ async fn panic_and_cancellation_errors_become_bounded_error_responses() {
 
     let cancelled = tokio::spawn(std::future::pending::<()>());
     cancelled.abort();
-    let response = HotSwapService::handle_panic_error(cancelled.await.unwrap_err())
-        .await
-        .unwrap();
+    let response =
+        HotSwapService::handle_panic_error(cancelled.await.unwrap_err(), Default::default(), true)
+            .await
+            .unwrap();
     assert!(
         body_text(response)
             .await
@@ -213,4 +214,35 @@ async fn application_lifecycle_also_gates_hot_swapped_routes() {
         .await
         .unwrap();
     assert_eq!(draining.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn escaped_panics_show_details_only_to_loopback_peers() {
+    async fn panics() -> &'static str {
+        panic!("hot swap secret payload");
+    }
+    let router = axum::Router::new().route("/panic", axum::routing::get(panics));
+    for (peer, visible) in [("192.168.1.7:4000", false), ("127.0.0.1:4000", true)] {
+        let mut connected = ConnectedHotSwap {
+            inner: service(router.clone()),
+            peer: peer.parse().unwrap(),
+        };
+        let response = connected
+            .call(
+                Request::builder()
+                    .uri("/panic")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            body_text(response)
+                .await
+                .contains("hot swap secret payload"),
+            visible,
+            "{peer}"
+        );
+    }
 }

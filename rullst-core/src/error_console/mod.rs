@@ -1,6 +1,7 @@
 //! Interactive dev error console with source context inspection and AI assistance.
 
 pub mod api;
+pub(crate) mod capture;
 pub mod middleware;
 pub mod parser;
 pub mod renderer;

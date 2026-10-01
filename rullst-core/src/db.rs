@@ -77,7 +77,9 @@ pub enum ReplicationError {
     /// Remote replication has no production backend in this release.
     #[error("SQLite replication backend is not implemented for `{sync_url}`")]
     Unsupported {
-        /// Requested remote replication endpoint.
+        /// Scheme of the requested remote endpoint, such as
+        /// `libsql://<redacted>`. The URL itself is never kept, because it can
+        /// carry credentials (userinfo or an `authToken` query parameter).
         sync_url: String,
     },
 }
@@ -91,7 +93,9 @@ impl ReplicationManager {
     #[cfg_attr(mutants, mutants::skip)]
     pub fn start(config: ReplicationConfig) -> Result<(), ReplicationError> {
         if let Some(sync_url) = config.sync_url {
-            return Err(ReplicationError::Unsupported { sync_url });
+            return Err(ReplicationError::Unsupported {
+                sync_url: crate::config::redacted_url(&sync_url),
+            });
         }
         Ok(())
     }
@@ -185,9 +189,21 @@ mod tests {
         assert_eq!(
             ReplicationManager::start(config),
             Err(ReplicationError::Unsupported {
-                sync_url: "https://sync.rullst.dev".to_string(),
+                sync_url: "https://<redacted>".to_string(),
             })
         );
+    }
+
+    #[test]
+    fn unsupported_replication_error_never_formats_url_credentials() {
+        let config = ReplicationConfig::new("replica.db")
+            .with_sync_url("libsql://owner:user-secret@app-org.turso.io?authToken=url-secret");
+        let error = ReplicationManager::start(config).unwrap_err();
+        for rendered in [error.to_string(), format!("{error:?}")] {
+            assert!(!rendered.contains("secret"), "credentials were formatted");
+            assert!(!rendered.contains("turso.io"), "the host was formatted");
+            assert!(rendered.contains("libsql://<redacted>"));
+        }
     }
 
     #[test]

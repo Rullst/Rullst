@@ -73,9 +73,17 @@ impl HotSwapService {
         }
     }
 
+    /// Renders a panic that escaped the application router. Details are shown
+    /// only when `render_details` (the request passed the console peer check);
+    /// any other client receives an empty `500`.
     pub(crate) async fn handle_panic_error(
         join_err: tokio::task::JoinError,
+        capture: crate::error_console::capture::PanicCapture,
+        render_details: bool,
     ) -> Result<axum::response::Response, std::convert::Infallible> {
+        if !render_details {
+            return Self::handle_oneshot_error();
+        }
         let message = if join_err.is_panic() {
             let panic_payload = join_err.into_panic();
             if let Some(s) = panic_payload.downcast_ref::<&str>() {
@@ -89,8 +97,8 @@ impl HotSwapService {
             "Request task was cancelled or aborted".to_string()
         };
 
-        let backtrace = std::backtrace::Backtrace::capture();
-        let html_content = crate::error_console::render_console_html(&message, &backtrace).await;
+        let html_content =
+            crate::error_console::render_console_html(&message, &capture, None).await;
 
         match axum::response::Response::builder()
             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -218,6 +226,7 @@ impl Service<axum::extract::Request> for HotSwapService {
             router,
             self.limiter.clone(),
             self.shield.clone(),
+            false,
         );
         if let Some(ref lifecycle) = self.lifecycle {
             router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
@@ -226,13 +235,15 @@ impl Service<axum::extract::Request> for HotSwapService {
         if let Some(ref layer) = self.trusted_proxy {
             router = router.layer(layer.clone());
         }
+        let render_details = crate::error_console::console_details_allowed(req.extensions());
         let method = req.method().to_string();
         let path = req.uri().path().to_string();
         let start = std::time::Instant::now();
         use tower::ServiceExt;
         let fut = router.oneshot(req);
         Box::pin(async move {
-            let handle = tokio::spawn(async move { fut.await });
+            let (handle, panic_slot) =
+                crate::error_console::capture::spawn_capturing(async move { fut.await });
             match handle.await {
                 Ok(Ok(res)) => {
                     super::console::log_request(
@@ -244,7 +255,9 @@ impl Service<axum::extract::Request> for HotSwapService {
                     Ok(res)
                 }
                 Ok(Err(_)) => Self::handle_oneshot_error(),
-                Err(join_err) => Self::handle_panic_error(join_err).await,
+                Err(join_err) => {
+                    Self::handle_panic_error(join_err, panic_slot.take(), render_details).await
+                }
             }
         })
     }

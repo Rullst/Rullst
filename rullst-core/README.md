@@ -46,7 +46,9 @@
 - **Local Edge Emulator:** `edge::EdgeServer::run` binds `127.0.0.1` unless
   `HOST`/`RULLST_HOST` is set, serves every path including `/`, and rejects a
   body over 2 MiB with `413` (or an unreadable one with `400`) instead of
-  passing the handler an empty body. It applies no security baseline.
+  passing the handler an empty body. The raw query string reaches the handler
+  in `EdgeRequest::query` (unpublished v13 field). It applies no security
+  baseline.
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.

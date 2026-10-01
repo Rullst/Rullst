@@ -239,6 +239,33 @@ A prepared version section does not establish that its tag or crates exist.
   `Configuration`, one short lease no longer fails a claim batch and
   `retry_failed` reports a committed reset as success.
 
+### Core runtime low-severity review fixes
+
+- Validated extractors return 413 or 415 for oversized or wrongly typed bodies,
+  report nested errors as `address.zip` and `items[0].name`, and
+  `ValidationError` formatting no longer includes submitted values.
+- The development panic console shows the real panic location, works under the
+  default nonce CSP without external fonts and shows details only to loopback
+  clients on the hot-reload path too.
+- TOML feature flags are read with a real TOML parser, users outside an A/B
+  split get `"disabled"`, weight sums cannot overflow and a negative database
+  rollout means 0%; `FeatureManager::overrides()` exposes the memory override
+  layer.
+- Security configuration rejects empty User-Agent blocklist entries and CORS
+  origins a browser never sends, and `ReplicationError` and `Inject` failures
+  no longer expose URLs or type paths.
+- `HOST` accepts bare IPv6 and `localhost`, uptime starts at server start,
+  `RullstConfig::environment()` matches the environment the Server enforces,
+  and dev-reload polls are neither logged nor rate limited.
+- Traffic Shield logs at most one line per second under overload, long
+  rate-limit keys are stored as digests and `.zst` assets are never served as
+  `application/octet-stream`.
+- htmx headers keep non-ASCII text, Wasm RPC works without a CSRF cookie in
+  development and marks 429/503/`Retry-After` responses retryable, and
+  `render_page_with_lang` and `EdgeRequest::query` are new.
+- `studio` exits 1 when its port is taken, and
+  `error_console::handle_run_migrations` no longer reports a fake success.
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or

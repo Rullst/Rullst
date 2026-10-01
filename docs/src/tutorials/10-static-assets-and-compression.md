@@ -53,7 +53,10 @@ The Zstandard middleware serves `name.zst` only when `Accept-Encoding` lists
 `/static/` has only plain segments. Paths with `.`, `..`, empty segments,
 backslashes or percent-encoding skip the `.zst` lookup and go to `ServeDir`
 uncompressed. `Content-Encoding: zstd` is added only to `2xx` and `304`
-responses.
+responses. A hand-made `.zst` is used only for a type the middleware can label
+(the generated types plus `.htm`, `.mjs`, `.cjs`, `.map`, `.webmanifest`,
+`.csv`, `.pdf`, `.ttf` and `.otf`); for any other file the uncompressed asset
+is served, never a `.zst` body typed `application/octet-stream`.
 
 Verify deployed behavior rather than assuming negotiation worked:
 
