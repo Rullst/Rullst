@@ -428,7 +428,9 @@ live capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
 `DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
-it never probes localhost implicitly.
+it never probes localhost implicitly. `OLLAMA_HOST` (and the host given to `OllamaProvider::new`)
+is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
+port 11434 unless a port is named.
 
 ## JSON mode versus structured output
 

@@ -33,6 +33,10 @@ export OLLAMA_HOST="http://127.0.0.1:11434"
 export OLLAMA_MODEL="llama3"
 ```
 
+`OLLAMA_HOST` is read the way Ollama reads it, so the scheme-less
+`127.0.0.1:11434` form that `ollama serve` uses also works: a value without
+`http://` or `https://` means `http`, and port 11434 unless it names one.
+
 ```rust
 use rullst_ai::ai::AiClient;
 

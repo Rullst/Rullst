@@ -222,3 +222,19 @@ async fn anthropic_reports_an_incomplete_reply_instead_of_returning_it() {
     let request = server.await.unwrap().unwrap();
     assert!(String::from_utf8_lossy(&request).contains(r#""max_tokens":16000"#));
 }
+
+#[tokio::test]
+async fn ollama_accepts_its_own_scheme_less_host_form() {
+    let body = r#"{"message":{"role":"assistant","content":"ok"}}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    // OLLAMA_HOST is commonly `127.0.0.1:11434`, without a scheme.
+    let host = endpoint.trim_start_matches("http://").to_string();
+    let answer = OllamaProvider::new(host, "fixture-model")
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt("hello")
+        .await
+        .unwrap();
+    assert_eq!(answer, "ok");
+    let request = server.await.unwrap().unwrap();
+    assert!(String::from_utf8_lossy(&request).starts_with("POST /api/chat "));
+}
