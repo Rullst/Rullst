@@ -1700,7 +1700,10 @@ PostgreSQL, `JSON` on MySQL, text on SQLite). SQLx implements `Json` only for
 the concrete drivers, so such models require a strict driver feature; the
 dynamic `Any` pool cannot decode them. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
-decoded shape drift from generated SQL. Soft-delete sentinel expressions are
+decoded shape drift from generated SQL. The same applies to struct-level
+SQLx metadata, which `FromRow` also reads: only `#[sqlx(default)]` is accepted
+on the model, and `rename_all` or any other container option fails
+compilation. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are
 capped at 128 bytes and reject statement separators, NUL, and SQL comments,
 while portability and semantic review remain the model author's responsibility.
