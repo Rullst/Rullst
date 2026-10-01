@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790830894741,
+  "lastUpdate": 1790835717644,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23475,6 +23475,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2296,
             "range": "± 47",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8bc2ab74d49a419daa4a77d376ddc8178e0af27",
+          "message": "Merge pull request #371 from Rullst/refactor/v13-split-large-files\n\nrefactor: split ten oversized modules into focused submodules",
+          "timestamp": "2026-10-01T03:17:07-03:00",
+          "tree_id": "8b2f3d3c005ddffbf27826477414e651432fc14b",
+          "url": "https://github.com/Rullst/Rullst/commit/c8bc2ab74d49a419daa4a77d376ddc8178e0af27"
+        },
+        "date": 1790835715574,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 416,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 594,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 421,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1231,
+            "range": "± 95",
             "unit": "ns/iter"
           }
         ]
