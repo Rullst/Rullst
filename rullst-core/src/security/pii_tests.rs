@@ -151,6 +151,36 @@ fn json_masking_rewrites_strings_but_never_numbers() {
     assert!(mask_pii(body).contains("*********0000"));
 }
 
+#[test]
+fn json_escape_sequences_never_join_a_digit_run() {
+    // `\u2014` (em dash) and serde_json's `\u0019` are not digits: neither
+    // body holds a 13-digit run, so both stay byte-for-byte unchanged.
+    let em_dash = r#"{"note":"Pedido \u2014 123456789"}"#;
+    assert_eq!(mask_json_strings(em_dash), em_dash);
+    let control = serde_json::json!({ "note": "\u{19}1234567890" }).to_string();
+    assert!(control.contains(r"\u0019"));
+    assert_eq!(mask_json_strings(&control), control);
+
+    // Escaped digits and `@` still count, and the masked output stays valid.
+    let escaped =
+        r#"{"card":"\u0034111 1111 1111 1111","email":"ana\u0040example.com","q":"\"5\" \\ \/"}"#;
+    let masked = mask_json_strings(escaped);
+    assert_eq!(
+        masked,
+        r#"{"card":"**** **** **** 1111","email":"a**\u0040example.com","q":"\"5\" \\ \/"}"#
+    );
+    let value: serde_json::Value = serde_json::from_str(&masked).expect("still valid JSON");
+    assert_eq!(value["email"], "a**@example.com");
+
+    // Lone surrogates and malformed escapes are copied unchanged.
+    assert_eq!(
+        mask_json_strings(r#"["\ud83d 4111 1111 1111 1111"]"#),
+        r#"["\ud83d **** **** **** 1111"]"#
+    );
+    let malformed = r#"["\uZZZZ","\x","\u12"]"#;
+    assert_eq!(mask_json_strings(malformed), malformed);
+}
+
 #[tokio::test]
 async fn middleware_keeps_json_numbers_valid() {
     use axum::http::{Request, header};

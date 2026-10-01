@@ -175,6 +175,7 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
         trusted_proxy: Some(crate::security::TrustedProxyLayer::new(
             TrustedProxyConfig::new(["10.0.0.0/8"]).unwrap(),
         )),
+        machine_endpoints: None,
     };
     let mut connection = ConnectedHotSwap {
         inner,

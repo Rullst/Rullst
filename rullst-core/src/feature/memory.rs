@@ -51,6 +51,11 @@ impl MemoryFeatureDriver {
     }
 
     /// Explicitly override an A/B split configuration (e.g. [("a", 50), ("b", 50)]).
+    ///
+    /// Read the assignment with `variant`. As in the Env, TOML and DB drivers,
+    /// `enabled_for` is true only for identifiers assigned a variant named
+    /// `"enabled"`; as in the Env and TOML drivers, `enabled` (no identifier)
+    /// is false.
     pub fn override_variants(&self, flag: &str, variants: Vec<(String, u32)>) {
         self.rules.insert(
             flag.to_string(),
@@ -74,7 +79,7 @@ impl FeatureDriver for MemoryFeatureDriver {
     async fn enabled(&self, flag: &str) -> Option<bool> {
         self.rules
             .get(flag)
-            .map(|r| r.enabled && r.rollout_percentage.is_none())
+            .map(|r| r.enabled && r.rollout_percentage.is_none() && r.variants.is_none())
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -82,6 +87,10 @@ impl FeatureDriver for MemoryFeatureDriver {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
             return Some(false);
+        }
+        // An A/B split evaluates to a variant name, as in the string drivers.
+        if let Some(ref variants) = rule.variants {
+            return Some(split_variant(variants, flag, identifier) == "enabled");
         }
         if let Some(pct) = rule.rollout_percentage {
             let bucket = calculate_hash_bucket(flag, identifier);

@@ -81,6 +81,21 @@ A prepared version section does not establish that its tag or crates exist.
   the tenant ID is one normal path segment. Before, tenant `.` resolved into
   another tenant's storage root.
 
+### Core final-review fixes
+
+- `csrf_middleware` handles `HEAD` like `GET`, so form pages extracting
+  `CsrfToken` answer HEAD instead of returning 500.
+- The development hot-reload server enforces `Server::with_machine_endpoints`
+  authentication.
+- JSON PII masking decodes string escapes before masking, so `\uXXXX` escapes
+  are never corrupted into invalid JSON.
+- `Storage::url` for an R2 driver returns `Unsupported`, because R2's S3 API
+  endpoint never serves anonymous reads.
+- The memory cache sizes its expiry-sweep interval to the store, keeping the
+  cleanup cost per operation constant.
+- `MemoryFeatureDriver` no longer reports A/B-split flags as enabled for every
+  user.
+
 ### Core state review fixes
 
 - The legacy `live_ws_handler` limits incoming WebSocket frames and messages

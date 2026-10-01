@@ -998,8 +998,9 @@ new sandbox evidence and merchant refund/dispute operations are still required.
 on `Server` exempts only exact write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
 verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
-size is bounded and WAF/secure headers remain composed. Wildcards and weak
-secrets fail at construction; a static bearer token needs 32–200 printable
+size is bounded and WAF/secure headers remain composed. The development
+hot-reload server (`Server::new_hot`) authenticates the same routes in front of
+each reloaded router. Wildcards and weak secrets fail at construction; a static bearer token needs 32–200 printable
 ASCII bytes with at least 8 distinct values. Applications own ingress limits, replay storage,
 certificate trust and authorization; an unverified proxy header is not mTLS.
 
@@ -1407,8 +1408,10 @@ the same server-authoritative controls.
   explicit cache policy. Versioned public/static responses can therefore opt
   into reviewed caching without weakening the default for dynamic data.
 * **Double-Submit Form Contract:** `csrf_middleware` installs the exact
-  request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
-  and preserves it after a valid state-changing request. Server-rendered forms
+  request-scoped `CsrfToken` used by the CSRF cookie on eligible `GET` and
+  `HEAD` requests (HEAD mirrors GET's headers, including a new cookie, so a
+  `get` route extracting the token also answers HEAD) and preserves it after a
+  valid state-changing request. Server-rendered forms
   must echo that value in `_token`; HTMX/JavaScript may instead send it through
   `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
   place its `_token` field before any file input: the middleware reads at most
@@ -1551,10 +1554,13 @@ segment except the unreserved `A-Z a-z 0-9 - . _ ~`, so `#`, `?`, `%`, spaces
 and non-ASCII characters stay part of the object key. Local storage returns the
 root-relative `/storage/<key>` path whatever its base directory, so the
 filesystem path is never disclosed; the application must serve that directory
-at `/storage` (Rullst does not mount it). Unconfigured S3/R2 drivers return the
-provider's unsigned object URL; S3 follows the cloud client's endpoint rules
-(`amazonaws.com.cn` for `cn-*` regions, path style for dotted bucket names). A
-configured private backend rejects `url()` and requires a signed download.
+at `/storage` (Rullst does not mount it). An unconfigured S3 driver returns the
+provider's unsigned object URL, following the cloud client's endpoint rules
+(`amazonaws.com.cn` for `cn-*` regions, path style for dotted bucket names). An
+R2 driver returns `StorageError::Unsupported`: R2's S3 API endpoint never serves
+anonymous reads, and its public `r2.dev` or custom domain is application-owned
+Cloudflare configuration. A configured private backend rejects `url()` and
+requires a signed download.
 
 ---
 
