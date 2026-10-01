@@ -1646,7 +1646,9 @@ Ok(())
 
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
-errors. Every SQLx model requires a persisted named `id` field. Explicit
+errors. Every SQLx model requires a persisted named `id` field; a model
+whose only persisted field is `id` inserts the column defaults (`DEFAULT
+VALUES`, or `() VALUES ()` on MySQL/MariaDB). Explicit
 table/column/relation identifiers use the 1–64 byte portable ASCII identifier
 grammar; the derived `<struct>s` default table name must match it only when
 no explicit `table` replaces it (for example for a non-ASCII struct name), and

@@ -99,8 +99,22 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         update_sets.push("id = id".to_string());
     }
 
-    let insert_columns_str = insert_columns.join(", ");
-    let insert_placeholders_str = insert_placeholders.join(", ");
+    // A model whose only persisted column is `id` inserts the defaults: no
+    // dialect accepts an empty column list followed by `VALUES ()` except
+    // MySQL/MariaDB, which in turn rejects `DEFAULT VALUES`.
+    let (insert_returning_sql, insert_sql) = if insert_columns.is_empty() {
+        (
+            format!("INSERT INTO {table_name} DEFAULT VALUES RETURNING id"),
+            format!("INSERT INTO {table_name} () VALUES ()"),
+        )
+    } else {
+        let columns = insert_columns.join(", ");
+        let placeholders = insert_placeholders.join(", ");
+        (
+            format!("INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING id"),
+            format!("INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"),
+        )
+    };
     let update_sets_str = update_sets.join(", ");
 
     let update_tenant_clause = if !parsed.tenant_column.is_empty() {
@@ -157,10 +171,11 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 let driver = rullst_orm::Orm::driver()?;
                 if driver == "postgres" || driver == "sqlite" {
                     use rullst_orm::_sqlx::Execute;
-                    let mut final_sql = format!("INSERT INTO {} ({}) VALUES ({}) RETURNING id", #table_name, #insert_columns_str, #insert_placeholders_str);
-                    if driver == "postgres" {
-                        final_sql = rullst_orm::replace_placeholders(&final_sql);
-                    }
+                    let final_sql = if driver == "postgres" {
+                        rullst_orm::replace_placeholders(#insert_returning_sql)
+                    } else {
+                        #insert_returning_sql.to_string()
+                    };
                     if rullst_orm::schema::is_query_log_enabled() {
                         println!("[SQL Debug] {:?}", final_sql);
                     }
@@ -179,7 +194,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                     self.id = rullst_orm::_sqlx::Row::try_get(&row, "id")?;
                 } else {
                     use rullst_orm::_sqlx::Execute;
-                    let mut final_sql = format!("INSERT INTO {} ({}) VALUES ({})", #table_name, #insert_columns_str, #insert_placeholders_str);
+                    let final_sql = #insert_sql.to_string();
                     if rullst_orm::schema::is_query_log_enabled() {
                         println!("[SQL Debug] {:?}", final_sql);
                     }
