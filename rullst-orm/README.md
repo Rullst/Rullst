@@ -94,7 +94,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `orm:events:*`), are omitted from Scout documents, and remain encrypted in
   `save_to_redis` hashes. `SecretString` fields get the same treatment, and
   `SecretString` itself serializes as an encrypted `RULLST:v2` envelope (never
-  plaintext), which the query cache stores and decrypts on a hit.
+  plaintext), which the query cache stores and decrypts on a hit. That
+  envelope is not bound to a record, so deserialize client input with
+  `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`,
+  which rejects envelopes instead of decrypting them.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash

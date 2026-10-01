@@ -22,6 +22,7 @@ const KEYRING_ENV: &str = "RULLST_ENCRYPTION_KEYRING";
 mod secret_serde;
 #[doc(hidden)]
 pub use secret_serde::with_redacted_secrets;
+pub use secret_serde::{deserialize_optional_plaintext_secret, deserialize_plaintext_secret};
 mod sqlx_codec;
 
 /// A decrypted secret whose `Debug` output and serde form never contain the
@@ -31,6 +32,9 @@ mod sqlx_codec;
 /// emits an authenticated `RULLST:v2` envelope under the configured
 /// `RULLST_ENCRYPTION_KEY` (and fails without one); `Deserialize` decrypts such
 /// an envelope and still accepts any other string as plaintext input.
+/// Because the envelope binds no model, field or owner, `Deserialize` is for
+/// trusted stores only: deserialize client input with
+/// [`deserialize_plaintext_secret`] or [`deserialize_optional_plaintext_secret`].
 /// Generated ORM audit, event and search projections serialize it as `"***"`.
 /// Use [`SecretString::reveal_audited`] for deliberate exposure.
 #[derive(Clone, PartialEq, Eq)]

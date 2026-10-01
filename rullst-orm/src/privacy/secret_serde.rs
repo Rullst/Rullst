@@ -5,6 +5,8 @@
 //! ciphertext that `Deserialize` turns back into the real value. Generated
 //! audit, event and search projections run inside [`with_redacted_secrets`],
 //! where the value becomes the fixed `"***"` marker and no key is needed.
+//! Client input goes through [`deserialize_plaintext_secret`] instead, which
+//! never decrypts.
 
 use super::{
     ENVELOPE_PREFIX, PrivacyError, SecretString, configured_key, current_key, current_key_id,
@@ -94,4 +96,43 @@ impl<'de> Deserialize<'de> for SecretString {
             .map(SecretString)
             .map_err(serde::de::Error::custom)
     }
+}
+
+const ENVELOPE_INPUT_ERROR: &str = "an encrypted RULLST envelope is not accepted as secret input";
+
+/// Deserializes a [`SecretString`] from untrusted input, such as a request
+/// body, accepting plaintext only.
+///
+/// `SecretString`'s own `Deserialize` decrypts a serde envelope so trusted
+/// stores (the generated query cache and Redis model hashes) round-trip it.
+/// That envelope is bound to the key, not to a model, field or owner, so an
+/// envelope exposed for one record (for example by a plain
+/// `#[derive(Serialize)]` response) would decrypt into another record if a
+/// client could submit it. Fields filled from clients therefore use
+/// `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`,
+/// which rejects any envelope-shaped value (`RULLST:...`) without decrypting
+/// it. The generated cache path decodes fields with their own `Deserialize`
+/// and is unaffected. Unpublished v13 API.
+pub fn deserialize_plaintext_secret<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<SecretString, D::Error> {
+    plaintext(String::deserialize(deserializer)?)
+}
+
+/// [`deserialize_plaintext_secret`] for an `Option<SecretString>` field:
+/// `null` is `None`. Add `#[serde(default)]` to accept a missing field too.
+/// Unpublished v13 API.
+pub fn deserialize_optional_plaintext_secret<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<SecretString>, D::Error> {
+    Option::<String>::deserialize(deserializer)?
+        .map(plaintext)
+        .transpose()
+}
+
+fn plaintext<E: serde::de::Error>(value: String) -> Result<SecretString, E> {
+    if is_envelope(&value) {
+        return Err(E::custom(ENVELOPE_INPUT_ERROR));
+    }
+    Ok(SecretString(value))
 }

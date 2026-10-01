@@ -445,3 +445,56 @@ fn legacy_ciphertext_stays_readable_through_the_keyring_after_rotation() {
         PrivacyError::InvalidKeyLength
     );
 }
+
+#[derive(serde::Deserialize)]
+struct ClientSettings {
+    #[serde(deserialize_with = "deserialize_plaintext_secret")]
+    webhook_secret: SecretString,
+    #[serde(default, deserialize_with = "deserialize_optional_plaintext_secret")]
+    backup_secret: Option<SecretString>,
+}
+
+/// An envelope exposed for one record must not become another record's
+/// secret through a client request: the plaintext-only deserializers reject
+/// it without decrypting, while `SecretString`'s own `Deserialize` keeps its
+/// documented round trip for trusted stores.
+#[test]
+fn client_input_deserializers_reject_envelopes() {
+    let _serial = environment_lock();
+    let mut environment = EnvironmentGuard::new();
+    environment.set(KEY_ENV, "0123456789abcdef0123456789abcdef");
+    environment.set(KEY_ID_ENV, "client-input-2026");
+    environment.clear(KEYRING_ENV);
+
+    let exposed = serde_json::to_string(&SecretString::new("victim secret")).unwrap();
+    let restored: SecretString = serde_json::from_str(&exposed).unwrap();
+    assert_eq!(restored.reveal_audited(), "victim secret");
+
+    let submitted = format!(r#"{{"webhook_secret":{exposed}}}"#);
+    let error = serde_json::from_str::<ClientSettings>(&submitted)
+        .err()
+        .expect("an exposed envelope must be rejected as client input");
+    assert!(error.to_string().contains("not accepted as secret input"));
+    let optional = format!(r#"{{"webhook_secret":"plain","backup_secret":{exposed}}}"#);
+    assert!(serde_json::from_str::<ClientSettings>(&optional).is_err());
+    for malformed in [r#""RULLST:v2:k:AA:AA""#, r#""RULLST:""#] {
+        let body = format!(r#"{{"webhook_secret":{malformed}}}"#);
+        assert!(serde_json::from_str::<ClientSettings>(&body).is_err());
+    }
+
+    let accepted: ClientSettings =
+        serde_json::from_str(r#"{"webhook_secret":"new secret","backup_secret":null}"#).unwrap();
+    assert_eq!(accepted.webhook_secret.reveal_audited(), "new secret");
+    assert!(accepted.backup_secret.is_none());
+    let accepted: ClientSettings =
+        serde_json::from_str(r#"{"webhook_secret":"RULLSTish","backup_secret":"spare secret"}"#)
+            .unwrap();
+    assert_eq!(accepted.webhook_secret.reveal_audited(), "RULLSTish");
+    assert_eq!(
+        accepted
+            .backup_secret
+            .as_ref()
+            .map(SecretString::reveal_audited),
+        Some("spare secret")
+    );
+}

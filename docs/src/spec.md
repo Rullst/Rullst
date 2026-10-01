@@ -1806,7 +1806,13 @@ while portability and semantic review remain the model author's responsibility.
   under the configured key, bound to a serde-specific context (a SQL-column
   envelope is not accepted), and fails when no key is configured;
   `Deserialize` decrypts such an envelope through the current key or keyring
-  and still accepts any other string as plaintext input. Generated `to_json()`
+  and still accepts any other string as plaintext input. The envelope binds
+  only the key, not a model, field or owner, so that `Deserialize` is for
+  trusted stores: given client input, it would turn an envelope exposed for
+  one record into another record's secret. Fields filled from requests use
+  `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`
+  (or `deserialize_optional_plaintext_secret`; unpublished v13 API), which
+  reject any `RULLST:` value without decrypting it. Generated `to_json()`
   and search projections serialize it (also when nested) as `"***"`, and
   `SecretString`/`Option<SecretString>` model fields are audited, excluded and
   change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
