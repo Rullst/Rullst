@@ -123,3 +123,34 @@ fn rejects_malformed_hrana_rows() {
     };
     assert!(rows_from_result(result, TursoQueryLimit::new(1).expect("valid limit")).is_err());
 }
+
+#[test]
+fn decodes_unpadded_and_padded_blob_cells() {
+    // libSQL server writes blobs as unpadded standard base64; lengths that
+    // are not a multiple of three need padding in canonical form.
+    for (encoded, expected) in [
+        ("AA", vec![0]),
+        ("AA==", vec![0]),
+        ("AAE", vec![0, 1]),
+        ("AAE=", vec![0, 1]),
+        ("AAECAwQFBgcICQoLDA0ODw", (0..16).collect::<Vec<u8>>()),
+        ("AAECAwQFBgcICQoLDA0ODw==", (0..16).collect::<Vec<u8>>()),
+        ("AAH/", vec![0, 1, 255]),
+        ("", Vec::new()),
+    ] {
+        let decoded = TursoValue::try_from(WireValue::Blob {
+            base64: encoded.to_owned(),
+        })
+        .unwrap_or_else(|error| panic!("{encoded:?} should decode: {error}"));
+        assert_eq!(decoded, TursoValue::Blob(expected), "{encoded:?}");
+    }
+    for malformed in ["A", "AA=A", "AA!=", "AB"] {
+        assert!(
+            TursoValue::try_from(WireValue::Blob {
+                base64: malformed.to_owned(),
+            })
+            .is_err(),
+            "{malformed:?} must be rejected"
+        );
+    }
+}
