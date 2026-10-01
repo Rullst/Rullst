@@ -16,8 +16,8 @@ pub fn generate_csrf_token() -> String {
 
 /// Request-scoped CSRF token made available to handlers rendering forms.
 ///
-/// On the first safe request this is the same token that the middleware writes
-/// to the response cookie. Exposing it through request extensions avoids
+/// On the first `GET` or `HEAD` request this is the same token that the
+/// middleware writes to the response cookie. Exposing it through request extensions avoids
 /// rendering an empty hidden field before the browser has received that cookie.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CsrfToken(String);
@@ -48,9 +48,12 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 }
 
 /// Middleware that enforces CSRF protection using the Double Submit Cookie pattern.
-/// GET requests generate a CSRF cookie if missing. HTTP safe methods pass through, while
-/// state-changing requests must match the `rullst_csrf` cookie token with either the
-/// `X-CSRF-Token` header or form `_token` field.
+/// GET and HEAD requests receive the request-scoped [`CsrfToken`] and generate a
+/// CSRF cookie if missing; HEAD mirrors GET's headers (RFC 9110), so a `get`
+/// route extracting `Extension<CsrfToken>` also answers HEAD. `OPTIONS` and
+/// `TRACE` pass through, while state-changing requests must match the
+/// `rullst_csrf` cookie token with either the `X-CSRF-Token` header or form
+/// `_token` field.
 ///
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
@@ -79,12 +82,11 @@ pub async fn csrf_middleware(mut req: Request, next: Next) -> Response {
 
     let method = req.method();
 
-    if method == axum::http::Method::GET {
+    // Axum serves HEAD through the GET handler, so HEAD gets the same token
+    // and cookie as GET.
+    if method == axum::http::Method::GET || method == axum::http::Method::HEAD {
         handle_csrf_get(req, next).await
-    } else if method == axum::http::Method::HEAD
-        || method == axum::http::Method::OPTIONS
-        || method == axum::http::Method::TRACE
-    {
+    } else if method == axum::http::Method::OPTIONS || method == axum::http::Method::TRACE {
         next.run(req).await
     } else {
         handle_csrf_state_modifying(req, next).await
