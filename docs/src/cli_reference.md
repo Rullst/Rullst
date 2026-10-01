@@ -820,7 +820,27 @@ the users table (the blank database starter and the SaaS/LMS blueprints ship
 one). Mounting routes and the security baseline remains application work.
 
 ### `cargo rullst make:mfa`
-Scaffolds a 2FA TOTP Multi-Factor Authentication controller at `src/controllers/mfa.rs` providing RFC 6238 Base32 secret generation, 6-digit TOTP code validation, and `otpauth://` QR URI generation.
+Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
+and a reversible `user_mfa_factors` migration (one factor per account). The
+secret is generated and stored on the server and bound to the signed-in
+account: `mfa_setup`, `mfa_confirm` and `mfa_verify` take the user id from the
+`Extension<i32>` that the `cargo rullst auth` middleware inserts, and a client
+never submits a secret. Verification uses `verify_totp_step_after` with an
+atomic conditional update of `last_accepted_step`, so each code is accepted at
+most once. Setup returns the secret and `otpauth://` URI once with
+`Cache-Control: no-store`; enrollment stays pending until `mfa_confirm`
+accepts a current code.
+
+The command targets the SQLx ORM (Turso-primary projects are rejected), enables
+the `orm` and `security` umbrella features, registers the module, refreshes the
+migration registry and refuses to overwrite an existing `src/controllers/mfa.rs`
+or `*_create_user_mfa_factors_table.rs` migration. Mount the handlers as POST
+routes behind the authentication middleware, CSRF protection and rate limiting,
+and require a recent password check before enrollment. To gate login, keep the
+session pending until `verify_second_factor` succeeds; the generated auth
+controller issues a full session after the password. Secrets are stored
+unencrypted in the database, so protect that table and its backups like
+credentials. Recovery codes and factor reset remain application work.
 
 ---
 

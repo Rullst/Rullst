@@ -248,7 +248,7 @@ pub enum Commands {
     /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
     #[command(name = "make:k8s")]
     MakeK8s,
-    /// Scaffolds a complete 2FA TOTP authentication system in src/controllers/mfa.rs
+    /// Scaffolds a server-side TOTP second factor (src/controllers/mfa.rs and a migration)
     #[command(name = "make:mfa")]
     MakeMfa,
     /// Scaffolds interactive Scalar API documentation router at /docs
