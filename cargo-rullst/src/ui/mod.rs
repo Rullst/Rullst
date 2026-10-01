@@ -9,6 +9,7 @@ pub mod help;
 mod home;
 mod opening_marker;
 mod palette;
+pub(crate) mod screen;
 pub mod spinner;
 mod terminal;
 pub mod update_check;
