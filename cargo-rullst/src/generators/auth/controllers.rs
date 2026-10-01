@@ -105,4 +105,16 @@ mod tests {
         assert!(!source.contains(".expect("));
         assert!(!source.contains("panic!("));
     }
+
+    #[test]
+    fn registration_stores_real_timestamps() {
+        let source = render_auth_controller(None);
+        // The ORM inserts every field, so '' replaced the column's
+        // CURRENT_TIMESTAMP default for every self-registered account.
+        assert!(!source.contains("created_at: String::new()"));
+        assert!(!source.contains("updated_at: String::new()"));
+        assert!(source.contains("let created_at = utc_timestamp();"));
+        assert!(source.contains("updated_at: created_at.clone(),\n        created_at,\n"));
+        assert!(source.contains("fn registration_timestamps_use_the_current_timestamp_text()"));
+    }
 }
