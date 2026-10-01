@@ -122,6 +122,9 @@ spec:
     )
 }
 
+/// cert-manager issues a certificate only for an Ingress with a `tls`
+/// section; without one the production app (Secure cookies, HSTS, Nexus
+/// Basic Auth over verified TLS) would be served over plain HTTP.
 pub fn ingress_yaml(app_name: &str) -> String {
     format!(
         r###"apiVersion: networking.k8s.io/v1
@@ -129,9 +132,15 @@ kind: Ingress
 metadata:
   name: {app_name}-ingress
   annotations:
-    kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  ingressClassName: nginx
+  # Replace the placeholder host in both places with a public DNS name you
+  # control; the issuer cannot certify a .local name.
+  tls:
+    - hosts:
+        - {app_name}.local
+      secretName: {app_name}-tls
   rules:
     - host: {app_name}.local
       http:
@@ -168,6 +177,21 @@ mod tests {
         let manifest = configmap_yaml("demo", 3000);
         assert!(manifest.contains("RULLST_ENV: \"production\""));
         assert!(!manifest.contains("APP_ENV:"));
+    }
+
+    #[test]
+    fn ingress_requests_a_certificate_for_its_host() {
+        let manifest = ingress_yaml("demo");
+        // cert-manager ignores the issuer annotation without `spec.tls`.
+        assert!(
+            manifest.contains(
+                "  tls:\n    - hosts:\n        - demo.local\n      secretName: demo-tls\n"
+            )
+        );
+        assert!(manifest.contains("    - host: demo.local\n"));
+        assert!(manifest.contains("cert-manager.io/cluster-issuer"));
+        assert!(manifest.contains("  ingressClassName: nginx\n"));
+        assert!(!manifest.contains("kubernetes.io/ingress.class"));
     }
 
     #[test]
