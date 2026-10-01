@@ -122,3 +122,23 @@ fn zero_capacity_channel_is_panic_free() {
     let _receiver = channel.subscribe();
     assert_eq!(channel.name, "bounded");
 }
+
+#[test]
+fn a_user_stays_online_until_their_last_connection_leaves() {
+    let tracker = PresenceTracker::new();
+    // The same learner opens the course in two tabs.
+    tracker.user_joined("course/1", "learner-7");
+    tracker.user_joined("course/1", "learner-7");
+    assert_eq!(tracker.count_online("course/1"), 1);
+
+    tracker.user_left("course/1", "learner-7");
+    assert_eq!(tracker.count_online("course/1"), 1);
+    tracker.user_left("course/1", "learner-7");
+    assert_eq!(tracker.count_online("course/1"), 0);
+    assert_eq!(tracker.online_users.len(), 0);
+
+    // A leave without a matching join is ignored.
+    tracker.user_left("course/1", "learner-7");
+    tracker.user_joined("course/1", "learner-7");
+    assert_eq!(tracker.count_online("course/1"), 1);
+}

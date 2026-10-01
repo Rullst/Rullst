@@ -266,10 +266,14 @@ fn is_idle_channel(channel: &Arc<Channel>) -> bool {
 
 /// In-memory tracker for active user presence across channels/rooms.
 ///
-/// A room is removed when its last user leaves.
+/// Presence is counted per connection: call [`Self::user_left`] once for
+/// every [`Self::user_joined`]. A user with several connections in a room (for
+/// example two browser tabs) stays online until the last one leaves, and a
+/// room is removed when its last user leaves.
 #[derive(Default)]
 pub struct PresenceTracker {
-    online_users: DashMap<String, DashMap<String, u64>>,
+    /// Open connections of each online user, per room.
+    online_users: DashMap<String, DashMap<String, usize>>,
 }
 
 impl PresenceTracker {
@@ -278,22 +282,25 @@ impl PresenceTracker {
         Self::default()
     }
 
-    /// Registers a user as online in a specific room.
+    /// Registers one more connection of a user in a specific room.
     pub fn user_joined(&self, room: &str, user_id: &str) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
         let room_map = self.online_users.entry(room.to_string()).or_default();
-        room_map.insert(user_id.to_string(), now);
+        let mut connections = room_map.entry(user_id.to_string()).or_insert(0);
+        *connections = connections.saturating_add(1);
     }
 
-    /// Removes a user from a specific room upon disconnect, and the room once
-    /// it is empty.
+    /// Removes one of a user's connections from a room upon disconnect. The
+    /// user goes offline when their last connection leaves, and the room is
+    /// removed once it is empty. A leave without a matching join is ignored.
     pub fn user_left(&self, room: &str, user_id: &str) {
         let now_empty = self.online_users.get(room).is_some_and(|room_map| {
-            room_map.remove(user_id);
+            if let dashmap::Entry::Occupied(mut connections) = room_map.entry(user_id.to_string()) {
+                if *connections.get() <= 1 {
+                    connections.remove();
+                } else {
+                    *connections.get_mut() -= 1;
+                }
+            }
             room_map.is_empty()
         });
         if now_empty {
@@ -332,7 +339,8 @@ impl TenantPresence {
         &self.tenant_id
     }
 
-    /// Registers a bounded identity only in this tenant's logical room.
+    /// Registers one connection of a bounded identity only in this tenant's
+    /// logical room; see [`PresenceTracker::user_joined`].
     pub fn user_joined(&self, room: &str, user_id: &str) -> Result<(), RealtimeError> {
         let room = self.namespaced_room(room)?;
         validate_name(
@@ -344,7 +352,8 @@ impl TenantPresence {
         Ok(())
     }
 
-    /// Removes a bounded identity only from this tenant's logical room.
+    /// Removes one connection of a bounded identity only from this tenant's
+    /// logical room; see [`PresenceTracker::user_left`].
     pub fn user_left(&self, room: &str, user_id: &str) -> Result<(), RealtimeError> {
         let room = self.namespaced_room(room)?;
         validate_name(
