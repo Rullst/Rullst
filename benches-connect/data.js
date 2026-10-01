@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790828304587,
+  "lastUpdate": 1790831695191,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8654,6 +8654,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 390,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27ead7f102189385a7b3f61acbe93fcf52d578b3",
+          "message": "Merge pull request #368 from Rullst/fix/v13-cli-blueprint-review-fixes\n\nfix(cli): portable starter migrations, protected ERP dashboard, bounded auth hashing and CSP-safe pages",
+          "timestamp": "2026-10-01T01:55:28-03:00",
+          "tree_id": "5cffdc81f297e4bcf99a8f1d65fab692d163abdd",
+          "url": "https://github.com/Rullst/Rullst/commit/27ead7f102189385a7b3f61acbe93fcf52d578b3"
+        },
+        "date": 1790831694679,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 558,
             "range": "± 1",
             "unit": "ns/iter"
           }
