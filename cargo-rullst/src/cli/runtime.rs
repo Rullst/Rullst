@@ -1,6 +1,6 @@
 //! The executable layer around the public `Commands` enum: the global
-//! `-v/--verbose` flag, "did you mean" for unknown commands and the shared
-//! friendly error report at the process boundary.
+//! `-v/--verbose` flag, `--json` status views, "did you mean" for unknown
+//! commands and the shared friendly error report at the process boundary.
 
 use crate::ui::error_report::{self, AlreadyReported, Friendly, USAGE_EXIT};
 use crate::ui::style::Style;
@@ -9,6 +9,13 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::error::Error;
 
 const CLI_REFERENCE: &str = "https://rullst.github.io/Rullst/book/cli_reference.html";
+
+fn json_flag(help: &'static str) -> Arg {
+    Arg::new("json")
+        .long("json")
+        .action(ArgAction::SetTrue)
+        .help(help)
+}
 
 /// Adds the runtime-only flags to `command`.
 pub(crate) fn extend(command: Command) -> Command {
@@ -21,6 +28,20 @@ pub(crate) fn extend(command: Command) -> Command {
                 .action(ArgAction::Count)
                 .help("Show the underlying causes when a command fails"),
         )
+        .mut_subcommand("doctor", |doctor| {
+            doctor.arg(json_flag(
+                "Print the checks as versioned JSON (rullst.cli-doctor.v1); exit status 1 when a check fails",
+            ))
+        })
+}
+
+fn flag(matches: &ArgMatches, id: &str) -> bool {
+    matches
+        .try_get_one::<bool>(id)
+        .ok()
+        .flatten()
+        .copied()
+        .unwrap_or(false)
 }
 
 /// The command level an unknown token was typed at, as the words leading to
@@ -105,6 +126,21 @@ pub(crate) fn parse(
     }
 }
 
+/// Runs the commands this layer owns (`doctor` with its `--json` view);
+/// `false` when the command belongs to the regular dispatch.
+pub(crate) fn run_extension(matches: &ArgMatches) -> Result<bool, Box<dyn Error>> {
+    match matches.subcommand() {
+        Some(("doctor", sub)) => {
+            crate::generators::doctor::run(crate::generators::doctor::DoctorOptions {
+                fix: flag(sub, "fix"),
+                json: flag(sub, "json"),
+            })?
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
 /// The binaries' entry point: runs the CLI and renders any failure with the
 /// shared friendly report. Returns the process exit status.
 #[doc(hidden)]
@@ -134,14 +170,16 @@ mod tests {
     }
 
     #[test]
-    fn the_runtime_tree_is_valid_and_accepts_the_global_verbose_flag() {
+    fn the_runtime_tree_is_valid_and_doctor_accepts_json() {
         let command = crate::command();
         command.clone().debug_assert();
-        assert!(
-            command
-                .try_get_matches_from(["rullst", "doctor", "-v"])
-                .is_ok()
-        );
+        assert!(command.find_subcommand("doctor").is_some());
+        let matches = command
+            .try_get_matches_from(["rullst", "doctor", "--json", "-v"])
+            .expect("doctor --json -v parses");
+        let (_, doctor) = matches.subcommand().expect("doctor");
+        assert!(flag(doctor, "json"));
+        assert!(!flag(doctor, "fix"));
     }
 
     #[test]

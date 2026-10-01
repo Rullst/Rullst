@@ -17,7 +17,7 @@ const FEATURE_LIMIT: usize = 12;
 
 /// A detected Rullst application.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::ui) struct Project {
+pub(crate) struct Project {
     pub root: PathBuf,
     /// The root relative to the working directory, when they differ.
     pub relative_root: Option<String>,
@@ -30,7 +30,7 @@ pub(in crate::ui) struct Project {
 
 /// Where the database configuration comes from; URLs are never kept.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::ui) enum Database {
+pub(crate) enum Database {
     Configured {
         kind: &'static str,
         source: &'static str,
@@ -40,14 +40,14 @@ pub(in crate::ui) enum Database {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::ui) struct Migrations {
+pub(crate) struct Migrations {
     pub count: usize,
     pub latest: Option<String>,
 }
 
 /// Reads a regular file up to `limit` bytes; `Ok(None)` when it is missing,
 /// not a regular file or larger than the limit.
-pub(super) fn read_small_file(path: &Path, limit: u64) -> std::io::Result<Option<String>> {
+pub(crate) fn read_small_file(path: &Path, limit: u64) -> std::io::Result<Option<String>> {
     let metadata = match fs::metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -80,7 +80,7 @@ fn open_for_read(path: &Path) -> std::io::Result<fs::File> {
 
 /// Replaces control characters (terminal escapes included) and bounds the
 /// length, since names come from files the user may not have written.
-pub(super) fn display_safe(value: &str) -> String {
+pub(crate) fn display_safe(value: &str) -> String {
     let mut safe: String = value
         .chars()
         .map(|character| {
@@ -143,6 +143,23 @@ fn enabled_features(dependency: &toml::Value) -> Vec<String> {
         features.push(format!("+{extra} more"));
     }
     features
+}
+
+/// How the `rullst` dependency is specified: its version requirement, or
+/// `path`, `git` or `workspace` when it is not a registry requirement.
+pub(crate) fn rullst_requirement(manifest: &str) -> Option<String> {
+    let manifest = toml::from_str::<toml::Value>(manifest).ok()?;
+    let dependency = rullst_dependency(&manifest)?;
+    if let Some(version) = dependency.as_str() {
+        return Some(display_safe(version));
+    }
+    if let Some(version) = dependency.get("version").and_then(toml::Value::as_str) {
+        return Some(display_safe(version));
+    }
+    ["path", "git", "workspace"]
+        .into_iter()
+        .find(|key| dependency.get(key).is_some())
+        .map(str::to_string)
 }
 
 /// Name and features when `manifest` is a package that depends on `rullst`.
@@ -223,7 +240,7 @@ pub(super) fn resolve_database(root: &Path, var: impl Fn(&str) -> Option<String>
 }
 
 /// Counts `src/migrations/m*.rs` registrations; `None` without the directory.
-pub(super) fn migrations(root: &Path) -> Option<Migrations> {
+pub(crate) fn migrations(root: &Path) -> Option<Migrations> {
     let entries = fs::read_dir(root.join("src").join("migrations")).ok()?;
     let mut count = 0;
     let mut latest: Option<String> = None;
@@ -250,7 +267,7 @@ pub(super) fn migrations(root: &Path) -> Option<Migrations> {
 
 impl Project {
     /// Detects the project around `start`, reading only small local files.
-    pub(super) fn detect(start: &Path, var: impl Fn(&str) -> Option<String>) -> Option<Self> {
+    pub(crate) fn detect(start: &Path, var: impl Fn(&str) -> Option<String>) -> Option<Self> {
         let (root, name, features) = find_project(start)?;
         Some(Self {
             relative_root: relative_root(start, &root),

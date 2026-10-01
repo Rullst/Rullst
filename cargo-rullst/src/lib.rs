@@ -33,6 +33,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // Unknown commands get "did you mean" suggestions and exit status 2.
         let matches = cli::runtime::parse(command(), args)?;
+        if cli::runtime::run_extension(&matches)? {
+            return Ok(());
+        }
         if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
         } else if let Some(api) = matches.subcommand_matches("generate:api") {

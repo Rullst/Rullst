@@ -476,14 +476,31 @@ fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
 fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
     let fixture = Fixture::new("diagnostics");
 
-    let missing = fixture.succeeds(&["doctor"]);
-    assert!(missing.contains("NOT FOUND"));
-    let failed_fix = fixture.succeeds(&["doctor", "--fix"]);
-    assert!(failed_fix.contains("FIX FAILED"));
+    // A missing compiler is a failed check: the doctor exits with status 1.
+    let missing = fixture.command(&["doctor"]);
+    assert_eq!(missing.status.code(), Some(1));
+    let missing = output_text(&missing);
+    assert!(missing.contains("✗ Rust compiler"), "{missing}");
+    assert!(missing.contains("rustc not found"));
+    assert!(missing.contains("cli_reference.html#doctor-toolchain"));
+    let failed_fix = output_text(&fixture.command(&["doctor", "--fix"]));
+    assert!(
+        failed_fix.contains("--fix could not install them"),
+        "{failed_fix}"
+    );
 
     let tools = fixture.install_successful_tool_fixtures();
     let healthy = fixture.succeeds_with_path(&["doctor"], &tools);
-    assert!(healthy.contains("10 checks passed"));
+    assert!(healthy.contains("✓ Rust compiler"), "{healthy}");
+    assert!(healthy.contains("0 failed"), "{healthy}");
+    // The fixture depends on rullst 12, older than this CLI.
+    assert!(healthy.contains("! Rullst version"), "{healthy}");
+    let json = fixture.command_with_path(&["doctor", "--json"], &tools);
+    assert!(json.status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&json.stdout).expect("doctor --json prints one JSON document");
+    assert_eq!(report["schema_version"], "rullst.cli-doctor.v1");
+    assert_eq!(report["ok"], true);
 
     fixture.succeeds_with_path(
         &[
@@ -747,20 +764,32 @@ fn doctor_reports_outdated_unrecognized_and_failing_toolchains() {
         .expect("outdated rustc fixture");
     fs::set_permissions(&rustc, fs::Permissions::from_mode(0o755))
         .expect("rustc fixture permissions");
-    let outdated = fixture.succeeds_with_path(&["doctor"], &tools);
-    assert!(outdated.contains("[OUTDATED]"));
+    let outdated = fixture.command_with_path(&["doctor"], &tools);
+    assert_eq!(
+        outdated.status.code(),
+        Some(1),
+        "an outdated compiler fails"
+    );
+    let outdated = output_text(&outdated);
+    assert!(
+        outdated.contains("is older than the MSRV 1.96.0"),
+        "{outdated}"
+    );
     assert!(outdated.contains("cargo install cargo-audit"));
-    assert!(outdated.contains("Install Docker Desktop / Engine"));
+    assert!(outdated.contains("https://docs.docker.com/get-docker/"));
 
     fs::write(&rustc, "#!/bin/sh\necho 'unexpected fixture version'\n")
         .expect("unrecognized rustc fixture");
     let unrecognized = fixture.succeeds_with_path(&["doctor"], &tools);
-    assert!(unrecognized.contains("[UNRECOGNIZED VERSION]"));
+    assert!(unrecognized.contains("! Rust compiler"), "{unrecognized}");
+    assert!(unrecognized.contains("unrecognized version output"));
 
     fs::write(&rustc, "#!/bin/sh\nexit 9\n").expect("failing rustc fixture");
-    let failing = fixture.succeeds_with_path(&["doctor"], &tools);
-    assert!(failing.contains("Rust Toolchain"));
-    assert!(failing.contains("[FAIL]"));
+    let failing = fixture.command_with_path(&["doctor"], &tools);
+    assert_eq!(failing.status.code(), Some(1));
+    let failing = output_text(&failing);
+    assert!(failing.contains("✗ Rust compiler"), "{failing}");
+    assert!(failing.contains("rustc --version failed"));
 
     fs::write(&rustc, "#!/bin/sh\necho 'rustc 1.98.1 (fixture)'\n").expect("healthy rustc fixture");
     let repaired = fixture.root.join("components-repaired");
@@ -784,7 +813,7 @@ fn doctor_reports_outdated_unrecognized_and_failing_toolchains() {
         .expect("rustup fixture permissions");
     let fixed = fixture.succeeds_with_path(&["doctor", "--fix"], &tools);
     assert!(
-        fixed.contains("[FIXED]"),
+        fixed.contains("installed by --fix"),
         "doctor did not report the repaired components:\n{fixed}"
     );
 }
