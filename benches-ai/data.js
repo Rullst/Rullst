@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790821618485,
+  "lastUpdate": 1790828514698,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11697,6 +11697,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 264,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c80e38b3903c1897951a1a90a63fa1eaef08994f",
+          "message": "Merge pull request #367 from Rullst/chore/v13-remove-labs-runner\n\nchore(labs): remove rullst-labs-runner and document a bring-your-own runner contract",
+          "timestamp": "2026-10-01T01:01:47-03:00",
+          "tree_id": "efad69ab657347767cb34dbdbcbc4ff8203aaf72",
+          "url": "https://github.com/Rullst/Rullst/commit/c80e38b3903c1897951a1a90a63fa1eaef08994f"
+        },
+        "date": 1790828514104,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1458,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 262,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 324,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
