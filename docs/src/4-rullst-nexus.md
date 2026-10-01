@@ -171,6 +171,12 @@ is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-fre
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
 
+The debug policy also requires a local `Host` and, for unsafe methods, a
+same-origin `Origin`. Its responses carry `Referrer-Policy: same-origin` unless
+the application sets one; when a host layer imposes `no-referrer`, browsers send
+`Origin: null`, which is accepted only with a single `Sec-Fetch-Site:
+same-origin` header (page scripts cannot set it).
+
 ### Basic Auth failures and reverse proxies
 
 Nexus counts failed Basic credentials per client bucket: one IPv4 address or

@@ -207,6 +207,12 @@ listener reports for IPv4 clients, counts as IPv4), an unambiguous local `Host` 
 clients can read without `Origin`; local mutation requests must supply their
 matching origin explicitly (for example, `Origin: http://localhost:3000` with
 `Host: localhost:3000`). Present cross-origin headers are rejected on every method.
+Its responses carry `Referrer-Policy: same-origin` unless the application sets
+one, so browsers send the real origin on the panel's own requests. When a host
+layer imposes `no-referrer`, browsers send `Origin: null`; the policy then
+accepts the request only with a single `Sec-Fetch-Site: same-origin`, a header
+page scripts cannot set, so documents of other origins or local ports stay
+rejected.
 
 Generated applications use
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select

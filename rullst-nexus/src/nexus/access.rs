@@ -364,7 +364,14 @@ pub(crate) async fn loopback_only_middleware(mut request: Request, next: Next) -
         request
             .extensions_mut()
             .insert(NexusPrincipal::authenticated("local-loopback"));
-        next.run(request).await
+        let mut response = next.run(request).await;
+        response
+            .headers_mut()
+            .entry(header::REFERRER_POLICY)
+            .or_insert(HeaderValue::from_static(
+                browser_boundary::LOCAL_REFERRER_POLICY,
+            ));
+        response
     } else {
         status_response(StatusCode::FORBIDDEN)
     }
