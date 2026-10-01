@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790813930509,
+  "lastUpdate": 1790816028130,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -23097,6 +23097,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2324,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b22d0a1b74f8b25d95e6c549221b689f19c7efc9",
+          "message": "Merge pull request #363 from Rullst/fix/v13-orm-macros-low-fixes-a\n\nfix(orm-macros): low-severity builder, relation, cache and parser review fixes",
+          "timestamp": "2026-09-30T21:48:17-03:00",
+          "tree_id": "5ce6dd967e275c5126089a57f487dfd241b219eb",
+          "url": "https://github.com/Rullst/Rullst/commit/b22d0a1b74f8b25d95e6c549221b689f19c7efc9"
+        },
+        "date": 1790816026350,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 740,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 978,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 624,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2376,
+            "range": "± 77",
             "unit": "ns/iter"
           }
         ]
