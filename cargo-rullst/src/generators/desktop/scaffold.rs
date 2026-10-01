@@ -371,6 +371,17 @@ mod tests {
             "println!(\"{}\");",
             super::super::runner::LAUNCH_MARKER
         )));
+        // `../Cargo.toml` relative to the working directory let a packaged app
+        // run `cargo run` in whatever project it was launched from.
+        assert!(!generated.contains("\"../Cargo.toml\""));
+        assert!(!generated.contains(".current_dir(\"..\")"));
+        assert!(generated.contains(
+            "#[cfg(all(debug_assertions, not(any(target_os = \"android\", target_os = \"ios\"))))]\nfn development_project_root()"
+        ));
+        assert!(generated.contains("std::path::Path::new(env!(\"CARGO_MANIFEST_DIR\"))"));
+        assert!(generated.contains(
+            "#[cfg(all(not(debug_assertions), not(any(target_os = \"android\", target_os = \"ios\"))))]\nfn development_project_root() -> Option<&'static std::path::Path> {\n    None\n}"
+        ));
         assert!(generated.contains("rullst-navigation-policy"));
         assert!(generated.contains("eq_ignore_ascii_case(BACKEND_HOST)"));
         assert!(generated.contains("const BACKEND_PORT: u16 = 443;"));
