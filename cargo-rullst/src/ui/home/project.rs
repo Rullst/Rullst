@@ -155,7 +155,7 @@ pub(super) fn parse_manifest(manifest: &str) -> Option<(String, Vec<String>)> {
 
 /// The nearest ancestor of `start` (itself included) whose `Cargo.toml` is a
 /// package depending on `rullst`.
-pub(super) fn find_project(start: &Path) -> Option<(PathBuf, String, Vec<String>)> {
+pub(crate) fn find_project(start: &Path) -> Option<(PathBuf, String, Vec<String>)> {
     start
         .ancestors()
         .take(ANCESTOR_LIMIT)
@@ -169,7 +169,7 @@ pub(super) fn find_project(start: &Path) -> Option<(PathBuf, String, Vec<String>
 }
 
 /// `..`-style path from `start` up to its ancestor `root`, or `None` when equal.
-pub(super) fn relative_root(start: &Path, root: &Path) -> Option<String> {
+pub(crate) fn relative_root(start: &Path, root: &Path) -> Option<String> {
     let depth = start.strip_prefix(root).ok()?.components().count();
     (depth > 0).then(|| vec![".."; depth].join("/"))
 }

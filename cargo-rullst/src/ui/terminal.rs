@@ -9,7 +9,7 @@ use std::time::Duration;
 
 /// The inputs that decide how the home screen renders.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) struct TerminalEnv {
+pub(crate) struct TerminalEnv {
     pub stdin_tty: bool,
     pub stdout_tty: bool,
     pub stderr_tty: bool,

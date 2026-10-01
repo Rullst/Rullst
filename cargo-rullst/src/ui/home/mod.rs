@@ -9,6 +9,7 @@ mod project;
 
 pub(super) use actions::{HomeAction, home_entries};
 pub(super) use project::{Database, Migrations, Project};
+pub(crate) use project::{find_project, relative_root};
 
 use super::palette::{self, ColorDepth, Rgb};
 use std::io::{self, Write};
