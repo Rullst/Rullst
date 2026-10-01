@@ -4,7 +4,6 @@
 
 pub mod ai_demo;
 pub mod billing_demo;
-pub mod interactive_counter;
 pub mod omni_demo;
 pub mod pico_demo;
 #[cfg(not(target_arch = "wasm32"))]
@@ -55,11 +54,9 @@ fn router_with_nexus_auth(
         get("/" => index),
         post("/posts" => store),
         get("/posts/repository" => crate::repository_demo::repository_page),
-        get("/editor" => wasm_demo),
         get("/live-feed" => live_demo),
         get("/live-counter" => live_demo),
         get("/_live" => live_ws),
-        get("/wasm-counter" => wasm_demo),
         get("/pico-demo" => crate::pico_demo::render_pico_demo_page),
         get("/templates-demo" => crate::templates_demo::render_templates_demo_page),
         get("/pricing" => crate::billing_demo::pricing_page),

@@ -6734,7 +6734,6 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
- "getrandom 0.4.3",
  "rullst",
  "rullst-ai",
  "rullst-auth",
@@ -6749,8 +6748,6 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]

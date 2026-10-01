@@ -45,46 +45,6 @@ pub async fn live_demo() -> impl IntoResponse {
     })
 }
 
-/// Wasm Island Reactive Editor Page (`/editor`)
-pub async fn wasm_demo() -> impl IntoResponse {
-    let nav = render_showcase_nav("/editor");
-    let styles = render_shared_styles();
-    let component_mount = crate::interactive_counter::InteractiveCounter(42);
-
-    Html(html! {
-        <html lang="en">
-        <head>
-            <meta charset="utf-8" />
-            <title>"Rullst Wasm Island - Client-side Reactive WebAssembly"</title>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-            <style>{ rullst::html::RawHtml(styles) }</style>
-        </head>
-        <body>
-            { rullst::html::RawHtml(nav) }
-            <div class="container">
-                <div class="card">
-                    <h1 class="card-title">
-                        "🏝️ Wasm Island Architecture"
-                        <span class="feature-tag tag-orm">"wasm-bindgen"</span>
-                    </h1>
-                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                        "Islands of interactivity compiled directly from Rust to WebAssembly with zero VDOM overhead."
-                    </p>
-
-                    <div style="background: #05070c; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 2rem; text-align: center;">
-                        { rullst::html::RawHtml(component_mount) }
-                    </div>
-
-                    <script type="module">
-                        "import init from '/static/rullst_blog_example.js'; init();"
-                    </script>
-                </div>
-            </div>
-        </body>
-        </html>
-    })
-}
-
 /// WebSocket handler for LiveView
 pub async fn live_ws(ws: axum::extract::ws::WebSocketUpgrade) -> impl IntoResponse {
     rullst::live::live_ws_handler::<CounterComponent>(ws).await

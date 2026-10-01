@@ -204,9 +204,6 @@ pub async fn omni_page() -> impl IntoResponse {
                                 <button onclick="document.querySelector('.phone-screen').src = '/'" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
                                     "🔄 Reload App"
                                 </button>
-                                <button onclick="document.querySelector('.phone-screen').src = '/editor'" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: #0284c7;">
-                                    "🏝️ Wasm Island"
-                                </button>
                                 <button onclick="document.querySelector('.phone-screen').src = '/live-feed'" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: #e11d48;">
                                     "🔴 LiveView"
                                 </button>

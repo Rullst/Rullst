@@ -152,3 +152,26 @@ async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
     let checkout_html = std::str::from_utf8(&checkout_body).expect("offline checkout UTF-8 HTML");
     assert!(checkout_html.contains("OFFLINE FIXTURE"));
 }
+
+#[tokio::test]
+async fn the_unbuilt_wasm_island_demo_is_not_advertised() {
+    let app = test_router().into_axum();
+    for path in ["/editor", "/wasm-counter"] {
+        let response = app
+            .clone()
+            .oneshot(Request::get(path).body(Body::empty()).expect("GET request"))
+            .await
+            .expect("GET response");
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{path}");
+    }
+    let response = app
+        .oneshot(Request::get("/").body(Body::empty()).expect("GET request"))
+        .await
+        .expect("GET response");
+    let body = to_bytes(response.into_body(), 512 * 1024)
+        .await
+        .expect("HTML body");
+    let html = std::str::from_utf8(&body).expect("UTF-8 HTML");
+    assert!(!html.contains("/editor"));
+    assert!(!html.contains("Wasm Island"));
+}

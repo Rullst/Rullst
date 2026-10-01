@@ -9,7 +9,6 @@ or proof that every crate and feature is exercised.
 
 - `/`: server-rendered posts using the `html!` macro and ORM.
 - `/live-feed` and `/_live`: server-driven WebSocket example.
-- `/editor`: Wasm island mounting example.
 - `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
 - `/posts/repository`: parameterized repository queries.

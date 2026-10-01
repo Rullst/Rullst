@@ -17,11 +17,6 @@ pub fn render_showcase_nav(active_route: &str) -> String {
             "Persistent WebSocket bidirectional state sync (Phoenix & Dioxus pattern)",
         ),
         (
-            "/editor",
-            "🏝️ Wasm Island (rullst::island)",
-            "Client-side WebAssembly reactive micro-frontend (Leptos & Yew WASM/Signals pattern)",
-        ),
-        (
             "/pico-demo",
             "🎨 Pico Semantic CSS",
             "Zero-build semantic CSS, auto dark mode, 0 Node.js/NPM (Pico.css v2)",
