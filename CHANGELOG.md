@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### CLI opening and context-aware home
+
+- `cargo rullst` without a subcommand opens with the v13 wordmark (24-bit or
+  256-colour gradient, a short animation on the first run of each day that any
+  key skips) and the slogan `SECURE, FAST AND AI-NATIVE RUST FRAMEWORK`.
+- Inside a Rullst project the home summarizes the package, `rullst` features,
+  database type and source, migration files and Git branch, and leads with
+  dev, dash, scaffolding, database, doctor and deploy. Outside a project it
+  leads with project creation and the docs.
+- `NO_COLOR`, `RULLST_REDUCED_MOTION`, `CI`, `TERM=dumb` and non-TTY streams
+  get static or plain output; non-interactive runs print the equivalent
+  commands and exit 0 instead of failing at the first prompt.
+
 ### LMS starter replaces the complete Academy scaffold
 
 - `--blueprint lms` and the wizard generate the small LMS starter (catalog,
