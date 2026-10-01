@@ -119,6 +119,12 @@ adapter treats its argument as an ID token and checks signature, issuer,
 audience and expiry but no nonce, so a captured Apple ID token for your client
 can be replayed until it expires.
 
+`OidcProvider` treats profile claims as optional (OIDC Core 5.1) in ID tokens
+and userinfo alike: without `name`, `ConnectUser::name` falls back to
+`given_name` and `family_name`, then `preferred_username`, then `nickname`, and
+is empty when none is present. The email address and subject are never used as
+a display name.
+
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
 `Provider::revoke_refresh_token` for a refresh token; Auth0/Cognito accept only

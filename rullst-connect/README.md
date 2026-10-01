@@ -470,7 +470,10 @@ normalization; a trailing slash may differ. ID tokens must carry the discovered 
 published it, so an Auth0 tenant whose issuer is `https://TENANT/` is validated with
 the trailing slash. `OidcProvider::issuer` holds that published value. Discovered token,
 authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
-both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
+both the issuer and endpoint use the same exact loopback origin. Profile claims are optional
+(OIDC Core 5.1): without `name`, `ConnectUser::name` falls back to `given_name` and
+`family_name`, then `preferred_username`, then `nickname`, and is empty when none is
+present; the email address and subject are never used as a display name. JWKS entries are refreshed
 after their TTL and when a token presents an unknown `kid`. Because the `kid` is
 unverified input, a forced refresh of a fresh set happens at most once per 30 seconds per
 JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes

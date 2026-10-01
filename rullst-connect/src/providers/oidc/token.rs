@@ -103,9 +103,7 @@ impl OidcProvider {
                     id: payload["sub"].as_str().map(String::from).ok_or_else(|| {
                         crate::error::ConnectError::Provider("Missing sub in id_token".to_owned())
                     })?,
-                    name: payload["name"].as_str().map(String::from).ok_or_else(|| {
-                        crate::error::ConnectError::Provider("Missing name in id_token".to_owned())
-                    })?,
+                    name: display_name(&payload),
                     email: payload["email"].as_str().map(String::from),
                     avatar_url: payload["picture"].as_str().map(String::from),
                     email_verified: payload["email_verified"].as_bool(),
@@ -136,6 +134,33 @@ impl OidcProvider {
 
         Ok(user)
     }
+}
+
+/// Display name from the optional standard profile claims (OIDC Core 5.1):
+/// `name`, else `given_name` and `family_name` joined by a space, else
+/// `preferred_username`, else `nickname`, else an empty string. Blank values
+/// are skipped. `email` and `sub` are never used: a display name is often
+/// shown to other users, and both are available in their own fields.
+fn display_name(claims: &Value) -> String {
+    let claim = |key: &str| {
+        claims[key]
+            .as_str()
+            .filter(|value| !value.trim().is_empty())
+    };
+    if let Some(name) = claim("name") {
+        return name.to_owned();
+    }
+    let full_name = [claim("given_name"), claim("family_name")]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    if !full_name.is_empty() {
+        return full_name.join(" ");
+    }
+    claim("preferred_username")
+        .or_else(|| claim("nickname"))
+        .map(str::to_owned)
+        .unwrap_or_default()
 }
 
 #[async_trait]
@@ -195,9 +220,7 @@ impl Provider for OidcProvider {
             id: user_res["sub"].as_str().map(String::from).ok_or_else(|| {
                 crate::error::ConnectError::Provider("Missing sub in userinfo".to_owned())
             })?,
-            name: user_res["name"].as_str().map(String::from).ok_or_else(|| {
-                crate::error::ConnectError::Provider("Missing name in userinfo".to_owned())
-            })?,
+            name: display_name(&user_res),
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
             email_verified: user_res["email_verified"].as_bool(),
