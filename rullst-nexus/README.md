@@ -70,6 +70,10 @@ collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
 page 1, rebuilds the sort and pagination links for the new query and records it
 in the URL, so saving a record refreshes the same view.
 
+The list sorts only by the record key and visible, non-`Password` columns. A
+`sort_by` naming a hidden or `Password` column orders by the key instead, so a
+crafted URL cannot reveal the relative order of values the panel never shows.
+
 ## Tenant-scoped CRUD and mutation audit
 
 Models whose rows belong to one tenant may opt into an exact text-column scope.

@@ -189,12 +189,16 @@ pub fn build_table_query(
         sql.push_str(&predicates.join(" AND "));
     }
 
-    // Ordering by a Password column would reveal the order of stored secrets.
+    // Ordering by a Password or hidden column would reveal the order of
+    // values the panel never shows (a `password_hash`, a sealed column), so
+    // only the key and visible non-Password fields are sortable.
     let sort_col = sort_by
         .filter(|candidate| {
             *candidate == entry.pk
                 || entry.fields.iter().any(|field| {
-                    field.name == *candidate && !matches!(field.kind, FieldKind::Password)
+                    field.name == *candidate
+                        && !field.hidden
+                        && !matches!(field.kind, FieldKind::Password)
                 })
         })
         .unwrap_or(entry.pk);
@@ -292,6 +296,40 @@ mod tests {
         assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
         assert!(!sql.contains("api_key"), "{sql}");
         assert!(sql.contains("ORDER BY id asc"), "{sql}");
+    }
+
+    #[test]
+    fn hidden_columns_are_not_sortable() {
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "U",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number)
+                    .hidden()
+                    .readonly(),
+                FieldMeta::new("email", "E-mail", FieldKind::Email),
+                FieldMeta::new("password_hash", "Password hash", FieldKind::Text).hidden(),
+            ],
+        };
+        let visible = vec![&entry.fields[1]];
+        let (sql, _) = build_table_query(
+            &entry,
+            &visible,
+            "",
+            1,
+            Some("password_hash"),
+            Some("asc"),
+            None,
+        );
+        assert!(!sql.contains("password_hash"), "{sql}");
+        assert!(sql.contains("ORDER BY id asc LIMIT"), "{sql}");
+
+        // The key stays sortable even when it is hidden.
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, Some("id"), None, None);
+        assert!(sql.contains("ORDER BY id DESC LIMIT"), "{sql}");
     }
 
     #[test]

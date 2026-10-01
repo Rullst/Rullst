@@ -108,6 +108,9 @@ collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
 page 1, rebuilds the sort and pagination links for the new query and records it
 in the URL, so saving a record refreshes the same view.
 
+The list sorts only by the record key and visible, non-`password` columns; a
+`sort_by` naming a hidden or `password` column orders by the key instead.
+
 A `password` field is never displayed: the list shows a fixed mask and the
 edit form an empty input, and leaving it empty keeps the stored value. Nexus
 writes a new value exactly as typed and does **not** hash it. Keep hash columns
@@ -136,7 +139,7 @@ code) is listed and entered in the create form, and stays read-only on edit.
 Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
 `url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
-widget kinds. A `hidden` field is left out of the list, search and the
+widget kinds. A `hidden` field is left out of the list, search, sorting and the
 create/edit forms, and a submitted value for it is rejected; `readonly` keeps a
 field visible but rejects submitted values. Implementing `NexusModel` manually
 remains available when an application needs metadata that cannot be derived.
