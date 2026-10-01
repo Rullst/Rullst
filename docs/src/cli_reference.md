@@ -542,8 +542,8 @@ Recovery does not undo application-code effects, databases or deployments.
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
 * **Subcommands:**
-  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`.
-  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project.
+  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`. In a virtual workspace manifest it adds the entry to `[workspace.dependencies]`, for members to use with `{ workspace = true }`.
+  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project (the workspace dependencies of a virtual workspace manifest).
 
 An unknown action, or `add` without a package name, fails with a non-zero exit
 status.
