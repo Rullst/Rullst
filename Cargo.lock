@@ -6933,6 +6933,7 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "hmac",
+ "idna",
  "lettre",
  "rand 0.10.3",
  "reqwest",

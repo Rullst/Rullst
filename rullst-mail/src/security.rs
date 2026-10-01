@@ -298,7 +298,7 @@ pub fn scan_content_security(content: &str) -> Result<(), MailError> {
             ));
         }
 
-        if homograph::homograph_link_host(&url).is_some() {
+        if homograph::is_homograph_link(&url) {
             return Err(MailError::SendError(
                 "Outbound mail security violation: a link host is a homograph spoofing attempt"
                     .to_string(),
