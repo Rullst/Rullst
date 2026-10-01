@@ -79,11 +79,13 @@ impl Limits {
     }
 
     /// Whether the per-learner quota is the default derived from `sessions`.
+    #[cfg(feature = "sqlite")]
     pub(crate) fn default_subject_sessions(&self) -> bool {
         self.subject_sessions == SUBJECT_SESSIONS.min(self.sessions)
     }
 
     /// Whether the per-learner event quota is the default derived from `events`.
+    #[cfg(feature = "sqlite")]
     pub(crate) fn default_subject_events(&self) -> bool {
         self.subject_events == SUBJECT_EVENTS.min(self.events)
     }
