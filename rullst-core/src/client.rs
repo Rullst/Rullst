@@ -28,7 +28,9 @@ pub fn rullst_client_init() {
 /// Without it (Development and Test, where `Server` mounts no CSRF layer) the
 /// request is sent without a token and the server's CSRF middleware, where
 /// mounted, decides; its non-JSON `403` is then reported as
-/// `rpc.csrf_token_missing`.
+/// `rpc.csrf_token_missing`. A non-JSON `429`, `502`, `503` or `504`, or any
+/// failure carrying `Retry-After` (such as the framework's draining and
+/// load-shedding responses), is `rpc.http_failure` with `retryable() == true`.
 pub async fn rpc_call<Req, Output>(path: &str, payload: &Req) -> RpcResult<Output>
 where
     Req: serde::Serialize + ?Sized,
@@ -82,6 +84,7 @@ where
         .map_err(|_| RpcFailure::framework("rpc.response_invalid", false))?;
     let success = resp.ok();
     let status = resp.status();
+    let has_retry_after = resp.headers().get("retry-after").ok().flatten().is_some();
     let response_is_json = resp
         .headers()
         .get("content-type")
@@ -102,7 +105,10 @@ where
     }
     if !response_is_json {
         let code = non_json_failure_code(status, success, csrf_token.is_some());
-        return Err(RpcFailure::framework(code, false));
+        return Err(RpcFailure::framework(
+            code,
+            !success && transient_status(status, has_retry_after),
+        ));
     }
     if !success {
         let failure = policy
@@ -121,6 +127,14 @@ where
         return Err(RpcFailure::framework("rpc.correlation_mismatch", false));
     }
     Ok(response.into_data())
+}
+
+/// Whether a failed non-JSON response is a transient rejection that may be
+/// retried: rate limiting (`429`), an unavailable or draining server or
+/// gateway (`502`, `503`, `504`), or any response with `Retry-After`.
+#[cfg(any(target_arch = "wasm32", test))]
+fn transient_status(status: u16, has_retry_after: bool) -> bool {
+    has_retry_after || matches!(status, 429 | 502 | 503 | 504)
 }
 
 /// Framework failure code for a response that is not JSON.
@@ -171,7 +185,19 @@ fn is_json_content_type(content_type: &str) -> bool {
 mod contract_tests {
     use super::{
         csrf_token_from_cookie, is_json_content_type, is_safe_rpc_path, non_json_failure_code,
+        transient_status,
     };
+
+    #[test]
+    fn overload_and_drain_rejections_are_retryable() {
+        for status in [429, 502, 503, 504] {
+            assert!(transient_status(status, false), "{status}");
+        }
+        assert!(transient_status(500, true), "Retry-After marks any failure");
+        for status in [400, 401, 403, 404, 500] {
+            assert!(!transient_status(status, false), "{status}");
+        }
+    }
 
     #[test]
     fn a_missing_csrf_cookie_is_reported_only_when_the_server_rejects() {

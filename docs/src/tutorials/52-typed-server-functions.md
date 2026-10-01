@@ -72,7 +72,10 @@ The production baseline verifies the double-submit CSRF cookie/header pair.
 The Wasm caller reads the bounded `rullst_csrf` cookie and forwards it as
 `X-CSRF-Token`. `Server` issues that cookie only in staging and production;
 without it (as in Development) the caller sends no token and lets the server
-decide, and a non-JSON `403` is reported as `rpc.csrf_token_missing`. The application must still add session/authentication, trusted
+decide, and a non-JSON `403` is reported as `rpc.csrf_token_missing`. Other
+non-JSON failures are `rpc.http_failure`; `retryable()` is `true` for `429`,
+`502`, `503` and `504` and for any response with `Retry-After`, which covers
+the framework's lifecycle-drain and Traffic Shield rejections. The application must still add session/authentication, trusted
 tenant resolution, object/role authorization and rate limiting in the order
 documented by `ProductionPreset`. Never accept role, owner or tenant authority
 from a function argument.
