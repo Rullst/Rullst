@@ -22,8 +22,17 @@ pub(crate) enum DevCommand {
     Migrate,
 }
 
+pub fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {
+    run_dev(is_dash, false)
+}
+
+/// `run_dev_server`; with `ts_sync`, the TypeScript SDK is regenerated after
+/// the initial build and after every successful rebuild.
 #[tokio::main]
-pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) async fn run_dev(
+    is_dash: bool,
+    ts_sync: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     if !crate::generators::is_rullst_project() {
         return Err(io::Error::other("run this command in a Rullst project root").into());
     }
@@ -31,7 +40,14 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
     let (log_tx, log_rx) = mpsc::channel(512);
     let (status_tx, status_rx) = watch::channel(DevStatus::Starting);
     let (commands, command_rx) = mpsc::channel(1);
-    let supervisor = supervise(is_dash, port, log_tx.clone(), status_tx, command_rx);
+    let supervisor = supervise(
+        is_dash,
+        ts_sync,
+        port,
+        log_tx.clone(),
+        status_tx,
+        command_rx,
+    );
     tokio::pin!(supervisor);
     let shutdown = shutdown_signal()?;
     if is_dash {
@@ -88,6 +104,7 @@ fn shutdown_signal() -> io::Result<impl std::future::Future<Output = io::Result<
 
 async fn supervise(
     dashboard: bool,
+    ts_sync: bool,
     port: u16,
     logs: mpsc::Sender<LogMsg>,
     status: watch::Sender<DevStatus>,
@@ -97,6 +114,7 @@ async fn supervise(
     remove_stale_precompressed_assets(dashboard, &logs);
     report(&logs, dashboard, "Building the application...".into());
     let executable = build::compile().await?;
+    sync_typescript(ts_sync, dashboard, &logs);
     let mut running = process::Application::prepare(&executable)?;
     if Path::new("src/migrations").is_dir() {
         report(&logs, dashboard, "Running initial db:migrate...".into());
@@ -153,6 +171,7 @@ async fn supervise(
                         continue;
                     }
                 };
+                sync_typescript(ts_sync, dashboard, &logs);
                 // Snapshot first: Windows must not lock Cargo's next build output.
                 let Some(mut replacement) = prepare_replacement(&executable, dashboard, &logs) else {
                     continue;
@@ -171,6 +190,21 @@ async fn supervise(
                 report(&logs, dashboard, format!("Reload attempt finished in {:.0} ms. In-memory state resets; migrations after startup are explicit.", started.elapsed().as_secs_f64() * 1000.0));
             }
         }
+    }
+}
+
+/// `dev --ts-sync`: regenerates the TypeScript SDK from routes that just
+/// compiled. A failure is reported and never stops the supervisor.
+fn sync_typescript(enabled: bool, dashboard: bool, logs: &mpsc::Sender<LogMsg>) {
+    if enabled {
+        report(logs, dashboard, typescript_sync_message(Path::new(".")));
+    }
+}
+
+fn typescript_sync_message(root: &Path) -> String {
+    match crate::generators::ts::sync_ts_sdk(root) {
+        Ok(path) => format!("TypeScript SDK synchronized at {}.", path.display()),
+        Err(error) => format!("TypeScript SDK sync failed: {error}"),
     }
 }
 

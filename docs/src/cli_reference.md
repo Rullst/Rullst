@@ -1136,7 +1136,7 @@ See [Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.m
 for limitations, failure recovery and the v13 architecture decision.
 
 * **Optional Flags:**
-  * `--ts-sync`: Automatically watches controller and model file changes and syncs the TypeScript client SDK (`sdk.ts`) live during development.
+  * `--ts-sync`: Regenerates the TypeScript client SDK (`rullst-client.ts`, as `generate:ts` writes it from the routes in `src/main.rs` and `src/lib.rs`) after the initial build and after every successful rebuild. A failed generation is reported and the application keeps running.
 
 ### `cargo rullst build:client`
 Builds the library for `wasm32-unknown-unknown`, runs `wasm-bindgen`, and writes a

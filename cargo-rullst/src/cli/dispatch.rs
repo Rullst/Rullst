@@ -268,10 +268,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             })?;
         }
         Commands::Dev { ts_sync } => {
-            if *ts_sync {
-                let _ = crate::generators::ts::generate_ts_sdk();
-            }
-            crate::generators::dev::run_dev_server(false)?;
+            crate::generators::dev::run_dev(false, *ts_sync)?;
         }
         Commands::Pkg { action, name } => match (action.as_str(), name) {
             ("add", Some(pkg_name)) => {
