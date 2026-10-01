@@ -19,6 +19,19 @@ pub fn generate_builder_struct(
     let column_guards = super::column_guards::generate_column_guards(parsed);
     let subquery_methods = super::subqueries::generate_subquery_methods();
     let redis_cfg = crate::feature_gates::redis();
+    // A model without soft deletes has no trash: `only_trashed()` fails
+    // closed instead of letting reads and `delete_all()` act on live rows.
+    let only_trashed_guard = if parsed.has_soft_deletes {
+        quote! {}
+    } else {
+        let message = format!(
+            "only_trashed() requires a soft-delete model; `{}` has no soft-delete column (a `deleted_at` field or #[orm(soft_delete)]), so none of its rows is trashed",
+            parsed.name
+        );
+        quote! {
+            self.errors.push(rullst_orm::Error::Validation(#message.to_string()));
+        }
+    };
 
     quote! {
         #[derive(Clone)]
@@ -214,6 +227,7 @@ pub fn generate_builder_struct(
             }
 
             pub fn only_trashed(mut self) -> Self {
+                #only_trashed_guard
                 self.only_trashed = true;
                 self
             }

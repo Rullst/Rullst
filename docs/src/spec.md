@@ -2018,6 +2018,11 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Builders add `with_trashed()` (include trashed rows) and `only_trashed()`
+  (only trashed rows). A model without soft deletes has no trashed rows, so
+  its `only_trashed()` fails reads, counts, plucks and `delete_all()` with
+  `Validation` instead of treating every live row as trashed; a directly set
+  `only_trashed` field matches no row. `with_trashed()` changes nothing there.
 * Only `delete()`, `restore()` and `force_delete()` change the soft-delete
   marker of an existing row. Generated `save()` leaves that column out of its
   `UPDATE` (an `INSERT` still writes it), so a handle loaded before `delete()`
