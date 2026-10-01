@@ -81,6 +81,28 @@ async fn networking_respects_precedence_defaults_and_invalid_values() {
         Server::setup_networking(3000, None, Environment::Test, &HashMap::new()),
         Err(ServerError::InvalidAddress { .. })
     ));
+
+    // Bare IPv6 and `localhost` are accepted; other host names are never
+    // resolved (a shell-exported machine name must not bind a LAN address).
+    for (host, expected) in [
+        ("::", "[::]:3000"),
+        ("::1", "[::1]:3000"),
+        ("[::1]", "[::1]:3000"),
+        ("localhost", "127.0.0.1:3000"),
+        ("LOCALHOST", "127.0.0.1:3000"),
+    ] {
+        environment.set("HOST", host);
+        assert_eq!(
+            Server::setup_networking(3000, None, Environment::Test, &HashMap::new()).unwrap(),
+            expected.parse().unwrap(),
+            "{host}"
+        );
+    }
+    environment.set("HOST", "buildbox01");
+    assert!(matches!(
+        Server::setup_networking(3000, None, Environment::Test, &HashMap::new()),
+        Err(ServerError::InvalidAddress { .. })
+    ));
 }
 
 #[tokio::test]
