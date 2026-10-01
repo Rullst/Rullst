@@ -615,7 +615,16 @@ compares the `#[derive(Orm)]` models under `src/` with the database. It ignores
 framework tables (`migrations` and `rullst_*`) and writes a migration only for
 additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive
-differences remain, it lists them and writes no migration.
+differences remain, it lists them and writes no migration. Column types follow
+the field's Rust type: `i8`/`i16`/`i32` use `integer`, `i64` `big_integer`,
+`f32`/`f64` `float`, `bool` `boolean`, and `String`, `SecretString`, chrono
+date/time types and `Json` use `string`. A new table declares non-`Option`
+fields `NOT NULL`. A required field added to an existing table is declared
+`NOT NULL DEFAULT 0`, `0.0` or `''` (a commented backfill to review); a
+required date, encrypted or JSON field added to an existing table has no
+neutral value and is refused. Any other type (for example `Vec<u8>`, `Uuid` or
+an application enum) is refused, naming the field, and nothing is written; add
+such columns with `make:migration`.
 
 ### `cargo rullst make:billing`
 Scaffolds a SaaS billing starting point with subscription models, authenticated
