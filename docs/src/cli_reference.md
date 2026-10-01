@@ -807,13 +807,17 @@ Creates an authentication starting point in your codebase, including:
 - User model and migration with asynchronous Argon2 password hashing.
 - Auth Controllers (Login, Registration, Logout).
 - Encrypted-session middleware that inserts the signed-in user's id as `Extension<i32>`.
-- Complete HTML Views for Login and Signup (unless `--api` is used).
+- HTML Views for Login and Signup.
 
-It fails before writing anything when `src/models/user.rs`,
-`src/controllers/auth_controller.rs`, `src/middlewares/auth_middleware.rs` or
-`src/pages/auth.rs` already exists, or when a
-`*_create_users.rs`/`*_create_users_table.rs` migration already creates the
-users table (the blank database starter and the SaaS/LMS blueprints ship one).
+It targets the SQLx ORM: Turso-primary projects are rejected. The command
+enables the `orm` and `auth` umbrella features, registers the generated
+`controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
+`src/main.rs`), and refreshes the migration registry. It fails before writing
+anything when `src/models/user.rs`, `src/controllers/auth_controller.rs`,
+`src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists, or
+when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
+the users table (the blank database starter and the SaaS/LMS blueprints ship
+one). Mounting routes and the security baseline remains application work.
 
 ### `cargo rullst make:mfa`
 Scaffolds a 2FA TOTP Multi-Factor Authentication controller at `src/controllers/mfa.rs` providing RFC 6238 Base32 secret generation, 6-digit TOTP code validation, and `otpauth://` QR URI generation.

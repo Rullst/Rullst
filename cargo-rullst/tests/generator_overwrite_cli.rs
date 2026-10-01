@@ -281,3 +281,40 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     );
     assert_unchanged(&repeated, "src/controllers/auth_controller.rs", &controller);
 }
+
+#[test]
+fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
+    let project = Project::new();
+    project.succeeds(&["auth"]);
+    let manifest: toml::Value = toml::from_str(&project.read("Cargo.toml")).expect("manifest");
+    let features = manifest["dependencies"]["rullst"]["features"]
+        .as_array()
+        .expect("rullst features");
+    for feature in ["orm", "auth"] {
+        assert!(features.iter().any(|value| value.as_str() == Some(feature)));
+    }
+    let root = project.read("src/main.rs");
+    for module in ["controllers", "middlewares", "models", "pages"] {
+        assert!(root.contains(&format!("pub mod {module};")), "{root}");
+    }
+    for (index, module) in [
+        ("src/controllers/mod.rs", "auth_controller"),
+        ("src/middlewares/mod.rs", "auth_middleware"),
+        ("src/models/mod.rs", "user"),
+        ("src/pages/mod.rs", "auth"),
+    ] {
+        assert!(project.read(index).contains(&format!("pub mod {module};")));
+    }
+    syn::parse_file(&root).expect("registered root module parses");
+
+    let turso = Project::new();
+    fs::write(
+        turso.path("Cargo.toml"),
+        "[package]\nname = \"turso-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = { version = \"13\", features = [\"orm\", \"orm-turso\"] }\n",
+    )
+    .expect("Turso manifest");
+    let refused = turso.fails(&["auth"]);
+    assert!(refused.contains("Turso-primary"), "{refused}");
+    assert!(!turso.path("src/migrations").exists());
+    assert!(!turso.path("src/models").exists());
+}
