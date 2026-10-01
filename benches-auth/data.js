@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790849631114,
+  "lastUpdate": 1790854252793,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14145,6 +14145,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4591,
             "range": "± 68",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bf53101d9e49efb8d8be0fa4813c6ef252de422",
+          "message": "Merge pull request #377 from Rullst/fix/v13-final-edu-tail\n\nfix(edu): final-review fixes for supervision, media and labs",
+          "timestamp": "2026-10-01T08:11:59-03:00",
+          "tree_id": "b7446c9b3b1c3345753f0137e49e9478fa1dad15",
+          "url": "https://github.com/Rullst/Rullst/commit/5bf53101d9e49efb8d8be0fa4813c6ef252de422"
+        },
+        "date": 1790854251982,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1035,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 799,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1847,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4452,
+            "range": "± 55",
             "unit": "ns/iter"
           }
         ]
