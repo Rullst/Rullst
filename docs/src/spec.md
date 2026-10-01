@@ -1648,14 +1648,37 @@ The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
 errors. Every SQLx model requires a persisted named `id` field. Explicit
 table/column/relation identifiers use the 1–64 byte portable ASCII identifier
-grammar, and declared hook, scope, policy, relation-model, tenant, soft-delete,
+grammar; the derived `<struct>s` default table name must match it only when
+no explicit `table` replaces it (for example for a non-ASCII struct name), and
+declared hook, scope, policy, relation-model, tenant, soft-delete,
 and embedding references are validated before code generation. A relation
 field accepts exactly one relation declaration; options that do not apply to
 that relation fail compilation. `belongs_to_many` requires `pivot_table` and
 defaults omitted owner/related pivot keys from the two model names.
 
+Generated SQL emits table and column identifiers unquoted, so the grammar
+check does not make a name portable: a word the target database reserves
+(for example `order`, `group`, `desc` or `user` on PostgreSQL, or `groups` and
+`rows` on MySQL 8, including a derived default such as `groups` for a `Group`
+struct) passes compilation and fails, or on PostgreSQL may even resolve to a
+built-in such as `current_user`, at runtime. The derive does not check
+reserved words; rename such a column or choose a non-reserved
+`#[orm(table = "...")]`.
+
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
-are compatible with generated ORM persistence in v12. `rename`, `try_from`,
+are compatible with generated ORM persistence in v12. `#[orm(skip)]` removes
+a field from generated SQL (writes, filters and projections) but not from the
+application's SQLx `FromRow`, which still reads the column from `SELECT *`. A
+field without a table column therefore needs `#[sqlx(skip)]` (alone or
+together with `#[orm(skip)]`, which are distinct options) or
+`#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
+generated writes must not touch. `json` and `json(nullable)` change only how
+that `FromRow` decodes the column: generated INSERT/UPDATE statements bind the
+field's own Rust type, not a `Json(...)` wrapper. Such a field therefore
+needs a type that SQLx itself encodes as the column's JSON type on the
+selected driver (for example `serde_json::Value` under a strict driver
+feature); with a type that only implements Serde the derive fails to compile
+at the generated bind. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
 decoded shape drift from generated SQL. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are
@@ -1687,9 +1710,17 @@ while portability and semantic review remain the model author's responsibility.
   before FROM would take the tenant or model-wide scope binding.
 * Generated builders start with the global row cap from
   `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
-  clamps to it and `unsafe_unlimited()` removes it for one query.
+  clamps to it and `unsafe_unlimited()` removes it for one query. An
+  `offset()` without a limit is emitted after `LIMIT -1` on SQLite and
+  `LIMIT 18446744073709551615` on MySQL/MariaDB, which accept `OFFSET` only
+  after `LIMIT`; PostgreSQL receives `OFFSET` alone.
   `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
   effective value in `PaginationResult::per_page` and `last_page`.
+* `count()` and the `paginate()` total count the rows `get()` would return
+  without its limit and offset. With `distinct()` or `group_by()` they count
+  that row query as a derived table (`SELECT COUNT(*) FROM (...) AS
+  __rullst_count`, keeping a DISTINCT select list); otherwise they count the
+  filtered rows directly.
 * `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
   subquery with portable `?` markers, even when its own `to_sql()` rendered
   PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
@@ -1729,6 +1760,9 @@ while portability and semantic review remain the model author's responsibility.
   reference under the reserved `__rullst_` prefix and emits no setter for a
   column named `save` or `save_with_tx`.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
+  The builder's encrypted, `SecretString` and skipped-column guards compare
+  the (unqualified) column name ignoring ASCII case, like unquoted SQL
+  identifiers, and `pluck_string` decrypts with the declared column name.
 * Generated secondary projections never carry `#[orm(encrypted)]` or
   `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
   `ModelCommittedEvent`/Redis `orm:events:*` payloads) omits `#[orm(hidden)]`
@@ -1753,10 +1787,25 @@ while portability and semantic review remain the model author's responsibility.
   `SecretString`/`Option<SecretString>` model fields are audited, excluded and
   change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
   on a model therefore emits the envelope; call `reveal_audited()` for
-  deliberate exposure.
+  deliberate exposure. Each write encrypts a `SecretString` column with a
+  fresh nonce, so generated builder filters, ordering and grouping on it
+  (including `where_<column>` helpers) fail with `Validation` instead of never
+  matching, and `pluck_string`/`pluck_i32` reject it rather than return
+  envelopes. An explicit `select` of the column remains available because the
+  codec decrypts it while decoding the model.
 
 ### 5.3. Generated Relationship Contract
 
+* An omitted `foreign_key` defaults to a lowercased model name plus `_id`:
+  `belongs_to` reads `<related model>_id` from the declaring model (`post_id`
+  for `belongs_to = "Post"`), while `has_one`/`has_many` and the owner side of
+  `belongs_to_many` match `<declaring model>_id` on the other table. Models
+  whose names are not single words usually need an explicit `foreign_key`.
+  `local_key` (this model's matched key, default `id`) applies to `has_one`,
+  `has_many`, `morph_one`, `morph_many` and `belongs_to_many`; `related_key`
+  (the related model's key) applies to `belongs_to`, `belongs_to_many` and
+  `morph_to`. Either option on another relation fails compilation instead of
+  being ignored.
 * SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
   typed `morph_to` targets. A polymorphic relation requires
   `morph_name = "..."` (`name` remains a legacy alias).
@@ -1775,12 +1824,19 @@ while portability and semantic review remain the model author's responsibility.
   `Validation` error if the cap would truncate it, so no parent silently
   receives an empty or partial relation. A constrained eager load that sets an
   explicit smaller `limit(n)` (applied to the whole batch) or
-  `unsafe_unlimited()` is honored as written.
+  `unsafe_unlimited()` is honored as written. A to-many eager load
+  (`has_many`, `morph_many`, `belongs_to_many`) assigns `Some(vec![])` to a
+  parent without related rows, so `None` always means "not loaded".
 * Every parent receives the related rows it shares with other parents (one
   `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
   parent rows). The shared value is cloned for every such parent but the last;
   when the related model does not implement `Clone`, a shared row fails the
   load with a `Validation` error instead of leaving a parent empty.
+* The relation's ownership predicate (foreign key, morph id/type pair or
+  pivot key) forms its own `AND` group before a lazy `<relation>_constrained`
+  or eager `with_<relation>_constrained` modifier runs, like the tenant and
+  model-wide scopes, so an `or_where` in the modifier cannot return another
+  parent's rows.
 
 ### 5.4. Tenant Scope Contract
 
@@ -1800,7 +1856,10 @@ while portability and semantic review remain the model author's responsibility.
   fallible `chunk_by_id(...)`/`chunk_by_id_with_tx(...)` for stable ascending
   keyset traversal over the generated `i32` primary key. This prevents deletes
   of processed rows from shifting later rows behind an offset; it is not a
-  database-server cursor or a universal cross-shard snapshot.
+  database-server cursor or a universal cross-shard snapshot. Without an
+  `order_by`, `chunk(...)`/`chunk_with_tx(...)` order their pages by
+  `<table>.id`, because SQL gives consecutive offset queries no stable order
+  (a PostgreSQL synchronized scan, for example, can start mid-table).
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
@@ -1906,6 +1965,11 @@ while portability and semantic review remain the model author's responsibility.
   savepoint rolls back instead of releasing, a managed transaction rolls back
   and returns an error instead of committing, and the ORM pool closes a
   connection returned while SQLx still reports an open transaction.
+* A generated `stream()` running on a managed or task-scoped transaction keeps
+  that transaction locked between rows until it is consumed or dropped. While
+  it is open, every other generated ORM call, `Orm::transaction` and
+  `Outbox::enqueue` on that transaction fails with `Validation` instead of
+  waiting for the lock (the query timeout does not cover that wait).
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
@@ -2003,14 +2067,21 @@ while portability and semantic review remain the model author's responsibility.
   reads. `Orm::init_redis_with_namespace(url, application_namespace)` is the
   recommended initializer when a Redis database is shared; the compatibility
   `init_redis(url)` initializer uses the literal namespace `default`.
-* Versioned SHA-256 cache keys bind the validated application namespace, an
-  opaque digest of the active tenant scope when present, table, generated SQL,
-  and typed bindings. Raw tenant identifiers are not emitted in keys.
+* Versioned SHA-256 cache keys bind the validated application namespace, a
+  partition, table, generated SQL, and typed bindings. A model with a
+  `tenant_column` partitions its entries by an opaque digest of the active
+  tenant scope (`global` outside `with_tenant`); any other model keeps one
+  `global` copy whatever tenant scope its reads run in. Raw tenant
+  identifiers are not emitted in keys.
 * Generated reads always bypass Redis inside explicit and task-scoped database
   transactions, so cached state cannot replace the transaction's own view.
   `remember(0)` is invalid. Outside transactions, explicitly requesting cache
   without initializing Redis fails closed as a configuration error; transport
-  failures and corrupt cached JSON fail open to the authoritative database.
+  failures and corrupt cached values fail open to the authoritative database,
+  whose result replaces the entry. Only a JSON array whose rows all decode and
+  decrypt is a hit: `null`, an object or a row whose encrypted or
+  `SecretString` field no longer decrypts (for example after key retirement)
+  is a miss, not an empty result or an error.
 * Cache writes occur only after a successful database read and retain encrypted
   model fields as ciphertext; `SecretString` fields are cached as serde
   envelopes and decrypted on a cache hit, and a result that cannot be
@@ -2018,10 +2089,14 @@ while portability and semantic review remain the model author's responsibility.
   generated cache write also records its key in a per-namespace/tenant/table
   Redis set in the same `EVAL` script, extending that set's TTL to the longest
   entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the tenant/table active at the write only after
-  commit (the tenant is captured when the callback is registered, so a
+  operations invalidate the table's `global` partition and, for a
+  tenant-scoped model, the partition of the tenant active at the write, only
+  after commit (the tenant is captured when the callback is registered, so a
   `with_tenant` scope that ended inside the transaction closure still has its
-  keys removed) by popping that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  keys removed). An `unscoped()` read of a tenant-scoped model inside another
+  tenant's `with_tenant` scope is cached in that scope's partition and is not
+  refreshed by other tenants' writes before its TTL. Invalidation pops each
+  index in batches of 500 and `UNLINK`s its keys (at most 10,000 per
   write); they never `SCAN` the Redis keyspace, so their cost does not grow
   with unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the
@@ -2104,7 +2179,10 @@ while portability and semantic review remain the model author's responsibility.
   the query match literally, and the query uses the provider bounds (1,024
   bytes, no control characters).
 * `#[orm(searchable)]` projects generated save/delete operations only after a
-  managed relational commit. The indexed document omits `#[orm(hidden)]`,
+  managed relational commit. The table name is the Scout index, so a
+  searchable model whose (explicit or default) table name does not start with
+  a lowercase ASCII letter followed by lowercase letters, digits or
+  underscores fails compilation instead of failing every projection. The indexed document omits `#[orm(hidden)]`,
   `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed
   query is not silently treated as an empty result, and `PostCommit` means a
   projection failed after the database mutation became durable.

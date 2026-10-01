@@ -499,6 +499,28 @@ A prepared version section does not establish that its tag or crates exist.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
 
+### ORM macros low-severity review fixes (builder, relations, parser)
+
+- A `*_constrained` modifier's `or_where` can no longer return other parents'
+  rows, eager `belongs_to_many` gives parents with no related rows
+  `Some(vec![])`, `belongs_to` without `foreign_key` defaults to
+  `<related model>_id`, and `local_key`/`related_key` on a relation that
+  ignores them is a compile error.
+- `count()` and `paginate()` totals count DISTINCT rows and GROUP BY groups, an
+  uncapped `offset()` is valid SQL on SQLite and MySQL/MariaDB, and offset
+  `chunk()` pages are ordered by primary key unless `order_by` is set.
+- ORM calls on a transaction while one of its `stream()`s is open return
+  `Validation` instead of hanging.
+- `SecretString` columns are rejected in builder filters, ordering, grouping
+  and `pluck_*`, and the skipped, encrypted and `SecretString` column guards
+  ignore ASCII case.
+- Non-array or undecryptable query-cache entries fall back to the database, and
+  models without a `tenant_column` share one global cache partition that writes
+  from any tenant scope invalidate.
+- An explicit `#[orm(table)]` rescues struct names whose default table name is
+  invalid, `searchable` models need a lowercase Scout-valid table name, and
+  `#[orm(skip)]` and `#[sqlx(skip)]` can be combined.
+
 ### ORM low-severity review fixes
 
 - An update whose audit restore patch would exceed its bounds is saved and

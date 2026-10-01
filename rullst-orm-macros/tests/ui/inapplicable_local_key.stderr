@@ -1,0 +1,5 @@
+error: local_key does not apply to belongs_to or morph_to relations; name the related model's key with related_key
+ --> tests/ui/inapplicable_local_key.rs:9:5
+  |
+9 |     author: Option<User>,
+  |     ^^^^^^

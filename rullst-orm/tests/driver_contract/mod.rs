@@ -4,9 +4,11 @@
 //! MySQL and MariaDB matrices run the same functions against real servers.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+mod aggregate_counts;
 mod bulk_delete;
 mod column_types;
 mod nested_transaction;
+mod offset_paging;
 mod soft_delete_lifecycle;
 mod timestamps;
 
@@ -17,4 +19,6 @@ pub async fn exercise() {
     soft_delete_lifecycle::exercise().await;
     nested_transaction::exercise().await;
     column_types::exercise().await;
+    aggregate_counts::exercise().await;
+    offset_paging::exercise().await;
 }

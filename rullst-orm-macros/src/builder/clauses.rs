@@ -16,18 +16,7 @@ pub fn generate_builder_struct(
     execution_methods: &[TokenStream],
     magic_methods: &[TokenStream],
 ) -> TokenStream {
-    let skipped_columns: Vec<String> = parsed
-        .skipped_fields
-        .iter()
-        .map(|ident| ident.to_string())
-        .collect();
-    let skipped_columns_lit = skipped_columns.clone();
-    let encrypted_columns: Vec<String> = parsed
-        .encrypted_fields
-        .iter()
-        .map(|field| field.name.to_string())
-        .collect();
-    let encrypted_columns_lit = encrypted_columns.clone();
+    let column_guards = super::column_guards::generate_column_guards(parsed);
     let subquery_methods = super::subqueries::generate_subquery_methods();
     let redis_cfg = crate::feature_gates::redis();
 
@@ -77,32 +66,7 @@ pub fn generate_builder_struct(
         }
 
         impl #builder_name {
-            const SKIPPED_COLUMNS: &'static [&'static str] = &[#(#skipped_columns_lit),*];
-            const ENCRYPTED_COLUMNS: &'static [&'static str] = &[#(#encrypted_columns_lit),*];
-
-            fn is_skipped_column(column: &str) -> bool {
-                let column = column.rsplit('.').next().unwrap_or(column);
-                Self::SKIPPED_COLUMNS.iter().any(|c| *c == column)
-            }
-
-            fn reject_skipped_column(&mut self, column: &str) -> bool {
-                let column = column.rsplit('.').next().unwrap_or(column);
-                if Self::is_skipped_column(column) {
-                    self.errors.push(rullst_orm::Error::Validation(format!(
-                        "column `{}` is declared with `#[orm(skip)]` / `#[sqlx(skip)]` and does not exist in the table; it must not be used in WHERE / ORDER BY / GROUP BY / SELECT",
-                        column
-                    )));
-                    true
-                } else if Self::ENCRYPTED_COLUMNS.iter().any(|candidate| *candidate == column) {
-                    self.errors.push(rullst_orm::Error::Validation(format!(
-                        "column `{}` uses randomized `#[orm(encrypted)]` storage and cannot be used in WHERE / ORDER BY / GROUP BY / SELECT; query a separate blind-index column instead",
-                        column
-                    )));
-                    true
-                } else {
-                    false
-                }
-            }
+            #column_guards
 
             /// Bindings of a `select_raw_bindings` fragment while it is still the
             /// rendered select list; replacing the select list drops them.

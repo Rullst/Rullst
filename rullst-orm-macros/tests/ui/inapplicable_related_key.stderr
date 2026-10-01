@@ -1,0 +1,5 @@
+error: related_key is supported only on belongs_to, belongs_to_many or morph_to relations
+ --> tests/ui/inapplicable_related_key.rs:8:5
+  |
+8 |     posts: Option<Vec<Post>>,
+  |     ^^^^^

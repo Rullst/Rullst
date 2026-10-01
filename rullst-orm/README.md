@@ -149,13 +149,16 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Stable Keyset Chunking**: `.chunk_by_id()` traverses ascending generated
   `i32` IDs without offset drift when already processed rows are deleted, and
   propagates callback errors. `.chunk()` remains available for offset-based
-  compatibility.
+  compatibility and orders its pages by the primary key unless the query
+  sets `order_by`.
 - **Transaction-Aware Redis Query Cache**: `.remember(seconds)` uses a
-  versioned SHA-256 key bound to the application namespace, active tenant,
+  versioned SHA-256 key bound to the application namespace, the active tenant
+  (for a model with a `tenant_column`; other models share one global entry),
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
-  Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  tenant active at the write and its table only after commit (even when that
+  Generated model saves/deletes/restores/force-deletes invalidate the table's
+  global keys and, for a tenant-scoped model, those of the tenant active at
+  the write, only after commit (even when that
   `with_tenant` scope ended before the commit) through a per-table key index,
   never a keyspace `SCAN`, so write latency does not grow with unrelated keys
   in a shared Redis database; cluster/failover evidence remains outside the
@@ -241,7 +244,9 @@ Generated builders start with a global row cap (`Orm::set_max_query_limit`,
 `unsafe_unlimited()` removes it for one explicit query. `paginate(page,
 per_page)` clamps `per_page` to the same cap, because the value often comes
 from request input; `PaginationResult::per_page` and `last_page` report the
-effective page size.
+effective page size. `count()` and the `paginate()` total count the rows the
+query returns: a `distinct()` or `group_by()` query is counted as a derived
+table, so the total is the number of distinct rows or groups.
 
 Eager loading runs one related-model query for all parents of a batch and
 never assigns relations from a result truncated by that cap: when the related
@@ -288,7 +293,10 @@ a transaction instead of reusing it.
 
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
-on that transaction. Transactional streams reject `after_fetch` hooks to avoid
+on that transaction: while a `stream()` opened inside `Orm::transaction` (or
+`#[rullst_orm::test]`) is alive, other generated ORM calls on that transaction,
+including those of a `tokio::join!` sibling, fail with `Validation` instead of
+waiting for its lock. Transactional streams reject `after_fetch` hooks to avoid
 reentrant queries while retaining that access; use `get()` inside
 `Orm::transaction` for those models. Streaming does not eagerly load relations.
 

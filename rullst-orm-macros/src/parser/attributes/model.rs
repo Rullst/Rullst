@@ -22,9 +22,7 @@ pub(in crate::parser) struct ModelAttributes {
 
 impl ModelAttributes {
     pub fn parse(input: &DeriveInput) -> Result<Self, syn::Error> {
-        let table_name = format!("{}s", input.ident.to_string().to_lowercase());
-        validate_sql_identifier(&table_name, "default table name", input.ident.span())?;
-        let mut parsed = Self::new(table_name);
+        let mut parsed = Self::new(format!("{}s", input.ident.to_string().to_lowercase()));
         let mut seen = HashSet::new();
         for attribute in input
             .attrs
@@ -32,6 +30,14 @@ impl ModelAttributes {
             .filter(|attribute| attribute.path().is_ident("orm"))
         {
             attribute.parse_nested_meta(|meta| parsed.apply(meta, &mut seen))?;
+        }
+        // The derived `<struct>s` name must be portable only when no explicit
+        // `table` replaces it (a non-ASCII or 64-byte struct name, say).
+        if !seen.contains("table") {
+            validate_sql_identifier(&parsed.table_name, "default table name", input.ident.span())?;
+        }
+        if parsed.searchable {
+            validate_scout_index(&parsed.table_name, input.ident.span())?;
         }
         Ok(parsed)
     }
@@ -127,6 +133,27 @@ impl ModelAttributes {
     }
 }
 
+/// Generated Scout projections and searches use the table name as the index,
+/// and every engine accepts only a lowercase name starting with a letter.
+fn validate_scout_index(table_name: &str, span: proc_macro2::Span) -> Result<(), syn::Error> {
+    let valid = table_name
+        .as_bytes()
+        .first()
+        .is_some_and(u8::is_ascii_lowercase)
+        && table_name
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_');
+    if !valid {
+        return Err(syn::Error::new(
+            span,
+            format!(
+                "searchable models use their table name `{table_name}` as the Scout index, which must start with a lowercase ASCII letter and contain only lowercase letters, digits, or underscores; set a lowercase #[orm(table = \"...\")]"
+            ),
+        ));
+    }
+    Ok(())
+}
+
 fn parse_soft_delete(meta: &ParseNestedMeta<'_>) -> Result<SoftDeleteConfig, syn::Error> {
     let mut column = None;
     let mut value = None;
@@ -194,6 +221,57 @@ mod tests {
                 "accepted non-portable column: {column}"
             );
         }
+    }
+
+    #[test]
+    fn an_explicit_table_replaces_an_unportable_default_table_name() {
+        for struct_name in ["Usuário".to_string(), "A".repeat(64)] {
+            let ident = syn::parse_str::<syn::Ident>(&struct_name).expect("valid Rust identifier");
+            let explicit: syn::DeriveInput = syn::parse_quote! {
+                #[orm(table = "usuarios")]
+                struct #ident { id: i32, nome: String }
+            };
+            let parsed = crate::parser::parse(&explicit).unwrap_or_else(|error| {
+                panic!("explicit table rejected for {struct_name}: {error}")
+            });
+            assert_eq!(parsed.table_name, "usuarios");
+
+            let implicit: syn::DeriveInput = syn::parse_quote! {
+                struct #ident { id: i32, nome: String }
+            };
+            let error = match crate::parser::parse(&implicit) {
+                Ok(_) => panic!("unportable default table accepted for {struct_name}"),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("default table name"), "{error}");
+        }
+    }
+
+    #[test]
+    fn searchable_tables_must_be_valid_scout_index_names() {
+        for table in ["UserProfiles", "_drafts", "users2FA"] {
+            let input: syn::DeriveInput = syn::parse_quote! {
+                #[orm(table = #table, searchable)]
+                struct Record { id: i32 }
+            };
+            let error = match crate::parser::parse(&input) {
+                Ok(_) => panic!("searchable table `{table}` must be rejected"),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("Scout index"), "{error}");
+            // The same table remains valid without Scout projection.
+            let plain: syn::DeriveInput = syn::parse_quote! {
+                #[orm(table = #table)]
+                struct Record { id: i32 }
+            };
+            assert!(crate::parser::parse(&plain).is_ok(), "{table}");
+        }
+        let default_name: syn::DeriveInput = syn::parse_quote! {
+            #[orm(searchable)]
+            struct ScoutUser { id: i32 }
+        };
+        let parsed = crate::parser::parse(&default_name).expect("lowercase default index");
+        assert_eq!(parsed.table_name, "scoutusers");
     }
 
     #[test]

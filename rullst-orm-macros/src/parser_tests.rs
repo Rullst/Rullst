@@ -83,7 +83,7 @@ mod tests {
                 #[orm(belongs_to = "M3")] m3: M3,
                 #[orm(belongs_to_many = "M4", pivot_table = "piv_m4")] m4: Vec<M4>,
                 #[orm(morph_many = "M5", name = "m5_able", local_key = "custom_id")] m5: Vec<M5>,
-                #[orm(morph_one = "M6", name = "m6_able", foreign_key = "f_id", related_key = "r_id")] m6: M6,
+                #[orm(morph_one = "M6", name = "m6_able", foreign_key = "f_id")] m6: M6,
                 m7_able_id: i32,
                 m7_able_type: String,
                 #[orm(morph_to = "M7", morph_name = "m7_able")] m7: Option<M7>,
@@ -125,7 +125,6 @@ mod tests {
         assert_eq!(r[5].rel_type, "morph_one");
         assert_eq!(r[5].morph_name, "m6_able");
         assert_eq!(r[5].foreign_key, "f_id");
-        assert_eq!(r[5].related_key, "r_id");
         assert_eq!(r[6].rel_type, "morph_to");
         assert_eq!(r[6].morph_name, "m7_able");
 
