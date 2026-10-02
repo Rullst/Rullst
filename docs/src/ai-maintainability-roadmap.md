@@ -168,6 +168,29 @@ contracts, release signing and cross-crate security changes require heightened
 human review regardless of the model used. No evaluation score authorizes
 unattended merge or production mutation.
 
+## Planned additions (recorded 2026-10-01)
+
+These items were requested by the maintainer during the v13 review and are
+tracked here so they are not lost; they are plans, not shipped capabilities.
+
+- **Documentation for humans and assistants:** a "start here" page, short
+  per-crate quickstarts, a task-oriented cookbook, an `llms.txt` index of the
+  book, and visible maturity tiers per crate.
+- **Code-level clarity:** every public item documented with a compiling
+  example (enforced with `missing_docs` and doctests), consistent constructor
+  and error patterns across crates, and actionable error messages (the v13 CLI
+  error reports are the first step).
+- **Assistant grounding:** keep the `cargo rullst ai` primer and the
+  `generate:ai-context` output in sync with the book, with a test that every
+  command and API the primer names exists.
+- **Assisted v12 → v13 upgrade:** `cargo rullst upgrade` already performs the
+  backed-up dependency upgrade, `cargo fix` and `cargo check`; extend its
+  source findings to cover every breaking row of the
+  [v13 migration guide](migration-v13.md), and offer an upgrade mode in
+  `cargo rullst ai` that uses the guide as context and proposes reviewed edits.
+- **Legal and regulatory readiness:** see the
+  [legal & regulatory compliance roadmap](legal-compliance-roadmap.md).
+
 ## Delivery sequence
 
 | Phase | Delivery | Promotion evidence |

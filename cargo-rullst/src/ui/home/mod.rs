@@ -8,7 +8,10 @@ mod git;
 mod project;
 
 pub(super) use actions::{HomeAction, home_entries};
-pub(super) use project::{Database, Migrations, Project};
+pub(crate) use project::{
+    Database, Migrations, Project, display_safe, find_project, read_small_file, relative_root,
+    rullst_requirement,
+};
 
 use super::palette::{self, ColorDepth, Rgb};
 use std::io::{self, Write};

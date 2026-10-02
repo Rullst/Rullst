@@ -29,6 +29,15 @@ and a summary of where you are.
 * **Outside a project**: project creation comes first, followed by the docs
   links ([start here](start-here.md) and this reference).
 
+Both menus include **Search All Commands**, a fuzzy command palette over every
+command, including the ones attached at runtime (`update ...`, `make:privacy`,
+`deploy:doctor`, `completions`, ...). Type to filter by name, alias or
+description; every word must match, names rank above descriptions, and ties go
+to the shorter name, then alphabetical order. ↑/↓ (or Tab, Ctrl+P/N) move,
+Enter runs the selection (asking first for its required arguments, as a menu
+when the values are fixed), Esc returns to the home menu and Ctrl+C exits.
+`cargo rullst --help` is the non-interactive equivalent.
+
 The opening animates for about 0.7 s only on the first run of each day; later
 runs draw the final frame instantly and any key skips the animation. The day
 of the last animation is kept in the user cache directory
@@ -44,6 +53,98 @@ menu stays interactive. When standard input, output or error is not a
 terminal, `CI` is set or `TERM=dumb`, the CLI prints the plain line, the
 summary and the equivalent commands, then exits successfully without
 prompting.
+
+### Errors and exit codes
+Every failure is printed on standard error by one shared report:
+
+```text
+error: Not inside a Rullst project
+  What happened  `cargo rullst make:model` must run at the root of a Rullst project; ...
+  How to fix     The project root is `../..`: run `cd ../..` and try again.
+  Docs           https://rullst.github.io/Rullst/book/start-here.html
+```
+
+The common failures have their own title and fix: not inside a Rullst project
+(pointing to an enclosing project root when there is one), a missing tool
+(`cargo`, `rustup`, `git`, `docker`, `flyctl`, ...), a missing Rust target
+(`rustup target add <target>`), an unreachable database, a port already in
+use, permission denied, invalid input, network failures and an interrupted
+prompt. Anything else gets a generic report naming the failed command.
+Connection-string passwords, `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values,
+bearer tokens and well-known credential formats are masked, and terminal
+control characters are replaced, in every line of the report.
+
+`-v`/`--verbose` (accepted by every command) adds the underlying causes and
+the error's `Debug` form, still redacted. A panic prints a short "Internal
+error" report instead of the default panic message and backtrace unless `-v`
+or `RUST_BACKTRACE` is set.
+
+| Exit status | Meaning |
+| :--- | :--- |
+| `0` | Success (`doctor`: no failed check; warnings are allowed). |
+| `1` | The command failed, including `doctor` with a failed (✗) check. |
+| `2` | Usage error: an unknown command or invalid arguments. |
+
+An unknown command lists the closest commands at the level where it was typed
+(`cargo rullst make:modek` suggests `make:model`; `cargo rullst update chekk`
+suggests `update check`; `cargo rullst db` lists the `db:*` group). Ranking
+ignores case and separators (`make-model`), then uses edit distance with
+transpositions, an exact `group:name` segment (`migrate`) and prefixes.
+
+Colour follows the home screen rules on each stream: none for `NO_COLOR`, `CI`,
+`TERM=dumb` or a stream that is not a terminal. When standard output is not
+coloured, generator output is plain as well.
+
+After a generator succeeds, the CLI prints up to three concrete **Next steps**
+(for example `cargo rullst db:migrate` after `make:model -m`). Generators that
+already print their own instructions (`new`, `auth`, `foundry:init`,
+`make:k8s`) add none, and `--json` invocations never print them.
+
+### `cargo rullst completions <shell>`
+Prints a completion script for `bash`, `zsh`, `fish`, `powershell` or `elvish`
+generated from the complete command tree, runtime-only commands included.
+Scripts complete the `rullst` executable that `cargo install cargo-rullst`
+installs beside `cargo-rullst` (Cargo's own completion does not delegate the
+arguments of external subcommands); `--bin cargo-rullst` targets the other
+executable.
+
+```bash
+cargo rullst completions bash > ~/.local/share/bash-completion/completions/rullst
+cargo rullst completions zsh > ~/.zfunc/_rullst      # with fpath+=(~/.zfunc)
+cargo rullst completions fish > ~/.config/fish/completions/rullst.fish
+cargo rullst completions powershell >> $PROFILE
+```
+
+### `cargo rullst info [--json]` (alias `version`)
+Prints the CLI version, platform, `rustc`/`cargo` versions and the detected
+project (name, root, `rullst` requirement, features, database family and
+source, migration files, Git branch). It reads local files and runs
+`rustc --version`/`cargo --version` only; connection URLs are never printed.
+`--json` prints:
+
+```json
+{
+  "schema_version": "rullst.cli-info.v1",
+  "cli": { "name": "cargo-rullst", "version": "13.0.0" },
+  "platform": { "os": "linux", "arch": "x86_64" },
+  "toolchain": { "rustc": "1.98.1", "cargo": "1.98.1" },
+  "project": {
+    "name": "shop",
+    "root": "/work/shop",
+    "relative_root": null,
+    "rullst": "13",
+    "features": ["default", "orm"],
+    "database": { "status": "configured", "kind": "SQLite", "source": ".env" },
+    "migrations": { "count": 2, "latest": "m20260101000000_create_users" },
+    "git_branch": "main"
+  }
+}
+```
+
+`project` is `null` outside a project; `toolchain` values are `null` when the
+tool is missing. `database.status` is `configured`, `not_configured` or
+`unreadable` (with `reason`); `rullst` is the version requirement, or `path`,
+`git` or `workspace`.
 
 ### `cargo rullst new <name>`
 Creates a Rullst project from scratch. Version 12 intentionally generates one
@@ -1286,8 +1387,60 @@ input queues are bounded, ANSI control sequences are removed, terminal state is
 restored on error, and the owned application process is stopped and reaped when
 the dashboard exits.
 
-The layout adapts to narrower terminals and provides these keyboard controls:
+**Live metrics (v13).** Once a second the dashboard reads
+`GET /_rullst/dev-telemetry` from the application it started, on
+`127.0.0.1:<port>`, and shows only what the application reports:
 
+* requests per second over the last 10 s, from the application's exact request
+  counters, and 4xx/5xx totals since the process started;
+* errors: 5xx responses and their share of all requests over the last 60 s;
+* p50/p95 latency over the last 60 s and a p95-per-poll sparkline (up to two
+  minutes), computed from the individual requests the dashboard observed. They
+  are marked `sampled` when more requests arrived between two polls than the 64
+  newest the application returns;
+* the newest requests with status, method, duration and path (never the query
+  string);
+* ORM queries since start and slow ORM operations (at least 100 ms);
+* the pending jobs of a queue.
+
+Counters, latency samples and slow operations restart with every new process
+(a rebuild or `r`); the request list and the sparkline keep earlier entries.
+Histories are bounded: 120 sparkline points, 50 requests, 16 slow operations and at most
+4,096 latency samples. A response larger than 256 KiB, with another schema or
+with inconsistent counters is rejected, and control or bidirectional-formatting
+characters are replaced before anything reaches the terminal. A value the
+application does not report is shown as `not reported`, never as zero.
+
+The endpoint exists only in a debug build running in Development under
+`cargo rullst dev`/`dash`; see the
+[telemetry guide](telemetry-guide.md#development-dashboard-endpoint). When the
+application does not serve it, the metrics row is replaced by a **TELEMETRY NOT
+AVAILABLE** panel with these steps:
+
+1. Serve the application with `rullst::Server` from Rullst 13 or newer (the
+   generated starters do).
+2. Run a debug build in Development: leave `RULLST_ENV`/`APP_ENV` unset or set
+   `RULLST_ENV=development`.
+3. Press `r` (or save a file) to restart.
+
+| Value | Reported when | To enable it |
+| :--- | :--- | :--- |
+| Requests, latency, errors | The endpoint answers. | The steps above. |
+| ORM queries and slow operations | Rullst's default tracing subscriber is installed (`Server::run` installs it when the application has none) and keeps `rullst_orm` INFO spans. | Do not install another global subscriber first, and do not filter out `rullst_orm=info` with `RUST_LOG`. |
+| Queue pending | The application passes its queue to the server. | `Server::new(router).with_dev_queue(queue)` (accepts a `Queue` or an `Arc<Queue>`). |
+
+ORM queries count the outermost `rullst.orm.query` span of each ORM operation
+(model queries, saves, deletes and `Orm::raw`). One operation can run several
+SQL statements, and SQL executed directly through SQLx is not counted.
+
+Terminals at least 26 rows tall show the metrics row and terminals at least 105
+columns wide add the recent-requests panel; shorter terminals show a one-line
+summary in the header. The layout adapts to narrower terminals and provides
+these keyboard controls:
+
+* `r`: restart the application from the current build (no rebuild). It is
+  ignored while the application is still starting and reports when the
+  supervisor is busy, for example with a migration.
 * `o`: open the application.
 * `s`: probe the loopback Studio endpoint and open it only when reachable.
 * `d`: open existing Scalar docs. Missing files produce explicit
@@ -1295,7 +1448,12 @@ The layout adapts to narrower terminals and provides these keyboard controls:
 * `m`: run `db:migrate` asynchronously and report its real exit result.
 * `/`: search both log panes; `f` cycles all/warning+error/error filtering.
 * `Tab`: switch the focused log pane; arrows and Page Up/Page Down scroll it.
-* `c`: clear dashboard logs; `q` or `Esc`: exit.
+* `c`: clear dashboard logs.
+* `?`: keyboard and metrics help. Any key closes it; `q` still quits.
+* `q` or `Esc`: exit (`Esc` closes the help first).
+
+The footer lists `d` and `Tab` only on terminals at least 120 columns wide; the
+help always lists every key.
 
 The animated neon palette is enabled only for an interactive terminal. Set
 `RULLST_REDUCED_MOTION=1` to keep colors with static rendering, or `NO_COLOR=1`
@@ -1329,6 +1487,9 @@ legacy scaffolds can use their directly linked router; the supervisor removes
 
 See [Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.md)
 for limitations, failure recovery and the v13 architecture decision.
+
+`dev` keeps its plain output; at startup it prints one line suggesting
+`cargo rullst dash` for live requests, latency, errors and database metrics.
 
 * **Optional Flags:**
   * `--ts-sync`: Regenerates the TypeScript client SDK (`rullst-client.ts`, as `generate:ts` writes it from the routes in `src/main.rs` and `src/lib.rs`) after the initial build and after every successful rebuild. A failed generation is reported and the application keeps running.
@@ -1437,6 +1598,26 @@ route, dependency, and local network patterns.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
+  * `--json`: Moves the progress lines to standard error and prints one
+    `rullst.cli-audit.v1` summary on standard output; the exit status is
+    unchanged (non-zero for findings or incomplete requested checks):
+
+```json
+{
+  "schema_version": "rullst.cli-audit.v1",
+  "issues_found": 0,
+  "checks": [
+    { "id": "secret_scan", "status": "not_checked", "count": null, "exceptions": [], "detail": "no .env file was available to inspect" },
+    { "id": "dependency_audit", "status": "no_findings_outside_exceptions", "count": null, "exceptions": ["RUSTSEC-2099-0001"], "detail": "..." }
+  ]
+}
+```
+
+Check ids are `secret_scan`, `dependency_audit`, `unsafe_scan`, `idor_scan`,
+`sbom` and `network_scan`, always in that order; `status` is `no_findings`,
+`no_findings_outside_exceptions`, `findings`, `generated`, `observed`,
+`not_checked` or `error`, and `count` is set for `findings`, `generated` and
+`observed`. Details are redacted like error reports.
 
 In a package directory, the unsafe and IDOR/BOLA scans cover its `src` and the
 `src` of every workspace member below it, as listed by `cargo metadata`; in a
@@ -1478,10 +1659,88 @@ default hooks directory; call the checks from that hook manager instead. These l
 protected CI remains authoritative.
 
 ### `cargo rullst doctor`
-Runs bounded system and toolchain diagnostics for Rust MSRV (>= 1.96.0),
-linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`,
-`cargo-mutants`, `kani-verifier`, and Docker Engine, and reports detected or
-missing components.
+Runs grouped health checks and shows each one as ✓ (pass), ! (warning),
+✗ (failed) or · (information, optional or not applicable). Every warning and
+failure carries a one-line fix and a link to its group below. The command
+exits with status `1` when any check failed; warnings do not fail it.
+`--fix` installs missing rustfmt/clippy components with
+`rustup component add rustfmt clippy`, then checks again. Outside a project
+only the toolchain, project, security (cargo-audit) and disk groups appear.
+Checks are local and bounded: tool probes are `--version` calls run in
+parallel, the database probe is a 2-second TCP connect (no credentials are
+sent) and a SQLite file is opened read-only. Values from `.env` are measured,
+never printed.
+
+#### Doctor: toolchain
+`rustc` (✗ when missing or older than the 1.96.0 MSRV), Cargo, rustfmt and
+clippy (fixable with `--fix`), Git, the `wasm32-unknown-unknown` target when
+the project has `src/islands`, and one informational line for the optional
+tools (cargo-deny, cargo-geiger, cargo-mutants, Kani, cargo-llvm-cov, Docker).
+
+#### Doctor: project
+The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its
+`rullst` requirement compared with the CLI's major version; an older project
+suggests `cargo rullst upgrade --dry-run`.
+
+#### Doctor: config and .env
+Whether `.env` parses, which keys listed in `.env.example` are set neither in
+`.env` nor in the process environment (names only), whether `RULLST_ENV`
+(or `APP_ENV`) names a known environment, and whether `Rullst.toml` is valid.
+
+#### Doctor: database
+The primary database from `DATABASE_URL` (environment, then `.env`, then
+`[database].url` in `Rullst.toml`): a SQLite file must exist or be creatable;
+PostgreSQL and MySQL/MariaDB must accept a TCP connection (✗ otherwise).
+`REDIS_URL` is probed the same way (! when unreachable). Turso/remote and
+`mock_*` endpoints are not contacted.
+
+#### Doctor: migrations
+The `src/migrations/m*.rs` files and, for a local SQLite database, which of them
+the ORM `migrations` table has not applied yet (`cargo rullst db:migrate`).
+For server databases run `cargo rullst db:status`.
+
+#### Doctor: security baseline
+`cargo-audit` installed, `.env` neither tracked nor unignored by Git (✗ when
+tracked), `APP_KEY` set to at least 32 characters and not a template
+placeholder, and a `Cargo.lock` for reproducible builds.
+
+#### Doctor: disk space
+Free space on the filesystem of the project (or the working directory): ✗
+below 1 GiB, ! below 5 GiB. Not measured on Windows yet.
+
+`cargo rullst doctor --json` prints one document on standard output and keeps
+the exit status rules:
+
+```json
+{
+  "schema_version": "rullst.cli-doctor.v1",
+  "cli_version": "13.0.0",
+  "ok": false,
+  "summary": { "pass": 11, "warn": 5, "fail": 1, "info": 2 },
+  "groups": [
+    {
+      "id": "database",
+      "title": "Database",
+      "checks": [
+        {
+          "id": "database.primary",
+          "title": "Primary database",
+          "status": "fail",
+          "detail": "PostgreSQL at 127.0.0.1:5432: connection refused",
+          "fix": "Start the server (for example `docker compose up -d`) or fix the URL in .env",
+          "docs": "https://rullst.github.io/Rullst/book/cli_reference.html#doctor-database"
+        }
+      ]
+    }
+  ]
+}
+```
+
+`status` is `pass`, `warn`, `fail` or `info`; `fix` and `docs` are `null` for
+passing checks. Group ids are `toolchain`, `project`, `config`, `database`,
+`migrations`, `security` and `disk`; check ids (`toolchain.rustc`,
+`config.env_keys`, `security.app_key`, ...) are stable, but a check appears
+only when it applies.
 
 ### `cargo rullst inspect [target]`
 Prints static structural summaries in the terminal (the analyzer entry above
@@ -1489,6 +1748,22 @@ describes the exact scope):
 * `cargo rullst inspect route`: Lists the recognized one-line `get`/`post`/`put`/`delete` route declarations.
 * `cargo rullst inspect model`: Lists the structs and public fields in `src/models`.
 * `cargo rullst inspect schema`: Prints the ORM model schema derived from `#[derive(Orm)]` structs as JSON.
+* `cargo rullst inspect routes --json`: Prints the recognized routes as one
+  `rullst.cli-routes.v1` document (`--json` is accepted only for routes):
+
+```json
+{
+  "schema_version": "rullst.cli-routes.v1",
+  "complete": true,
+  "incomplete_reason": null,
+  "routes": [
+    { "method": "GET", "path": "/posts/{id}", "handler": "controllers::posts::show" }
+  ]
+}
+```
+
+`complete` is `false` when the bounded source walk stopped early or `src/` is
+missing, with the reason in `incomplete_reason`.
 
 ---
 

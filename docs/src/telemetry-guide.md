@@ -120,6 +120,100 @@ the initializer appends `/v1/traces`; do not put a gRPC endpoint in either value
 emits a warning. It cannot rewrite a tracing event already observed by another
 layer, so secrets must be removed or redacted at the call site.
 
+## Development dashboard endpoint
+
+`cargo rullst dash` shows live request, latency, error, ORM and queue figures
+from `GET /_rullst/dev-telemetry` (v13). `Server` mounts this endpoint next to
+the development reload routes, so it exists only when all of these hold:
+
+- a debug build (`debug_assertions`);
+- the Development environment (section 4.1 of the specification);
+- a valid `RULLST_DEV_GENERATION`, which the `cargo rullst dev`/`dash`
+  supervisor sets for the process it starts.
+
+Release builds, Staging, Production and an application started with
+`cargo run` never mount it. The endpoint answers only a direct loopback peer
+that addresses the server with a loopback `Host` (`localhost`, `127.0.0.0/8` or
+`[::1]`) and, when present, a loopback `Origin`; any other request receives an
+empty `404`. This rejects other machines, clients resolved through trusted
+proxies and DNS-rebinding pages; it is a local development boundary, not
+authentication. Responses carry `Cache-Control: no-store` and
+`X-Content-Type-Options: nosniff`. Like the reload poll, the dashboard's poll
+bypasses the rate limiter and Traffic Shield and is neither access-logged nor
+counted.
+
+The `rullst.dev-telemetry.v1` document contains:
+
+- `http`: request, 4xx and 5xx counters since the process started and the
+  newest 64 requests (sequence number, method, path without query string,
+  status, duration in microseconds), recorded by the access-log middleware;
+- `database`: ORM operation counters and the newest 16 operations that took at
+  least 100 ms, with their static model, table and operation labels, or
+  `unavailable` with `subscriber_not_installed` or `orm_spans_filtered`;
+- `queue`: the pending count of the queue passed to `Server::with_dev_queue`,
+  `not_configured`, or `unavailable` with `timeout` (250 ms) or `driver_error`.
+
+```json
+{
+  "schema": "rullst.dev-telemetry.v1",
+  "generation": "0123456789abcdef0123456789abcdef",
+  "uptime_ms": 5120,
+  "http": {
+    "requests_total": 2,
+    "client_errors_total": 0,
+    "server_errors_total": 1,
+    "recent": [
+      {"seq": 1, "method": "GET", "path": "/", "status": 200, "duration_us": 912},
+      {"seq": 2, "method": "POST", "path": "/orders", "status": 500, "duration_us": 48210}
+    ]
+  },
+  "database": {
+    "state": "observed",
+    "queries_total": 3,
+    "slow_queries_total": 1,
+    "slow_threshold_ms": 100,
+    "recent_slow": [
+      {"seq": 1, "operation": "select_many", "model": "Order", "table": "orders", "duration_us": 152004}
+    ]
+  },
+  "queue": {"state": "observed", "pending": 4}
+}
+```
+
+Request and response bodies, headers, cookies, query strings, SQL text,
+bindings and error messages are never recorded. Paths appear as the access log
+already prints them, so a path segment that carries a secret is visible here
+too. Recording starts only after the endpoint is mounted; until then each
+request costs one atomic load. Methods are cut to 16 bytes, paths to 256 bytes
+and labels to 64 bytes, and control characters are replaced.
+
+ORM figures come from the existing secret-free `rullst.orm.query` spans. In
+debug builds `telemetry::init_telemetry` (which `Server::run` calls) adds a
+passive layer that times the outermost such span of each ORM operation, from
+creation until it closes; nested operations such as eager loads belong to their
+outer operation. An application that installs its own global subscriber first,
+or a `RUST_LOG` that disables `rullst_orm` INFO spans, receives the
+`unavailable` state instead of misleading zeros. Statements executed directly
+through SQLx are not observed.
+
+Report a queue's pending count, read with a 250 ms limit on each poll:
+
+```rust,no_run
+use rullst_core::{Queue, Server, routes, routing::get};
+use std::sync::Arc;
+
+# async fn run(queue: Queue) -> Result<(), Box<dyn std::error::Error>> {
+let queue = Arc::new(queue); // also shared with the application's workers
+Server::new(routes![get("/" => || async { "OK" })])
+    .with_dev_queue(queue.clone())
+    .run(3000)
+    .await?;
+# Ok(())
+# }
+```
+
+The setting has no effect outside a supervised debug Development process.
+
 ## Studio boundaries
 
 - Radar cards poll the local `/api/radar` endpoint and display `Unavailable`

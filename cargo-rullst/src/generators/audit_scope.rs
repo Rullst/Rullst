@@ -1,7 +1,10 @@
 //! Which source trees the project-source audit scans cover.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use crate::generators::source_walk::rust_sources;
 
 /// `src` of the package at `root` plus the `src` of every workspace member
 /// below `root`, or `None` when `root` has no `src` directory (such as a
@@ -104,11 +107,85 @@ fn workspace_member_directories(root: &Path) -> Vec<PathBuf> {
     directories
 }
 
+/// Rejects anything but `RUSTSEC-YYYY-NNNN` advisory exceptions.
+pub(super) fn validate_audit_ignores(
+    audit_ignores: &[String],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for advisory in audit_ignores {
+        let bytes = advisory.as_bytes();
+        let valid = bytes.len() == 17
+            && bytes.starts_with(b"RUSTSEC-")
+            && bytes[8..12].iter().all(u8::is_ascii_digit)
+            && bytes[12] == b'-'
+            && bytes[13..].iter().all(u8::is_ascii_digit);
+        if !valid {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid --audit-ignore value '{advisory}'; expected RUSTSEC-YYYY-NNNN"),
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn cargo_audit_arguments(audit_ignores: &[String]) -> Vec<String> {
+    let mut arguments = vec!["audit".to_string()];
+    for advisory in audit_ignores {
+        arguments.push("--ignore".to_string());
+        arguments.push(advisory.clone());
+    }
+    arguments
+}
+
+/// Recursively scans Rust source files for `unsafe` blocks, functions, or implementations.
+///
+/// Symlinked files and directories are not followed; a walk that reaches its
+/// bound adds a finding instead of reporting a clean scan.
+pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
+    let sources = rust_sources(src_dir);
+    let mut warnings = Vec::new();
+    if let Some(reason) = sources.incomplete {
+        warnings.push(super::audit::incomplete_walk_warning(
+            src_dir,
+            &reason,
+            "source files",
+        ));
+    }
+    for path in sources.files {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for (line_idx, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+                continue;
+            }
+            if trimmed.contains("unsafe {")
+                || trimmed.contains("unsafe fn")
+                || trimmed.contains("unsafe impl")
+                || trimmed.starts_with("unsafe ")
+            {
+                let msg = format!(
+                    "File '{}:{}': Unsafe Rust detected: `{}`",
+                    path.display(),
+                    line_idx + 1,
+                    trimmed
+                );
+                if !warnings.contains(&msg) {
+                    warnings.push(msg);
+                }
+            }
+        }
+    }
+
+    (warnings.len(), warnings)
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use std::fs;
 
     fn write(path: &Path, contents: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();

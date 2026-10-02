@@ -25,13 +25,7 @@ const AUTH_OUTPUTS: [&str; 4] = [
 
 pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
     reject_turso_primary("cargo rullst auth")?;
     require_migration_runner("cargo rullst auth")?;

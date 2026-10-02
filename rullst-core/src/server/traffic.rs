@@ -11,8 +11,9 @@ use axum::middleware::Next;
 /// admission: a saturated database or an exhausted bucket must not make the
 /// process-only liveness probe fail and trigger orchestrator restarts. The
 /// limiter stays inside the shield, preserving the previous layer order.
-/// When `dev_reload_mounted`, the development reload script and its
-/// generation poll (every open page polls twice a second) bypass both too.
+/// When `dev_reload_mounted`, the development reload script, its generation
+/// poll (every open page polls twice a second) and the development telemetry
+/// poll of `cargo rullst dash`, mounted with them, bypass both too.
 pub(crate) fn apply_traffic_controls(
     mut router: axum::Router,
     limiter: Option<RateLimiter>,
@@ -21,7 +22,9 @@ pub(crate) fn apply_traffic_controls(
 ) -> axum::Router {
     let exempt = move |request: &Request| {
         is_health_probe(request)
-            || (dev_reload_mounted && super::dev_reload::is_reload_request(request))
+            || (dev_reload_mounted
+                && (super::dev_reload::is_reload_request(request)
+                    || super::dev_telemetry::is_telemetry_request(request)))
     };
     if let Some(limiter) = limiter {
         router = router.layer(axum::middleware::from_fn(
@@ -152,6 +155,10 @@ mod tests {
                     "/_rullst/dev-reload.js",
                     axum::routing::get(|| async { "script" }),
                 )
+                .route(
+                    "/_rullst/dev-telemetry",
+                    axum::routing::get(|| async { "telemetry" }),
+                )
         };
         let limiter = RateLimiter::new(RateLimitConfig::per_hour(1.0));
         let mounted = apply_traffic_controls(application(), Some(limiter), None, true);
@@ -163,6 +170,10 @@ mod tests {
             );
             assert_eq!(
                 status(&mounted, Method::GET, "/_rullst/dev-reload.js").await,
+                StatusCode::OK
+            );
+            assert_eq!(
+                status(&mounted, Method::GET, "/_rullst/dev-telemetry").await,
                 StatusCode::OK
             );
         }

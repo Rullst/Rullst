@@ -33,21 +33,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         ui::trigger_background_update_check();
         ui::show_interactive_dashboard()?;
     } else {
-        // Extend executable commands without adding a variant to the v12 public
-        // Commands enum, which downstream Rust callers may exhaustively match.
-        let matches = <cli::Cli as clap::CommandFactory>::command()
-            .subcommand(update::command())
-            .subcommand(generators::age_gate::command())
-            .subcommand(generators::privacy::command())
-            .subcommand(generators::api_contract::command())
-            .subcommand(generators::deploy_doctor::command())
-            .subcommand(ai::command())
-            .subcommand(tour::command())
-            // Extend executable syntax without changing the published v12 enum.
-            .mut_subcommand("omni", generators::desktop::release_command)
-            .mut_subcommand("generate:ai-context", generators::ai_context::command)
-            .mut_subcommand("new", generators::project::new_command)
-            .get_matches_from(args);
+        // Unknown commands get "did you mean" suggestions and exit status 2.
+        let matches = cli::runtime::parse(command(), args)?;
+        if cli::runtime::run_extension(&matches)? {
+            return Ok(());
+        }
         if let Some(assistant) = matches.subcommand_matches("ai") {
             ai::run(assistant)?;
         } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
@@ -84,6 +74,27 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             cli::run_cli_command(&cli.command)?;
         }
+        cli::next_steps::print_after_success(&matches);
     }
     Ok(())
+}
+
+/// The complete executable command tree, shared by parsing, the command
+/// palette and shell completions.
+pub(crate) fn command() -> clap::Command {
+    // Extend executable commands without adding a variant to the v12 public
+    // Commands enum, which downstream Rust callers may exhaustively match.
+    let command = <cli::Cli as clap::CommandFactory>::command()
+        .subcommand(update::command())
+        .subcommand(generators::age_gate::command())
+        .subcommand(generators::privacy::command())
+        .subcommand(generators::api_contract::command())
+        .subcommand(generators::deploy_doctor::command())
+        .subcommand(ai::command())
+        .subcommand(tour::command())
+        // Extend executable syntax without changing the published v12 enum.
+        .mut_subcommand("omni", generators::desktop::release_command)
+        .mut_subcommand("generate:ai-context", generators::ai_context::command)
+        .mut_subcommand("new", generators::project::new_command);
+    cli::runtime::extend(command)
 }

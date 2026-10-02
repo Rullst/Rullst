@@ -1,3 +1,4 @@
+use super::metrics::Metrics;
 use std::collections::VecDeque;
 
 const LOG_CAPACITY: usize = 1_000;
@@ -115,6 +116,8 @@ pub(super) struct App {
     pub start_time: std::time::Instant,
     pub colors_enabled: bool,
     pub animations_enabled: bool,
+    pub metrics: Metrics,
+    pub show_help: bool,
 }
 
 impl App {
@@ -145,6 +148,8 @@ impl App {
             start_time: std::time::Instant::now(),
             colors_enabled,
             animations_enabled,
+            metrics: Metrics::new(),
+            show_help: false,
         }
     }
 

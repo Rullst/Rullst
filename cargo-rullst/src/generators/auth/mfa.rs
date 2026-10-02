@@ -26,13 +26,7 @@ pub(crate) fn render_mfa_migration(migration_name: &str) -> String {
 
 pub fn scaffold_mfa_system() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
     reject_turso_primary("make:mfa")?;
     require_migration_runner("make:mfa")?;

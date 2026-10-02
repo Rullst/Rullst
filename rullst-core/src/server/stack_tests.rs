@@ -210,3 +210,50 @@ async fn hot_reload_service_resolves_clients_behind_trusted_proxies() {
     let response = connection.call(health).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn development_telemetry_is_mounted_only_for_a_supervised_development_process() {
+    const GENERATION: &str = "0123456789abcdef0123456789abcdef";
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let previous = std::env::var_os("RULLST_DEV_GENERATION");
+    unsafe { std::env::set_var("RULLST_DEV_GENERATION", GENERATION) };
+    let build = |environment| {
+        Server::new(application())
+            .rate_limit(RateLimiter::new(RateLimitConfig::per_hour(1.0)))
+            .into_static_app(SecurityConfig::default(), environment)
+            .unwrap()
+    };
+    let development = build(Environment::Development);
+    let staging = build(Environment::Staging);
+    let production = build(Environment::Production);
+    unsafe {
+        match previous {
+            Some(value) => std::env::set_var("RULLST_DEV_GENERATION", value),
+            None => std::env::remove_var("RULLST_DEV_GENERATION"),
+        }
+    }
+
+    let poll = |app: &axum::Router| {
+        let mut request = Request::builder()
+            .uri("/_rullst/dev-telemetry")
+            .header("host", "127.0.0.1:3000")
+            .body(Body::empty())
+            .unwrap();
+        request.extensions_mut().insert(ConnectInfo(
+            "127.0.0.1:40000".parse::<SocketAddr>().unwrap(),
+        ));
+        app.clone().oneshot(request)
+    };
+    let expected = if cfg!(debug_assertions) {
+        StatusCode::OK
+    } else {
+        StatusCode::NOT_FOUND
+    };
+    // Repeated polls bypass the exhausted rate-limit bucket, like the reload poll.
+    for _ in 0..3 {
+        assert_eq!(poll(&development).await.unwrap().status(), expected);
+    }
+    for app in [&staging, &production] {
+        assert_eq!(poll(app).await.unwrap().status(), StatusCode::NOT_FOUND);
+    }
+}

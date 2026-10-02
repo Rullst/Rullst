@@ -242,6 +242,10 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### Security, identity, and compliance
 
+- **Compliance-ready defaults for the main jurisdictions (EU, US, Brazil,
+  Asia)** *(planned — building blocks, generated defaults and a per-regulation
+  guide reviewed by counsel; never an automatic legal certification. See the
+  [legal & regulatory compliance roadmap](docs/src/legal-compliance-roadmap.md)).*
 - **Full WebAuthn/FIDO2 conformance** *(partial — absolutely worth completing
   before a stable passkey claim, preferably with an audited library or normative
   conformance suite).*

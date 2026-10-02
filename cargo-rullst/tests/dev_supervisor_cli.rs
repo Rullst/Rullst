@@ -151,6 +151,15 @@ fn termination_and_hangup_stop_the_application_instead_of_orphaning_it() {
         let mut session = DevSession::start(&["dev"], "fn main() {}\n");
         let app = session.application();
         assert!(alive(&app), "{signal}: application not running");
+        // `dev` stays plain apart from one hint about the live dashboard.
+        let log = session.log();
+        assert_eq!(
+            log.lines()
+                .filter(|line| line.contains("cargo rullst dash"))
+                .count(),
+            1,
+            "{log}"
+        );
 
         let exited = session.signal(signal);
         // The old CLI died on the default signal action and left the

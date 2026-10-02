@@ -3,14 +3,14 @@
 //! fallback. Everything here is pure so the rendering stays unit tested.
 
 /// One 24-bit colour.
-pub(super) type Rgb = (u8, u8, u8);
+pub(crate) type Rgb = (u8, u8, u8);
 
 /// Brand stops: blue → green → orange.
-pub(super) const STOPS: [Rgb; 3] = [(40, 120, 255), (30, 205, 110), (255, 130, 25)];
+pub(crate) const STOPS: [Rgb; 3] = [(40, 120, 255), (30, 205, 110), (255, 130, 25)];
 
 /// How many colours the attached terminal can show.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum ColorDepth {
+pub(crate) enum ColorDepth {
     /// No colour: plain, deterministic text.
     None,
     /// The xterm 256-colour palette.
@@ -92,7 +92,7 @@ pub(super) fn nearest_xterm_256(rgb: Rgb) -> u8 {
 }
 
 /// The SGR sequence that selects `rgb` as the foreground at `depth`.
-pub(super) fn foreground(rgb: Rgb, depth: ColorDepth) -> String {
+pub(crate) fn foreground(rgb: Rgb, depth: ColorDepth) -> String {
     match depth {
         ColorDepth::None => String::new(),
         ColorDepth::Ansi256 => format!("\x1b[38;5;{}m", nearest_xterm_256(rgb)),

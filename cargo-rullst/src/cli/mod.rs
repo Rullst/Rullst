@@ -9,13 +9,20 @@ use clap::Parser;
 
 mod choices;
 mod commands;
+pub(crate) mod completions;
 mod dispatch;
+pub(crate) mod info;
+pub(crate) mod next_steps;
+pub(crate) mod runtime;
+pub(crate) mod suggest;
 #[cfg(test)]
 mod tests;
 
 pub use choices::{BlueprintChoice, DatabaseChoice, OmniPlatformChoice};
 pub use commands::Commands;
 pub use dispatch::run_cli_command;
+#[doc(hidden)]
+pub use runtime::run_and_report;
 
 // ─── Clap Structs ─────────────────────────────────────────────────────────────
 

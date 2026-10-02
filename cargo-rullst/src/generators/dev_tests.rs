@@ -146,3 +146,63 @@ fn ts_sync_reports_a_failed_generation_instead_of_exiting() {
     let sdk = std::fs::read_to_string(project.path().join("rullst-client.ts")).expect("SDK");
     assert!(sdk.contains("/teams"), "{sdk}");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn restart_replaces_the_owned_process_with_the_same_snapshot() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = tempfile::tempdir().expect("fixture directory");
+    let pids = temp.path().join("pids");
+    let script = temp.path().join("app.sh");
+    std::fs::write(
+        &script,
+        format!(
+            "#!/bin/sh\necho $$ >> '{}'\nexec sleep 60\n",
+            pids.display()
+        ),
+    )
+    .expect("fixture script");
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+        .expect("executable fixture");
+    let started = |count: usize| {
+        let pids = pids.clone();
+        async move {
+            for _ in 0..200 {
+                let lines = std::fs::read_to_string(&pids)
+                    .unwrap_or_default()
+                    .lines()
+                    .map(str::to_string)
+                    .collect::<Vec<_>>();
+                if lines.len() >= count {
+                    return lines;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            panic!("the fixture did not start {count} time(s)");
+        }
+    };
+    let alive = |pid: &str| {
+        std::process::Command::new("kill")
+            .args(["-0", pid])
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    };
+
+    let mut running = process::Application::prepare(&script).expect("snapshot");
+    let (logs, _receiver) = mpsc::channel(8);
+    let (status, status_rx) = watch::channel(DevStatus::Ready);
+    running.start(false, &logs).expect("first start");
+    let first = started(1).await;
+
+    restart(&mut running, false, &logs, &status).expect("restart");
+    let both = started(2).await;
+    assert_ne!(both[0], both[1]);
+    assert_eq!(both[0], first[0]);
+    assert!(!alive(&both[0]), "the previous process was not stopped");
+    assert!(alive(&both[1]), "the restarted process is not running");
+    assert!(matches!(*status_rx.borrow(), DevStatus::Starting));
+    assert!(running.try_wait().expect("status").is_none());
+    running.stop().expect("stop");
+}

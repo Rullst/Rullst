@@ -386,3 +386,28 @@ fn non_interactive_branding_uses_the_accessible_static_fallback() {
         format!("{}\n\n", super::super::dashboard_brand::PLAIN_SLOGAN)
     );
 }
+
+#[test]
+fn the_newest_wrapped_log_lines_stay_visible_in_both_panes() {
+    // Scrolling once counted entries while the panes wrapped them, which hid
+    // the newest rows below the fold once earlier entries wrapped.
+    let mut app = App::new(3_000, true, "configured: SQLite".to_string(), false, false);
+    for index in 0..12 {
+        let text = format!(
+            "Earlier event {index} is long enough to wrap across a narrow dashboard pane at least twice over."
+        );
+        app.push_system(text.clone());
+        app.push_app(LogLevel::Info, text);
+    }
+    app.push_system("newest-system-marker".to_string());
+    app.push_app(LogLevel::Error, "newest-application-marker".to_string());
+    for (width, height) in [(140, 40), (104, 30), (80, 26)] {
+        let output = rendered(&app, width, height);
+        assert!(output.contains("newest-system-marker"), "{width}x{height}");
+        assert!(
+            output.contains("newest-application-marker"),
+            "{width}x{height}"
+        );
+    }
+    assert!(rendered(&app, 140, 40).contains("13 shown"));
+}
