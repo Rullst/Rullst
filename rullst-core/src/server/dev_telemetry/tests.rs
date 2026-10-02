@@ -171,6 +171,50 @@ fn the_orm_layer_counts_outermost_operations_with_their_static_labels() {
 }
 
 #[test]
+fn chunk_traversals_count_their_pages_and_handler_operations_instead_of_themselves() {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let recorder = Arc::new(Recorder::new());
+    let subscriber = tracing_subscriber::registry().with(OrmQueryLayer::local(recorder.clone()));
+    tracing::subscriber::with_default(subscriber, || {
+        for operation in ["chunk", "chunk_by_id"] {
+            let traversal = tracing::info_span!(
+                target: "rullst_orm",
+                "rullst.orm.query",
+                orm.model = "Post",
+                orm.table = "posts",
+                orm.operation = operation
+            );
+            traversal.in_scope(|| {
+                // One page fetch and one save run by the handler.
+                tracing::info_span!(
+                    target: "rullst_orm",
+                    "rullst.orm.query",
+                    orm.operation = "select_many"
+                )
+                .in_scope(|| {
+                    // Eager loading inside the page fetch stays part of it.
+                    tracing::info_span!(
+                        target: "rullst_orm",
+                        "rullst.orm.query",
+                        orm.operation = "select_many"
+                    )
+                    .in_scope(|| {});
+                });
+                tracing::info_span!(target: "rullst_orm", "rullst.orm.query", orm.operation = "save")
+                    .in_scope(|| {});
+                // Handler time is not an ORM operation of its own.
+                std::thread::sleep(Duration::from_millis(110));
+            });
+        }
+    });
+
+    let snapshot = recorder.query_snapshot();
+    assert_eq!(snapshot.queries_total, 4);
+    assert_eq!(snapshot.slow_queries_total, 0);
+}
+
+#[test]
 fn database_state_names_why_queries_are_not_reported() {
     let recorder = Recorder::new();
     assert_eq!(
@@ -291,6 +335,40 @@ async fn only_loopback_peers_with_a_loopback_authority_are_answered() {
     assert!(!router.oneshot(post).await.unwrap().status().is_success());
 }
 
+#[tokio::test]
+async fn requests_forwarded_by_a_same_host_proxy_are_refused() {
+    let router = endpoint(Arc::new(Recorder::new()), None);
+    for (name, value) in [
+        ("forwarded", "for=203.0.113.7"),
+        ("x-forwarded-for", "203.0.113.7"),
+        ("X-Forwarded-Host", "dev.example.com"),
+        ("x-forwarded-proto", "https"),
+        ("x-real-ip", "203.0.113.7"),
+        ("via", "1.1 ngrok"),
+        ("cf-connecting-ip", "203.0.113.7"),
+    ] {
+        let mut forwarded = local();
+        forwarded
+            .headers_mut()
+            .insert(name, HeaderValue::from_static(value));
+        let response = router.clone().oneshot(forwarded).await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{name}");
+    }
+    // nginx proxies with HTTP/1.0 unless configured otherwise.
+    let mut http10 = local();
+    *http10.version_mut() = axum::http::Version::HTTP_10;
+    assert_eq!(
+        router.clone().oneshot(http10).await.unwrap().status(),
+        StatusCode::NOT_FOUND
+    );
+    let mut http2 = local();
+    *http2.version_mut() = axum::http::Version::HTTP_2;
+    assert_eq!(
+        router.oneshot(http2).await.unwrap().status(),
+        StatusCode::OK
+    );
+}
+
 struct CountingDriver(Result<u64, ()>, Duration);
 
 #[async_trait::async_trait]
@@ -372,25 +450,28 @@ async fn the_endpoint_exists_only_in_a_supervised_debug_development_process() {
 
 #[cfg(debug_assertions)]
 #[tokio::test]
-async fn the_access_log_feeds_the_recorder_without_query_strings_or_polls() {
+async fn the_recording_layer_feeds_the_recorder_without_query_strings_polls_or_static_files() {
     let telemetry = mount(Router::new(), true, Some(MARKER.into()), None);
-    let app = Router::new()
-        .route("/dash-probe-orders", get(|| async { "ok" }))
-        .merge(telemetry)
-        .layer(axum::middleware::from_fn(
-            crate::server::console::access_log_middleware,
-        ));
-    let mut probe = HttpRequest::builder()
-        .uri("/dash-probe-orders?token=query-secret")
-        .body(Body::empty())
-        .unwrap();
-    probe
-        .extensions_mut()
-        .insert(ConnectInfo("127.0.0.1:1".parse::<SocketAddr>().unwrap()));
-    assert_eq!(
-        app.clone().oneshot(probe).await.unwrap().status(),
-        StatusCode::OK
+    let app = record_responses(
+        Router::new()
+            .route("/dash-probe-orders", get(|| async { "ok" }))
+            .route("/static/dash-probe.css", get(|| async { "css" }))
+            .merge(telemetry),
+        true,
     );
+    for uri in [
+        "/dash-probe-orders?token=query-secret",
+        "/static/dash-probe.css",
+    ] {
+        let mut probe = HttpRequest::builder().uri(uri).body(Body::empty()).unwrap();
+        probe
+            .extensions_mut()
+            .insert(ConnectInfo("127.0.0.1:1".parse::<SocketAddr>().unwrap()));
+        assert_eq!(
+            app.clone().oneshot(probe).await.unwrap().status(),
+            StatusCode::OK
+        );
+    }
     let (status, body) = json(&app, local()).await;
     assert_eq!(status, StatusCode::OK);
 
@@ -402,4 +483,12 @@ async fn the_access_log_feeds_the_recorder_without_query_strings_or_polls() {
     );
     assert!(!body.to_string().contains("query-secret"));
     assert!(recent.iter().all(|sample| sample["path"] != PATH));
+    assert!(
+        recent
+            .iter()
+            .all(|sample| sample["path"] != "/static/dash-probe.css")
+    );
+    assert!(is_recorded("/static/app.css", false));
+    assert!(!is_recorded("/static/app.css", true));
+    assert!(is_recorded("/statics", true));
 }

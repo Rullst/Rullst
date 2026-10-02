@@ -72,6 +72,21 @@ impl Terminal {
         }
     }
 
+    /// A terminal that may prompt, without colour, whatever the test runner's
+    /// streams are.
+    #[cfg(test)]
+    pub(crate) fn interactive_for_tests() -> Self {
+        Self {
+            profile: TerminalProfile::from_env(&super::super::terminal::TerminalEnv {
+                stdin_tty: true,
+                stdout_tty: true,
+                stderr_tty: true,
+                no_color: true,
+                ..super::super::terminal::TerminalEnv::default()
+            }),
+        }
+    }
+
     /// Every standard stream is a terminal outside CI and `TERM=dumb`.
     pub(crate) fn interactive(&self) -> bool {
         self.profile.interactive

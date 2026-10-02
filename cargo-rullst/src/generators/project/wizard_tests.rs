@@ -235,6 +235,43 @@ fn without_a_terminal_the_wizard_never_prompts() {
 }
 
 #[test]
+fn an_invalid_flag_name_is_refused_before_any_question() {
+    let terminal = Terminal::interactive_for_tests();
+    assert!(terminal.interactive());
+    for name in ["9shop", "my.app", "_shop", "crate", "apps/9shop"] {
+        let request = NewProjectRequest {
+            name: Some(name),
+            ..NewProjectRequest::default()
+        };
+        // Refused before the wizard draws anything or reads a key.
+        let error = plan_project(&request, &[], &terminal, true).expect_err(name);
+        let message = error.to_string();
+        assert!(
+            message.contains("project package name"),
+            "{name}: {message}"
+        );
+    }
+}
+
+#[test]
+fn typed_names_not_starting_with_a_letter_get_that_reason() {
+    for name in ["_shop", "-api"] {
+        assert_eq!(
+            flow::validate_name(name),
+            Err("The project name must start with a letter.")
+        );
+    }
+    assert_eq!(
+        flow::validate_name("9shop"),
+        Err("The project name cannot start with a number.")
+    );
+    assert_eq!(
+        flow::validate_name("crate"),
+        Err("That name is reserved by Rust; choose another one.")
+    );
+}
+
+#[test]
 fn requested_integrations_keep_the_manifest_order() {
     let options = ProjectScaffoldOptions {
         qdrant: true,

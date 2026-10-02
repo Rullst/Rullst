@@ -2,6 +2,7 @@
 //! never read standard input and run concurrently, so a slow tool does not
 //! serialize the whole doctor.
 
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// What running a program told us.
@@ -59,6 +60,42 @@ pub(crate) fn run(program: &str, args: &[&str]) -> Probe {
         }
         Err(_) => Probe::default(),
     }
+}
+
+/// Whether the executable `binary` is installed, without running it: found in
+/// Cargo's `bin` directory (where Cargo also looks for subcommands) or on
+/// `PATH`. The probe reports no output.
+pub(crate) fn installed(binary: &str) -> Probe {
+    let found = executable_in(binary, &search_directories());
+    Probe {
+        found,
+        success: found,
+        ..Probe::default()
+    }
+}
+
+fn search_directories() -> Vec<PathBuf> {
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" });
+    let cargo_home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| home.map(|home| Path::new(&home).join(".cargo")));
+    let mut directories: Vec<PathBuf> = cargo_home
+        .map(|home| home.join("bin"))
+        .into_iter()
+        .collect();
+    if let Some(path) = std::env::var_os("PATH") {
+        directories.extend(std::env::split_paths(&path));
+    }
+    directories
+}
+
+/// Whether one of `directories` holds the file `binary` (with the platform's
+/// executable suffix).
+pub(crate) fn executable_in(binary: &str, directories: &[PathBuf]) -> bool {
+    let file = format!("{binary}{}", std::env::consts::EXE_SUFFIX);
+    directories
+        .iter()
+        .any(|directory| directory.join(&file).is_file())
 }
 
 /// Runs every probe concurrently; results keep the order of `probes`.

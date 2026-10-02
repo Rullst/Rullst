@@ -12,6 +12,13 @@ use std::time::{Duration, Instant};
 const FIRST: &str = "0123456789abcdef0123456789abcdef";
 const SECOND: &str = "fedcba9876543210fedcba9876543210";
 
+/// Metrics of a dashboard whose supervisor started the `FIRST` process.
+fn supervised() -> Metrics {
+    let mut metrics = Metrics::new();
+    metrics.own_generation(FIRST);
+    metrics
+}
+
 fn sample(seq: u64, status: u16, duration_us: u64) -> RequestSample {
     RequestSample {
         seq,
@@ -105,7 +112,7 @@ fn durations_are_formatted_with_stable_units() {
 #[test]
 fn rates_and_error_rates_come_from_counter_deltas() {
     let start = Instant::now();
-    let mut metrics = Metrics::new();
+    let mut metrics = supervised();
     assert_eq!(
         metrics.ingest(snapshot(FIRST, 10, 0, 10), start),
         Some(Notice::Connected)
@@ -133,7 +140,7 @@ fn rates_and_error_rates_come_from_counter_deltas() {
 #[test]
 fn latency_percentiles_use_each_observed_request_once() {
     let start = Instant::now();
-    let mut metrics = Metrics::new();
+    let mut metrics = supervised();
     metrics.ingest(snapshot(FIRST, 4, 0, 4), start);
     // The same requests again are not counted twice.
     metrics.ingest(snapshot(FIRST, 4, 0, 4), start + Duration::from_secs(1));
@@ -151,7 +158,7 @@ fn latency_percentiles_use_each_observed_request_once() {
 #[test]
 fn a_burst_beyond_the_recent_list_is_marked_as_sampled() {
     let start = Instant::now();
-    let mut metrics = Metrics::new();
+    let mut metrics = supervised();
     metrics.ingest(snapshot(FIRST, 1, 0, 1), start);
     metrics.ingest(snapshot(FIRST, 101, 0, 64), start + Duration::from_secs(1));
     let now = start + Duration::from_secs(1);
@@ -162,11 +169,33 @@ fn a_burst_beyond_the_recent_list_is_marked_as_sampled() {
 }
 
 #[test]
+fn a_first_poll_or_a_restart_with_a_truncated_list_is_marked_as_sampled() {
+    let start = Instant::now();
+    let mut metrics = supervised();
+    // The dashboard connects after the process served 700 requests.
+    metrics.ingest(snapshot(FIRST, 700, 0, 64), start);
+    assert!(metrics.sampled(start));
+    assert_eq!(metrics.latency(start).unwrap().samples, 64);
+
+    // A new process whose whole history fits is exact again...
+    let restart = start + Duration::from_secs(1);
+    metrics.own_generation(SECOND);
+    metrics.ingest(snapshot(SECOND, 3, 0, 3), restart);
+    assert!(!metrics.sampled(restart));
+    // ...until another one is first seen after a burst.
+    let burst = start + Duration::from_secs(2);
+    metrics.own_generation(FIRST);
+    metrics.ingest(snapshot(FIRST, 700, 0, 64), burst);
+    assert!(metrics.sampled(burst));
+}
+
+#[test]
 fn a_new_generation_restarts_baselines_without_negative_rates() {
     let start = Instant::now();
-    let mut metrics = Metrics::new();
+    let mut metrics = supervised();
     metrics.ingest(snapshot(FIRST, 50, 0, 10), start);
     metrics.ingest(snapshot(FIRST, 60, 0, 10), start + Duration::from_secs(1));
+    metrics.own_generation(SECOND);
     assert_eq!(
         metrics.ingest(snapshot(SECOND, 3, 0, 3), start + Duration::from_secs(2)),
         Some(Notice::Restarted)
@@ -199,9 +228,46 @@ fn a_new_generation_restarts_baselines_without_negative_rates() {
 }
 
 #[test]
+fn only_the_supervised_process_generation_is_shown() {
+    let start = Instant::now();
+    // Before the supervisor starts anything, whoever answers is foreign.
+    let mut metrics = Metrics::new();
+    assert_eq!(
+        metrics.ingest(snapshot(FIRST, 9, 0, 9), start),
+        Some(Notice::Lost(Source::Foreign))
+    );
+    assert_eq!(metrics.source, Source::Foreign);
+    assert!(!metrics.has_data());
+    assert_eq!(metrics.ingest(snapshot(FIRST, 9, 0, 9), start), None);
+
+    metrics.own_generation(FIRST);
+    assert_eq!(metrics.generation(), Some(FIRST));
+    assert_eq!(
+        metrics.ingest(snapshot(FIRST, 9, 0, 9), start),
+        Some(Notice::Connected)
+    );
+    // A late answer of the replaced process is ignored, not a restart.
+    metrics.own_generation(SECOND);
+    assert_eq!(metrics.ingest(snapshot(FIRST, 12, 0, 12), start), None);
+    assert_eq!(metrics.source, Source::Live);
+    assert_eq!(metrics.totals.unwrap().requests, 9);
+    // Another project's dev server on the same port is not this application.
+    let other = "00000000000000000000000000000abc";
+    assert_eq!(
+        metrics.ingest(snapshot(other, 500, 0, 64), start),
+        Some(Notice::Lost(Source::Foreign))
+    );
+    assert_eq!(metrics.totals.unwrap().requests, 9);
+    assert_eq!(
+        metrics.ingest(snapshot(SECOND, 1, 0, 1), start),
+        Some(Notice::Restarted)
+    );
+}
+
+#[test]
 fn connection_changes_are_reported_once_and_data_is_kept() {
     let start = Instant::now();
-    let mut metrics = Metrics::new();
+    let mut metrics = supervised();
     // Startup silence before the port opens is not news.
     assert_eq!(metrics.ingest(PollOutcome::Unreachable, start), None);
     assert_eq!(metrics.source, Source::Unreachable);
@@ -232,7 +298,7 @@ fn connection_changes_are_reported_once_and_data_is_kept() {
 #[test]
 fn every_history_stays_bounded() {
     let start = Instant::now();
-    let mut metrics = Metrics::new();
+    let mut metrics = supervised();
     for second in 0..400_u64 {
         let total = (second + 1) * 70;
         metrics.ingest(

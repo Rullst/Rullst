@@ -118,6 +118,18 @@ pub(super) struct App {
     pub animations_enabled: bool,
     pub metrics: Metrics,
     pub show_help: bool,
+    /// The supervisor is rebuilding a saved change.
+    pub rebuilding: bool,
+    /// A restart requested with `r` whose outcome is not known yet.
+    pub pending_restart: Option<PendingRestart>,
+}
+
+/// A restart requested with `r`: it has finished once a process other than
+/// `from` was started and is no longer starting.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct PendingRestart {
+    /// The supervised process generation when `r` was pressed.
+    pub from: Option<String>,
 }
 
 impl App {
@@ -150,6 +162,8 @@ impl App {
             animations_enabled,
             metrics: Metrics::new(),
             show_help: false,
+            rebuilding: false,
+            pending_restart: None,
         }
     }
 

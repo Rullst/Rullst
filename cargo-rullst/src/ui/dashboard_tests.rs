@@ -480,3 +480,22 @@ fn menu_commands_can_run_from_the_project_root() {
     let elsewhere = tempfile::tempdir().expect("another directory");
     assert!(super::execute_command_in(Some(elsewhere.path()), check).is_err());
 }
+
+#[cfg(unix)]
+#[test]
+fn a_failed_menu_command_keeps_its_own_report_and_exit_status() {
+    let failing = ["sh", "-c", "exit 2"].map(str::to_string).to_vec();
+    let error = super::execute_command_in(None, failing).expect_err("exit status 2");
+    // The child already printed its report: the parent adds none and keeps
+    // the usage status instead of a generic "Command failed" with exit 1.
+    assert_eq!(super::super::error_report::report(error.as_ref(), &[]), 2);
+    assert!(error.to_string().contains("failed with status"));
+
+    let crashed = ["sh", "-c", "kill -9 $$"].map(str::to_string).to_vec();
+    let error = super::execute_command_in(None, crashed).expect_err("killed by a signal");
+    assert!(
+        error
+            .downcast_ref::<super::super::error_report::AlreadyReported>()
+            .is_none()
+    );
+}
