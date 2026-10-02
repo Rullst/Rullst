@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790904945242,
+  "lastUpdate": 1790907708291,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14673,6 +14673,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2471,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "990acd15a8dc36576a913653fb0077129dba0cbb",
+          "message": "Merge pull request #399 from Rullst/feat/v13-cli-create-wizard-tour\n\nfeat(cli): interactive new wizard, dry-run preview, first-run steps and cargo rullst tour",
+          "timestamp": "2026-10-01T23:06:10-03:00",
+          "tree_id": "a644a63a6a680358c54cf10b1b1156bed7e368a6",
+          "url": "https://github.com/Rullst/Rullst/commit/990acd15a8dc36576a913653fb0077129dba0cbb"
+        },
+        "date": 1790907707018,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 712,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 587,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1317,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1923,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
