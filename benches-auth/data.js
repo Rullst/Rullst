@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790932889600,
+  "lastUpdate": 1790959225489,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14913,6 +14913,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4486,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "faa8106e4c20451b7c7fdd731b1b7dabd142dbb2",
+          "message": "Merge pull request #408 from Rullst/claude/lucid-ride-q7hc27\n\ndocs: align the documentation with the v13 source and fix main CI",
+          "timestamp": "2026-10-02T13:25:50-03:00",
+          "tree_id": "47ab2e985504a4b0182215bf898588bf498992c3",
+          "url": "https://github.com/Rullst/Rullst/commit/faa8106e4c20451b7c7fdd731b1b7dabd142dbb2"
+        },
+        "date": 1790959224677,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 647,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 539,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1227,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3044,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
