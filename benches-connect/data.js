@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790921263735,
+  "lastUpdate": 1790927276466,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9165,6 +9165,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 575,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e70dda40e256becd32b52f5e11b2bd859c3806c6",
+          "message": "Merge pull request #404 from Rullst/fix/v13-new-cli-dash-ux-review\n\nfix(cli,core): review fixes for dev telemetry, dash and CLI UX",
+          "timestamp": "2026-10-02T04:22:20-03:00",
+          "tree_id": "c6865691e267f11d13a9174a8ed12a65057d002f",
+          "url": "https://github.com/Rullst/Rullst/commit/e70dda40e256becd32b52f5e11b2bd859c3806c6"
+        },
+        "date": 1790927275651,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 577,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
