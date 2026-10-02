@@ -8,6 +8,7 @@ use quote::quote;
 
 #[cfg_attr(test, mutants::skip)]
 pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     let name = &parsed.name;
     let table_name = &parsed.table_name;
     let normal_fields = &parsed.normal_fields;
@@ -225,7 +226,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             } else {
                 rullst_orm::ModelOperation::Updated
             };
-            #[cfg(feature = "redis")]
+            #redis_cfg
             {
                 let event = rullst_orm::ModelCommittedEvent::new(
                     #table_name,

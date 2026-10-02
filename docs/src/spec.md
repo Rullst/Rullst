@@ -1015,6 +1015,15 @@ while portability and semantic review remain the model author's responsibility.
   The macro crate's default expansion remains compatible with the all-driver
   12.0 runtime; the opt-in helper expansion requires the matching 12.1 runtime.
   Standalone isolation checks include enum encoding/decoding as well as CRUD.
+* Generated Redis APIs likewise follow the ORM's `redis` feature, never a
+  feature of the consuming application: with `rullst-orm/redis`, models get
+  `.remember(...)`, commit-time query-cache invalidation, the `orm:events:*`
+  publications and the Redis hash helpers. From 12.2 the runtime opts its macro
+  crate into `runtime-feature-gates` and forwards `redis`, so the choice is
+  made at expansion time. Without that opt-in (an older runtime resolving a
+  newer macro crate) the legacy output keeps its application-evaluated
+  `#[cfg(feature = "redis")]` attributes. `save_with_embedding` still carries
+  `#[cfg(feature = "ai")]`, which the consuming crate evaluates.
 
 ### 5.12. ORM Telemetry Contract
 

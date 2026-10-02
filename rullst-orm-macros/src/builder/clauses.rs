@@ -16,6 +16,7 @@ pub fn generate_builder_struct(
     execution_methods: &[TokenStream],
     magic_methods: &[TokenStream],
 ) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     let skipped_columns: Vec<String> = parsed
         .skipped_fields
         .iter()
@@ -53,7 +54,7 @@ pub fn generate_builder_struct(
             pub has_recursive_cte: bool,
             pub with_trashed: bool,
             pub only_trashed: bool,
-            #[cfg(feature = "redis")]
+            #redis_cfg
             pub remember_ttl: Option<usize>,
             #(#relation_flags)*
         }
@@ -144,7 +145,7 @@ pub fn generate_builder_struct(
                     has_recursive_cte: false,
                     with_trashed: false,
                     only_trashed: false,
-                    #[cfg(feature = "redis")]
+                    #redis_cfg
                     remember_ttl: None,
                     #(#relation_inits)*
                 }
@@ -152,7 +153,7 @@ pub fn generate_builder_struct(
 
             #(#relation_methods)*
 
-            #[cfg(feature = "redis")]
+            #redis_cfg
             pub fn remember(mut self, seconds: usize) -> Self {
                 if seconds == 0 {
                     self.errors.push(rullst_orm::Error::Validation(

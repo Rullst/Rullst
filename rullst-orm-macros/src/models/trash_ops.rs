@@ -347,6 +347,7 @@ fn generate_restore(parsed: &ParsedModel) -> TokenStream {
 /// Post-commit effects of a restored row, mirroring an update by `save()`.
 /// Expects `restored` and `observers` bindings in scope.
 fn restored_effects(parsed: &ParsedModel) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     let table_name = &parsed.table_name;
     let scout_update = if parsed.searchable {
         quote! {
@@ -369,7 +370,7 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         {
             let event = rullst_orm::ModelCommittedEvent::new(
                 #table_name,
