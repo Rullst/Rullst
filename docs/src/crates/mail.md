@@ -130,10 +130,13 @@ Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
 exactly-once provider delivery, or provider acceptance.
 
-Queued jobs store attachment bytes as one base64 string per attachment. Workers
-still accept jobs written with the earlier integer-array encoding, but an older
-worker cannot read the base64 form, so upgrade workers before producers during
-a rolling deployment.
+Queued jobs keep the 12.1 job format, which stores attachment bytes as a JSON
+array of numbers, so 12.1 and 12.2 producers and workers interoperate during a
+rolling deployment in any order. Workers also accept a standard base64 string
+for those bytes, the compact form that 13.0 producers write. The array holds
+about 32 bytes of memory per attachment byte while the queue converts a job to
+and from a JSON value, in the producer and again in the worker, so keep queued
+attachments small or send large ones without the queue.
 
 ---
 

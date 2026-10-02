@@ -79,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn queued_attachments_decode_from_base64_and_legacy_arrays() {
+    fn queued_attachments_keep_the_12_1_form_and_decode_both_forms() {
         let message =
             Message::new()
                 .to("user@example.com")
@@ -95,10 +95,14 @@ mod tests {
             message,
         })
         .expect("serialize queue envelope");
-        assert_eq!(payload["message"]["attachments"][0]["content"], "AAH/");
-        let mut legacy = payload.clone();
-        legacy["message"]["attachments"][0]["content"] = serde_json::json!([0, 1, 255]);
-        for payload in [payload, legacy] {
+        // Producers keep the 12.1 integer array, which 12.1 workers read.
+        assert_eq!(
+            payload["message"]["attachments"][0]["content"],
+            serde_json::json!([0, 1, 255])
+        );
+        let mut compact = payload.clone();
+        compact["message"]["attachments"][0]["content"] = serde_json::json!("AAH/");
+        for payload in [payload, compact] {
             let decoded: MailJobPayload =
                 serde_json::from_value(payload).expect("deserialize queue envelope");
             let MailJobPayload::Current(decoded) = decoded else {

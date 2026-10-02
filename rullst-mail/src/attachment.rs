@@ -24,8 +24,9 @@ mod content_serde;
 
 /// Represents an email attachment or inline asset (e.g. image with Content-ID).
 ///
-/// Human-readable serde formats such as the JSON mail queue encode `content`
-/// as a standard base64 string and still accept the legacy integer array.
+/// Serialization keeps the 12.1 form of `content`, one JSON number per byte,
+/// so 12.1 workers can read queued jobs. Deserialization also accepts a
+/// standard base64 string, the compact form 13.0 producers write.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Attachment {
     /// Name of the attached file (e.g. `"invoice.pdf"`).

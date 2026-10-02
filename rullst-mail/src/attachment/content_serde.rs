@@ -1,11 +1,13 @@
-//! Compact serde form for attachment bytes.
+//! Serde form for attachment bytes.
 //!
-//! Human-readable formats such as the JSON mail queue store the bytes as one
-//! standard base64 string. The derived `Vec<u8>` form wrote one JSON number per
-//! byte, and `serde_json::to_value` then held one `Value` node per byte (about
-//! 32 bytes each), so a 20 MiB attachment needed hundreds of MiB to enqueue.
-//! Deserialization still accepts that legacy integer array. Binary formats keep
-//! the previous byte-sequence encoding.
+//! Serialization keeps the 12.1 wire format, one JSON number per byte, so that
+//! 12.1 workers can read jobs queued by upgraded producers. Deserialization
+//! accepts that integer array and also a standard base64 string, the compact
+//! form 13.0 producers write, so a 12.x worker reads jobs from either.
+//!
+//! The integer array costs about one `serde_json::Value` (32 bytes) per
+//! attachment byte while the queue converts the job to and from a JSON value;
+//! the compact producer is left to 13.0 because it changes the wire format.
 
 use base64::prelude::*;
 use serde::de::{self, SeqAccess, Visitor};
@@ -15,12 +17,9 @@ use std::fmt;
 /// Caps a pre-allocation derived from an untrusted sequence length hint.
 const MAX_PREALLOCATED_BYTES: usize = 1024 * 1024;
 
+/// Writes the derived `Vec<u8>` form, a sequence of bytes, in every format.
 pub(super) fn serialize<S: Serializer>(content: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
-    if serializer.is_human_readable() {
-        serializer.serialize_str(&BASE64_STANDARD.encode(content))
-    } else {
-        serializer.collect_seq(content)
-    }
+    serializer.collect_seq(content)
 }
 
 pub(super) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<u8>, D::Error> {
@@ -67,16 +66,45 @@ impl<'de> Visitor<'de> for ContentVisitor {
 #[cfg(test)]
 mod tests {
     use crate::{Attachment, Message};
-    use serde_json::{Value, json};
+    use serde::Serialize;
+    use serde_json::json;
+
+    /// The 12.1 `Attachment`, with derived serde for its bytes.
+    #[derive(Serialize)]
+    struct Attachment121<'a> {
+        filename: &'a str,
+        content: &'a Vec<u8>,
+        mime_type: &'a str,
+        cid: Option<&'a str>,
+    }
 
     #[test]
-    fn json_content_is_base64_and_legacy_arrays_still_decode() {
-        let attachment = Attachment::new("note.txt", vec![1, 2, 3], "text/plain");
-        let value = serde_json::to_value(&attachment).unwrap();
-        assert_eq!(value["content"], "AQID");
-        let decoded: Attachment = serde_json::from_value(value).unwrap();
-        assert_eq!(decoded, attachment);
+    fn serialization_keeps_the_12_1_wire_format() {
+        let attachment = Attachment::new("note.txt", vec![0, 1, 255], "text/plain").with_cid("c1");
+        let legacy = Attachment121 {
+            filename: &attachment.filename,
+            content: &attachment.content,
+            mime_type: &attachment.mime_type,
+            cid: attachment.cid.as_deref(),
+        };
+        assert_eq!(
+            serde_json::to_string(&attachment).unwrap(),
+            serde_json::to_string(&legacy).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(&attachment).unwrap()["content"],
+            json!([0, 1, 255])
+        );
+        let message = Message::new()
+            .to("member@example.com")
+            .attach(attachment.clone());
+        let value = serde_json::to_value(&message).unwrap();
+        assert_eq!(value["attachments"][0]["content"], json!([0, 1, 255]));
+    }
 
+    #[test]
+    fn legacy_arrays_and_base64_strings_both_decode() {
+        let attachment = Attachment::new("note.txt", vec![1, 2, 3], "text/plain");
         let legacy =
             json!({"filename":"note.txt","content":[1,2,3],"mime_type":"text/plain","cid":null});
         let decoded: Attachment = serde_json::from_value(legacy.clone()).unwrap();
@@ -84,32 +112,17 @@ mod tests {
         let decoded: Attachment = serde_json::from_str(&legacy.to_string()).unwrap();
         assert_eq!(decoded, attachment);
 
+        let mut compact = legacy.clone();
+        compact["content"] = json!("AQID");
+        let decoded: Attachment = serde_json::from_value(compact.clone()).unwrap();
+        assert_eq!(decoded, attachment);
+        let decoded: Attachment = serde_json::from_str(&compact.to_string()).unwrap();
+        assert_eq!(decoded, attachment);
+
         for invalid in [json!("not base64!"), json!([1, 256]), json!(7)] {
             let mut value = legacy.clone();
             value["content"] = invalid;
             assert!(serde_json::from_value::<Attachment>(value).is_err());
         }
-    }
-
-    #[test]
-    fn queued_attachment_json_stays_close_to_the_byte_size() {
-        let content = vec![0xA5; 1024 * 1024];
-        let message = Message::new()
-            .to("member@example.com")
-            .attach(Attachment::new(
-                "report.bin",
-                content.clone(),
-                "application/octet-stream",
-            ));
-        let value = serde_json::to_value(&message).unwrap();
-        assert!(matches!(
-            value["attachments"][0]["content"],
-            Value::String(_)
-        ));
-        let encoded = serde_json::to_string(&value).unwrap();
-        // Base64 is 4/3 of the input; the legacy array was about 4 bytes per byte.
-        assert!(encoded.len() < content.len() * 3 / 2);
-        let decoded: Message = serde_json::from_str(&encoded).unwrap();
-        assert_eq!(decoded.attachments[0].content, content);
     }
 }
