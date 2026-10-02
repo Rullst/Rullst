@@ -291,6 +291,41 @@ builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
 defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
 SQLite and PostgreSQL DDL is unchanged.
 
+### Behaviour changes in 12.2
+
+These ORM fixes keep the 12.x API but change behaviour that applications can
+notice:
+
+- **Transactions:** concurrent sibling nested `Orm::transaction` calls take
+  turns on the shared connection; a savepoint left open makes the enclosing
+  transaction roll back and return an error, and the pool closes a connection
+  returned while still inside a transaction.
+- **Outbox:** MySQL/MariaDB read an idempotent duplicate back with
+  `FOR UPDATE`; a row that still cannot be read back is `DatabaseError`, not
+  `RecordNotFound`.
+- **Schema:** new MySQL/MariaDB audit tables use `LONGTEXT` payload columns
+  (existing tables log a warning naming the migration); `float()` emits
+  `DOUBLE PRECISION`/`DOUBLE` on PostgreSQL/MySQL for new DDL; PostgreSQL enum
+  DDL joins the task-scoped transaction. `boolean()` stays an `INTEGER` flag.
+- **Generated Redis code** follows `rullst-orm/redis` (or the facade's
+  `redis`/`orm-redis`): `.remember(...)`, commit-time invalidation and the
+  `orm:events:*` publications appear without an application `redis` feature.
+  Query-cache keys move to `rullst:orm:cache:v4:` with a per-table index, so
+  caches start cold. Model hashes use namespaced keys (tenant models require
+  `with_tenant(...)`), and hashes stored under `orm:<table>:<id>` are not read.
+- **Queries:** eager loads give a shared related row to every parent;
+  `delete_all()` rejects `limit()`, `offset()`, `order_by()`, joins, grouping
+  and CTEs; `only_trashed()` fails on models without soft deletes; `query()`
+  rejects a tenant context of the wrong type; raw CTE/select fragments with
+  bind markers fail once scope, JOIN or WHERE bindings exist; strict PostgreSQL
+  enum filters cast to the enum type; scoped `search()` answers a 1,000-hit
+  engine result from SQL.
+- **Soft deletes:** `save()` no longer writes the soft-delete column, and
+  `update_partial()` rejects a soft-delete value; use `delete()`/`restore()`.
+- **Audit and Nexus:** restore patches withhold sensitive keys that were added
+  or removed; `#[derive(Nexus)]` omits skipped fields and keeps encrypted,
+  `SecretString` and `#[orm(hidden)]` fields hidden and read-only.
+
 ---
 
 ## 📚 Documentation
