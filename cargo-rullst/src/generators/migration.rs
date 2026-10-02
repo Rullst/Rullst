@@ -286,7 +286,7 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
 
         let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
         let file_stem = format!("m{}_{}", timestamp, "auto_sync");
-        let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema) else {
+        let Some(template) = render_auto_migration(&file_stem, &ast_tables, &db_schema)? else {
             println!("{}", "? Database is already in sync with AST!".green());
             return Ok(());
         };
@@ -319,93 +319,9 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Renders the reviewable auto-sync migration, or `None` when nothing differs.
-pub(crate) fn render_auto_migration(
-    file_stem: &str,
-    ast_tables: &[super::schema_diff::ParsedTable],
-    db_schema: &std::collections::HashMap<String, Vec<String>>,
-) -> Option<String> {
-    let mut up_queries = Vec::new();
-    let mut down_queries = Vec::new();
-
-    for ast_table in ast_tables {
-        let tname = &ast_table.table_name;
-        if !db_schema.contains_key(tname) {
-            let mut up_sql = format!(
-                "        Schema::create(\"{}\", |table| {{\n            table.id();\n",
-                tname
-            );
-            for field in &ast_table.fields {
-                if field.name == "id" || field.name == "created_at" || field.name == "updated_at" {
-                    continue;
-                }
-                up_sql.push_str(&format!("            table.string(\"{}\");\n", field.name));
-            }
-            // A plain literal: `format!` escaping does not apply to `push_str`.
-            up_sql.push_str("            table.timestamps();\n        }).await?;\n");
-            up_queries.push(up_sql);
-
-            down_queries.push(format!(
-                "        Schema::drop_if_exists(\"{}\").await?;\n",
-                tname
-            ));
-        } else if let Some(db_cols) = db_schema.get(tname) {
-            for field in &ast_table.fields {
-                if !db_cols.contains(&field.name) {
-                    up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
-                    down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
-                }
-            }
-        }
-    }
-
-    for (db_tname, db_cols) in db_schema {
-        if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
-            for db_col in db_cols {
-                if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
-                    continue;
-                }
-                if !ast_table.fields.iter().any(|f| &f.name == db_col) {
-                    up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col));
-                }
-            }
-        } else {
-            up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname));
-        }
-    }
-
-    if up_queries.is_empty() {
-        return None;
-    }
-    let up_body = up_queries.join("\n");
-    let down_body = down_queries.join("\n");
-
-    Some(format!(
-        r#"use rullst_orm::schema::{{Schema, Migration}};
-use rullst_orm::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {{
-    fn name(&self) -> &'static str {{
-        "{}"
-    }}
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
-{}
-        Ok(())
-    }}
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-{}
-        Ok(())
-    }}
-}}
-"#,
-        file_stem, up_body, down_body
-    ))
-}
+#[path = "migration_auto.rs"]
+mod auto;
+pub(crate) use auto::render_auto_migration;
 
 #[cfg(test)]
 mod tests {
@@ -443,13 +359,115 @@ mod tests {
             &tables,
             &std::collections::HashMap::new(),
         )
+        .unwrap()
         .expect("a missing table produces a migration");
         assert!(source.contains("Schema::create(\"posts\", |table| {"));
         assert!(source.contains("        }).await?;"));
         assert!(!source.contains("}})"));
         syn::parse_file(&source).expect("generated auto migration should parse");
         assert!(
-            render_auto_migration("m0_auto_sync", &[], &std::collections::HashMap::new()).is_none()
+            render_auto_migration("m0_auto_sync", &[], &std::collections::HashMap::new())
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn auto_migration_columns_follow_the_rust_field_types() {
+        use super::super::schema_diff::{ParsedField, ParsedTable};
+        let field = |name: &str, rust_type: &str, is_option: bool| ParsedField {
+            name: name.to_string(),
+            rust_type: rust_type.to_string(),
+            is_option,
+        };
+        let table = |name: &str, fields: Vec<ParsedField>| ParsedTable {
+            table_name: name.to_string(),
+            struct_name: "Model".to_string(),
+            fields,
+        };
+        let posts = table(
+            "posts",
+            vec![
+                field("id", "i32", false),
+                field("title", "String", false),
+                field("views", "i64", false),
+                field("rank", "i32", true),
+                field("score", "f64", false),
+                field("published", "bool", false),
+                field("published_at", "NaiveDateTime", true),
+            ],
+        );
+        let source = render_auto_migration(
+            "m0_auto_sync",
+            std::slice::from_ref(&posts),
+            &std::collections::HashMap::new(),
+        )
+        .unwrap()
+        .expect("a missing table produces a migration");
+        for line in [
+            "table.string(\"title\").not_null();",
+            "table.big_integer(\"views\").not_null();",
+            "table.integer(\"rank\");",
+            "table.float(\"score\").not_null();",
+            "table.boolean(\"published\").not_null();",
+            "table.string(\"published_at\");",
+        ] {
+            assert!(source.contains(line), "{line}\n{source}");
+        }
+        assert!(!source.contains("table.string(\"views\")"));
+        syn::parse_file(&source).expect("typed auto migration should parse");
+
+        // Existing rows get a typed backfill for required columns.
+        let mut db_schema = std::collections::HashMap::new();
+        db_schema.insert(
+            "posts".to_string(),
+            vec!["id".to_string(), "title".to_string()],
+        );
+        let source = render_auto_migration("m0_auto_sync", &[posts], &db_schema)
+            .unwrap()
+            .expect("added columns produce a migration");
+        for statement in [
+            "ALTER TABLE posts ADD COLUMN views BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE posts ADD COLUMN rank INTEGER\")",
+            "ALTER TABLE posts ADD COLUMN score REAL NOT NULL DEFAULT 0.0",
+            "ALTER TABLE posts ADD COLUMN published INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE posts ADD COLUMN published_at TEXT\")",
+        ] {
+            assert!(source.contains(statement), "{statement}\n{source}");
+        }
+        assert!(source.contains("// Existing rows receive DEFAULT 0; review before applying."));
+        assert!(!source.contains("ADD COLUMN views TEXT"));
+        syn::parse_file(&source).expect("typed ALTER migration should parse");
+
+        // Unmappable types and required columns without a neutral value fail
+        // before anything is written, naming every offending field.
+        let error = render_auto_migration(
+            "m0_auto_sync",
+            &[
+                table(
+                    "files",
+                    vec![
+                        field("payload", "Vec", false),
+                        field("id_ref", "Uuid", true),
+                    ],
+                ),
+                table("posts", vec![field("archived_at", "NaiveDateTime", false)]),
+            ],
+            &db_schema,
+        )
+        .expect_err("unsupported columns are refused");
+        let message = error.to_string();
+        assert!(
+            message.contains("`files.payload` has type `Vec`"),
+            "{message}"
+        );
+        assert!(
+            message.contains("`files.id_ref` has type `Uuid`"),
+            "{message}"
+        );
+        assert!(
+            message.contains("`posts.archived_at` is a required `NaiveDateTime`"),
+            "{message}"
         );
     }
 }
