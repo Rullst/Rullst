@@ -235,6 +235,25 @@ fn without_a_terminal_the_wizard_never_prompts() {
 }
 
 #[test]
+fn an_invalid_flag_name_is_refused_before_any_question() {
+    let terminal = Terminal::interactive_for_tests();
+    assert!(terminal.interactive());
+    for name in ["9shop", "my.app", "_shop", "crate", "apps/9shop"] {
+        let request = NewProjectRequest {
+            name: Some(name),
+            ..NewProjectRequest::default()
+        };
+        // Refused before the wizard draws anything or reads a key.
+        let error = plan_project(&request, &[], &terminal, true).expect_err(name);
+        let message = error.to_string();
+        assert!(
+            message.contains("project package name"),
+            "{name}: {message}"
+        );
+    }
+}
+
+#[test]
 fn requested_integrations_keep_the_manifest_order() {
     let options = ProjectScaffoldOptions {
         qdrant: true,

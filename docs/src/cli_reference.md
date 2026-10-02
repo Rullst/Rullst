@@ -163,7 +163,9 @@ create wizard; the home screen's **Create New Project** entry runs the same
 wizard. It asks, one screen at a time:
 
 1. the project name, when none was given (letters, digits, `_` and `-`,
-   starting with a letter; Rust keywords and existing paths are refused);
+   starting with a letter; Rust keywords and existing paths are refused). A
+   name given on the command line is checked by the same package-name rules
+   before the first question;
 2. the **blueprint**, each with a one-line description and a compact preview
    of the file tree it generates. The preview is rendered by the real project
    writers into a private temporary directory that is removed immediately;
