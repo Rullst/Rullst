@@ -21,14 +21,16 @@ The current command creates:
 - `src/controllers/auth_controller.rs`;
 - `src/middlewares/auth_middleware.rs`;
 - `src/pages/auth.rs`; and
-- the corresponding module declarations.
+- the corresponding module declarations, including `controllers`,
+  `middlewares`, `models` and `pages` in `src/lib.rs` (or `src/main.rs`).
 
-It fails before writing anything when one of those files exists or when a
+It also enables the `orm` and `auth` umbrella features in `Cargo.toml`. It
+fails before writing anything when one of those files exists or when a
 `*_create_users.rs`/`*_create_users_table.rs` migration already creates the
 users table (the blank database starter ships one); add the account columns
-with `cargo rullst make:migration` in that case. It does not support an
-`auth --api` flag, and it does not silently register application routes.
-Review the generated diff before editing it.
+with `cargo rullst make:migration` in that case. Turso-primary projects are not
+supported. It does not support an `auth --api` flag, and it does not silently
+register application routes. Review the generated diff before editing it.
 
 ---
 
