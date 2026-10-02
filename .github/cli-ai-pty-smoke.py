@@ -140,9 +140,11 @@ with tempfile.TemporaryDirectory(prefix="rullst-ai-") as directory:
         '[package]\nname = "upgrade-app"\nversion = "0.1.0"\nedition = "2024"\n'
         f'[dependencies]\nrullst = {{ version = "12.1.2", path = {json.dumps(str(framework))} }}\n')
     (app / "src" / "main.rs").write_text(
-        "use rullst::htmx::{HtmxRequest, render_page};\n\n"
+        # Path-qualified so the offline fix leaves no unused import under
+        # CI's `-D warnings` (the mock rewrites one call, not the use list).
+        "use rullst::htmx::HtmxRequest;\n\n"
         "fn home(htmx: &HtmxRequest) -> String {\n"
-        "    render_page(htmx, \"Home\", String::new())\n}\n\n"
+        "    rullst::htmx::render_page(htmx, \"Home\", String::new())\n}\n\n"
         "fn main() {\n    println!(\"{}\", home(&HtmxRequest));\n}\n")
     git(app, "init", "--quiet")
     git(app, "add", ".")
