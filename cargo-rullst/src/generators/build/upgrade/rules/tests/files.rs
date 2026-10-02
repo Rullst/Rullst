@@ -172,6 +172,46 @@ fn current_project_files_produce_no_findings() {
     assert_eq!(project.findings("[package]\nname = \"my-app\"\n"), vec![]);
 }
 
+/// The build files only the 12.0 CLI generated, and their 12.1 replacements.
+#[test]
+fn build_files_from_the_12_0_cli_are_reviewed() {
+    let project = Project::new();
+    project
+        .write(
+            ".cargo/config.toml",
+            "# Rullst linker configuration\n\n[target.x86_64-pc-windows-msvc]\nrustflags = [\"-C\", \"link-arg=/DEBUG:FASTLINK\"]\n",
+        )
+        .write(".gitignore", "# Rust build artifacts\n/target\n/Cargo.lock\n")
+        .write(
+            "Dockerfile",
+            "FROM rust:1.96 AS builder\n# cargo build --release\nRUN cargo build --release\n",
+        );
+    assert_eq!(
+        project.findings("[package]\nname = \"app\"\n"),
+        vec![
+            (".cargo/config.toml".to_string(), "V13-MSVC-FASTLINK", 4),
+            (".gitignore".to_string(), "V13-CARGO-LOCK-IGNORED", 3),
+            ("Dockerfile".to_string(), "V13-DOCKER-UNLOCKED-BUILD", 3),
+        ]
+    );
+
+    let current = Project::new();
+    current
+        .write(
+            ".cargo/config.toml",
+            "# /DEBUG:FASTLINK is not supported\n[target.x86_64-unknown-linux-gnu]\nrustflags = [\"-C\", \"split-debuginfo=unpacked\"]\n",
+        )
+        .write(
+            ".gitignore",
+            "/target\n# Commit Cargo.lock for reproducible application/deployment builds.\n!Cargo.lock\n",
+        )
+        .write(
+            "Dockerfile",
+            "# Generate and commit Cargo.lock before building this application image.\nRUN cargo build --release --locked\nRUN cargo build --frozen\n",
+        );
+    assert_eq!(current.findings("[package]\nname = \"app\"\n"), vec![]);
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinked_project_files_are_not_read() {

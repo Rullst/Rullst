@@ -268,11 +268,13 @@ fn must_change_findings_block_execution_and_review_findings_are_reported() {
     let record: Value =
         serde_json::from_slice(&fs::read(stage.join("preparation.json")).unwrap()).unwrap();
     let findings = &record["plan"]["source_findings"];
-    assert_eq!(
-        findings[0]["code"], "V13-RENDER-PAGE-LANGUAGE",
-        "{findings}"
-    );
-    assert_eq!(findings[0]["severity"], "REVIEW");
+    let page = findings
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["code"] == "V13-RENDER-PAGE-LANGUAGE")
+        .unwrap_or_else(|| panic!("{findings}"));
+    assert_eq!(page["severity"], "REVIEW");
     let output = verify(&review, &stage, &["--dry-run"]);
     assert!(output.status.success(), "{}", text(&output));
 

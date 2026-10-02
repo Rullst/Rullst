@@ -277,6 +277,15 @@ rules! {
     LINKER_CONFIG: "V13-LINKER-CONFIG", Review, "Generated linker configuration",
         "`.cargo/config.toml` selects a host linker but is not ignored by Git",
         "List `.cargo/config.toml` in `.gitignore` and `.dockerignore`, or delete its `-fuse-ld` flags before CI or Docker builds.";
+    MSVC_FASTLINK: "V13-MSVC-FASTLINK", Review, "Build files from the 12.0 CLI",
+        "`.cargo/config.toml` passes the unsupported MSVC linker flag `/DEBUG:FASTLINK`",
+        "Delete the `[target.x86_64-pc-windows-msvc]` block that sets `/DEBUG:FASTLINK`.";
+    CARGO_LOCK_IGNORED: "V13-CARGO-LOCK-IGNORED", Review, "Build files from the 12.0 CLI",
+        "`.gitignore` ignores `Cargo.lock`, so builds and deployments may resolve untested versions",
+        "Remove the `Cargo.lock` line from `.gitignore` and commit the lockfile.";
+    DOCKER_UNLOCKED_BUILD: "V13-DOCKER-UNLOCKED-BUILD", Review, "Build files from the 12.0 CLI",
+        "the Dockerfile runs `cargo build` without `--locked`",
+        "Commit `Cargo.lock` and add `--locked` to the Dockerfile's `cargo build`.";
     ERP_STORE_ORDER: "V13-ERP-STORE-ORDER", Review, "ERP orders and stock",
         "the ERP order handler reserves stock with a read-modify-write",
         "Copy the transactional `store_order`/`add_stock` controller with its 404/409/422/503 answers.";
