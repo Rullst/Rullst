@@ -110,6 +110,9 @@ impl Blueprint {
         self.add_driver_typed_column(name, DriverType::Double)
     }
 
+    /// Adds an `INTEGER` 0/1 flag column on every driver; pair it with an
+    /// integer model field. PostgreSQL has no implicit integer/boolean casts,
+    /// so a `bool` field there needs [`Column::col_type`] set to `BOOLEAN`.
     pub fn boolean(&mut self, name: &str) -> &mut Column {
         self.add_column(name, "INTEGER")
     }

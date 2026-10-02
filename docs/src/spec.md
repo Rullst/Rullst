@@ -305,6 +305,14 @@ still reads `REAL` before the schema is built; an explicitly replaced
 created by earlier versions keep their type until a reviewed migration alters
 them (for example `ALTER TABLE t ALTER COLUMN c TYPE DOUBLE PRECISION`).
 
+`Blueprint::boolean` is an `INTEGER` 0/1 flag on every driver in 12.x. Map it
+to an integer model field (`i32`/`i64`); PostgreSQL has no implicit
+integer/boolean casts, so a `bool` field cannot be written, filtered or decoded
+against it there. For a native PostgreSQL `BOOLEAN` column paired with a
+`bool` field, replace the column type explicitly (`col.col_type =
+"BOOLEAN".to_string()`); PostgreSQL then rejects an integer `ColumnDefault`,
+while `ColumnDefault::Text("false".into())` is accepted.
+
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
 `Billable::quota_request` derives the limit from the subscription owner, and

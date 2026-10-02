@@ -57,6 +57,11 @@ created by earlier Rullst versions were single-precision `REAL`; migrate them
 explicitly (`ALTER TABLE products ALTER COLUMN price TYPE DOUBLE PRECISION`)
 before relying on `f64` precision.
 
+`table.boolean(...)` creates an `INTEGER` 0/1 flag on every driver, so pair it
+with an `i32`/`i64` model field. PostgreSQL does not cast between integers and
+booleans implicitly; for a `bool` field on PostgreSQL, set the column type to
+`BOOLEAN` explicitly (`table.boolean("active").col_type = "BOOLEAN".into();`).
+
 Text defaults (`ColumnDefault::Text`) and `table.enum_col(...)` variants are
 embedded in the DDL as single-quoted literals with doubled single quotes.
 `Schema::create` rejects such text when it contains a backslash or a control
