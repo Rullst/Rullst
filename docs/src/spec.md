@@ -605,6 +605,10 @@ while portability and semantic review remain the model author's responsibility.
   model-wide scope binding can never shift onto a nested or caller value. A
   custom subquery whose `$n` markers are mixed with `?`, reference a missing
   binding or leave a binding unused fails closed with a `Validation` error.
+* `delete_all()` renders only the WHERE and soft-delete predicates. A builder
+  with an explicit `limit()` (the implicit global cap does not count),
+  `offset()`, `order_by()`, joins, `group_by()`/HAVING or CTEs fails with
+  `Validation` instead of silently deleting every matching row.
 * `with_raw`, `with_recursive_raw` and `select_raw` take no bindings; their
   markers can only be filled by `bind()`, whose values follow the scope, JOIN
   and WHERE bindings although the fragment renders before them. From 12.2 these

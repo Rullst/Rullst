@@ -54,6 +54,7 @@ pub fn generate_builder_struct(
             pub has_recursive_cte: bool,
             pub with_trashed: bool,
             pub only_trashed: bool,
+            limit_explicit: bool,
             #redis_cfg
             pub remember_ttl: Option<usize>,
             #(#relation_flags)*
@@ -145,6 +146,7 @@ pub fn generate_builder_struct(
                     has_recursive_cte: false,
                     with_trashed: false,
                     only_trashed: false,
+                    limit_explicit: false,
                     #redis_cfg
                     remember_ttl: None,
                     #(#relation_inits)*
@@ -424,6 +426,7 @@ pub fn generate_builder_struct(
             }
 
             pub fn limit(mut self, value: usize) -> Self {
+                self.limit_explicit = true;
                 if let Some(max_limit) = rullst_orm::schema::get_max_query_limit() {
                     self.limit = Some(value.min(max_limit));
                 } else {
@@ -434,7 +437,38 @@ pub fn generate_builder_struct(
 
             pub fn unsafe_unlimited(mut self) -> Self {
                 self.limit = None;
+                self.limit_explicit = false;
                 self
+            }
+
+            /// `delete_all()` renders only the WHERE and soft-delete
+            /// predicates, so a clause that would bound or reshape the rows
+            /// (an explicit `limit()`, `offset()`, `order_by()`, joins,
+            /// grouping or CTEs) fails instead of deleting every matching row.
+            /// The global row cap is implicit; only an explicit `limit()` (or a
+            /// directly assigned different limit) counts.
+            fn __rullst_check_delete_clauses(&self) -> Result<(), rullst_orm::Error> {
+                let explicit_limit = self.limit.is_some()
+                    && (self.limit_explicit || self.limit != rullst_orm::schema::get_max_query_limit());
+                let clause = if explicit_limit {
+                    "limit()"
+                } else if self.offset.is_some() {
+                    "offset()"
+                } else if self.order_by.is_some() {
+                    "order_by()"
+                } else if !self.joins.is_empty() || !self.join_bindings.is_empty() {
+                    "joins"
+                } else if self.group_by.is_some() || !self.havings.is_empty() {
+                    "group_by()/having"
+                } else if !self.ctes.is_empty() {
+                    "CTEs"
+                } else {
+                    return Ok(());
+                };
+                Err(rullst_orm::Error::Validation(format!(
+                    "delete_all() does not support {}; it would delete every matching row. Select the IDs with get() or pluck_i32() and delete them with where_in(\"id\", ...)",
+                    clause
+                )))
             }
 
             pub fn offset(mut self, value: usize) -> Self {
