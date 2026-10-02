@@ -76,6 +76,9 @@ rules! {
     OPENAI_OUTPUT: "V13-AI-OPENAI-OUTPUT", Review, "OpenAI provider output",
         "OpenAI replies cut by `length` or `content_filter` now fail with `AiError::ApiError`",
         "Handle `AiError::ApiError` instead of using partial text; vision requests no longer send `max_tokens`.";
+    CHAT_MEMORY_KEYS: "V13-AI-CHAT-MEMORY-KEYS", Review, "AI chat memory keys on MySQL/MariaDB",
+        "`SqlChatMemory` IDs are case-sensitive; MySQL/MariaDB tables created by 12.x fail closed for IDs differing only by case",
+        "On MySQL/MariaDB stop chat-memory writers, back up both tables and apply the `ascii_bin` migration from the AI README.";
     MACHINE_ENDPOINTS: "V13-HOT-RELOAD-MACHINE-ENDPOINTS", Review, "Hot-reload machine endpoints",
         "the hot-reload server now authenticates `with_machine_endpoints` routes",
         "Make development machine clients send the configured credentials.";
@@ -85,6 +88,9 @@ rules! {
     SECURITY_LAYERS: "V13-SECURITY-DLP-HONEYPOT", Review, "Security DLP, RASP and honeypot",
         "DLP masks XML/YAML/JS bodies and range responses; RASP, honeypot and `redact_secrets` telemetry changed",
         "Review clients comparing such bodies byte for byte, honeypot ban TTLs and dashboards built on `dlp_secrets_masked`.";
+    AUDIT_LOG_LINES: "V13-SECURITY-AUDIT-LOG-LINES", Review, "Security audit log lines",
+        "`StdoutAuditLogger` quotes and escapes `actor`, `action` and `resource`",
+        "Update log parsers and alerts that match the unquoted `actor=<value>` form.";
     OIDC_OPTIONAL_NAME: "V13-OIDC-OPTIONAL-NAME", Review, "Connect generic OIDC",
         "`OidcProvider` accepts tokens without `name`; `ConnectUser::name` may now be empty",
         "Handle an empty `ConnectUser::name` (fall back to e-mail or another claim) wherever a display name is required.";
@@ -118,6 +124,15 @@ rules! {
     ORM_CACHE_PREFIX: "V13-ORM-CACHE-PREFIX", Review, "ORM query-cache index",
         "`.remember(...)` keys move to `rullst:orm:cache:v4:` with a sorted-set index; caches start cold",
         "Expect cold caches after deploying, avoid mixed-version writes during a rolling upgrade and update tools that read the old `:keys` set.";
+    ORM_REDIS_HASHES: "V13-ORM-REDIS-HASHES", Review, "ORM Redis model hashes",
+        "generated Redis model hashes moved from `orm:<table>:<id>` to namespaced keys; tenant models need a one-time migration",
+        "Global models migrate on their next write; after deploying, migrate tenant model hashes with the Redis guide procedure and stop 12.x writers of these hashes before 13 instances write them.";
+    OUTBOX_MYSQL_KEYS: "V13-OUTBOX-MYSQL-KEYS", Review, "ORM outbox keys on MySQL/MariaDB",
+        "outbox keys are case-sensitive; a MySQL/MariaDB `rullst_outbox` table created by 12.x keeps a case-insensitive collation",
+        "On MySQL/MariaDB run `Outbox::install()` once (for example from a new migration) to convert the key columns to `ascii_bin`.";
+    AUDIT_PAYLOADS: "V13-ORM-AUDIT-PAYLOADS", Review, "ORM audit payloads on MySQL/MariaDB",
+        "a MySQL/MariaDB `rullst_audits` table created by 12.x keeps 64 KiB `TEXT` payload columns",
+        "On MySQL/MariaDB apply `ALTER TABLE rullst_audits MODIFY old_values LONGTEXT, MODIFY new_values LONGTEXT, MODIFY restore_patch LONGTEXT` in a maintenance window.";
     TURSO_ROLLBACK: "V13-TURSO-ROLLBACK-DRIFT", Review, "Turso migrations",
         "Turso `rollback_last` refuses a migration whose recorded digest differs",
         "Restore the applied migration definition before rolling it back.";
@@ -127,6 +142,9 @@ rules! {
     SECRET_STRING_INPUT: "V13-SECRET-STRING-CLIENT-INPUT", Review, "`SecretString` client input",
         "a `SecretString` deserialized from client input still decrypts any envelope under the configured key",
         "Add `#[serde(deserialize_with = \"rullst_orm::privacy::deserialize_plaintext_secret\")]` (or the optional variant) to fields filled from requests.";
+    PROTECTED_VALUES: "V13-ORM-PROTECTED-VALUES", Review, "ORM protected values and `SecretString` serialization",
+        "encrypted and masked values are `***` in audit rows and events, and `SecretString` serializes as an encrypted envelope",
+        "Configure `RULLST_ENCRYPTION_KEY` where `SecretString` is serialized, purge or reindex 12.x audit rows and search documents that may hold plaintext, and upgrade readers of serialized secrets before writers.";
     REDIS_MOCK_ORDER: "V13-REDIS-MOCK-TIE-ORDER", Review, "Offline Redis mock",
         "the offline Redis mock returns equal `sorted_set_top` scores in descending member order",
         "Update tests that relied on ascending tie order.";
@@ -193,6 +211,9 @@ rules! {
     MAIL_FACADE: "V13-MAIL-FACADE-CONFIG", Review, "Mail sender",
         "the `Mail` facade needs `MAIL_FROM`, and `MAIL_DRIVER` in staging/production; invalid `MAIL_PORT` now fails",
         "Set `MAIL_FROM` and `MAIL_DRIVER` (see also the Mail driver default and Mail facade settings rows).";
+    MAIL_QUEUED_ATTACHMENTS: "V13-MAIL-QUEUED-ATTACHMENTS", Review, "Mail queued attachments",
+        "queued mail stores attachment bytes as base64, which 12.x mail workers cannot read",
+        "In a rolling deployment upgrade every mail worker before any producer, retry jobs a 12.x worker failed once 13 workers run and drain the queue before rolling back.";
     MAIL_ATTACHMENTS: "V13-MAIL-ATTACHMENT-INSPECTION", Review, "Mail attachment inspection",
         "`LocalAttachmentInspector` classifies XML by root element and namespaces",
         "Review XML attachments that embed SVG/XHTML namespaces or entity declarations.";
@@ -256,6 +277,15 @@ rules! {
     LINKER_CONFIG: "V13-LINKER-CONFIG", Review, "Generated linker configuration",
         "`.cargo/config.toml` selects a host linker but is not ignored by Git",
         "List `.cargo/config.toml` in `.gitignore` and `.dockerignore`, or delete its `-fuse-ld` flags before CI or Docker builds.";
+    MSVC_FASTLINK: "V13-MSVC-FASTLINK", Review, "Build files from the 12.0 CLI",
+        "`.cargo/config.toml` passes the unsupported MSVC linker flag `/DEBUG:FASTLINK`",
+        "Delete the `[target.x86_64-pc-windows-msvc]` block that sets `/DEBUG:FASTLINK`.";
+    CARGO_LOCK_IGNORED: "V13-CARGO-LOCK-IGNORED", Review, "Build files from the 12.0 CLI",
+        "`.gitignore` ignores `Cargo.lock`, so builds and deployments may resolve untested versions",
+        "Remove the `Cargo.lock` line from `.gitignore` and commit the lockfile.";
+    DOCKER_UNLOCKED_BUILD: "V13-DOCKER-UNLOCKED-BUILD", Review, "Build files from the 12.0 CLI",
+        "the Dockerfile runs `cargo build` without `--locked`",
+        "Commit `Cargo.lock` and add `--locked` to the Dockerfile's `cargo build`.";
     ERP_STORE_ORDER: "V13-ERP-STORE-ORDER", Review, "ERP orders and stock",
         "the ERP order handler reserves stock with a read-modify-write",
         "Copy the transactional `store_order`/`add_stock` controller with its 404/409/422/503 answers.";

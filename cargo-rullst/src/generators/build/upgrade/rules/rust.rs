@@ -141,6 +141,11 @@ impl Visitor<'_, '_> {
             }
         }
         let model = entries(&item.attrs, "orm");
+        for (key, _, at) in &model {
+            if key == "auditable" {
+                self.hit(&AUDIT_PAYLOADS, *at);
+            }
+        }
         if has_key(&model, &["searchable"]) {
             for (key, value, at) in &model {
                 let invalid = value.as_deref().is_some_and(|table| {
@@ -193,6 +198,9 @@ impl Visitor<'_, '_> {
             if has_key(&entries(&field.attrs, "sqlx"), &["json"]) {
                 self.hit(&ORM_JSON_SERIALIZE, at);
             }
+            if has_key(&options, &["encrypted", "masked"]) {
+                self.hit(&PROTECTED_VALUES, at);
+            }
             if field
                 .ident
                 .as_ref()
@@ -241,6 +249,16 @@ impl Visitor<'_, '_> {
                 && field.ident.as_ref().is_some_and(|name| name == "secret")
             {
                 self.hit(&MFA_CLIENT_SECRET, at);
+            }
+        }
+    }
+
+    /// `SecretString` fields of a serialized struct or a model, whose
+    /// projections no longer carry the plaintext.
+    fn serialized_secrets(&mut self, item: &syn::ItemStruct) {
+        for field in &item.fields {
+            if mentions(field.ty.to_token_stream(), "SecretString") {
+                self.hit(&PROTECTED_VALUES, field_line(field));
             }
         }
     }
@@ -320,6 +338,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             }
             if has_derive("Deserialize") {
                 self.deserialized(item);
+            }
+            if has_derive("Serialize") || has_derive("Orm") {
+                self.serialized_secrets(item);
             }
         }
         visit::visit_item_struct(self, item);

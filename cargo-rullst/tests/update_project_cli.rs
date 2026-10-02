@@ -209,7 +209,15 @@ fn preparation_is_review_data_and_never_execution_authority() {
     assert_eq!(prepared["execution_authorized"], false);
     assert_eq!(prepared["application_authorized"], false);
     assert_eq!(prepared["plan"]["production_ready"], false);
-    assert_eq!(prepared["plan"]["source_findings"], serde_json::json!([]));
+    // The fixture ignores its root lockfile (preparation still copies it),
+    // which is the only migration finding and authorizes nothing.
+    let codes: Vec<&str> = prepared["plan"]["source_findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|finding| finding["code"].as_str().unwrap())
+        .collect();
+    assert_eq!(codes, ["V13-CARGO-LOCK-IGNORED"]);
 }
 
 #[test]

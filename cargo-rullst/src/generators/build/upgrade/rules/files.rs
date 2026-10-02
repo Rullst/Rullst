@@ -191,6 +191,33 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
     {
         push(&LINKER_CONFIG, ".cargo/config.toml", line);
     }
+    // Files that only the 12.0 CLI generated: an MSVC flag the linker does
+    // not support, an ignored lockfile and an unlocked container build.
+    if let Some(text) = read_small(&root.join(".cargo/config.toml"))
+        && let Some(line) = line_of(&text, |line| {
+            !line.trim_start().starts_with('#') && line.contains("/DEBUG:FASTLINK")
+        })
+    {
+        push(&MSVC_FASTLINK, ".cargo/config.toml", line);
+    }
+    if let Some(text) = &gitignore
+        && let Some(line) = line_of(text, |line| {
+            matches!(line.trim(), "Cargo.lock" | "/Cargo.lock" | "**/Cargo.lock")
+        })
+    {
+        push(&CARGO_LOCK_IGNORED, ".gitignore", line);
+    }
+    if let Some(text) = read_small(&root.join("Dockerfile"))
+        && let Some(line) = line_of(&text, |line| {
+            let line = line.trim_start();
+            !line.starts_with('#')
+                && line.contains("cargo build")
+                && !line.contains("--locked")
+                && !line.contains("--frozen")
+        })
+    {
+        push(&DOCKER_UNLOCKED_BUILD, "Dockerfile", line);
+    }
     if let Some(text) = read_small(&root.join(".dockerignore"))
         && !(text.contains(".env.*") && text.contains("*.sqlite"))
     {

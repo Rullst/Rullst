@@ -143,7 +143,10 @@ fn the_service_runs_as_a_dedicated_unprivileged_sandboxed_account() {
             .unwrap()
             .write_all(script.as_bytes())
             .unwrap();
-        assert!(shell.wait().unwrap().success(), "invalid shell:\n{script}");
+        assert!(
+            shell.wait().unwrap().success(),
+            "the generated account setup is not valid shell"
+        );
     }
 }
 
