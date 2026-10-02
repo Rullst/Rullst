@@ -183,6 +183,44 @@ mod tests {
         assert!(blog.iter().any(|(path, _)| *path == "src/models/post.rs"));
     }
 
+    /// Every SQLx-backed blueprint manifest, in both hot-reload layouts.
+    fn sqlx_blueprint_manifests() -> Vec<(&'static str, Vec<(&'static str, String)>)> {
+        let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
+        let mut manifests = Vec::new();
+        for hot in [false, true] {
+            manifests.extend([
+                (
+                    "blank",
+                    blank::file_manifest("demo", "demo", false, hot, true, orm, frontend),
+                ),
+                ("lms", lms::file_manifest("demo", hot, orm, frontend)),
+                ("saas", saas::file_manifest("demo", hot, orm, frontend)),
+                ("blog", blog::file_manifest("demo", hot, orm, frontend)),
+                (
+                    "portfolio",
+                    portfolio::file_manifest("demo", hot, orm, frontend),
+                ),
+                ("erp", erp::file_manifest("demo", hot, orm, frontend)),
+            ]);
+        }
+        manifests
+    }
+
+    #[test]
+    fn sqlx_blueprints_avoid_sqlite_only_seed_functions() {
+        // `datetime('now')` exists only in SQLite and fails `db:migrate` on
+        // PostgreSQL/MySQL/MariaDB; `timestamps()` columns already default to
+        // CURRENT_TIMESTAMP on every driver.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                assert!(
+                    !source.contains("datetime("),
+                    "{blueprint}:{path} uses SQLite-only datetime()"
+                );
+            }
+        }
+    }
+
     #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(

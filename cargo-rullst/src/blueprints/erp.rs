@@ -219,16 +219,16 @@ impl Migration for MigrationImpl {
         let pool = rullst::db::Orm::pool()?;
         
         rullst::db::sqlx::query(
-            "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
-             (1, 'Specialty Arabica Coffee', 'CAF-001', 34.90, 18, datetime('now'), datetime('now')),
-             (2, 'Rullst Ceramic Mug', 'CAN-002', 19.90, 4, datetime('now'), datetime('now')),
-             (3, 'French Press', 'PRE-003', 89.00, 12, datetime('now'), datetime('now'))"
+            "INSERT INTO products (id, name, sku, price, stock) VALUES 
+             (1, 'Specialty Arabica Coffee', 'CAF-001', 34.90, 18),
+             (2, 'Rullst Ceramic Mug', 'CAN-002', 19.90, 4),
+             (3, 'French Press', 'PRE-003', 89.00, 12)"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
-            "INSERT INTO orders (id, customer_name, product_id, quantity, total_price, status, created_at, updated_at) VALUES 
-             (1, 'Carlos Silva', 1, 2, 69.80, 'Paid', datetime('now'), datetime('now')),
-             (2, 'Mariana Souza', 2, 1, 19.90, 'Pending', datetime('now'), datetime('now'))"
+            "INSERT INTO orders (id, customer_name, product_id, quantity, total_price, status) VALUES 
+             (1, 'Carlos Silva', 1, 2, 69.80, 'Paid'),
+             (2, 'Mariana Souza', 2, 1, 19.90, 'Pending')"
         ).execute(pool).await?;
 
         Ok(())

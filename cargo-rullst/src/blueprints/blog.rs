@@ -175,9 +175,9 @@ impl Migration for MigrationImpl {
         // Seed initial blog posts
         let pool = rullst::db::Orm::pool()?;
         rullst::db::sqlx::query(
-            "INSERT INTO posts (id, title, slug, content, created_at, updated_at) VALUES 
-             (1, 'Building a Server-Rendered Blog with Rullst', 'building-with-rullst', 'This starter combines typed Axum routes, server-rendered HTML, and a configured SQL database.', datetime('now'), datetime('now')),
-             (2, 'The Power of WebAssembly Islands', 'power-of-wasm-islands', 'Wasm Islands give you the speed of server-side HTML combined with high-fidelity Wasm interactivity when needed.', datetime('now'), datetime('now'))"
+            "INSERT INTO posts (id, title, slug, content) VALUES 
+             (1, 'Building a Server-Rendered Blog with Rullst', 'building-with-rullst', 'This starter combines typed Axum routes, server-rendered HTML, and a configured SQL database.'),
+             (2, 'The Power of WebAssembly Islands', 'power-of-wasm-islands', 'Wasm Islands give you the speed of server-side HTML combined with high-fidelity Wasm interactivity when needed.')"
         ).execute(pool).await?;
 
         Ok(())
