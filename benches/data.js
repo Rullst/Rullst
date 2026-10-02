@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790932192032,
+  "lastUpdate": 1790958636895,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24879,6 +24879,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2338,
             "range": "± 60",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "faa8106e4c20451b7c7fdd731b1b7dabd142dbb2",
+          "message": "Merge pull request #408 from Rullst/claude/lucid-ride-q7hc27\n\ndocs: align the documentation with the v13 source and fix main CI",
+          "timestamp": "2026-10-02T13:25:50-03:00",
+          "tree_id": "47ab2e985504a4b0182215bf898588bf498992c3",
+          "url": "https://github.com/Rullst/Rullst/commit/faa8106e4c20451b7c7fdd731b1b7dabd142dbb2"
+        },
+        "date": 1790958634624,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 419,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 630,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 421,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1190,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
