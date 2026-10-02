@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790927276466,
+  "lastUpdate": 1790931707847,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9195,6 +9195,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 577,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b9be9e7b77bd23cdb1d71dee25ed2752122f4e45",
+          "message": "Merge pull request #405 from Rullst/fix/v13-new-cli-ai-review\n\nfix(cli,ai): review fixes for cargo rullst ai (inspect exfiltration, migrate gate, path policy, guardrail)",
+          "timestamp": "2026-10-02T05:34:36-03:00",
+          "tree_id": "5fe4b786194dad2bf714c573fb776b01289100ad",
+          "url": "https://github.com/Rullst/Rullst/commit/b9be9e7b77bd23cdb1d71dee25ed2752122f4e45"
+        },
+        "date": 1790931706750,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 500,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
