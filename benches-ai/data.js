@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790892111025,
+  "lastUpdate": 1790903087655,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12272,6 +12272,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 447,
+            "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2919aab55f48d725cccdd273e15d1969e4b742c",
+          "message": "Merge pull request #396 from Rullst/docs/v13-legal-compliance-roadmap\n\ndocs(roadmap): legal compliance readiness and human/AI ease plans",
+          "timestamp": "2026-10-01T21:43:33-03:00",
+          "tree_id": "bf5bb932ea5d5d4491b0f3c3b3f4a9979911889a",
+          "url": "https://github.com/Rullst/Rullst/commit/e2919aab55f48d725cccdd273e15d1969e4b742c"
+        },
+        "date": 1790903087126,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1720,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 378,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 403,
             "range": "± 4",
             "unit": "ns/iter"
           }
