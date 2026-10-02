@@ -993,6 +993,10 @@ route, dependency, and local network patterns.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan.
 
+The IDOR route and listener-binding scans skip each top-level `#[cfg(test)]`
+item (such as `mod tests;` or an inline test module) on its own; code after it
+is still scanned.
+
 ### `cargo rullst hook:install`
 Installs managed `pre-commit` and `commit-msg` wrappers. The first runs
 `cargo fmt --all -- --check`, strict workspace Clippy, and

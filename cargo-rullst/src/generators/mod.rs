@@ -8,6 +8,7 @@ pub mod ai_context;
 pub mod audit;
 mod audit_compliance;
 mod audit_evidence;
+mod audit_source;
 pub mod auth;
 pub mod billing;
 pub mod build;
