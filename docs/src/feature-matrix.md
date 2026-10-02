@@ -5,10 +5,13 @@
 > for publication status and commit Cargo.lock for reproducible builds.
 > Use path dependencies only when intentionally testing checkout-local changes.
 
-This page is the public feature contract for the 16 packages in the Rullst
-release train. The package manifests remain the machine-readable source of
-truth. The matrix explains the behavior those names select in v12 and makes
-the default build visible before an application adopts optional integrations.
+This page is the public feature contract for the 19 packages in the v13
+[release inventory](../../.github/release-order.json): the 16 published 12.x
+packages plus the unpublished `rullst-privacy`, `rullst-supervision` and
+`rullst-media` candidates. The package manifests remain the machine-readable
+source of truth. The matrix explains the behavior those names select in this
+v13 source and makes the default build visible before an application adopts
+optional integrations.
 
 Cargo features are additive across a dependency graph. An application can
 disable a package's defaults at the dependency edge, but it cannot disable a
@@ -29,8 +32,8 @@ the exact individual checks.
 
 ## Unpublished v13 privacy additions
 
-The v13 candidate adds `rullst-privacy` as an optional seventeenth release
-package. These features are absent from published 12.1.0; use the matching v13
+The v13 candidate adds `rullst-privacy` as an optional release package. These
+features are absent from published 12.x releases; use the matching v13
 source until its package and release admission complete. They do not change
 default dependencies or select application policies automatically.
 
@@ -107,8 +110,8 @@ for example, adds only SQLite).
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
 | `auth-sqlite` | no | `auth-jwt` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
 | `auth-passkey-postgres` | no | Optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
-| `auth-sessions-sqlite` | no | `auth` plus the SQLite account registry, opaque sessions and session inventory (Auth `recovery-sqlite`); see [session management](session-management.md) |
-| `auth-sessions-postgres` | no | `auth` plus the PostgreSQL account registry, opaque sessions and session inventory (Auth `recovery-postgres`) |
+| `auth-sessions-sqlite` | no | v13 candidate: `auth` plus the SQLite account registry, opaque sessions and session inventory (Auth `recovery-sqlite`); see [session management](session-management.md) |
+| `auth-sessions-postgres` | no | v13 candidate: `auth` plus the PostgreSQL account registry, opaque sessions and session inventory (Auth `recovery-postgres`) |
 | `auth-email-login-sqlite` | no | v13 candidate: `auth` plus email login over the SQLite recovery accounts and sessions; see [the email-login contract](email-login.md) |
 | `auth-email-login-postgres` | no | v13 candidate: `auth` plus email login over the PostgreSQL recovery accounts and sessions |
 | `auth-api-tokens-sqlite` | no | v13 candidate: `auth` plus scoped API tokens over the SQLite recovery backend; see [the API-token contract](api-tokens.md) |
@@ -211,6 +214,8 @@ Default features: none.
 | `cache-redis` | Redis-backed cache storage |
 | `redis` | Convenience alias for both Redis queue and cache backends |
 | `offline-sync` | Native bounded offline state, AES-256-GCM snapshots, and timeout/budget/cursor-checked transport orchestration; excludes platform storage and a concrete authenticated transport |
+| `storage-s3` | v13 candidate: bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs |
+| `storage-multipart` | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
 | `studio` | Integration marker used by the umbrella Studio boundary; it adds no dependency by itself |
 | `telemetry` | OpenTelemetry tracing and OTLP export dependencies |
 | `strict-postgres` | `orm` plus the ORM PostgreSQL backend selection |
@@ -273,9 +278,13 @@ boundary are defined in the packaged crate README and the
 
 | Feature | Enables |
 | --- | --- |
-| `strict-postgres` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes in v12 |
-| `strict-mysql` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes in v12 |
-| `strict-sqlite` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes in v12 |
+| `runtime-driver-codecs` | Enum codecs follow the ORM runtime's selected SQLx drivers; `rullst-orm` enables it |
+| `runtime-feature-gates` | v13 candidate: Redis and embedding APIs are emitted or omitted at expansion time from the forwarded `redis`/`ai` features instead of the application's own features; `rullst-orm` enables it |
+| `redis` | v13 candidate: forwarded by `rullst-orm/redis`; emits the Redis cache, hash and event code under `runtime-feature-gates` |
+| `ai` | v13 candidate: forwarded by `rullst-orm/ai`; emits `save_with_embedding` under `runtime-feature-gates` |
+| `strict-postgres` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes |
+| `strict-mysql` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes |
+| `strict-sqlite` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes |
 
 ### `rullst-connect`
 
@@ -298,13 +307,17 @@ types remain available without a web-framework adapter.
 
 Default features: none. The deterministic process-local broker, versioned
 envelope, idempotency, consumer groups, leases, retry, dead-letter, and purge
-contracts are available without optional dependencies. Remote broker adapters
-are not implemented and therefore are not represented by placeholder features.
+contracts are available without optional dependencies. The only remote broker
+adapter is the unpublished v13 Redis Streams candidate; other remote brokers
+are not implemented and have no placeholder features.
 
 | Feature | Enables |
 | --- | --- |
 | `sqlite` | Fixed-schema durable local broker with serialized SQLite writes and immutable plaintext or explicit AES-256-GCM content profiles; restart/corruption/rotation/tamper/two-instance evidence is local, while metadata visibility, key custody and remote replication/failover remain explicit boundaries |
 | `orm-outbox` | Static bridge from the relational `rullst-orm` outbox to one configured broker topic, with exact replay after the publish-before-ACK crash window; worker operations and remote atomicity remain application boundaries |
+| `redis-streams` | v13 candidate: standalone Redis Streams broker with Rullst-owned fenced delivery indexes; see [Redis Streams messaging](redis-messaging.md) |
+| `schedules-postgres` | v13 candidate: encrypted PostgreSQL recurring-publication outbox and fenced relay into a `MessageBroker`; enables neither SQLite nor ORM |
+| `webhooks` | v13 candidate: `sqlite` plus one immutable approved HTTPS destination, HMAC-SHA256 signing, bounded retry/dead-letter state, cancellation and terminal retention |
 
 ### `rullst-iot`
 
@@ -349,9 +362,21 @@ Default features: none.
 | `oauth` | Optional `rullst-connect` OAuth2/OIDC integration and re-exports |
 | `jwt` | Application-issued JWT claims, key rotation, and revocation-store policy |
 | `sqlite` | `jwt` plus bounded file-backed shared JWT revocation and passkey device lifecycle state |
+| `recovery-sqlite` | SQLite account registry, recovery and opaque sessions (`SqlRecoveryStore`); the v13 candidate adds session inventory/logout |
+| `recovery-postgres` | The same recovery store on PostgreSQL |
+| `passkey-postgres` | v13 candidate: shared account/session-bound PostgreSQL passkey ceremonies |
+| `email-login-sqlite` | v13 candidate: `recovery-sqlite` plus email login over its accounts and sessions; see [the email-login contract](email-login.md) |
+| `email-login-postgres` | v13 candidate: `recovery-postgres` plus email login |
+| `api-tokens-sqlite` | v13 candidate: `recovery-sqlite` plus scoped API tokens; see [the API-token contract](api-tokens.md) |
+| `api-tokens-postgres` | v13 candidate: `recovery-postgres` plus scoped API tokens |
 
-The umbrella crate exposes these as `auth-jwt` and `auth-sqlite`; both enable
-`auth`, while `auth-sqlite` also enables `auth-jwt`.
+The umbrella crate exposes `jwt` and `sqlite` as `auth-jwt` and `auth-sqlite`
+(`auth-sqlite` also enables `auth-jwt`), `recovery-*` as `auth-sessions-*`,
+`passkey-postgres` as `auth-passkey-postgres`, and the email-login and
+API-token features as `auth-email-login-*` and `auth-api-tokens-*`; each
+enables `auth`. `account-mail-*` also selects `recovery-*`. The umbrella does
+not forward Auth's `oauth`; its own `oauth` feature adds `rullst-connect`
+directly.
 
 ### `rullst-security`
 
@@ -363,6 +388,17 @@ Default features: none.
 
 The umbrella crate exposes this as `security-redis`, which also enables
 `security`.
+
+### `rullst-ai`
+
+Default features: none. Provider clients, prompt inspection and PII masking
+are always available.
+
+| Feature | Enables |
+| --- | --- |
+| `sql-memory` | `SqlChatMemory`: tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL and MariaDB |
+
+The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 
 ## Dashboard crates
 
@@ -383,15 +419,33 @@ The umbrella crate exposes this as `security-redis`, which also enables
 
 Use the same single-selection rule described for `rullst-orm`.
 
+## Unpublished v13 candidate packages
+
+`rullst-supervision` and `rullst-media` are in the v13 release inventory but
+have no umbrella features; depend on them directly. Neither has default
+features.
+
+| Crate | Feature | Enables |
+| --- | --- | --- |
+| `rullst-supervision` | `exam` | Typed exam sessions, collection categories and browser/capture observations |
+| `rullst-supervision` | `parental` | Course/window parental restriction policies |
+| `rullst-supervision` | `analysis` | `exam` plus bounded camera-presence/audio-activity adapter contracts |
+| `rullst-supervision` | `sqlite` | `exam` and `parental` plus the shared-local SQLite store |
+| `rullst-media` | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and the browser upload module |
+| `rullst-media` | `sqlite` | Shared-local durable assets, leased operations and the application service |
+
+`rullst-labs` (`publish = false`) is outside the release inventory. Its
+`sqlite` feature adds encrypted shared-local job storage and
+`receipt-signing` the runner controller's receipt signing.
+
 ## Packages without optional features
 
-These packages have no public optional Cargo features in v12:
+These packages have no public optional Cargo features:
 
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `rullst-ai` | Provider clients, prompt inspection, and PII masking |
-| `cargo-rullst` | CLI commands, generators, auditing, and deployment helpers |
+| `cargo-rullst` | CLI commands, generators, auditing, and deployment helpers; its internal `maintainer-tools` feature only builds the repository's `sync-badges` tool and is not part of the installed CLI |
 
 No optional feature does not mean that a provider is contacted automatically.
 External integrations still require explicit runtime configuration and use the

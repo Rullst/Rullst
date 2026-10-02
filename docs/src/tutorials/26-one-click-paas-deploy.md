@@ -77,7 +77,7 @@ by UID/GID 10001 when attaching persistent storage.
 Apply migrations in one bounded pre-deployment job and start application
 replicas only after it succeeds. Automatically running migrations inside every
 replica creates an avoidable concurrent-startup race and is therefore not the
-v12 default. The generated `fly.toml`, `railway.json` and `render.yaml` probe
+default. The generated `fly.toml`, `railway.json` and `render.yaml` probe
 `/health` (Fly also `/ready`); starters created by `cargo rullst new` mount
 `rullst::health::health_router()` for both. An application created otherwise
 must mount those routes before configuring platform probes; a redirect to login
@@ -98,25 +98,26 @@ support IPv6 SCP targets.
 cargo rullst foundry:init
 ```
 
-This generates `Foundry.toml` at your project root and automatically adds it to `.gitignore` to protect sensitive server credentials:
+This generates `Foundry.toml` at your project root and automatically adds it to `.gitignore` to protect sensitive server credentials.
+An excerpt, edited with example values (the generated file also has `[deploy]`,
+`[build]`, `[database]` and `[caddy]` sections):
 
 ```toml
-# Foundry.toml — Rullst Deployment Manifest
 [app]
 name = "my_rullst_app"
 domain = "api.mycompany.com"
+port = 3000
 
 [server]
 host = "203.0.113.50"
 user = "root"
-ssh_port = 22
 ssh_key = "~/.ssh/id_ed25519"
+ssh_port = 22
 
 [env]
 RULLST_ENV = "production"
-PORT = "3000"
-DATABASE_URL = "sqlite:///opt/rullst/my_rullst_app/data/db.sqlite"
 APP_KEY = "REPLACE_WITH_A_STRONG_RANDOM_KEY"
+DATABASE_URL = "sqlite:///opt/rullst/my_rullst_app/data/db.sqlite"
 ```
 
 Caddy proxies to the `[app] port` (3000 when omitted) and the health check

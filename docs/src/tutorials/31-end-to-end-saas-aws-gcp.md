@@ -6,9 +6,8 @@ operation, secrets, billing and recovery remain deployment responsibilities.
 
 ## 1. Materialize and verify the SaaS starter
 
-Install the matching `12.1.0` CLI after crates.io indexes it, then generate
-deterministically. Do not substitute the moving `main` branch for an immutable
-release artifact:
+Install the published `12.1.0` CLI, then generate deterministically. Do not
+substitute the moving `main` branch for an immutable release artifact:
 
 ```bash
 cargo install cargo-rullst --version 12.1.0 --locked

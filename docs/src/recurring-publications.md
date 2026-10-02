@@ -159,6 +159,6 @@ non-durable tables, quotas, retry limits, cancellation, fresh processes and actu
 PostgreSQL restart. An encrypted SQLite broker journey verifies acceptance before
 lost ACK, reopen/replay deduplication and real consumer delivery. No provider
 account is used. The same native journey passed through an extracted facade
-consumer, with Messaging source bytes matched against its archive. Full hosted
-workspace, coverage/security and source admission remain required before
-declaring the feature complete.
+consumer, with Messaging source bytes matched against its archive. Combined
+hosted and extracted-package source admission then passed in PR #239; final
+release acceptance remains separate.

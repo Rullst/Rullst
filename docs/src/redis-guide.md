@@ -50,13 +50,15 @@ Ok(())
 }
 ```
 
-Constructing the driver validates the Redis URL but does not establish a
-connection. The first operation opens one multiplexed async connection that
-later operations share; it is not reopened per command. When that connection
-breaks, the failing operation returns a typed `CacheError` and the next one
-reconnects. Operations also return `CacheError` if Redis is unavailable. Choose an application-specific policy:
-fail startup, retry with bounds, or explicitly select `Cache::memory()` for a
-documented single-instance development mode.
+A zero TTL removes the key, and a TTL beyond Redis's expiry range is stored
+without expiry, as in the memory driver. Constructing the driver validates the
+Redis URL but does not establish a connection. The first operation opens one
+multiplexed async connection that later operations share; it is not reopened
+per command. When that connection breaks, the failing operation returns a typed
+`CacheError` and the next one reconnects. Operations also return `CacheError`
+if Redis is unavailable. Choose an application-specific policy: fail startup,
+retry with bounds, or explicitly select `Cache::memory()` for a documented
+single-instance development mode.
 
 The built-in Redis cache prefixes keys with `rullst:cache:`. `flush()` scans and
 unlinks keys under that prefix; use dedicated credentials/database boundaries
@@ -107,10 +109,14 @@ their key and require `with_tenant(...)`. Hashes that 12.0 and 12.1 wrote under
 [Model hashes stored by 12.0 and 12.1](#model-hashes-stored-by-120-and-121).
 
 Use a stable, unique namespace for every application that shares a Redis
-database. Query keys bind that namespace, an opaque digest of the active tenant
-scope, table, generated SQL and typed bindings. They do not expose raw tenant
-identifiers. The older `Orm::init_redis(url)` API remains available and uses
-`default`; only use it with a dedicated Redis database.
+database. Query keys bind that namespace, the table, generated SQL and typed
+bindings and, for a model with a `tenant_column`, an opaque digest of the
+active tenant; other models share one global entry. They do not expose raw
+tenant identifiers. Entries live under `rullst:orm:cache:v4:<namespace>:` and
+model hashes under `rullst:orm:hash:v1:<namespace>:`. Cache entries written by
+earlier versions are never read again and expire through their TTL. The older
+`Orm::init_redis(url)` API remains available and uses `default`; only use it
+with a dedicated Redis database.
 
 The failure and consistency rules are explicit:
 
@@ -120,11 +126,13 @@ The failure and consistency rules are explicit:
 - Redis command failures or corrupt JSON fall back to the authoritative
   database; a successful read is returned even if cache population fails.
 - Explicit and task-scoped ORM transactions always bypass query cache.
-- Generated model saves/deletes invalidate the active tenant/table's remembered
-  results only after a managed commit; rollback keeps existing cache entries. Raw SQL, bulk
-  builders and writes from another process cannot be inferred. Keep defensive
-  TTLs and do not cache authorization or reads that require a stronger
-  distributed consistency contract.
+- Generated model saves/deletes invalidate the table's global entries and, for
+  a tenant-scoped model, those of the tenant active at the write, only after
+  commit; rollback keeps existing cache entries. Each write follows the
+  table's key index (at most 10,000 live keys), never a keyspace `SCAN`. Raw
+  SQL, bulk builders and writes from another process cannot be inferred. Keep
+  defensive TTLs and do not cache authorization or reads that require a
+  stronger distributed consistency contract.
 
 The Core `Cache` facade and ORM query cache use different keyspaces and APIs;
 initializing one does not initialize the other.
@@ -186,8 +194,9 @@ dead-letter state. Failed jobs (with their payloads) and dead letters are each
 retained up to 10,000 entries; recording one more evicts the oldest in the same
 script. `RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)`
 accepts 1–100,000 for each (pass the configured driver to `Queue::custom`).
-Failed jobs recorded before this bound was introduced are not indexed, so they
-are neither counted nor evicted, but `purge_failed_jobs` removes them.
+Failed jobs recorded before this bound was introduced (for example by 12.x
+workers) are not indexed, so they are neither counted, listed nor evicted;
+`retry_failed_job` still finds them by ID and `purge_failed_jobs` removes them.
 `list_all_jobs` returns at most 1,000 rows, failures and dead letters first,
 and `list_job_previews` (unpublished v13) returns the same rows with each
 payload and error cut to a byte budget inside one Lua script;
@@ -205,9 +214,11 @@ drain/migration plan.
 
 Core's current WebSocket broadcast/presence helpers are process-local. They
 release channels without subscribers and empty presence rooms, so the registry
-tracks live rooms rather than every name ever used. Redis
-Streams, Redis Pub/Sub, Kafka, and RabbitMQ transports remain roadmap work; do
-not describe the cache or queue adapter as cross-instance real-time sync.
+tracks live rooms rather than every name ever used. Redis Pub/Sub, Kafka, and
+RabbitMQ real-time transports remain roadmap work; do not describe the cache or
+queue adapter as cross-instance real-time sync. The unpublished v13
+[Redis Streams messaging](redis-messaging.md) candidate in `rullst-messaging`
+is at-least-once brokered delivery, not WebSocket fan-out.
 
 ## Deployment checklist
 

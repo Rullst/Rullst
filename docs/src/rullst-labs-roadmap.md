@@ -207,8 +207,9 @@ criteria above, including independent review of the selected backend, remain
 distinct requirements; automated tests do not substitute for that evidence.
 
 The September 23 feature freeze and September 24–26 validation/publication
-window remain unchanged. Pursue this outcome before other optional features,
-but do not promise the full runner before its acceptance evidence exists. If
+window applied to this target. Pursue this outcome before other optional
+features, but do not promise the full runner before its acceptance evidence
+exists. If
 incomplete at freeze, retain an explicit experimental boundary and carry the
 missing journey forward. Additional languages, OCI/microVM backends and full
 CTF infrastructure do not block completion of a supported first profile and

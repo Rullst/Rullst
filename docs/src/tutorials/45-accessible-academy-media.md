@@ -10,7 +10,7 @@ browser receives accessible media markup and an escaped transcript.
 cargo rullst new language-academy --default --blueprint lms \
   --skip-initial-migration
 cd language-academy
-cargo test --offline --all-targets
+cargo test --all-targets
 ```
 
 The starter includes the course catalog, modules, lessons, this accessible
@@ -42,7 +42,12 @@ WEBVTT
 Bem-vindo à primeira atividade.
 ```
 
-The blueprint intentionally does not copy a media binary. Add your reviewed
+The blueprint intentionally does not copy a media binary. Its four seeded
+development lessons point at remote sample video/audio files, and its two
+video lessons use the generated `static/media/memory-safety.en.vtt` and
+`static/media/first-project.en.vtt` captions. The default CSP
+(`default-src 'self'`) does not allow that remote media, so replace the seeded
+lessons in Nexus (`/nexus`) with your own content. Add your reviewed
 audio/video asset or application-specific object-storage delivery, then use a
 same-origin path such as `/static/media/lesson.webm`. If you choose a remote
 host, add only that reviewed origin to the application's `media-src` CSP; do
@@ -74,9 +79,13 @@ stored event, while a later save, or another button, records new progress.
 
 ## Evidence boundary
 
-Repository tests materialize the generated SQLite project and exercise both
-successful renderers and negative source/metadata cases. They do not prove
-codec support, buffering behavior, screen-reader quality, subtitle accuracy,
-microphone or speech recognition, physical mobile devices, CDN delivery or app
-store behavior. Run browser accessibility tests with your real content and
-deployment before making those claims.
+Repository tests check the generated player source for its caption track,
+native controls, source and transcript bounds, and the absence of autoplay,
+inline styles and `hx-` attributes. They also materialize the generated SQLite
+project and run its own tests (catalog query bounds, progress keys and the
+learning service's owner boundary); no generated test renders the player or
+its rejected source/metadata cases. They do not prove codec support, buffering
+behavior, screen-reader quality, subtitle accuracy, microphone or speech
+recognition, physical mobile devices, CDN delivery or app store behavior. Run
+browser accessibility tests with your real content and deployment before making
+those claims.

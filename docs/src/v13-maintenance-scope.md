@@ -275,7 +275,7 @@ application operator now owns the runner's isolation, review, deployment and
 updates. Isolation evidence must match the deployed toolchain and image.
 
 `rullst-labs` still declares `13.0.0-alpha.1` with publication disabled and is
-not part of the published 12.1.1 release. There is one wire protocol and no
+not part of any published 12.x release. There is one wire protocol and no
 adapter layer; interchangeable external executors are not implemented. The
 removed candidate's [first-profile record](labs-first-profile.md) remains a
 reference design, not a supported runner.

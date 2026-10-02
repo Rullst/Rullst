@@ -23,7 +23,7 @@ application that mounts them.
 | **TOTP Multi-Factor Auth** | 🟢 `[Implemented: foundation]` | Six-digit SHA-1 TOTP generation/verification with a ±1 time-step window, percent-encoded `otpauth` URI builder, and subject-bound single-use recovery-code verifiers. Enrollment, transactional persistence, rate limits, and account policy remain application concerns. |
 | **CSWSH Guard** | 🟢 `[Implemented]` | Exact normalized scheme/host/port validation for WebSocket origins, with a fail-closed default for missing origins. Without an allowlist, the Origin must match the `Host` (or HTTP/2 `:authority`) and, when known from a trusted proxy or HTTP/2 `:scheme`, the request scheme. |
 | **Canonical Server security stack** | 🟡 `[Partial]` | CSP nonce identity is shared across Core and extended layers, but Core still owns the default Server CSRF/WAF/header/PII stack. Explicit composition is required. |
-| **Distributed Rate Limiting Evidence** | 🟡 `[Partial]` | The Redis adapter is implemented, but real cross-instance, eviction/failover and trusted-proxy deployment tests remain required. The legacy no-argument distributed selector still returns `Unsupported` rather than guessing configuration. |
+| **Distributed Rate Limiting Evidence** | 🟡 `[Partial]` | The Redis adapter is implemented, and the two-process [deployment acceptance](../deployment-acceptance.md) behind a Caddy proxy shares one Redis budget; eviction, failover and trusted-proxy deployment evidence remain required. The legacy no-argument `RateLimiter::try_with_distributed` still returns `DistributedBackendUnsupported` rather than guessing configuration. |
 
 ---
 

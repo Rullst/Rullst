@@ -214,8 +214,9 @@ credential is its valid loopback configuration. Offline branches return before
 HTTP dispatch and cover each capability the provider declares. Unsupported
 capabilities remain typed errors in offline mode.
 
-`AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
-`DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
+`AiClient::auto()` checks `OPENAI_API_KEY` (with `OPENAI_BASE_URL` and `OPENAI_MODEL` for a
+compatible endpoint), `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY`
+(with `GROQ_MODEL`) and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
 it does not probe localhost implicitly. `OLLAMA_HOST` (and the host given to `OllamaProvider::new`)
 is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
 port 11434 unless a port is named.
@@ -261,9 +262,10 @@ levels, 32 items per array and 4,096 generated values; larger schemas fail with
 
 ## Current boundaries
 
-Streaming for non-compatible provider protocols, provider-native tool execution
-loops, first-party external vector-store `RagRetriever` adapters, maintained
-domain-specific evaluation corpora, and compile-time schema derivation remain roadmap work. The
+Streaming for the OpenAI, DeepSeek and Ollama transports (outside the
+compatible adapter), provider-native tool execution loops, first-party external
+vector-store `RagRetriever` adapters, maintained domain-specific evaluation
+corpora, and compile-time schema derivation remain roadmap work. The
 SQL memory does not supply raw-text encryption, ownership within a tenant,
 retention or provider auditing; the in-memory vector utilities and tool registry
 do not create an authorization boundary by themselves. Authenticated audit

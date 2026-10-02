@@ -4,7 +4,8 @@ The Command Line Interface (`cargo-rullst`) scaffolds projects, invokes build
 tools, and provides bounded static-analysis and deployment helpers.
 
 The CLI's `--help` output is authoritative for the installed version. This page
-documents the principal version 12 commands and their security boundaries.
+documents the principal commands of the unreleased version 13 CLI and their
+security boundaries.
 
 ---
 
@@ -26,8 +27,9 @@ and a summary of where you are.
   project operation of earlier releases. Started from a subdirectory, menu
   commands run at the project root (except `new`). The migration count is the
   files on disk; run `cargo rullst db:status` for the applied state.
-* **Outside a project**: project creation comes first, followed by the docs
-  links ([start here](start-here.md) and this reference).
+* **Outside a project**: the summary links the docs ([start here](start-here.md)
+  and this reference) and the menu leads with project creation, followed by
+  the operations for an existing project.
 
 Both menus include **Search All Commands**, a fuzzy command palette over every
 command, including the ones attached at runtime (`update ...`, `make:privacy`,
@@ -53,6 +55,12 @@ menu stays interactive. When standard input, output or error is not a
 terminal, `CI` is set or `TERM=dumb`, the CLI prints the plain line, the
 summary and the equivalent commands, then exits successfully without
 prompting.
+
+In a terminal the home also asks crates.io in the background for a newer
+stable `cargo-rullst` of the same major and prints a notice under the summary
+when that answer has already arrived; nothing is installed or cached.
+`RULLST_DISABLE_UPDATE_CHECK=1`, `CARGO_NET_OFFLINE=true` or `CI=true` turns
+the query off.
 
 ### Errors and exit codes
 Every failure is printed on standard error by one shared report:
@@ -154,9 +162,10 @@ tool is missing. `database.status` is `configured`, `not_configured` or
 `git` or `workspace`.
 
 ### `cargo rullst new <name>`
-Creates a Rullst project from scratch. Version 12 intentionally generates one
-audited application architecture: Active Record for database-backed code and
-server-rendered `html!` views enhanced with HTMX for full-stack pages.
+Creates a Rullst project from scratch. Since version 12, `new` intentionally
+generates one audited application architecture: Active Record for
+database-backed code and server-rendered `html!` views enhanced with HTMX for
+full-stack pages.
 
 In a terminal, `cargo rullst new` (with or without a name) runs the v13
 create wizard; the home screen's **Create New Project** entry runs the same
@@ -195,7 +204,9 @@ generated welcome page (`http://127.0.0.1:<port>`, where the port comes from
 APIs show a `curl` command instead).
 
 The choices that materially change the generated application:
-* **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
+* **Starter Blueprint:** Blank, LMS Platform, SaaS Starter, Blog / Press,
+  Portfolio and ERP Pocket (`--blueprint` values `blank`, `lms`, `saas`,
+  `blog`, `portfolio` and `erp`).
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
   MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. The optional selector
@@ -205,7 +216,7 @@ The choices that materially change the generated application:
 * **Application profile:** HTML blueprints use the audited `html!` SSR/HTMX path;
   `--api` uses the headless JSON path. Repository, LiveView, Wasm Island,
   Pico.css and Tera foundations remain application-owned APIs and are not
-  presented as equivalent v12 generated profiles.
+  presented as equivalent generated profiles.
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
@@ -276,7 +287,7 @@ network-dependent bootstrap work:
 cargo rullst new packaged-saas --default --blueprint saas --skip-initial-migration
 ```
 
-A complete deterministic profile can pin every supported v12 generation axis:
+A deterministic profile can pin the blueprint, database and optional features:
 
 ```bash
 cargo rullst new operations-portal --default --blueprint erp \
@@ -317,8 +328,10 @@ or application-specific authorization.
 
 The LMS blueprint generates a small starter: catalog, courses, modules,
 lessons, an accessible player, enrollment, progress, login and a Nexus admin.
-It supports hot reload and has no module profiles; v13 retired `--lms-modules`
-and the earlier complete Academy scaffold.
+Like every starter it reloads under `cargo rullst dev`/`dash` (the retired
+`--hot-reload` DLL profile is rejected for every blueprint). It has no module
+profiles; v13 retired `--lms-modules` and the earlier complete Academy
+scaffold.
 
 ```bash
 cargo rullst new academy --default --blueprint lms --skip-initial-migration
@@ -375,8 +388,8 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog parses Rust sources (with
-`syn`; comments, doc comments and strings never match an API rule), Cargo
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (98 rules) parses Rust sources
+(with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
 behaviour of an API, feature or configuration in use) with a stable `V13-*`
@@ -391,7 +404,7 @@ or `REVIEW`) and `message` and adds `kind`, `migration_row` and
 findings. See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
 
-In 12.1, managed requirements use exact `=VERSION` pins. The final
+Since 12.1, managed requirements use exact `=VERSION` pins. The final
 `cargo check --workspace --all-targets --locked` validates the lockfile produced
 by `cargo fix` without resolving a different version. Broader dependency ranges
 remain an application decision after reviewing the update.
@@ -408,15 +421,17 @@ The command does not install the CLI globally, rewrite Axum/SQLx/Tokio imports,
 run database migrations, modify secrets or authorization, validate live
 providers, or replace the project's test suite. Follow the
 [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md) and the
-relevant [v12 migration guide](migration-v12.md).
+[v13 migration guide](migration-v13.md).
 
-### `cargo rullst update check` (12.1.0 working source; unreleased)
+<a id="cargo-rullst-update-check-1210-working-source-unreleased"></a>
+
+### `cargo rullst update check` (since 12.1.0)
 
 Advisory release discovery; it does not install a CLI or migrate an application.
 
 ```bash
 cargo rullst update check
-cargo rullst update check --to 12.1.0 --json
+cargo rullst update check --to VERSION --json
 cargo rullst update check --refresh
 cargo rullst update check --offline --json
 cargo rullst update check --no-cache
@@ -450,20 +465,22 @@ grants no installation, project or deployment authority. Cached metadata is
 not proof of current yank status or artifact authenticity. See the
 [upgrade guide](tutorials/36-assisted-framework-upgrades.md).
 
-### `cargo rullst update verify` (12.1.0 working source; unreleased)
+<a id="cargo-rullst-update-verify-1210-working-source-unreleased"></a>
+
+### `cargo rullst update verify` (since 12.1.0)
 
 Authenticate a downloaded native CLI inventory and both executables:
 
 ```bash
-cargo rullst update verify --to 12.1.0 --directory ./downloaded-cli --json
+cargo rullst update verify --to VERSION --directory ./downloaded-cli --json
 ```
 
 This requires the exact release's `cli-manifest-TARGET.json`,
 `cargo-rullst-VERSION-TARGET[.exe]` and `rullst-VERSION-TARGET[.exe]`.
 The directory may contain other downloads; only these fixed names are read.
-No archive is extracted and no downloaded executable is run. The prepared
-pipeline supports Linux x64 GNU, Windows x64 MSVC and macOS x64/ARM64; native
-artifact publication remains pending. Published 12.0.0 has no such inventory.
+No archive is extracted and no downloaded executable is run. Releases since
+12.1.0 publish this inventory for Linux x64 GNU, Windows x64 MSVC and macOS
+x64/ARM64; 12.0.0 has none, and no v13 release has been published yet.
 
 The caller-installed GitHub CLI must be available through an absolute trusted
 PATH entry and support [attestation verification](https://cli.github.com/manual/gh_attestation_verify).
@@ -481,10 +498,10 @@ token and does not recheck registry yank status. A later installer must validate
 current release eligibility and reread/reverify the candidate. Hostile same-user
 writers and a compromised verifier/PATH are outside this boundary.
 
-### `cargo rullst update stage` (12.1.0 working source; unreleased)
+### `cargo rullst update stage` (since 12.1.0)
 
 ```bash
-cargo rullst update stage --to 12.1.0 --json
+cargo rullst update stage --to VERSION --json
 ```
 
 This exact version must be published and non-yanked. Another major requires
@@ -501,15 +518,17 @@ leave an incomplete private directory; subsequent stages never reuse its files.
 The `rullst.cli-staging.v1` report names the retained private directory and source
 identity. Files remain unexecuted and uninstalled. No project files change. This
 report grants no future installation authority: an installer must revalidate the
-release, provenance and file contents. Published 12.1.0 asset acceptance and native
-staging checks remain release requirements.
+release, provenance and file contents. Native staging checks remain release
+requirements.
 
-### `cargo rullst update guided` (12.1.0 working source; unreleased)
+<a id="cargo-rullst-update-guided-1210-working-source-unreleased"></a>
+
+### `cargo rullst update guided` (since 12.1.0)
 
 ```bash
-cargo rullst update guided --to 12.1.0 --scope both \
+cargo rullst update guided --to VERSION --scope both \
   --root "$HOME/.local/share/rullst-cli" --project ./my-app
-cargo rullst update guided --to 12.1.0 --scope project --project ./my-app --offline
+cargo rullst update guided --to VERSION --scope project --project ./my-app --offline
 ```
 
 This interactive entry point composes the same authenticated installation and
@@ -532,13 +551,13 @@ it: use `--scope cli --allow-major` first, then explicitly invoke the new CLI's
 project flow. PATH, databases and deployments are not changed.
 
 Piped input/output rejects before I/O; use the explicit commands with JSON and
-review digests for automation. This flow does not make unpublished 12.1.0 assets
-available or bypass release eligibility, provenance, ownership or recovery checks.
+review digests for automation. This flow does not bypass release eligibility,
+provenance, ownership or recovery checks.
 
-### `cargo rullst update install review` (12.1.0 working source; unreleased)
+### `cargo rullst update install review` (since 12.1.0)
 
 ```bash
-cargo rullst update install review --to 12.1.0 --directory STAGED_FILES \
+cargo rullst update install review --to VERSION --directory STAGED_FILES \
   --root "$HOME/.local/share/rullst-cli" --json
 ```
 
@@ -559,10 +578,10 @@ reviewed manager use. Offline mode rejects before I/O. The destination is not
 created and neither the probes nor fallback command run. The digest grants no
 writes until passed explicitly to `apply`.
 
-### `cargo rullst update install apply` / `recover` (12.1.0 working source; unreleased)
+### `cargo rullst update install apply` / `recover` (since 12.1.0)
 
 ```bash
-cargo rullst update install apply --to 12.1.0 --directory STAGED_FILES \
+cargo rullst update install apply --to VERSION --directory STAGED_FILES \
   --root "$HOME/.local/share/rullst-cli" --approved-review REVIEW_SHA256 --json
 cargo rullst update install recover --root "$HOME/.local/share/rullst-cli" \
   --approved-review REVIEW_SHA256 --json
@@ -594,12 +613,14 @@ incomplete historical evidence requires manual review. On Windows, closing an
 older running CLI may be necessary before its historical executable is pruned.
 Native fault and complete user-journey acceptance remain release requirements.
 
-### `cargo rullst update project prepare` (12.1.0 working source; unreleased)
+<a id="cargo-rullst-update-project-prepare-1210-working-source-unreleased"></a>
+
+### `cargo rullst update project prepare` (since 12.1.0)
 
 Prepare dependency edits in a private source copy for review:
 
 ```bash
-cargo rullst update project prepare --project ./my-app --to 12.1.0 --json
+cargo rullst update project prepare --project ./my-app --to VERSION --json
 ```
 
 The project must be a Git working directory containing `Cargo.toml`. The default
@@ -640,11 +661,12 @@ deleted by the caller after use.
 
 Preparation executes no builds, procedural macros or tests, does not resolve a
 new candidate lockfile, and authorizes neither execution nor application. The
-copy is not a sandbox. Candidate verification is described below; application
-and recovery for this new flow remain unfinished. The existing `upgrade`
-command remains separate.
+copy is not a sandbox. Candidate verification, review, application and
+recovery are described below. The existing `upgrade` command remains separate.
 
-### `cargo rullst update project verify` (12.1.0 working source; unreleased)
+<a id="cargo-rullst-update-project-verify-1210-working-source-unreleased"></a>
+
+### `cargo rullst update project verify` (since 12.1.0)
 
 Review the commands and then explicitly authorize trusted project execution:
 
@@ -688,7 +710,7 @@ The report is not a reusable apply token and grants no application/deployment
 authority. Final native application/recovery acceptance remains open.
 Retained source copies can consume up to about 2 GiB, plus build outputs/logs.
 
-### `cargo rullst update project review` (12.1.0 working source; unreleased)
+### `cargo rullst update project review` (since 12.1.0)
 
 ```bash
 cargo rullst update project review --verified PATH --json
@@ -706,7 +728,7 @@ JSON contains `rullst.project-review.v1`, before/after file hashes, the full
 authorization to apply changes; review does not invoke the legacy in-place
 upgrade command. The digest also binds the source access policies.
 
-### `cargo rullst update project apply|recover` (12.1.0 working source; unreleased)
+### `cargo rullst update project apply|recover` (since 12.1.0)
 
 ```bash
 cargo rullst update project apply --verified PATH --approved-review SHA256 --json
@@ -739,9 +761,11 @@ files that require them need manual handling. Native and process-interruption/po
 Recovery does not undo application-code effects, databases or deployments.
 
 ### `cargo rullst pkg <action> [name]`
-Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
+Adds or lists `rullst-*`/`rullst_*` crate dependencies in the local
+`Cargo.toml`. It executes no package code, queries no registry and changes no
+application routing; Cargo resolves the crate on the next build.
 * **Subcommands:**
-  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`. In a virtual workspace manifest it adds the entry to `[workspace.dependencies]`, for members to use with `{ workspace = true }`.
+  * `add <package_name>`: Adds the dependency (e.g., `cargo rullst pkg add rullst-auth`) to `Cargo.toml` with this CLI's version as its requirement; an existing entry is left unchanged. In a virtual workspace manifest it adds the entry to `[workspace.dependencies]`, for members to use with `{ workspace = true }`.
   * `list`: Scans and lists all active `rullst-*` community extensions installed in your project (the workspace dependencies of a virtual workspace manifest).
 
 An unknown action, or `add` without a package name, fails with a non-zero exit
@@ -779,10 +803,12 @@ application's authorization-negative tests.
   * `--api`: Scaffolds a headless JSON API resource controller instead of HTML views.
 
 ### `cargo rullst make:controller <name>`
-Generates a new Controller in the `src/controllers/` directory. It creates
-placeholder CRUD methods (`index`, `show`, `store`, `update`, `delete`) and
-registers the Rust module in `main.rs` when that file exists; it does not add
-application routes automatically.
+Generates `src/controllers/<name>_controller.rs` (`posts` and
+`PostsController` both produce `posts_controller.rs`) with placeholder CRUD
+handlers (`index`, `show`, `store`, `update`, `delete`). It registers the
+module in `src/controllers/mod.rs` and adds `pub mod controllers;` to
+`src/main.rs` when that file exists; it does not add application routes
+automatically.
 * **Arguments:** `<name>` (e.g., `UsersController` or `users`). A name whose
   module or type would not be a non-keyword Rust identifier (for example
   `Bad.Name`) is rejected before any file is edited.
@@ -908,13 +934,14 @@ and uncertain outcomes require separate handling and reconciliation.
 
 ### `cargo rullst make:mail <Name>`
 Scaffolds a registered transactional mailable. `--welcome`, `--reset`, `--otp`
-and `--invoice` select the bounded built-in variants; without a flag the command
-generates a custom message type. It enables the umbrella `mailer` feature, uses
-the `rullst::mail` facade, escapes dynamic HTML and refuses invalid identifiers,
-path traversal or an existing target. Generated mailables set no `from`, so
-the facade uses the `MAIL_FROM` (or `[mail] from`) default sender, which new
-projects list in `.env.example` next to a `MAIL_DRIVER` hint; staging and
-production must select a driver before sending. Delivery credentials, URL
+and `--invoice` select the bounded built-in variants (at most one); without a
+flag the command generates a custom message type. It enables the umbrella
+`mailer` feature, uses the `rullst::mail` facade, escapes dynamic HTML and
+refuses invalid identifiers, path traversal or an existing target. Generated
+mailables set no `from`, so the facade uses the `MAIL_FROM` (or `[mail] from`)
+default sender, which new projects list in `.env.example` next to a
+`MAIL_DRIVER` hint; staging and production must select a driver before
+sending. Delivery credentials, URL
 semantics, tenant policy and provider operation remain application
 responsibilities.
 
@@ -1187,19 +1214,34 @@ errors (reported without file content) and database initialization failures
 also exit with status 1.
 
 ### `cargo rullst db:migrate`
-Analyzes the internal `_rullst_migrations` table in your database and executes all SQL files in the `migrations/` directory that haven't been run yet.
+Runs `cargo run -- db:migrate`, which the application's
+`rullst::artisan!(crate::migrations::get_migrations())` call intercepts. It
+applies, in one new batch, every migration registered in
+`src/migrations/mod.rs` whose name is not yet recorded in the ORM's
+`migrations` table, calling each migration's `up`.
 
 ### `cargo rullst db:rollback`
-Reverts the last applied migration batch. It looks at the latest executed batch, extracts the "Down" section of the SQL file, and executes it to undo changes and remove tables/columns.
+Reverts the last batch: it calls `down` for each migration recorded in the
+latest batch, newest first, and removes their records.
 
 ### `cargo rullst db:status`
-Checks the database connection and prints a table in the terminal comparing the local `migrations/` folder with the database status, detailing exactly what has been run and what is pending.
+Lists every registered migration as `Applied` or `Pending` according to the
+`migrations` table.
 
 ### `cargo rullst db:seed`
-Populates the database using seeder files created in `src/db/seeds.rs`, ideal for injecting an initial administrator or dummy testing data.
+Runs the seeders (`rullst::db::Seeder` implementations) that `main` passes as
+the second argument of `rullst::artisan!(migrations, seeders)`, for example an
+initial administrator or development data.
+
+Turso-primary starters handle `db:migrate`, `db:rollback` and `db:status` in
+their generated `main.rs` through `TursoOrm` instead of `rullst::artisan!`.
 
 ### `cargo rullst studio`
-Launches the local developer Studio on port `:5555`. Treat it as a privileged
+Runs `cargo run -- studio`, which Core's Artisan handler serves as a smaller
+local compatibility UI (database, AI, telemetry, security, capital and span
+pages) on `127.0.0.1:5555` until it stops; it is not the full `rullst-studio`
+router that debug builds of the generated starters start on the same port
+(see [Rullst Studio](3-rullst-studio.md)). Treat it as a privileged
 development tool; do not expose it publicly without an independently reviewed
 authentication, authorization, and TLS boundary.
 
@@ -1302,6 +1344,8 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   never printed. Provider selection: `--provider`, then the saved provider,
   then the first variable above that is set. Model: `--model`, then
   `RULLST_AI_MODEL`, then the saved model, then the provider default.
+  `ai status --json` prints one `rullst.ai-status.v1` object (its `schema`
+  field) with the provider, model and credential source.
 * **`connect` flags:** `--provider <openai|anthropic|claude|gemini|deepseek|ollama|local>`,
   `--model <name>`, `--api-key-stdin` (read the key from the first line of
   standard input, for scripts), `--host <url>` (Ollama, default
@@ -1322,9 +1366,9 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   it, so the review flow can be tried safely.
 * **Actions:** the model may only propose `write_file`, `edit_file` (one exact
   replacement), an allowlisted `cargo rullst` command (`make:*`, `generate:*`
-  except `generate:models`, `db:status`, `db:migrate`, `doctor` without
-  `--fix`, `audit` without `--network`, `inspect` with no target or `routes`,
-  `models` or `schema`, never a file path) or `cargo check`/`cargo test`. `db:migrate` is refused when the project environment, resolved as the
+  except `generate:models` and its `make:models-from-db` alias, `db:status`,
+  `db:migrate`, `doctor` without `--fix`, `audit` without `--network`,
+  `inspect` with no target or `routes`, `models` or `schema`, never a file path) or `cargo check`/`cargo test`. `db:migrate` is refused when the project environment, resolved as the
   application server resolves it (the process `RULLST_ENV`, then the process
   `APP_ENV`, then `RULLST_ENV` or `APP_ENV` from the project `.env`, then
   `[app].env` in `Rullst.toml`), is staging, production or unrecognized. Outside a project the
@@ -1417,6 +1461,8 @@ cargo rullst deploy:doctor --config Rullst.production.toml --process-env
 
 Reuses Core environment/security validation, catches obvious key/configuration
 mistakes and identifies application-policy reviews without echoing values.
+`--target <production|staging>` (default `production`) names the expected
+environment; `--json` prints `rullst.deployment-diagnostic.v1`.
 Explicit environment sources remain separate. Exit zero covers only the inspected
 local profile; `deployment_verified` remains false. See the
 [input and output contract](deployment-diagnostic.md) before using it in CI.
@@ -1425,7 +1471,7 @@ local profile; `deployment_verified` remains false. See the
 Scans source files and prints structural summaries in the terminal without
 starting a server, expanding macros or connecting to a database.
 * **Arguments:**
-  * `[target]`: The item or file to inspect:
+  * `[target]`: The item or file to inspect (default `routes`):
     * `route` or `routes`: Lists `get`/`post`/`put`/`delete` declarations written as `method("path" => handler)` on one line in the regular `.rs` files under `src/`. Like `audit` and `generate:diagram`, the walk does not follow symlinks and is bounded in depth and entries; it reports when a bound left the table incomplete.
     * `model` or `models`: Lists the structs, enums and `pub` fields declared in `src/models`.
     * `schema`: Prints, as JSON, the table, fields, Rust types and optionality of every `#[derive(Orm)]` struct under `src/` (the extractor `make:migration:auto` uses). It describes the models, not the live database. A project-provided `rullst-schema.json` is printed instead when present; Rullst does not generate that file.
@@ -1547,7 +1593,7 @@ and its executable snapshot removed (on Windows, Ctrl+C and closing the console)
 
 No scaffold question is required: `dev` and `dash` enable auto-reload, while
 `cargo run` runs the application normally. The legacy `--hot-reload` scaffold
-flag is rejected in v12 because DLLs can split ORM/Tokio globals. Existing
+flag is rejected (since v12) because DLLs can split ORM/Tokio globals. Existing
 legacy scaffolds can use their directly linked router; the supervisor removes
 `HOT_RELOAD` from its child's environment.
 
@@ -1583,8 +1629,9 @@ kept).
 ### `cargo rullst dockerize` / `cargo rullst nixify`
 Injects infrastructure files into a pre-existing project (similar to the flags
 used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
-absent) and `nixify` writes `flake.nix` and `.envrc`. Both commands, like
-`generate:buildah` for `build_buildah.sh`, refuse to replace an existing file;
+absent), `nixify` writes `flake.nix` and `.envrc`, and `generate:buildah`
+writes `build_buildah.sh`, which builds the `Dockerfile` rootless with
+`buildah bud`. All three refuse to replace an existing file;
 move a customized file aside to regenerate its template. The Dockerfile's binary
 and the Buildah image are named after `[package].name`, read with a TOML parser
 (`app` when `Cargo.toml` has no package name).
@@ -1630,7 +1677,8 @@ The 12.1.0 executable added `cargo rullst omni android --release` for
 an explicit Android release build using application-owned signing inputs. It
 does not change the existing Rust `Commands::Omni` variant or start a backend.
 The v13 development CLI additionally requires `--signing-certificate` and
-`--apksigner-jar` (or their documented environment variables), verifies one
+`--apksigner-jar` (or `RULLST_ANDROID_SIGNING_CERTIFICATE` and
+`RULLST_ANDROID_APKSIGNER_JAR`), verifies one
 fresh release APK against that certificate and reports its SHA-256. Use
 `--apk` to select a relative output when variants are ambiguous and
 `--android-arch` to restrict the native build. Neither a successful build alone
@@ -1651,7 +1699,7 @@ process on port 3000; the backend is stopped when the mobile client exits.
 
 ---
 
-## 🛡️ 4. Security, Compliance & System Diagnostics
+## 🛡️ 6. Security, Compliance & System Diagnostics
 
 ### `cargo rullst audit`
 Executes bounded automated checks across recognized source, configuration,
@@ -1718,9 +1766,9 @@ reverts (`Revert "..."`) and `fixup!`/`squash!`/`amend!` commits. Existing
 active hooks are moved to explicit `.rullst-original` backups and invoked first,
 while reinstalling the managed wrappers is idempotent. The command supports
 linked worktrees, fails clearly outside a Git worktree, and refuses a backup
-collision instead of overwriting it. When `core.hooksPath` (local or global Git
-configuration, as used by Husky or shared hook directories) selects another
-directory, it fails before writing, because Git would never run wrappers in the
+collision instead of overwriting it. When `core.hooksPath` (local, global or
+system Git configuration, as used by Husky or shared hook directories) selects
+another directory, it fails before writing, because Git would never run wrappers in the
 default hooks directory; call the checks from that hook manager instead. These local hooks are bypassable by design;
 protected CI remains authoritative.
 
@@ -1811,6 +1859,26 @@ passing checks. Group ids are `toolchain`, `project`, `config`, `database`,
 `config.env_keys`, `security.app_key`, ...) are stable, but a check appears
 only when it applies.
 
+### `cargo rullst academy:doctor`
+Evaluates the twelve requirements of `ProductionPreset::academy()` (identity,
+school membership, entitlements, object authorization, tenant isolation,
+assessments, score events, durable automation and audit, content safety,
+privacy and distributed abuse controls) against the declarations in a
+`rullst.academy-evidence.v1` file passed with `--evidence <file>`. It reads
+only that file and never inspects the project, so it needs no Academy
+scaffold: v13 removed the complete Academy scaffold, and the LMS starter
+generates no evidence file. Without `--evidence` every requirement is
+`NOT_EVALUATED`.
+
+Each requirement is reported as `PASS`, `FAIL`, `SKIPPED` or `NOT_EVALUATED`.
+Unknown fields or requirements, a repeated requirement and a `PASS` without a
+non-empty evidence reference are rejected. `--json` prints
+`rullst.academy-diagnostic.v1` with `certification` (always `false`),
+`contract_satisfied` and each requirement's `status` and `declared_evidence`.
+The command exits with status `1` until every requirement has an evidenced
+`PASS`. Evidence strings are caller declarations, not verified proof; see the
+[Academy production-boundary diagnostic](security-architecture.md#academy-production-boundary-diagnostic).
+
 ### `cargo rullst inspect [target]`
 Prints static structural summaries in the terminal (the analyzer entry above
 describes the exact scope):
@@ -1849,7 +1917,7 @@ cargo rullst make:models-from-db --driver postgres --url "postgres://user:pass@l
 cargo rullst inspect route
 cargo rullst inspect model
 
-# Launch the visual Studio Dashboard (Data Browser, ER Diagram, Feature Flags)
+# Open the local Studio compatibility UI on 127.0.0.1:5555
 cargo rullst studio
 
 # Ask the terminal AI assistant (offline demo until `cargo rullst ai connect`)

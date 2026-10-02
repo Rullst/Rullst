@@ -54,10 +54,12 @@ and generated writes bind it as `Json(value)` (a `json(nullable)` `None` as
 `NULL`), so a Serde-only type works on a JSON column; SQLx provides `Json` only
 for the strict driver features. SQLx mappings such as `rename`, `try_from`, and
 `flatten` fail compilation because the generated persistence SQL cannot honor
-them safely. The parser also rejects unsupported model shapes, unknown
-backends, missing or unbindable tenant columns, invalid encrypted field types,
-unsafe audit fields, malformed polymorphic relations, and SQLx-only behavior
-on Turso-primary models.
+them safely. On the model itself only `#[sqlx(default)]` is accepted;
+`rename_all` and other container options fail compilation for the same reason.
+The parser also rejects unsupported model shapes, unknown backends, missing or
+unbindable tenant columns, invalid encrypted field types, unsafe audit fields,
+malformed polymorphic relations, and SQLx-only behavior on Turso-primary
+models.
 
 Generated query values remain parameterized by the runtime; raw SQL escape
 hatches are caller-owned. Soft-delete sentinel expressions are compile-time
@@ -96,7 +98,7 @@ for the explicit raw-transaction and streaming limitations.
 ## Verification
 
 The unit suite inspects generated SQL/bind ordering and zero-panic production
-tokens. Twenty-six `trybuild` compile-fail cases exercise the actual parser
+tokens. Twenty-seven `trybuild` compile-fail cases exercise the actual parser
 diagnostics, including duplicate/unknown options and cross-field invariants,
 rather than an unresolved import:
 

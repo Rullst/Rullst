@@ -4,9 +4,10 @@ You do not need to understand every Rullst crate before writing your first
 application. Start small, make one thing work, and learn what each layer does
 as your product needs it.
 
-> **This guide targets Rullst 12.1.0.** Check [publication status](v12.md)
+> **This guide targets stable Rullst 12.1.x.** Check [publication status](v12.md)
 > before installing the matching CLI and framework packages. Review the
 > [12.1 migration guide](migration-v12-1.md) when upgrading an existing application.
+> This book is built from `main`, where v13 is in development and unpublished.
 
 ## Pick your starting line
 

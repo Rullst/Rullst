@@ -5,7 +5,9 @@
 `auth-email-login-sqlite` and `auth-email-login-postgres`. They are opt-in and
 reuse the authoritative `SqlRecoveryStore` account and opaque-session registry.
 They do not enable JWT, OAuth or email login on existing accounts automatically.
-Source/package/coverage admission for this increment is pending.
+Combined hosted source/package/coverage admission passed in
+[PR #239](v13-delivery-plan.md#additional-priorities-approved-on-21-september);
+final release admission remains separate.
 
 ## Account and application boundaries
 

@@ -22,16 +22,21 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **For Windows:**
 Download and run `rustup-init.exe` from the website.
 
-Next, install the **Rullst CLI** from the same release train as the framework.
-The exact version selector avoids accidentally installing a different release.
-Check [publication status](v12.md) before requesting 12.1.0:
+Next, install the stable **Rullst CLI** from the same release train as the
+framework. This book is built from `main`, where v13 is in development and not
+published, so request the v12 line explicitly:
 
 ```bash
-cargo install cargo-rullst --version 12.1.0 --locked
+cargo install cargo-rullst --version '^12' --locked
 ```
 
+The `^12` selector installs the latest stable v12 CLI. To reproduce a specific
+release, pass its full version, such as `--version 12.1.2`, after checking
+[publication status](v12.md).
+
 Source reviewers who intentionally need checkout-local changes can instead
-clone this repository and install the CLI from that exact checkout:
+clone this repository and install the CLI from that exact checkout. On `main`
+this installs the unreleased v13 CLI:
 
 ```bash
 git clone --branch main https://github.com/Rullst/Rullst.git
@@ -55,15 +60,15 @@ We have completely redesigned the project creation experience. Instead of rememb
 cargo rullst
 ```
 
-The **Rullst App Creator** will launch an interactive wizard. The example below
-creates a Portfolio with the stable v12 CLI:
-1. Select **Create New App**.
+It opens an interactive home menu. The example below creates a Portfolio with
+the stable v12 CLI:
+1. Select **Create New Project**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
 3. **Starter Blueprint**: Choose **Portfolio**. Labels and decorative suffixes
    can change; use the blueprint name as your reference.
 4. Choose your primary database. **SQLite** is the simplest local first run;
    PostgreSQL, MySQL and MariaDB require their database service to be running.
-5. Leave **optional persistence capabilities** empty unless you need an add-on.
+5. Leave **optional storage add-ons** empty unless you need an add-on.
    That selector accepts zero or more choices; it is not another required database.
 
 > [!NOTE]
@@ -179,9 +184,10 @@ An opinionated SaaS starting point, pre-wired with:
 **Use Case:** Content creation and articles.
 A database-backed, server-rendered blog/CMS blueprint. It features:
 - A beautiful article reading view with typography optimized for readability.
-- Article CRUD and a server-rendered reading view. Markdown parsing is not part
-  of the current generated starter.
-- SEO-friendly metadata injection.
+- Article CRUD through the Nexus admin (`/nexus`) and a paged, server-rendered
+  index and reading view. Markdown parsing is not part of the current generated
+  starter.
+- `robots.txt` and `sitemap.xml` with absolute URLs from `RULLST_PUBLIC_ORIGIN`.
 
 ## 6. ERP Pocket
 **Use Case:** Business management, stock, and inventory tracking.

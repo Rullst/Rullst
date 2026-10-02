@@ -178,6 +178,8 @@ failure; do not disable protections to improve numbers. Internal Rullst
 1. **After stable maintenance:** select the first bounded SaaS task, references,
    supported versions and free execution budget. Confirm fixture reuse and
    document the threat/behavior contract before adding implementation work.
+   The [bounded SaaS pilot](#bounded-saas-pilot) implements that task's
+   Rullst-side acceptance contract.
 2. **Baseline:** exercise usable Rullst source and the selected reference with
    the same acceptance contract. Record current gaps and uncertainty. Do not
    wait for every A priority to be completed and do not claim unrun results.

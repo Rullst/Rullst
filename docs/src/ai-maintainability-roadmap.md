@@ -171,7 +171,8 @@ unattended merge or production mutation.
 ## Planned additions (recorded 2026-10-01)
 
 These items were requested by the maintainer during the v13 review and are
-tracked here so they are not lost; they are plans, not shipped capabilities.
+tracked here so they are not lost; they are plans, not shipped capabilities,
+unless marked as delivered.
 
 - **Documentation for humans and assistants:** a "start here" page, short
   per-crate quickstarts, a task-oriented cookbook, an `llms.txt` index of the
@@ -183,11 +184,13 @@ tracked here so they are not lost; they are plans, not shipped capabilities.
 - **Assistant grounding:** keep the `cargo rullst ai` primer and the
   `generate:ai-context` output in sync with the book, with a test that every
   command and API the primer names exists.
-- **Assisted v12 → v13 upgrade:** `cargo rullst upgrade` already performs the
-  backed-up dependency upgrade, `cargo fix` and `cargo check`; extend its
-  source findings to cover every breaking row of the
-  [v13 migration guide](migration-v13.md), and offer an upgrade mode in
-  `cargo rullst ai` that uses the guide as context and proposes reviewed edits.
+- **Assisted v12 → v13 upgrade (delivered on `main`):** `cargo rullst upgrade`
+  performs the backed-up dependency upgrade, `cargo fix` and `cargo check`, and
+  reports source findings from `rullst-upgrade-rules-v4`; every row of the
+  [v13 migration guide](migration-v13.md) is classified as must-change, review
+  or not detectable. `cargo rullst ai upgrade` proposes reviewed edits grounded
+  in the guide rows those findings reference. See the
+  [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings).
 - **Legal and regulatory readiness:** see the
   [legal & regulatory compliance roadmap](legal-compliance-roadmap.md).
 

@@ -8,6 +8,7 @@ product guidance.
 - [Evaluate Rullst's current strengths and tradeoffs](why-Rullst.md).
 - [Check the implemented scope and limitations](capability-ledger.md).
 - [Review reproducible performance methodology](tutorials/35-high-performance-benchmarking.md).
+- [Follow the current v13 comparative evaluation plan](v13-framework-comparison.md).
 
 Any new comparison needs dated primary sources or equivalent measured workloads.
 This archive preserves the original research without renewing its claims.

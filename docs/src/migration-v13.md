@@ -1,7 +1,7 @@
 # Preparing an application for v13
 
 **The current source is `13.0.0-alpha.1`, not a published stable v13 release.**
-Stable v12.1.1 maintenance lives on `v12`; `main` develops v13. The development packages use the same v13
+The stable 12.x line lives on `v12`; `main` develops v13. The development packages use the same v13
 version and internal requirements. `rullst-privacy`, `rullst-supervision` and
 `rullst-media` join the candidate package inventory. Privacy has explicit
 `privacy-*` umbrella features; Supervision and Media remain standalone opt-ins.
@@ -9,8 +9,7 @@ Ownership, packaged-consumer acceptance and publication remain prerequisites for
 registry use. Do not request v13 artifacts from
 the stable updater before those artifacts have actually been published.
 
-This inventory covers the development source through the native age and
-optional-consent consumers, plan-gated billing reports and the Android artifact-verification candidate. Revisit it as the remaining
+This inventory covers the `13.0.0-alpha.1` development source. Revisit it as the remaining
 [delivery priorities](v13-delivery-plan.md) land. It does not promise that every
 existing application, provider account or deployment works without review.
 
@@ -38,7 +37,7 @@ Rows without rules still need a reading.
 | Studio queue monitor | Studio lists queue records with the new `QueueDriver::list_job_previews` (at most 2 KiB of each payload and error) instead of `list_all_jobs`. Custom drivers keep working through the default projection of `list_all_jobs`; override `list_job_previews` to cut values in the store. |
 | Studio API playground | `Studio::with_openapi` now takes a utoipa 6 `OpenApi` (Swagger UI 10). Applications that build their document with utoipa 5 must upgrade to utoipa 6 (and `utoipa-axum` 0.3 when they use its router helpers). |
 | Studio local access and table view | `LocalStudioAccess::loopback_only()` now accepts an IPv4-mapped loopback peer (`::ffff:127.0.0.1`, reported by a dual-stack `HOST=::` listener) instead of returning 403; other mapped addresses stay rejected. The table view, and the public `get_any_value_as_string`, now report a present value that no text, integer, float or Boolean codec decodes (for example a non-UTF-8 BLOB) as `unreadable` instead of `NULL`, and a stored text `NULL` is no longer styled as SQL NULL. |
-| LMS blueprint | `--blueprint lms` now generates a small starter: catalog, modules, lessons, an accessible player, enrollment, owner-bound progress, login and a Nexus admin, with hot reload. The complete Academy scaffold (schools, roles, quizzes, activities, scores, automation, notifications, publication, privacy lifecycle) and `--lms-modules` were removed; existing generated applications keep their code. Registration no longer generates the school-membership hook, and the learner dashboard no longer claims a default demo school: it points to the course catalog. |
+| LMS blueprint | `--blueprint lms` now generates a small starter: catalog, modules, lessons, an accessible player, enrollment, owner-bound progress, login and a Nexus admin. The complete Academy scaffold (schools, roles, quizzes, activities, scores, automation, notifications, publication, privacy lifecycle) and `--lms-modules` were removed; existing generated applications keep their code. Registration no longer generates the school-membership hook, and the learner dashboard no longer claims a default demo school: it points to the course catalog. |
 | Consumer generators | `make:supervision` was removed with the complete Academy LMS it targeted; integrate `rullst-supervision` directly. `make:privacy` and `make:age-gate` now target only the SaaS starter (`--blueprint saas`, which requires `--tenant-ref`). |
 | `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. |
 | Core request validation | `ValidatedForm`/`ValidatedJson` return 413 for oversized bodies and 415 for a wrong content type (HTMX requests receive the same code in `X-Rullst-Validation-Status`); other read failures stay 400. Nested errors are keyed `address.zip` and `items[0].name`, and `ValidationError` formatting no longer includes submitted values. Update clients or tests that expected 400 for these cases. |
@@ -287,7 +286,7 @@ or other external effects of application tests. It does not deploy either state.
 ## Privacy remains an application decision
 
 The preview [privacy guide](privacy-age-assurance-roadmap.md) documents the explicit local source
-selection and authenticated SaaS/LMS installation contracts. Do not enable an
+selection and authenticated SaaS installation contracts. Do not enable an
 age restriction merely because the framework offers one. Select a server-owned
 policy for the actual action and accept declarations only where that policy
 permits their assurance level. Production rejects unsupported stronger methods
@@ -295,7 +294,9 @@ and process-local replay storage.
 
 Consent-store files, replay databases, encryption/signing keys, subject/tenant
 binding and retention/restore procedures need their own deployment plan.
-Shared-local SQLite consent is not a multi-host consensus store. The profile
+Shared-local SQLite consent is not a multi-host consensus store; the optional
+`consent-postgres` store shares consent through one authoritative PostgreSQL
+database. The profile
 export remains available independently of optional-consent configuration, but it
 only exports the authenticated account fields supported by its adapter.
 

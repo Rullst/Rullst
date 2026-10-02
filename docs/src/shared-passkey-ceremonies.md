@@ -94,7 +94,9 @@ fresh state before resuming. This adapter cannot detect physical rollback alone.
 
 Initialize `PostgresCeremonyStore` once with a deployment role. Application
 startup uses `connect` and cannot recreate missing state. Keep the same epoch,
-capacity and lifetime on every participating instance:
+capacity and lifetime on every participating instance. `SharedPasskeyAuth::new`
+also requires the `PasskeyConfig` challenge lifetime and pending-challenge
+maximum (defaults 300 and 10,000) to equal the store's lifetime and capacity:
 
 ```rust,no_run
 use rullst_auth::passkey::{PasskeyConfig, shared::{

@@ -122,5 +122,6 @@ altered and expired URLs and verifies data after service restart. This verifies
 the implemented S3 protocol journey; it does not establish AWS/R2 account
 configuration, all S3 extensions or multi-region failover.
 
-Direct presigned uploads, multipart streaming, image processing and additional
-S3 operations remain future increments.
+Server-mediated resumable multipart uploads are the separate opt-in
+[`storage-multipart`](private-multipart-uploads.md) candidate. Direct presigned
+uploads, image processing and additional S3 operations remain future increments.

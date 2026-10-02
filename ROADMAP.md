@@ -125,11 +125,11 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M34** | Multi-target SDK generator for TypeScript, React, Dart, and Swift | `[~] Bounded TypeScript profile` *(one explicit OpenAPI 3.1 profile generates Rust codecs and a strict TypeScript HTTP client, with hosted consumer/archive acceptance in PR #221; React, Dart, Swift and broader schemas remain open)* | v13+ |
 | **M35** | Distributed OpenTelemetry trace-waterfall visualizer in Studio | `[~] Partial` *(Core/facade now has a minimized OTLP propagation/export candidate with local standard-collector TLS and independent-process ancestry evidence; source/package admission passed in PR #236; final release admission remains separate. Studio keeps its separate authenticated ingestion/local viewer; a unified OTLP-backed waterfall, durable storage and cross-host clock/skew presentation remain open. See [the tracing profile](docs/src/distributed-tracing.md))* | v13+ |
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v13 research |
-| **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v13 |
+| **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback. The separate v13 `cargo rullst ai` terminal assistant already applies only confirmed, diff-previewed writes inside the project, after a git checkpoint or an explicit confirmation to continue without one; the error console does not use it)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
 | **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation — bring your own runner` *(unpublished `rullst-labs` contracts provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
-| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS/LMS preference/profile-export journeys have focused evidence. The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; initial package registration, final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
+| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS preference/profile-export journeys have focused evidence (the LMS consumers were retired with the complete Academy scaffold). The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; initial package registration, final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Quantified planning horizon through v13
 
@@ -190,13 +190,16 @@ context, golden tasks and reproducible model evaluation.
    make.)*
 2. **Context-rich scaffolding:** generated projects should receive a maintained
    `AGENTS.md`/AI ruleset describing the actual selected blueprint. *(Partial and
-   worth implementing; do not document `.ai-rules` or `.cursorrules` as generated
-   until the generator and snapshots prove it.)*
+   worth implementing; `cargo rullst new` and `generate:ai-context` write common
+   `AGENTS.md` instructions when absent plus a bounded project map, not a
+   blueprint-specific profile. Do not document `.ai-rules` or `.cursorrules` as
+   generated until the generator and snapshots prove it.)*
 3. **Structured system discovery:** a versioned schema should expose active
    routes, controllers, models, policies, and source locations. *(Partial and
    worth completing; `inspect schema` prints a statically derived ORM model
-   schema, but routes, controllers, policies, versioning and freshness must
-   become an end-to-end contract.)*
+   schema and `inspect routes --json` emits recognized route declarations as
+   versioned `rullst.cli-routes.v1` JSON, but controllers, policies, source
+   locations and freshness must become an end-to-end contract.)*
 
 ## Preserved extraordinary capability decisions
 
@@ -377,8 +380,10 @@ contains the more detailed evidence and acceptance boundaries.
   profile, bounded resource policies and read-only diagnostics that redact secrets.
   Keep host/network administration external. This is a conditional v13 increment
   after supervision and shared passkey state, ahead of a new gateway; see the
-  [delivery plan](docs/src/v13-delivery-plan.md). It is not implemented merely by
-  appearing here, and it adds no separate milestone or crate.
+  [delivery plan](docs/src/v13-delivery-plan.md). PRs #224 and #225 admitted its
+  first increments, the Caddy/Redis deployment contract and the offline
+  `deploy:doctor`; the rest is not implemented merely by appearing here, and it
+  adds no separate milestone or crate.
 
 ### Phase 2 — product integrity and scaffolding
 
@@ -391,7 +396,9 @@ contains the more detailed evidence and acceptance boundaries.
 - Keep the new Core/ORM feature boundary regression-tested, consolidate the
   canonical security stack, standardize public API evolution, and split OAuth
   identity from future messaging adapters. The umbrella feature map is now
-  complete and must remain covered by its powerset test.
+  complete and must remain covered by the isolated per-feature rows of
+  `.github/check-feature-boundaries.sh`, which fails when a public umbrella
+  feature has no row.
 - Implement ambitious providers only where a maintainer, conformance suite, and
   real interoperability environment exist.
 
@@ -457,14 +464,14 @@ and publication dates.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | The compatible opt-in 12.1.0 flow is published with declared native installation and isolated project acceptance. Carry it into v13 and add explicit major-version migration rules and consumer acceptance; publication of 12.1.0 does not establish 12→13 compatibility. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | The compatible opt-in 12.1.0 flow is published with declared native installation and isolated project acceptance. Carry it into v13 and add explicit major-version migration rules and consumer acceptance; publication of 12.1.0 does not establish 12→13 compatibility. The v13 CLI now reports v12 → v13 source findings (`rullst-upgrade-rules-v4`) and offers reviewed fixes through `cargo rullst ai upgrade`. |
 | **P0 — SaaS maintenance** | Contain affected live operations and repair confirmed examples feedback | Follow the [15-finding triage plus Nexus configuration fix](docs/src/saas-v12-1-v13-triage.md). Compatible v12.1 fixes remain independently deliverable; new payment contracts need durable ownership/idempotency and provider acceptance evidence. |
 | **P0 — privacy and age assurance** | Reusable privacy defaults and age checks proportionate to risk across SaaS, LMS and examples | Complete the [M41 delivery plan](docs/src/privacy-age-assurance-roadmap.md) before additional learning/monitoring features. Reject production mocks and unverifiable results; minimize data, offer alternatives and review jurisdiction profiles. No automatic legal certification. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
-| **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS scaffolds; version grading rules, persist idempotent results and prove tenant isolation. Use the `rullst-labs` contracts with an application-owned runner (the `rullst-labs-runner` candidate was removed from 13.0); untrusted execution stays outside the web process. |
-| **First conditional extension — transparent supervision** | Unpublished optional `rullst-supervision` now implements bounded exam/learner and parental contracts, a generated LMS journey and transparent observations; PRs #222/#226 and the repaired archive gate provide source evidence | Deliver a generated LMS journey with independently authorized guardians/reviewers, visible sessions, explicit permissions, revocation, bounded events/retention and application-side restrictions. Automated client observations do not prove misconduct or justify automatic penalties. Device-wide controls and camera inference require separate platform contracts; see the [delivery plan](docs/src/v13-delivery-plan.md) and [SST boundary](docs/src/spec.md#conditional-v13-supervision-crate). |
+| **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS starter, which replaced the complete Academy scaffold; version grading rules, persist idempotent results and prove tenant isolation. Use the `rullst-labs` contracts with an application-owned runner (the `rullst-labs-runner` candidate was removed from 13.0); untrusted execution stays outside the web process. |
+| **First conditional extension — transparent supervision** | Unpublished optional `rullst-supervision` now implements bounded exam/learner and parental contracts and transparent observations; PRs #222/#226 and the repaired archive gate provide source evidence. Its generated LMS journey (`make:supervision`) was removed with the complete Academy scaffold | Deliver a generated LMS journey with independently authorized guardians/reviewers, visible sessions, explicit permissions, revocation, bounded events/retention and application-side restrictions. Automated client observations do not prove misconduct or justify automatic penalties. Device-wide controls and camera inference require separate platform contracts; see the [delivery plan](docs/src/v13-delivery-plan.md) and [SST boundary](docs/src/spec.md#conditional-v13-supervision-crate). |
 | **P3 — selected integrations** | One complete real-provider or broker journey at a time | Add an adapter only with a concrete product need, protocol/failure tests, documented limits and an available acceptance environment. Gateway/load-balancer research remains opt-in rather than blocking the core release. |
 
 This is an execution order, not a promise that the entire historical backlog
@@ -537,8 +544,8 @@ operation lock, previews commands, and requires explicit trusted-code consent
 before resolving/checking/testing another private copy. Local process tests
 cover real acceptance, stale inputs, missing consent, contention, timeout,
 failed tests and unexpected source writes. Verification passed Linux/macOS and
-the corrected Windows path contract at the recorded maintenance checkpoints.
-Final release acceptance remains required. Explicit
+the corrected Windows path contract at the recorded maintenance checkpoints;
+final release acceptance followed with the published 12.1.0 release. Explicit
 `update project review` now revalidates command logs and both source inventories
 and emits the bounded full dependency diff plus a review digest. It performs no
 builds or original-file edits; the digest does not grant application authority.
@@ -556,8 +563,8 @@ shows complete reviews, defaults each approval to no and reports elapsed time
 per stage. Project code/network and original-file writes need separate consent.
 Noninteractive approval and unsupported project major jumps reject. A real
 terminal regression covers declined preparation/execution, failed application
-tests and approved application followed by exact recovery. Native checks of
-this final composition and full candidate release evidence remain required.
+tests and approved application followed by exact recovery. The published
+12.1.0 release record holds the final release evidence for this composition.
 
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;
@@ -604,8 +611,13 @@ The 12.1.0 delivery must preserve v12's public APIs, CLI/configuration behavior
 and opt-in boundaries. It prepares discovery and installation of a compatible
 migration CLI, not guesses about a future major's source changes. Actual
 v12-to-v13 automation requires v13's published migration catalog and tested
-application fixtures; the same-major restriction of the current `upgrade`
-command must not be silently removed. Reserve incompatible changes for v13.
+application fixtures; the same-major restriction of the v12 `upgrade` command
+must not be silently removed. Reserve incompatible changes for v13.
+On `main`, the v13 CLI accepts Rullst 12 and 13 projects: `cargo rullst upgrade`
+reports v12 → v13 source findings with their
+[migration-guide](docs/src/migration-v13.md) rows, and `cargo rullst ai upgrade`
+proposes reviewed fixes for them. These support a review; they do not migrate
+an application automatically.
 
 Continue new capability work on v13 while actively maintaining the supported
 v12 line with reviewed compatible fixes and dependency updates. The website
@@ -654,6 +666,8 @@ or label unimplemented v13 contracts as available in v12.
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
 | **v12.x** | `[~] Active stable maintenance` | Preserve published releases; prioritize reviewed compatible fixes and dependency updates. Patch releases must retain the supported compiler and public contracts. |
 | **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
+| **v12.1.1** | `[x] Published patch` | All sixteen packages were published from `d27db26c` on 24 September 2026 UTC; see the [publication record](docs/src/v12.md#1211-published-maintenance-release). |
+| **v12.1.2** | `[x] Latest published patch` | Tagged `v12.1.2` on 28 September 2026 UTC from the `v12` maintenance line; its publication evidence is kept in the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

@@ -20,9 +20,12 @@ The current command creates:
 - `src/migrations/m<timestamp>_create_users_table.rs` and the migrations module;
 - `src/controllers/auth_controller.rs`;
 - `src/middlewares/auth_middleware.rs`;
-- `src/pages/auth.rs`; and
+- `src/pages/auth.rs`;
 - the corresponding module declarations, including `controllers`,
-  `middlewares`, `models` and `pages` in `src/lib.rs` (or `src/main.rs`).
+  `middlewares`, `models` and `pages` in `src/lib.rs` (or `src/main.rs`); and
+- a best-effort refresh of the generated `.llms.txt`,
+  `.rullst/context-map.json` and `diagram.md` (a hand-written `diagram.md` is
+  left unchanged).
 
 It also enables the `orm` and `auth` umbrella features in `Cargo.toml`. It
 fails before writing anything when one of those files exists or when a
@@ -32,8 +35,9 @@ with `cargo rullst make:migration` in that case. Turso-primary projects are not
 supported, and neither is a project without a database migration runner (a
 `--no-database` starter): create the project with a database so `src/main.rs`
 declares `pub mod migrations;` and calls
-`rullst::artisan!(crate::migrations::get_migrations())`. It does not support an `auth --api` flag, and it does not silently
-register application routes. Review the generated diff before editing it.
+`rullst::artisan!(crate::migrations::get_migrations())`. It does not support an
+`auth --api` flag, and it does not silently register application routes. Review
+the generated diff before editing it.
 
 ---
 
@@ -89,7 +93,8 @@ edge.
   written to the user model. At most four hashes or verifications run at once
   (each holds about 19 MiB); a submission that waits two seconds without
   capacity receives 503. Adjust `MAX_CONCURRENT_PASSWORD_WORK` to the host.
-- Registration accepts passwords from 12 through 72 bytes and normalizes email.
+- Registration accepts passwords of at least 12 characters and at most 72
+  bytes, and normalizes email.
 - Login performs a dummy password verification for unknown users to reduce the
   obvious account-enumeration timing difference.
 - Session values use authenticated encryption and are emitted as cookie headers

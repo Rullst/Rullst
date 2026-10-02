@@ -24,7 +24,10 @@ the v12.1/v13 payment and generator defects reported by `Rullst/examples`.
 
 Except for ERP, these rows describe design targets and are not selectable CLI
 blueprints. A proposal becomes implemented only when its generated project and
-negative boundaries pass the release gates.
+negative boundaries pass the release gates. `cargo rullst new --blueprint`
+currently offers `blank`, `lms`, `saas`, `blog`, `portfolio` and `erp`; in the
+v13 CLI, `lms` generates a small LMS starter (catalog, modules, lessons,
+enrollment and progress) that replaced the complete Academy scaffold.
 
 | ID | Blueprint Name | Technical Focus in Rullst | Commercial Differentiator |
 |:---|:---|:---|:---|

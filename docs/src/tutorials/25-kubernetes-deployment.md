@@ -19,8 +19,9 @@ run when any of those files already exists, so move customized manifests aside
 to regenerate them, and review the diff.
 
 Resource names, the image and the ingress host use the `[package]` name as a
-lowercase RFC 1123 label, so a package named `my_app` becomes `my-app`;
-`--buildah` tags its image with the same name. Replace the placeholder
+lowercase RFC 1123 label, so a package named `my_app` becomes `my-app`; the
+`build_buildah.sh` script from `generate:buildah` or `new --buildah` tags its
+image with the same name. Replace the placeholder
 `image: <name>:latest` with an immutable registry reference (preferably a
 digest). The generated ConfigMap contains non-secret
 settings only; use a Kubernetes Secret/external secret manager for credentials.

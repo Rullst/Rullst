@@ -174,5 +174,6 @@ quarantine, missing state, timeout reconciliation, trusted/untrusted TLS,
 hostname checks, an actual ORM outbox and an AOF server restart. Test fixtures
 use only temporary data, local certificates and public test credentials.
 The [facade consumer](../../.github/fixtures/messaging-redis-facade.rs) is also
-compiled from extracted package sources. Hosted full-workspace, package and
-release checks remain separate admission requirements.
+compiled from extracted package sources. Hosted full-workspace and package
+checks passed in PR #236; final release checks remain a separate admission
+requirement.

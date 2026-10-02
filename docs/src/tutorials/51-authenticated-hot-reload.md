@@ -1,8 +1,8 @@
 # Supervised Development Auto-Reload
 
-> Release-audit follow-up: the implementation and final workspace validation are
-> still in progress. See the [audit evidence](../v12-release-audit.md); this
-> tutorial is not a claim that the current branch is already release-ready.
+> Supervised restart is the development loop of the published v12 CLI and of
+> the unreleased v13 CLI. The [release audit](../v12-release-audit.md#development-reload-decision)
+> records the v12 decision.
 
 Rullst v12's development command rebuilds and restarts a directly linked
 application. This keeps Tokio, ORM pools, sessions and other process globals in
@@ -22,7 +22,7 @@ cargo rullst dev
 cargo rullst dash
 ```
 
-There is no hot-reload question in the v12 wizard. Both commands supervise
+There is no hot-reload question in the wizard. Both commands supervise
 reloads automatically; use `cargo run` for ordinary execution. In v13 the
 dashboard also shows live requests/s, latency, errors and, when reported, ORM
 and queue figures, and `r` restarts the application without rebuilding (see the
@@ -87,8 +87,12 @@ The debug/development server serves a local reload script and an opaque
 generation marker under `/_rullst/dev-*`. The script polls the same origin
 and refreshes only after a different valid generation responds. Readiness
 checks match the child generation rather than trusting any service on the port.
-The marker is not a secret or an authentication credential. These endpoints
-cannot instruct the server to compile, launch a process, or swap a library.
+The marker is not a secret or an authentication credential. In v13 the same
+development processes also serve `/_rullst/dev-telemetry` for the
+`cargo rullst dash` metrics, to loopback clients only (see the
+[telemetry guide](../telemetry-guide.md#development-dashboard-endpoint)). These
+endpoints cannot instruct the server to compile, launch a process, or swap a
+library.
 
 Eligible full-document, known-size, uncompressed HTML up to 10 MiB receives the
 script and a nonce seeded before inner header middleware. HTMX partial requests,
@@ -107,8 +111,8 @@ after changing its port configuration.
 
 ## Existing DLL scaffolds and the v13 decision
 
-The v12 CLI rejects the old `--hot-reload` generation flag and removes
-`HOT_RELOAD` when it launches a child, so old generated projects use their
+The v12 and v13 CLIs reject the old `--hot-reload` generation flag and remove
+`HOT_RELOAD` when they launch a child, so old generated projects use their
 directly linked router unless their application reloads that variable itself.
 Remove legacy `HOT_RELOAD` entries from `.env` as well: application-owned dotenv
 loading can otherwise restore them. Regenerate fresh projects for release acceptance;
@@ -123,7 +127,8 @@ blueprints and databases on Windows, Linux and macOS. Measure cold/warm reload
 time, failed-build recovery, cancellation, memory growth, process cleanup and
 state ownership. Restore DLL swapping only if its safety requirements can be
 established and it offers a measured practical benefit; keeping supervised
-restart remains a valid v13 outcome.
+restart remains a valid v13 outcome. The current v13 source keeps supervised
+restart.
 
 ## Terminal accessibility
 

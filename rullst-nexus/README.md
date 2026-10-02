@@ -245,13 +245,14 @@ The derive already hides a field named `password_hash`.
 ## Browser assets and Content Security Policy
 
 The panel loads only same-origin files served by the Nexus router under
-`/nexus/assets/`: `nexus.css`, `nexus.js` and a vendored htmx. Pages contain no
+`/nexus/assets/`: `nexus.css`, `nexus.js`, a vendored htmx and the Rullst logo
+`rullst-logo.png` (brand mark and favicon). Pages contain no
 inline `<script>`/`<style>` blocks, no `on*`/`hx-on` handler attributes and no
 `style` attributes, and they do not contact a CDN, Google Fonts or GitHub. The
 default production CSP (`script-src 'self' 'nonce-…'; style-src 'self' 'nonce-…'`)
 therefore runs Nexus unchanged; do not add `'unsafe-inline'`, `'unsafe-eval'` or a
 CDN to `security.csp` for Nexus. A custom policy must keep `'self'` in
-`script-src`, `style-src` and `connect-src`, and `data:` in `img-src`. htmx runs
+`script-src`, `style-src`, `img-src` and `connect-src`. htmx runs
 with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled, and
 with its history cache off (`historyCacheSize: 0`, `refreshOnHistoryMiss: true`):
 admin pages and open edit forms are never snapshotted into origin-wide

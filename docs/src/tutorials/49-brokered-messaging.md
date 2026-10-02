@@ -303,7 +303,10 @@ async fn relay_one(relay: &OrmOutboxRelay<InMemoryBroker>) {
 ```
 
 The ordering is intentionally publish then ACK. A stop in between causes a new
-ORM claim to publish the same event key and content; the broker returns its
-original ID as a duplicate. This is at-least-once relay with bounded
-idempotency, not an atomic transaction across two systems. Keep the worker
-supervised and make the final consumer idempotent too.
+ORM claim to publish the same event and content under the same broker
+idempotency key; the broker returns its original ID as a duplicate. The v13
+source derives that key from the stream and the event key (the lowercase hex
+SHA-256 of the stream, `/`, then the event key), so relays of different streams
+can share one topic. This is at-least-once relay with bounded idempotency, not
+an atomic transaction across two systems. Keep the worker supervised and make
+the final consumer idempotent too.

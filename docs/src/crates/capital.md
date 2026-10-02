@@ -12,7 +12,7 @@
 | **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
 | **Outbound Failure Boundary** | 🟢 `[Implemented / Bounded]` | Reviewed live methods share finite timeouts, disabled redirects/ambient proxies, one-MiB JSON parsing, HTTPS checkout-location validation, and redacted permanent/transient/rate-limited failures. Rullst performs no automatic mutation retry. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
-| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work; Alipay RSA2 remains fail-closed. |
+| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification, with timestamp freshness checks for Stripe, Paddle and Polar. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work; Alipay RSA2 remains fail-closed. |
 | **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events and Lemon Squeezy Usage Records shapes with provider-specific identity/action, bounded response binding and deterministic non-live mocks. Durable application-outbox claiming and provider-account evidence remain explicit. |
 | **v13 Plan Entitlements** | 🔵 `[Candidate]` | Typed per-action tenant/owner, exact feature/plan, mode, status, expiry and reconciliation-age checks. The generated SaaS report performs revision-fenced Stripe refreshes. Local and hosted acceptance remain tracked in the [delivery plan](../v13-delivery-plan.md); snapshots assert trusted adapter state and are not payment evidence. |
 | **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Exact validated minor units, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
@@ -26,7 +26,7 @@
 
 ## 📦 Supported Payment & Payout Providers
 
-`rullst-capital` includes decoupled adapter surfaces for 11 global and regional gateways. The list preserves the intended product reach; it does **not** mean every provider product, fee, payment method, tax promise, or live API path has been independently homologated by Rullst:
+`rullst-capital` includes decoupled adapter surfaces for 11 global and regional gateways. The list preserves the intended product reach; it does **not** mean every provider product, fee, payment method, tax promise, or live API path has been independently homologated by Rullst. Several adapters offer only offline fixtures or signed-webhook parsing with live credentials; the [crate README provider matrix](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#-supported-providers) lists the current live boundary of each:
 
 1. 💳 **Stripe**: Global card checkouts, Customer Portal, and recurring subscriptions.
 2. 🍋 **Lemon Squeezy**: Merchant of Record (MoR) with automated global tax compliance.
@@ -55,10 +55,12 @@ and evidence from one provider cannot be transferred to another.
 | **3. Official test environment** | Provider sandbox/test-mode checkout, webhook, lifecycle and reconciliation exercises. |
 | **4. Controlled live acceptance** | The smallest provider-permitted real transaction only after account, legal, secret, refund, observability and reconciliation controls are ready; retain redacted evidence. |
 
-The generated SaaS blueprint exercises an application boundary for Stripe and
-Lemon Squeezy. It is not a conformance app for all eleven adapters. Record the
-exact provider, operation, environment and observed result; never summarize
-partial evidence as “all payments work.” Refer to the official
+The generated SaaS blueprint and `make:billing` provide a durable Stripe
+integration and, as an unpublished v13 candidate, Paddle; Lemon Squeezy runs
+there only as an offline fixture. It is not a conformance app for all eleven
+adapters. Record the exact provider, operation, environment and observed
+result; never summarize partial evidence as “all payments work.” Refer to the
+official
 [Stripe testing](https://docs.stripe.com/testing),
 [Stripe sandbox](https://docs.stripe.com/sandboxes),
 [Lemon Squeezy test-mode](https://docs.lemonsqueezy.com/help/getting-started/test-mode),
@@ -125,6 +127,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+This legacy email-based trait method remains for source compatibility. New
+Stripe integrations use the customer-bound `create_customer` and
+`create_subscription_checkout` flow; see the
+[owner-bound Stripe checkout](../payment-gateways-guide.md#2-create-an-owner-bound-stripe-checkout).
 
 ### 2. Provider-Specific Metered Usage
 
@@ -308,7 +315,7 @@ reconciliation.
 
 ## 🔒 Security Invariants
 
-1. **Constant-Time Verification:** Webhook signatures use `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
+1. **Constant-Time Verification:** HMAC webhook signatures and explicit `mock_*` fixture secrets are compared with `subtle::ConstantTimeEq` or ring's constant-time `hmac::verify`. Wise transfer webhooks use RSA-SHA256 public-key verification; live Alipay RSA2 verification is not implemented and fails closed.
 2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/codec/mTLS preparation and command evidence do not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the external trust and homologation gates pass.
 3. **Bounded Egress:** Reviewed live provider methods use a pooled client with
    finite connect/request timeouts, disabled redirects and ambient proxy

@@ -5,9 +5,10 @@ official branch, verification, packaging, and tag process is
 [`RELEASE_GUIDE.md`](RELEASE_GUIDE.md); do not maintain a second release recipe
 in this file.
 
-## Work on the v12 maintenance source
+## Work on the checkout source
 
-From the repository root, install the CLI from the exact checkout:
+From the repository root, install the CLI from the exact checkout (on `main`,
+the unpublished `13.0.0-alpha.1` CLI; on `v12`, the 12.x maintenance CLI):
 
 ```bash
 cargo install --locked --path cargo-rullst
@@ -16,9 +17,9 @@ cargo rullst --help
 
 Run `cargo rullst new` from this root when validating checkout-local changes so
 the generator can select sibling framework crates as path dependencies. A plain
-`cargo install cargo-rullst` installs the latest published release. To reproduce
-the stable v12 toolchain, install its exact version with
-`--version 12.0.0 --locked`.
+`cargo install cargo-rullst` installs the latest published release. To use the
+latest published stable CLI explicitly, install it with
+`--version 12.1.2 --locked`.
 
 ## Required local verification
 

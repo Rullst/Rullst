@@ -1,9 +1,11 @@
 # AI provider capability matrix
 
-This matrix describes the transport paths implemented by `rullst-ai` v12. It
-is not a claim that every model sold by a provider accepts every request. Model
-availability, account entitlements, regions, quotas, and upstream API behavior
-remain provider concerns.
+This matrix describes the transport paths implemented by the current
+`rullst-ai` source. Anthropic and Gemini streaming (with its explicit
+cancellation) and token usage are unreleased v13 additions, absent from the
+published v12 crate. The matrix is not a claim that every model sold by a
+provider accepts every request. Model availability, account entitlements,
+regions, quotas, and upstream API behavior remain provider concerns.
 
 Applications can inspect the same contract in code through
 `AiProvider::capabilities()` or `AiClient::capabilities()`. Built-in provider

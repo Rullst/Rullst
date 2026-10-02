@@ -253,29 +253,15 @@ Rullst tests representative generated projects and maintains structural
 matrices instead of assuming that a template is correct because its source
 file compiles inside the CLI crate.
 
-The Academy slice is already more than a landing-page mock: its generated
-SQLite journey exercises server-owned progress, assessment, score,
-leaderboard, automation, notifications and school boundaries. Its accessible
-lesson presentation supports bounded video/audio metadata, mandatory WebVTT
-captions for video and escaped transcripts. Its generic activity boundary also
-keeps points out of untrusted submissions: static-dispatch evaluators construct
-server-authored results, with tested single-choice, bounded pair-matching and
-typed-recall exercises as the first examples. Typed recall retains a
-policy-bound digest rather than raw learner input, with deliberately narrow
-normalization semantics. The complete starter then rederives the persisted
-activity policy and
-atomically projects that opaque result into a versioned score event,
-leaderboard and outbox. Its owner-only routes accept only an idempotency key
-plus a chosen option, pair IDs or bounded typed text, while the same transaction
-locks the exact evaluator configuration and retains an exact-replay attempt;
-cross-user, actor/evidence/policy mismatch and conflicting replay are
-materialized negatives. Opt-in `rullst-box-v1` policies also update a durable,
-bounded learner/activity review schedule in that transaction; a replay cannot
-move it, and an owner-only due queue rechecks school membership, course scope
-and enrollment. The algorithm is deliberately inspectable and does not claim
-FSRS/SM-2 compatibility or learning efficacy. That is a useful foundation for a
-language-learning product, not a claim that Rullst generates pedagogy, content,
-speech recognition, native-device behavior or a complete Duolingo equivalent.
+The LMS starter is more than a landing-page mock: it generates a course
+catalog with modules and lessons, sign-in and registration, enrollment,
+owner-bound idempotent lesson progress and a Nexus admin. Its accessible lesson
+presentation supports bounded video/audio metadata, requires a WebVTT captions
+track for video and renders escaped transcripts. In v13 this small starter
+replaces the complete Academy scaffold that v12 generated (assessment, scores,
+leaderboard, automation, notifications and school boundaries). It is a
+foundation for a learning product, not a claim that Rullst generates pedagogy,
+content, speech recognition or native-device behavior.
 
 For example, `make:billing --model Workspace` now materializes distinct SQLx
 and Turso-primary persistence profiles. Both are generated, linted, migrated
@@ -361,6 +347,7 @@ the more responsible decision.
    moving development branch.
 
 This page was reviewed against the immutable v12 stable release and its
-repository-owned evidence. It remains a concise map of the strongest
+repository-owned evidence; the LMS starter description follows v13 development
+on `main`. It remains a concise map of the strongest
 implemented ideas, not a substitute for the detailed contracts or
 application-specific validation.

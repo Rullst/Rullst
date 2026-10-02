@@ -6,8 +6,8 @@ expiry date. CI must fail for every advisory that is not actively governed here.
 
 Last reviewed: **2026-09-08**.
 
-There are **no active advisory exceptions** in the current audited v12
-dependency graph.
+There are **no active advisory exceptions** in the current audited dependency
+graph (`deny.toml` and the audit workflows ignore no advisory).
 
 ## Remediation history
 

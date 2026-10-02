@@ -3,8 +3,10 @@
 `rullst-media` is an optional, unpublished v13 candidate. It implements a bounded
 private-video lifecycle: authorized creation and resumable upload, processing
 refresh, explicit publication, current-entitlement playback, withdrawal, metadata
-updates, deletion and durable reconciliation. It is not yet admitted to the
-release inventory or framework facade. Existing blueprints are not changed.
+updates, deletion and durable reconciliation. Its standalone package is in the
+v13 release inventory, pending initial registration and final release
+acceptance; it is not part of the framework facade. Existing blueprints are not
+changed.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
 from the candidate checkout, separate provider keys, required embed/CDN/direct-file

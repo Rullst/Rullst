@@ -18,14 +18,15 @@ automatically supply that contract.
 cargo rullst make:live CounterComponent
 ```
 
-This creates `src/live/counter_component.rs`.
+This creates `src/live/counter_component.rs` and declares it in
+`src/live/mod.rs`. Declare `mod live;` in the crate root yourself; the command
+does not edit `src/main.rs` or `src/lib.rs`.
 
 ---
 
 ## 💻 Step 2: Implement the Component Lifecycle
 
-The following controller fragment expects the generated
-`crate::live::counter_component` module from Step 1:
+Edit the generated `src/live/counter_component.rs`, for example:
 
 ```rust
 use rullst::async_trait;

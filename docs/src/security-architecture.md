@@ -41,14 +41,16 @@ additional Security controls require explicit composition.
 
 The [v13 deployment candidate](deployment-acceptance.md) now exercises two real
 application processes with an existing proxy, shared Redis budgets, forged
-forwarding metadata and HTTP/WebSocket controls. Local acceptance passes; hosted
-admission remains pending. It does not certify a cloud account, VPS or production
-topology.
+forwarding metadata and HTTP/WebSocket controls. Local acceptance passes, and
+hosted workspace and installed-archive checks passed in PR #224; the final
+release campaign remains separate. It does not certify a cloud account, VPS or
+production topology.
 
 The separate [local configuration diagnostic](deployment-diagnostic.md) candidate
 reuses Core validation through `deploy:doctor`, with explicit environment-source
 selection and bounded, redacted reports. It identifies what was actually
-inspected and lists unobserved controls; full hosted/package admission is pending.
+inspected and lists unobserved controls; its source merged in PR #225 after
+hosted checks, and its archive gate passed in a later exact-commit run.
 It does not label configuration as deployed evidence, modify firewall/SSH/cloud
 settings or certify a host. No new security crate is introduced. See the
 [delivery plan](v13-delivery-plan.md).
@@ -239,14 +241,15 @@ therefore end detection early.
 
 ## Audit chains
 
-Audit records use an unambiguous canonical representation and a non-empty HMAC
-key. Verification must cover the ordered sequence, not just isolated records. A
-valid chain is tamper-evident; it cannot stop an attacker who can delete every
-record or steal the key. Store the log and key in separate protected systems.
-A new `AuditChain` starts at sequence 1 from the genesis predecessor, so a
-restarted writer must continue its persisted trail with the unpublished v13
-`AuditChain::try_resume`, passing the newest persisted record; that record's
-HMAC must verify. Exactly one writer may own a persisted chain, and deleting
+Audit records use an unambiguous canonical representation and an HMAC key of
+at least 32 bytes (`MIN_AUDIT_KEY_BYTES`) with at least eight distinct byte
+values. Verification must cover the ordered sequence, not just isolated
+records. A valid chain is tamper-evident; it cannot stop an attacker who can
+delete every record or steal the key. Store the log and key in separate
+protected systems. A new `AuditChain` starts at sequence 1 from the genesis
+predecessor, so a restarted writer must continue its persisted trail with the
+unpublished v13 `AuditChain::try_resume`, passing the newest persisted record;
+that record's HMAC must verify. Exactly one writer may own a persisted chain, and deleting
 the newest records before a restart is detected only against an external
 checkpoint of the last sequence and hash.
 

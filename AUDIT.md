@@ -44,9 +44,10 @@ a run; it does not turn an informational workflow into a formal assurance.
 - IoT currently provides `no_std` data/frame helpers and Ed25519-signed OTA
   manifest verification. MQTT transport, HSM, PQC, flashing, and bootloader
   integration remain roadmap items.
-- `rullst-connect` currently focuses on OAuth2/OIDC. Kafka, RabbitMQ, and Redis
-  Streams adapters in that crate remain roadmap work; queue facilities currently
-  implemented elsewhere must be documented by their actual module.
+- `rullst-connect` focuses on OAuth2/OIDC; brokered messaging is deliberately
+  outside it. `rullst-messaging` provides the process-local and SQLite brokers
+  and the unpublished v13 Redis Streams candidate; Kafka and RabbitMQ adapters
+  are not implemented. Document queue facilities by their actual module.
 - Security headers provide a strict baseline but cannot guarantee a third-party
   scanner grade for every deployed application.
 - Static analysis, fuzzing, Kani, Miri, mutation testing, and DAST each cover a

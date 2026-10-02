@@ -4,8 +4,10 @@
 compile without `std`. Some APIs use `alloc`, so a bare-metal application must
 supply an allocator.
 
-The crate does not currently read hardware registers or provide MQTT, OPC-UA,
-Sparkplug B, HSM, or post-quantum implementations.
+It also provides bounded MQTT 5 PUBLISH (`MqttPublish`) and CoAP request
+(`CoapRequest`) encoders. The crate does not currently read hardware registers
+or provide MQTT/CoAP network transport, OPC-UA, Sparkplug B, HSM, or
+post-quantum implementations.
 
 ## Build a telemetry model and Modbus request
 

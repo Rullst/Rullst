@@ -160,10 +160,12 @@ large, so applications must also constrain selected columns and data at the
 schema/query boundary.
 
 An empty or `mock_*` endpoint selects a single-connection SQLite in-memory
-fallback. It executes real SQL and migrations deterministically but does not
-simulate remote replication, latency, failover, or Turso Cloud. The live CI
-contract runs the same API against the official `sqld` container and proves
-that a failed multi-statement batch rolls back its earlier writes.
+fallback, persisted to a file with `TursoConfig::with_offline_path`
+(`TursoOrm::init_from_env` uses `TURSO_OFFLINE_PATH`, default
+`turso-development.db`). It executes real SQL and migrations deterministically
+but does not simulate remote replication, latency, failover, or Turso Cloud.
+The live CI contract runs the same API against the official `sqld` container
+and proves that a failed multi-statement batch rolls back its earlier writes.
 
 ## The portable document contract
 

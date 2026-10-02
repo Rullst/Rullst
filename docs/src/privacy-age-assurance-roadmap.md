@@ -7,11 +7,14 @@ outcomes and asynchronous replay-store contracts. The optional shared-local
 SQLite adapter adds atomic persisted consumption, quota and clock rollback
 checks. The optional PostgreSQL candidate adds shared claims across application
 hosts with explicit initialization and real-database concurrency, cancellation,
-expiry, configuration, restricted-role and server-restart tests. Combined hosted
-package acceptance, broader privacy workflows and concrete live age providers
-remain open. Native declarations, independent optional consent and authenticated
-SaaS/LMS preference/profile-export journeys now have focused test evidence;
-these do not implement every roadmap responsibility. This engineering update does not revalidate the legal sources.
+expiry, configuration, restricted-role and server-restart tests; the optional
+`consent-postgres` adapter shares consent state the same way. Initial package
+registration, final release acceptance, broader privacy workflows and concrete
+live age providers remain open. Native declarations, independent optional
+consent and authenticated SaaS preference/profile-export journeys now have
+focused test evidence; v13 removed the generated LMS journeys with the complete
+Academy scaffold. These do not implement every roadmap responsibility. This
+engineering update does not revalidate the legal sources.
 
 Rullst should generate applications with privacy-preserving defaults and
 reusable, testable controls. It must not advertise automatic worldwide legal
@@ -23,16 +26,18 @@ legal review before a profile is presented as supported.
 ## Existing foundations and the missing boundary
 
 The ORM already offers field encryption. Auth/Security provide identity,
-authorization and redaction primitives. The LMS privacy templates already
-record school-scoped policies, nominal `Adult`/`Minor` bands, guardian-consent
-records and bounded export/delete request processing. They do not independently
-verify a person's age or a guardian's authority. The privacy worker still
-requires an application adapter to perform actual export/deletion.
+authorization and redaction primitives. The v12 LMS privacy templates record
+school-scoped policies, nominal `Adult`/`Minor` bands, guardian-consent records
+and bounded export/delete request processing. They do not independently verify
+a person's age or a guardian's authority, and their privacy worker requires an
+application adapter to perform actual export/deletion. v13 removed these
+templates with the complete Academy scaffold; the v13 LMS starter generates no
+privacy lifecycle.
 
-These pieces should be reused, with an explicit migration for generated LMS
-applications. Adding a consent row, encrypting a field or completing a mock job
-does not establish lawful processing or prove that downstream copies were
-erased.
+Applications generated with those templates keep their code; reuse needs an
+explicit migration. Adding a consent row, encrypting a field or completing a
+mock job does not establish lawful processing or prove that downstream copies
+were erased.
 
 ## Package decision
 

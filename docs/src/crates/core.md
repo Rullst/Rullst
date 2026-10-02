@@ -6,8 +6,10 @@ helpers.
 
 Core is runtime-only by default. Enable `orm` for ORM bootstrap/artisan and
 database-backed feature flags, and `queue-sqlite` for the SQLite queue driver.
-The umbrella `rullst` crate enables both by default, while domain crates opt in
-only when they actually use them.
+`orm` adds no SQLx driver: pair it with `drivers-all` or one `strict-*`
+backend. The umbrella `rullst` crate enables `orm`, `drivers-all` and
+`queue-sqlite` by default, while domain crates opt in only when they actually
+use them.
 
 Queue monitoring capabilities are driver-specific. The trait defaults for
 listing all jobs, retrying failures and purging failures return
@@ -40,7 +42,8 @@ drivers return `CacheError::InspectionUnsupported` unless they implement the
 bounded method. The live Redis CI/release contract checks metadata, TTL and
 non-disclosure; it does not prove cluster/failover or operator authorization.
 The Redis cache and queue drivers each keep one lazily opened multiplexed
-connection for all operations and replace it after a connection-level failure.
+connection for all operations and replace it after a connection-level failure;
+each queue command waits up to 10 seconds for its reply.
 The memory cache stores a TTL too large for the monotonic clock (such as
 `u64::MAX`) as non-expiring instead of panicking. A read that finds an expired
 entry removes the key only while it still holds that expired value, so a
@@ -58,20 +61,26 @@ payloads) and dead letters are each retained up to 10,000 entries by default,
 the oldest evicted atomically, and
 `RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)` accepts
 1–100,000 for each. Failures recorded before that bound existed are not
-indexed and are never evicted automatically.
+indexed, so they are not listed and never evicted automatically.
 
+`Queue::dispatch` and `dispatch_at` reject an empty job name or one longer
+than 256 bytes with `QueueError::InvalidConfiguration`.
 `Queue::dispatch_at` persists a due timestamp for at most 366 days through the
 built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
-milliseconds; Redis atomically promotes bounded batches using Redis server time.
-Neither backend claims a scheduled job early. Execution starts on the first
-worker poll after it becomes due and retains the queue's at-least-once semantics.
+milliseconds and claims in due-time order, so a due scheduled or handed-back
+job does not wait behind later immediate jobs; Redis atomically promotes
+bounded batches using Redis server time. Neither backend claims a scheduled job
+early. Execution starts on the first worker poll after it becomes due and
+retains the queue's at-least-once semantics.
 `Worker` drives each `pop` to completion instead of racing it against
 completions or shutdown, because both built-in claims commit before the future
 resolves. A job claimed after graceful shutdown was requested is requeued.
 When a handler finishes while its timeout or a graceful shutdown is being
 processed, the worker records the handler's own result: only a handler that
 was actually cancelled is failed as timed out or requeued, so a success is
-never reported as a timeout or run again.
+never reported as a timeout or run again. `Worker::run` rejects a zero
+`max_concurrency`, `poll_interval` or `job_timeout` and a `stalled_after` that
+does not exceed `job_timeout` with `QueueError::InvalidConfiguration`.
 Stalled-lease recovery runs when a worker starts and then every
 `min(stalled_after, 60 s)`, and it is queue-wide: it returns every processing
 lease in the shared SQLite table or Redis namespace that is older than the
@@ -100,16 +109,17 @@ or deleting the newer claim. The new `QueueDriver::mark_complete_attempt`,
 `mark_failed_attempt` and `requeue_attempt` methods default to the unfenced
 methods, so custom drivers keep their behaviour until they override them. The
 stale handler may still have run its side effects (delivery stays
-at-least-once), and SQLite `retry_failed_job` restarts the attempt counter, so
-a worker that stays stale across a manual retry and a new claim with the same
-attempt number is not fenced.
+at-least-once). SQLite and Redis `retry_failed_job` keep the attempt counter,
+so the fence also holds across a manual retry.
 A worker that claims a job whose name it has no handler for hands the claim
 back instead of failing it. SQLite and Redis make the job claimable again after
 five seconds, behind jobs that are already due, so a worker that registered the
 name (for example a newer version during a rolling deploy) can run it; the
 delay keeps the claiming worker out of a hot loop, and it still reports
-`HandlerNotFound` each time. A job that no running worker can handle therefore
-stays pending and is re-offered every five seconds instead of being failed.
+`HandlerNotFound` each time. From the 720th claim attempt (at least an hour of
+hand-backs) the job is failed with `HandlerNotFound` instead, so a job that no
+running worker can handle becomes visible and purgeable; since a retry keeps
+the attempt counter, deploy a handler before retrying it.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
 `ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`, `413`,
@@ -208,11 +218,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   the `/_rullst/dev-telemetry` poll of `cargo rullst dash` also bypass both and
   are not access-logged.
 - **Development dashboard telemetry (v13):** under the same conditions `Server`
-  serves `GET /_rullst/dev-telemetry` to loopback clients only: bounded request
-  counters and recent requests (method, path without query string, status,
-  duration), ORM operation counts and slow operations from `rullst.orm.query`
-  spans, and the pending count of a queue passed to `Server::with_dev_queue`.
-  Bodies, headers, query strings, SQL and bindings are never recorded. See the
+  serves `GET /_rullst/dev-telemetry` to loopback clients only, over HTTP/1.1
+  or newer and without proxy forwarding headers: bounded request counters and
+  recent requests (method, path without query string, status, duration), ORM
+  operation counts and slow operations from `rullst.orm.query` spans, and the
+  pending count of a queue passed to `Server::with_dev_queue`. Bodies,
+  headers, cookies, query strings, SQL and bindings are never recorded. See the
   [telemetry guide](../telemetry-guide.md#development-dashboard-endpoint).
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.

@@ -1,8 +1,8 @@
 # Tutorial 28: gRPC Microservices with Tonic 🌐
 
 Generate a Tonic/Protobuf starting point using `cargo rullst make:grpc`. The
-command does not start a gRPC server, add every build dependency, or define
-production transport/authentication policy for the application.
+command does not start a gRPC server, edit `Cargo.toml`, create a `build.rs`, or
+define production transport/authentication policy for the application.
 
 ---
 
@@ -14,7 +14,11 @@ cargo rullst make:grpc UserService
 
 This generates:
 - `proto/user_service.proto` (Protobuf definition)
-- `src/grpc/user_service.rs` (Tonic service implementation)
+- `src/grpc/user_service.rs` (Tonic service implementation), declared in
+  `src/grpc/mod.rs`
+
+Declare `mod grpc;` in the crate root yourself; the command does not edit
+`src/main.rs` or `src/lib.rs`.
 
 Names ending in `Service` remain a single service suffix: `UserService`
 produces the `user_service_server::UserService` trait rather than
@@ -24,8 +28,8 @@ produces the `user_service_server::UserService` trait rather than
 
 ## 💻 Step 2: Implement the gRPC Handler
 
-In `src/grpc/user_service.rs`, after the generated application's `build.rs` has
-compiled `proto/user_service.proto` and made the Tonic dependencies available:
+In `src/grpc/user_service.rs`, after you have added the `tonic` and `prost`
+dependencies and a `build.rs` that compiles `proto/user_service.proto`:
 
 ```rust,ignore
 use tonic::{Request, Response, Status};

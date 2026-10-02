@@ -1,7 +1,9 @@
 # Rullst Mail 📬
 
 > [!IMPORTANT]
-> This page targets `12.1.0`. Check the [release record](../v12.md) for
+> The dependency example targets `12.1.0`. This page describes the unreleased
+> v13 `main` source: items marked (v13) and other recent fixes are not in the
+> published 12.1.x crates. Check the [release record](../v12.md) for
 > publication status; use a path dependency only for checkout-local review.
 
 > **Vision preserved:** additional providers and air-gapped/zero-leak ambitions
@@ -13,10 +15,10 @@
 ---
 
 
-## 12.1 candidate: additional delivery providers
+## 12.1: additional delivery providers
 
-Native SendPulse, Mailjet and Mailtrap adapters are available in candidate
-source, alongside ACS. Set `MAIL_DRIVER=sendpulse` with `SENDPULSE_API_KEY`,
+Native SendPulse, Mailjet and Mailtrap adapters shipped in 12.1.0, alongside
+ACS. Set `MAIL_DRIVER=sendpulse` with `SENDPULSE_API_KEY`,
 `mailjet` with `MAILJET_API_KEY`/`MAILJET_SECRET_KEY`, or `mailtrap` with
 `MAILTRAP_API_TOKEN`. All require an explicit verified sender for real delivery.
 `mailjet-sandbox` performs remote validation without sending;
@@ -28,13 +30,21 @@ details authentication, attachment/inline limits, tracking configuration,
 unsubscribe headers and at-least-once retries. No extra feature is needed beyond
 Mail. Native provider acceptance still requires the configured account/domain.
 
-## 12.1 candidate: welcome and password recovery
+## 12.1: welcome and password recovery
 
 The [12.1 account-mail guide](../account-mail-v12-1.md) documents the opt-in
 PostgreSQL/SQLite account transaction, durable delivery bridge, action-link fix,
 localized lifecycle templates, signed feedback and Azure Managed Identity
-transport. These additions are checkout-local until the release record confirms
-publication. Existing applications must adopt the new store/worker explicitly.
+transport. These additions shipped in 12.1.0. Existing applications must adopt
+the new store/worker explicitly.
+
+## Shared suppression candidate (v13)
+
+Optional `postgres` (facade `mail-postgres`) adds `PostgresSuppressionStore`, a
+recipient suppression and replay store shared by hosts using one PostgreSQL
+database. Install the guard in every sending process and worker; it is not
+enabled automatically. See the
+[shared suppression contract](../shared-mail-suppression.md).
 
 ## ✨ Features
 
@@ -42,16 +52,18 @@ publication. Existing applications must adopt the new store/worker explicitly.
 - **⚡ Delivery and Test Drivers:**
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
+  - **SendPulse**, **Mailjet**, **Mailtrap** — Native transactional REST adapters (`SendPulseDriver`, `MailjetDriver`, `MailtrapDriver`); see the 12.1 section above.
+  - **Azure Communication Services** (`AzureCommunicationDriver`) — Native Email REST with Container Apps Managed Identity.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus offline fixture and an explicit legacy proxy boundary.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
-  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
-  - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
+  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions, distinct from the hosted Mailtrap service (`MailtrapDriver`).
+  - **Log** (`LogDriver`) — Metadata-only terminal and file logging (`storage/logs/mail.log`): a timestamp, attachment count and scheduling flag, never recipients, subject or body.
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. `SuppressionUnavailable` and `AttachmentInspectionUnavailable` are `Transient` (retry later) but never failover-eligible. A fallback that returns such an error ends the chain with it; when every driver fails transiently, the result is a `Transient` error, or `RateLimited` with the bounded `Retry-After` when the last driver was rate limited. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
-- **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
+- **🚫 Durable Recipient Suppression (`sqlite`, v13 `postgres`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes; the v13 PostgreSQL candidate shares that state across hosts.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling, and direct SendGrid and Resend reject a schedule beyond their documented provider limits (72 hours and 30 days ahead) with `ConfigError` before any request. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
@@ -128,12 +140,25 @@ worker_handle.shutdown().await?;
 
 Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
-exactly-once provider delivery, or provider acceptance.
+exactly-once provider delivery, or provider acceptance. Redis promotes
+scheduled jobs by its server clock, so the worker accepts a claimed job whose
+timestamp is at most 300 seconds ahead of the worker's own clock and fails a
+claim that is earlier than that.
 
-Queued jobs store attachment bytes as one base64 string per attachment. Workers
-still accept jobs written with the earlier integer-array encoding, but an older
-worker cannot read the base64 form, so upgrade workers before producers during
-a rolling deployment.
+The queue has no handler-requested retry: any delivery error, including a
+`Transient` or `RateLimited` provider failure and its `Retry-After`, marks the
+mail job failed with the error text. Nothing is lost silently, but the job is
+sent again only after `Queue::retry_failed_job`. Automate that for transient
+failures, or deliver through an outbox with its own retry policy (as account
+mail does), when provider blips must be retried without an operator.
+
+`Mail::enqueue`, and `Mail::send` after `Mail::init_queue`, run the pre-flight
+pipeline and apply the default sender before writing a `rullst_mail_send` job
+whose JSON payload is a versioned envelope (schema version 1) holding the
+optional tenant ID and the prepared message. Queued jobs store attachment
+bytes as one base64 string per attachment. Workers still accept jobs written
+with the earlier integer-array encoding, but an older worker cannot read the
+base64 form, so upgrade workers before producers during a rolling deployment.
 
 ---
 
@@ -488,7 +513,13 @@ for the next message, `Mail::reset_driver()` drops the reused one, and
 `MAIL_DRIVER=memory` still builds a fresh store per message. (v13)
 
 Environment variables:
-- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`).
+- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`,
+  `sendgrid`, `postmark`, `ses`, `azure-acs`, `sendpulse`, `mailjet`,
+  `mailjet-sandbox`, `mailtrap`, `mailtrap-sandbox`). When neither it nor `[mail] driver` is set,
+  development and test fall back to `log`, while staging and production
+  (`RULLST_ENV`, `APP_ENV` or `[app] env`, as above) return `MailError::ConfigError`
+  instead of logging mail that is never delivered. Select `log` explicitly to
+  keep metadata-only logging there.
 - `MAIL_FROM`: Default sender (v13) for `Mail` facade messages that set no
   `from`, such as generated mailables. It takes precedence over `[mail] from`;
   an explicit `from` on the message always wins. Use one address or
@@ -499,7 +530,13 @@ Environment variables:
   a driver, and `MAIL_LOG_PATH` by `LogDriver` itself.
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
-- `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
+- `POSTMARK_SERVER_TOKEN`: Server API token for Postmark (`POSTMARK_API_KEY`
+  is read when it is unset); `POSTMARK_MESSAGE_STREAM` optionally selects the
+  Message Stream.
+- `AZURE_COMMUNICATION_EMAIL_ENDPOINT`: ACS resource endpoint for `azure-acs`.
+  An empty or `mock_*` value selects the offline fixture; otherwise the driver
+  authenticates with the Managed Identity variables `IDENTITY_ENDPOINT`,
+  `IDENTITY_HEADER` and optional `AZURE_CLIENT_ID` from the process environment.
 - `AWS_REGION`: Region used by native SigV4 signing or SES proxy/mock metadata.
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: Select native SES when the
   `aws-ses` feature is enabled; both must be present.
@@ -513,10 +550,15 @@ Environment variables:
   an integer from 1 to 65535, or the facade returns `MailError::ConfigError`.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark and the SES fixture/proxy,
+For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the SES
+fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
-`OfflineMailMock::deliveries()` to assert this explicitly in tests.
+`OfflineMailMock::deliveries()` to assert this explicitly in tests. The
+process-wide capture keeps only the newest 1,000 deliveries and at most 64 MiB
+of their subject, body and attachment bytes, and the first capture in a process
+logs a `mail.offline_mock.active` warning, because an empty production secret
+also selects this fallback.
 
 Every real transport needs a sender that the provider account has verified:
 the message's `from`, or, for `Mail` facade sends, the `MAIL_FROM` /
@@ -547,13 +589,15 @@ claim that third-party delivery infrastructure is unnecessary.
 Implemented building blocks include:
 
 - typed message construction and escaped generated templates;
-- explicit SMTP, Resend, SendGrid, Postmark, log and memory drivers, plus the
+- explicit SMTP, Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS,
+  log and memory drivers, plus the
   opt-in official-SDK SES v2 transport and bounded SES proxy/mock adapter;
 - deterministic offline mode for empty or `mock_*` provider credentials;
 - an in-memory `MailTrap` and `MailFactory` fixtures;
 - bounded retry/failover helpers, tenant-driver resolution, attachments,
   provider-specific scheduling fields, and durable SQLite/Redis due times;
-- opt-in attachment inspection, process-local or shared-local suppression, and
+- opt-in attachment inspection, process-local, shared-local SQLite or (v13)
+  shared PostgreSQL suppression, and
   content-minimized local delivery observations;
 - HMAC-authenticated (not encrypted) tracking tokens with expiry/replay helpers,
   URL checks, and bounded secret-redaction heuristics.
@@ -575,7 +619,11 @@ bare address to suppression, the disposable-domain check and every transport,
 so a display name is not delivered. Lists, groups, comments, quoted local parts,
 domain literals and malformed brackets are rejected with
 `MailError::ValidationError`. Suppression events and lookups use the same
-parser; anything it rejects fails closed.
+parser; anything it rejects fails closed. Suppression keys compare the domain
+case-insensitively and key an internationalized domain by its IDNA A-label
+(`bücher.de` and `xn--bcher-kva.de` share one entry); a non-ASCII local part
+cannot be keyed, so `SuppressionGuard` rejects it with `ValidationError` rather
+than reporting `SuppressionUnavailable`.
 
 The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
 body over 2 MiB each, with `MailError::ValidationError` before any content scan.

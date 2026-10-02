@@ -45,9 +45,10 @@ acknowledges exact policy/notice versions and the selected collection categories
 can pause, resume with fresh acknowledgement or end collection. End is terminal;
 every transition uses the displayed revision, and lifetime is at most eight
 hours. Starting also compares the last retained session revision atomically;
-a form from before a pause/end cannot silently start a new session. Generated
-forms expire well before the minimum session retention. Session access is tenant/subject bound; existing course/assessment access
-must still be checked by the application.
+a form from before a pause/end cannot silently start a new session. Application
+forms should expire well before the minimum session retention, as the removed
+generated forms did. Session access is tenant/subject bound; existing
+course/assessment access must still be checked by the application.
 
 Visibility remains the default. Explicit selection also supports browser focus,
 clipboard occurrence and fullscreen events, capture status and optional adapter
@@ -72,7 +73,7 @@ typed browser/capture observations and bounded camera-presence/audio-activity
 adapter orchestration. The [integration guide](supervision-observations.md) covers
 the APIs, source attribution, cancellation, schema transition and test boundaries.
 
-The generated consumer observes only selected events on its own page. It cannot
+A browser consumer observes only selected events on its own page. It cannot
 enumerate every open window/application or recognize outside answers. The host
 owns media capture permission, a local or remote model, accessibility alternatives
 and human review; the framework includes no detector or automatic penalty.
@@ -87,7 +88,7 @@ clock failure and storage failure deny protected operations. Unmanaged learners
 retain the existing learning authorization. These restrictions cannot grant
 enrollment, unpublished lessons or assessment permissions.
 
-The generated integration must enforce policy on the original lesson-play and
+The host integration must enforce policy on the original lesson-play and
 progress paths. A new dashboard alone is insufficient. Existing independently
 authorized cross-subject administrator corrections remain administrative work,
 not learner access. They retain role, actor/subject membership and original
@@ -148,6 +149,10 @@ resuming. No automatic rollback or failover claim is made.
   installed-archive consumer before registry inclusion. Phase completion means
   the named behavior and tests exist; no mock-only package admission.
 
+The generated LMS consumer supplied the application and browser evidence above
+before v13 removed it. Applications that integrate the crate directly need their
+own equivalent acceptance.
+
 ## Application integration
 
 v13 no longer generates a supervision consumer: `make:supervision` targeted the
@@ -155,5 +160,5 @@ complete Academy LMS, which was replaced by a smaller starter. Integrate the
 crate directly. The host application authenticates the actor, checks membership
 and authority, provisions operators out of band and wires the SSR controls and
 retention workers to the contracts above. Existing stores are never upgraded or
-enabled by default. The removed generator remains in the git history and on the
-stable v12 branch as a reference implementation.
+enabled by default. The removed generator remains in the git history as a
+reference implementation.

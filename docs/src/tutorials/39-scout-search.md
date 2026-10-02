@@ -4,6 +4,9 @@
 > Dependency examples target `12.1.0`. Check the [release record](../v12.md)
 > for publication status and commit Cargo.lock for reproducible builds.
 > Use path dependencies only when intentionally testing checkout-local changes.
+> The result ordering, SQL fallback, indexed-field, `restore()`/`force_delete()`
+> projection and hit-cap rules below describe the unpublished v13 source
+> (`13.0.0-alpha.1`).
 
 Scout connects a `#[orm(searchable)]` SQLx model to one search backend. The
 model database remains authoritative; the search index is a projection updated
@@ -90,10 +93,12 @@ Without a configured engine, `Article::search(...)` falls back to a SQL
 in the query match literally rather than as wildcards.
 
 Generated save/update/delete operations, `restore()` (re-index) and
-`force_delete()` (removal) project only after the relational commit. The indexed document omits `#[orm(hidden)]`, `#[orm(encrypted)]` and
+`force_delete()` (removal) project only after the relational commit. The
+indexed document omits `#[orm(hidden)]`, `#[orm(encrypted)]` and
 `#[orm(masked)]` fields, so the provider never receives their values; documents
-indexed by earlier versions should be reindexed. Rollback produces no search write. Provider or search errors remain
-typed errors; they are not silently converted into an empty result.
+indexed by earlier versions should be reindexed. Rollback produces no search
+write. Provider or search errors remain typed errors; they are not silently
+converted into an empty result.
 
 The shared adapter boundary enforces:
 

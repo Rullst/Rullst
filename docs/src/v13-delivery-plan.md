@@ -146,15 +146,16 @@ owner-only management, revision-based rotation, account-epoch invalidation,
 SQLite/PostgreSQL authoritative checks and a Core machine-route verifier.
 Local SQLite, native PostgreSQL, fresh-process/database-restart and HTTP
 contracts passed, including the extracted facade/Auth/Core archives. Full
-workspace, coverage, security and hosted package admission remain required;
-see the [API-token contract](api-tokens.md).
+workspace, coverage, security and hosted package admission were then still
+required; see the [API-token contract](api-tokens.md).
 
 The shared mail-suppression item has a local PostgreSQL candidate with keyed
 recipient/event identifiers, namespace-bound configuration, atomic replay/quota
 enforcement and the existing final-dispatch guard. Native independent-pool,
 restricted-role, failure/cancellation, worker/tenant and process/database-restart
 contracts passed, including the extracted facade/Mail/Core archive consumer.
-Full hosted admission remains required; see [shared mail suppression](shared-mail-suppression.md).
+Full hosted admission was then still required; see
+[shared mail suppression](shared-mail-suppression.md).
 
 The durable recurring-publication item has a local Messaging candidate with
 PostgreSQL coordination, encrypted frozen occurrences, bounded UTC catch-up and
@@ -162,8 +163,8 @@ coalescing, cancellation, fenced retries and metadata retention. Native tests
 passed real SQL rollback/lock deadlines, restricted roles, competing instances,
 fresh processes/database restart and durable broker replay after lost ACK.
 Messaging all-feature regression and strict Clippy passed; extracted archive
-consumers passed the native journey. Full hosted admission remains required;
-see [durable recurring publications](recurring-publications.md).
+consumers passed the native journey. Full hosted admission was then still
+required; see [durable recurring publications](recurring-publications.md).
 
 The outgoing-webhook item has a local Messaging candidate with an encrypted
 SQLite outbox, approved destinations, fresh DNS validation and address pinning,
@@ -173,7 +174,7 @@ deduplication after lost responses, untrusted certificates, redirect/private
 address denial, SQL failure, retention and delivery uncertainty. These journeys
 also passed through extracted facade/Messaging archives. A reproduced SQLite
 lock-contention defect was corrected: lease deadlines are sampled after acquiring
-the write lock. Full hosted admission remains required; see
+the write lock. Full hosted admission was then still required; see
 [durable outgoing webhooks](outgoing-webhooks.md).
 
 The private multipart item now has a local Core/facade candidate with encrypted
@@ -183,21 +184,22 @@ Owned S3 tests passed independent clients, process/service restart and both
 endpoint profiles; HTTP failure tests reject tampering, foreign resources, DTDs,
 oversized XML, redirects and embedded errors under HTTP 200. Checkpoints require
 durable application retention/CAS; provider lifecycle expiration handles uploads
-whose initiation response was lost. Full hosted admission remains required; see
-[private multipart uploads](private-multipart-uploads.md).
+whose initiation response was lost. Full hosted admission was then still
+required; see [private multipart uploads](private-multipart-uploads.md).
 
-All seven passed combined source admission in PR #239. This does not freeze their
-APIs or admit a crates.io release. The next priorities are package readiness,
-targeted security review and corrections before September 24.
+All seven then passed combined hosted source admission in PR #239. This does
+not freeze their APIs or admit a crates.io release. The next priorities are
+package readiness, targeted security review and corrections before September 24.
 
 The September 21 dependency refresh includes `aws-sigv4` 1.5.3 (with its
 Smithy runtime API patch) in the multipart S3 evidence, and updates the Labs
 structural parser to `wasmparser` 0.259.0. Its byte offsets now use a wider range;
 checked subtraction preserves the existing 65,536-byte function-body limit.
 A parse-only boundary regression and the ordinary runner tests/strict Clippy
-passed locally. The Wasmi executor remains pinned to 2.0.0 with its own validator;
+passed locally. The Wasmi executor was pinned to 2.0.0 with its own validator;
 hosted isolation and package source admission subsequently passed in PR #239.
-Independent isolation review and final release acceptance remain outstanding.
+The runner, and with it these dependencies, was removed from the workspace on
+30 September 2026 before any independent isolation review or release acceptance.
 
 New OpenTelemetry 0.33 proposals remain pending compatible adapter evidence.
 The current [`tracing-opentelemetry` 0.33 manifest](https://docs.rs/crate/tracing-opentelemetry/0.33.0/source/Cargo.toml)
@@ -234,7 +236,8 @@ merged normally into `v12` at `6dde0cb1` on September 22; no package was publish
 
 Scorecard's binary finding points to the trusted `checked_sum.wasm` test vector,
 not application code. Rebuilding its adjacent Rust source with pinned Rust 1.96
-reproduced every byte; the required Labs acceptance job now repeats that check.
+reproduced every byte; the Labs acceptance job repeated that check until the
+fixture, the job and the runner were removed on 30 September 2026.
 The scanner annotation records test data without suppressing SARIF output.
 The historical SAST finding persisted in Scorecard run `35675329836`, reporting
 15/30 despite verified successful CodeQL checks on all three PR heads associated
@@ -309,7 +312,10 @@ contains Privacy, Supervision and Media; the registry ownership check still reje
 A read-only crates.io check on September 22 found all three names unregistered.
 The normal release workflow still rejects unregistered names; the allowlist does
 not enable a bootstrap credential path. No initial registration, tag, release
-approval or publication has occurred.
+approval or publication has occurred. (Update: `make:supervision` and its
+generated LMS journey were later removed with the complete Academy scaffold.
+The release rehearsal now tests the extracted Supervision archive directly and
+compiles only the SaaS age/privacy opt-ins.)
 
 `rullst-labs` and `rullst-labs-runner` remain `publish = false`, outside the release
 inventory and available only through explicit diagnostic packaging. Their
@@ -617,9 +623,9 @@ were subsequently generated from clean commit `30e2f753`; their source identity,
 licenses and excluded secret/database paths were audited. The archive-only
 privacy consumer and privacy publication dry run passed without uploading a
 version. These are local rehearsals, not final release receipts.
-The archive-only hosted test compiles the installed CLI's SaaS/LMS opt-ins and
-executes the same durable facade contract from extracted packages. It passed at
-`365d2252` in [run 35520146394](https://github.com/Rullst/Rullst/actions/runs/35520146394)
+The archive-only hosted test then compiled the installed CLI's SaaS/LMS opt-ins
+and executed the same durable facade contract from extracted packages. It
+passed at `365d2252` in [run 35520146394](https://github.com/Rullst/Rullst/actions/runs/35520146394)
 on September 20: seventeen package archives were audited, the durable facade
 test passed and all six installed-CLI blueprints compiled. This diagnostic does
 not replace the final full/native release campaign or publication authorization.
@@ -861,14 +867,14 @@ when its dependencies and verification capacity are ready.
 | M5/M29/M34 — API/SDK contracts | The bounded schema-first Rust/TypeScript API profile and real HTTP consumer were admitted with PR #221. | Retain schema/transport/ownership regression coverage. React, Dart and Swift targets remain follow-up work; route scanning does not supply typed response semantics. |
 | M21 — Omni/Android | CLI verification of the exact signed APK and configured certificate was admitted with PR #220 after hosted Android SDK acceptance. | Preserve the artifact/signature checks in the final campaign. Physical-device and store acceptance remain unvalidated. |
 | M9 — Auth/session consistency | PR #223 admitted optional PostgreSQL passkey ceremonies with tenant/account/session/RP binding, bounded single use, real database/process recovery and a Chromium virtual authenticator. | Preserve credential-owner/revocation/counter CAS at the host and repeat affected combined-release checks. See [the contract](shared-passkey-ceremonies.md). |
-| Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. PR #226 merged the prioritized exam-platform extension after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve transparent permissions, typed uncertain observations, manual review and no raw media retention in the final campaign. See the [integration boundary](supervision-observations.md). |
+| Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. PR #226 merged the prioritized exam-platform extension after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. The generated LMS journey (`make:supervision`) was later removed with the complete Academy scaffold; the crate's contracts remain. | Preserve transparent permissions, typed uncertain observations, manual review and no raw media retention in the final campaign. See the [integration boundary](supervision-observations.md). |
 | M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish generated multi-replica Foundry, cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
 | M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
-| LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated; release-inventory admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
+| LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated. The package has since joined the release inventory (`.github/release-order.json`); initial registry registration and final release admission remain separate. See the [managed-video candidate](managed-video-roadmap.md). |
 | M40 — Labs | The unpublished `rullst-labs` candidate provides encrypted durable exercises/jobs, exact grading and cancellation/recovery/retention. The former `rullst-labs-runner` candidate, a separate Linux Rust/Wasmi executor, passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`. On 30 September 2026 the maintainer removed it from the 13.0 workspace; its source remains in git history. `rullst-labs` is now bring-your-own-runner, with a documented [controller contract](labs-runner-contract.md) and a non-executing example controller. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors; that historical evidence covered the removed runner. Final release admission of `rullst-labs` remains outstanding, and each application-owned runner needs its own isolation review. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
 | M15 — remote messaging | PR #236 admitted the optional standalone Redis Streams profile with TLS, restart/redelivery, fenced leases, exact replay, retry/DLQ and outbox evidence. | Preserve the documented Redis and operator boundaries in combined validation. Other broker adapters, native Redis group interoperability and replication/failover remain separate roadmap work. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
-| M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
+| M1/M3/M7/M12 — adoption and assurance | The compatible updater is carried forward. `cargo rullst upgrade` reports v12 → v13 source findings from `rullst-upgrade-rules-v4`, each tied to a [migration-guide](migration-v13.md) row, and `cargo rullst ai upgrade` proposes reviewed fixes. Next: improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 
 Gateway/load-balancer implementation, fiscal homologation, physical IoT/Embassy,
 PQC protocols, local facial inference and broad database replication retain

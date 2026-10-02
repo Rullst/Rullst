@@ -2,15 +2,15 @@
 
 ## Supported Versions
 
-The **12.1.1** security maintenance release is available; its
+The **12.1.1** security maintenance release's
 [publication record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md#1211-published-maintenance-release)
 retains the source, workflow and verified registry checksums. Applications using
 public example keys must rotate those keys and renew sessions when upgrading.
 
-The **12.1.2** maintenance work on `v12` additionally corrects stored-value escaping
-in Nexus; the same correction is integrated into v13 development on `main`.
-Source integration does not establish a published crates.io fix. See the
-[maintenance review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
+The **12.1.2** maintenance release, the latest published stable patch,
+additionally corrects stored-value escaping in Nexus; the same correction is
+integrated into v13 development on `main`, which is not a published release. See
+the [maintenance review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
 for scope, validation and application actions. An application-specific patch
 does not update other installations of the published framework.
 
@@ -79,7 +79,7 @@ or deployment.
 │                          Rullst Zero-Trust Perimeter                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  1. Ingress Protection:   WAF Middleware + Honeypot Decoys + CSWSH Guard    │
-│  2. Identity & Defense:   Anti-Bruteforce Tarpit & Login Jail (DashMap)     │
+│  2. Identity & Defense:   Anti-Bruteforce Tarpit & Login Jail (in-memory)   │
 │  3. Deep Inspection:      RASP Layer (URI + Headers + Text + JNDI/RCE)      │
 │  4. Data Protection:      Zeroize Vault + Field AES-256-GCM Encryption      │
 │  5. Egress Defense:       HTTP Response DLP Interceptor (Private Keys/AWS)  │

@@ -174,5 +174,5 @@ No provider account or external recipient is used. Seventeen extracted archives
 were audited; the facade consumer passed the same HTTP/TLS and fresh-process
 journeys with 53 Messaging source files byte-matched to the candidate. All-feature
 Messaging regression (63 ordinary tests), strict all-target Clippy and the native
-recurring PostgreSQL regression passed. Full hosted workspace/coverage/security
-checks and source admission remain required before declaring this candidate complete.
+recurring PostgreSQL regression passed. Combined hosted and extracted-package
+source admission then passed in PR #239; final release acceptance remains separate.

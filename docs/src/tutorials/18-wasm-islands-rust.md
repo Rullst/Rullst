@@ -55,7 +55,10 @@ pub fn interactive_chart(props: InteractiveChartProps) {
 }
 ```
 
-The `element` binding in the Wasm block is supplied by `#[island]`.
+The `element` binding in the Wasm block is supplied by `#[island]`. The command
+also declares the module in `src/islands/mod.rs`, adds `pub mod islands;` to
+`src/lib.rs` (creating that file when it is absent), and adds any missing
+`serde`, `serde_json`, `wasm-bindgen` and `web-sys` dependencies.
 
 ## Build and load the artifact
 
@@ -63,13 +66,15 @@ The `element` binding in the Wasm block is supplied by `#[island]`.
 cargo rullst build:client
 ```
 
-The command parses `Cargo.toml`, adds `cdylib` to the existing `[lib]`
-`crate-type` array when needed, installs/checks the Wasm target and
-`wasm-bindgen-cli`, builds the library, locates the artifact using `lib.name` or
-`package.name`, writes bindings under `static/`, and generates a hydration
-orchestrator. Review these manifest, network, and toolchain side effects in CI
-and pin the required tools for reproducible releases. Load the generated ES
-module from the page as instructed by the command output.
+The command parses `Cargo.toml`, adds `cdylib` to the `[lib]` `crate-type`
+array when needed (writing `["cdylib", "rlib"]` when the key is absent),
+installs/checks the Wasm target and `wasm-bindgen-cli`, builds the library,
+locates the artifact using `lib.name` or `package.name`, writes bindings under
+`static/`, and generates the `static/rullst-islands.js` hydration orchestrator.
+Review these manifest, network, and toolchain side effects in CI and pin the
+required tools for reproducible releases. Load the orchestrator from the page
+with `<script type="module" src="/static/rullst-islands.js"></script>`, as the
+command output shows.
 
 This is a useful foundation, not a complete frontend framework: routing,
 application state, accessibility, CSP-compatible asset delivery, cache busting,

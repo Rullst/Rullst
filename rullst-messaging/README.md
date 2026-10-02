@@ -4,7 +4,8 @@
 Rullst applications. It provides a deterministic in-memory broker and an
 opt-in durable SQLite adapter. The unpublished v13 `redis-streams` candidate adds
 a standalone Redis transport with Rullst-owned delivery indexes; hosted source
-and package admission remain pending.
+and package admission passed in PR #236, and final release admission remains
+separate.
 
 ## Implemented boundary
 
@@ -209,8 +210,9 @@ Core's process-local scheduler remains independent. Facade consumers select
 
 See the [recurring-publication guide](https://github.com/Rullst/Rullst/blob/main/docs/src/recurring-publications.md)
 for clock/calendar semantics, runtime roles, host authorization and at-least-once
-boundaries. This is a local unpublished candidate; full hosted source/package
-admission remains outstanding.
+boundaries. This unpublished candidate passed combined hosted and
+extracted-package source admission in PR #239; final release admission remains
+outstanding.
 
 ## v13 outgoing-webhook candidate
 
@@ -223,5 +225,6 @@ remote/multi-host webhook state is outside this profile. Facade consumers select
 
 The [outgoing-webhook guide](https://github.com/Rullst/Rullst/blob/main/docs/src/outgoing-webhooks.md)
 documents host authorization, receiver replay protection, storage custody and
-protocol details. Native owned HTTP/TLS and process-restart tests passed locally;
-full hosted source/package admission remains outstanding.
+protocol details. Native owned HTTP/TLS and process-restart tests passed locally,
+and combined hosted and extracted-package source admission passed in PR #239;
+final release admission remains outstanding.

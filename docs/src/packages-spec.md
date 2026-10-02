@@ -1,9 +1,10 @@
 # Community dependency helper and package roadmap
 
-Rullst v12 does **not** define a runtime `RullstPackage` plugin ABI, execute
-third-party generators, discover a private package registry, or register routes
-automatically. Community integrations are ordinary Rust crates selected through
-Cargo and reviewed like any other dependency.
+Rullst (v12 and the unreleased v13 line) does **not** define a runtime
+`RullstPackage` plugin ABI, execute third-party generators, discover a private
+package registry, or register routes automatically. Community integrations are
+ordinary Rust crates selected through Cargo and reviewed like any other
+dependency.
 
 ## Current `cargo rullst pkg` boundary
 
@@ -57,9 +58,9 @@ telemetry and failure handling remain visible application responsibilities.
 
 ## Future package protocol
 
-A first-class extension protocol remains roadmap work for the next feature
-line. It should not be declared stable until the repository has all of the
-following:
+A first-class extension protocol remains roadmap work; the v13 source does not
+include one. It should not be declared stable until the repository has all of
+the following:
 
 - a versioned manifest and compatibility contract;
 - explicit capability permissions for routes, storage, network and secrets;
@@ -71,7 +72,6 @@ following:
 
 Until that contract exists, documentation and packages must not claim that
 `RullstPackage.toml`, `RullstPackage`, automatic route registration, or
-third-party generator execution are implemented v12 APIs. See the
+third-party generator execution are implemented APIs. See the
 [capability ledger](capability-ledger.md#connect-real-time-queues-storage-and-data)
-and the [capability ledger](capability-ledger.md) plus
-[roadmap](../../ROADMAP.md) for the preserved vision.
+and the [roadmap](../../ROADMAP.md) for the preserved vision.

@@ -136,5 +136,7 @@ The archive-only facade consumer also passed the ordinary failure contracts and
 the native process/service restart journey. Seventeen archives were audited and
 all 135 Core source files matched the extracted bytes. Strict all-target Clippy
 passed; the standalone production feature graph contains no SQL backend or ORM.
-Full hosted workspace, coverage, security and source admission remain required;
-no v13 publication is implied.
+Combined hosted workspace/platform and extracted-package source admission
+subsequently passed in
+[PR #239](v13-delivery-plan.md#seven-increment-source-admission-and-package-preparation-on-september-22).
+Final release admission remains separate; no v13 publication is implied.

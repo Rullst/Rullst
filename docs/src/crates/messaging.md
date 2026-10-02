@@ -19,11 +19,14 @@ The crate has an **implemented, bounded broker foundation**:
 - a canonical bounded v1 envelope wire codec with a deterministic byte fixture;
 - allowlisted W3C `traceparent`/`tracestate` propagation without baggage;
 - a feature-gated SQLite adapter that transactionally retains publications,
-  subscriptions, claims, ACK/retry/DLQ state and idempotency across restart.
+  subscriptions, claims, ACK/retry/DLQ state and idempotency across restart;
 - an explicit SQLite AES-256-GCM profile for header values and payloads, with
-  immutable profile selection and bounded primary/prior-key rotation.
+  immutable profile selection and bounded primary/prior-key rotation;
 - an opt-in static relational ORM outbox relay with exact stream/topic binding
-  and publish-before-ACK crash/replay evidence.
+  and publish-before-ACK crash/replay evidence;
+- unpublished v13 candidates: `schedules-postgres`
+  [recurring publications](../recurring-publications.md) and `webhooks`
+  [outgoing webhooks](../outgoing-webhooks.md).
 
 The `InMemoryBroker` is suitable for offline tests, deterministic development,
 and explicitly process-local workloads. `SqliteBroker` uses a fixed schema and
@@ -32,8 +35,8 @@ configuration drift and corrupt-row repair are tested. It is a durable local
 adapter, not a remote transport. The unpublished optional
 [Redis Streams candidate](../redis-messaging.md) provides a standalone transport
 with Rullst-owned group and fenced-lease indexes; hosted source/package admission
-is pending. Kafka, RabbitMQ, NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar
-adapters remain roadmap work.
+passed in PR #236 and final release admission remains separate. Kafka, RabbitMQ,
+NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar adapters remain roadmap work.
 
 The wire codec is not a remote adapter: it neither opens broker connections nor
 maps a provider's publish/ACK/retention semantics. Trace sampling, exporting,

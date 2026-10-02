@@ -55,6 +55,18 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
 }
 ```
 
+## Optional v13 account features
+
+With `recovery-sqlite` or `recovery-postgres`, `recovery::SqlRecoveryStore`
+provides an authoritative account registry, password recovery and revocable
+opaque sessions, including [active-session management](../session-management.md).
+`email-login-sqlite`/`email-login-postgres` add
+[single-use email login](../email-login.md), and
+`api-tokens-sqlite`/`api-tokens-postgres` add
+[scoped API tokens](../api-tokens.md). The facade features are
+`auth-sessions-*`, `auth-email-login-*` and `auth-api-tokens-*`. These
+unpublished candidates are opt-in and do not enable JWT or OAuth.
+
 ## WebAuthn/passkeys
 
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges

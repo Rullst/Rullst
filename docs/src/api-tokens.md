@@ -4,7 +4,10 @@ Auth features `api-tokens-sqlite` and `api-tokens-postgres` expose
 `recovery::api_tokens::ApiTokenService`. Facade features are
 `auth-api-tokens-sqlite` and `auth-api-tokens-postgres`. They reuse authoritative
 recovery accounts and do not enable email login, JWT or OAuth. This increment
-is an implementation candidate; full hosted/source/package admission is pending.
+is an implementation candidate; combined hosted and extracted-package source
+admission passed in
+[PR #239](v13-delivery-plan.md#additional-priorities-approved-on-21-september),
+and final release admission remains separate.
 
 ## Create and manage credentials
 
