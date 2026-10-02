@@ -774,9 +774,11 @@ the tables and columns visible in SQLite or the current PostgreSQL/MySQL schema.
 Table lookups are parameterized and SQL identifiers are allowlisted. Table
 module names are normalized, while collisions and database columns that would
 require an unsupported ORM field remapping fail before the output directory is
-written. The bounded type mapping falls back to `String`; review keys,
-relations, custom types, schema selection and generated files before compiling
-or replacing application models.
+written. Existing model files are never replaced: if any `<table>.rs` target
+already exists, the command fails before writing anything. An existing
+`mod.rs` keeps its content and receives only missing `pub mod` declarations.
+The bounded type mapping falls back to `String`; review keys, relations, custom
+types, schema selection and generated files before compiling them.
 * **Required Flags:**
   * `--driver`: `postgres`, `mysql`, or `sqlite`.
   * `--url`: The complete connection string.
