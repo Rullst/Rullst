@@ -18,18 +18,7 @@ pub fn create_new_model(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Validate if we are in the root of the Rullst project
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        println!(
-            "{}",
-            "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
-                .yellow()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
 
     let snake_name = model_to_snake_case(name);

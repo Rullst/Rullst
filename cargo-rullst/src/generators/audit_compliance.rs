@@ -42,6 +42,61 @@ impl EvidenceStatus {
     }
 }
 
+/// One check of the `audit --json` summary.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub(crate) struct CheckSummary {
+    pub id: &'static str,
+    pub status: &'static str,
+    pub count: Option<usize>,
+    pub exceptions: Vec<String>,
+    pub detail: String,
+}
+
+/// The versioned `audit --json` document (`rullst.cli-audit.v1`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub(crate) struct AuditSummary {
+    pub schema_version: &'static str,
+    pub issues_found: usize,
+    pub checks: Vec<CheckSummary>,
+}
+
+fn check_summary(id: &'static str, status: &EvidenceStatus) -> CheckSummary {
+    let (name, count, exceptions) = match status {
+        EvidenceStatus::NoFindings => ("no_findings", None, Vec::new()),
+        EvidenceStatus::NoFindingsOutsideExceptions(advisories) => {
+            ("no_findings_outside_exceptions", None, advisories.clone())
+        }
+        EvidenceStatus::Findings(count) => ("findings", Some(*count), Vec::new()),
+        EvidenceStatus::Generated(count) => ("generated", Some(*count), Vec::new()),
+        EvidenceStatus::Observed(count) => ("observed", Some(*count), Vec::new()),
+        EvidenceStatus::NotChecked(_) => ("not_checked", None, Vec::new()),
+        EvidenceStatus::Error(_) => ("error", None, Vec::new()),
+    };
+    CheckSummary {
+        id,
+        status: name,
+        count,
+        exceptions,
+        detail: crate::ui::error_report::sanitize(&status.detail()),
+    }
+}
+
+/// The JSON summary of one audit run; details never carry secret values.
+pub(crate) fn summary(evidence: &ComplianceEvidence, issues_found: usize) -> AuditSummary {
+    AuditSummary {
+        schema_version: "rullst.cli-audit.v1",
+        issues_found,
+        checks: vec![
+            check_summary("secret_scan", &evidence.secret_scan),
+            check_summary("dependency_audit", &evidence.dependency_audit),
+            check_summary("unsafe_scan", &evidence.unsafe_scan),
+            check_summary("idor_scan", &evidence.idor_scan),
+            check_summary("sbom", &evidence.sbom),
+            check_summary("network_scan", &evidence.network_scan),
+        ],
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ComplianceEvidence {
     pub secret_scan: EvidenceStatus,
@@ -165,6 +220,49 @@ mod tests {
             fs::read_to_string(&victim).expect("victim contents"),
             "ssh-ed25519 fixture"
         );
+    }
+
+    #[test]
+    fn the_json_summary_has_the_documented_shape() {
+        let evidence = ComplianceEvidence {
+            secret_scan: EvidenceStatus::Findings(2),
+            dependency_audit: EvidenceStatus::NoFindingsOutsideExceptions(vec![
+                "RUSTSEC-2099-0001".to_string(),
+            ]),
+            unsafe_scan: EvidenceStatus::NoFindings,
+            idor_scan: EvidenceStatus::Error("walk failed for postgres://u:hunter2@db".to_string()),
+            sbom: EvidenceStatus::NotChecked("SBOM generation was not requested"),
+            network_scan: EvidenceStatus::Observed(1),
+        };
+        let value = serde_json::to_value(summary(&evidence, 3)).expect("serializable");
+        assert_eq!(value["schema_version"], "rullst.cli-audit.v1");
+        assert_eq!(value["issues_found"], 3);
+        let checks = value["checks"].as_array().expect("checks");
+        let ids: Vec<_> = checks.iter().map(|check| check["id"].clone()).collect();
+        assert_eq!(
+            ids,
+            [
+                "secret_scan",
+                "dependency_audit",
+                "unsafe_scan",
+                "idor_scan",
+                "sbom",
+                "network_scan"
+            ]
+        );
+        assert_eq!(checks[0]["status"], "findings");
+        assert_eq!(checks[0]["count"], 2);
+        assert_eq!(checks[1]["status"], "no_findings_outside_exceptions");
+        assert_eq!(checks[1]["exceptions"][0], "RUSTSEC-2099-0001");
+        assert_eq!(checks[3]["status"], "error");
+        assert!(
+            !checks[3]["detail"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("hunter2")
+        );
+        assert_eq!(checks[4]["status"], "not_checked");
+        assert!(checks[4]["count"].is_null());
     }
 
     #[test]

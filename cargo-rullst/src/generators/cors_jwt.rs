@@ -186,13 +186,7 @@ fn add_cors_feature_to_dependency(line: &str) -> Result<String, Box<dyn std::err
 
 pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
 
     println!("{}", "🛠️ Generating CORS middleware...".cyan().bold());
@@ -288,13 +282,7 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
 
 pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
 
     println!("{}", "🛠️ Generating JWT middleware...".cyan().bold());

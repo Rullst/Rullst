@@ -374,6 +374,7 @@ fn home_entries_lead_with_the_context_and_run_real_commands() {
         [
             HomeAction::NewProject,
             HomeAction::ProjectOperations,
+            HomeAction::Palette,
             HomeAction::Help,
             HomeAction::Exit
         ]
@@ -393,6 +394,7 @@ fn home_entries_lead_with_the_context_and_run_real_commands() {
         HomeAction::Deploy,
         HomeAction::ProjectOperations,
         HomeAction::NewProject,
+        HomeAction::Palette,
         HomeAction::Help,
         HomeAction::Exit,
     ] {

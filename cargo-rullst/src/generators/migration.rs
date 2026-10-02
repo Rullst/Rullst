@@ -11,13 +11,7 @@ use std::path::Path;
 
 pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
 
     let snake_name = migration_snake_name(name)?;
@@ -237,13 +231,7 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
     use std::path::Path;
 
     if !crate::generators::is_rullst_project() {
-        println!(
-            "{}",
-            "? Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
 
     if project_orm_backend() == ProjectOrmBackend::Turso {

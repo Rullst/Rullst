@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### CLI errors, doctor, completions and command palette
+
+- Every CLI failure renders as one friendly report (title, what happened, how
+  to fix, docs link) with secrets masked; `-v`/`--verbose` shows the causes.
+  Unknown commands exit with status 2 and "did you mean" suggestions.
+- `cargo rullst doctor` groups toolchain, project, config, database,
+  migration, security and disk checks with fixes and docs links, adds `--json`
+  (`rullst.cli-doctor.v1`) and exits 1 when a check fails.
+- New `completions <shell>` and `info [--json]` commands, `--json` for
+  `inspect routes` and `audit`, a fuzzy "Search All Commands" palette in the
+  home menu, and next-step hints after generators.
+
 ### Live metrics in `cargo rullst dash`
 
 - `cargo rullst dash` shows live requests/s, p50/p95 latency with a

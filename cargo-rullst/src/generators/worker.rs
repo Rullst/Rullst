@@ -122,13 +122,7 @@ pub fn worker_to_snake_case(s: &str) -> String {
 
 pub fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
 
     let snake_name = worker_to_snake_case(name);

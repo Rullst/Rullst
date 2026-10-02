@@ -24,6 +24,18 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "cargo rullst eject",
                     "Generate a reviewable Axum/Tokio entry-point snapshot",
                 ),
+                (
+                    "cargo rullst doctor [--fix] [--json]",
+                    "Grouped toolchain, project, database and security checks",
+                ),
+                (
+                    "cargo rullst info [--json]",
+                    "CLI version, toolchain and detected project",
+                ),
+                (
+                    "cargo rullst completions <shell>",
+                    "Shell completions (bash, zsh, fish, powershell, elvish)",
+                ),
             ],
         ),
         (
@@ -119,7 +131,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Scaffold 2FA TOTP authentication system",
                 ),
                 (
-                    "cargo rullst audit [--ai] [--compliance] [--idor] [--geiger]",
+                    "cargo rullst audit [--ai] [--compliance] [--idor] [--geiger] [--json]",
                     "Run bounded vulnerability, IDOR, unsafe and evidence checks",
                 ),
                 ("cargo rullst make:billing", "Scaffold Stripe billing"),
@@ -175,7 +187,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Generate AI context (.llms.txt)",
                 ),
                 (
-                    "cargo rullst inspect [target]",
+                    "cargo rullst inspect [target] [--json]",
                     "Inspect expanded macro code & route schemas",
                 ),
                 (

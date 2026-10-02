@@ -76,18 +76,7 @@ fn validate_middleware_identifier(name: &str, snake_name: &str) -> std::io::Resu
 
 fn validate_project_root() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        println!(
-            "{}",
-            "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
-                .yellow()
-        );
-        std::process::exit(1);
+        return Err(crate::ui::error_report::ProjectRequired.into());
     }
     Ok(())
 }

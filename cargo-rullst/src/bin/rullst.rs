@@ -9,15 +9,9 @@
 
 use std::process::ExitCode;
 
-/// Returning the error from `main` would print its `Debug` form; users need
-/// the `Display` message instead.
+/// Failures are rendered by the CLI's shared friendly error report (title,
+/// what happened, how to fix, docs) instead of a `Debug` dump.
 #[cfg_attr(mutants, mutants::skip)]
 fn main() -> ExitCode {
-    match cargo_rullst::run() {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            eprintln!("Error: {error}");
-            ExitCode::FAILURE
-        }
-    }
+    cargo_rullst::cli::run_and_report()
 }
