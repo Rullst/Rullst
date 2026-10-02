@@ -19,6 +19,10 @@ class InputTests(unittest.TestCase):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "fixture@example.invalid")
         self.run_git("config", "user.name", "Fixture")
+        # Background auto-maintenance can still be writing objects/pack when
+        # the temporary repository is removed, so keep it off in fixtures.
+        self.run_git("config", "maintenance.auto", "false")
+        self.run_git("config", "gc.auto", "0")
         # A detached `git gc --auto` can still be writing objects/pack when the
         # temporary directory is removed (ENOTEMPTY), so keep git in the foreground.
         self.run_git("config", "gc.auto", "0")

@@ -3,8 +3,8 @@
 The v13 release requires all 42 declared targets across eleven fuzz workspaces,
 including challenge-token and signed-attestation checks in `rullst-privacy`.
 The immutable v12 release line retains its 40-target policy. A successful
-`fuzzing.yml` run on the final release-branch commit remains mandatory (`main`
-for v12, `v13` for v13). In release mode,
+`fuzzing.yml` run on the final release-branch commit remains mandatory (`v12`
+for v12, `main` for v13). In release mode,
 the planner can credit an original successful campaign when its reviewed inputs
 match the candidate; only targets without eligible evidence execute again.
 `force_full: true` requests every declared execution. Diagnostic mode remains a

@@ -8,7 +8,7 @@ you will be able to point to the handler that produced the page in your browser.
 [Next: CLI generators](02-cli-generators.md)
 
 This tutorial takes a new developer from installing Rust to a running Rullst
-web application. It targets `12.1.0`; check the [release record](../v12.md) for registry availability.
+web application. It targets `12.1.2`; check the [release record](../v12.md) for registry availability.
 Production adoption still needs application review and immutable artifacts;
 neither moving `main` nor merely pinning end-of-life v5 satisfies that
 requirement.
@@ -48,10 +48,10 @@ Every command below must run in this directory, where `Cargo.toml` lives.
 
 ## 3. Add stable v12
 
-Select its exact crates.io version:
+Add the stable v12 release from crates.io:
 
 ```bash
-cargo add rullst@12.1.0
+cargo add rullst@12.1.2
 cargo add tokio --features full
 ```
 
@@ -115,21 +115,20 @@ look for a build or startup diagnostic.
 
 ## 6. Continue with the CLI
 
-The v12 CLI can generate complete starters and project modules. While working
-from a source checkout, install the same revision locally:
+The v12 CLI can generate complete starters and project modules. Install it
+from crates.io:
 
 ```bash
-git clone --branch main https://github.com/Rullst/Rullst.git
-cd Rullst
-cargo install --locked --path cargo-rullst
+cargo install cargo-rullst --version '^12' --locked
 cargo rullst --help
 ```
 
-The CLI's `new` generator will target the CLI's framework version. Until v12 is
-published, a pre-release CLI built from this checkout emits absolute path
-dependencies to that exact checkout, including when invoked elsewhere. Keep the
-checkout in place and review those sources before sharing the generated project.
-See the [CLI reference](../cli_reference.md) for every command and boundary.
+The CLI's `new` generator targets the CLI's own framework version. A CLI built
+from a source checkout of `main` is the unreleased v13 line: it emits absolute
+path dependencies to that exact checkout, including when invoked elsewhere.
+Keep such a checkout in place and review its sources before sharing a generated
+project. See the [CLI reference](../cli_reference.md) for every command and
+boundary.
 
 ## Key takeaways
 

@@ -7,6 +7,7 @@ use super::term::{Style, TermEnv};
 use clap::ArgMatches;
 use dialoguer::theme::{ColorfulTheme, SimpleTheme, Theme};
 use std::io::{BufRead, Read};
+use std::path::Path;
 
 fn prompt_error(error: dialoguer::Error) -> AiCliError {
     AiCliError::Prompt(error.to_string())
@@ -56,11 +57,11 @@ fn secret_from_stdin() -> Result<String, AiCliError> {
     Ok(line.trim_end_matches(['\n', '\r']).to_string())
 }
 
-struct Answers {
+/// The provider and model chosen for `connect`. The key is gathered
+/// separately, so nothing `connect` prints is derived from it.
+struct Choice {
     provider: Provider,
     model: Option<String>,
-    secret: Option<String>,
-    prices: Option<Prices>,
 }
 
 fn ask_price(theme: &impl Theme, prompt: &str) -> Result<f64, AiCliError> {
@@ -123,11 +124,11 @@ fn gather_endpoint(
     })
 }
 
-fn gather(
+fn gather_choice(
     matches: &ArgMatches,
     interactive: bool,
     theme: &impl Theme,
-) -> Result<Answers, AiCliError> {
+) -> Result<Choice, AiCliError> {
     let provider = match matches.get_one::<String>("provider") {
         Some(value) => Provider::parse(value)
             .ok_or_else(|| AiCliError::Usage("unknown provider".to_string()))?,
@@ -158,6 +159,17 @@ fn gather(
             "invalid model name; use letters, digits and . - _ : / only".to_string(),
         ));
     }
+    Ok(Choice { provider, model })
+}
+
+/// The API key, or the endpoint of Ollama or a local server.
+fn gather_secret(
+    matches: &ArgMatches,
+    choice: &Choice,
+    interactive: bool,
+    theme: &impl Theme,
+) -> Result<Option<String>, AiCliError> {
+    let provider = choice.provider;
     let secret = if provider.uses_api_key() {
         if matches.get_flag("api-key-stdin") {
             Some(secret_from_stdin()?)
@@ -186,7 +198,7 @@ fn gather(
     if provider == Provider::Local
         && let Some(url) = secret.as_deref().filter(|url| !is_mock_credential(url))
     {
-        let model = model.as_deref().unwrap_or(provider.default_model());
+        let model = choice.model.as_deref().unwrap_or(provider.default_model());
         super::backend::local_provider(url, model).map_err(|_| {
             AiCliError::Usage(
                 "the local server URL must be http(s) on a literal loopback IP, such as http://127.0.0.1:1234/v1"
@@ -194,37 +206,44 @@ fn gather(
             )
         })?;
     }
-    let prices = gather_prices(matches, interactive, theme)?;
-    Ok(Answers {
-        provider,
-        model,
-        secret: secret.map(|secret| secret.trim().to_string()),
-        prices,
-    })
+    Ok(secret.map(|secret| secret.trim().to_string()))
 }
 
 pub(super) fn connect(matches: &ArgMatches, env: &TermEnv, style: Style) -> Result<(), AiCliError> {
     let path = credentials::credentials_path()?;
     credentials::check_location(&path, super::project_root().as_deref(), true)?;
     let interactive = env.interactive();
-    let answers = if style.color {
-        gather(matches, interactive, &ColorfulTheme::default())?
+    if style.color {
+        connect_with(
+            matches,
+            interactive,
+            style,
+            &path,
+            &ColorfulTheme::default(),
+        )
     } else {
-        gather(matches, interactive, &SimpleTheme)?
-    };
-    let Answers {
-        provider,
-        model,
-        secret,
-        prices,
-    } = answers;
+        connect_with(matches, interactive, style, &path, &SimpleTheme)
+    }
+}
+
+fn connect_with(
+    matches: &ArgMatches,
+    interactive: bool,
+    style: Style,
+    path: &Path,
+    theme: &impl Theme,
+) -> Result<(), AiCliError> {
+    let choice = gather_choice(matches, interactive, theme)?;
+    let secret = gather_secret(matches, &choice, interactive, theme)?;
+    let prices = gather_prices(matches, interactive, theme)?;
+    let Choice { provider, model } = choice;
     let stored = Stored {
         provider,
         model: model.clone(),
         secret: secret.clone().map(Secret::new),
         prices,
     };
-    credentials::save(&path, &stored)?;
+    credentials::save(path, &stored)?;
     let model = model.unwrap_or_else(|| format!("{} (default)", provider.default_model()));
     println!(
         "{}",

@@ -6,31 +6,31 @@
 
 ## 🌟 Modules & Features
 
-### 🍯 1. Rullst Honey (`rullst::security::honey`)
+### 🍯 1. Rullst Honey (`rullst_security::honey`)
 *Deception Security & Botnet Mitigation Engine*
 - **Synthetic Honeypot Traps:** Intercepts reconnaissance bots attempting to scan paths like `/.env`, `/admin.php`, `/wp-login.php`, `/.git/config`.
 - **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit. A request checks only its own peer; expired bans are pruned in expiry order when bans are added or counted, and a full list evicts the ban that expires soonest.
 - **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
 - **Lure-Resistant Bans:** Every trap hit is refused, but only a direct request bans its peer. A load that a page initiated (`Sec-Fetch-Site` of `same-origin`, `same-site` or `cross-site`, or `Origin`/`Referer` from a browser without fetch metadata) is recorded without a ban, so an `<img src="/.env">` on another site or in user content cannot ban visitors or a shared NAT address. These headers are client-controlled: a scanner can avoid the ban, not the refusal, by sending them.
 
-### 🧹 2. Rullst Sanitizer (`rullst::security::sanitizer`)
+### 🧹 2. Rullst Sanitizer (`rullst_security::sanitizer`)
 *XSS Prevention & Dynamic CSP Nonces*
 - **Allowlisted HTML Sanitization:** Uses `ammonia` to strip scripts, inline event handlers, unsafe attributes, and unsupported SVG/HTML instead of trying to make arbitrary markup safe.
 - **Dynamic Content Security Policy (CSP):** Generates cryptographically secure base64 nonces (`nonce-<random>`) per HTTP request.
 - **Clickjacking & Security Headers:** Enforces `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and strict `Referrer-Policy`.
 
-### 🛡️ 3. Rullst RBAC Guard (`rullst::security::rbac`)
+### 🛡️ 3. Rullst RBAC Guard (`rullst_security::rbac`)
 *Role-Based Access Control & BOLA/IDOR Defense*
 - **Declarative Authorization:** Inspects `UserContext` roles and fine-grained capabilities (`RbacGuard::authorize`).
 - **BOLA / IDOR Prevention:** Provides `RbacGuard::authorize_owner_or_role` to enforce resource ownership boundaries dynamically.
 
-### 📜 4. Rullst Audit Log (`rullst::security::audit`)
+### 📜 4. Rullst Audit Log (`rullst_security::audit`)
 *HMAC-SHA256 Tamper-Evident Trail*
 - **Canonical Event Chaining:** Signs a versioned, domain-separated, length-prefixed encoding of the sequence, timestamp, event fields, and predecessor hash.
 - **Offline Integrity Checks:** `verify_record` checks one record's HMAC; `verify_sequence` additionally validates genesis, monotonic sequence IDs, and predecessor continuity.
 - **Extensible Sinks:** Provides `AuditLogger` trait for database ORM logging or Cloud-Native stdout/JSON sinks.
 
-### 🔑 5. TOTP Recovery Codes (`rullst::security::recovery_codes`)
+### 🔑 5. TOTP Recovery Codes (`rullst_security::recovery_codes`)
 
 - **One-time plaintext:** 80-bit codes are returned only during enrollment and zeroized on drop.
 - **Storage-safe records:** Persist only the subject-bound salted HMAC-SHA256 verifiers.
@@ -65,6 +65,10 @@
   `rate_limit_middleware` keys the verified socket peer per IPv4 address and
   per IPv6 /64 (IPv4-mapped IPv6 counts as IPv4), so rotating addresses inside
   one delegated prefix shares a budget instead of filling the identity table.
+- **Shared Redis limiter:** The opt-in `redis-rate-limit` feature adds
+  `RedisRateLimiter`, an atomic fixed-window Lua counter with hashed client
+  keys. Empty or `mock_*` URLs select a bounded process-local test mode; call
+  `require_distributed()` at production startup.
 
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 

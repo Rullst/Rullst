@@ -46,7 +46,9 @@ customer bindings, immutable attempts, Checkout Session IDs and atomic event
 receipts. It reconciles current provider state under database revision fencing
 and resumes existing open sessions. Configure the account, credentials, recurring
 price allowlist and HTTPS return URL as described in generated `BILLING.md`.
-Mixed credentials and other generated live providers remain unavailable.
+Mixed credentials remain unavailable. Besides Stripe, only the v13 generated
+Paddle candidate (see below) has a live generated path; Lemon Squeezy runs there
+only as an offline fixture and other providers are not generated.
 Updating Capital does not rewrite existing controllers or apply new migrations.
 
 | Provider | Adapter category | Current boundary |
@@ -70,7 +72,10 @@ fixtures, not authenticated portal sessions.
 Legacy checkout and portal fixtures use reserved `https://mock.<provider>.invalid/`
 hosts and carry only the plan ID, never the customer email or return URL, so a
 deployment started without credentials cannot send a browser or personal data
-to a real provider domain. Live usage reporting through the
+to a real provider domain. Alipay is the exception: its fixture runs only with
+explicit `mock_*` credentials, and its `mock.alipay.invalid` checkout and portal
+URLs still include the email (and, for checkout, the app ID, plan and return
+URL). Live usage reporting through the
 legacy uniform method is also unsupported for Paddle, Polar, Mercado Pago and
 Razorpay; use the separate reviewed Stripe/Lemon Squeezy metered contracts when
 applicable. InfinitePay, PicPay and Coinbase cancellation, plus Polar pause,
@@ -336,7 +341,7 @@ subscription notifications to the external customer and product. Retain account,
 environment, event receipts and entitlement/reconciliation policy in your app.
 See [Polar's current checkout contract](https://polar.sh/docs/api-reference/checkouts/create-session).
 
-### Customer-bound Stripe subscription checkout (12.1 working source)
+### Customer-bound Stripe subscription checkout (12.1)
 
 `StripeProvider::create_customer` accepts a `StripeCustomerRequest` containing
 an opaque local owner reference, a persisted retry key and optional contact
@@ -425,11 +430,11 @@ metering or webhook paths and says nothing about another provider.
    observability and reconciliation controls are ready, perform the smallest
    provider-permitted real transaction and retain redacted evidence.
 
-The generated SaaS blueprint currently provides an application boundary for
-the Stripe and Lemon Squeezy subset. It is not a conformance application for
-all eleven Capital adapters. A release claim should name the exact provider,
-operation, environment and observed result rather than saying that “payments
-work.” See the official [Stripe testing](https://docs.stripe.com/testing) and
+The generated SaaS blueprint currently provides a durable Stripe application
+boundary, the v13 Paddle candidate and an offline Lemon Squeezy fixture. It is
+not a conformance application for all eleven Capital adapters. A release claim
+should name the exact provider, operation, environment and observed result
+rather than saying that “payments work.” See the official [Stripe testing](https://docs.stripe.com/testing) and
 [sandbox](https://docs.stripe.com/sandboxes) guidance and Lemon Squeezy's
 [test-mode](https://docs.lemonsqueezy.com/help/getting-started/test-mode) and
 [webhook simulation](https://docs.lemonsqueezy.com/help/webhooks/simulate-webhook-events)
@@ -1037,7 +1042,7 @@ the document before writing it:
 
 ```bash
 RULLST_NFSE_XSD_DIR=/path/to/NFSe/Schemas/1.01 \
-  cargo run -p rullst-capital --example nfse_v101_preview
+  cargo run -p rullst-capital --features nfse --example nfse_v101_preview
 ```
 
 Only `NfseEnvironment::Mock` is executable. Its response is typed as `FiscalResponseKind::OfflineMock`, uses `MOCK_NOT_AUTHORIZED`, and must never be accounted as an issued invoice:

@@ -38,7 +38,7 @@
   the proxy address; list only your real proxy networks.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
-- **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
+- **Environment Management:** Native `dotenv` and TOML configuration loaders for the Development, Test, Staging and Production environments.
   `Server` and the Artisan `db:*`/`studio` commands resolve the database the
   same way: process `DATABASE_URL`, then `./.env` (never overriding the
   process), then `[database].url`. Database commands without a configured
@@ -83,8 +83,9 @@
   `list_job_previews`, which cuts each payload and error to a byte budget in
   SQL or Lua.
 - **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send
-  HTMX requests their error fragment with `200 OK` plus
-  `X-Rullst-Validation-Status: 400|422`; other clients keep `400`/`422` JSON.
+  HTMX requests their error fragment with `200 OK` plus an
+  `X-Rullst-Validation-Status` header carrying the REST status; other clients
+  keep `400`, `413`, `415` or `422` JSON.
 - **POSIX Cron in UTC:** `Scheduler::task` evaluates five-field POSIX
   expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and names, and a day
   matching either restricted day field runs the task.
@@ -145,8 +146,10 @@ application needs:
 rullst-core = { version = "12.1.0", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
-Enable `orm`, `queue-sqlite`, `queue-redis`, `offline-sync`, or `telemetry` only
-when that integration is required. The primary `rullst` crate keeps `orm` and
+Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`, or
+`telemetry` only when that integration is required. `orm` adds no SQLx driver:
+pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
+SQLite). The primary `rullst` crate keeps `orm`, `drivers-all` and
 `queue-sqlite` in its default feature set for application compatibility.
 
 Both built-in queue drivers implement `Queue::dispatch_at` for schedules up to

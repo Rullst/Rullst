@@ -79,8 +79,8 @@ Rullst AI · OpenAI · gpt-4o-mini · project my_app
 The assistant receives a primer about Rullst (routing, `html!`, models,
 migrations, security rules and the `make:*` commands) and a bounded inventory
 of your project: package and dependency names, enabled features, configuration
-key names and source paths. It does not receive file contents unless you share
-them:
+key names and source paths, plus the first 8 KiB of the project's `AGENTS.md`
+as data. It does not receive other file contents unless you share them:
 
 ```text
 › /add src/main.rs

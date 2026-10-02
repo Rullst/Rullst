@@ -5,7 +5,8 @@ Mail's optional `postgres` feature exposes `PostgresSuppressionStore`,
 `mail-postgres`. It implements the existing `SuppressionStore` and
 `MutableSuppressionStore` contracts across hosts sharing one authoritative
 writable PostgreSQL database. It does not enable SQLite or change default mail
-delivery. Full hosted/source/package admission for this increment is pending.
+delivery. It passed combined hosted and extracted-package source admission in
+PR #239; final release acceptance remains separate.
 
 ## Configure and compose the store
 
@@ -55,8 +56,9 @@ hard bounce, then spam complaint. Earlier events can strengthen a reason but
 cannot undo a complaint. Recipient normalization uses the delivery pipeline's
 recipient parser: `Name <address>` and `<address>` reduce to the bare address,
 and lists, groups, comments, padding or other unparsable forms are rejected so
-the guard fails closed. It then preserves the local part and lowercases the
-domain, matching the existing stores; it does not infer aliases.
+the guard fails closed. It then preserves the local part, which must be ASCII,
+lowercases the domain and keys an internationalized domain by its IDNA A-label,
+matching the existing stores; it does not infer aliases.
 
 The database stores HMAC-derived recipient/event identifiers and fingerprints,
 the authoritative bounded provider/reason and first/last observation times.

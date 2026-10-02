@@ -31,8 +31,9 @@ The standalone package remains independent of Core and the umbrella.
 
 The v13 CLI's explicit
 [`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
-composes these controls with the recognized SaaS authentication and its
-server-owned tenant. It supplies preferences, an optional personalized greeting,
+composes these controls with the recognized SaaS authentication and a
+server-owned tenant fixed at generation by the required `--tenant-ref`. It
+supplies preferences, an optional personalized greeting,
 and an independent direct JSON export of only the current account's ID, name
 and email. The CLI selects its matching registry version unless an explicit
 `--privacy-source` selects local development source. Before publication, use that
@@ -91,8 +92,10 @@ operator recovery; normal startup must not remove it.
 
 The optional `consent-postgres` feature supplies `PostgresConsentStore`
 independently of age assurance. It uses one authoritative writable PostgreSQL
-database and a fixed `rullst_consent` schema. This is a new implementation
-candidate; final hosted and package admission remain pending.
+database and a fixed `rullst_consent` schema. Combined hosted and
+extracted-package source admission passed in
+[PR #239](https://github.com/Rullst/Rullst/pull/239); final release admission
+remains separate.
 
 - Run `initialize(url, capacity)` with a deployment role to create an absent
   schema or validate the existing one. Concurrent initializers serialize;
@@ -333,9 +336,11 @@ old challenge. No external age provider is required for this transport.
 The v13 CLI preview supplies an optional
 [`make:age-gate` SaaS consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
 It mounts a declaration before the existing authenticated dashboard rendering,
-with explicit server policy, CSRF and durable one-use consumption. Before registry
-publication, use the matching local source override or archive patch. A
-declaration changes no guardian or subject-age record.
+with explicit server policy, CSRF and durable one-use consumption in the SQLite
+or PostgreSQL replay store selected by the required `--replay-store`. The
+required `--tenant-ref` fixes the server-owned tenant at generation. Before
+registry publication, use the matching local source override or archive patch.
+A declaration changes no guardian or subject-age record.
 Other app actions and stronger
 assurance methods retain their own authorization/integration requirements.
 

@@ -129,7 +129,7 @@ Restore accepts only a path-validated snapshot inside the current project's
 normal version-control commit or copy a needed diagnostic report before
 cleaning.
 
-### Recovery boundaries and unreleased hardening
+### Recovery boundaries and 12.1.0 hardening
 
 Stop editors, watchers and other writers before restoring. File recovery does
 not undo build-script/test side effects or database/external-service changes.
@@ -137,14 +137,13 @@ Keep an independent version-control backup; the directory under `target` is not
 a substitute for one. A filesystem error during application can leave some
 files restored and others unchanged, so always review the result.
 
-The working 12.1.0 implementation now preflights the entire backup, stages every
-replacement before writing originals, and rejects linked or malformed paths.
-It limits indexes to 8 MiB/100,000 entries, each snapshot to 64 MiB and the total
-to 512 MiB. Disk failure while staging leaves originals intact; failure during
+Since 12.1.0 the CLI preflights the entire backup, stages every replacement
+before writing originals, and rejects linked or malformed paths. It limits
+indexes to 8 MiB/100,000 entries, each snapshot to 64 MiB and the total to
+512 MiB. Disk failure while staging leaves originals intact; failure during
 the later per-file apply reports progress and retains the backup. This is not
 an all-files atomic commit and does not defend against hostile concurrent
-filesystem changes. These improvements are **not in published 12.0.0** and still
-require the 12.1.0 cross-platform release checks.
+filesystem changes. These improvements are **not in 12.0.0**.
 
 ## 4. Finish a v5 to v12 migration
 
@@ -211,10 +210,11 @@ comments and string literals never match an API rule, and macro bodies such as
 `html!` and `routes!` are read token by token), Cargo manifests with a TOML
 parser, and a few generated project files (`.gitignore`, `.dockerignore`,
 `.cargo/config.toml`, `Foundry.toml`, `docker-compose.prod.yml`, Kubernetes
-YAML, `omni-app/src/lib.rs`, `rullst-client.ts`, `.env`/`.env.example` keys and
-release scripts). Files are read without following symbolic links; a finding
-records a rule and a line, never file contents. A Rust file that does not
-parse, is not UTF-8 or is larger than 2 MiB is listed as `NOT SCANNED`.
+YAML, `omni-app/src/lib.rs`, `rullst-client.ts`, `Dockerfile`,
+`.env`/`.env.example` keys and release scripts). Files are read without
+following symbolic links; a finding records a rule and a line, never file
+contents. A Rust file that does not parse, is not UTF-8 or is larger than
+2 MiB is listed as `NOT SCANNED`.
 
 Each finding has a stable code (`V13-...`), a kind, a location, a one-line
 message and the first-column title of its row in the
@@ -288,7 +288,7 @@ With no provider connected, the deterministic offline assistant demonstrates
 the flow on `V13-RENDER-PAGE-LANGUAGE`: it rewrites the first flagged
 `render_page(&htmx, title, body)` call as
 `rullst::htmx::render_page_with_lang(&htmx, "en", title, body)` and proposes
-`cargo check`. It explains the other findings without proposing edits.
+`cargo check`. It proposes no edits for the other findings.
 
 A practical order:
 
@@ -512,8 +512,8 @@ the rule together.
 
 ## Planned simpler update experience
 
-**Working 12.1.0 source only, not published 12.0.0:** advisory discovery is now
-available through these commands:
+**Since 12.1.0 (not in 12.0.0):** advisory discovery is available through these
+commands:
 
 ```bash
 cargo rullst update check
@@ -544,16 +544,15 @@ Online discovery can recover from an unavailable cache. See the
 [CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased)
 for locations and boundaries.
 
-Working-source `cargo rullst update verify --to VERSION --directory PATH`
+`cargo rullst update verify --to VERSION --directory PATH`
 also authenticates an already-downloaded native manifest through the installed
 GitHub CLI, then checks the matching executables' sizes and hashes. Its
 [separate verification contract](../cli_reference.md#cargo-rullst-update-verify-1210-working-source-unreleased)
 does not install or execute those files, replace project files, or establish
-current registry eligibility. Native release assets are still being prepared;
-this command is not proof that 12.1.0 artifacts have been published.
+current registry eligibility.
 
-Working-source `cargo rullst update project prepare --project PATH --json`
-now copies the Git working directory into private storage and edits only the
+`cargo rullst update project prepare --project PATH --json`
+copies the Git working directory into private storage and edits only the
 candidate's versioned workspace dependencies. It preserves dirty and untracked
 source, tracked deletions and the root lockfile, including a legacy ignored
 lockfile. Compare `before/` and `candidate/` at the reported location and review
@@ -573,7 +572,7 @@ only that operation and refuses unrelated edits.
 
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
-approved application. The working-source **12.1.0** CLI now composes those
+approved application. The **12.1.0** CLI composes those
 commands through `cargo rullst update guided --to 12.1.0 --scope both --root
 ABSOLUTE_PRIVATE_DIRECTORY --project PATH`. Each approval defaults to no and
 follows its complete review. Version, directories and digests are carried
@@ -581,14 +580,13 @@ between steps; separate prompts govern download, CLI installation, trusted
 project execution/network and original-file application. `--scope project
 --offline` uses local project preparation/verification without CLI downloads.
 See the [guided command](../cli_reference.md#cargo-rullst-update-guided-1210-working-source-unreleased).
-Native/fault and complete user-journey acceptance remain release gates; these
-unpublished changes do not imply published 12.1.0 assets. File recovery
-does not replace database backups or application acceptance tests, and updating
-the CLI alone never updates a deployed application.
+File recovery does not replace database backups or application acceptance
+tests, and updating the CLI alone never updates a deployed application.
 
-Preparing the update mechanism in 12.1.0 does not implement unknown v13
-migrations. The future v13 CLI must still ship its own versioned rules and
-application acceptance fixtures before that major upgrade can be offered.
+The 12.1.0 update mechanism does not implement v13 migrations. The
+unpublished v13 CLI carries its own rule catalog
+([v12 to v13: source findings](#v12-to-v13-source-findings)); `update guided`
+offers a project update only within the installed CLI's major.
 
 ## Is this unique?
 

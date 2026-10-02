@@ -41,10 +41,14 @@ The first database selector chooses exactly one SQL Active Record backend:
 | MariaDB | The same MySQL protocol implementation with a separate live MariaDB contract. |
 | Turso | Typed Turso/libSQL primary profile for the blank full-stack or API starter; SQLx-specific blueprints do not offer it. |
 
+The Blank starter can instead have no primary database (`--no-database`, or
+**No database** in the v13 wizard).
+
 A second multi-select adds zero or more independent capabilities and accepts
 `Enter` with no selection. Capabilities already selected by the primary profile
-or CLI flags are omitted. Turso supplies explicit edge SQL, transactions and
-checked migrations; MongoDB supplies portable document CRUD; DuckDB supplies
+or CLI flags are omitted. In the v13 wizard the same screen also offers AI,
+Redis, a Dockerfile and a Nix flake. Turso supplies explicit edge SQL,
+transactions and checked migrations; MongoDB supplies portable document CRUD; DuckDB supplies
 bounded analytics; SurrealDB supplies document CRUD and bounded read-only graph
 queries; Qdrant supplies bounded dense-vector operations. Selecting one adds the
 precise Cargo features and environment keys, but does not make every model

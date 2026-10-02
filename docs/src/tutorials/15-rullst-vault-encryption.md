@@ -1,6 +1,6 @@
 # Tutorial 15: Vault and ORM field encryption
 
-Rullst v12 can encrypt `String` and `Option<String>` model fields before they
+Rullst can encrypt `String` and `Option<String>` model fields before they
 reach the database and decrypt them when a generated ORM query loads the model.
 The implementation uses AES-256-GCM with a fresh random nonce and an
 authenticated, versioned envelope.
@@ -95,7 +95,7 @@ results. `pluck_string` supports non-null encrypted strings; load the model for
 nullable encrypted strings.
 
 For lookup, add a separate application-designed blind-index column and assess
-its equality-leakage and key-rotation trade-offs. Rullst v12 does not generate a
+its equality-leakage and key-rotation trade-offs. Rullst does not generate a
 blind index automatically. Raw SQL is an explicit escape hatch and does not
 automatically encrypt bindings or decrypt arbitrary projections.
 

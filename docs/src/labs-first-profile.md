@@ -11,8 +11,9 @@
 
 Status: implementation decision for an **unpublished experimental candidate**.
 The named Linux journey has hosted evidence below; independent security review
-and production readiness are not claimed. The September 23 freeze and September 24–26 validation
-window still apply. Contracts and an offline simulation are intermediate work.
+and production readiness are not claimed. The September 23 freeze and
+September 24–26 validation window applied when this decision was recorded.
+Contracts and an offline simulation are intermediate work.
 
 ## Recorded Linux acceptance
 

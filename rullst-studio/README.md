@@ -15,7 +15,7 @@ telemetry views from the sources explicitly supplied by the application.
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
 - **Worker queue monitoring:** Inspect up to 50 records exposed by a supplied
-  Rullst queue and request retries. Records come from the bounded
+  Rullst queue and request retries. Records come from the bounded v13
   `list_job_previews` projection: at most 2 KiB of each payload and error
   leaves the SQLite or Redis store, and previews cut there are marked `…`.
   SQLite removes successful jobs, so the view is not durable completion
@@ -95,11 +95,16 @@ avoid duplicate-route collisions; preserve their access-control layers. See the
 
 **CLI Launch:**
 
-If you don't want to embed it, you can launch it statelessly via the Rullst CLI:
+Inside a project, the CLI runs the application with the `studio` argument
+(`cargo run -- studio`):
 
 ```bash
 cargo rullst studio
 ```
+
+Core's Artisan handler then serves a smaller local compatibility UI (database,
+AI, telemetry, security, capital and span pages) on `127.0.0.1:5555`, not the
+`rullst-studio` router described here.
 
 ### Distributed trace ingestion
 

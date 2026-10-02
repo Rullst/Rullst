@@ -60,7 +60,9 @@ state of those checks for the referenced commit; they are not an absolute securi
   credentials remain network-free.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds), and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
-- 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
+- 📺 **Device Flow**: RFC 8628 device authorization for headless CLI and Smart
+  TV auth through `Provider::request_device_code`/`poll_device_token`; the
+  GitHub adapter implements it and other providers return an explicit error.
 - 🛠️ **Testing**: Typed network-free provider fallbacks plus an explicitly
   mounted, loopback-only signed OIDC fixture with one-shot codes, PKCE, nonce,
   EdDSA ID tokens and JWKS.
@@ -422,8 +424,8 @@ otherwise rejected (for example it omits `expires_in`), the rotated refresh
 token is still kept and the generation advances, so persist the snapshot after
 that failure too; the next call refreshes with the rotation. If the grant
 succeeds but the follow-up profile or ID-token step fails, adapters return
-`ConnectError::RefreshIncomplete` with the issued tokens (`IssuedTokens`), and
-the session keeps the rotation the same way.
+`ConnectError::RefreshIncomplete` (unpublished v13 API) with the issued tokens
+(`IssuedTokens`), and the session keeps the rotation the same way.
 
 Do not cancel `access_token()` while it refreshes. The provider call runs
 inside the caller's future, so dropping that future (a client disconnect, a

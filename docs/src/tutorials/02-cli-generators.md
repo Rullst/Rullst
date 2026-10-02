@@ -8,8 +8,11 @@ unless you have deliberately removed or renamed your own earlier fixture.
 
 Rullst provides opinionated code generators (`make:*`) for controllers, models,
 migrations, and resources. The current generators register generated Rust
-modules when possible; they do not silently add application routes or rewrite
-AI context. Review every generated file and mount the intended routes yourself.
+modules when possible; they do not add application routes. `make:controller`
+and `make:model` also refresh the generated project map (`.llms.txt`,
+`.rullst/context-map.json`) and `diagram.md`; hand-written versions of those
+files are kept. Review every generated file and mount the intended routes
+yourself.
 
 ---
 

@@ -22,7 +22,7 @@ views from the sources explicitly supplied by the application.
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
 - **Worker queue monitoring:** Inspect up to 50 records exposed by a supplied
-  Rullst queue and request retries. Records come from the bounded
+  Rullst queue and request retries. Records come from the bounded v13
   `list_job_previews` projection: at most 2 KiB of each payload and error
   leaves the SQLite or Redis store, and previews cut there are marked `…`.
   SQLite removes successful jobs, so the view is not durable completion
@@ -81,17 +81,23 @@ Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.
 
 The published `12.0.0` raw `data_browser::router()` omits the assets and Cache
-routes used by its layout. The full local builder is not affected. See the
-[unreleased 12.1.0 composition fix and migration checklist](../3-rullst-studio.md#v1210-browser-composition-fix-unreleased)
+routes used by its layout; 12.1.0 adds them, and the full local builder is not
+affected. See the
+[12.1.0 composition fix and migration checklist](../3-rullst-studio.md#v1210-browser-composition-fix)
 before upgrading an embedded showcase with application-level workaround routes.
 
 **CLI Launch:**
 
-If you don't want to embed it, you can launch it statelessly via the Rullst CLI:
+Inside a project, the CLI runs the application with the `studio` argument
+(`cargo run -- studio`):
 
 ```bash
 cargo rullst studio
 ```
+
+Core's Artisan handler then serves a smaller local compatibility UI (database,
+AI, telemetry, security, capital and span pages) on `127.0.0.1:5555`, not the
+`rullst-studio` router described on this page.
 
 ### Authenticated trace producers
 

@@ -60,10 +60,9 @@ full version such as `--version 12.1.2` to reproduce a specific release.
 · [Build a JSON REST API](https://rullst.github.io/Rullst/book/tutorials/rest-api-quickstart.html)
 · [CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html)
 
-Stuck? `cargo rullst doctor` checks the toolchain, project configuration,
-database and security baseline with a fix for each problem; run `cargo rullst`
-alone to search every command, and `cargo rullst completions <shell>` to enable
-tab completion.
+Stuck? `cargo rullst doctor` checks the Rust toolchain and the optional tools
+Rullst uses, `cargo rullst --help` lists every command, and `cargo rullst` alone
+opens an interactive menu.
 
 <details>
 <summary><strong>Prefer an interactive dashboard? Run <code>cargo rullst dash</code></strong></summary>
@@ -201,7 +200,8 @@ deployment recipes live in [Rullst/examples](https://github.com/Rullst/examples)
 ▶️ **[Watch: how to build a SaaS with Rullst](https://www.youtube.com/watch?v=nDXLeNM327g)**
 
 Prefer to run something locally? The [reproducible SaaS example](https://github.com/Rullst/Rullst/tree/main/examples/saas)
-covers generation, login and tenant-scoped notes on a disposable SQLite database,
+uses the v13 CLI from this checkout on Linux and covers generation, login and
+tenant-scoped notes on a disposable SQLite database,
 and the [WebGPU wave example](https://github.com/Rullst/Rullst/tree/main/examples/webgpu)
 serves browser graphics from Rullst.
 
@@ -243,6 +243,14 @@ detailed feature and provider boundaries live in the
 | [rullst-macros](https://github.com/Rullst/Rullst/tree/main/rullst-macros) | Compile-time HTML and application macros |
 | [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/main/rullst-orm-macros) | Typed ORM code generation |
 | [cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst) | Project scaffolding, development and upgrade CLI |
+
+The v13 workspace on `main` also contains unpublished candidates:
+[rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy),
+[rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision)
+and [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) are
+in the v13 release order, while
+[rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) has
+`publish = false`.
 
 </details>
 
@@ -289,7 +297,7 @@ and [quality scorecard](https://rullst.github.io/Rullst/book/quality-scorecard.h
 
 | Continuous or change-aware gate | Development `main` status | Actual scope |
 | :--- | :---: | :--- |
-| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests, every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from all 52 public tutorials, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
+| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests, every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from all 51 tutorial pages, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
 | **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=main&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Amain) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
@@ -325,7 +333,7 @@ green main gates:
 | [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight published groups backed by nine Criterion benchmark binaries emit non-blocking alerts at a 20% regression. |
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual package matrices on a pinned verifier-only nightly. |
-| [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
+| [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty-two manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over three release surfaces: generated REST API and LMS starter are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml), [mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual or scheduled research signals: selected Kani/Miri scopes are strict, while mutation and unused-dependency findings remain explicitly informational. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
@@ -373,8 +381,13 @@ distributed tracing, a recoverable Live UI, `cargo rullst ai`, a terminal
 assistant that proposes reviewed changes to your project, a `cargo rullst new`
 wizard that previews the files and commands before writing anything
 (`--dry-run` without prompts) and `cargo rullst tour`, a guided walkthrough of
-the main commands. Until v13 is released, these are development candidates,
-not shipped features.
+the main commands. The v13 CLI also adds live request metrics to
+`cargo rullst dash`; toolchain, project, configuration, database, migration,
+security and disk checks with fixes and `--json` to `cargo rullst doctor`; a
+searchable command list on the `cargo rullst` home screen;
+`cargo rullst completions <shell>` for tab completion; and v12 → v13 source
+findings to `cargo rullst upgrade`. Until v13 is released, these are
+development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)
 · [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)

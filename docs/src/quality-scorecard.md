@@ -99,9 +99,9 @@ The 90-point RC planning floor and 95-point local target remain unchanged.
 These are reviewed policy limits, not awarded scores or independent audits.
 
 Supervision's evidence covers its optional domain contracts, shared-local
-SQLite state, minimized browser observations and generated LMS consumer. It
-does not verify guardianship, infer cheating as fact or control other device
-applications. Media's evidence covers the Bunny lifecycle, protocol failures,
+SQLite state and minimized browser observations; its generated LMS consumer
+was removed with `make:supervision`. It does not verify guardianship, infer
+cheating as fact or control other device applications. Media's evidence covers the Bunny lifecycle, protocol failures,
 browser upload, durable recovery and an extracted consumer; actual Bunny/CDN
 interoperability and application entitlement policy remain outside that evidence.
 Both withhold operations credit for ordinary-release archive acceptance, first

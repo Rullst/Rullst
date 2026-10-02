@@ -42,15 +42,17 @@ without JavaScript.
 | Fullscreen entered/exited | Fullscreen changed; no forced fullscreen or integrity guarantee. |
 | Capture started/stopped/denied/unavailable | Host-supplied client status for camera, microphone or screen share; no independent verification of capture. |
 
-The collector ignores synthetic DOM events, but a user can modify browser code
-or forge network reports: this is not authenticity or tamper protection. It
-serializes one request at a time, waiting at least 1.1 seconds between requests,
-with sixteen waiting occurrences at most. Queue overflow, network errors,
-non-204 responses, page exit, form/session expiry or a session-control submission
-stop collection and clear the queue. It does not automatically retry ambiguous
-writes. A pause/end submission stops that page before the server confirms the
-transition; other tabs are fenced by the committed server revision. Receipt time
-is server reception time, not necessarily occurrence time.
+The browser collector is application code; the crate ships none. The removed
+generator's collector ignored synthetic DOM events, but a user can modify
+browser code or forge network reports: this is not authenticity or tamper
+protection. It serialized one request at a time, waiting at least 1.1 seconds
+between requests, with sixteen waiting occurrences at most. Queue overflow,
+network errors, non-204 responses, page exit, form/session expiry or a
+session-control submission stopped collection and cleared the queue. It did not
+automatically retry ambiguous writes. A pause/end submission stopped that page
+before the server confirmed the transition; other tabs are fenced by the
+committed server revision. Receipt time is server reception time, not
+necessarily occurrence time.
 
 Custom applications use `ObservationRequest::new` and `record_browser` or
 `record_capture`. The request binds authenticated context, tenant/learner/resource,
@@ -142,17 +144,18 @@ Tests exercise real SQLite persistence, exact acknowledgement, disabled categori
 collection narrowing and stale revisions, separate source paths, all supported
 browser/capture kinds, legacy visibility, v1 rejection, simulated adapters,
 wrong-kind/failure handling, authorization revocation during analysis, shared
-leases, timeout and no retained sample contents. Deterministic JavaScript tests
-exercise the shipped collector's queue, sequence, selected events and stop/failure
-behavior. Before v13 removed the generated LMS consumer, a generated LMS/Chromium
-journey also validated HTTP/security/forms and browser behavior.
+leases, timeout and no retained sample contents. Before v13 removed the
+generated LMS consumer, deterministic JavaScript tests exercised its collector's
+queue, sequence, selected events and stop/failure behavior, and a generated
+LMS/Chromium journey validated HTTP/security/forms and browser behavior.
 
-Local validation passed the five generator/process/composition contracts with
-Chromium enabled, the generated LMS's fourteen original library tests and
-production Clippy, 378 CLI unit tests, all-target strict Clippy for the CLI and
-crate, seven isolated feature configurations, the database-free analysis
-contracts and the executable offline example. The final focused sample caught
-all nine selected authorization/restriction mutations, including a regression
+Before that removal, local validation passed the five
+generator/process/composition contracts with Chromium enabled, the generated
+LMS's fourteen original library tests and production Clippy, 378 CLI unit
+tests, all-target strict Clippy for the CLI and crate, seven isolated feature
+configurations, the database-free analysis contracts and the executable
+offline example. The final focused sample caught all nine selected
+authorization/restriction mutations, including a regression
 for current-revision attempts against paused and ended sessions. This is a
 bounded sample, not a whole-crate mutation score.
 

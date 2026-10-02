@@ -217,12 +217,14 @@ or change the 25/16 counts.
 
 The 25 A themes are not prerequisites for the first comparison. After the active
 v12.1.1 maintenance work, start with a small usable SaaS journey, establish a
-baseline and use the findings to choose subsequent improvements. Broader
-evaluation can accompany later v13 checkpoints. Keep the same acceptance
-contracts, record unfavorable and inconclusive results, and distinguish
-AI-assisted measurements from independent user evidence. Only free resources
-and disposable offline fixtures are authorized; no superiority is established
-by this planning decision or the internal quality scorecard.
+baseline and use the findings to choose subsequent improvements. The first
+Rullst-side acceptance contract is the opt-in `cli-saas-journey` diagnostic
+described in that plan. Broader evaluation can accompany later v13
+checkpoints. Keep the same acceptance contracts, record unfavorable and
+inconclusive results, and distinguish AI-assisted measurements from
+independent user evidence. Only free resources and disposable offline fixtures
+are authorized; no superiority is established by this planning decision or the
+internal quality scorecard.
 
 ## What makes v13 ready
 

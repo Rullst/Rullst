@@ -207,7 +207,11 @@ can still be false, malicious, stale, or unauthorized.
 
 ## 6. Streaming and tools
 
-The built-in v12 provider transports do not expose token streaming. Rullst can
+`StreamingAiClient` streams guarded, bounded and cancellable (`AiCancellation`)
+output from an OpenAI-compatible configuration that declares `with_streaming()`
+and, in unreleased v13, from Anthropic and Gemini through their native SSE
+protocols; `StreamSummary::usage()` returns the token usage the provider
+reported. The OpenAI, DeepSeek and Ollama transports do not stream. Rullst can
 host ordinary Axum SSE responses, but an application that uses a third-party
 streaming SDK owns its authentication, guardrails, backpressure, deadlines,
 cancellation, error mapping, and dependency lifecycle. Do not present that
@@ -223,7 +227,10 @@ ownership and supplies durable production auditing.
 
 ## 7. RAG boundary
 
-Rullst supplies prompt construction and an in-memory vector index. Applications
+Rullst supplies prompt construction, an in-memory vector index and the
+tenant-bound `RagPipeline`, which guards every passage, rejects documents tagged
+for another tenant and records a minimized audit event (see the
+[tenant-bound RAG tutorial](tutorials/41-tenant-bound-rag.md)). Applications
 must still enforce document authorization before retrieval, prevent SSRF in any
 fetcher, bound document and prompt sizes, identify tenant provenance, and avoid
 sending secrets to a provider. Similarity is a ranking signal, not an access

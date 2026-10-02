@@ -8,8 +8,9 @@ only to demonstrate the component lifecycle.
 
 ## 🛠️ Step 1: Create Analytics LiveComponent
 
-This fragment expects the `crate::live::analytics_dashboard` module created in
-Step 1 to be registered by the generated application:
+`cargo rullst make:live AnalyticsDashboard` writes
+`src/live/analytics_dashboard.rs` and declares it in `src/live/mod.rs`; declare
+`mod live;` in the crate root yourself. Replace the generated counter with:
 
 ```rust
 use rullst::async_trait;

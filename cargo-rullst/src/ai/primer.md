@@ -49,10 +49,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = routes![
         get("/" => controllers::home::index),
-        get("/posts" => controllers::posts::index),
+        get("/posts" => controllers::posts_controller::index),
         // rullst-access: owner — readers may only open their own drafts
-        get("/posts/{id}" => controllers::posts::show),
-        post("/posts" => controllers::posts::store),
+        get("/posts/{id}" => controllers::posts_controller::show),
+        post("/posts" => controllers::posts_controller::store),
     ]
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .merge_axum(rullst::health::health_router())
@@ -80,7 +80,8 @@ GET routes; `owner` requires an ownership guard in the handler (see Security).
 
 ## Controllers
 
-`cargo rullst make:controller posts` creates `src/controllers/posts.rs` with
+`cargo rullst make:controller posts` creates
+`src/controllers/posts_controller.rs` (module `posts_controller`) with
 `index`, `show`, `store`, `update` and `delete` handlers (add `--api` for JSON
 handlers) and registers the module. Wire the handlers into `routes!`
 yourself. A typical HTML handler:
@@ -275,8 +276,8 @@ environment.
   `.bind(..)`); never format user input into SQL.
 - Production code must not use `unwrap()`, `expect()` or `panic!()`; return
   typed errors or a suitable HTTP status. Tests may use `unwrap()`.
-- Hash passwords with `rullst_auth::hash_password_async` (Argon2). Never
-  store or log plaintext secrets.
+- Hash passwords with `rullst::auth::hash_password_async` (Argon2, `auth`
+  feature). Never store or log plaintext secrets.
 - Verify webhook signatures with constant-time comparison before trusting
   payment events.
 - External providers (payments, mail, OAuth, AI) fall back to deterministic
@@ -339,8 +340,8 @@ The assistant may propose (and the user approves) these commands:
 | `make:chat-session` | Chat session/message models for AI memory |
 | `make:jwt`, `make:cors`, `make:mfa` | Security middleware and second factor |
 | `make:scalar` | Interactive API docs at `/docs` |
-| `make:grpc <Service>`, `make:iot <Device>`, `make:k8s`, `make:omni` | Integrations and packaging |
-| `make:privacy`, `make:age-gate` | Optional privacy and age-assurance previews |
+| `make:grpc <Service>`, `make:iot <Device>`, `make:k8s`, `make:omni`, `generate:buildah` | Integrations and packaging |
+| `make:privacy`, `make:age-gate` | Privacy and age-gate previews for the SaaS starter (required flags: see `--help`) |
 | `generate:openapi`, `generate:ts` | OpenAPI document and TypeScript client from routes |
 | `generate:api --schema <file> --output <dir>` | Rust/TypeScript contracts from OpenAPI |
 | `generate:diagram` | Mermaid ER diagram of the models |

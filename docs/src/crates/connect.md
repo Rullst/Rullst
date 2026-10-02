@@ -4,14 +4,13 @@
 > This page targets `12.1.0`. Check the [release record](../v12.md) for
 > publication status; use a path dependency only for checkout-local review.
 
-Development source includes the compatible OAuth request correction prepared
-for the unpublished **12.1.2 candidate**: built-in authorization-code URLs
-explicitly request `response_type=code`. The
+Since **12.1.2** (and in this development source), built-in
+authorization-code URLs explicitly request `response_type=code`. The
 [OAuth protocol](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1) and
 [Google request contract](https://developers.google.com/identity/openid-connect/openid-connect#sendauthrequest)
 require this field. Offline parsed-query tests cover all eleven providers;
-real account interoperability remains separate. Temporary application
-workarounds should add the field only when absent.
+real account interoperability remains separate. Temporary workarounds for
+earlier 12.x releases should add the field only when absent.
 
 > **Vision preserved:** message brokers, additional queue transports, remote
 > storage, and media work are retained with explicit status and recommendations in
@@ -73,7 +72,9 @@ state of those checks for the referenced commit; they are not an absolute securi
   protocol adapters; unsupported providers fail explicitly and offline
   credentials remain network-free.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
-- 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
+- 📺 **Device Flow**: RFC 8628 device authorization for headless CLI and Smart
+  TV auth through `Provider::request_device_code`/`poll_device_token`; the
+  GitHub adapter implements it and other providers return an explicit error.
 - 🛠️ **Testing**: Empty or `mock_*` credentials select a deterministic
   offline transport, while `mock_idp` supplies a loopback-only signed OIDC
   fixture with one-shot codes, PKCE, nonce, EdDSA ID tokens and JWKS.
@@ -402,10 +403,10 @@ generation advances, because the provider has already consumed the prior one;
 the call fails and the next call refreshes with the rotation. The same
 applies when the grant succeeds but the follow-up profile lookup or ID-token
 validation fails: provider adapters then return
-`ConnectError::RefreshIncomplete`, whose `IssuedTokens` carry the new tokens
-to direct `Provider::refresh_token` callers, and the session keeps the
-rotation and returns the underlying error. Persist the snapshot after such a
-failure too.
+`ConnectError::RefreshIncomplete` (unpublished v13 API), whose `IssuedTokens`
+carry the new tokens to direct `Provider::refresh_token` callers, and the
+session keeps the rotation and returns the underlying error. Persist the
+snapshot after such a failure too.
 
 Do not cancel `access_token()` while it refreshes. The provider call runs
 inside the caller's future, so dropping that future (a client disconnect, a

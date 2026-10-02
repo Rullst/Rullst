@@ -24,7 +24,9 @@ cargo rullst make:omni --platform desktop
 cargo rullst omni desktop
 ```
 
-The product name and version inherit `[package].name` and `[package].version`.
+The product name defaults to a readable form of `[package].name` and the
+version to `[package].version`. `make:omni` runs `npm install` in the new
+`omni-app/` to install its pinned Tauri CLI, so Node.js and npm are required.
 Desktop development derives a `com.example.<package>` identifier when none is
 provided. That namespace is a visible placeholder, not a distributable product
 identity.
@@ -201,14 +203,17 @@ Rullst maintains path-aware generation/compile workflows for three evidence
 classes:
 
 - desktop crate checks on Linux, macOS and Windows;
-- an Android debug APK build;
+- an Android debug APK build, plus a release APK built through
+  `cargo rullst omni android --release` with a disposable CI-only key and
+  verified against its certificate;
 - an iOS simulator build on macOS.
 
 A green run proves that a fresh generated shell compiled for that runner and
 commit. All three gates passed on
-`755fbd61933bed04369e0eb5de50b11275db5e3d`. This does not prove
-physical-device behavior, accessibility, signing,
-privacy declarations, TestFlight/Play testing or store acceptance.
+`755fbd61933bed04369e0eb5de50b11275db5e3d`, before the Android release step
+was added. This does not prove physical-device behavior, accessibility,
+production signing and key custody, privacy declarations, TestFlight/Play
+testing or store acceptance.
 
 ## Before distribution
 

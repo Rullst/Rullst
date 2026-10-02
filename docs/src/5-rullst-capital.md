@@ -18,9 +18,13 @@ count from its event name.
 ## Payment providers
 
 Initialize only the provider required by the application and treat credentials
-as deployment secrets. Empty credentials are configuration errors for live
-operations. Credentials deliberately prefixed with `mock_` select deterministic
-offline behavior where that adapter documents support for it.
+as deployment secrets. An empty or `mock_*` API credential selects the
+adapter's deterministic offline behavior instead of a live request where that
+adapter documents support for it (Alipay requires every credential to be an
+explicit `mock_*` value and rejects empty ones), so verify that production
+credentials are present. An empty webhook secret is a configuration error; a
+`mock_*` webhook secret selects mock verification, which the production webhook
+middleware rejects.
 
 Every reviewed live method uses the same pooled outbound client with a
 five-second connect timeout, twenty-second whole-request timeout, disabled
@@ -149,7 +153,8 @@ delivery. See the [SaaS billing tutorial](tutorials/19-saas-billing-capital.md#4
 
 Webhook endpoints must use the Capital verification middleware. Its Axum and
 opt-in Actix adapters call the same canonical verifier. For supported protocols
-it performs cryptographic verification, freshness checks, a two-megabyte body
+it performs cryptographic verification, timestamp freshness checks where the
+protocol signs a timestamp (Stripe, Paddle, Polar), a two-megabyte body
 limit, and bounded replay protection before the application receives a
 normalized event. A webhook route may receive a narrowly scoped CSRF exemption
 only when this verifier remains mandatory on that exact route. See the

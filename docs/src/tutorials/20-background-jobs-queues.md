@@ -58,9 +58,12 @@ async fn configure() -> Result<(Queue, WorkerHandle), QueueError> {
 ```
 
 Dropping `WorkerHandle` stops processing. On graceful shutdown, call
-`handle.shutdown().await` and inspect its typed error. The worker never cancels
-a claim in flight: graceful shutdown waits for the current `pop`, and a job
-claimed after shutdown was requested is requeued instead of dispatched.
+`handle.shutdown().await` and inspect its typed error. It stops polling and
+cancels running handlers; the SQLite and Redis drivers requeue each job whose
+handler was actually cancelled, while a handler that finished first keeps its
+own result. The worker never cancels a claim in flight: graceful shutdown waits
+for the current `pop`, and a job claimed after shutdown was requested is
+requeued instead of dispatched.
 Dropping the handle aborts immediately, so such a claim returns only through
 stalled-lease recovery.
 

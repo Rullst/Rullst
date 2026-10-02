@@ -6,6 +6,7 @@ The repository examples and CLI blueprints serve different purposes:
 | --- | --- | --- |
 | `examples/blog` | Workspace integration showcase with local data, interactive demos, and offline provider fixtures. | Development-only; not a production template or compliance proof. |
 | `examples/saas` | Reproducible CLI-generated SQLite SaaS with authenticated notes, tenant membership and the same HTTP journey used in CI. | Disposable Linux development example; membership is an explicit local operator action. |
+| `examples/webgpu` | Browser wave-interference lesson served by `rullst-core`, with WebGPU rendering and a Canvas fallback. | Public read-only demo on loopback; browser output establishes no server-owned result. |
 | CLI blueprints | Small starting structures generated into a new project. | Generated output must be reviewed, configured, formatted, checked, and tested by the application owner. |
 
 No example is expected to exercise 100% of workspace behavior. External provider
@@ -53,6 +54,20 @@ The script requires Linux, Python 3.11+, the pinned toolchain and 32 GiB of
 initial disk headroom. It removes generated data on exit and uses no real
 provider account. This directory holds the canonical example recipe and
 resource; it is not a duplicate checked-in copy of a generated application.
+
+## Browser graphics example
+
+The [WebGPU example](https://github.com/Rullst/Rullst/tree/main/examples/webgpu)
+serves embedded HTML, CSS and JavaScript modules behind Rullst's production
+CSRF/WAF/secure-header baseline. From the repository root:
+
+```sh
+cargo run --locked -p rullst-webgpu-example
+```
+
+Then open `http://127.0.0.1:3007/webgpu/`. All computation stays in the browser;
+missing WebGPU support selects the Canvas fallback. Follow
+`examples/webgpu/README.md` for the reusable modules and browser tests.
 
 ## Blog tenant selection
 

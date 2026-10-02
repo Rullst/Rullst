@@ -157,7 +157,7 @@ Register migrations and seeders before starting the server:
 ```rust,ignore
 rullst::artisan!(
     crate::migrations::get_migrations(),
-    crate::seeds::get_seeders(),
+    crate::seeds::get_seeders()
 );
 ```
 

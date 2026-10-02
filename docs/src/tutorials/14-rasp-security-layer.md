@@ -32,10 +32,10 @@ async fn main() -> Result<(), rullst::ServerError> {
 
 ## 🧪 Step 2: Test Malicious Attack Payload Interception
 
-Send an attack payload in query string:
+Send a percent-encoded `UNION SELECT` payload in the query string:
 
 ```bash
-curl "http://localhost:3000/api/users?query=SELECT%20*%20FROM%20users;--' OR 1=1"
+curl -i "http://localhost:3000/api/users?query=1%27%20UNION%20SELECT%20password%20FROM%20users"
 ```
 
 For a recognized bounded signature, the layer returns `403 Forbidden` and adds

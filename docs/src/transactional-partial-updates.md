@@ -63,7 +63,9 @@ Existing application routes keep their authentication, CSRF, security headers
 and ownership checks.
 
 `update_partial()` excludes the primary key and declared tenant column from its
-setters. `note(None)` explicitly clears a nullable field; omitting the setter
+setters. The soft-delete column keeps its setter, but setting it fails with
+`Validation`; only `delete()`, `restore()` and `force_delete()` change that
+marker. `note(None)` explicitly clears a nullable field; omitting the setter
 preserves that field from the persisted row. An empty builder remains a no-op,
 without reading the database, running hooks or creating an audit entry.
 

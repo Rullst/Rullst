@@ -65,7 +65,7 @@ Point the example at the directory that directly contains `DPS_v1.01.xsd`:
 
 ```bash
 RULLST_NFSE_XSD_DIR=/path/to/extracted/Schemas/1.01 \
-  cargo run -p rullst-capital --example nfse_v101_preview
+  cargo run -p rullst-capital --features nfse --example nfse_v101_preview
 ```
 
 The example uses `NfseDpsV101`, not the legacy floating-point preview. Its
@@ -133,8 +133,8 @@ downloading and verifying the pinned production archive, run the ignored test:
 
 ```bash
 RULLST_NFSE_XSD_DIR=/path/to/extracted/Schemas/1.01 \
-  cargo test -p rullst-capital \
-  fiscal::signer::tests::signed_builder_output_matches_the_official_xsd_when_supplied \
+  cargo test -p rullst-capital --features nfse \
+  fiscal::signer::nfse_tests::signed_builder_output_matches_the_official_xsd_when_supplied \
   -- --ignored
 ```
 
@@ -147,8 +147,8 @@ manifest and regression:
 
 ```bash
 RULLST_NFSE_RESTRICTED_XSD_DIR=/path/to/extracted/restricted/schemas \
-  cargo test -p rullst-capital \
-  fiscal::signer::tests::signed_builder_output_matches_the_official_restricted_xsd_when_supplied \
+  cargo test -p rullst-capital --features nfse \
+  fiscal::signer::nfse_tests::signed_builder_output_matches_the_official_restricted_xsd_when_supplied \
   -- --ignored
 ```
 
@@ -239,6 +239,12 @@ rotation, directory permissions, exclusive-writer enforcement, the real
 request/outbox, independent checkpoint retention, backup/retention, retry
 policy, and authority reconciliation. The journal does not perform network I/O
 or establish exactly-once behavior across systems.
+
+In the unpublished v13 source, `record_response` refuses an HTTP 500 `Rejected`
+answer with `FiscalJournalError::IndeterminateResponse`, because it does not
+prove the DPS was refused; the command stays in `pending()` for
+reconciliation. `verify_checkpoint_prefix` checks an independently retained
+checkpoint against the reopened journal and reports how many events follow it.
 
 ## 7. Do not enable live transmission yet
 

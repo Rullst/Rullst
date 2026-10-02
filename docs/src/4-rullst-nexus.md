@@ -25,9 +25,9 @@ desktop-only Portfolio layout. The changes shipped in **12.1.0** and are absent 
   below 640px, wraps long content and keeps project cards inside the viewport.
   Reduced-motion preferences stop decorative animations.
 
-After the target release is published, update the application dependencies and
-lockfile, then remove the temporary `nexus_mobile_patch` middleware that buffers
-and rewrites Nexus HTML. Retaining it can introduce duplicate close controls,
+Update the application dependencies and lockfile to 12.1.0 or later, then
+remove the temporary `nexus_mobile_patch` middleware that buffers and rewrites
+Nexus HTML. Retaining it can introduce duplicate close controls,
 backdrops and event handlers. Do not remove authentication, authorization, TLS,
 CSRF or other security middleware along with that presentation-only patch.
 
@@ -334,8 +334,8 @@ used as the brand mark and favicon) and contain no inline scripts, styles,
 event-handler attributes or `hx-on` attributes. The default production CSP
 applies to the panel unchanged, so there is no reason to add `'unsafe-inline'`,
 `'unsafe-eval'` or a CDN to the application-wide `security.csp`. A custom
-policy must keep `'self'` for scripts, styles and `connect-src`, and `data:`
-for images. Nothing is requested from GitHub, unpkg or Google Fonts; the panel
+policy must keep `'self'` for scripts, styles, images and `connect-src`.
+Nothing is requested from GitHub, unpkg or Google Fonts; the panel
 uses system fonts. htmx's history cache is disabled, so admin pages and open
 edit forms are never snapshotted into origin-wide `localStorage`; Back reloads
 the page from the server.

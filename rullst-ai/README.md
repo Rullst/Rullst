@@ -129,12 +129,12 @@ Rullst does not price tokens.
 ## Bounded streaming and explicit cancellation
 
 `StreamingAiClient<P>` is a separate static-dispatch extension so the portable
-`AiProvider` trait remains object-safe. v12 implements genuine incremental
-`text/event-stream` parsing for an exact OpenAI-compatible endpoint only after
+`AiProvider` trait remains object-safe. The OpenAI-compatible adapter parses
+genuine incremental `text/event-stream` output for an exact endpoint only after
 that configuration calls `with_streaming()`. It requires the `[DONE]` sentinel,
 accepts at most 4,096 non-empty chunks, 64 KiB per chunk and 2 MiB of raw SSE
 and delivered UTF-8 output, and rejects malformed, truncated or incorrectly
-typed responses.
+typed responses and a `finish_reason` of `length` or `content_filter`.
 
 ```rust,no_run
 # use rullst_ai::{AiCancellation, AiError, StreamingAiClient, providers::openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider}};
@@ -465,10 +465,10 @@ HTTP dispatch and cover every capability the provider declares. Unsupported
 live capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
-`DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
-it never probes localhost implicitly. `OLLAMA_HOST` (and the host given to `OllamaProvider::new`)
-is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
-port 11434 unless a port is named.
+`DEEPSEEK_API_KEY`, `GROQ_API_KEY` (with `GROQ_MODEL`), and `OLLAMA_HOST`. If none is configured,
+it selects an offline OpenAI fixture; it never probes localhost implicitly. `OLLAMA_HOST` (and
+the host given to `OllamaProvider::new`) is read the way Ollama reads it: a scheme-less
+`127.0.0.1:11434` or `localhost` means `http` and port 11434 unless a port is named.
 
 ## JSON mode versus structured output
 

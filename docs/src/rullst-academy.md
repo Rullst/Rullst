@@ -97,9 +97,10 @@ Privacy and proportional age assurance are v13 P0 dependencies for the
 applicable learner journeys; follow the shared
 [privacy programme](privacy-age-assurance-roadmap.md). Academy must decide its
 audience and processing purposes, validate any guardian relationship, and
-implement actual export/deletion adapters. Existing LMS age bands and consent
-records are not independent age or guardianship verification. Reading lessons
-must not acquire a camera requirement without a justified policy.
+implement actual export/deletion adapters. The v12 Academy scaffold's age bands
+and consent records, retired in v13, are not independent age or guardianship
+verification. Reading lessons must not acquire a camera requirement without a
+justified policy.
 
 The mascot can be a friendly tutor backed by the existing Ollama path in
 `rullst-ai`, with a deterministic offline fallback for tests. It should use a
@@ -127,8 +128,8 @@ PII masking and secret-minimized audit remain mandatory.
 | Learning domain | The v13 LMS starter's catalog, modules, lessons, accessible player, enrollment and owner-bound progress; the v12 Academy scaffold's activities, quizzes, review, completion, certificates, leaderboard and automation were retired | those learning features, coherent product UX, content quality, complete authorship and browser E2E |
 | Identity and schools | Session/RBAC helpers; the v13 LMS starter has no schools (the v12 school-scoped contracts were retired) | schools and memberships, account recovery, invitations, device/session policy and every cross-school negative |
 | AI tutor | guarded providers, Ollama fallback, bounded tenant-aware RAG and audit contracts | curated corpus, pedagogy, model evaluation, capacity and user-facing failure behavior |
-| Practical projects | queues, outbox and bounded messaging foundations | isolated runner, immutable images, resource policy and escape testing |
-| Media | bounded accessible lesson metadata, captions and transcripts | upload, storage, scanning, transcoding, caption quality and retention |
+| Practical projects | queues, outbox and bounded messaging foundations; the unpublished `rullst-labs` job and grading contracts | isolated runner, immutable images, resource policy and escape testing |
+| Media | bounded accessible lesson metadata, captions and transcripts; the unpublished opt-in `rullst-media` Bunny Stream candidate | upload, storage, scanning, transcoding, caption quality and retention |
 | Operations | health/readiness, telemetry, deploy scaffolds and upgrade assistant | production topology, TLS/proxy identity, backup/restore, rollback, alerts and incident response |
 
 ## Repository and release boundary

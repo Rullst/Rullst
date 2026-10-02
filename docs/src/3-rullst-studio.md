@@ -9,20 +9,24 @@ loopback peers. It is not a shared-environment authentication system; do not
 expose raw subrouters publicly without application-level authentication,
 authorization, TLS, and network policy.
 
-Generated Blog, Portfolio, LMS, ERP, and SaaS applications start the standalone
-server only in debug builds and link to `http://127.0.0.1:5555`. Release builds
-do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values cannot override that compile-time
-boundary.
+Generated Blank/API, Blog, Portfolio, LMS, ERP, and SaaS applications start the
+standalone server only in debug builds and link to `http://127.0.0.1:5555`.
+Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
+cannot override that compile-time boundary.
 
 ## Running Studio
 
-The CLI can launch the local server:
+Inside a project, the CLI runs the application with the `studio` argument
+(`cargo run -- studio`):
 
 ```bash
 cargo rullst studio
 ```
 
-The library entry point is also available:
+Core's Artisan handler then serves a smaller local compatibility UI (database,
+AI, telemetry, security, capital and span pages) on `127.0.0.1:5555` until it
+stops; it is not the `rullst-studio` router described below. The `rullst-studio`
+library entry point starts the full Studio:
 
 ```rust,no_run
 #[tokio::main]
@@ -79,10 +83,15 @@ mounted push-only ingestion router.
   cache, using opaque identifiers and one-entry invalidation.
 - `/studio/migrations`, `/studio/ai`, `/studio/env`, `/studio/features`, and
   `/studio/er`: development tools for their corresponding subsystems.
+- `/studio/requests`: the request log, streamed over SSE from
+  `/studio/requests/stream`.
+- `/studio/jobs` and `/studio/api`: the queue view and Swagger UI, mounted only
+  when `with_horizon` or `with_openapi` supplies their source.
 
-Some panels poll HTTP JSON endpoints and the request logger uses SSE. The current
-crate does not promise a separate WebSocket telemetry transport or zero runtime
-overhead.
+The radar page polls the `/api/radar` JSON endpoint; `/api/revenue` and
+`/studio/security/stats` also return JSON, and `/metrics` serves the Prometheus
+text format. The request logger uses SSE. The current crate does not promise a
+separate WebSocket telemetry transport or zero runtime overhead.
 
 ## Tooling boundaries
 
@@ -126,9 +135,10 @@ overhead.
 - The jobs view lists the 50 most recent records exposed by a supplied queue;
   its processing/failed/completed counts describe only that window, while the
   pending count and the purge actions cover the whole queue. Studio previews at
-  most 256 payload and 512 error characters without scanning further, but the
-  queue listing still returns each record's complete payload and error, so the
-  snapshot bounds records, not payload bytes. SQLite
+  most 256 payload and 512 error characters. It reads records through
+  `Queue::list_job_previews` (unreleased v13), which cuts each payload and error
+  to 2 KiB: the SQLite and Redis drivers cut them inside the store, while other
+  drivers inherit a default that still loads complete records first. SQLite
   deletes successful rows by default; an application can explicitly select
   `Queue::sqlite_with_completed_history` for bounded, transactionally pruned
   completion history and can purge that history from Studio. Retained payloads
@@ -210,9 +220,9 @@ zero entries or a fabricated hit rate, and exposes no cache mutation endpoint.
 
 ### Migrating an existing showcase
 
-1. Wait for the 12.1.0 release, then update the application's Rullst dependencies
-   and lockfile together. Installing a newer CLI does not rewrite previously
-   generated application files or redeploy containers.
+1. Update the application's Rullst dependencies and lockfile together to 12.1.0
+   or later. Installing a newer CLI does not rewrite previously generated
+   application files or redeploy containers.
 2. Remove the temporary `.route(...)` registrations for `/assets/studio.css`,
    `/studio/assets/studio.css`, `/assets/logger.js`, `/studio/assets/logger.js`,
    `/cache`, and `/studio/cache` added directly to `data_browser::router()`.

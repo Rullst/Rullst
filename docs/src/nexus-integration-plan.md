@@ -25,16 +25,21 @@ host membership and domain authorization are not inferred from registered
 models, and the mutation audit does not provide an immutable external log.
 
 `FieldMeta.hidden` already excludes a field from list and form rendering, and
-the input validator rejects writes to hidden fields. Its field documentation
-incorrectly describes form visibility and should be corrected. It is not a
-promise that the database column is never fetched: the edit view currently
-loads the full row. Field visibility, database projection and authorization
-need distinct documented contracts.
+the input validator rejects writes to hidden fields. On `main` its field
+documentation now says so, and the list and edit views select only visible,
+non-password columns (the list also reads the primary key); v12 still documents
+the old form visibility. This rendering behavior is not yet the never-read
+projection contract of stage 3. Field visibility, database projection and
+authorization need distinct documented contracts.
 
 Existing mobile/navigation improvements and pagination links are useful;
 they do not establish an end-to-end administration journey without JavaScript.
-Likewise, built-in Basic/loopback policies do not provide a public integration
-contract for an application's existing sessions.
+Since this review, the existing shell serves its stylesheet, script, vendored
+htmx 2.0.4 and logo same-origin under `/nexus/assets` without inline code or
+external fonts, so it runs under the default production nonce CSP. A
+configurable mount path, a translation catalog and the host-session mode
+remain open. Likewise, built-in Basic/loopback policies do not provide a public
+integration contract for an application's existing sessions.
 
 ## Delivery order
 

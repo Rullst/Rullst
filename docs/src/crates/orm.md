@@ -12,8 +12,11 @@
 </div>
 
 > [!IMPORTANT]
-> This page targets `12.1.0`. Check the [release record](../v12.md) for
-> publication status; use a path dependency only for checkout-local review.
+> The dependency examples target `12.1.0`, the published stable line; the rest
+> of this page describes the unreleased v13 source (see the
+> [v13 migration guide](../migration-v13.md)). Check the
+> [release record](../v12.md) for publication status; use a path dependency
+> only for checkout-local review.
 
 🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/)** 🚀
 
@@ -165,7 +168,7 @@ generated API.
 
 ### Installation
 
-After crates.io indexes the RC, install its exact train with:
+Install the exact stable train with:
 
 ```bash
 cargo add rullst-orm@12.1.0

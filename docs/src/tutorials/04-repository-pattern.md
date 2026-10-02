@@ -114,6 +114,7 @@ pub async fn get_user_by_email(
 }
 ```
 
+Returning `Json<User>` also requires `User` to derive `serde::Serialize`.
 Production handlers should map internal database errors to an application error
 without returning query or credential details to clients.
 

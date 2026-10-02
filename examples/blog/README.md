@@ -7,23 +7,31 @@ or proof that every crate and feature is exercised.
 
 ## Demonstrated paths
 
-- `/`: server-rendered posts using the `html!` macro and an ORM model whose
-  `tenant_column` fails closed outside the request's `TenantContext`. Stories
-  are bounded for a public deployment: titles up to 120 characters, bodies up
-  to 4,000, at most 100 per tenant and 64 KiB per form (422, 403 and 413
-  otherwise); the page lists the newest 20.
-- `/live-feed` and `/_live`: server-driven WebSocket example.
+- `/` and `POST /posts`: server-rendered posts using the `html!` macro and an
+  ORM model whose `tenant_column` fails closed outside the request's
+  `TenantContext`. Stories are bounded for a public deployment: titles up to 120
+  characters, bodies up to 4,000, at most 100 per tenant and 64 KiB per form
+  (422, 403 and 413 otherwise); the page lists the newest 20.
+- `/live-feed` (also `/live-counter`) and `/_live`: server-driven WebSocket
+  example.
 - `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
 - `/posts/repository`: parameterized repository queries bound to the selected
   tenant, listing its newest 20 posts with 160-character previews.
-- `/pricing`: `Billable` quotas, payment-adapter mock fixtures, and an unsigned,
+- `/pricing` (also `/billing`) and `/checkout`: `Billable` quotas,
+  payment-adapter mock fixtures and simulated checkout, and an unsigned,
   offline DPS XML preview. It never issues or signs an NFS-e.
 - `/security-demo`: bounded, instrumented security-control demonstrations. The
   buttons exercise the real local timing, prompt, RASP, DLP and Login Guard
   primitives; they do not prove that a production application mounted every
   middleware or eliminated the represented threat.
 - `/ai-assistant`: local deterministic vector-search and guardrail example.
+- `/omni`: a guide to the CLI-generated Tauri desktop and mobile shells.
+- `/wp-admin`: a deception trap; see the security boundary below.
+- `/robots.txt` (disallows `/nexus`) and `/sitemap.xml` (lists
+  `RULLST_PUBLIC_ORIGIN` when it is set).
+- `/assets/...` and `/favicon.ico`: the embedded same-origin files described
+  under the security boundary below.
 - `http://127.0.0.1:5555`: debug-only local Studio server.
 - `/nexus`: one-click, loopback-only admin access in debug builds; validated
   Basic Auth credentials are mandatory in release builds. `Post` is registered

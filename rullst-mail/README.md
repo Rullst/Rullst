@@ -44,8 +44,8 @@ larger backwards clock step fails closed as `SuppressionUnavailable`.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus deterministic offline fixture and an explicit legacy proxy boundary.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
-  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness, distinct from the hosted Mailtrap service with fluent assertions.
-  - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
+  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness with fluent assertions, distinct from the hosted Mailtrap service (`MailtrapDriver`).
+  - **Log** (`LogDriver`) — Metadata-only terminal and file logging (`storage/logs/mail.log`): a timestamp, attachment count and scheduling flag, never recipients, subject or body.
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. `SuppressionUnavailable` and `AttachmentInspectionUnavailable` are `Transient` (retry later) but never failover-eligible. A fallback that returns such an error ends the chain with it; when every driver fails transiently, the result is a `Transient` error, or `RateLimited` with the bounded `Retry-After` when the last driver was rate limited. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
@@ -139,10 +139,13 @@ sent again only after `Queue::retry_failed_job`. Automate that for transient
 failures, or deliver through an outbox with its own retry policy (as account
 mail does), when provider blips must be retried without an operator.
 
-Queued jobs store attachment bytes as one base64 string per attachment. Workers
-still accept jobs written with the earlier integer-array encoding, but an older
-worker cannot read the base64 form, so upgrade workers before producers during
-a rolling deployment.
+`Mail::enqueue`, and `Mail::send` after `Mail::init_queue`, run the pre-flight
+pipeline and apply the default sender before writing a `rullst_mail_send` job
+whose JSON payload is a versioned envelope (schema version 1) holding the
+optional tenant ID and the prepared message. Queued jobs store attachment
+bytes as one base64 string per attachment. Workers still accept jobs written
+with the earlier integer-array encoding, but an older worker cannot read the
+base64 form, so upgrade workers before producers during a rolling deployment.
 
 ---
 
@@ -370,7 +373,9 @@ is never wrapped.
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
 use std::time::Duration;
 
+fn tracking_example() -> Result<(), Box<dyn std::error::Error>> {
 let secret = b"replace-with-32-or-more-random-key-bytes";
+let now_unix_seconds = 1_800_000_000;
 
 // Fluent open & click tracking injection
 let tracked_msg = Message::new()
@@ -380,13 +385,23 @@ let tracked_msg = Message::new()
     .try_with_open_tracking("https://app.com", secret, "campaign_2026")?
     .try_with_click_tracking("https://app.com", secret)?;
 
+let token = TrackingEngine::try_generate_open_token(
+    secret,
+    "user@example.com",
+    "campaign_2026",
+    now_unix_seconds,
+)?;
+
 // Default verification enforces a 30-day TTL.
 let event = TrackingEngine::verify_open_token(secret, &token)?;
 println!("Email opened by {} for campaign {}", event.email, event.campaign_id);
 
 // Endpoints needing single-consumption semantics can reject replay explicitly.
-let verifier = TrackingVerifier::new(Duration::from_hours(24), 100_000)?;
+let verifier = TrackingVerifier::new(Duration::from_secs(24 * 60 * 60), 100_000)?;
 let event = verifier.verify_open_once(secret, &token, now_unix_seconds)?;
+let _ = (tracked_msg, event, PIXEL_1X1_GIF);
+Ok(())
+}
 ```
 
 ---
@@ -547,7 +562,13 @@ Environment variables:
   a driver, and `MAIL_LOG_PATH` by `LogDriver` itself.
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
-- `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
+- `POSTMARK_SERVER_TOKEN`: Server API token for Postmark (`POSTMARK_API_KEY`
+  is read when it is unset); `POSTMARK_MESSAGE_STREAM` optionally selects the
+  Message Stream.
+- `AZURE_COMMUNICATION_EMAIL_ENDPOINT`: ACS resource endpoint for `azure-acs`.
+  An empty or `mock_*` value selects the offline fixture; otherwise the driver
+  authenticates with the Managed Identity variables `IDENTITY_ENDPOINT`,
+  `IDENTITY_HEADER` and optional `AZURE_CLIENT_ID` from the process environment.
 - `AWS_REGION`: Region used by native SigV4 signing or SES proxy/mock metadata.
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: Select native SES when the
   `aws-ses` feature is enabled; both must be present.

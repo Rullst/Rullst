@@ -117,7 +117,9 @@ Before releasing, make sure:
   matches the manifests, supported-version table, and intended release changes.
 - [ ] The [Cargo feature matrix](docs/src/feature-matrix.md) still matches every
   publishable manifest and the feature-boundary CI matrix.
-- [ ] The [v12 migration guides](docs/src/migration-v12.md) and
+- [ ] The [v13 migration guide](docs/src/migration-v13.md) (whose rows the
+  `rullst-upgrade-rules-v4` catalog references), the
+  [v12 migration guides](docs/src/migration-v12.md) and
   [AI capability matrix](docs/src/ai-provider-capabilities.md) match the APIs,
   CLI behavior, and known release-history boundaries.
 - [ ] Every current security statement matches the code, test, and limit in the
@@ -129,11 +131,11 @@ Before releasing, make sure:
   schema version instead of silently changing v1.
 - [ ] Every package in [the release order](.github/release-order.json) has
   synchronized manifest versions and internal requirements at the selected
-  release version. The current v13 candidate inventory has 17 packages, including
-  `rullst-privacy`. Supervision, Media and Labs remain outside that inventory
-  until their separate package/release admission (the Labs runner candidate was
-  removed from 13.0); a successful
-  experimental archive rehearsal does not authorize their publication.
+  release version. The current v13 candidate inventory has 19 packages, including
+  `rullst-privacy`, `rullst-supervision` and `rullst-media`. `rullst-labs`
+  (`publish = false`) remains outside that inventory until its separate
+  package/release admission (the Labs runner candidate was removed from 13.0);
+  a successful experimental archive rehearsal does not authorize its publication.
 - [ ] Review the README extracted from each `.crate`, installation examples and
   public demo links before creating the tag. The facade and CLI package the root
   README. Run both `rullst --version` and `cargo rullst --version` from the staged
@@ -170,7 +172,7 @@ Prereleases require explicit opt-in with a requirement such as `13.0.0-rc.1`.
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
 2. 📦 Foundations: `rullst-orm`, `rullst-core`, `rullst-messaging`
-3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`, `rullst-privacy` (v13 candidate)
+3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`, then the v13 candidates `rullst-privacy`, `rullst-supervision` and `rullst-media`
 4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 
@@ -204,8 +206,8 @@ deliberately (for example, to resolve an advisory). Changes that break Rullst's
 compatibility contract belong to v13.
 Keep the v12 release gates active while v13's own CI policy evolves.
 
-Version 12.1.0 is published. Carry its compatible
-[update experience](ROADMAP.md#safe-update-experience) into v13 while keeping
+Version 12.1.2 is the latest published stable release. Carry the compatible
+12.1 [update experience](ROADMAP.md#safe-update-experience) into v13 while keeping
 maintenance on `v12`; forward-port applicable fixes through reviewed PRs.
 Synchronize package versions only when the candidate is accepted for release.
 A major upgrade needs its own tested migration rules, not just an updated
@@ -257,10 +259,14 @@ short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (
 All sixteen registered v12 crates use crates.io Trusted Publishing through
 GitHub OIDC. The protected `crates-io` environment must require review and be
 configured for `release.yml`. The first-publication bootstrap token has been
-revoked and its GitHub secret removed; the bootstrap allowlist is empty. A
-future new package name requires the narrowly scoped, short-lived procedure in
-[`docs/src/release-recovery.md`](docs/src/release-recovery.md). Do not maintain a
-permanent repository-wide registry token.
+revoked and its GitHub secret removed. On `main`, the bootstrap allowlist in
+`.github/crates-ownership-policy.json` names the three unregistered v13 packages
+(`rullst-privacy`, `rullst-supervision` and `rullst-media`) so the ownership
+check can classify them, but `release.yml` refuses publication while any
+release package is unregistered. Their first publication needs the separately
+reviewed initial registration described under
+[v13 package registration](docs/src/release-recovery.md#v13-package-registration).
+Do not maintain a permanent repository-wide registry token.
 
 ---
 

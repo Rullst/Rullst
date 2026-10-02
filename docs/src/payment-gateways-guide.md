@@ -44,9 +44,9 @@ graph TD
 | :--- | :--- | :--- |
 | Direct payment APIs | Stripe, Mercado Pago, InfinitePay, PicPay, Razorpay | Implemented trait methods perform signed/credentialed requests; unsupported methods fail explicitly. |
 | Merchant-of-record APIs | Lemon Squeezy, Polar, Paddle | Provider-specific checkout/subscription methods only; tax and merchant-of-record obligations remain governed by the provider contract. |
-| Cross-border and wallets | Alipay | RSA2 operations that are not implemented fail closed; HMAC fixtures are not represented as RSA2. |
-| Crypto commerce | Coinbase Commerce | Provider-specific charge and webhook flows; chain settlement is outside Rullst's trust boundary. |
-| Payouts | Wise | Provider-specific payout operations; identity, compliance, currency, and availability checks remain external. |
+| Cross-border and wallets | Alipay | Live RSA2 checkout signing and webhook verification are not implemented and fail closed; only explicit `mock_*` credentials run the offline fixture. |
+| Crypto commerce | Coinbase Commerce | Signed one-off charge notifications; live plan-only checkout is unsupported. Chain settlement is outside Rullst's trust boundary. |
+| Payouts | Wise | Bound transfer-status reads and, as a v13 candidate, RSA-verified transfer state-change webhooks; live transfer creation is unsupported. Identity, compliance, currency, and availability checks remain external. |
 
 Provider pricing and terms change. Check the provider's current official
 documentation and the concrete trait implementation before selecting an adapter.
@@ -93,7 +93,8 @@ handling are external contractual properties, not guarantees made by Rullst.
 
 The [Capital capability matrix](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#-supported-providers)
 separates all eleven adapters and their current operations. Stripe has a generated
-durable subscription integration. Polar uses product IDs and an external owner;
+durable subscription integration, and the unpublished v13 source adds a
+generated Paddle candidate. Polar uses product IDs and an external owner;
 Paddle uses a customer ID, recurring price and approved Paddle.js page. Lemon
 Squeezy needs an explicit store and variant. Other generated real billing paths
 remain unavailable. Wise is a payout adapter, not a checkout provider.
@@ -135,7 +136,9 @@ commit the scoped event receipt with subscription state. Exact replays do not
 repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
 Paddle and Polar expose typed adapter contracts; the host supplies durable
-orchestration, atomic event processing and reconciliation for those integrations.
+orchestration, atomic event processing and reconciliation for those integrations,
+except where it adopts the v13 generated Paddle candidate, which persists
+dispatch claims and commits signed lifecycle receipts with its state.
 Razorpay's live plan checkout requires an explicit billing-cycle count
 (`with_subscription_total_count`, v13 candidate) instead of the earlier fixed
 12 cycles; `subscription.completed` reports the end of billing as `Canceled`.
@@ -310,8 +313,9 @@ acting on money.
 2. **Cryptographic verification:** supported webhook adapters use HMAC or
    constant-time verification for the exact signed bytes. Each provider's
    timestamp/replay policy and deployed secret lifecycle still require review.
-   The default replay store is process-local; multi-instance deployments need a
-   durable shared idempotency boundary owned by the application. It holds at
+   The default replay store is process-local; multi-instance deployments need
+   the opt-in `webhook-sql` ledger or another durable shared idempotency
+   boundary. It holds at
    most 10,000 proofs for 24 hours each and answers 503 when full rather than
    evict an unexpired proof; size a store for `verify_webhook_with_state` when
    one process verifies more than about 10,000 deliveries per day.

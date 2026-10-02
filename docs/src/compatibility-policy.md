@@ -67,7 +67,8 @@ stable interfaces.
 
 ## Minimum Supported Rust Version
 
-The v12 release line declares **Rust 1.96.0** in every publishable manifest.
+The v12 release line and the unpublished v13 source both declare **Rust 1.96.0**
+in every publishable manifest.
 
 - Patch releases do not raise the MSRV.
 - A minor release may raise it only with an explicit changelog entry, updated

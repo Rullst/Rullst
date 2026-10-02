@@ -356,7 +356,8 @@ impl Orm {
     /// under an application-specific namespace.
     ///
     /// The namespace must contain 1-64 ASCII letters, digits, dots, dashes or
-    /// underscores. Redis hash model helpers keep their existing key contract.
+    /// underscores. Redis hash model helpers use the same namespace in their
+    /// `rullst:orm:hash:v1:` keys.
     #[cfg(feature = "redis")]
     #[cfg_attr(test, mutants::skip)]
     pub async fn init_redis_with_namespace(

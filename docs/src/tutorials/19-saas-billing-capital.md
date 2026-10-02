@@ -13,11 +13,12 @@ The command detects a relational SQLx or Turso-primary project, adds the exact
 `orm` and `capital` facade features once, generates a reversible matching
 migration, registers the models/controller/page modules, and refuses to
 overwrite an earlier billing scaffold. The generated runtime supports the
-selected Stripe live integration or explicit offline fixtures. Other generated
-providers remain fixtures; adapter capabilities do not imply an integrated
-application journey for every gateway.
+selected Stripe live integration, an opt-in Paddle recurring-billing candidate
+(unpublished v13; see the generated `BILLING.md`) or explicit offline fixtures.
+Lemon Squeezy remains a fixture; adapter capabilities do not imply an
+integrated application journey for every gateway.
 
-**Unreleased 12.1 integration:** the Stripe flow persists an opaque local owner,
+**Since 12.1.0:** the Stripe flow persists an opaque local owner,
 account/test-live scope, immutable customer and checkout intents, session IDs,
 and event receipts. Signed Checkout/subscription notifications reconcile current
 provider state. Database revision fencing prevents delayed reads from replacing
@@ -31,6 +32,9 @@ first, then `.env`, through `rullst::config::project_setting`). Follow the gener
 `BILLING.md` for webhook event selection, pinned API version, CSP, recovery and
 migration details. Keep credentials outside source control. Test and live keys
 use separate persisted namespaces; mixed real/mock credentials fail closed.
+Live keys also require
+`BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`; without it the
+generated live path stays unavailable.
 
 Existing controllers are application-owned: merge the generated modules and
 add the billing-state/event tables through a new migration. Updating a dependency

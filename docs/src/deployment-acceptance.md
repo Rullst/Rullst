@@ -1,7 +1,8 @@
 # Two-replica deployment acceptance
 
 This v13 candidate exercises two independent Rullst application processes behind
-a digest-pinned Caddy proxy and an owned Redis server. The local contract passes, alongside 242 Core and 163 Security library tests,
+a digest-pinned Caddy proxy and an owned Redis server. The local contract
+passed, alongside that source's 242 Core and 163 Security library tests,
 strict lints and five detected body-lifetime mutations. Hosted workspace and
 installed-archive checks subsequently passed in
 [PR #224](https://github.com/Rullst/Rullst/pull/224); the final release campaign
@@ -80,8 +81,9 @@ shared-local SQLite store behind a proxy does not make it cross-host durable.
 The [shared passkey candidate](shared-passkey-ceremonies.md) addresses one such
 state boundary and retains its own acceptance requirements.
 
-Read-only cloud/VPS diagnostics, a generated multi-replica Foundry profile and
-additional deployment topologies remain follow-up work. No firewall, SSH, IAM or
+The offline [`deploy:doctor`](deployment-diagnostic.md) inspects only a local
+configuration snapshot. A generated multi-replica Foundry profile and additional
+deployment topologies remain follow-up work. No firewall, SSH, IAM or
 host security configuration is changed by this increment.
 
 The reviewed proxy behavior follows Caddy's official

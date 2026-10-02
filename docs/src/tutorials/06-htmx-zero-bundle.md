@@ -2,8 +2,10 @@
 
 Rullst's default scaffold renders HTML on the server and can use HTMX attributes
 for targeted requests and fragment swaps. It does not require a project-local
-SPA bundle, but HTMX itself is browser JavaScript and must be supplied, pinned,
-and permitted by the application's CSP.
+SPA bundle, but HTMX itself is browser JavaScript. The CLI's HTML starters write
+a pinned copy to `static/htmx-1.9.12.min.js`, which `rullst::htmx::render_page`
+loads from the same origin; an application without those generated assets must
+serve that file itself. The application's CSP must permit it.
 
 ---
 
@@ -55,7 +57,7 @@ in `RawHtml`.
     />
     
     <div id="user-list" class="mt-4 text-slate-400">
-        "Start typing to search..."
+        Start typing to search...
     </div>
 </div>
 ```

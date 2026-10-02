@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Documentation and CLI help review
+
+- The book, crate READMEs, `AGENTS.md`, the spec and the `cargo rullst ai`
+  primer were checked against the code. The CLI reference documents every
+  command, including `academy:doctor`, and the real `db:*`, `studio`, `pkg`
+  and `update` behaviour; feature tables, counts, admission statuses and the
+  removed Academy, supervision generator and Labs runner pieces are corrected.
+- CLI help no longer mentions a `RullstPackage` trait or "v12" in the
+  `--hot-reload` error, and `make:billing` names Stripe and Paddle.
+- Remove two orphaned supervision browser scripts that drove the removed
+  generator, and drop its path from the quality-scorecard evidence.
+- Fix the `rullst-iot` test that called `to_string` without `ToString` in
+  `no_std` builds, and mount the generated live component in the SaaS smoke
+  so the strict build no longer rejects it as unused.
+
 ### `cargo rullst ai` review fixes
 
 - `inspect` accepts only routes, models or schema, so the assistant can no
@@ -66,7 +81,7 @@ A prepared version section does not establish that its tag or crates exist.
 ### Assisted v12 → v13 upgrade
 
 - `cargo rullst upgrade` reports v12 → v13 source findings
-  (`rullst-upgrade-rules-v4`, 88 `syn`-based rules over sources, manifests and
+  (`rullst-upgrade-rules-v4`, 98 `syn`-based rules over sources, manifests and
   generated files) as MUST-CHANGE or REVIEW with `file:line` and the matching
   [v13 migration guide](docs/src/migration-v13.md) row. The
   `rullst.upgrade-plan.v1` JSON gains `kind`, `migration_row`,
@@ -178,10 +193,11 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### LMS starter hot reload
 
-- Support hot reload in the `auth,learning` LMS profile: it emits a reloadable
-  `src/lib.rs` router library and a `src/main.rs` that loads it when
-  `HOT_RELOAD` is set, matching the other blueprints. The remaining detached
-  profiles still reject hot reload explicitly.
+- The LMS starter generator can emit the reloadable `src/lib.rs` router
+  library and a `src/main.rs` that loads it when `HOT_RELOAD` is set, matching
+  the other blueprints. This layout is exercised by the generated-project
+  tests; `cargo rullst new` still rejects `--hot-reload` for every blueprint,
+  and `cargo rullst dev` reloads by restarting the process.
 
 ### CLI upgrade catalog v3
 

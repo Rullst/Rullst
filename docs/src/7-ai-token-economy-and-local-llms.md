@@ -88,6 +88,38 @@ Use `try_local_with_bearer` for an authenticated loopback server and
 `try_cloud` for HTTPS/Bearer cloud endpoints. Consult the [provider capability
 matrix](ai-provider-capabilities.md).
 
+## Measuring token usage (v13)
+
+The unreleased v13 `rullst-ai` reports the token counts a provider returns
+instead of estimating them. `ChatBuilder::send_with_usage` (or
+`AiProvider::chat_with_usage`) returns a `ChatCompletion` whose optional
+`TokenUsage` carries input, output, total and cached-input counts, and
+`StreamSummary::usage()` returns the counts reported at the end of a stream:
+
+```rust,no_run
+use rullst_ai::ai::AiClient;
+
+# async fn example() -> Result<(), rullst_ai::ai::AiError> {
+let client = AiClient::auto()?;
+let completion = client
+    .chat()
+    .user("Summarize this bounded input")
+    .send_with_usage()
+    .await?;
+if let Some(usage) = completion.usage() {
+    println!("input: {:?}, output: {:?}", usage.input_tokens(), usage.output_tokens());
+}
+# Ok(())
+# }
+```
+
+A count the provider does not send stays `None`, offline mocks report none, and
+Rullst ships no price table. The [capability matrix](ai-provider-capabilities.md#token-usage-v13)
+lists the response fields read for each provider. `cargo rullst ai` shows the
+reported usage per answer and per session, and a cost estimate only at the
+per-million-token prices you give `cargo rullst ai connect` (interactively or
+with `--input-price-per-mtok` and `--output-price-per-mtok`).
+
 ## Privacy boundary
 
 Using a loopback endpoint can avoid sending model requests to a cloud provider,
