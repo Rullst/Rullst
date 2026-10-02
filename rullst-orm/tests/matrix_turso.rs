@@ -150,6 +150,41 @@ async fn test_matrix_turso_remote_sql_contract() {
         .expect("rollback verification query should succeed");
     assert!(rolled_back.is_empty(), "failed batch must roll back fully");
 
+    // libSQL server returns blob cells as unpadded base64, so lengths that
+    // are not a multiple of three exercise the padding-free decoder.
+    store
+        .execute(statement(
+            "CREATE TABLE edge_blobs (id INTEGER PRIMARY KEY, payload BLOB NOT NULL)",
+            vec![],
+        ))
+        .await
+        .expect("blob table should be created remotely");
+    for (id, payload) in [
+        (1, vec![7_u8]),
+        (2, vec![7, 8]),
+        (3, vec![7, 8, 9]),
+        (4, (0..16).collect::<Vec<u8>>()),
+    ] {
+        store
+            .execute(statement(
+                "INSERT INTO edge_blobs VALUES (?1, ?2)",
+                vec![TursoValue::Integer(id), TursoValue::Blob(payload.clone())],
+            ))
+            .await
+            .expect("remote blob insert");
+        let rows = store
+            .query(
+                statement(
+                    "SELECT payload FROM edge_blobs WHERE id = ?1",
+                    vec![TursoValue::Integer(id)],
+                ),
+                TursoQueryLimit::new(1).expect("bounded blob query"),
+            )
+            .await
+            .expect("remote blob cell should decode");
+        assert_eq!(rows[0].get("payload"), Some(&TursoValue::Blob(payload)));
+    }
+
     store
         .execute(statement(
             "CREATE TABLE remote_users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, active INTEGER NOT NULL)",
