@@ -925,7 +925,11 @@ Creates the monolithic final Production binary of the backend and executes pre-c
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
-Injects infrastructure files (Dockerfile or Nix Flake) directly into a pre-existing project (similar to the flags used in `new`).
+Injects infrastructure files into a pre-existing project (similar to the flags
+used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
+absent) and `nixify` writes `flake.nix` and `.envrc`. Both commands, like
+`generate:buildah` for `build_buildah.sh`, refuse to replace an existing file;
+move a customized file aside to regenerate its template.
 
 ### `cargo rullst foundry:init`
 Generates the `Foundry.toml` deployment manifest at the project root containing
