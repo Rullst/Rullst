@@ -605,6 +605,14 @@ while portability and semantic review remain the model author's responsibility.
   model-wide scope binding can never shift onto a nested or caller value. A
   custom subquery whose `$n` markers are mixed with `?`, reference a missing
   binding or leave a binding unused fails closed with a `Validation` error.
+* `with_raw`, `with_recursive_raw` and `select_raw` take no bindings; their
+  markers can only be filled by `bind()`, whose values follow the scope, JOIN
+  and WHERE bindings although the fragment renders before them. From 12.2 these
+  methods fail with `Validation` when their SQL has a `?` or `$n` marker and
+  the query already holds a tenant/model-wide scope, JOIN or WHERE binding, so
+  the mandatory tenant binding can never reach a raw fragment's marker. An
+  unscoped query that calls them before any other binding keeps filling their
+  markers with `bind()` in textual order.
 * Only PostgreSQL statements are renumbered. `delete_all()`, including the
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live

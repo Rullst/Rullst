@@ -189,6 +189,12 @@ Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
 `with_recursive` are embedded with portable `?` markers; on PostgreSQL the
 final statement is numbered once, in textual order, so nested scopes, CTEs and
 joins keep every tenant and caller binding at its own `$n` position.
+`with_raw`, `with_recursive_raw` and `select_raw` take no bindings, and
+`bind()` appends WHERE values after the scope, JOIN and WHERE bindings. On a
+tenant or model-wide scoped query, or once JOIN/WHERE values exist, these
+fragments therefore fail with `Validation` when they contain a bind marker,
+instead of letting the marker take the tenant binding; use a typed `with_cte`
+or `where_raw(..., bindings)` there.
 Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
 issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
 receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.
