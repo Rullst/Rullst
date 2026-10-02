@@ -205,9 +205,9 @@ async fn display_name_recipients_share_the_bare_suppression_key() {
             Some(SuppressionReason::SpamComplaint)
         );
     }
-    for unparseable in ["Alice <alice@example.com", "a@example.com, b@example.com"] {
+    for unparsable in ["Alice <alice@example.com", "a@example.com, b@example.com"] {
         assert_eq!(
-            store.lookup(unparseable).await,
+            store.lookup(unparsable).await,
             Err(SuppressionError::InvalidEvent("recipient"))
         );
     }
