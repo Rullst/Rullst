@@ -1653,6 +1653,10 @@ sending.
   origin; `Origin: null` is accepted only with `Sec-Fetch-Site: same-origin`,
   never alone or from a same-site document. This is a local
   DNS-rebinding/CSRF boundary, not production authentication.
+* Studio's database views use the application's ORM pool or, when none
+  exists, the process `DATABASE_URL` or parsed `[database].url` from
+  `Rullst.toml`. There is no implicit SQLite fallback; resolution errors never
+  echo configuration content.
 * Queue, revenue, security and telemetry pages report only values supplied by
   their configured process-local source. Unsupported driver operations and
   disconnected integrations remain errors or `Unavailable`. The standalone

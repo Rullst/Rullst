@@ -61,6 +61,11 @@ on Studio's own form posts. `Origin: null` passes only together with
 `no-referrer`; a bare `null` origin or a same-site document on another local
 port is rejected.
 
+Studio uses the ORM pool that the application initialized. When none exists,
+its first database view initializes one from the process `DATABASE_URL` or
+`[database].url` in `Rullst.toml`. Without a configured database it reports the
+database tools as unavailable and creates nothing; there is no SQLite fallback.
+
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.

@@ -56,6 +56,16 @@ Studio responses use `Referrer-Policy: same-origin` so that browsers keep the
 real origin on Studio's own form posts. `Origin: null` is accepted only with
 `Sec-Fetch-Site: same-origin` (sent when a host layer imposes `no-referrer`);
 a bare `null` origin or a same-site document on another port is rejected.
+
+**Database selection:** Studio uses the process-wide ORM pool that the
+application initialized (`Server`, Artisan or an explicit `Orm::init`). When no
+pool exists yet, the first database view initializes it once from the process
+`DATABASE_URL` or, when that is unset, `[database].url` parsed from
+`./Rullst.toml`. Without a configured database, Studio reports that its
+database tools are unavailable and creates nothing; there is no
+`sqlite://db.sqlite` fallback. Error messages never echo configuration content.
+`data_browser::resolve_db_url` remains only for API compatibility; Studio no
+longer uses it.
 Data-browser writes additionally require a crate-private marker created only by
 that verified access middleware, so importing the raw browser router cannot
 turn its mutation handlers into an unprotected database API.

@@ -46,6 +46,16 @@ queue views are enabled with `with_openapi` and `with_horizon`.
 `with_distributed_traces` supplies the bounded store shared with a separately
 mounted push-only ingestion router.
 
+Studio uses the process-wide ORM pool that the application initialized
+(`Server`, Artisan or an explicit `Orm::init`). If none exists when a database
+view is requested, Studio initializes it once from the process `DATABASE_URL`
+or, when that is unset, `[database].url` parsed from `./Rullst.toml`. `Server`
+and Artisan, which normally initialize the pool first, also read `./.env`.
+Without a configured database the views report that database tools are
+unavailable and nothing is created; the former `sqlite://db.sqlite` fallback is
+gone, and errors never echo configuration content. Applications that call
+`Orm::init` with their own URL should do so before Studio serves requests.
+
 ## Current views
 
 - `/studio`: data browser and dashboard shell.
