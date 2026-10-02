@@ -9,6 +9,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### ORM review fixes (12.2)
+
+Ported from the v13 ORM review. Only hidden helpers are added; the macro crate
+gains two internal features forwarded by `rullst-orm/redis`. See the
+[upgrade checklist](docs/src/crates/orm.md) before upgrading from 12.1.
+
+- **Transactions and outbox:** sibling nested `Orm::transaction` calls take
+  turns, a savepoint left open rolls the transaction back, and the pool closes
+  connections returned inside a transaction. MySQL/MariaDB reuse an outbox key
+  committed after the caller's snapshot.
+- **Schema and audit:** MySQL audit payloads are `LONGTEXT` in new tables,
+  `float()` is double precision on PostgreSQL/MySQL, PostgreSQL enum DDL joins
+  the active transaction, restore patches withhold added or removed sensitive
+  keys, and `boolean()` is documented as an integer flag.
+- **Generated queries:** shared eager-loaded relations reach every parent;
+  `delete_all()` rejects clauses it cannot honour; `only_trashed()` fails on
+  models without soft deletes; `query()` rejects mistyped tenant contexts; raw
+  CTE/select markers can no longer take scope bindings; strict-PostgreSQL enum
+  filters cast to the enum type; tenant-scoped `search()` falls back to SQL on
+  a capped engine answer.
+- **Redis:** generated Redis code follows `rullst-orm/redis`, model hashes are
+  namespaced and tenant-bound (12.1 hashes of global models are read and moved
+  lazily), and cache invalidation uses a per-table index instead of scanning
+  the keyspace (cache keys move to `v4`).
+- **Nexus derive:** skipped fields are omitted; encrypted, `SecretString` and
+  `#[orm(hidden)]` fields stay hidden and read-only.
+- **Turso:** unpadded Hrana blob cells decode.
+
 ### Core, Security and Connect review fixes (12.2)
 
 Ported from the v13 review; no public API is removed or changed and the MSRV
