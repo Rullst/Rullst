@@ -90,13 +90,16 @@ mod tests {
             "x123456789012345678901234",
         ] {
             let account = service_account(name);
-            assert!(account.len() <= MAX_ACCOUNT_LEN, "{account}");
+            assert!(
+                account.len() <= MAX_ACCOUNT_LEN,
+                "account for {name:?} is too long"
+            );
             assert!(account.starts_with("rullst-"));
             assert!(
                 account.bytes().all(|byte| byte.is_ascii_lowercase()
                     || byte.is_ascii_digit()
                     || matches!(byte, b'-' | b'_')),
-                "{account}"
+                "account for {name:?} has invalid characters"
             );
         }
         assert_ne!(service_account("Demo"), service_account("demo"));
