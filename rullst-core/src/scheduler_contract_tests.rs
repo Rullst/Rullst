@@ -157,3 +157,39 @@ fn scheduler_defaults_and_duration_saturation_are_explicit() {
     assert_eq!(scheduler.failure_policy, SchedulerFailurePolicy::Continue);
     assert_eq!(duration_millis_u64(Duration::MAX), u64::MAX);
 }
+
+/// Pins the documented `cron`-crate day-of-week semantics.
+#[test]
+fn day_of_week_follows_the_documented_cron_crate_numbering() {
+    use chrono::{Datelike, TimeZone, Weekday};
+
+    let next_weekday = |expression: &str| {
+        let task = Scheduler::new()
+            .task(expression, || async {})
+            .unwrap()
+            .tasks
+            .remove(0);
+        // 2026-09-30 is a Wednesday.
+        let after = chrono::Utc.with_ymd_and_hms(2026, 9, 30, 12, 0, 0).unwrap();
+        task.schedule.after(&after).next().unwrap().weekday()
+    };
+
+    assert_eq!(next_weekday("0 9 * * 1"), Weekday::Sun);
+    assert_eq!(next_weekday("0 9 * * 2"), Weekday::Mon);
+    assert_eq!(next_weekday("0 9 * * 7"), Weekday::Sat);
+    assert_eq!(next_weekday("0 9 * * MON"), Weekday::Mon);
+    assert!(matches!(
+        Scheduler::new().task("0 9 * * 0", || async {}),
+        Err(SchedulerError::InvalidCron(_, _))
+    ));
+
+    // Restricted day-of-month and day-of-week must both match.
+    let task = Scheduler::new()
+        .task("0 0 1 * MON", || async {})
+        .unwrap()
+        .tasks
+        .remove(0);
+    let after = chrono::Utc.with_ymd_and_hms(2026, 9, 30, 12, 0, 0).unwrap();
+    let next = task.schedule.after(&after).next().unwrap();
+    assert_eq!((next.day(), next.weekday()), (1, Weekday::Mon));
+}
