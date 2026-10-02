@@ -139,6 +139,45 @@ pub(crate) fn parse(
     }
 }
 
+/// The command-line arguments as text. A non-Unicode argument (for example a
+/// Latin-1 file name) gets a usage report and exit status 2 instead of a
+/// panic; the program path itself is converted lossily.
+pub(crate) fn unicode_arguments(
+    arguments: impl IntoIterator<Item = std::ffi::OsString>,
+) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut converted = Vec::new();
+    for (index, argument) in arguments.into_iter().enumerate() {
+        match argument.into_string() {
+            Ok(argument) => converted.push(argument),
+            Err(program) if index == 0 => converted.push(program.to_string_lossy().into_owned()),
+            Err(argument) => {
+                let report = Friendly {
+                    title: "Invalid argument".to_string(),
+                    happened: format!(
+                        "Argument {index} (`{}`) is not valid Unicode.",
+                        argument.to_string_lossy()
+                    ),
+                    fix: Some(
+                        "cargo rullst accepts UTF-8 arguments only: rename the file or pass the value in UTF-8."
+                            .to_string(),
+                    ),
+                    docs: Some(CLI_REFERENCE),
+                };
+                eprint!(
+                    "{}",
+                    error_report::render(&report, &[], None, false, Style::stderr())
+                );
+                return Err(AlreadyReported::new(
+                    USAGE_EXIT,
+                    format!("argument {index} is not valid Unicode"),
+                )
+                .into());
+            }
+        }
+    }
+    Ok(converted)
+}
+
 /// Runs `completions`, `info` and the `--json` views; `false` when the
 /// command belongs to the regular dispatch.
 pub(crate) fn run_extension(matches: &ArgMatches) -> Result<bool, Box<dyn Error>> {
@@ -290,6 +329,28 @@ mod tests {
             many.fix.as_deref(),
             Some("Did you mean one of these?\n  cargo rullst db:seed\n  cargo rullst db:status")
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_unicode_arguments_are_a_usage_error_not_a_panic() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt;
+
+        let latin1 = OsString::from_vec(b"caf\xe9.rs".to_vec());
+        let error = unicode_arguments([
+            OsString::from("rullst"),
+            OsString::from("inspect"),
+            latin1.clone(),
+        ])
+        .expect_err("a non-Unicode argument is refused");
+        assert_eq!(error.to_string(), "argument 2 is not valid Unicode");
+        let error: &(dyn Error + 'static) = error.as_ref();
+        assert_eq!(error_report::report(error, &[]), USAGE_EXIT);
+
+        // The program path may be anything; it is only displayed.
+        let program = unicode_arguments([latin1, OsString::from("info")]).expect("program path");
+        assert_eq!(program, ["caf\u{fffd}.rs", "info"]);
     }
 
     #[test]

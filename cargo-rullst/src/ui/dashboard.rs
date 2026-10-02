@@ -473,7 +473,16 @@ pub fn show_interactive_dashboard() -> DashboardResult<()> {
         return Ok(());
     }
 
-    let argv0 = std::env::args().next().unwrap_or_default();
+    // `std::env::args` would panic on a non-Unicode program path.
+    let argv0 = std::env::args_os()
+        .next()
+        .and_then(|argv0| argv0.into_string().ok())
+        .or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|path| path.into_os_string().into_string().ok())
+        })
+        .unwrap_or_else(|| "cargo-rullst".to_string());
     let program = match std::env::current_dir() {
         Ok(current_dir) => resolve_program(&argv0, &current_dir),
         Err(_) => argv0,

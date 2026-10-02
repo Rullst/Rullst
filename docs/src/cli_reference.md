@@ -90,7 +90,7 @@ or `RUST_BACKTRACE` is set.
 | :--- | :--- |
 | `0` | Success (`doctor`: no failed check; warnings are allowed). |
 | `1` | The command failed, including `doctor` with a failed (✗) check. |
-| `2` | Usage error: an unknown command or invalid arguments. |
+| `2` | Usage error: an unknown command, invalid arguments or an argument that is not valid UTF-8. |
 
 An unknown command lists the closest commands at the level where it was typed
 (`cargo rullst make:modek` suggests `make:model`; `cargo rullst update chekk`
