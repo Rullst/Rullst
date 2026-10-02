@@ -102,8 +102,12 @@ Ok(())
 
 Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
 hashes use the same namespace, and tenant models bind the active tenant into
-their key and require `with_tenant(...)`. Hashes written by earlier versions
-under `orm:<table>:<id>` are not read.
+their key and require `with_tenant(...)`. A model without a tenant scope still
+reads a hash written by 12.1 under `orm:<table>:<id>` while its namespaced
+hash is missing, and its next `save_to_redis`/`increment_redis_field` moves
+that hash to the namespaced key. Tenant models never read that shared key;
+migrate their hashes as described in the
+[ORM 12.2 behaviour notes](crates/orm.md#behaviour-changes-in-122).
 
 Use a stable, unique namespace for every application that shares a Redis
 database. Query keys bind that namespace, an opaque digest of the active tenant

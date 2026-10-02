@@ -484,8 +484,12 @@ let users = User::query().where_like("email", "%@example.com")
 Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` hashes are
 keyed by that namespace, the table and, for tenant models, an opaque digest of
 the active tenant: they require `with_tenant(...)` and never read or overwrite
-another tenant's hash. Hashes stored by earlier versions under
-`orm:<table>:<id>` are not read and must be rewritten.
+another tenant's hash. For a model without a tenant scope, a hash stored by
+12.1 under `orm:<table>:<id>` is still read while the namespaced hash is
+missing and moves to the namespaced key on its next `save_to_redis` or
+`increment_redis_field`. Tenant models never read that shared key; migrate
+their hashes explicitly as described in the 12.2 behaviour notes of the ORM
+crate guide.
 
 An explicitly remembered query outside a transaction requires Redis
 initialization. Connection/command failures and corrupt cache entries fall back

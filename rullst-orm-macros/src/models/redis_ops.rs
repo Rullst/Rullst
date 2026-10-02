@@ -128,33 +128,32 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
 
         #redis_cfg
         pub async fn save_to_redis(&self) -> Result<(), rullst_orm::Error> {
-            use rullst_orm::_redis::AsyncCommands;
             #tenant_context
             #instance_tenant_check
             let fields = self.__rullst_redis_hash_fields()?;
-            let redis_key = rullst_orm::query_cache::model_hash_key(
+            // A global model's 12.1 hash moves to the namespaced key here.
+            rullst_orm::query_cache::write_model_hash(
                 #table_name,
                 #tenant_arg,
                 &self.id.to_string(),
-            )?;
-            let mut conn = rullst_orm::Orm::redis_manager()?;
-            let _: () = conn.hset_multiple(&redis_key, &fields).await?;
-            Ok(())
+                &fields,
+            )
+            .await
         }
 
         #redis_cfg
         pub async fn get_from_redis(id: impl std::fmt::Display) -> Result<Option<Self>, rullst_orm::Error>
         #redis_get_default_bound
         {
-            use rullst_orm::_redis::AsyncCommands;
             #tenant_context
-            let redis_key = rullst_orm::query_cache::model_hash_key(
+            // A global model falls back to its 12.1 hash; a tenant model never
+            // reads that key, which every tenant shared.
+            let hash = rullst_orm::query_cache::read_model_hash(
                 #table_name,
                 #tenant_arg,
                 &id.to_string(),
-            )?;
-            let mut conn = rullst_orm::Orm::redis_manager()?;
-            let hash: std::collections::HashMap<String, String> = conn.hgetall(&redis_key).await?;
+            )
+            .await?;
 
             if hash.is_empty() {
                 return Ok(None);
@@ -169,19 +168,14 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
         pub async fn increment_redis_field(id: impl std::fmt::Display, field: #column_enum_name, amount: i64) -> Result<i64, rullst_orm::Error> {
             #tenant_context
             #tenant_field_guard
-            let redis_key = rullst_orm::query_cache::model_hash_key(
+            rullst_orm::query_cache::increment_model_hash(
                 #table_name,
                 #tenant_arg,
                 &id.to_string(),
-            )?;
-            let mut conn = rullst_orm::Orm::redis_manager()?;
-            let new_val: i64 = rullst_orm::_redis::cmd("HINCRBY")
-                .arg(&redis_key)
-                .arg(field.as_str())
-                .arg(amount)
-                .query_async(&mut conn)
-                .await?;
-            Ok(new_val)
+                field.as_str(),
+                amount,
+            )
+            .await
         }
     }
 }
@@ -286,11 +280,23 @@ mod tests {
         };
         let parsed = crate::parser::parse(&global).expect("test model should parse");
         let generated = generate_redis_hash_methods(&parsed).to_string();
-        assert_eq!(
-            generated.matches("query_cache :: model_hash_key").count(),
-            3
-        );
+        // Key building, the 12.1 fallback and its migration live in the
+        // runtime helpers, which take `None` as the global tenant scope.
+        for helper in [
+            "read_model_hash",
+            "write_model_hash",
+            "increment_model_hash",
+        ] {
+            assert_eq!(
+                generated
+                    .matches(&format!("query_cache :: {helper} (\"docs\" , None ,"))
+                    .count(),
+                1,
+                "{helper}"
+            );
+        }
         assert!(!generated.contains("\"orm:{}:{}\""));
+        assert!(!generated.contains("AsyncCommands"));
         assert!(!generated.contains("get_tenant_id"));
 
         let tenant: DeriveInput = parse_quote! {

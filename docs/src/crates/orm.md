@@ -311,8 +311,28 @@ notice:
   `redis`/`orm-redis`): `.remember(...)`, commit-time invalidation and the
   `orm:events:*` publications appear without an application `redis` feature.
   Query-cache keys move to `rullst:orm:cache:v4:` with a per-table index, so
-  caches start cold. Model hashes use namespaced keys (tenant models require
-  `with_tenant(...)`), and hashes stored under `orm:<table>:<id>` are not read.
+  caches start cold. Model hashes use namespaced keys, and tenant models
+  require `with_tenant(...)`.
+- **12.1 Redis model hashes** (`orm:<table>:<id>`): for a model without a
+  tenant scope, `get_from_redis` reads the 12.1 hash while the namespaced one
+  is missing, and the next `save_to_redis` or `increment_redis_field` moves it
+  to the namespaced key; nothing has to be run. Applications that share one
+  Redis database also shared these keys, so the first one to write a hash
+  takes it over. A 12.1 hash of a model with `#[orm(encrypted)]` fields holds
+  them in plaintext, so reading it fails closed until `save_to_redis()`
+  rewrites it. Tenant models never read the 12.1 key, which every tenant
+  shared, so until migrated `get_from_redis` returns `None` and
+  `increment_redis_field` starts from zero. Migrate them once after deploying
+  12.2:
+  1. List the keys of each tenant model table:
+     `redis-cli --scan --pattern 'orm:<table>:*'`.
+  2. Read each hash with `HGETALL`; every value is the JSON of one field.
+  3. Check its tenant column against the tenant that owns row `<id>` in the
+     database, and skip mismatches: another tenant may have overwritten it.
+  4. Decode the hash into the model (for example with `serde_json` from the
+     parsed values), or reload the row when the hash only cached it, and call
+     `with_tenant(tenant, model.save_to_redis())`.
+  5. Remove the 12.1 key with `UNLINK`.
 - **Queries:** eager loads give a shared related row to every parent;
   `delete_all()` rejects `limit()`, `offset()`, `order_by()`, joins, grouping
   and CTEs; `only_trashed()` fails on models without soft deletes; `query()`

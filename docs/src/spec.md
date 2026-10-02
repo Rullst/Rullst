@@ -912,8 +912,14 @@ while portability and semantic review remain the model author's responsibility.
   `with_tenant(...)` with the tenant field's type, `save_to_redis` rejects a
   handle from another tenant, `get_from_redis` rejects a decoded hash whose
   tenant differs and the tenant column cannot be incremented; another tenant
-  simply misses. Hashes written by earlier versions under `orm:<table>:<id>`
-  are no longer read and must be rewritten. The `orm:events:*` pub/sub channel
+  simply misses. 12.1 stored every hash under the shared key
+  `orm:<table>:<id>`. For a model without a tenant scope, `get_from_redis`
+  reads that key when the namespaced hash is missing, and the next
+  `save_to_redis`/`increment_redis_field` atomically moves it to the namespaced
+  key (an existing namespaced hash wins and the stale legacy hash is removed),
+  so data migrates lazily. A tenant model never reads, moves or deletes the
+  legacy key, which every tenant shared; its hashes are migrated explicitly
+  (see the ORM crate guide). The `orm:events:*` pub/sub channel
   names are unchanged and not namespaced, so subscribers keep working; use a
   dedicated Redis database when applications must not observe each other's
   events.
