@@ -197,6 +197,8 @@ boundary are defined in the packaged crate README and the
 | `strict-postgres` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes in v12 |
 | `strict-mysql` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes in v12 |
 | `strict-sqlite` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes in v12 |
+| `runtime-feature-gates` | Enabled by the matching 12.2 `rullst-orm`: generated Redis code follows the runtime's forwarded `redis` feature instead of an application `redis` feature |
+| `redis` | Forwarded by `rullst-orm/redis`; enable the ORM feature rather than this one |
 
 ### `rullst-connect`
 

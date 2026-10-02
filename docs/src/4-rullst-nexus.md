@@ -64,6 +64,18 @@ pub struct User {
 }
 ```
 
+On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
+
+- `#[orm(skip)]` and `#[sqlx(skip)]` fields have no column and are omitted.
+- `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields are hidden,
+  read-only `password` fields whatever `#[nexus(kind/options)]` they declare:
+  Nexus never lists, searches, renders or writes them, so an edit cannot store
+  plaintext in an encrypted column.
+- `#[orm(masked)]` fields default to the `password` widget; an explicit
+  `#[nexus(kind = ...)]` deliberately shows them. A `password` field is still
+  listed and pre-filled by 12.x Nexus, so mark a masked column
+  `#[nexus(hidden)]` when administrators must not see it.
+
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
 `#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,

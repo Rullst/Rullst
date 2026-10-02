@@ -7,6 +7,8 @@ pub mod schema_builder;
 pub mod validation;
 
 #[cfg(test)]
+mod column_type_tests;
+#[cfg(test)]
 mod tests;
 
 pub use blueprint::Blueprint;

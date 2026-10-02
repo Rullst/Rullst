@@ -2,10 +2,12 @@
 //! savepoint on every driver. Without it, the same-row update below waits on
 //! the outer transaction's row lock on PostgreSQL and MySQL/MariaDB.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rullst_orm::schema::{Blueprint, Schema};
-use rullst_orm::{Error, FromRow, Orm};
+use rullst_orm::{Error, FromRow, Orm, after_commit};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "contract_nested_rows")]
@@ -89,7 +91,69 @@ pub(super) async fn exercise() {
         "{driver} nested success must roll back with the outer transaction"
     );
 
+    exercise_concurrent_siblings(driver).await;
+
     Schema::drop_if_exists("contract_nested_rows")
         .await
         .expect("drop nested transaction contract table");
+}
+
+/// Sibling nested transactions joined on one task take turns on the shared
+/// connection, so their savepoints never interleave: each releases or rolls
+/// back only its own work, and the outer transaction still commits.
+async fn exercise_concurrent_siblings(driver: &str) {
+    let committed = Arc::new(AtomicUsize::new(0));
+    let callback = committed.clone();
+    let siblings = tokio::time::timeout(
+        Duration::from_secs(30),
+        Orm::transaction(move |_| {
+            Box::pin(async move {
+                let (first, second, failed) = tokio::join!(
+                    Orm::transaction(|_| Box::pin(async {
+                        insert("sibling-a1").await?;
+                        tokio::task::yield_now().await;
+                        insert("sibling-a2").await?;
+                        Ok::<(), Error>(())
+                    })),
+                    Orm::transaction(move |_| Box::pin(async move {
+                        insert("sibling-b1").await?;
+                        for _ in 0..3 {
+                            tokio::task::yield_now().await;
+                        }
+                        insert("sibling-b2").await?;
+                        after_commit(move || async move {
+                            callback.fetch_add(1, Ordering::SeqCst);
+                            Ok(())
+                        })
+                        .await
+                    })),
+                    Orm::transaction(|_| Box::pin(async {
+                        insert("sibling-c-rolled-back").await?;
+                        tokio::task::yield_now().await;
+                        Err::<(), Error>(Error::Validation("sibling failure".to_string()))
+                    })),
+                );
+                first?;
+                second?;
+                assert!(failed.is_err(), "the failing sibling reports its error");
+                Ok::<(), Error>(())
+            })
+        }),
+    )
+    .await
+    .unwrap_or_else(|_| panic!("{driver} sibling nested transactions must not deadlock"));
+    siblings.unwrap_or_else(|error| panic!("{driver} sibling nested transactions: {error}"));
+
+    let rows = names().await;
+    for expected in ["sibling-a1", "sibling-a2", "sibling-b1", "sibling-b2"] {
+        assert!(
+            rows.iter().any(|name| name == expected),
+            "{driver} {expected}"
+        );
+    }
+    assert!(
+        !rows.iter().any(|name| name == "sibling-c-rolled-back"),
+        "{driver} the failed sibling rolls back only its own savepoint"
+    );
+    assert_eq!(committed.load(Ordering::SeqCst), 1, "{driver} callbacks");
 }

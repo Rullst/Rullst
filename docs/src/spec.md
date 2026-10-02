@@ -278,6 +278,18 @@ use the documented bounded ASCII allowlists. `Blueprint::native_enum` emits:
 - an inline `ENUM` for MySQL/MariaDB; and
 - a `TEXT CHECK` constraint for SQLite.
 
+PostgreSQL enum creation, its label drift check and
+`Schema::drop_native_enum` run through the task-scoped transaction when one is
+active, exactly like the table DDL: they roll back with it, and dropping the
+type after its tables in one transaction cannot block on that transaction's
+own locks from a second pooled connection.
+Generated builder comparisons (`=`, `!=`, `<`, `>`, `IN`, `BETWEEN`, with
+their `or_`/`not_` and `where_<column>` forms) on a persisted field whose type
+implements `DatabaseEnum` bind the value as `CAST(? AS "<type_name>")` under
+the `strict-postgres` runtime, where a text parameter has no operator against
+a named enum; SQLx `Any` (whose PostgreSQL enum fields are text columns) and
+the other backends keep `?`. The live strict PostgreSQL matrix filters such
+columns.
 PostgreSQL through SQLx Any must fail before DDL because that driver cannot
 decode custom PostgreSQL types. Adding, removing or reordering variants,
 deployment order, dependent-object removal and rollback remain explicit,
@@ -291,6 +303,22 @@ on `TEXT`, `BLOB`, `JSON` or `GEOMETRY` columns only as an expression, so the
 builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
 non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
 The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
+
+`Blueprint::float` is an `f64` column on every driver: `DOUBLE PRECISION` on
+PostgreSQL (whose `REAL` is single precision and cannot decode as `f64`),
+`DOUBLE` on MySQL/MariaDB and `REAL` (8-byte) on SQLite. `Column::col_type`
+still reads `REAL` before the schema is built; an explicitly replaced
+`col_type` is emitted unchanged. This affects DDL built from now on; columns
+created by earlier versions keep their type until a reviewed migration alters
+them (for example `ALTER TABLE t ALTER COLUMN c TYPE DOUBLE PRECISION`).
+
+`Blueprint::boolean` is an `INTEGER` 0/1 flag on every driver in 12.x. Map it
+to an integer model field (`i32`/`i64`); PostgreSQL has no implicit
+integer/boolean casts, so a `bool` field cannot be written, filtered or decoded
+against it there. For a native PostgreSQL `BOOLEAN` column paired with a
+`bool` field, replace the column type explicitly (`col.col_type =
+"BOOLEAN".to_string()`); PostgreSQL then rejects an integer `ColumnDefault`,
+while `ColumnDefault::Text("false".into())` is accepted.
 
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
@@ -584,6 +612,18 @@ while portability and semantic review remain the model author's responsibility.
   model-wide scope binding can never shift onto a nested or caller value. A
   custom subquery whose `$n` markers are mixed with `?`, reference a missing
   binding or leave a binding unused fails closed with a `Validation` error.
+* `delete_all()` renders only the WHERE and soft-delete predicates. A builder
+  with an explicit `limit()` (the implicit global cap does not count),
+  `offset()`, `order_by()`, joins, `group_by()`/HAVING or CTEs fails with
+  `Validation` instead of silently deleting every matching row.
+* `with_raw`, `with_recursive_raw` and `select_raw` take no bindings; their
+  markers can only be filled by `bind()`, whose values follow the scope, JOIN
+  and WHERE bindings although the fragment renders before them. From 12.2 these
+  methods fail with `Validation` when their SQL has a `?` or `$n` marker and
+  the query already holds a tenant/model-wide scope, JOIN or WHERE binding, so
+  the mandatory tenant binding can never reach a raw fragment's marker. An
+  unscoped query that calls them before any other binding keeps filling their
+  markers with `bind()` in textual order.
 * Only PostgreSQL statements are renumbered. `delete_all()`, including the
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
@@ -649,6 +689,11 @@ while portability and semantic review remain the model author's responsibility.
   receives an empty or partial relation. A constrained eager load that sets an
   explicit smaller `limit(n)` (applied to the whole batch) or
   `unsafe_unlimited()` is honored as written.
+* Every parent receives the related rows it shares with other parents (one
+  `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
+  parent rows). The shared value is cloned for every such parent but the last;
+  when the related model does not implement `Clone`, a shared row fails the
+  load with a `Validation` error instead of leaving a parent empty.
 
 ### 5.4. Tenant Scope Contract
 
@@ -656,7 +701,10 @@ while portability and semantic review remain the model author's responsibility.
   persisted `String`, `i32`, `f64`, or `bool` tenant field. The derive rejects a
   missing or unsupported field type.
 * Generated queries fail closed when called outside `with_tenant(...)` and bind
-  the active tenant inside the scope. Generated full/partial updates and
+  the active tenant inside the scope, converted to the tenant field's type; a
+  context of another type fails with `Validation` for reads and bulk deletes
+  exactly as for mutations, instead of reaching a predicate that MySQL would
+  compare numerically across tenants. Generated full/partial updates and
   instance delete/restore paths reject a model from another tenant.
 * `Model::unscoped()` is the explicit global escape hatch. Deciding who may use
   it, deriving tenant identity from authenticated state, and database-level RLS
@@ -682,10 +730,17 @@ while portability and semantic review remain the model author's responsibility.
   active `with_tenant(...)` scope. The host remains responsible for deriving
   both contexts from authenticated authority rather than client assertions.
 * `create_audit_table` creates the v2 schema and adds its columns to a legacy
-  table without presenting legacy rows as v2 evidence. JSON payloads are
-  bounded and recursively mask sensitive names for create, update, and delete;
-  audit/debug output does not expose principal, tenant, correlation, reason, or
-  payload values.
+  table without presenting legacy rows as v2 evidence. On MySQL/MariaDB a new
+  table (or a newly added `restore_patch` column) stores `old_values`,
+  `new_values` and `restore_patch` as `LONGTEXT`, because `TEXT` (64 KiB)
+  cannot hold the bounded 5 MiB payloads. An existing table is never altered
+  implicitly; while those columns are still `TEXT`, the call logs a warning
+  naming the reviewed `ALTER TABLE ... MODIFY ... LONGTEXT` migration. JSON payloads are
+  bounded and recursively mask sensitive names for create, update, and delete.
+  The reverse patch records only the presence of a sensitive key, including a
+  nested JSON key that an update adds or removes, and such an operation is not
+  restorable. Audit/debug output does not expose principal, tenant,
+  correlation, reason, or payload values.
 * An auditable model exposes `restore_revision(audit_id, reason)` and its
   caller-owned transaction variant. Only a bounded v2 update patch for the
   exact model, ID, and active tenant is eligible. The current row must still
@@ -709,6 +764,17 @@ while portability and semantic review remain the model author's responsibility.
   The returned future is `Send` for `Send` results and errors, so it can be
   nested in a transaction closure or spawned. Holding the shared handle's lock
   across a nested call deadlocks, as it does for generated model methods.
+* Savepoints on one connection close in LIFO order. Sibling nested
+  transactions started concurrently on one task take turns: each holds its
+  level's turn from `SAVEPOINT` until its release or rollback, while a
+  transaction nested inside it uses its own level and never waits for it.
+  Plain statements from a sibling future are not serialized and run inside
+  whichever savepoint is open. A savepoint left open (a deeper level still
+  open at release, a failed release/rollback, or a nested future cancelled
+  while the connection was busy) never commits partial work: the enclosing
+  savepoint rolls back instead of releasing, a managed transaction rolls back
+  and returns an error instead of committing, and the ORM pool closes a
+  connection returned while SQLx still reports an open transaction.
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
@@ -720,6 +786,11 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Builders add `with_trashed()` (include trashed rows) and `only_trashed()`
+  (only trashed rows). A model without soft deletes has no trashed rows, so
+  its `only_trashed()` fails reads, counts, plucks and `delete_all()` with
+  `Validation` instead of treating every live row as trashed; a directly set
+  `only_trashed` field matches no row. `with_trashed()` changes nothing there.
 * `force_delete()` and `restore()` check the tenant and their policy
   (`can_force_delete`/`can_restore`) before the transaction, then run in a
   savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
@@ -761,7 +832,10 @@ while portability and semantic review remain the model author's responsibility.
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
 * `(stream, event_key)` is the database uniqueness boundary. Replaying the same
-  key and exact event kind/payload returns the existing `i64` identifier;
+  key and exact event kind/payload returns the existing `i64` identifier,
+  including a key committed by a concurrent enqueue after the caller's read
+  snapshot (MySQL/MariaDB read it back with a locking `FOR UPDATE` read, as
+  InnoDB's default `REPEATABLE READ` would hide it from a plain `SELECT`);
   reusing the key with different content fails closed. `stream`, event key,
   event kind and worker identifiers use a bounded ASCII grammar, and serialized
   payloads are limited to one MiB. Streams, event keys and claim tokens compare
@@ -801,13 +875,47 @@ while portability and semantic review remain the model author's responsibility.
 * Cache writes occur only after a successful database read and retain encrypted
   model fields as ciphertext; `SecretString` fields are cached as serde
   envelopes and decrypted on a cache hit, and a result that cannot be
-  serialized (for example without an encryption key) is not cached. Generated model `save()`/`delete()` operations
-  invalidate the active tenant/table's versioned keys only after commit through
-  a bounded Redis `SCAN` plus asynchronous `UNLINK`; rollback preserves existing entries.
+  serialized (for example without an encryption key) is not cached. Each
+  generated cache write also records its key in a per-namespace/tenant/table
+  Redis sorted set, scored by the entry's expiry time on the Redis server
+  clock, in the same `EVAL` script; that script first prunes members whose
+  entries already expired and extends the set's TTL to the longest entry TTL.
+  Generated model `save()`/`delete()`/`restore()`/`force_delete()` operations
+  invalidate the active tenant/table only after commit: invalidation prunes
+  expired members without counting them, then removes the index's live
+  members in batches of 500 and `UNLINK`s their keys (at most 10,000 per
+  write); it never `SCAN`s the Redis keyspace, so its cost does not grow with
+  unrelated keys in a shared database. Beyond the cap the write reports
+  `PostCommit`, the remaining keys stay indexed for the next write, and the
+  generated `orm:events:*` publication still happens. From 12.2 keys are
+  versioned `rullst:orm:cache:v4:`; entries written by earlier versions are
+  never read again and expire through their TTL, and during a rolling upgrade
+  a write from an instance on the other version does not invalidate this
+  version's entries before their TTL. A transaction rollback preserves
+  existing entries. The scripts address keys they were not passed
+  and are therefore outside Redis Cluster, like the rest of this contract.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
   processes cannot be inferred. Callers must retain a defensive TTL and treat
   Redis cluster/failover and durable invalidation delivery as separate
   application contracts.
+* Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
+  hashes use `rullst:orm:hash:v1:<namespace>:<scope>:table-<digest>:<id>`
+  keys, binding the application namespace, an opaque digest of the model's
+  tenant (or `global`) and of the table. For a tenant model all three require
+  `with_tenant(...)` with the tenant field's type, `save_to_redis` rejects a
+  handle from another tenant, `get_from_redis` rejects a decoded hash whose
+  tenant differs and the tenant column cannot be incremented; another tenant
+  simply misses. 12.1 stored every hash under the shared key
+  `orm:<table>:<id>`. For a model without a tenant scope, `get_from_redis`
+  reads that key when the namespaced hash is missing, and the next
+  `save_to_redis`/`increment_redis_field` atomically moves it to the namespaced
+  key (an existing namespaced hash wins and the stale legacy hash is removed),
+  so data migrates lazily. A tenant model never reads, moves or deletes the
+  legacy key, which every tenant shared; its hashes are migrated explicitly
+  (see the ORM crate guide). The `orm:events:*` pub/sub channel
+  names are unchanged and not namespaced, so subscribers keep working; use a
+  dedicated Redis database when applications must not observe each other's
+  events.
 
 ### 5.8. Polyglot Persistence Boundary
 
@@ -875,6 +983,15 @@ while portability and semantic review remain the model author's responsibility.
   `mock_*` credentials select the mock; keyless live constructors accept only
   loopback HTTP, while remote/custom origins require HTTPS without URL
   credentials, redirects, paths, queries or fragments.
+* A provider answers one shared per-table index and returns at most
+  1,000 IDs before tenant, model-wide and soft-delete scopes filter them. For a
+  tenant-scoped model, an answer of that size is treated as truncated:
+  `search()` answers from the SQL fallback instead, so one tenant's hits can
+  never push another tenant's matches out of the result. Below the cap the
+  scoped provider IDs are used. Models without a tenant scope (including
+  model-wide-scope and soft-delete models) keep the provider answer, filtered
+  by their scopes, as in 12.1. Engine-side tenant filtering and relevance
+  order are not provided.
 * Index names, positive IDs, object payloads, queries, response bytes and hit
   counts are bounded. Meilisearch/Algolia tasks use bounded polling;
   Elasticsearch requests use `refresh=wait_for`. Provider response bodies and
@@ -968,6 +1085,15 @@ while portability and semantic review remain the model author's responsibility.
   The macro crate's default expansion remains compatible with the all-driver
   12.0 runtime; the opt-in helper expansion requires the matching 12.1 runtime.
   Standalone isolation checks include enum encoding/decoding as well as CRUD.
+* Generated Redis APIs likewise follow the ORM's `redis` feature, never a
+  feature of the consuming application: with `rullst-orm/redis`, models get
+  `.remember(...)`, commit-time query-cache invalidation, the `orm:events:*`
+  publications and the Redis hash helpers. From 12.2 the runtime opts its macro
+  crate into `runtime-feature-gates` and forwards `redis`, so the choice is
+  made at expansion time. Without that opt-in (an older runtime resolving a
+  newer macro crate) the legacy output keeps its application-evaluated
+  `#[cfg(feature = "redis")]` attributes. `save_with_embedding` still carries
+  `#[cfg(feature = "ai")]`, which the consuming crate evaluates.
 
 ### 5.12. ORM Telemetry Contract
 
@@ -1678,6 +1804,7 @@ sending.
 * **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.
 * Generated applications may use `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds accept only a peer address verified as loopback through `ConnectInfo`, while release builds require validated Basic Auth credentials from the environment. Missing peer metadata is denied, and an environment mode flag cannot enable unauthenticated release access.
 * A model may explicitly declare one text `tenant` column. Nexus then obtains the scope only from a trusted Core `TenantContext`, injects it on create, includes it in every built-in read/mutation/batch predicate, and denies a missing context. Models without that metadata remain global administrator models. Authentication and tenant-membership resolution remain host contracts.
+* `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, rendered or written, whatever `#[nexus(...)]` widget they declare; `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them.
 * `with_required_audit` requires the fixed `rullst_nexus_audits` schema and appends one minimized committed-mutation row in the same transaction. Audit unavailability rolls the data change back. This is not append-only, tamper-evident, denied-attempt, retention, backup, replication or external-SIEM evidence; those properties remain host responsibilities.
 
 ---

@@ -448,6 +448,7 @@ pub fn generate_execution_methods(
             if !self.errors.is_empty() {
                 return Err(self.errors[0].clone());
             }
+            self.__rullst_check_delete_clauses()?;
             if #has_policy {
                 return Err(rullst_orm::Error::Validation(
                     "delete_all() cannot authorize a policy-protected model; load the records and call each model's delete() inside Orm::transaction(...)".to_string()

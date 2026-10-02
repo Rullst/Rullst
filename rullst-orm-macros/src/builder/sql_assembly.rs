@@ -3,15 +3,14 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
+/// `soft_delete_filters` holds the live and trashed predicates of a
+/// soft-delete model, and is `None` for a model without soft deletes.
 pub fn generate_sql_assembly_methods(
     table_name: &str,
-    has_soft_deletes: bool,
-    soft_delete_filter_unset: &str,
-    soft_delete_filter_set: &str,
+    soft_delete_filters: Option<(&str, &str)>,
 ) -> TokenStream {
     let table_lit = table_name;
-    let unset_lit = soft_delete_filter_unset;
-    let set_lit = soft_delete_filter_set;
+    let push_soft_deletes = generate_push_soft_deletes(soft_delete_filters);
 
     quote! {
         fn push_ctes(&self, sql: &mut String) {
@@ -90,20 +89,7 @@ pub fn generate_sql_assembly_methods(
             false
         }
 
-        fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {
-            if #has_soft_deletes && !self.with_trashed {
-                if first_where {
-                    sql.push_str(" WHERE ");
-                } else {
-                    sql.push_str(" AND ");
-                }
-                if self.only_trashed {
-                    sql.push_str(#set_lit);
-                } else {
-                    sql.push_str(#unset_lit);
-                }
-            }
-        }
+        #push_soft_deletes
 
         fn push_group_by(&self, sql: &mut String) {
             if let Some(group) = &self.group_by {
@@ -220,5 +206,30 @@ pub fn generate_sql_assembly_methods(
 
             self.format_postgres(&sql)
         }
+    }
+}
+
+fn generate_push_soft_deletes(soft_delete_filters: Option<(&str, &str)>) -> TokenStream {
+    match soft_delete_filters {
+        Some((live, trashed)) => quote! {
+            fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {
+                if self.with_trashed {
+                    return;
+                }
+                sql.push_str(if first_where { " WHERE " } else { " AND " });
+                sql.push_str(if self.only_trashed { #trashed } else { #live });
+            }
+        },
+        // No row of a model without soft deletes is trashed, so a trashed-only
+        // statement matches nothing, even when the public `only_trashed` field
+        // was set directly instead of through `only_trashed()`.
+        None => quote! {
+            fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {
+                if self.only_trashed && !self.with_trashed {
+                    sql.push_str(if first_where { " WHERE " } else { " AND " });
+                    sql.push_str("1 = 0");
+                }
+            }
+        },
     }
 }

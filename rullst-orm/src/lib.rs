@@ -126,6 +126,11 @@ pub use polyglot::{
 };
 #[doc(hidden)]
 pub use pool::portable_subquery;
+/// Whether generated builder filters cast `#[derive(Enum)]` values to their
+/// named PostgreSQL type. Only the strict PostgreSQL runtime decodes native
+/// enum columns; under SQLx `Any` such fields live in text columns.
+#[doc(hidden)]
+pub const __NATIVE_ENUM_FILTER_CASTS: bool = cfg!(feature = "strict-postgres");
 pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,

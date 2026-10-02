@@ -8,8 +8,9 @@ pub fn generate_cache_read(
     table_name: &str,
     decrypt_results: &TokenStream,
 ) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         let cache_key = if _allow_cache && self.remember_ttl.is_some() {
             Some(rullst_orm::query_cache::query_key(
                 #table_name,
@@ -20,7 +21,7 @@ pub fn generate_cache_read(
             None
         };
 
-        #[cfg(feature = "redis")]
+        #redis_cfg
         if let Some(cache_key) = cache_key.as_ref() {
             use rullst_orm::_redis::AsyncCommands;
             let mut conn = rullst_orm::Orm::redis_manager()?;
@@ -37,18 +38,19 @@ pub fn generate_cache_read(
 }
 
 pub fn generate_cache_write(name: &syn::Ident) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         if let (Some(ttl), Some(cache_key)) = (self.remember_ttl, cache_key.as_ref()) {
-            use rullst_orm::_redis::AsyncCommands;
             let ttl = u64::try_from(ttl).map_err(|_| rullst_orm::Error::Validation(
                 "remember() TTL exceeds the Redis-supported range".to_string()
             ))?;
             // A model that cannot be serialized safely (for example a
-            // `SecretString` without a configured key) is not cached.
+            // `SecretString` without a configured key) is not cached. The
+            // entry is indexed under its table for commit-time invalidation.
             if let Ok(serialized) = #name::__rullst_try_cache_json_array(&results) {
-                let mut conn = rullst_orm::Orm::redis_manager()?;
-                let _: Result<(), rullst_orm::_redis::RedisError> = conn.set_ex(cache_key, serialized, ttl).await;
+                let _: Result<(), rullst_orm::Error> =
+                    rullst_orm::query_cache::store_entry(cache_key, &serialized, ttl).await;
             }
         }
     }

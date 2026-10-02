@@ -92,6 +92,7 @@ impl Orm {
             .acquire_time_level(tracing::log::LevelFilter::Info)
             .acquire_slow_level(tracing::log::LevelFilter::Warn)
             .acquire_slow_threshold(POOL_SLOW_ACQUIRE_THRESHOLD)
+            .after_release(savepoint::release_outside_transaction)
     }
 
     fn ensure_uninitialized() -> Result<(), crate::Error> {
@@ -347,7 +348,7 @@ impl Orm {
     /// under an application-specific namespace.
     ///
     /// The namespace must contain 1-64 ASCII letters, digits, dots, dashes or
-    /// underscores. Redis hash model helpers keep their existing key contract.
+    /// underscores. Generated Redis model hashes use the same namespace.
     #[cfg(feature = "redis")]
     #[cfg_attr(test, mutants::skip)]
     pub async fn init_redis_with_namespace(

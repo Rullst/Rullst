@@ -150,3 +150,8 @@ Existing applications may notice the following behaviour changes:
 | Honeypot | A trap hit that a page initiated (`Sec-Fetch-Site` `same-origin`/`same-site`/`cross-site`, or `Origin`/`Referer` without fetch metadata) is refused but no longer bans the peer. |
 | Log redaction and DLP | `redact_secrets` also redacts compound key names (`DB_PASSWORD`, `access_token`, `client_secret`, `SECRET_KEY`) and whole unquoted `Authorization`/`Cookie` values. DLP also masks EC, DSA, encrypted PKCS#8 and OpenPGP private-key blocks. |
 | Connect | `XProvider` authenticates token requests with HTTP Basic. `OidcProvider` uses HTTP Basic when discovery lists `client_secret_basic` without `client_secret_post`. Refresh requests send `Accept: application/json`. `AutoRefreshingSession` keeps a rotated refresh token when a same-user refresh response is rejected. `OidcProvider` accepts profiles without `name`; `ConnectUser::name` may then be empty. |
+
+The ORM fixes of the same minor have their own
+[upgrade checklist](crates/orm.md#upgrading-from-121): nested transactions,
+`SecretString` serialization, `paginate()`, query-cache and Redis hash keys,
+new typed errors, Nexus field hiding and generated Redis effects.

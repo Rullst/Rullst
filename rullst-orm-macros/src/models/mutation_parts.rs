@@ -83,6 +83,7 @@ pub(super) fn instance_hook(parsed: &ParsedModel, method: &str) -> TokenStream {
 /// invalidation and the Redis `deleted` event, `committed(Deleted)` observer
 /// callbacks and Scout removal. Expects an `observers` binding in scope.
 pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     let table_name = &parsed.table_name;
     let scout_delete = if parsed.searchable {
         quote! {
@@ -103,7 +104,7 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         {
             let event = rullst_orm::ModelCommittedEvent::new(
                 #table_name,
@@ -113,11 +114,13 @@ pub(super) fn deleted_effects(parsed: &ParsedModel) -> TokenStream {
             );
             rullst_orm::after_commit(move || async move {
                 use rullst_orm::_redis::AsyncCommands;
-                rullst_orm::query_cache::invalidate_table(event.table).await?;
+                // A failed invalidation must not suppress the event.
+                let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
                 if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                     let topic = format!("orm:events:{}:deleted", event.table);
                     let _: usize = connection.publish(&topic, &event.payload).await?;
                 }
+                invalidated?;
                 Ok(())
             }).await?;
         }
