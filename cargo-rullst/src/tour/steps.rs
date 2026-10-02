@@ -124,11 +124,15 @@ pub(crate) const STEPS: [Step; 7] = [
         command: "ai",
         title: "Work with AI",
         explanation: &[
-            "`cargo rullst ai` chats about your project in the terminal once a",
-            "provider is connected; `generate:ai-context` writes .llms.txt so any",
-            "assistant can see the project's layout.",
+            "`cargo rullst ai` is a terminal assistant that knows Rullst and your",
+            "project; `ai connect` chooses a model provider (offline mock without",
+            "one). `generate:ai-context` writes .llms.txt for any other assistant.",
         ],
-        try_commands: &["cargo rullst ai", "cargo rullst generate:ai-context"],
+        try_commands: &[
+            "cargo rullst ai",
+            "cargo rullst ai connect",
+            "cargo rullst generate:ai-context",
+        ],
         example: Example {
             arguments: &["ai", "--help"],
             effect: "read-only: lists its options",
