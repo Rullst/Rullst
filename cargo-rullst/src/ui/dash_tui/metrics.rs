@@ -21,6 +21,8 @@ const LATENCY_SAMPLES: usize = 4_096;
 pub(super) const HISTORY_POINTS: usize = 120;
 const RECENT_REQUESTS: usize = 50;
 const SLOW_QUERIES: usize = 16;
+/// Generations of supervised processes remembered to recognise late answers.
+const OWNED_GENERATIONS: usize = 8;
 const SPARK_LEVELS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
 /// Where the dashboard's metrics currently come from.
@@ -34,6 +36,8 @@ pub(super) enum Source {
     /// The application did not answer (starting, restarting or stopped).
     Unreachable,
     Rejected(&'static str),
+    /// A process the supervisor did not start answers on the port.
+    Foreign,
 }
 
 /// What a newly ingested poll changed that deserves a system-log line.
@@ -96,6 +100,8 @@ pub(super) struct Metrics {
     recent: VecDeque<RequestSample>,
     slow: VecDeque<SlowQuery>,
     sampled_at: Option<Instant>,
+    /// Generations the supervisor started, newest (the current one) last.
+    owned: VecDeque<String>,
 }
 
 impl Default for Metrics {
@@ -118,6 +124,21 @@ impl Metrics {
             recent: VecDeque::new(),
             slow: VecDeque::new(),
             sampled_at: None,
+            owned: VecDeque::new(),
+        }
+    }
+
+    /// The generation of the newest supervised process, once one started.
+    pub fn generation(&self) -> Option<&str> {
+        self.owned.back().map(String::as_str)
+    }
+
+    /// Records the generation of the process the supervisor just started.
+    /// Only snapshots carrying it are shown; older owned generations are late
+    /// answers of a replaced process, and any other is a foreign process.
+    pub fn own_generation(&mut self, generation: &str) {
+        if self.owned.back().map(String::as_str) != Some(generation) {
+            push_bounded(&mut self.owned, generation.to_string(), OWNED_GENERATIONS);
         }
     }
 
@@ -130,18 +151,17 @@ impl Metrics {
         let previous = self.source;
         let snapshot = match outcome {
             PollOutcome::Snapshot(snapshot) => snapshot,
-            other => {
-                self.source = match other {
-                    PollOutcome::NotServed => Source::NotServed,
-                    PollOutcome::Rejected(reason) => Source::Rejected(reason),
-                    _ => Source::Unreachable,
-                };
-                push_bounded(&mut self.history, None, HISTORY_POINTS);
-                // Startup polls before the port opens are expected silence.
-                let notable = previous == Source::Live || self.source != Source::Unreachable;
-                return (previous != self.source && notable).then_some(Notice::Lost(self.source));
-            }
+            PollOutcome::NotServed => return self.lose(Source::NotServed),
+            PollOutcome::Rejected(reason) => return self.lose(Source::Rejected(reason)),
+            PollOutcome::Unreachable => return self.lose(Source::Unreachable),
         };
+        if self.owned.back() != Some(&snapshot.generation) {
+            if self.owned.contains(&snapshot.generation) {
+                // Sent by the process the supervisor just replaced.
+                return None;
+            }
+            return self.lose(Source::Foreign);
+        }
         self.source = Source::Live;
         let restarted = self.baseline.as_ref().is_some_and(|baseline| {
             baseline.generation != snapshot.generation
@@ -186,6 +206,16 @@ impl Metrics {
         }
     }
 
+    /// Records a poll without application data from the supervised process.
+    fn lose(&mut self, source: Source) -> Option<Notice> {
+        let previous = self.source;
+        self.source = source;
+        push_bounded(&mut self.history, None, HISTORY_POINTS);
+        // Startup polls before the port opens are expected silence.
+        let notable = previous == Source::Live || source != Source::Unreachable;
+        (previous != source && notable).then_some(Notice::Lost(source))
+    }
+
     /// Updates the baseline and rate window; returns the requests not seen yet.
     fn observe(&mut self, snapshot: &TelemetrySnapshot, now: Instant) -> Vec<RequestSample> {
         let http = &snapshot.http;
@@ -202,21 +232,20 @@ impl Metrics {
                 while self.rates.len() > RATE_SAMPLES {
                     self.rates.pop_front();
                 }
-                let expected = http
-                    .requests_total
-                    .saturating_sub(baseline.last_request_seq);
-                let observed = http
-                    .recent
-                    .iter()
-                    .filter(|sample| sample.seq > baseline.last_request_seq)
-                    .count() as u64;
-                if observed < expected {
-                    self.sampled_at = Some(now);
-                }
                 (baseline.last_request_seq, baseline.last_slow_seq)
             }
+            // The first poll of a process covers every request it served.
             None => (0, 0),
         };
+        let expected = http.requests_total.saturating_sub(last_request_seq);
+        let observed = http
+            .recent
+            .iter()
+            .filter(|sample| sample.seq > last_request_seq)
+            .count() as u64;
+        if observed < expected {
+            self.sampled_at = Some(now);
+        }
         let new_requests = http
             .recent
             .iter()

@@ -21,7 +21,8 @@ mod update;
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args: Vec<String> = std::env::args().collect();
+    // `std::env::args` panics on a non-Unicode argument; this reports it.
+    let mut args = cli::runtime::unicode_arguments(std::env::args_os())?;
 
     // Cargo passes the subcommand name ("rullst") as the first argument to the binary.
     // When invoked directly as `rullst cli ...`, we also accept "cli" gracefully.

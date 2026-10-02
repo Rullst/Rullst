@@ -16,21 +16,25 @@ fn rules() -> Option<&'static [(Regex, &'static str)]> {
         .get_or_init(|| {
             [
                 // scheme://user:password@host keeps the user, hides the password.
+                // Like URL parsers, the password runs to the authority's last
+                // '@', so an unencoded '@' inside it is hidden too.
                 (
-                    r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/@]*):([^\s@/]+)@",
+                    r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/?#]*):([^\s/?#]+)@",
                     "${1}${2}:***@",
                 ),
                 // scheme://<long token>@host
                 (r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/@]{16,})@", "${1}***@"),
-                // NAME=value / name: value for secret-like names.
+                // NAME=value / name: value for secret-like names, including
+                // every `*_KEY` (`RULLST_ENCRYPTION_KEY`, `STRIPE_KEY`, ...),
+                // and quoted keys of JSON or `Debug` maps ("name": "value").
                 (
-                    r#"(?i)\b([a-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|app[_\-]?key|client[_\-]?secret|credential)s?[a-z0-9_]*)(\s*(?:=|:\s)\s*)("[^"]*"|'[^']*'|[^\s&;,]+)"#,
+                    r#"(?i)\b([a-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|app[_\-]?key|client[_\-]?secret|credential|[_\-]key)s?[a-z0-9_]*)((?:["']\s*[=:]|\s*(?:=|:\s))\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s&;,]+)"#,
                     "${1}${2}***",
                 ),
                 (r"(?i)\b(bearer|basic)\s+[a-z0-9._~+/=\-]{8,}", "${1} ***"),
                 // Well-known credential formats.
                 (
-                    r"\b(?:sk-[A-Za-z0-9_\-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abpr]-[A-Za-z0-9\-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_\-]{30,})",
+                    r"\b(?:sk-[A-Za-z0-9_\-]{16,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9+/=]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abpr]-[A-Za-z0-9\-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_\-]{30,})",
                     "***",
                 ),
             ]
@@ -60,24 +64,26 @@ fn without_controls(text: &str) -> String {
 }
 
 /// `text` with secrets masked, control characters replaced and its length bounded.
+/// The whole message is redacted before it is cut: a secret split at the
+/// limit would no longer match its rule.
 pub(crate) fn sanitize(text: &str) -> String {
     let Some(rules) = rules() else {
         return UNREDACTABLE.to_string();
     };
-    let mut bounded: String = text.chars().take(MESSAGE_LIMIT).collect();
-    if text.chars().nth(MESSAGE_LIMIT).is_some() {
-        bounded.push('…');
-    }
-    let mut redacted = bounded;
+    let mut redacted = text.to_string();
     for (regex, replacement) in rules {
         redacted = regex.replace_all(&redacted, *replacement).into_owned();
     }
-    without_controls(&redacted)
+    let mut bounded: String = redacted.chars().take(MESSAGE_LIMIT).collect();
+    if redacted.chars().nth(MESSAGE_LIMIT).is_some() {
+        bounded.push('…');
+    }
+    without_controls(&bounded)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize;
+    use super::{MESSAGE_LIMIT, sanitize};
 
     #[test]
     fn connection_strings_keep_the_host_but_not_the_password() {
@@ -96,6 +102,26 @@ mod tests {
             sanitize("open sqlite://db.sqlite?mode=rwc"),
             "open sqlite://db.sqlite?mode=rwc"
         );
+    }
+
+    #[test]
+    fn a_password_containing_at_signs_is_hidden_up_to_the_host() {
+        assert_eq!(
+            sanitize("connect postgres://app:Tr0ub@dor-secret@db:5432/shop failed"),
+            "connect postgres://app:***@db:5432/shop failed"
+        );
+        assert_eq!(
+            sanitize("redis://me@corp:p@ss@cache:6379?db=1 down"),
+            "redis://me@corp:***@cache:6379?db=1 down"
+        );
+        // A user without a password and a port keep the URL readable.
+        for kept in [
+            "https://user@host:8080/a@b",
+            "ssh://git@github.com:22/x",
+            "postgres://db:5432/shop?user=a@b",
+        ] {
+            assert_eq!(sanitize(kept), kept);
+        }
     }
 
     #[test]
@@ -121,6 +147,53 @@ mod tests {
     }
 
     #[test]
+    fn every_key_suffix_and_payment_provider_secret_is_masked() {
+        for (input, expected) in [
+            (
+                "RULLST_ENCRYPTION_KEY=6f1d9c0a",
+                "RULLST_ENCRYPTION_KEY=***",
+            ),
+            (
+                "RULLST_ENCRYPTION_KEYRING=v1:abc",
+                "RULLST_ENCRYPTION_KEYRING=***",
+            ),
+            ("RULLST_AGE_KEY_HEX=00ff", "RULLST_AGE_KEY_HEX=***"),
+            ("set STRIPE_KEY: abc rest", "set STRIPE_KEY: *** rest"),
+            ("--signing-key=abc", "--signing-key=***"),
+            (
+                "charge sk_live_abcdefghijklmnop1234 failed",
+                "charge *** failed",
+            ),
+            (
+                "webhook whsec_abcdefghijklmnop1234 rejected",
+                "webhook *** rejected",
+            ),
+        ] {
+            assert_eq!(sanitize(input), expected);
+        }
+        // Words that only contain `key` and file names keep their values.
+        for kept in [
+            "duplicate key: email",
+            "MONKEY=banana",
+            "read tls/server.key: No such file",
+        ] {
+            assert_eq!(sanitize(kept), kept);
+        }
+    }
+
+    #[test]
+    fn quoted_keys_of_json_and_debug_maps_are_masked() {
+        let json = sanitize(r#"{"client_secret":"abc123","access_token": "ya29.x","user":"me"}"#);
+        assert_eq!(
+            json,
+            r#"{"client_secret":***,"access_token": ***,"user":"me"}"#
+        );
+        let debug = sanitize(r#"{"API_KEY": "s3cr3t", "PASSWORD": "pa\"ss"}"#);
+        assert_eq!(debug, r#"{"API_KEY": ***, "PASSWORD": ***}"#);
+        assert_eq!(sanitize("{'token': 'abc'}"), "{'token': ***}");
+    }
+
+    #[test]
     fn control_sequences_are_neutralized_and_length_is_bounded() {
         assert_eq!(
             sanitize("bad \x1b]0;title\x07name\nnext\tline"),
@@ -130,5 +203,22 @@ mod tests {
         let text = sanitize(&long);
         assert_eq!(text.chars().count(), 4097);
         assert!(text.ends_with('…'));
+    }
+
+    #[test]
+    fn a_secret_at_the_length_limit_is_redacted_before_the_cut() {
+        let url = "postgres://app:hunter2@db";
+        let before_at = url.find('@').unwrap_or_default();
+        // The cut would fall right before '@', where the URL rule needs it.
+        let message = format!("{}{url}", "-".repeat(MESSAGE_LIMIT - before_at));
+        let text = sanitize(&message);
+        assert!(!text.contains("hunter2"));
+        assert!(text.ends_with("postgres://app:***@db"));
+
+        let token = format!(
+            "{} sk-ABCDEFGHIJKLMNOPQRSTUV",
+            "-".repeat(MESSAGE_LIMIT - 12)
+        );
+        assert!(!sanitize(&token).contains("sk-ABCDEFGH"));
     }
 }

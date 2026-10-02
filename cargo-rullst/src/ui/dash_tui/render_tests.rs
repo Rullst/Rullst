@@ -45,7 +45,7 @@ async fn non_interactive_dashboard_fails_with_actionable_guidance() {
     let (_log_tx, log_rx) = tokio::sync::mpsc::channel(1);
     let (log_tx, _logs) = tokio::sync::mpsc::channel(1);
     let (_status_tx, status_rx) =
-        tokio::sync::watch::channel(crate::generators::dev::DevStatus::Starting);
+        tokio::sync::watch::channel(crate::generators::dev::DevState::default());
     let (commands, _command_rx) = tokio::sync::mpsc::channel(1);
     let error = super::run(log_rx, log_tx, 3_000, true, status_rx, commands)
         .await

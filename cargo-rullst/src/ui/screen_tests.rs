@@ -87,7 +87,7 @@ fn small_terminals_shrink_the_detail_then_the_body_and_cut_wide_lines() {
     assert!(text.contains(&"  ❯ Blank       minimal page".to_string()));
 
     let tiny = frame(&tall, &Cursor::new(&tall), 100, 8);
-    assert!(tiny.len() <= 9, "{:#?}", texts(&tiny));
+    assert!(tiny.len() <= 7, "{:#?}", texts(&tiny));
     assert!(!texts(&tiny).contains(&"  Body line".to_string()));
 
     let narrow = frame(&tall, &Cursor::new(&tall), 24, 40);
@@ -95,6 +95,48 @@ fn small_terminals_shrink_the_detail_then_the_body_and_cut_wide_lines() {
         assert!(line.text().chars().count() <= 23, "{}", line.text());
     }
     assert!(texts(&narrow).iter().any(|line| line.ends_with('…')));
+}
+
+#[test]
+fn short_terminals_scroll_the_choice_list_instead_of_the_terminal() {
+    let mut long = screen(Selection::Many {
+        checked: Vec::new(),
+    });
+    long.choices = (1..=9)
+        .map(|index| Choice::new(format!("Feature {index}"), ""))
+        .collect();
+    // A 12-row split pane: the nine-feature screen used to need 16 rows.
+    for height in [12_u16, 8, 6, 4, 3, 2] {
+        for index in 0..9 {
+            let mut cursor = Cursor::new(&long);
+            cursor.index = index;
+            let lines = texts(&frame(&long, &cursor, 80, height));
+            assert!(lines.len() < usize::from(height), "{height}: {lines:#?}");
+            let highlighted = format!("  ❯ [ ] Feature {}", index + 1);
+            assert!(lines.contains(&highlighted), "{height}/{index}: {lines:#?}");
+        }
+    }
+
+    let lines = texts(&frame(&long, &Cursor::new(&long), 80, 12));
+    assert_eq!(lines.len(), 11, "{lines:#?}");
+    assert_eq!(lines[2], "  Which starter?");
+    assert_eq!(lines[3], "  ❯ [ ] Feature 1");
+    assert_eq!(lines[9], "    ↓ 3 more");
+    assert!(lines[10].contains("Ctrl+C quit"));
+    let mut middle = Cursor::new(&long);
+    middle.index = 4;
+    let lines = texts(&frame(&long, &middle, 80, 12));
+    assert!(
+        lines.contains(&"    ↑ 1 more · ↓ 2 more".to_string()),
+        "{lines:#?}"
+    );
+
+    // Two rows keep only the highlighted choice; an unknown size is 80×24.
+    assert_eq!(
+        texts(&frame(&long, &Cursor::new(&long), 80, 2)),
+        ["  ❯ [ ] Feature 1"]
+    );
+    assert_eq!(frame(&long, &Cursor::new(&long), 0, 0).len(), 16);
 }
 
 #[test]

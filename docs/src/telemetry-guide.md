@@ -134,10 +134,18 @@ the development reload routes, so it exists only when all of these hold:
 Release builds, Staging, Production and an application started with
 `cargo run` never mount it. The endpoint answers only a direct loopback peer
 that addresses the server with a loopback `Host` (`localhost`, `127.0.0.0/8` or
-`[::1]`) and, when present, a loopback `Origin`; any other request receives an
+`[::1]`) and, when present, a loopback `Origin`, over HTTP/1.1 or newer and
+without a forwarding header (`Forwarded`, `X-Forwarded-For`,
+`X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-Server`, `X-Real-IP`,
+`Via`, `CF-Connecting-IP` or `True-Client-IP`); any other request receives an
 empty `404`. This rejects other machines, clients resolved through trusted
-proxies and DNS-rebinding pages; it is a local development boundary, not
-authentication. Responses carry `Cache-Control: no-store` and
+proxies, DNS-rebinding pages and the common same-host reverse proxies and
+tunnels (Apache `mod_proxy`, Caddy, Traefik, ngrok, cloudflared and nginx's
+default HTTP/1.0 upstream), which connect from loopback and may rewrite `Host`
+to a loopback address. A same-host proxy that speaks HTTP/1.1, rewrites `Host`
+and adds none of these headers is indistinguishable from a local client, so do
+not publish a development server through one. This is a local development
+boundary, not authentication. Responses carry `Cache-Control: no-store` and
 `X-Content-Type-Options: nosniff`. Like the reload poll, the dashboard's poll
 bypasses the rate limiter and Traffic Shield and is neither access-logged nor
 counted.
@@ -146,7 +154,12 @@ The `rullst.dev-telemetry.v1` document contains:
 
 - `http`: request, 4xx and 5xx counters since the process started and the
   newest 64 requests (sequence number, method, path without query string,
-  status, duration in microseconds), recorded by the access-log middleware;
+  status, duration in microseconds). They are recorded by the outermost layer,
+  so a handler panic that the development error console answers with `500` and
+  the responses of the security baseline (for example a CSRF `403`), lifecycle
+  admission, the rate limiter (`429`) and Traffic Shield are counted too.
+  Like the access log, it skips the development polls and the files served
+  from the framework's `/static` directory;
 - `database`: ORM operation counters and the newest 16 operations that took at
   least 100 ms, with their static model, table and operation labels, or
   `unavailable` with `subscriber_not_installed` or `orm_spans_filtered`;
@@ -191,9 +204,12 @@ ORM figures come from the existing secret-free `rullst.orm.query` spans. In
 debug builds `telemetry::init_telemetry` (which `Server::run` calls) adds a
 passive layer that times the outermost such span of each ORM operation, from
 creation until it closes; nested operations such as eager loads belong to their
-outer operation. An application that installs its own global subscriber first,
-or a `RUST_LOG` that disables `rullst_orm` INFO spans, receives the
-`unavailable` state instead of misleading zeros. Statements executed directly
+outer operation. The span of a `chunk`/`chunk_by_id` traversal also covers the
+application's handler, so it is neither counted nor treated as enclosing: each
+page it fetches and each operation the handler runs is counted on its own. An
+application that installs its own global subscriber first, or a `RUST_LOG` that
+disables `rullst_orm` INFO spans, receives the `unavailable` state instead of
+misleading zeros. Statements executed directly
 through SQLx are not observed.
 
 Report a queue's pending count, read with a 250 ms limit on each poll:

@@ -4,6 +4,11 @@
 //! bindings are never part of them. Only the outermost ORM span of a call tree
 //! is counted, so an operation that runs another (eager loading, a save that
 //! inserts) is one operation, timed from span creation until it closes.
+//!
+//! `chunk`/`chunk_by_id` traversals are the exception: their span also covers
+//! the application's handler, so the traversal itself is not counted and does
+//! not hide the operations inside it. Each page it fetches and each operation
+//! the handler runs is counted as an outermost operation.
 
 use super::recorder::{self, QueryLabels, Recorder};
 use std::sync::Arc;
@@ -19,6 +24,8 @@ pub(super) const QUERY_SPAN: &str = "rullst.orm.query";
 pub(super) const QUERY_TARGET: &str = "rullst_orm";
 /// Ancestors inspected when deciding whether an ORM span is nested.
 const MAX_ANCESTORS: usize = 64;
+/// Operations whose span wraps application code (the chunk handler).
+const TRAVERSALS: [&str; 2] = ["chunk", "chunk_by_id"];
 
 static INSTALLED: AtomicBool = AtomicBool::new(false);
 
@@ -63,6 +70,9 @@ struct Started {
     labels: QueryLabels,
 }
 
+/// Marks a traversal span, which neither counts nor encloses operations.
+struct Traversal;
+
 fn is_query_span(metadata: &tracing_core::Metadata<'_>) -> bool {
     metadata.name() == QUERY_SPAN && metadata.target() == QUERY_TARGET
 }
@@ -78,16 +88,23 @@ where
         let Some(span) = ctx.span(id) else {
             return;
         };
-        let nested = span
-            .scope()
-            .skip(1)
-            .take(MAX_ANCESTORS)
-            .any(|ancestor| is_query_span(ancestor.metadata()));
+        let mut labels = LabelVisitor::default();
+        attributes.record(&mut labels);
+        if labels
+            .0
+            .operation
+            .as_deref()
+            .is_some_and(|operation| TRAVERSALS.contains(&operation))
+        {
+            span.extensions_mut().insert(Traversal);
+            return;
+        }
+        let nested = span.scope().skip(1).take(MAX_ANCESTORS).any(|ancestor| {
+            is_query_span(ancestor.metadata()) && ancestor.extensions().get::<Traversal>().is_none()
+        });
         if nested {
             return;
         }
-        let mut labels = LabelVisitor::default();
-        attributes.record(&mut labels);
         span.extensions_mut().insert(Started {
             at: Instant::now(),
             labels: labels.0,
