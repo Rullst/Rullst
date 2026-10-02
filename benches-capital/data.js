@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790921609748,
+  "lastUpdate": 1790927629871,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10719,6 +10719,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/4dcd71c699b6235b2d841a2e57326bb5a4e9404d"
         },
         "date": 1790921609217,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e70dda40e256becd32b52f5e11b2bd859c3806c6",
+          "message": "Merge pull request #404 from Rullst/fix/v13-new-cli-dash-ux-review\n\nfix(cli,core): review fixes for dev telemetry, dash and CLI UX",
+          "timestamp": "2026-10-02T04:22:20-03:00",
+          "tree_id": "c6865691e267f11d13a9174a8ed12a65057d002f",
+          "url": "https://github.com/Rullst/Rullst/commit/e70dda40e256becd32b52f5e11b2bd859c3806c6"
+        },
+        "date": 1790927629035,
         "tool": "cargo",
         "benches": [
           {
