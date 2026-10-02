@@ -84,6 +84,90 @@ Plan:\n1. Create the `{DEMO_PROJECT}` project from the blank blueprint.\n\
     )
 }
 
+const UPGRADE_INTRO: &str = "Offline mock assistant: no AI provider is connected, so this \
+deterministic demo shows how `cargo rullst ai upgrade` reviews fixes for the upgrade findings. Run \
+`cargo rullst ai connect` to use a real model.";
+
+fn upgrade_session(messages: &[Message]) -> bool {
+    messages.iter().any(|message| {
+        message.role == "system" && message.content.contains(super::upgrade::UPGRADE_HEADING)
+    })
+}
+
+/// `render_page(a, ...)` rewritten as `render_page_with_lang(a, "en", ...)`.
+pub(super) fn with_language(text: &str) -> Option<String> {
+    const CALL: &str = "render_page(";
+    let start = text.find(CALL)?;
+    let open = start + CALL.len();
+    let (mut depth, mut quoted, mut escaped) = (0usize, false, false);
+    for (offset, character) in text[open..].char_indices() {
+        match character {
+            _ if escaped => escaped = false,
+            '\\' if quoted => escaped = true,
+            '"' => quoted = !quoted,
+            '(' | '[' | '{' if !quoted => depth += 1,
+            ')' | ']' | '}' if !quoted => depth = depth.checked_sub(1)?,
+            ',' if !quoted && depth == 0 => {
+                let comma = open + offset + 1;
+                let name = if text[..start].ends_with("::") {
+                    "render_page_with_lang("
+                } else {
+                    "rullst::htmx::render_page_with_lang("
+                };
+                return Some(format!(
+                    "{}{name}{} \"en\",{}",
+                    &text[..start],
+                    &text[open..comma],
+                    &text[comma..]
+                ));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The first `V13-RENDER-PAGE-LANGUAGE` finding as `(path, find, replace)`.
+fn page_language_fix(message: &str) -> Option<(String, String, String)> {
+    let mut path: Option<String> = None;
+    for line in message.lines() {
+        let line = line.trim();
+        if let Some((_, location)) = line.split_once(" V13-RENDER-PAGE-LANGUAGE at ") {
+            path = location.rsplit_once(':').map(|(path, _)| path.to_string());
+        } else if line.starts_with(|c: char| c.is_ascii_digit()) {
+            path = None;
+        } else if let (Some(file), Some(text)) = (&path, line.strip_prefix("line: "))
+            && let Some(replace) = with_language(text)
+        {
+            return Some((file.clone(), text.to_string(), replace));
+        }
+    }
+    None
+}
+
+fn upgrade_reply(message: &str) -> String {
+    let Some((path, find, replace)) = page_language_fix(message) else {
+        return format!(
+            "{UPGRADE_INTRO}\n\nThe offline demo only rewrites `render_page` calls \
+(V13-RENDER-PAGE-LANGUAGE). A connected model proposes fixes for the other findings; \
+`cargo rullst upgrade --dry-run` lists them with their migration rows.\n"
+        );
+    };
+    let edit = serde_json::json!({
+        "action": "edit_file",
+        "path": path,
+        "find": find,
+        "replace": replace,
+    });
+    let check = serde_json::json!({"action": "cargo", "args": ["check"]});
+    format!(
+        "{UPGRADE_INTRO}\n\nPlan:\n1. Declare the page language in `{path}` with \
+`render_page_with_lang` (migration row: Starter page language). Remove `render_page` from the \
+`use` list afterwards if no other call needs it.\n2. Check the project.\n\n\
+```rullst-action\n{edit}\n```\n\n```rullst-action\n{check}\n```\n"
+    )
+}
+
 /// The deterministic reply for a conversation.
 pub(super) fn reply(messages: &[Message]) -> String {
     let users: Vec<&str> = messages
@@ -92,6 +176,15 @@ pub(super) fn reply(messages: &[Message]) -> String {
         .map(|message| message.content.as_str())
         .collect();
     let last = users.last().copied().unwrap_or("");
+    if upgrade_session(messages) {
+        if is_results(last) {
+            return "Offline mock assistant: the reviewed upgrade step ran. A connected model \
+would continue with the remaining findings; rerun `cargo rullst upgrade --dry-run` to see what is \
+left.\n"
+                .to_string();
+        }
+        return upgrade_reply(last);
+    }
     if is_results(last) {
         let created = last.contains(&format!("new {DEMO_PROJECT} "))
             && last.contains("exit status 0")

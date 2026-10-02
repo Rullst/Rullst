@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """`cargo rullst ai` in a real terminal with the offline assistant: review
 prompts, the git checkpoint, applied edits, a new project created outside one,
-Ctrl+C and Ctrl+D handling, and the plan-only fallback under CI. Local
-fixtures only: no network or credentials."""
+Ctrl+C and Ctrl+D handling, an upgrade finding fixed and checked, and the
+plan-only fallback under CI. Local fixtures only: no network or credentials."""
 import errno
 import json
 import os
@@ -123,6 +123,41 @@ with tempfile.TemporaryDirectory(prefix="rullst-ai-") as directory:
     assert "Now working in the new project rullst-ai-demo" in text
     assert (created / "rullst-ai-demo.md").read_text().endswith("Status: reviewed\n")
     print(json.dumps({"case": "new-project-then-change", "passed": True}))
+
+    framework = base / "framework"
+    (framework / "src").mkdir(parents=True)
+    (framework / "Cargo.toml").write_text(
+        '[package]\nname = "rullst"\nversion = "12.1.2"\nedition = "2024"\n')
+    (framework / "src" / "lib.rs").write_text(
+        "pub mod htmx {\n    pub struct HtmxRequest;\n"
+        "    pub fn render_page(_: &HtmxRequest, title: &str, body: String) -> String {\n"
+        "        format!(\"{title}{body}\")\n    }\n"
+        "    pub fn render_page_with_lang(_: &HtmxRequest, lang: &str, title: &str, body: String)"
+        " -> String {\n        format!(\"{lang}{title}{body}\")\n    }\n}\n")
+    app = base / "upgrade-app"
+    (app / "src").mkdir(parents=True)
+    (app / "Cargo.toml").write_text(
+        '[package]\nname = "upgrade-app"\nversion = "0.1.0"\nedition = "2024"\n'
+        f'[dependencies]\nrullst = {{ version = "12.1.2", path = {json.dumps(str(framework))} }}\n')
+    (app / "src" / "main.rs").write_text(
+        "use rullst::htmx::{HtmxRequest, render_page};\n\n"
+        "fn home(htmx: &HtmxRequest) -> String {\n"
+        "    render_page(htmx, \"Home\", String::new())\n}\n\n"
+        "fn main() {\n    println!(\"{}\", home(&HtmxRequest));\n}\n")
+    git(app, "init", "--quiet")
+    git(app, "add", ".")
+    git(app, "-c", "user.name=Smoke", "-c", "user.email=smoke@example.invalid",
+        "commit", "--quiet", "-m", "initial")
+    answers = [((b"Apply?", 1), b"y\r"), ((b"Apply?", 2), b"y\r")]
+    status, text, _ = terminal(app, env, ["ai", "upgrade"], answers, timeout=300)
+    assert status == 0, (status, text[-800:])
+    assert "REVIEW src/main.rs:4 [V13-RENDER-PAGE-LANGUAGE]" in text, text[-1200:]
+    main = (app / "src" / "main.rs").read_text()
+    assert 'rullst::htmx::render_page_with_lang(htmx, "en", "Home", String::new())' in main, main
+    assert "Checkpoint refs/rullst/ai-checkpoints/" in text
+    assert "$ cargo check" in text and "✓ exit status 0" in text, text[-1200:]
+    assert "Run `cargo check` now?" not in text, "the proposed check already ran"
+    print(json.dumps({"case": "upgrade-fix-and-check", "passed": True}))
 
     app = project(base, "ci-app")
     status, text, raw = terminal(app, dict(env, CI="true"), ["ai", "write a demo note"], [])

@@ -2,13 +2,16 @@
 
 use super::manifest::ManifestUpgradePlan;
 use super::rules::{self, FindingKind, SourceScan};
-use super::relative_report_path;
+use super::{portable_path, relative_report_path};
 use colored::Colorize;
 use semver::Version;
 use std::path::Path;
 
+/// The command that proposes reviewed fixes for the findings.
+pub(super) const ASSIST_COMMAND: &str = "cargo rullst ai upgrade";
+
 /// The plan as plain text (no colour), shared by the CLI and the assistant.
-pub(super) fn plan_text(
+pub(crate) fn plan_text(
     root: &Path,
     target: &Version,
     plans: &[ManifestUpgradePlan],
@@ -55,6 +58,9 @@ pub(super) fn plan_text(
     }
     if !scan.findings.is_empty() {
         lines.push(format!("Migration guide: {}", rules::MIGRATION_GUIDE_URL));
+        lines.push(format!(
+            "Reviewed fixes for these findings: {ASSIST_COMMAND}"
+        ));
     }
     lines.join("\n")
 }
@@ -200,4 +206,34 @@ pub(super) fn render_json_report(
         ],
         "production_ready": false
     }))
+}
+
+/// A finding as `cargo rullst ai upgrade` presents it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct AssistFinding {
+    pub code: &'static str,
+    pub label: &'static str,
+    pub must_change: bool,
+    /// Project-relative, `/`-separated.
+    pub path: String,
+    pub line: usize,
+    pub message: &'static str,
+    pub row: &'static str,
+    pub guidance: &'static str,
+}
+
+pub(super) fn assist_findings(root: &Path, scan: &SourceScan) -> Vec<AssistFinding> {
+    scan.findings
+        .iter()
+        .map(|finding| AssistFinding {
+            code: finding.rule.code,
+            label: finding.rule.kind.label(),
+            must_change: finding.rule.kind == FindingKind::MustChange,
+            path: portable_path(finding.path.strip_prefix(root).unwrap_or(&finding.path)),
+            line: finding.line,
+            message: finding.rule.message,
+            row: finding.rule.row,
+            guidance: finding.rule.guidance,
+        })
+        .collect()
 }
