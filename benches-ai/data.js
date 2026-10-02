@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790905252877,
+  "lastUpdate": 1790907975616,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12369,6 +12369,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 288,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "990acd15a8dc36576a913653fb0077129dba0cbb",
+          "message": "Merge pull request #399 from Rullst/feat/v13-cli-create-wizard-tour\n\nfeat(cli): interactive new wizard, dry-run preview, first-run steps and cargo rullst tour",
+          "timestamp": "2026-10-01T23:06:10-03:00",
+          "tree_id": "a644a63a6a680358c54cf10b1b1156bed7e368a6",
+          "url": "https://github.com/Rullst/Rullst/commit/990acd15a8dc36576a913653fb0077129dba0cbb"
+        },
+        "date": 1790907974396,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1090,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 233,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 275,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
