@@ -465,8 +465,9 @@ initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and
 task-scoped transactions always bypass the cache. Generated model saves and
 deletes invalidate that table's generated cache keys after commit, using the
-index each cache write maintains for its table (at most 10,000 keys per write;
-entries cached by earlier versions are not indexed and expire by TTL). Raw SQL,
+index each cache write maintains for its table (at most 10,000 live keys per
+write; members of entries that already expired are pruned and not counted, and
+entries cached by earlier versions are not read again and expire by TTL). Raw SQL,
 bulk builders and writes outside generated model methods cannot be inferred, so
 keep a defensive TTL and do not cache authorization or other reads whose
 freshness requires a stronger distributed consistency contract.

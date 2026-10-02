@@ -858,16 +858,22 @@ while portability and semantic review remain the model author's responsibility.
   envelopes and decrypted on a cache hit, and a result that cannot be
   serialized (for example without an encryption key) is not cached. Each
   generated cache write also records its key in a per-namespace/tenant/table
-  Redis set in the same `EVAL` script, extending that set's TTL to the longest
-  entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
-  operations invalidate the active tenant/table only after commit by popping
-  that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
-  write); they never `SCAN` the Redis keyspace, so their cost does not grow
-  with unrelated keys in a shared database. Beyond the cap the write reports
+  Redis sorted set, scored by the entry's expiry time on the Redis server
+  clock, in the same `EVAL` script; that script first prunes members whose
+  entries already expired and extends the set's TTL to the longest entry TTL.
+  Generated model `save()`/`delete()`/`restore()`/`force_delete()` operations
+  invalidate the active tenant/table only after commit: invalidation prunes
+  expired members without counting them, then removes the index's live
+  members in batches of 500 and `UNLINK`s their keys (at most 10,000 per
+  write); it never `SCAN`s the Redis keyspace, so its cost does not grow with
+  unrelated keys in a shared database. Beyond the cap the write reports
   `PostCommit`, the remaining keys stay indexed for the next write, and the
-  generated `orm:events:*` publication still happens. Entries written by
-  earlier versions are not indexed and expire through their TTL; rollback
-  preserves existing entries. The scripts address keys they were not passed
+  generated `orm:events:*` publication still happens. From 12.2 keys are
+  versioned `rullst:orm:cache:v4:`; entries written by earlier versions are
+  never read again and expire through their TTL, and during a rolling upgrade
+  a write from an instance on the other version does not invalidate this
+  version's entries before their TTL. A transaction rollback preserves
+  existing entries. The scripts address keys they were not passed
   and are therefore outside Redis Cluster, like the rest of this contract.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
   processes cannot be inferred. Callers must retain a defensive TTL and treat
