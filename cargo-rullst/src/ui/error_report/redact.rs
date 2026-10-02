@@ -16,8 +16,10 @@ fn rules() -> Option<&'static [(Regex, &'static str)]> {
         .get_or_init(|| {
             [
                 // scheme://user:password@host keeps the user, hides the password.
+                // Like URL parsers, the password runs to the authority's last
+                // '@', so an unencoded '@' inside it is hidden too.
                 (
-                    r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/@]*):([^\s@/]+)@",
+                    r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/?#]*):([^\s/?#]+)@",
                     "${1}${2}:***@",
                 ),
                 // scheme://<long token>@host
@@ -98,6 +100,26 @@ mod tests {
             sanitize("open sqlite://db.sqlite?mode=rwc"),
             "open sqlite://db.sqlite?mode=rwc"
         );
+    }
+
+    #[test]
+    fn a_password_containing_at_signs_is_hidden_up_to_the_host() {
+        assert_eq!(
+            sanitize("connect postgres://app:Tr0ub@dor-secret@db:5432/shop failed"),
+            "connect postgres://app:***@db:5432/shop failed"
+        );
+        assert_eq!(
+            sanitize("redis://me@corp:p@ss@cache:6379?db=1 down"),
+            "redis://me@corp:***@cache:6379?db=1 down"
+        );
+        // A user without a password and a port keep the URL readable.
+        for kept in [
+            "https://user@host:8080/a@b",
+            "ssh://git@github.com:22/x",
+            "postgres://db:5432/shop?user=a@b",
+        ] {
+            assert_eq!(sanitize(kept), kept);
+        }
     }
 
     #[test]
