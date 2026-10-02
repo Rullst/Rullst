@@ -2,7 +2,7 @@
 //! process boundary is rendered as a short title, what happened, how to fix
 //! it and a docs link, on standard error. Secrets and terminal escapes are
 //! removed from every line; the error chain and `Debug` form appear only with
-//! `-v`/`--verbose` or `RUST_BACKTRACE`, and panics print a short report
+//! `-v`/`--verbose`, and panics print a short report unless `-v` or `RUST_BACKTRACE`
 //! instead of a backtrace unless one of those is set.
 
 mod classify;
@@ -61,8 +61,15 @@ impl fmt::Display for ProjectRequired {
 
 impl Error for ProjectRequired {}
 
-/// Whether `-v`/`--verbose` (before any `--`) or `RUST_BACKTRACE` asks for details.
+/// Whether `-v`/`--verbose` (before any `--`) asks for the underlying causes
+/// and `Debug` form. `RUST_BACKTRACE` is often set globally by developers and
+/// CI, so it only keeps the default panic hook (see [`panic_details_requested`]).
 pub(crate) fn verbose_requested(arguments: &[String]) -> bool {
+    verbose_flag(arguments)
+}
+
+/// Whether a panic should keep Rust's default message and backtrace.
+pub(crate) fn panic_details_requested(arguments: &[String]) -> bool {
     verbose_flag(arguments) || backtrace_requested(std::env::var_os("RUST_BACKTRACE").as_deref())
 }
 

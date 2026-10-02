@@ -199,7 +199,7 @@ fn missing_tool(text: &str) -> Option<(&'static str, &'static str)> {
     let before = regex(
         &BEFORE,
         &format!(
-            r#"(?:failed to (?:run|execute|spawn|start)|could not (?:run|execute|find|start)|unable to (?:run|execute|find|start)|install)\s+['"`]?({names})\b"#
+            r#"(?:failed to (?:run|execute|spawn|start)|could not (?:run|execute|find|start)|unable to (?:run|execute|find|start)|(?:please|you need to|you must|need to) install)\s+['"`]?({names})(?:$|[\s'"`),.;:])"#
         ),
     )?;
     let name = after

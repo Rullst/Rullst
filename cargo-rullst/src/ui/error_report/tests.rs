@@ -105,6 +105,41 @@ fn ambiguous_messages_do_not_match_the_wrong_category() {
         ..facts("Connection refused (os error 111)")
     });
     assert_eq!(database.title, "Database unreachable");
+    // Upgrade guidance that names `cargo install cargo-rullst` is not a
+    // missing Cargo (CI regression in `upgrade_cli`).
+    let retired = classify(&facts(
+        "this project depends on Rullst v5; this CLI upgrades from v12 or later. Upgrade to v12 \
+         first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst \
+         upgrade`, then rerun this CLI",
+    ));
+    assert_ne!(retired.title, "`cargo` is not installed");
+    assert_ne!(
+        classify(&facts("run `cargo install cargo-watch` first")).title,
+        "`cargo` is not installed"
+    );
+    // An explicit request to install a tool still names it.
+    assert_eq!(
+        classify(&facts("please install docker to build the image")).title,
+        "`docker` is not installed"
+    );
+}
+
+#[test]
+fn rust_backtrace_alone_does_not_expose_debug_details() {
+    let args = |list: &[&str]| {
+        list.iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+    };
+    // CI and many developers export RUST_BACKTRACE globally; only -v shows the
+    // Debug form, while panics keep the default hook with RUST_BACKTRACE.
+    assert!(!verbose_requested(&args(&["cargo-rullst", "upgrade"])));
+    assert!(verbose_requested(&args(&["cargo-rullst", "upgrade", "-v"])));
+    assert!(panic_details_requested(&args(&[
+        "cargo-rullst",
+        "upgrade",
+        "-v"
+    ])));
 }
 
 #[test]

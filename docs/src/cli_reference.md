@@ -74,10 +74,10 @@ Connection-string passwords, `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values,
 bearer tokens and well-known credential formats are masked, and terminal
 control characters are replaced, in every line of the report.
 
-`-v`/`--verbose` (accepted by every command) or `RUST_BACKTRACE` adds the
-underlying causes and the error's `Debug` form, still redacted. Without them a
-panic prints a short "Internal error" report instead of the default panic
-message and backtrace.
+`-v`/`--verbose` (accepted by every command) adds the underlying causes and
+the error's `Debug` form, still redacted. A panic prints a short "Internal
+error" report instead of the default panic message and backtrace unless `-v`
+or `RUST_BACKTRACE` is set.
 
 | Exit status | Meaning |
 | :--- | :--- |
