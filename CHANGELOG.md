@@ -9,6 +9,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Core, Security and Connect review fixes (12.2)
+
+Ported from the v13 review; no public API is removed or changed and the MSRV
+stays 1.96. See the [12.x migration notes](docs/src/migration-v12-1.md) for
+visible changes.
+
+- Security keys `rate_limit_middleware` per IPv6 /64, reuses one Redis
+  connection per `RedisRateLimiter`, redacts compound secret names and whole
+  unquoted `Authorization`/`Cookie` values, masks EC/DSA/encrypted/PGP
+  private-key blocks, inspects JSON/XML/form bodies in every spelling axum
+  accepts, and no longer bans peers for page-initiated honeypot loads.
+- Core exempts `/health` and `/ready` from Server rate limiting and shedding,
+  drains the Server-owned scheduler handle, sends HTMX validation fragments
+  with 200 and `X-Rullst-Validation-Status`, installs the CSRF token on HEAD
+  and tolerates non-ASCII cookies, caches missing and failed DB flag lookups,
+  fails queue jobs whose lease stalls five times, calls the readied inner
+  service in `TenantService`, never panics on a closed stdout, and documents
+  the `cron`-crate semantics of `Scheduler::task`.
+- Connect authenticates X (and basic-only OIDC providers) with HTTP Basic,
+  requests JSON when refreshing, keeps a rotated refresh token after a rejected
+  same-user refresh, and accepts OIDC profiles without `name`.
+
 ### Low-severity review fixes
 
 Ported from the v13 review's low-severity fixes. Queue fencing, error-buffer and
