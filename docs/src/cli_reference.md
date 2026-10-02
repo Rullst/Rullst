@@ -382,6 +382,13 @@ comments. Offline, locked, dependency-free Cargo metadata enumerates workspace
 members inside the copy. Rustup auto-installation is disabled using its
 [documented environment setting](https://rust-lang.github.io/rustup/environment-variables.html);
 Git and Cargo must already be installed on absolute trusted PATH entries.
+Every Cargo/rustc invocation in a project copy (preparation, verification,
+review and apply) runs with `RUSTUP_TOOLCHAIN` pinned to the caller's
+toolchain: an inherited `RUSTUP_TOOLCHAIN` (rustup sets it for `cargo rullst`),
+otherwise rustup's configured default. A `rust-toolchain`/`rust-toolchain.toml`
+in the project, including a `path` toolchain, is therefore not honored. Run the
+CLI from outside an untrusted project: invoking `cargo rullst` inside it lets
+rustup select that project's toolchain for the CLI process itself.
 
 The result points to `before/`, `candidate/` and `preparation.json` inside the
 private update cache. JSON uses `rullst.project-preparation-result.v1`, with a
@@ -424,7 +431,8 @@ application-specific service/browser/deployment tests remain separate.
 
 Cargo is offline by default. `--allow-network` permits dependency retrieval but
 cannot override `CARGO_NET_OFFLINE=true`. Rustup does not install missing
-toolchains. `--timeout-seconds` bounds each command (default 900, range 1–3,600);
+toolchains, and the project's toolchain file is ignored as described above; set
+`RUSTUP_TOOLCHAIN` explicitly to verify with the project's pinned channel. `--timeout-seconds` bounds each command (default 900, range 1–3,600);
 stdout/stderr are each capped at 8 MiB. Private logs retain failed Cargo output;
 failure, cancellation or timeout never records acceptance. Builds/tests inherit
 the caller's environment and can affect external files, databases or services:
