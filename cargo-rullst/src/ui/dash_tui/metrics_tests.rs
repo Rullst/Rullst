@@ -241,6 +241,7 @@ fn only_the_supervised_process_generation_is_shown() {
     assert_eq!(metrics.ingest(snapshot(FIRST, 9, 0, 9), start), None);
 
     metrics.own_generation(FIRST);
+    assert_eq!(metrics.generation(), Some(FIRST));
     assert_eq!(
         metrics.ingest(snapshot(FIRST, 9, 0, 9), start),
         Some(Notice::Connected)

@@ -25,6 +25,8 @@ pub(crate) struct DevState {
     /// `RULLST_DEV_GENERATION` of the newest process started, if any. Only
     /// telemetry carrying it describes the supervised application.
     pub(crate) generation: Option<String>,
+    /// A saved change is being rebuilt; queued commands wait until it ends.
+    pub(crate) rebuilding: bool,
 }
 
 impl Default for DevState {
@@ -32,6 +34,7 @@ impl Default for DevState {
         Self {
             status: DevStatus::Starting,
             generation: None,
+            rebuilding: false,
         }
     }
 }
@@ -158,6 +161,8 @@ async fn supervise(
     let mut tick = tokio::time::interval(Duration::from_millis(250));
     let mut exit_reported = false;
     loop {
+        // A rebuild ends within the iteration that started it.
+        status.send_if_modified(|state| std::mem::replace(&mut state.rebuilding, false));
         tokio::select! {
             _ = tick.tick() => {
                 if !exit_reported && let Some(exit) = running.try_wait()? {
@@ -200,6 +205,7 @@ async fn supervise(
                     continue;
                 }
                 remove_stale_precompressed_assets(dashboard, &logs);
+                status.send_modify(|state| state.rebuilding = true);
                 report(&logs, dashboard, "Change detected; rebuilding before restart...".into());
                 let started = std::time::Instant::now();
                 let executable = match build::compile().await {

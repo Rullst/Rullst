@@ -1445,8 +1445,11 @@ summary in the header. The layout adapts to narrower terminals and provides
 these keyboard controls:
 
 * `r`: restart the application from the current build (no rebuild). It is
-  ignored while the application is still starting and reports when the
-  supervisor is busy, for example with a migration.
+  refused, with a notice, while the application is still starting, while a
+  migration runs and while a saved change is being rebuilt (a successful
+  rebuild restarts the application itself). The notice clears once the
+  restarted application is ready, or says that its readiness was not
+  confirmed or that it exited.
 * `o`: open the application.
 * `s`: probe the loopback Studio endpoint and open it only when reachable.
 * `d`: open existing Scalar docs. Missing files produce explicit

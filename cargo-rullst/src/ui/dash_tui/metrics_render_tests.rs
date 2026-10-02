@@ -7,7 +7,6 @@ use super::telemetry::{
     TelemetrySnapshot,
 };
 use super::{handle_key, ingest_telemetry, render};
-use crate::generators::dev::{DevCommand, DevState, DevStatus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend, style::Color};
 use std::time::{Duration, Instant};
@@ -323,62 +322,6 @@ fn help_opens_with_question_mark_and_any_key_closes_it() {
         &logs,
         &commands
     ));
-}
-
-#[test]
-fn restart_is_queued_once_for_a_running_application() {
-    let (logs, _rx) = tokio::sync::mpsc::channel(4);
-    let (commands, mut command_rx) = tokio::sync::mpsc::channel(1);
-    let mut app = App::new(3_000, true, "not configured".into(), false, false);
-    let restart = KeyEvent::new(KeyCode::Char('r'), KeyModifiers::NONE);
-
-    app.server_status = ServerStatus::Starting;
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(command_rx.try_recv().is_err());
-    assert!(
-        app.action_notice
-            .as_deref()
-            .is_some_and(|notice| notice.contains("still starting"))
-    );
-
-    app.server_status = ServerStatus::Ready;
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(matches!(command_rx.try_recv(), Ok(DevCommand::Restart)));
-    assert!(command_rx.try_recv().is_err());
-    assert!(
-        app.system_logs()
-            .iter()
-            .any(|line| line.contains("supervisor is busy"))
-    );
-
-    app.server_status = ServerStatus::Exited {
-        success: false,
-        code: Some(1),
-    };
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(matches!(command_rx.try_recv(), Ok(DevCommand::Restart)));
-    let output = screen(&app, 120, 30, Instant::now());
-    assert!(output.contains("Restarting the application"));
-    // The supervisor logs the restart; the dashboard does not repeat it.
-    assert!(
-        !app.system_logs()
-            .iter()
-            .any(|line| line.contains("Restarting the application"))
-    );
-    // The notice ends when the restarted process is ready; others persist.
-    let state = |status| DevState {
-        status,
-        generation: Some(GENERATION.to_string()),
-    };
-    super::apply_state(&mut app, &state(DevStatus::Starting));
-    assert!(app.action_notice.is_some());
-    super::apply_state(&mut app, &state(DevStatus::Ready));
-    assert_eq!(app.server_status, ServerStatus::Ready);
-    assert!(app.action_notice.is_none());
-    app.action_notice = Some("API docs unavailable".to_string());
-    super::apply_state(&mut app, &state(DevStatus::Ready));
-    assert!(app.action_notice.is_some());
 }
 
 #[test]

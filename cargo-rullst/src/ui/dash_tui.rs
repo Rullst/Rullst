@@ -22,7 +22,7 @@ pub(super) use profile::database_kind;
 use profile::database_profile_from_env;
 use profile::detect_database_profile;
 use ratatui::{Terminal, backend::CrosstermBackend};
-use state::{App, LogLevel, ServerStatus};
+use state::{App, LogLevel, PendingRestart, ServerStatus};
 use std::{
     io::{self, IsTerminal},
     process::{Command, ExitStatus, Stdio},
@@ -205,12 +205,21 @@ fn ingest_telemetry(app: &mut App, outcome: telemetry::PollOutcome, now: std::ti
 }
 
 /// `r`: restarts the owned process from its current executable snapshot.
+/// The supervisor runs one task at a time, so `r` is refused, not silently
+/// queued, while a migration or a rebuild is running.
 fn request_restart(app: &mut App, commands: &Sender<DevCommand>) {
     let refused = if app.server_status == ServerStatus::Starting {
         "The application is still starting; restart once it is ready or has exited."
+    } else if app.migration_running {
+        "The supervisor is busy migrating the database; press r again once the migration finishes."
+    } else if app.rebuilding {
+        "The supervisor is rebuilding a saved change, which restarts the application when it succeeds."
     } else if commands.try_send(DevCommand::Restart).is_ok() {
         // The supervisor logs the restart itself.
         app.action_notice = Some(RESTART_NOTICE.to_string());
+        app.pending_restart = Some(PendingRestart {
+            from: app.metrics.generation().map(str::to_string),
+        });
         return;
     } else {
         "Restart could not be queued; the supervisor is busy (for example migrating)."
@@ -221,17 +230,33 @@ fn request_restart(app: &mut App, commands: &Sender<DevCommand>) {
 
 const RESTART_NOTICE: &str = "Restarting the application from the current build...";
 
-/// Applies the supervisor's state: the process status, and the generation
-/// whose telemetry is shown. A restart notice ends once the app is ready.
+/// Applies the supervisor's state. A restart notice is replaced by the
+/// restart's outcome once a new process generation stopped starting.
 fn apply_state(app: &mut App, state: &DevState) {
     app.server_status = supervisor_status(state.status);
+    app.rebuilding = state.rebuilding;
     if let Some(generation) = &state.generation {
         app.metrics.own_generation(generation);
     }
-    if app.server_status == ServerStatus::Ready
-        && app.action_notice.as_deref() == Some(RESTART_NOTICE)
-    {
-        app.action_notice = None;
+    let finished = app.pending_restart.as_ref().is_some_and(|pending| {
+        pending.from != state.generation && app.server_status != ServerStatus::Starting
+    });
+    if !finished {
+        return;
+    }
+    app.pending_restart = None;
+    if app.action_notice.as_deref() == Some(RESTART_NOTICE) {
+        app.action_notice = match app.server_status {
+            ServerStatus::Ready | ServerStatus::Starting => None,
+            ServerStatus::Unverified => Some(
+                "Restarted, but readiness was not confirmed; check the application logs."
+                    .to_string(),
+            ),
+            ServerStatus::Exited { .. } => Some(
+                "The restarted application exited; check the application logs, then save or press r."
+                    .to_string(),
+            ),
+        };
     }
 }
 

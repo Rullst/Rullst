@@ -128,6 +128,11 @@ impl Metrics {
         }
     }
 
+    /// The generation of the newest supervised process, once one started.
+    pub fn generation(&self) -> Option<&str> {
+        self.owned.back().map(String::as_str)
+    }
+
     /// Records the generation of the process the supervisor just started.
     /// Only snapshots carrying it are shown; older owned generations are late
     /// answers of a replaced process, and any other is a foreign process.
