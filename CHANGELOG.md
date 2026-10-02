@@ -9,6 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### `cargo rullst ai` review fixes
+
+- `inspect` accepts only routes, models or schema, so the assistant can no
+  longer read `.env`, keys or files outside the project through it.
+- `db:migrate` resolves the environment with the Server's precedence; command
+  values and path-valued flags follow the path policy; Windows 8.3 aliases and
+  HFS+-ignored names are refused; tests, targets and proc-macro code are
+  flagged in review.
+- Long answers no longer hit the 4,096-chunk limit, failed requests keep
+  attachments and results without replaying the goal, new files follow the
+  umask, commands finish when they exit and on Unix stop their whole process
+  group with Ctrl+C forwarded, the display filter stays linear, usage totals
+  keep total-only counts, and masked personal data is announced and flagged
+  when written back.
+- `rullst-ai`: the image-beacon guardrail reads CR/CRLF and whitespace-only
+  lines as CommonMark does, honours escaped brackets in labels and case-folds
+  the shortcut fallback of an invalid inline image; OpenAI-compatible streams
+  reject `finish_reason` `length`/`content_filter`.
+
 ### Assisted v12 → v13 upgrade
 
 - `cargo rullst upgrade` reports v12 → v13 source findings
