@@ -204,8 +204,16 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
   and `/ready` probes through, so load shedding or an exhausted bucket cannot
   fail a liveness probe. In a debug Development server with `cargo rullst dev`
-  reloading, its `/_rullst/dev-generation` poll and `/_rullst/dev-reload.js`
-  also bypass both and are not access-logged.
+  reloading, its `/_rullst/dev-generation` poll, `/_rullst/dev-reload.js` and
+  the `/_rullst/dev-telemetry` poll of `cargo rullst dash` also bypass both and
+  are not access-logged.
+- **Development dashboard telemetry (v13):** under the same conditions `Server`
+  serves `GET /_rullst/dev-telemetry` to loopback clients only: bounded request
+  counters and recent requests (method, path without query string, status,
+  duration), ORM operation counts and slow operations from `rullst.orm.query`
+  spans, and the pending count of a queue passed to `Server::with_dev_queue`.
+  Bodies, headers, query strings, SQL and bindings are never recorded. See the
+  [telemetry guide](../telemetry-guide.md#development-dashboard-endpoint).
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.
   Only a socket peer inside the listed networks may report the client through

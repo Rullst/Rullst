@@ -1,3 +1,7 @@
+mod help;
+mod metrics;
+mod wrap;
+
 use super::state::{App, FocusPane, LogLevel, ServerStatus, scroll_position};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -5,6 +9,9 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
+use std::time::Instant;
+
+pub(super) use metrics::DOCS_URL;
 
 #[derive(Clone, Copy)]
 struct Palette {
@@ -50,13 +57,20 @@ impl Palette {
 }
 
 pub(super) fn ui(frame: &mut ratatui::Frame, app: &App) {
+    ui_at(frame, app, Instant::now());
+}
+
+/// Renders the dashboard with metrics windows evaluated at `now`.
+pub(super) fn ui_at(frame: &mut ratatui::Frame, app: &App, now: Instant) {
     let palette = Palette::new(app.colors_enabled);
+    let metrics_height = metrics::height(frame.area().height);
     let areas = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
             Constraint::Length(4),
-            Constraint::Min(12),
+            Constraint::Length(metrics_height),
+            Constraint::Min(if metrics_height == 0 { 12 } else { 6 }),
             Constraint::Length(if app.search_editing || app.action_notice.is_some() {
                 5
             } else {
@@ -65,12 +79,27 @@ pub(super) fn ui(frame: &mut ratatui::Frame, app: &App) {
         ])
         .split(frame.area());
 
-    render_header(frame, areas[0], app, palette);
-    render_workspace(frame, areas[1], app, palette);
-    render_footer(frame, areas[2], app, palette);
+    let summary = (metrics_height == 0)
+        .then(|| metrics::summary(&app.metrics, now))
+        .flatten();
+    render_header(frame, areas[0], app, palette, summary);
+    if metrics_height > 0 {
+        metrics::render(frame, areas[1], app, palette, now);
+    }
+    render_workspace(frame, areas[2], app, palette);
+    render_footer(frame, areas[3], app, palette);
+    if app.show_help {
+        help::render(frame, frame.area(), palette);
+    }
 }
 
-fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
+fn render_header(
+    frame: &mut ratatui::Frame,
+    area: Rect,
+    app: &App,
+    palette: Palette,
+    summary: Option<String>,
+) {
     let frames = ["◆", "◇", "◈", "◇"];
     let pulse = if app.animations_enabled {
         frames[(app.tick_count / 2) % frames.len()]
@@ -152,6 +181,15 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
             Style::default().fg(palette.muted),
         ),
     ]);
+    let details = match summary {
+        Some(summary) => {
+            let mut spans = details.spans;
+            spans.push(Span::styled("│", Style::default().fg(palette.muted)));
+            spans.push(Span::styled(summary, Style::default().fg(palette.cyan)));
+            Line::from(spans)
+        }
+        None => details,
+    };
     let header = Paragraph::new(vec![title, details])
         .alignment(Alignment::Center)
         .block(neon_block("", palette.cyan, true));
@@ -183,61 +221,65 @@ fn render_workspace(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: 
 
 fn render_app_logs(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
     let logs = app.app_logs();
-    let lines = logs
-        .iter()
-        .map(|entry| {
-            let (prefix, color) = match entry.level {
-                LogLevel::Info => ("  ", palette.text),
-                LogLevel::Warning => ("▲ ", palette.yellow),
-                LogLevel::Error => ("✕ ", palette.red),
-            };
-            Line::from(vec![
-                Span::styled(prefix, Style::default().fg(color)),
-                Span::styled(&entry.text, Style::default().fg(color)),
-            ])
-        })
-        .collect::<Vec<_>>();
+    let width = usize::from(area.width.saturating_sub(4));
+    let mut lines = Vec::new();
+    for entry in &logs {
+        let (prefix, color) = match entry.level {
+            LogLevel::Info => ("  ", palette.text),
+            LogLevel::Warning => ("▲ ", palette.yellow),
+            LogLevel::Error => ("✕ ", palette.red),
+        };
+        for (index, row) in wrap::wrap_text(&entry.text, width).into_iter().enumerate() {
+            lines.push(Line::from(vec![
+                Span::styled(
+                    if index == 0 { prefix } else { "  " },
+                    Style::default().fg(color),
+                ),
+                Span::styled(row, Style::default().fg(color)),
+            ]));
+        }
+    }
     let visible = area.height.saturating_sub(2) as usize;
     let scroll = scroll_position(lines.len(), visible, app.app_scroll_from_bottom);
     let focused = app.focus == FocusPane::Application;
     let title = format!(
         " APPLICATION LOGS  •  {}  •  {} shown ",
         app.filter.label(),
-        lines.len()
+        logs.len()
     );
     let panel = Paragraph::new(lines)
         .block(neon_block(&title, palette.blue, focused))
-        .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(panel, area);
 }
 
 fn render_system_logs(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
-    let logs = app.system_logs();
-    let lines = logs
-        .iter()
-        .map(|entry| {
-            let color = if entry.contains("failed") || entry.contains("Failed") {
-                palette.red
-            } else if entry.contains("complete") || entry.contains("ready") {
-                palette.green
-            } else if entry.contains("Running")
-                || entry.contains("Checking")
-                || entry.contains("API docs unavailable")
-            {
-                palette.yellow
-            } else {
-                palette.magenta
-            };
-            Line::from(Span::styled(*entry, Style::default().fg(color)))
-        })
-        .collect::<Vec<_>>();
+    let width = usize::from(area.width.saturating_sub(2));
+    let mut lines = Vec::new();
+    for entry in app.system_logs() {
+        let color = if entry.contains("failed") || entry.contains("Failed") {
+            palette.red
+        } else if entry.contains("complete") || entry.contains("ready") {
+            palette.green
+        } else if entry.contains("Running")
+            || entry.contains("Checking")
+            || entry.contains("API docs unavailable")
+        {
+            palette.yellow
+        } else {
+            palette.magenta
+        };
+        lines.extend(
+            wrap::wrap_text(entry, width)
+                .into_iter()
+                .map(|row| Line::from(Span::styled(row, Style::default().fg(color)))),
+        );
+    }
     let visible = area.height.saturating_sub(2) as usize;
     let scroll = scroll_position(lines.len(), visible, app.system_scroll_from_bottom);
     let focused = app.focus == FocusPane::System;
     let panel = Paragraph::new(lines)
         .block(neon_block(" SYSTEM & TASKS ", palette.magenta, focused))
-        .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(panel, area);
 }
@@ -304,24 +346,35 @@ fn status_line(label: &str, value: impl Into<String>, palette: Palette) -> Line<
 }
 
 fn render_footer(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
-    let shortcuts = Line::from(vec![
+    let mut shortcuts = vec![
+        key("r", palette.orange),
+        Span::raw(" restart  "),
         key("o", palette.green),
         Span::raw(" app  "),
         key("s", palette.magenta),
         Span::raw(" studio  "),
-        key("d", palette.blue),
-        Span::raw(" api docs  "),
+    ];
+    if area.width >= 120 {
+        shortcuts.extend([key("d", palette.blue), Span::raw(" api docs  ")]);
+    }
+    shortcuts.extend([
         key("m", palette.yellow),
         Span::raw(" migrate  "),
         key("/", palette.cyan),
         Span::raw(" search  "),
         key("f", palette.orange),
         Span::raw(" filter  "),
-        key("tab", palette.magenta),
-        Span::raw(" focus  "),
+    ]);
+    if area.width >= 120 {
+        shortcuts.extend([key("tab", palette.magenta), Span::raw(" focus  ")]);
+    }
+    shortcuts.extend([
+        key("?", palette.cyan),
+        Span::raw(" help  "),
         key("q", palette.red),
         Span::raw(" quit"),
     ]);
+    let shortcuts = Line::from(shortcuts);
     let mut lines = vec![shortcuts];
     if app.search_editing {
         lines.push(Line::from(vec![

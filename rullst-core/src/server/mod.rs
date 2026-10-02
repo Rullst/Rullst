@@ -5,6 +5,7 @@ pub mod builder;
 pub(crate) mod console;
 pub(crate) mod database_url;
 mod dev_reload;
+pub(crate) mod dev_telemetry;
 /// Dynamic library router loader for hot-reload mode.
 pub mod dylib_loader;
 /// Atomic hot-swappable Tower service.

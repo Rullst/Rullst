@@ -256,7 +256,7 @@ impl Service<axum::extract::Request> for HotSwapService {
                         &method,
                         &path,
                         res.status().as_u16(),
-                        start.elapsed().as_secs_f64() * 1000.0,
+                        start.elapsed(),
                     );
                     Ok(res)
                 }

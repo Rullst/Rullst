@@ -90,6 +90,7 @@ pub struct Server {
     pub(crate) lifecycle: Option<ApplicationLifecycle>,
     pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
     pub(crate) trusted_proxy: Option<crate::security::TrustedProxyConfig>,
+    pub(crate) dev_queue: Option<std::sync::Arc<crate::queue::Queue>>,
 }
 
 impl Server {
@@ -106,6 +107,7 @@ impl Server {
             lifecycle: None,
             machine_endpoints: None,
             trusted_proxy: None,
+            dev_queue: None,
         }
     }
 
@@ -123,6 +125,7 @@ impl Server {
             lifecycle: None,
             machine_endpoints: None,
             trusted_proxy: None,
+            dev_queue: None,
         }
     }
 
@@ -225,6 +228,34 @@ impl Server {
     /// ```
     pub fn trusted_proxies(mut self, config: crate::security::TrustedProxyConfig) -> Self {
         self.trusted_proxy = Some(config);
+        self
+    }
+
+    /// Reports this queue's pending-job count to `cargo rullst dash`.
+    ///
+    /// Development only: the count is read (with a 250 ms limit) when the
+    /// dashboard polls the `/_rullst/dev-telemetry` endpoint, which exists only
+    /// in a debug build running in Development under the CLI supervisor. In
+    /// every other process this setting has no effect. Accepts a [`Queue`] or
+    /// an `Arc<Queue>` the application already shares with its workers.
+    ///
+    /// [`Queue`]: crate::queue::Queue
+    ///
+    /// ```rust,no_run
+    /// use rullst_core::{Queue, Server, routes, routing::get};
+    /// use std::sync::Arc;
+    ///
+    /// # async fn run(queue: Queue) -> Result<(), Box<dyn std::error::Error>> {
+    /// let queue = Arc::new(queue);
+    /// Server::new(routes![get("/" => || async { "OK" })])
+    ///     .with_dev_queue(queue.clone())
+    ///     .run(3000)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_dev_queue(mut self, queue: impl Into<std::sync::Arc<crate::queue::Queue>>) -> Self {
+        self.dev_queue = Some(queue.into());
         self
     }
 
