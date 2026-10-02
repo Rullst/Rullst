@@ -1310,8 +1310,8 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
 * **Actions:** the model may only propose `write_file`, `edit_file` (one exact
   replacement), an allowlisted `cargo rullst` command (`make:*`, `generate:*`
   except `generate:models`, `db:status`, `db:migrate`, `doctor` without
-  `--fix`, `audit` without `--network`, `inspect`) or `cargo check`/`cargo
-  test`. `db:migrate` is refused when the project environment (`RULLST_ENV`,
+  `--fix`, `audit` without `--network`, `inspect` with no target or `routes`,
+  `models` or `schema`, never a file path) or `cargo check`/`cargo test`. `db:migrate` is refused when the project environment (`RULLST_ENV`,
   then `APP_ENV`, from the process or the project `.env`, then `[app].env` in
   `Rullst.toml`) is staging, production or unrecognized. Outside a project the
   only action is `cargo rullst new <name> --default` with optional

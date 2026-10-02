@@ -281,3 +281,62 @@ fn a_created_project_becomes_the_new_root() {
         Some(fs::canonicalize(root.join("shop")).unwrap())
     );
 }
+
+#[test]
+fn inspect_never_reads_a_file_the_path_policy_refuses() {
+    let (_guard, root) = project();
+    let outside = tempfile::tempdir().unwrap();
+    fs::write(outside.path().join("secret.txt"), "TOKEN=1\n").unwrap();
+    fs::write(
+        root.join(".env"),
+        "DATABASE_URL=postgres://user:pass@db/app\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("id_ed25519"),
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(outside.path().join("secret.txt"), root.join("notes.txt")).unwrap();
+    let overlay = Overlay::new();
+    for target in [
+        ".env",
+        "id_ed25519",
+        "notes.txt",
+        "src/main.rs",
+        "C:/Users/me/.ssh/id_rsa",
+    ] {
+        let refused = prepare(&run(&["inspect", target]), Some(&root), &root, &overlay);
+        assert!(refused.is_err(), "inspect {target} was allowed");
+    }
+    assert!(
+        prepare(
+            &run(&["inspect", "routes", "--x"]),
+            Some(&root),
+            &root,
+            &overlay
+        )
+        .is_err()
+    );
+    for args in [
+        &["inspect"][..],
+        &["inspect", "routes"],
+        &["inspect", "models"],
+    ] {
+        let prepared = prepare(&run(args), Some(&root), &root, &overlay).unwrap();
+        assert!(!prepared.mutates(), "{args:?}");
+    }
+    assert!(prepare(&run(&["inspect", "schema"]), Some(&root), &root, &overlay).is_ok());
+    // A schema snapshot that is a link is printed in full by `inspect schema`.
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(
+            outside.path().join("secret.txt"),
+            root.join("rullst-schema.json"),
+        )
+        .unwrap();
+        let refused = prepare(&run(&["inspect", "schema"]), Some(&root), &root, &overlay);
+        assert!(refused.err().unwrap().contains("symbolic link"));
+    }
+}

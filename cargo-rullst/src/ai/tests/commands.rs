@@ -167,6 +167,10 @@ fn hostile_arguments_are_refused() {
         &["doctor", "--fix"][..],
         &["audit", "--network"],
         &["audit", "--network=yes"],
+        // `inspect` prints any other target as a file.
+        &["inspect", ".env"],
+        &["inspect", "Cargo.toml"],
+        &["inspect", "routes", "models"],
     ] {
         assert!(matches!(
             validate_rullst(args(refused)),

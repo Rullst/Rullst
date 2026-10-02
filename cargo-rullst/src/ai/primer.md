@@ -349,7 +349,7 @@ The assistant may propose (and the user approves) these commands:
 | `db:migrate` | Apply pending migrations (development or test projects only; confirmed individually) |
 | `doctor` | Toolchain and project diagnostics |
 | `audit [--idor] [--sbom] [--compliance]` | Security checks |
-| `inspect [routes|models|schema|<file>]` | Inspect macro output and structure |
+| `inspect [routes|models|schema]` | Route table, model fields or ORM schema (no file targets: ask the user to share a file with `/add`) |
 
 Outside a project the only command is
 `new <name> --default [--blueprint blank|lms|saas|blog|portfolio|erp]

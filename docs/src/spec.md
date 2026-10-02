@@ -3497,7 +3497,8 @@ The model can only propose fenced `rullst-action` JSON objects, parsed with
 exact keys, types and sizes: `write_file`, `edit_file` (one exact match), an
 allowlisted `cargo rullst` command (`make:*`, `generate:*` except
 `generate:models`, `db:status`, `doctor` without `--fix`, `audit` without
-`--network`, `inspect`, and `db:migrate` only when the project environment
+`--network`, `inspect` limited to its routes, models and schema targets (a
+linked schema snapshot is refused), and `db:migrate` only when the project environment
 resolves to development or test) and `cargo check`/`cargo test` with fixed
 flags. Outside a project the only command is `cargo rullst new <name>
 --default` with validated blueprint/database flags, creating a new directory

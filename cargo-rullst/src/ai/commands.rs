@@ -52,6 +52,10 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
 /// software and `audit --network` scans local listeners.
 const FORBIDDEN_FLAGS: &[(&str, &str)] = &[("doctor", "--fix"), ("audit", "--network")];
 
+/// The only `inspect` targets: any other target is read as a file path and
+/// printed, which would bypass the path policy (`.env`, keys, symlinks).
+const INSPECT_TARGETS: &[&str] = &["routes", "route", "models", "model", "schema"];
+
 const CARGO_CHECK_FLAGS: &[&str] = &[
     "--all-targets",
     "--tests",
@@ -151,6 +155,14 @@ pub(super) fn validate_rullst(args: Vec<String>) -> Result<Invocation, CommandEr
             "cargo rullst {}",
             truncate(subcommand)
         )));
+    }
+    if subcommand == "inspect"
+        && let Some(refused) = args
+            .get(1)
+            .filter(|target| !INSPECT_TARGETS.contains(&target.as_str()))
+            .or_else(|| args.get(2))
+    {
+        return Err(CommandError::Argument(truncate(refused)));
     }
     for argument in &args[1..] {
         let flag = argument

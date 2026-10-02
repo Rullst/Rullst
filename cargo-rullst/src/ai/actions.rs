@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 
 /// Largest existing file the assistant may replace or edit.
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
+/// The snapshot `cargo rullst inspect schema` prints when it exists.
+const SCHEMA_SNAPSHOT: &str = "rullst-schema.json";
 
 /// Planned file contents for a plan that is shown but not executed, so later
 /// previews in the same plan build on earlier ones.
@@ -163,8 +165,13 @@ pub(super) fn prepare(
         Action::RunRullst { args } => {
             let invocation =
                 commands::validate_rullst(args.clone()).map_err(|error| error.to_string())?;
-            if args.first().map(String::as_str) == Some("db:migrate") {
-                super::environment::ensure_migration_allowed(root)?;
+            match args.first().map(String::as_str) {
+                Some("db:migrate") => super::environment::ensure_migration_allowed(root)?,
+                // `inspect schema` prints a project-provided snapshot in full.
+                Some("inspect") if args.get(1).map(String::as_str) == Some("schema") => {
+                    paths::resolve(root, SCHEMA_SNAPSHOT).map_err(|error| error.to_string())?;
+                }
+                _ => {}
             }
             Ok(Prepared::Command(invocation))
         }
