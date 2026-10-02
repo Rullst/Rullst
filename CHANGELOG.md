@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### `cargo rullst new` wizard and `cargo rullst tour`
+
+- `cargo rullst new` runs an interactive wizard in a terminal: blueprint
+  descriptions with file-tree previews from the real generators, database and
+  optional-feature questions, and a review of the files and commands with
+  create, back and cancel. Profile flags skip their questions and no longer
+  need `--default`, and `new` never prompts without a terminal.
+- `new --dry-run` previews a project without writing it, and creation ends
+  with numbered next steps to the welcome page.
+- New `cargo rullst tour`: an offline, skippable walkthrough of the main
+  commands with optional read-only examples.
+
 ### CLI errors, doctor, completions and command palette
 
 - Every CLI failure renders as one friendly report (title, what happened, how
