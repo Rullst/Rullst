@@ -1,5 +1,6 @@
 // cargo-rullst/src/generators/auth/controllers.rs — Auth controllers generator.
 
+use crate::generators::{output_guard::write_new, register_mod_ast};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -39,39 +40,21 @@ pub(crate) fn render_auth_controller(registration_hook: Option<&str>) -> String 
 pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     let middlewares_dir = Path::new("src/middlewares");
     fs::create_dir_all(middlewares_dir)?;
-    fs::write(
-        middlewares_dir.join("auth_middleware.rs"),
-        AUTH_MIDDLEWARE_TEMPLATE,
+    write_new(
+        &middlewares_dir.join("auth_middleware.rs"),
+        AUTH_MIDDLEWARE_TEMPLATE.as_bytes(),
     )?;
     println!("{}", "  ✨ Created 'auth_middleware' middleware.".green());
-
-    let mod_middlewares_path = middlewares_dir.join("mod.rs");
-    if !mod_middlewares_path.exists() {
-        fs::write(&mod_middlewares_path, "")?;
-    }
-    let mut mod_middlewares_content = fs::read_to_string(&mod_middlewares_path)?;
-    if !mod_middlewares_content.contains("pub mod auth_middleware;") {
-        mod_middlewares_content.push_str("pub mod auth_middleware;\n");
-        fs::write(&mod_middlewares_path, mod_middlewares_content)?;
-    }
+    register_mod_ast(&middlewares_dir.join("mod.rs"), "auth_middleware")?;
 
     let controllers_dir = Path::new("src/controllers");
     fs::create_dir_all(controllers_dir)?;
-    fs::write(
-        controllers_dir.join("auth_controller.rs"),
-        render_auth_controller(None),
+    write_new(
+        &controllers_dir.join("auth_controller.rs"),
+        render_auth_controller(None).as_bytes(),
     )?;
     println!("{}", "  ✨ Created 'auth_controller' controller.".green());
-
-    let mod_controllers_path = controllers_dir.join("mod.rs");
-    if !mod_controllers_path.exists() {
-        fs::write(&mod_controllers_path, "")?;
-    }
-    let mut mod_controllers_content = fs::read_to_string(&mod_controllers_path)?;
-    if !mod_controllers_content.contains("pub mod auth_controller;") {
-        mod_controllers_content.push_str("pub mod auth_controller;\n");
-        fs::write(&mod_controllers_path, mod_controllers_content)?;
-    }
+    register_mod_ast(&controllers_dir.join("mod.rs"), "auth_controller")?;
 
     Ok(())
 }
@@ -81,20 +64,39 @@ mod tests {
     use super::*;
 
     #[test]
-    // TM-DEPLOY-06: generated auth keeps blocking password work off the executor.
+    // TM-DEPLOY-06: generated auth keeps blocking password work off the executor
+    // and bounds how much of it runs at once.
     fn generated_auth_is_async_query_bound_and_panic_free() {
         let source = render_auth_controller(None);
         syn::parse_file(&source).expect("auth controller must parse");
         assert!(source.contains("find_by_email"));
-        assert!(source.contains("verify_password_async"));
-        assert!(source.contains("hash_password_async"));
+        // Each Argon2id run holds ~19 MiB: the unbounded async helpers would
+        // let a burst of logins exhaust memory on the blocking pool.
+        assert!(!source.contains("verify_password_async"));
+        assert!(!source.contains("hash_password_async"));
+        assert!(source.contains("Semaphore::new(MAX_CONCURRENT_PASSWORD_WORK)"));
+        assert!(source.contains("rullst::runtime::task::spawn_blocking(move || {"));
+        assert!(source.contains("drop(permit);"));
+        for call in [
+            "rullst_auth::verify_password(",
+            "rullst_auth::hash_password(",
+        ] {
+            let lines = source
+                .lines()
+                .filter(|line| line.contains(call))
+                .collect::<Vec<_>>();
+            assert_eq!(lines.len(), 1, "{call}");
+            assert!(
+                lines
+                    .iter()
+                    .all(|line| line.contains("run_password_work(move ||"))
+            );
+        }
         assert!(source.contains("DUMMY_PASSWORD_HASH"));
         assert!(source.contains("save_with_tx"));
         assert!(source.contains("transaction.rollback()"));
         assert!(!source.contains(REGISTRATION_HOOK_MARKER));
         assert!(!source.contains("User::all()"));
-        assert!(!source.contains("verify_password("));
-        assert!(!source.contains("hash_password("));
         assert!(!source.contains(".unwrap("));
         assert!(!source.contains(".expect("));
         assert!(!source.contains("panic!("));

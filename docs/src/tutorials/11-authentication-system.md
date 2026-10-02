@@ -14,18 +14,23 @@ Run this from a Rullst project root:
 cargo rullst auth
 ```
 
-The current command creates or updates:
+The current command creates:
 
 - `src/models/user.rs`;
 - `src/migrations/m<timestamp>_create_users_table.rs` and the migrations module;
 - `src/controllers/auth_controller.rs`;
 - `src/middlewares/auth_middleware.rs`;
 - `src/pages/auth.rs`; and
-- the corresponding module declarations.
+- the corresponding module declarations, including `controllers`,
+  `middlewares`, `models` and `pages` in `src/lib.rs` (or `src/main.rs`).
 
-It does not support an `auth --api` flag, and it does not silently register
-application routes. Review the generated diff before editing or rerunning the
-command.
+It also enables the `orm` and `auth` umbrella features in `Cargo.toml`. It
+fails before writing anything when one of those files exists or when a
+`*_create_users.rs`/`*_create_users_table.rs` migration already creates the
+users table (the blank database starter ships one); add the account columns
+with `cargo rullst make:migration` in that case. Turso-primary projects are not
+supported. It does not support an `auth --api` flag, and it does not silently
+register application routes. Review the generated diff before editing it.
 
 ---
 
@@ -70,8 +75,13 @@ edge.
 
 ## What the scaffold currently enforces
 
-- Passwords are hashed with the asynchronous Argon2id helper; plaintext is not
-  written to the user model.
+- Passwords are hashed with Argon2id on Tokio's blocking pool; plaintext is not
+  written to the user model. At most four hashes or verifications run at once
+  (each holds about 19 MiB); a submission that waits two seconds without
+  capacity receives 503. Adjust `MAX_CONCURRENT_PASSWORD_WORK` to the host.
+  This bounds memory, not abuse: per-client login throttling remains
+  application work (Core's `RateLimiter` keys by transport peer, so behind a
+  reverse proxy every client would share the proxy's budget).
 - Registration accepts passwords from 12 through 72 bytes and normalizes email.
 - Login performs a dummy password verification for unknown users to reduce the
   obvious account-enumeration timing difference.

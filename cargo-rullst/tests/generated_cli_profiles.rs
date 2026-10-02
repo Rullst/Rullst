@@ -330,3 +330,77 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
         "profile shard must select at least one case"
     );
 }
+
+/// `cargo rullst auth` and `make:mfa` register their modules in the crate
+/// root, so their output must compile inside a generated application.
+#[test]
+fn blank_sqlite_auth_and_mfa_scaffolds_compile() {
+    if selected_profile_group().is_some_and(|group| group != ProfileGroup::Basic) {
+        return;
+    }
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root");
+    let target_root = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| workspace.join("target"));
+    let project = GeneratedProject::new("blank-auth-mfa");
+    let rullst = |directory: &Path, arguments: &[&std::ffi::OsStr]| {
+        let output = Command::new(env!("CARGO_BIN_EXE_rullst"))
+            .current_dir(directory)
+            .args(arguments)
+            .env("RULLST_DISABLE_UPDATE_CHECK", "1")
+            .output()
+            .unwrap_or_else(|error| panic!("run {arguments:?}: {error}"));
+        assert!(
+            output.status.success(),
+            "{arguments:?} failed\n{}",
+            output_text(&output)
+        );
+    };
+    rullst(
+        workspace,
+        &[
+            "new".as_ref(),
+            project.path.as_os_str(),
+            "--default".as_ref(),
+            "--blueprint".as_ref(),
+            "blank".as_ref(),
+            "--database".as_ref(),
+            "sqlite".as_ref(),
+            "--skip-initial-migration".as_ref(),
+        ],
+    );
+    // The blank starter ships its own users table; the auth scaffold owns it here.
+    fs::remove_file(
+        project
+            .path
+            .join("src/migrations/m20260601000000_create_users_table.rs"),
+    )
+    .expect("remove starter users migration");
+    rullst(&project.path, &["auth".as_ref()]);
+    rullst(&project.path, &["make:mfa".as_ref()]);
+    let features = rullst_features(&project.path);
+    for required in ["orm", "auth", "security"] {
+        assert!(features.iter().any(|feature| feature == required));
+    }
+
+    let workspace_lock = workspace.join("Cargo.lock");
+    if workspace_lock.is_file() {
+        fs::copy(workspace_lock, project.path.join("Cargo.lock"))
+            .expect("copy reproducible workspace lockfile");
+    }
+    let checked = Command::new(env!("CARGO"))
+        .current_dir(&project.path)
+        .args(["check", "--offline", "--all-targets"])
+        .env("CARGO_TARGET_DIR", &target_root)
+        .env("CARGO_BUILD_JOBS", generated_build_jobs())
+        .output()
+        .expect("run generated cargo check");
+    assert!(
+        checked.status.success(),
+        "generated auth/MFA scaffold cargo check failed\n{}",
+        output_text(&checked)
+    );
+    clean_generated_package(&project.path, &target_root);
+}

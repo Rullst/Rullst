@@ -199,7 +199,10 @@ pub(super) fn commands(features: &[String], offline: bool) -> Vec<VerificationCo
             args: vec!["--version".into()],
         },
     ];
-    let mut resolve = vec!["generate-lockfile".into()];
+    // `update --workspace` keeps existing lock entries that still satisfy the
+    // edited manifests and resolves only what changed; `generate-lockfile`
+    // would re-resolve every package to its newest compatible version.
+    let mut resolve = vec!["update".into(), "--workspace".into()];
     if offline {
         resolve.push("--offline".into());
     }
@@ -256,4 +259,26 @@ fn accepted_files(root: &Path, state: &State) -> Result<Vec<snapshot::Record>, P
         files.push(file);
     }
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn candidate_resolution_preserves_unrelated_lockfile_pins() {
+        for (offline, expected) in [
+            (true, vec!["update", "--workspace", "--offline"]),
+            (false, vec!["update", "--workspace"]),
+        ] {
+            let commands = commands(&[], offline);
+            assert_eq!(commands[2].program, "cargo");
+            assert_eq!(commands[2].args, expected);
+            assert!(
+                commands
+                    .iter()
+                    .all(|command| !command.args.iter().any(|arg| arg == "generate-lockfile"))
+            );
+        }
+    }
 }

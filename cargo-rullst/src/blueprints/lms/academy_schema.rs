@@ -337,6 +337,25 @@ impl Migration for MigrationImpl {
         ] {
             sqlx::query(sqlx::AssertSqlSafe(fixture)).execute(pool).await?;
         }
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('quizzes', 'id'), (SELECT MAX(id) FROM quizzes))",
+                "SELECT setval(pg_get_serial_sequence('quiz_questions', 'id'), (SELECT MAX(id) FROM quiz_questions))",
+                "SELECT setval(pg_get_serial_sequence('quiz_options', 'id'), (SELECT MAX(id) FROM quiz_options))",
+                "SELECT setval(pg_get_serial_sequence('activities', 'id'), (SELECT MAX(id) FROM activities))",
+                "SELECT setval(pg_get_serial_sequence('activity_review_policies', 'id'), (SELECT MAX(id) FROM activity_review_policies))",
+                "SELECT setval(pg_get_serial_sequence('achievements', 'id'), (SELECT MAX(id) FROM achievements))",
+                "SELECT setval(pg_get_serial_sequence('automation_rules', 'id'), (SELECT MAX(id) FROM automation_rules))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 

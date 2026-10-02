@@ -1,11 +1,60 @@
 use crate::models::user::User;
 use crate::pages::auth;
+use rullst::async_runtime::tokio::sync::Semaphore;
 use rullst::auth as rullst_auth;
 use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Redirect, Response, StatusCode};
 use serde::Deserialize;
+use std::sync::{Arc, LazyLock};
+use std::time::Duration;
 
 const DUMMY_PASSWORD_HASH: &str =
     "$argon2id$v=19$m=19456,t=2,p=1$VE9CZ2d5dHVyWldOajNXZA$M0zU6o5hE/R6B+nJ9hX8+A";
+
+/// Each Argon2id hash or verification holds about 19 MiB on Tokio's blocking
+/// pool, so a burst of submissions must not run unbounded. Raise this to match
+/// the host's memory and cores.
+const MAX_CONCURRENT_PASSWORD_WORK: usize = 4;
+/// How long a submission waits for password capacity before receiving 503.
+const PASSWORD_WORK_WAIT: Duration = Duration::from_secs(2);
+const BUSY_MESSAGE: &str = "Too many sign-in requests are in progress. Try again in a moment.";
+
+static PASSWORD_WORK: LazyLock<Arc<Semaphore>> =
+    LazyLock::new(|| Arc::new(Semaphore::new(MAX_CONCURRENT_PASSWORD_WORK)));
+
+enum PasswordWorkError {
+    /// No password capacity became free within `PASSWORD_WORK_WAIT`.
+    Busy,
+    /// The blocking task panicked.
+    Failed,
+}
+
+/// Runs Argon2 work on the blocking pool while holding one of the bounded
+/// permits. The permit moves into the blocking task, so a disconnected client
+/// cannot release it while the hash is still running.
+async fn run_password_work<T, F>(work: F) -> Result<T, PasswordWorkError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    let permit = rullst::runtime::time::timeout(
+        PASSWORD_WORK_WAIT,
+        Arc::clone(&*PASSWORD_WORK).acquire_owned(),
+    )
+    .await
+    .map_err(|_| PasswordWorkError::Busy)?
+    .map_err(|_| PasswordWorkError::Failed)?;
+    rullst::runtime::task::spawn_blocking(move || {
+        let output = work();
+        drop(permit);
+        output
+    })
+    .await
+    .map_err(|_| PasswordWorkError::Failed)
+}
+
+fn busy(page: impl IntoResponse) -> Response {
+    (StatusCode::SERVICE_UNAVAILABLE, page).into_response()
+}
 
 #[derive(Deserialize)]
 pub struct RegisterDto {
@@ -109,7 +158,14 @@ pub async fn login_submit(
         .and_then(|candidate| candidate.password_hash.as_deref())
         .unwrap_or(DUMMY_PASSWORD_HASH)
         .to_owned();
-    let password_valid = rullst_auth::verify_password_async(payload.password, password_hash).await;
+    let password = payload.password;
+    let password_valid = match run_password_work(move || rullst_auth::verify_password(&password, &password_hash)).await {
+        Ok(valid) => valid,
+        Err(PasswordWorkError::Busy) => {
+            return busy(auth::login_page(&token, Some(BUSY_MESSAGE), nonce));
+        }
+        Err(PasswordWorkError::Failed) => false,
+    };
 
     let Some(user) = user.filter(|_| password_valid) else {
         return auth::login_page(&token, Some("Incorrect email or password"), nonce)
@@ -181,10 +237,19 @@ pub async fn register_submit(
         }
     }
 
-    let password_hash = match rullst_auth::hash_password_async(payload.password).await {
-        Ok(hash) => hash,
-        Err(error) => {
+    let password = payload.password;
+    let password_hash = match run_password_work(move || rullst_auth::hash_password(&password)).await {
+        Ok(Ok(hash)) => hash,
+        Ok(Err(error)) => {
             eprintln!("Password hashing failed: {error}");
+            return auth::register_page(&token, Some("Error processing password"), nonce)
+                .into_response();
+        }
+        Err(PasswordWorkError::Busy) => {
+            return busy(auth::register_page(&token, Some(BUSY_MESSAGE), nonce));
+        }
+        Err(PasswordWorkError::Failed) => {
+            eprintln!("Password hashing task failed");
             return auth::register_page(&token, Some("Error processing password"), nonce)
                 .into_response();
         }

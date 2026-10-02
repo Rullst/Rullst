@@ -86,6 +86,24 @@ fn get_project_name() -> Option<String> {
     None
 }
 
+/// Runs a provider CLI and reports whether it was available.
+///
+/// A missing executable stays advisory because the manifest was still
+/// written; a provider command that ran and failed is returned as an error so
+/// scripts and CI do not record a failed deployment as successful.
+fn run_provider_cli(program: &str, args: &[&str]) -> Result<bool, Box<dyn std::error::Error>> {
+    match Command::new(program).args(args).status() {
+        Ok(status) if status.success() => Ok(true),
+        Ok(status) => Err(std::io::Error::other(format!(
+            "`{program} {}` failed ({status}); the deployment did not complete",
+            args.join(" ")
+        ))
+        .into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.into()),
+    }
+}
+
 fn deploy_fly(project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let fly_file = "fly.toml";
     let content = FLY_TOML.replace("APP_NAME", project_name);
@@ -99,26 +117,20 @@ fn deploy_fly(project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", "\n🚀 Deploying to Fly.io...".bold().magenta());
 
-    // Try executing flyctl deploy if available
-    let status = Command::new("flyctl").args(["deploy"]).status();
-
-    match status {
-        Ok(s) if s.success() => {
-            println!(
-                "{}",
-                "🎉 Application successfully deployed to Fly.io!"
-                    .bold()
-                    .green()
-            );
-        }
-        _ => {
-            println!(
-                "{}",
-                "💡 Fly CLI ('flyctl') not found or failed. Execute manually:".yellow()
-            );
-            println!("   {}", "fly launch".cyan());
-            println!("   {}", "fly deploy".cyan());
-        }
+    if run_provider_cli("flyctl", &["deploy"])? {
+        println!(
+            "{}",
+            "🎉 Application successfully deployed to Fly.io!"
+                .bold()
+                .green()
+        );
+    } else {
+        println!(
+            "{}",
+            "💡 Fly CLI ('flyctl') not found. Execute manually:".yellow()
+        );
+        println!("   {}", "fly launch".cyan());
+        println!("   {}", "fly deploy".cyan());
     }
 
     Ok(())
@@ -140,25 +152,20 @@ fn deploy_railway(project_name: &str) -> Result<(), Box<dyn std::error::Error>> 
 
     println!("{}", "\n🚀 Deploying to Railway...".bold().magenta());
 
-    let status = Command::new("railway").args(["up"]).status();
-
-    match status {
-        Ok(s) if s.success() => {
-            println!(
-                "{}",
-                "🎉 Application successfully deployed to Railway!"
-                    .bold()
-                    .green()
-            );
-        }
-        _ => {
-            println!(
-                "{}",
-                "💡 Railway CLI ('railway') not found or failed. Execute manually:".yellow()
-            );
-            println!("   {}", "railway login".cyan());
-            println!("   {}", "railway up".cyan());
-        }
+    if run_provider_cli("railway", &["up"])? {
+        println!(
+            "{}",
+            "🎉 Application successfully deployed to Railway!"
+                .bold()
+                .green()
+        );
+    } else {
+        println!(
+            "{}",
+            "💡 Railway CLI ('railway') not found. Execute manually:".yellow()
+        );
+        println!("   {}", "railway login".cyan());
+        println!("   {}", "railway up".cyan());
     }
 
     Ok(())

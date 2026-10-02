@@ -1,6 +1,7 @@
 // src/generators/foundry/deploy.rs — SSH deployment pipeline steps.
 
 use super::config::FoundryConfig;
+use super::service;
 use colored::*;
 use std::fs;
 use std::io::Write;
@@ -145,10 +146,12 @@ fn render_provision_command(cfg: &FoundryConfig) -> String {
 command -v curl > /dev/null 2>&1
 command -v systemctl > /dev/null 2>&1
 command -v caddy > /dev/null 2>&1
-install -d -m 0755 /opt/rullst /opt/rullst/{app_name} /opt/rullst/{app_name}/data /opt/rullst/{app_name}/bin /var/log/caddy
+install -d -m 0755 /opt/rullst /opt/rullst/{app_name} /opt/rullst/{app_name}/bin /var/log/caddy
 install -d -m 0700 /opt/rullst/{app_name}/config
+{account_setup}
 echo "✅ Server environment ready.""#,
-        app_name = cfg.app_name
+        app_name = cfg.app_name,
+        account_setup = service::render_account_setup(cfg)
     )
 }
 
@@ -243,11 +246,7 @@ pub fn execute_configure_step(
 }
 
 fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
-    let app_port = if cfg.port.is_empty() {
-        "3000"
-    } else {
-        &cfg.port
-    };
+    let app_port = cfg.app_port();
     let caddy_site = if cfg.auto_https == "true" || cfg.auto_https.is_empty() {
         format!(
             r#"{domain} {{
@@ -274,12 +273,17 @@ fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
         )
     };
 
-    let env_lines = cfg
+    let mut env_lines = cfg
         .env_vars
         .iter()
         .map(|(key, value)| format!("{key}=\"{}\"", escape_systemd_env_value(value)))
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<Vec<_>>();
+    // The unit runs from data/ without the project's Rullst.toml, so the port
+    // Caddy proxies to must reach the application through its environment.
+    if cfg.env_value("PORT").is_none() {
+        env_lines.push(format!("PORT=\"{app_port}\""));
+    }
+    let env_lines = env_lines.join("\n");
     format!(
         r#"set -e
 umask 077
@@ -308,6 +312,7 @@ Type=simple
 ExecStart=/opt/rullst/{app_name}/bin/{bin_name}
 WorkingDirectory=/opt/rullst/{app_name}/data
 EnvironmentFile=/opt/rullst/{app_name}/config/.env
+{hardening}
 Restart=always
 RestartSec=5
 
@@ -342,6 +347,7 @@ echo "✅ Services configured and started."
 "#,
         env_lines = env_lines,
         caddy_site = caddy_site,
+        hardening = service::render_unit_hardening(cfg),
         bin_name = bin_name,
         app_name = cfg.app_name
     )
@@ -353,11 +359,7 @@ fn escape_systemd_env_value(value: &str) -> String {
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn print_deployment_summary(cfg: &FoundryConfig) {
-    let app_port = if cfg.port.is_empty() {
-        "3000"
-    } else {
-        &cfg.port
-    };
+    let app_port = cfg.app_port();
     println!(
         "\n{}",
         "┌────────────────────────────────────────────────────────────┐"

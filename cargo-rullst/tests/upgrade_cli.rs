@@ -90,6 +90,42 @@ fn first_backup(backup_root: &Path) -> PathBuf {
 }
 
 #[test]
+fn an_older_target_never_downgrades_requirements_or_the_lockfile() {
+    // The old command pinned both projects to the older CLI version, and
+    // `cargo fix` then moved the lockfile down.
+    let pinned = Fixture::new("downgrade-pin", "=12.9.0", "12.9.0", "fn main() {}\n");
+    let locked = Fixture::new(
+        "downgrade-lock",
+        env!("CARGO_PKG_VERSION"),
+        "12.9.0",
+        "fn main() {}\n",
+    );
+    let lockfile = "version = 4\n\n[[package]]\nname = \"rullst\"\nversion = \"12.9.0\"\n";
+    std::fs::write(locked.app().join("Cargo.lock"), lockfile).expect("lockfile");
+
+    for (fixture, current) in [
+        (&pinned, "requirement `=12.9.0`"),
+        (&locked, "12.9.0 in Cargo.lock"),
+    ] {
+        let manifest = std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest");
+        let output = fixture.run(&["upgrade"]);
+        let text = output_text(&output);
+        assert!(!output.status.success(), "{text}");
+        assert!(text.contains("would downgrade `rullst`"), "{text}");
+        assert!(text.contains(current), "{text}");
+        assert_eq!(
+            std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest"),
+            manifest
+        );
+        assert!(!fixture.app().join("target/rullst-upgrades").exists());
+    }
+    assert_eq!(
+        std::fs::read_to_string(locked.app().join("Cargo.lock")).expect("lockfile"),
+        lockfile
+    );
+}
+
+#[test]
 fn dry_run_reports_v5_markers_without_writing() {
     let fixture = Fixture::new(
         "dry-run",

@@ -70,7 +70,9 @@ impl Migration for MigrationImpl {
         Schema::create("users", |table| {
             table.id();
             table.string("name").not_null();
-            table.string("email").not_null();
+            // MySQL/MariaDB cannot index a TEXT column without a prefix length, so
+            // indexed strings are bounded VARCHAR columns on every driver.
+            table.string("email").not_null().col_type = "VARCHAR(255)".to_string();
             table.string("password_hash").nullable();
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();

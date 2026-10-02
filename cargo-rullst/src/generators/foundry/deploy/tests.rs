@@ -36,6 +36,27 @@ fn configuration_requires_a_preinstalled_caddy_and_blocks_reload_failure() {
 }
 
 #[test]
+fn the_application_listens_on_the_port_caddy_and_the_probe_use() {
+    // The old environment file had no PORT, so the app kept its fallback port
+    // while Caddy proxied to app.port.
+    let mut cfg = test_config("true");
+    cfg.port = "8080".to_string();
+    let command = render_configure_command(&cfg, "demo");
+    assert!(command.contains("reverse_proxy localhost:8080"));
+    assert!(command.contains("\nPORT=\"8080\"\n"));
+
+    cfg.port = String::new();
+    cfg.env_vars.push(("PORT".to_string(), "8081".to_string()));
+    let command = render_configure_command(&cfg, "demo");
+    assert!(command.contains("reverse_proxy localhost:8081"));
+    assert_eq!(command.matches("PORT=").count(), 1);
+
+    cfg.env_vars.retain(|(name, _)| name != "PORT");
+    let command = render_configure_command(&cfg, "demo");
+    assert!(command.contains("PORT=\"3000\""));
+}
+
+#[test]
 fn provisioning_requires_reviewed_tools_and_uses_an_app_specific_root() {
     let command = render_provision_command(&test_config("false"));
     assert!(command.contains("command -v curl"));
@@ -58,4 +79,54 @@ fn systemd_environment_values_are_quoted_and_escaped() {
     cfg.env_vars = vec![("EXAMPLE".to_string(), "space and \\\"quote".to_string())];
     let command = render_configure_command(&cfg, "demo");
     assert!(command.contains(r#"EXAMPLE="space and \\\"quote""#));
+}
+
+#[test]
+fn the_service_runs_as_a_dedicated_unprivileged_sandboxed_account() {
+    let provision = render_provision_command(&test_config("false"));
+    assert!(provision.contains("useradd --system --user-group --no-create-home"));
+    assert!(
+        provision
+            .contains("install -d -m 0750 -o rullst-demo -g rullst-demo /opt/rullst/demo/data")
+    );
+    assert!(provision.contains("chown -R -h rullst-demo:rullst-demo /opt/rullst/demo/data"));
+    assert!(provision.contains("install -d -m 0700 /opt/rullst/demo/config"));
+
+    let command = render_configure_command(&test_config("false"), "demo");
+    for directive in [
+        "User=rullst-demo",
+        "Group=rullst-demo",
+        "NoNewPrivileges=yes",
+        "CapabilityBoundingSet=\n",
+        "ProtectSystem=strict",
+        "ReadWritePaths=/opt/rullst/demo/data",
+        "PrivateTmp=yes",
+    ] {
+        assert!(command.contains(directive), "missing {directive}");
+    }
+    assert!(!command.contains("AmbientCapabilities"));
+
+    let mut privileged = test_config("false");
+    privileged.port = "80".to_string();
+    let privileged = render_configure_command(&privileged, "demo");
+    assert!(privileged.contains("AmbientCapabilities=CAP_NET_BIND_SERVICE"));
+
+    #[cfg(unix)]
+    for script in [provision, command, privileged] {
+        let mut shell = std::process::Command::new("sh")
+            .arg("-n")
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        shell
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(script.as_bytes())
+            .unwrap();
+        assert!(
+            shell.wait().unwrap().success(),
+            "the generated account setup is not valid shell"
+        );
+    }
 }

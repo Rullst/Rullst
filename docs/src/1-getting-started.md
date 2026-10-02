@@ -129,6 +129,13 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 - Interactive Experience timeline and Skills tags.
 - Project cards showcase with live external links.
 
+The Portfolio and Blog pages bind their inline styles to the per-request CSP
+nonce and use system fonts, so they keep their styling under the production
+security headers. That policy admits only same-origin and `data:` images: put a
+custom avatar under `static/` (the default is `/static/rullst.png`) rather than
+linking a remote URL, or deliberately extend `img-src` in the `[security] csp`
+setting of `Rullst.toml`.
+
 ## 3. LMS Platform Starter
 **Use Case:** Online learning products and course platforms.
 The complete profile is a bounded learning-domain foundation featuring:
@@ -145,7 +152,10 @@ media transcoding and signed delivery, advanced/localized search, billing-linked
 entitlements, distributed failover, native offline playback, real-browser/WCAG
 evidence and PostgreSQL/MySQL isolation evidence remain application or roadmap
 work. Smaller `auth`, `auth,learning` and `auth,learning,assessment` profiles are
-available when the complete domain scaffold is unnecessary.
+available when the complete domain scaffold is unnecessary. On MySQL/MariaDB,
+the complete profile and the assessment and gamification profiles still index
+unbounded `TEXT` columns in their academy migrations, so `db:migrate` fails
+there; use SQLite or PostgreSQL for them.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
@@ -168,6 +178,11 @@ An inventory-oriented back-office starter. It features:
 - A complex relational database schema (Products and Orders).
 - Full CRUD operations with HTMX.
 - A sleek, split-pane dashboard for simultaneous product listing and order creation.
+
+The dashboard lists customer names and revenue, so every ERP route shares the
+Nexus administrator policy described below: loopback-only in a debug build and
+Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
+build. Per-employee accounts and roles remain application work.
 
 ---
 

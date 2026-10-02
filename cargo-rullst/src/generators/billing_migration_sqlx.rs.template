@@ -14,7 +14,9 @@ impl Migration for MigrationImpl {
         Schema::create("billing_customers", |table| {
             table.id();
             table.integer("__FOREIGN_KEY__").not_null();
-            table.string("email").not_null();
+            // MySQL/MariaDB cannot index a TEXT column without a prefix length, so
+            // indexed strings are bounded VARCHAR columns on every driver.
+            table.string("email").not_null().col_type = "VARCHAR(255)".to_string();
             table.string("customer_id").nullable();
             table.timestamps();
         })
@@ -23,7 +25,7 @@ impl Migration for MigrationImpl {
             table.id();
             table.integer("__FOREIGN_KEY__").not_null();
             table.string("customer_id").not_null();
-            table.string("subscription_id").not_null();
+            table.string("subscription_id").not_null().col_type = "VARCHAR(255)".to_string();
             table.string("plan_id").not_null();
             table.string("status").not_null();
             table.big_integer("ends_at").nullable();

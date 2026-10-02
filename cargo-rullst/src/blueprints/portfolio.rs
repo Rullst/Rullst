@@ -223,30 +223,46 @@ impl Migration for CreatePortfolioTables {
         let pool = rullst::db::Orm::pool()?;
 
         rullst::db::sqlx::query(
-            "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url, created_at, updated_at) VALUES 
-             (1, 'Vene Light', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'rullst@veneloius.de', 'https://rullst.github.io/', 'https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png', 'https://github.com/Rullst', 'https://linkedin.com', datetime('now'), datetime('now'))"
+            "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url) VALUES 
+             (1, 'Vene Light', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'rullst@veneloius.de', 'https://rullst.github.io/', '/static/rullst.png', 'https://github.com/Rullst', 'https://linkedin.com')"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
-            "INSERT INTO projects (id, title, description, url, tags, is_featured, created_at, updated_at) VALUES 
-             (1, 'Rullst AI Engine', 'High-performance Rust AI inference engine leveraging hyper-optimized matrix operations.', 'https://github.com/Rullst/Rullst', 'Rust, AI, Tokio', 1, datetime('now'), datetime('now')),
-             (2, 'Nexus Auto-CMS', 'Zero-config auto-generated Admin CMS for Rust ORM models.', 'https://github.com/Rullst/Rullst', 'Rust, HTMX, Axum', 1, datetime('now'), datetime('now'))"
+            "INSERT INTO projects (id, title, description, url, tags, is_featured) VALUES 
+             (1, 'Rullst AI Engine', 'High-performance Rust AI inference engine leveraging hyper-optimized matrix operations.', 'https://github.com/Rullst/Rullst', 'Rust, AI, Tokio', 1),
+             (2, 'Nexus Auto-CMS', 'Zero-config auto-generated Admin CMS for Rust ORM models.', 'https://github.com/Rullst/Rullst', 'Rust, HTMX, Axum', 1)"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
-            "INSERT INTO experiences (id, role, company, period, description, created_at, updated_at) VALUES 
-             (1, 'Senior Rust Engineer', 'TechNova AI', '2024 - Present', 'Architected a highly concurrent distributed task queue in Rust processing 10k+ jobs per second.', datetime('now'), datetime('now')),
-             (2, 'Full-Stack Developer', 'Quantum Systems', '2021 - 2024', 'Built scalable SaaS applications and high-throughput backend services using Rust and TypeScript.', datetime('now'), datetime('now'))"
+            "INSERT INTO experiences (id, role, company, period, description) VALUES 
+             (1, 'Senior Rust Engineer', 'TechNova AI', '2024 - Present', 'Architected a highly concurrent distributed task queue in Rust processing 10k+ jobs per second.'),
+             (2, 'Full-Stack Developer', 'Quantum Systems', '2021 - 2024', 'Built scalable SaaS applications and high-throughput backend services using Rust and TypeScript.')"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
-            "INSERT INTO skills (id, name, category, created_at, updated_at) VALUES 
-             (1, 'Rust', 'Languages', datetime('now'), datetime('now')),
-             (2, 'Python', 'Languages', datetime('now'), datetime('now')),
-             (3, 'Rullst Framework', 'Frameworks', datetime('now'), datetime('now')),
-             (4, 'SQLite / SQLx', 'Database', datetime('now'), datetime('now')),
-             (5, 'Docker & K8s', 'DevOps', datetime('now'), datetime('now'))"
+            "INSERT INTO skills (id, name, category) VALUES 
+             (1, 'Rust', 'Languages'),
+             (2, 'Python', 'Languages'),
+             (3, 'Rullst Framework', 'Frameworks'),
+             (4, 'SQLite / SQLx', 'Database'),
+             (5, 'Docker & K8s', 'DevOps')"
         ).execute(pool).await?;
+
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('profiles', 'id'), (SELECT MAX(id) FROM profiles))",
+                "SELECT setval(pg_get_serial_sequence('projects', 'id'), (SELECT MAX(id) FROM projects))",
+                "SELECT setval(pg_get_serial_sequence('experiences', 'id'), (SELECT MAX(id) FROM experiences))",
+                "SELECT setval(pg_get_serial_sequence('skills', 'id'), (SELECT MAX(id) FROM skills))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
 
         Ok(())
     }
@@ -354,7 +370,7 @@ impl ProfileRepository {
             subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
             email: "rullst@veneloius.de".to_string(),
             website: "https://rullst.github.io/".to_string(),
-            avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
+            avatar_url: "/static/rullst.png".to_string(),
             github_url: "https://github.com/Rullst".to_string(),
             linkedin_url: "https://linkedin.com".to_string(),
         })
@@ -414,7 +430,7 @@ impl SkillRepository {
 
     // 5. Controller
     let portfolio_controller = if is_repo_mode {
-        r##"use rullst::server::IntoResponse;
+        r##"use rullst::server::{Extension, IntoResponse};
 use rullst::response::Html;
 use crate::repositories::profile_repository::ProfileRepository;
 use crate::repositories::project_repository::ProjectRepository;
@@ -422,18 +438,29 @@ use crate::repositories::experience_repository::ExperienceRepository;
 use crate::repositories::skill_repository::SkillRepository;
 use crate::pages::home;
 
-pub async fn index() -> impl IntoResponse {
+/// The production security headers allow only nonce-bound inline styles; the
+/// nonce is absent (and unneeded) when no CSP is sent, as in development.
+fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    csp_nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
+pub async fn index(
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {
     let profile = ProfileRepository::get().await;
     let projects = ProjectRepository::all().await;
     let experiences = ExperienceRepository::all().await;
     let skills = SkillRepository::all().await;
 
-    Html(home::render(&profile, &projects, &experiences, &skills))
+    Html(home::render(&profile, &projects, &experiences, &skills, nonce(&csp_nonce)))
 }
 "##
         .to_string()
     } else {
-        r##"use rullst::server::IntoResponse;
+        r##"use rullst::server::{Extension, IntoResponse};
 use rullst::response::Html;
 use crate::models::profile::Profile;
 use crate::models::project::Project;
@@ -441,7 +468,18 @@ use crate::models::experience::Experience;
 use crate::models::skill::Skill;
 use crate::pages::home;
 
-pub async fn index() -> impl IntoResponse {
+/// The production security headers allow only nonce-bound inline styles; the
+/// nonce is absent (and unneeded) when no CSP is sent, as in development.
+fn nonce(csp_nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    csp_nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
+pub async fn index(
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {
     let profile = Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
         id: 1,
         name: "Vene Light".to_string(),
@@ -449,7 +487,7 @@ pub async fn index() -> impl IntoResponse {
         subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
         email: "rullst@veneloius.de".to_string(),
         website: "https://rullst.github.io/".to_string(),
-        avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
+        avatar_url: "/static/rullst.png".to_string(),
         github_url: "https://github.com/Rullst".to_string(),
         linkedin_url: "https://linkedin.com".to_string(),
     });
@@ -457,7 +495,7 @@ pub async fn index() -> impl IntoResponse {
     let experiences = Experience::all().await.unwrap_or_default();
     let skills = Skill::all().await.unwrap_or_default();
 
-    Html(home::render(&profile, &projects, &experiences, &skills))
+    Html(home::render(&profile, &projects, &experiences, &skills, nonce(&csp_nonce)))
 }
 "##.to_string()
     };
@@ -474,7 +512,13 @@ pub async fn index() -> impl IntoResponse {
     // 6. Pages View
     let engine_badge = common::frontend_engine_badge(frontend_engine);
     let engine_imports = "use rullst::html;";
-    let render_fn_code = r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+    let render_fn_code = r#"pub fn render(
+    profile: &Profile,
+    projects: &[Project],
+    experiences: &[Experience],
+    skills: &[Skill],
+    csp_nonce: &str,
+) -> String {
     html! {
         <html lang="en">
             <head>
@@ -482,8 +526,7 @@ pub async fn index() -> impl IntoResponse {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Developer — AI & Rust Portfolio"</title>
                 <link rel="icon" type="image/png" href="/static/rullst.png" />
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-                <style>{ rullst::html::RawHtml(cv_styles()) }</style>
+                <style nonce={csp_nonce}>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>
             <body>
                 <div class="bg-grid"></div>
@@ -510,7 +553,7 @@ use crate::models::skill::Skill;
 
 fn cv_styles() -> String {{
     r#"
-    * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }}
     
     :root {{
         --bg-color: #050505;
@@ -575,6 +618,9 @@ fn cv_styles() -> String {{
 
     .contact-info {{ display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }}
     .contact-item {{ display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: var(--text-muted); }}
+    .contact-item a {{ color: var(--text-muted); }}
+    .contact-item a.accent {{ color: var(--accent); }}
+    .profile-head {{ text-align: center; }}
 
     .skill-cat {{ font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }}
     .tags {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }}
@@ -642,7 +688,7 @@ fn safe_link(url: &str) -> &str {{
 fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
     html! {{
         <aside class="sidebar">
-            <div style="text-align: center;">
+            <div class="profile-head">
                 <img src={{&profile.avatar_url}} alt={{&profile.name}} class="profile-img" />
                 <h1>{{&profile.name}}</h1>
                 <h2 class="role">{{&profile.title}}</h2>
@@ -654,9 +700,9 @@ fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
             
             <div class="contact-info">
                 <div class="contact-item">"📧 "{{&profile.email}}</div>
-                <div class="contact-item">"🌐 "<a href={{safe_link(&profile.website)}} target="_blank" style="color: var(--accent);">{{&profile.website}}</a></div>
-                <div class="contact-item">"💻 "<a href={{safe_link(&profile.github_url)}} target="_blank" style="color: var(--text-muted);">{{&profile.github_url}}</a></div>
-                <div class="contact-item">"💼 "<a href={{safe_link(&profile.linkedin_url)}} target="_blank" style="color: var(--text-muted);">{{&profile.linkedin_url}}</a></div>
+                <div class="contact-item">"🌐 "<a href={{safe_link(&profile.website)}} target="_blank" class="accent">{{&profile.website}}</a></div>
+                <div class="contact-item">"💻 "<a href={{safe_link(&profile.github_url)}} target="_blank">{{&profile.github_url}}</a></div>
+                <div class="contact-item">"💼 "<a href={{safe_link(&profile.linkedin_url)}} target="_blank">{{&profile.linkedin_url}}</a></div>
             </div>
 
             <div>

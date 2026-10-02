@@ -5,7 +5,7 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::generators::{
     auth::scaffold_auth_system,
@@ -23,10 +23,14 @@ use crate::generators::{
     migration::create_new_migration,
     model::create_new_model,
     openapi::generate_openapi_spec,
+    output_guard::{reject_existing, reject_symlink},
     project::{ProjectScaffoldOptions, create_new_project_with_cli_options},
     resource::create_new_resource,
     worker::create_new_worker,
 };
+
+/// Packaging files are application-owned once generated; regeneration is explicit.
+const REGENERATE_HINT: &str = "; move them aside to regenerate the template";
 
 // ─── Clap Structs ─────────────────────────────────────────────────────────────
 
@@ -319,7 +323,7 @@ pub enum Commands {
     /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
     #[command(name = "foundry:deploy")]
     FoundryDeploy,
-    /// Generates Dockerfile and docker-compose.yml for the project
+    /// Generates a Dockerfile (and .dockerignore when absent) for the project
     Dockerize,
     /// Generates a rootless OCI image build script via Buildah
     #[command(name = "generate:buildah")]
@@ -375,7 +379,7 @@ pub enum Commands {
     /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
     #[command(name = "make:k8s")]
     MakeK8s,
-    /// Scaffolds a complete 2FA TOTP authentication system in src/controllers/mfa.rs
+    /// Scaffolds a server-side TOTP second factor (src/controllers/mfa.rs and a migration)
     #[command(name = "make:mfa")]
     MakeMfa,
     /// Scaffolds interactive Scalar API documentation router at /docs
@@ -684,6 +688,13 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             run_foundry_deploy()?;
         }
         Commands::Dockerize => {
+            // `.dockerignore` is only created when absent; never write through a link.
+            reject_symlink(Path::new(".dockerignore"))?;
+            reject_existing(
+                "Dockerfile",
+                &[PathBuf::from("Dockerfile")],
+                REGENERATE_HINT,
+            )?;
             let mut proj_name = "app".to_string();
             if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
                 for line in toml_content.lines() {
@@ -705,6 +716,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             )?;
         }
         Commands::GenerateBuildah => {
+            reject_existing(
+                "Buildah script",
+                &[PathBuf::from("build_buildah.sh")],
+                REGENERATE_HINT,
+            )?;
             let mut proj_name = "app".to_string();
             if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
                 for line in toml_content.lines() {
@@ -724,6 +740,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             )?;
         }
         Commands::Nixify => {
+            reject_existing(
+                "Nix environment files",
+                &[PathBuf::from("flake.nix"), PathBuf::from(".envrc")],
+                REGENERATE_HINT,
+            )?;
             crate::generators::project::generate_nix_files(std::path::Path::new("."))?;
         }
         Commands::MakeCors => {

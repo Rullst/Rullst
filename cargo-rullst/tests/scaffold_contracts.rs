@@ -507,6 +507,17 @@ fn extracted_rust_templates_parse_after_substitution() {
             include_str!("../src/generators/billing_page.rs.template").to_string(),
         ),
         (
+            "MFA controller",
+            include_str!("../src/generators/auth/mfa_controller.rs.template").to_string(),
+        ),
+        (
+            "MFA migration",
+            include_str!("../src/generators/auth/mfa_migration.rs.template").replace(
+                "__MIGRATION_NAME__",
+                "m20261001000000_create_user_mfa_factors_table",
+            ),
+        ),
+        (
             "CORS middleware",
             include_str!("../src/generators/cors_middleware.rs.template").to_string(),
         ),
