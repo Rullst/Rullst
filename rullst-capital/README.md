@@ -51,12 +51,12 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
 | **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
-| **Razorpay** | Billing | Adapter and signed-webhook foundation. |
+| **Razorpay** | Billing | Plan checkout adapter for a fixed 12-cycle subscription and signed-webhook foundation; completion is reported as `Canceled`. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Status/webhook foundation; legacy email-based live transfer is unsupported. |
+| **Wise** | Payout | Transfer-status read; legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -103,6 +103,19 @@ identity, and transfer creation is not funding. Their offline mocks remain
 available. Polar and Paddle supply the explicit typed replacements below.
 Wise still requires a dedicated recipient/quote/transfer/funding contract.
 Provider-account sandbox acceptance remains separate from protocol tests.
+
+`WiseProvider::parse_webhook_payload` performs no signature verification and
+cannot distinguish a Wise delivery from a forged request. It is an offline
+fixture restricted to an explicit `mock_*` API token: an empty token returns
+`ConfigurationError` and a live token returns `UnsupportedOperation` before
+the body is read. Do not re-issue, release or reconcile payouts from it.
+
+With a live token, the Wise transfer-status read accepts only a positive
+decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
+or undocumented state fails the provider response contract, and a
+`bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
+because `PayoutStatus` cannot express a returned or reversed payout; it is
+never reported as `Processing`.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
@@ -151,6 +164,15 @@ reference is correlation metadata. Persist it before dispatch and never blindly
 retry an uncertain creation. `retrieve_bound_customer` and
 `retrieve_transaction_checkout` reconcile independently recovered known IDs
 without mutation or email-based ownership claims.
+
+The legacy `handle_webhook` (used by the canonical middleware) normalizes only
+documented `subscription.*` lifecycle events: created, updated, imported,
+activated, resumed, trialing, past_due, paused and canceled. Transaction,
+adjustment, customer, price, address and other signed events return
+`PayloadParseError` instead of becoming subscription state. It requires Paddle
+`sub_`, `ctm_` and `pri_` identities, maps only Paddle subscription statuses
+and rejects an event whose status disagrees with its type. `plan_id` remains
+the first item's price, and the result carries no owner binding.
 
 `verify_checkout_subscription` binds signed events to the request and persisted
 transaction receipt. The first `subscription.created` must carry the matching
@@ -400,13 +422,23 @@ Razorpay subscription normalization requires the subscription's own bounded ID,
 customer ID and plan ID, plus an event/entity state match. Authentication alone
 and standalone payment/order events cannot activate a subscription. Activated,
 charged and resumed events require `active`; pending, halted, paused and
-cancelled events require their corresponding provider state. Completed and
-authenticated states remain unsupported by the v12 normalized contract. Email
+cancelled events require their corresponding provider state.
+`subscription.completed` requires `completed` and maps to the non-entitled
+`Canceled` status: Razorpay stops charging after the subscription's last
+billing cycle, so the host must end or renew access explicitly. The
+authenticated state remains unsupported by the v12 normalized contract. Email
 is optional contact data. The application still owns customer/tenant binding,
 event ordering, durable processing and reconciliation; `Active` is a lifecycle
 state, not proof that a particular invoice was paid. See Razorpay's
 [subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
 and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
+
+The legacy Razorpay `create_checkout_session` creates a subscription with a
+fixed `total_count` of 12 billing cycles for every plan period, so a weekly
+plan ends after 12 weeks and a yearly plan after 12 years. Handle
+`subscription.completed` to learn when billing ends. The `redirect_url`
+argument is recorded in the subscription `notes` only; the adapter does not
+send it as a callback or return URL.
 
 ---
 
@@ -533,6 +565,43 @@ relational create that must be atomic with accounting, open a transaction from
 that same transaction and commit once. See the
 [SaaS billing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/19-saas-billing-capital.md#8-enforce-one-shared-workspace-quota-before-creation)
 for the complete flow.
+
+Subject kinds and IDs, features and event keys are case-sensitive on
+SQLite, PostgreSQL and on MySQL/MariaDB tables created by 12.2, so tenants such
+as `aB3x` and `Ab3X` keep separate counters. New MySQL/MariaDB tables declare
+those columns `CHARACTER SET ascii COLLATE ascii_bin`. `prepare_schema` never
+alters an existing table. A MySQL/MariaDB table created by 12.1 or earlier
+keeps working as in 12.1: its keys fold case, so tenants, features and event
+keys that differ only by letter case share one counter or claim until the table
+is migrated. The store detects such a table once (from `prepare_schema`,
+`reserve`, `release` or `usage`) and logs one `tracing` warning per store,
+target `rullst_capital::quota`, that names the migration below. Running it is
+recommended.
+
+#### Upgrading MySQL/MariaDB quota tables
+
+Tables created by 12.1 or earlier use the server's case-insensitive default
+collation, so keys that differ only by letter case share one counter or claim.
+The migration cannot split rows merged that way; review subjects and event keys
+that differ only by case first. Stop quota writers, back up both tables, then
+convert the key columns:
+
+```sql
+ALTER TABLE rullst_capital_quota_counters
+  MODIFY subject_kind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY subject_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY feature VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+ALTER TABLE rullst_capital_quota_claims
+  MODIFY subject_kind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY subject_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY feature VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY event_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+```
+
+Any binary or case-sensitive (`_bin`/`_cs`) collation also passes the check.
+The check runs once per store, so an application restarted after the migration
+no longer warns. The MySQL 8.0 and MariaDB contract tests run 12.1 tables through the
+warning path and this migration.
 
 Membership/authentication, tier persistence and webhook reconciliation,
 migrations, cleanup policy for abandoned standalone reservations, and
@@ -741,8 +810,11 @@ When a verified provider protocol supplies a stable event ID, prefer
 `check_and_record_event_key` over payload-only replay detection. A relational
 handler that uses the provider's low-level signature contract can call
 `check_and_record_event_key_with_transaction` and write its domain mutation
-through the same transaction before one commit. Do not pre-claim the same event
-through SQL middleware on this atomic path. This is atomic only inside that
+through the same transaction before one commit. The claim may follow earlier
+reads in that transaction: on MySQL/MariaDB a duplicate committed after the
+transaction's REPEATABLE READ snapshot is still rejected by the claim insert's
+duplicate key. Do not pre-claim the same event through SQL middleware on this
+atomic path. This is atomic only inside that
 database: provider API calls, e-mail, queues, and other systems still require
 an outbox, idempotent consumers, and reconciliation.
 

@@ -29,6 +29,33 @@ Ported from the v13 review; see the CLI table in the
   the caller's rustup toolchain; the IDOR audit skips only `#[cfg(test)]`
   items.
 
+### Service crate review fixes (12.2)
+
+Ported from the v13 review; see the [12.x migration notes](docs/src/migration-v12-1.md).
+
+- **Mail:** bounds subjects and bodies and scans them in linear time,
+  suppresses display-name recipients by their bare address, checks attachment
+  extension and content and recognises SVG/XHTML by root element and
+  namespace, sends attachments through the SES bearer proxy, keeps the tenant
+  in `FailoverDriver`, fixes ACS sends and the localhost managed identity, and
+  checks homographs per host label with browser-style link parsing. Queued
+  jobs keep the 12.1 format; workers also read the 13.0 base64 form.
+- **Capital:** fails closed on the unsigned Wise webhook parser, binds Wise
+  transfer status to the transfer, accepts only subscription events from
+  legacy Paddle webhooks, reports Razorpay completion, makes MySQL webhook
+  replay claims race-safe, and creates case-sensitive MySQL quota keys (12.1
+  tables keep working with a warning until migrated).
+- **Messaging:** the ORM outbox relay scopes broker idempotency keys by stream.
+- **AI:** masks CPF/CNPJ, keeps every system message for Anthropic and Gemini,
+  rejects stateful responses that would block replay, and compares MySQL
+  chat-memory keys case-sensitively.
+- **IoT:** keeps the running OTA bank until reboot.
+- **Nexus:** fixes shared-proxy lockouts, serves its assets same-origin under
+  the production CSP, masks password fields and keeps NULL values on edit.
+- **Studio:** fixes `Origin: null` form posts, mutates only by a complete key
+  in one transaction, works on PostgreSQL under `sqlx::Any`, and no longer
+  creates `db.sqlite`.
+
 ### ORM review fixes (12.2)
 
 Ported from the v13 ORM review. Only hidden helpers are added; the macro crate

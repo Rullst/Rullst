@@ -168,7 +168,10 @@ async fn deliver_invoice(receipt: &ChargeReceipt) -> Result<(), Box<dyn std::err
 
     // In production, atomically claim this stable key in a durable outbox.
     let _delivery_key = delivery.delivery_key();
-    delivery.send().await?;
+    // Real providers require a sender on a domain verified for the account;
+    // `Mail::send` runs the mandatory pre-flight again for that sender.
+    let message = delivery.message().clone().from("billing@example.com");
+    rullst::mail::Mail::send(message).await?;
     Ok(())
 }
 ```
@@ -178,6 +181,13 @@ currency. The default PDF is paginated, bounded to sixteen MiB and supports
 WinAnsi text (including common Portuguese characters); pass a checked TTF/OTF
 to Capital for other scripts. Mail applies its mandatory pre-flight before the
 facade queues or sends the HTML message and attachment.
+
+`PaidInvoiceDelivery` builds its message without a sender. Its own `send`,
+`send_for_tenant` and `send_with` therefore suit only drivers that accept the
+placeholder sender, such as the offline mock; SendPulse, Mailjet, Mailtrap and
+ACS reject a missing sender, and other real drivers fall back to a placeholder
+that providers reject. Set your verified sender on a copy of `message()` and
+send it through `Mail::send` (or `Mail::send_for_tenant`), as above.
 
 This helper does not subscribe to webhooks by itself. Reconcile the provider
 event, build the authoritative invoice and insert `delivery_key` under a unique

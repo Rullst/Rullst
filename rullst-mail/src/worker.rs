@@ -79,6 +79,40 @@ mod tests {
     }
 
     #[test]
+    fn queued_attachments_keep_the_12_1_form_and_decode_both_forms() {
+        let message =
+            Message::new()
+                .to("user@example.com")
+                .text("safe")
+                .attach(crate::Attachment::new(
+                    "a.bin",
+                    vec![0, 1, 255],
+                    "application/octet-stream",
+                ));
+        let payload = serde_json::to_value(QueuedMail {
+            schema_version: MAIL_JOB_SCHEMA_VERSION,
+            tenant_id: None,
+            message,
+        })
+        .expect("serialize queue envelope");
+        // Producers keep the 12.1 integer array, which 12.1 workers read.
+        assert_eq!(
+            payload["message"]["attachments"][0]["content"],
+            serde_json::json!([0, 1, 255])
+        );
+        let mut compact = payload.clone();
+        compact["message"]["attachments"][0]["content"] = serde_json::json!("AAH/");
+        for payload in [payload, compact] {
+            let decoded: MailJobPayload =
+                serde_json::from_value(payload).expect("deserialize queue envelope");
+            let MailJobPayload::Current(decoded) = decoded else {
+                panic!("versioned envelope must not decode as legacy");
+            };
+            assert_eq!(decoded.message.attachments[0].content, vec![0, 1, 255]);
+        }
+    }
+
+    #[test]
     fn claimed_schedule_is_enforced_then_consumed_by_the_queue() {
         let future = Message::new()
             .to("future@example.com")

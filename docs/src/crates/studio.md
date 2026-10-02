@@ -12,8 +12,11 @@ views from the sources explicitly supplied by the application.
 
 - **Database inspector:** Read and filter configured SQLx tables, edit bounded
   primitive non-key values, delete one complete-primary-key-selected row with
-  exact confirmation, and inspect a live ER diagram. SQLite, PostgreSQL, MySQL
-  and MariaDB run executable mutation contracts.
+  exact confirmation, and inspect a live ER diagram. Tables whose key includes
+  a column outside the ASCII identifier boundary stay read-only, and each write
+  commits only when exactly one row changed. SQLite, PostgreSQL, MySQL and
+  MariaDB run executable mutation contracts; PostgreSQL runs under both the
+  default `sqlx::Any` build and `strict-postgres`.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
@@ -52,6 +55,16 @@ and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
 capability also rejects DNS-rebinding-style non-local `Host` values,
 cross-origin requests, and unsafe requests without an `Origin` header.
+Responses use `Referrer-Policy: same-origin`, so browsers send the real origin
+on Studio's own form posts. `Origin: null` passes only together with
+`Sec-Fetch-Site: same-origin`, as browsers send it when a host layer imposes
+`no-referrer`; a bare `null` origin or a same-site document on another local
+port is rejected.
+
+Studio uses the ORM pool that the application initialized. When none exists,
+its first database view initializes one from the process `DATABASE_URL` or
+`[database].url` in `Rullst.toml`. Without a configured database it reports the
+database tools as unavailable and creates nothing; there is no SQLite fallback.
 
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own

@@ -50,6 +50,18 @@
       "category": "pii",
       "input": "Card 4242 4242 4242 4242",
       "expected_redacted": "Card **** **** **** 4242"
+    },
+    {
+      "id": "PII-003",
+      "category": "pii",
+      "input": "CPF 123.456.789-09 ou 11144477735",
+      "expected_redacted": "CPF ***.***.***-** ou ***********"
+    },
+    {
+      "id": "PII-004",
+      "category": "pii",
+      "input": "CNPJ 12.345.678/0001-95 ou 12345678000195",
+      "expected_redacted": "CNPJ **.***.***/****-** ou **************"
     }
   ]
 }

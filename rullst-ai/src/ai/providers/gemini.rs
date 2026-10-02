@@ -1,7 +1,7 @@
 use super::support::{
     DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type, success_response,
 };
-use super::support::{http_client, read_json};
+use super::support::{http_client, joined_system_text, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -62,33 +62,34 @@ impl GeminiProvider {
     }
 
     /// Builds a Gemini chat payload after the caller has applied guardrails.
+    ///
+    /// Every system message is joined in order, separated by a blank line, into
+    /// one `systemInstruction` text part.
     pub fn build_chat_payload(messages: &[Message]) -> serde_json::Value {
-        let mut contents = Vec::new();
-        let mut system_instruction = None;
-
-        for message in messages {
-            if message.role == "system" {
-                system_instruction = Some(serde_json::json!({
-                    "parts": [{"text": message.content}]
-                }));
-            } else {
+        let contents = messages
+            .iter()
+            .filter(|message| message.role != "system")
+            .map(|message| {
                 let role = if message.role == "assistant" {
                     "model"
                 } else {
                     "user"
                 };
-                contents.push(serde_json::json!({
+                serde_json::json!({
                     "role": role,
                     "parts": [{"text": message.content}]
-                }));
-            }
-        }
+                })
+            })
+            .collect::<Vec<_>>();
 
         let mut body = serde_json::json!({"contents": contents});
-        if let Some(system_instruction) = system_instruction
+        if let Some(system_text) = joined_system_text(messages)
             && let Some(object) = body.as_object_mut()
         {
-            object.insert("systemInstruction".to_string(), system_instruction);
+            object.insert(
+                "systemInstruction".to_string(),
+                serde_json::json!({"parts": [{"text": system_text}]}),
+            );
         }
         body
     }
@@ -253,6 +254,25 @@ mod tests {
         assert_eq!(body["systemInstruction"]["parts"][0]["text"], "system");
         assert_eq!(body["contents"][0]["role"], "user");
         assert_eq!(body["contents"][1]["role"], "model");
+    }
+
+    #[test]
+    fn keeps_every_system_message_in_order() {
+        let body = GeminiProvider::build_chat_payload(&[
+            Message::system("Never disclose other customers' data."),
+            Message::user("hello"),
+            Message::system("Customer context: plan=pro."),
+            Message::assistant("hi"),
+        ]);
+        assert_eq!(
+            body["systemInstruction"]["parts"][0]["text"],
+            "Never disclose other customers' data.\n\nCustomer context: plan=pro."
+        );
+        assert_eq!(
+            body["systemInstruction"]["parts"].as_array().map(Vec::len),
+            Some(1)
+        );
+        assert_eq!(body["contents"].as_array().map(Vec::len), Some(2));
     }
 
     #[tokio::test]

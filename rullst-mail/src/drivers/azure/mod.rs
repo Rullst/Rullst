@@ -67,9 +67,7 @@ impl<C: AzureMailCredential> MailDriver for AzureCommunicationDriver<C> {
         }
         DeliveryPipeline::require_due("Azure Communication Services", &message)?;
         let body = payload(&message)?;
-        let url = endpoint
-            .join("emails:send?api-version=2023-03-31")
-            .map_err(|_| config())?;
+        let url = send_url(endpoint);
         let response = super::http::client()?
             .post(url)
             .bearer_auth(token)
@@ -97,7 +95,7 @@ impl<C: AzureMailCredential> MailDriver for AzureCommunicationDriver<C> {
             || operation.username() != ""
             || operation.password().is_some()
             || operation.fragment().is_some()
-            || operation.query() != Some("api-version=2023-03-31")
+            || operation.query() != Some(API_VERSION_QUERY)
         {
             return Err(config());
         }
@@ -134,6 +132,18 @@ impl<C: AzureMailCredential> MailDriver for AzureCommunicationDriver<C> {
         ))
     }
 }
+
+/// Builds `{endpoint}/emails:send?api-version=...` on the validated resource
+/// origin. `Url::join("emails:send")` would parse `emails:` as a URL scheme and
+/// discard the endpoint, so the path and query are set explicitly instead.
+fn send_url(endpoint: &reqwest::Url) -> reqwest::Url {
+    let mut url = endpoint.clone();
+    url.set_path("/emails:send");
+    url.set_query(Some(API_VERSION_QUERY));
+    url
+}
+
+const API_VERSION_QUERY: &str = "api-version=2023-03-31";
 
 fn payload(message: &Message) -> Result<Vec<u8>, MailError> {
     let from = message

@@ -33,14 +33,14 @@ application's recipient/tenant policy remain separate responsibilities.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness, distinct from the hosted Mailtrap service with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
-- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
+- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
-- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
-- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
+- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
+- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
-- **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
+- **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (character references decoded, tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
@@ -115,6 +115,14 @@ worker_handle.shutdown().await?;
 Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
 exactly-once provider delivery, or provider acceptance.
+
+Queued jobs keep the 12.1 job format, which stores attachment bytes as a JSON
+array of numbers, so 12.1 and 12.2 producers and workers interoperate during a
+rolling deployment in any order. Workers also accept a standard base64 string
+for those bytes, the compact form that 13.0 producers write. The array holds
+about 32 bytes of memory per attachment byte while the queue converts a job to
+and from a JSON value, in the producer and again in the worker, so keep queued
+attachments small or send large ones without the queue.
 
 ---
 
@@ -227,6 +235,9 @@ enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
 recipient/amount/currency substitution before sending. The host must atomically
 claim its stable delivery key in durable state; webhook orchestration,
 provider acceptance and exactly-once delivery are not implied.
+The prepared message has no sender, so real providers need the application's
+verified sender set on a copy of `message()` before `Mail::send`; the helper's
+own `send` methods suit the offline mock.
 
 ---
 
@@ -375,7 +386,13 @@ aws-config = "1.11"
 `AWS_SECRET_ACCESS_KEY` exist. `AWS_SESSION_TOKEN` is accepted for temporary
 credentials. Without those variables, the existing empty/`mock_*` token rule
 selects the offline fixture; a real `AWS_SES_BEARER_TOKEN` is usable only with
-an explicit trusted proxy URL.
+an explicit trusted proxy URL. The proxy receives the SES v2 `SendEmail` JSON
+shape, including every attachment and inline CID asset as
+`Content.Simple.Attachments` (Base64 `RawContent`, `FileName`, `ContentType`,
+`ContentDisposition` and `ContentId`). It is checked against the same SES field
+limits and 40 MiB encoded estimate as native mode before any request, and
+failures return `MailError::ValidationError`. The proxy must forward
+attachments or reject the request; Rullst never drops them.
 
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
@@ -488,9 +505,46 @@ provider accepting a request is not proof that a message reached the inbox.
 
 The security and deliverability checks are bounded heuristics: they help reject
 known disposable domains, CRLF injection, selected dangerous schemes,
-mixed-script domains and recognized secret patterns. They do not parse every
+mixed-script host labels and recognized secret patterns. They do not parse every
 valid/hostile HTML or MIME document and cannot guarantee delivery, absence of
 phishing, absence of data leakage or legal compliance.
+
+Recipients are parsed once by the pre-flight pipeline. It accepts one bare
+address, `<address>` or `Name <address>` (the name may be quoted), and hands the
+bare address to suppression, the disposable-domain check and every transport,
+so a display name is not delivered. Lists, groups, comments, quoted local parts,
+domain literals and malformed brackets are rejected with
+`MailError::ValidationError`. Suppression events and lookups use the same
+parser; anything it rejects fails closed.
+
+The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
+body over 2 MiB each, with `MailError::ValidationError` before any content scan.
+Oversized content is rejected, never truncated. The link, homograph and
+secret-redaction scans are single forward passes, so their cost grows linearly
+with the bounded body. They still run on the calling task; bound user-supplied
+text at the request edge as well.
+
+The local inspector chooses its checks from the declared MIME type (compared
+case-insensitively), the filename extension and the content signature
+together. Both policies reject executable magic, executable or script-host
+extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
+similar), SVG by type, extension or content, active PDF content wherever a
+`%PDF-` header appears in the first KiB, and a declared type that disagrees
+with a known extension or signature. `strict()` also rejects HTML extensions,
+HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions, any
+declared type it does not inspect other than `application/octet-stream` (so a
+`text/html` attachment named `invoice.txt` is rejected), and opaque formats;
+`allowing_opaque()` still accepts HTML and other opaque content. PDF names written with `#xx` escapes or inside compressed streams are
+not decoded.
+
+Markup is classified the way a browser parses it, not by its first bytes: a
+document opening with `<` is SVG or active (X)HTML by its root element after
+any XML declaration, processing instruction, comment or DOCTYPE, matched after
+an optional `prefix:` (`<s:svg>`, `<h:html>`), and by the SVG or XHTML
+namespace URI anywhere in it, also when written with character references.
+Markup that declares DTD entities, which can assemble a namespace URI from
+pieces, is treated as SVG unless its root is `html`, and a UTF-16 document is
+read by its byte-order mark. (v13)
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
 aggregate before transport encoding. Provider/account limits can be lower. The

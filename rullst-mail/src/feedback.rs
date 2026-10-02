@@ -185,7 +185,9 @@ impl ResendFeedbackVerifier {
         let recipient = recipients[0]
             .as_str()
             .ok_or(MailFeedbackError::InvalidPayload)?;
-        crate::validate_email_syntax(recipient).map_err(|_| MailFeedbackError::InvalidPayload)?;
+        // Same parser as delivery and suppression: keep only the bare address.
+        let recipient = crate::validator::recipient_address(recipient)
+            .map_err(|_| MailFeedbackError::InvalidPayload)?;
         if recipient.len() > 254 {
             return Err(MailFeedbackError::InvalidPayload);
         }
