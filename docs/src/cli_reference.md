@@ -1684,7 +1684,10 @@ exits with status `1` when any check failed; warnings do not fail it.
 only the toolchain, project, security (cargo-audit) and disk groups appear.
 Checks are local and bounded: tool probes are `--version` calls run in
 parallel, the database probe is a 2-second TCP connect (no credentials are
-sent) and a SQLite file is opened read-only. Values from `.env` are measured,
+sent) and a SQLite file is opened read-only. Kani is only looked up as a
+`cargo-kani` executable (in Cargo's `bin` directory or on `PATH`), never run:
+`cargo kani` starts its first-time download and toolchain installation when it
+is not set up yet. Values from `.env` are measured,
 never printed.
 
 #### Doctor: toolchain
