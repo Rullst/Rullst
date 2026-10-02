@@ -192,7 +192,10 @@ async fn restart_replaces_the_owned_process_with_the_same_snapshot() {
 
     let mut running = process::Application::prepare(&script).expect("snapshot");
     let (logs, _receiver) = mpsc::channel(8);
-    let (status, status_rx) = watch::channel(DevStatus::Ready);
+    let (status, status_rx) = watch::channel(DevState {
+        status: DevStatus::Ready,
+        ..DevState::default()
+    });
     running.start(false, &logs).expect("first start");
     let first = started(1).await;
 
@@ -202,7 +205,7 @@ async fn restart_replaces_the_owned_process_with_the_same_snapshot() {
     assert_eq!(both[0], first[0]);
     assert!(!alive(&both[0]), "the previous process was not stopped");
     assert!(alive(&both[1]), "the restarted process is not running");
-    assert!(matches!(*status_rx.borrow(), DevStatus::Starting));
+    assert!(matches!(status_rx.borrow().status, DevStatus::Starting));
     assert!(running.try_wait().expect("status").is_none());
     running.stop().expect("stop");
 }

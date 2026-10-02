@@ -17,6 +17,30 @@ pub(crate) enum DevStatus {
     Exited(ExitStatus),
 }
 
+/// What the supervisor publishes to the dashboard, as one watched value so a
+/// status and the process it describes are always observed together.
+#[derive(Clone, Debug)]
+pub(crate) struct DevState {
+    pub(crate) status: DevStatus,
+    /// `RULLST_DEV_GENERATION` of the newest process started, if any. Only
+    /// telemetry carrying it describes the supervised application.
+    pub(crate) generation: Option<String>,
+}
+
+impl Default for DevState {
+    fn default() -> Self {
+        Self {
+            status: DevStatus::Starting,
+            generation: None,
+        }
+    }
+}
+
+/// Publishes `next` as the current process status.
+fn set_status(state: &watch::Sender<DevState>, next: DevStatus) {
+    state.send_modify(|state| state.status = next);
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum DevCommand {
     Migrate,
@@ -44,7 +68,7 @@ pub(crate) async fn run_dev(
     }
     let port = configured_port()?;
     let (log_tx, log_rx) = mpsc::channel(512);
-    let (status_tx, status_rx) = watch::channel(DevStatus::Starting);
+    let (status_tx, status_rx) = watch::channel(DevState::default());
     let (commands, command_rx) = mpsc::channel(1);
     let supervisor = supervise(
         is_dash,
@@ -114,7 +138,7 @@ async fn supervise(
     ts_sync: bool,
     port: u16,
     logs: mpsc::Sender<LogMsg>,
-    status: watch::Sender<DevStatus>,
+    status: watch::Sender<DevState>,
     mut commands: mpsc::Receiver<DevCommand>,
 ) -> io::Result<()> {
     let (mut watcher, mut changes) = watcher::watch_project(Path::new("."))?;
@@ -128,7 +152,7 @@ async fn supervise(
         running.migrate(dashboard, &logs).await?;
     }
     running.start(dashboard, &logs)?;
-    status.send_replace(DevStatus::Starting);
+    set_status(&status, DevStatus::Starting);
     report(&logs, dashboard, "Auto-reload: watching source, assets and configuration; successful builds restart the application.".into());
     report_ready(&mut running, port, dashboard, &logs, &status).await;
     let mut tick = tokio::time::interval(Duration::from_millis(250));
@@ -137,7 +161,7 @@ async fn supervise(
         tokio::select! {
             _ = tick.tick() => {
                 if !exit_reported && let Some(exit) = running.try_wait()? {
-                    status.send_replace(DevStatus::Exited(exit));
+                    set_status(&status, DevStatus::Exited(exit));
                     report(&logs, dashboard, format!("Application exited ({exit}); fix the error and save to retry."));
                     exit_reported = true;
                 }
@@ -191,7 +215,7 @@ async fn supervise(
                     continue;
                 };
                 running.stop()?;
-                status.send_replace(DevStatus::Starting);
+                set_status(&status, DevStatus::Starting);
                 match replacement.start(dashboard, &logs) {
                     Ok(()) => running = replacement,
                     Err(error) => {
@@ -213,7 +237,7 @@ fn restart(
     running: &mut process::Application,
     dashboard: bool,
     logs: &mpsc::Sender<LogMsg>,
-    status: &watch::Sender<DevStatus>,
+    status: &watch::Sender<DevState>,
 ) -> io::Result<()> {
     report(
         logs,
@@ -221,7 +245,7 @@ fn restart(
         "Restarting the application from the current build...".into(),
     );
     running.stop()?;
-    status.send_replace(DevStatus::Starting);
+    set_status(status, DevStatus::Starting);
     running.start(dashboard, logs)
 }
 
@@ -292,11 +316,19 @@ async fn report_ready(
     port: u16,
     dashboard: bool,
     logs: &mpsc::Sender<LogMsg>,
-    status: &watch::Sender<DevStatus>,
+    status: &watch::Sender<DevState>,
 ) {
+    // Every start is followed by this call, so the published generation is
+    // always the one of the process now owned.
+    let generation = app.generation().to_string();
+    status.send_if_modified(|state| {
+        let changed = state.generation.as_deref() != Some(generation.as_str());
+        state.generation = Some(generation);
+        changed
+    });
     match app.wait_ready(port).await {
         Ok(()) => {
-            status.send_replace(DevStatus::Ready);
+            set_status(status, DevStatus::Ready);
             report(
                 logs,
                 dashboard,
@@ -306,7 +338,7 @@ async fn report_ready(
             )
         }
         Err(error) => {
-            status.send_replace(DevStatus::Unverified);
+            set_status(status, DevStatus::Unverified);
             report(
                 logs,
                 dashboard,

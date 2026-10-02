@@ -1409,7 +1409,11 @@ Histories are bounded: 120 sparkline points, 50 requests, 16 slow operations and
 4,096 latency samples. A response larger than 256 KiB, with another schema or
 with inconsistent counters is rejected, and control or bidirectional-formatting
 characters are replaced before anything reaches the terminal. A value the
-application does not report is shown as `not reported`, never as zero.
+application does not report is shown as `not reported`, never as zero. Only
+the process the dashboard started is measured: a response carrying another
+`RULLST_DEV_GENERATION`, for example from a second `dev`/`dash` already
+listening on the port, replaces the metrics row with an **ANOTHER PROCESS ON
+THE PORT** panel instead of showing that process's figures.
 
 The endpoint exists only in a debug build running in Development under
 `cargo rullst dev`/`dash`; see the

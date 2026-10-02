@@ -53,6 +53,11 @@ impl Application {
         })
     }
 
+    /// `RULLST_DEV_GENERATION` of the process last started.
+    pub(super) fn generation(&self) -> &str {
+        &self.generation
+    }
+
     fn command(&self) -> Command {
         let mut command = Command::new(&self.executable);
         command

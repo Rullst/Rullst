@@ -42,6 +42,7 @@ pub(super) fn render(
         Source::NotServed | Source::Rejected(_) => {
             return frame.render_widget(unavailable(metrics.source, palette), area);
         }
+        Source::Foreign => return frame.render_widget(foreign(app.port, palette), area),
         Source::Waiting | Source::Unreachable if !metrics.has_data() => {
             return frame.render_widget(waiting(app.port, palette), area);
         }
@@ -377,6 +378,30 @@ fn unavailable(source: Source, palette: Palette) -> Paragraph<'static> {
     .block(neon_block(" TELEMETRY NOT AVAILABLE ", palette.yellow, false))
 }
 
+/// Another process (often a second `dev`/`dash`) holds the port; its
+/// figures would be mistaken for this application's, so none are drawn.
+fn foreign(port: u16, palette: Palette) -> Paragraph<'static> {
+    Paragraph::new(vec![
+        Line::from(Span::styled(
+            format!(" 127.0.0.1:{port} is answered by a process this dashboard did not start."),
+            Style::default()
+                .fg(palette.yellow)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(note(
+            " Its metrics are not shown. Stop the other application (for example another \
+             cargo rullst dev or dash) or set PORT to a free port, then press r.",
+            palette,
+        )),
+    ])
+    .wrap(Wrap { trim: true })
+    .block(neon_block(
+        " ANOTHER PROCESS ON THE PORT ",
+        palette.yellow,
+        false,
+    ))
+}
+
 fn waiting(port: u16, palette: Palette) -> Paragraph<'static> {
     Paragraph::new(vec![
         Line::from(Span::styled(
@@ -396,6 +421,7 @@ fn waiting(port: u16, palette: Palette) -> Paragraph<'static> {
 pub(super) fn summary(metrics: &Metrics, now: Instant) -> Option<String> {
     match metrics.source {
         Source::NotServed | Source::Rejected(_) => Some(" metrics: not available (?) ".to_string()),
+        Source::Foreign => Some(" metrics: another process on the port ".to_string()),
         Source::Live => {
             let rate = metrics
                 .requests_per_second(now)

@@ -7,12 +7,12 @@ use super::telemetry::{
     TelemetrySnapshot,
 };
 use super::{handle_key, ingest_telemetry, render};
-use crate::generators::dev::{DevCommand, DevStatus};
+use crate::generators::dev::{DevCommand, DevState, DevStatus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend, style::Color};
 use std::time::{Duration, Instant};
 
-const GENERATION: &str = "0123456789abcdef0123456789abcdef";
+pub(super) const GENERATION: &str = "0123456789abcdef0123456789abcdef";
 
 fn request(seq: u64, method: &str, path: &str, status: u16, duration_us: u64) -> RequestSample {
     RequestSample {
@@ -64,10 +64,11 @@ fn observed_database() -> DatabaseReport {
 }
 
 /// An application with two polls one second apart: four requests, one 5xx.
-fn live_app(colors: bool) -> (App, Instant) {
+pub(super) fn live_app(colors: bool) -> (App, Instant) {
     let start = Instant::now();
     let mut app = App::new(3_000, true, "configured: SQLite".to_string(), colors, false);
     app.server_status = ServerStatus::Ready;
+    app.metrics.own_generation(GENERATION);
     ingest_telemetry(
         &mut app,
         snapshot(
@@ -118,7 +119,7 @@ fn rows(app: &App, width: u16, height: u16, now: Instant) -> Vec<String> {
         .collect()
 }
 
-fn screen(app: &App, width: u16, height: u16, now: Instant) -> String {
+pub(super) fn screen(app: &App, width: u16, height: u16, now: Instant) -> String {
     rows(app, width, height, now).join("\n")
 }
 
@@ -249,6 +250,7 @@ fn unreported_database_and_queue_values_say_how_to_report_them() {
         ),
     ] {
         let mut app = App::new(3_000, true, "not configured".into(), false, false);
+        app.metrics.own_generation(GENERATION);
         ingest_telemetry(&mut app, snapshot(0, Vec::new(), database, queue), now);
         let output = screen(&app, 140, 36, now);
         for text in expected {
@@ -365,13 +367,17 @@ fn restart_is_queued_once_for_a_running_application() {
             .any(|line| line.contains("Restarting the application"))
     );
     // The notice ends when the restarted process is ready; others persist.
-    super::apply_status(&mut app, DevStatus::Starting);
+    let state = |status| DevState {
+        status,
+        generation: Some(GENERATION.to_string()),
+    };
+    super::apply_state(&mut app, &state(DevStatus::Starting));
     assert!(app.action_notice.is_some());
-    super::apply_status(&mut app, DevStatus::Ready);
+    super::apply_state(&mut app, &state(DevStatus::Ready));
     assert_eq!(app.server_status, ServerStatus::Ready);
     assert!(app.action_notice.is_none());
     app.action_notice = Some("API docs unavailable".to_string());
-    super::apply_status(&mut app, DevStatus::Ready);
+    super::apply_state(&mut app, &state(DevStatus::Ready));
     assert!(app.action_notice.is_some());
 }
 

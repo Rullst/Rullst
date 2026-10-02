@@ -8,12 +8,14 @@ mod render;
 #[cfg(test)]
 mod render_tests;
 mod state;
+#[cfg(test)]
+mod supervision_tests;
 mod telemetry;
 #[cfg(test)]
 mod telemetry_tests;
 mod terminal;
 
-use crate::generators::dev::{DevCommand, DevStatus};
+use crate::generators::dev::{DevCommand, DevState, DevStatus};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 pub(super) use profile::database_kind;
 #[cfg(test)]
@@ -42,7 +44,7 @@ pub(crate) async fn run(
     log_tx: Sender<LogMsg>,
     port: u16,
     hmr_enabled: bool,
-    mut process_status: tokio::sync::watch::Receiver<DevStatus>,
+    mut process_status: tokio::sync::watch::Receiver<DevState>,
     commands: Sender<DevCommand>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !io::stdout().is_terminal() {
@@ -93,7 +95,7 @@ pub(crate) async fn run(
         Duration::from_secs(1)
     };
     let mut ticker = tokio::time::interval(tick_duration);
-    app.server_status = supervisor_status(*process_status.borrow_and_update());
+    apply_state(&mut app, &process_status.borrow_and_update().clone());
     let (telemetry_tx, mut telemetry_rx) = tokio::sync::mpsc::channel(2);
     telemetry::spawn_poller(port, telemetry_tx);
 
@@ -106,7 +108,7 @@ pub(crate) async fn run(
             }
             changed = process_status.changed() => {
                 if changed.is_err() { break; }
-                apply_status(&mut app, *process_status.borrow_and_update());
+                apply_state(&mut app, &process_status.borrow_and_update().clone());
             }
             message = log_rx.recv() => {
                 if let Some(message) = message {
@@ -190,6 +192,10 @@ fn ingest_telemetry(app: &mut App, outcome: telemetry::PollOutcome, now: std::ti
         Some(metrics::Notice::Lost(metrics::Source::Rejected(reason))) => {
             format!("Telemetry response rejected ({reason}); metrics hidden.")
         }
+        Some(metrics::Notice::Lost(metrics::Source::Foreign)) => format!(
+            "Live metrics hidden: 127.0.0.1:{} is answered by a process this dashboard did not start.",
+            app.port
+        ),
         Some(metrics::Notice::Lost(_)) => {
             "Live metrics paused: the application is not answering.".to_string()
         }
@@ -215,9 +221,13 @@ fn request_restart(app: &mut App, commands: &Sender<DevCommand>) {
 
 const RESTART_NOTICE: &str = "Restarting the application from the current build...";
 
-/// Applies a supervisor status; a restart notice ends once the app is ready.
-fn apply_status(app: &mut App, status: DevStatus) {
-    app.server_status = supervisor_status(status);
+/// Applies the supervisor's state: the process status, and the generation
+/// whose telemetry is shown. A restart notice ends once the app is ready.
+fn apply_state(app: &mut App, state: &DevState) {
+    app.server_status = supervisor_status(state.status);
+    if let Some(generation) = &state.generation {
+        app.metrics.own_generation(generation);
+    }
     if app.server_status == ServerStatus::Ready
         && app.action_notice.as_deref() == Some(RESTART_NOTICE)
     {
