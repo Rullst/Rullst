@@ -342,6 +342,45 @@ mod tests {
     }
 
     #[test]
+    fn content_blueprints_render_under_the_production_csp() {
+        // Production headers send `style-src 'self' 'nonce-…'; font-src 'self';
+        // img-src 'self' data:`, which blocks style attributes, nonce-less
+        // inline styles, remote fonts and remote images.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            if !matches!(blueprint, "blog" | "portfolio") {
+                continue;
+            }
+            let mut styles = 0;
+            for (path, source) in &manifest {
+                for blocked in [
+                    "style=\"",
+                    "fonts.googleapis.com",
+                    "raw.githubusercontent.com",
+                ] {
+                    assert!(
+                        !source.contains(blocked),
+                        "{blueprint}:{path} uses {blocked}"
+                    );
+                }
+                styles += source.matches("<style").count();
+                assert_eq!(
+                    source.matches("<style").count(),
+                    source.matches("<style nonce={csp_nonce}>").count(),
+                    "{blueprint}:{path} has an inline style without the CSP nonce"
+                );
+            }
+            assert!(styles > 0, "{blueprint} renders no stylesheet");
+            assert!(
+                manifest
+                    .iter()
+                    .any(|(path, source)| path.starts_with("src/controllers/")
+                        && source
+                            .contains("csp_nonce: Option<Extension<rullst::security::CspNonce>>"))
+            );
+        }
+    }
+
+    #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(
             "rullst-unknown-blueprint-{}",
