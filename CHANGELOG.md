@@ -9,6 +9,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### CLI review fixes (12.2)
+
+Ported from the v13 review; see the CLI table in the
+[12.x migration notes](docs/src/migration-v12-1.md).
+
+- **Generators:** no longer overwrite existing files (`auth`, `make:mfa`,
+  `generate:models`, `make:k8s`, `dockerize`, `nixify`, `generate:buildah`) or
+  add duplicate create-table migrations; `make:migration:auto` emits valid,
+  typed columns; `make:mfa` keeps TOTP secrets server-side and rejects reused
+  codes; `generate:models` reads PostgreSQL 12+ and MySQL 8 metadata.
+- **Starters:** seed without SQLite-only SQL, advance PostgreSQL sequences,
+  bound indexed columns for MySQL (the complete Academy LMS excepted), protect
+  the ERP dashboard, render Blog/Portfolio under the production CSP, bound
+  Argon2 concurrency and keep host linker settings out of Git and Docker.
+- **Operations:** Foundry runs services as an unprivileged account and passes
+  the app port; `deploy` exits non-zero on provider failure; `upgrade` refuses
+  downgrades; `update project verify` keeps unrelated lockfile pins and pins
+  the caller's rustup toolchain; the IDOR audit skips only `#[cfg(test)]`
+  items.
+
 ### ORM review fixes (12.2)
 
 Ported from the v13 ORM review. Only hidden helpers are added; the macro crate
