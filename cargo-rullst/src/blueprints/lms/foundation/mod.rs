@@ -111,6 +111,36 @@ mod tests {
     use super::super::{LmsModule, LmsModuleError, file_manifest_for_modules};
 
     #[test]
+    fn lesson_progress_keys_are_fresh_per_render_and_scoped_per_percentage() {
+        let manifest = file_manifest_for_modules(
+            "demo",
+            false,
+            "Active Record",
+            "Zero-Bundle HTMX",
+            &[LmsModule::Auth, LmsModule::Learning],
+        )
+        .expect("detached foundation manifest");
+        let controller = manifest
+            .iter()
+            .find(|(path, _)| *path == "src/controllers/learning_controller.rs")
+            .map(|(_, source)| source.as_str())
+            .expect("learning controller");
+        // One fixed key per learner and lesson made every later save a 409.
+        assert!(!controller.contains(":next"));
+        assert!(controller.contains("let progress_key = new_progress_key(user_id, lesson_id);"));
+        assert!(controller.contains("rullst::security::generate_csrf_token()"));
+        assert!(
+            controller
+                .contains("&progress_event_key(&form.idempotency_key, form.progress_percent)")
+        );
+        assert!(
+            controller.contains(
+                "fn each_render_and_requested_percentage_records_its_own_progress_event()"
+            )
+        );
+    }
+
+    #[test]
     fn foundation_manifest_is_small_explicit_and_excludes_vertical_modules() {
         let manifest = file_manifest_for_modules(
             "demo",
