@@ -31,7 +31,9 @@ the generated application:
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
   * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it.
-  * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The runtime
+  * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
+    `.dockerignore` excludes secrets, local databases and the host-local
+    `.cargo/config.toml` described below. The runtime
     image installs CA certificates, runs as UID/GID 10001, sets the production
     bind address and copies local static/config assets when present. An explicit
     SQLite selection uses the writable `/app/data` directory. Secrets are never
@@ -55,6 +57,12 @@ the generated application:
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
   * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
+
+When the generating Linux host has `mold` or `lld`, the project's
+`.cargo/config.toml` selects it to speed up local linking. That file describes
+the generating machine only: the generated `.gitignore` and `.dockerignore`
+exclude it, so CI runners, teammates and the container builder (which has
+neither linker) build with the toolchain default.
 
 Without `--skip-initial-migration`, project creation performs the first Cargo
 build before applying migrations. A clean first build can take several minutes,
