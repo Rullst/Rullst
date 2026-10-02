@@ -2,10 +2,13 @@ use sha2::{Digest, Sha256};
 
 use crate::{Error, Orm, RullstValue};
 
+mod model_hash;
+#[doc(hidden)]
+pub use model_hash::{increment_model_hash, model_hash_key, read_model_hash, write_model_hash};
+
 /// Version 4 indexes entries in a sorted set; version 3 entries, indexed in a
 /// plain set, are never read again and expire through their TTL.
 const KEY_PREFIX: &str = "rullst:orm:cache:v4:";
-const HASH_KEY_PREFIX: &str = "rullst:orm:hash:v1:";
 const MAX_NAMESPACE_LEN: usize = 64;
 const MAX_INVALIDATION_KEYS: usize = 10_000;
 /// Suffix of the per-table sorted set that indexes the table's cached
@@ -248,46 +251,6 @@ async fn drain_indexes(indexes: &[String]) -> Result<usize, Error> {
     Ok(deleted)
 }
 
-/// Builds the key of a generated `save_to_redis` model hash.
-///
-/// The key binds the configured application namespace, an opaque digest of
-/// the model's tenant (`None` for global models) and of the table, and the
-/// record ID, so applications and tenants sharing a Redis database never
-/// read or overwrite each other's hashes. IDs are 1-64 ASCII letters, digits,
-/// '-' or '_'.
-#[doc(hidden)]
-pub fn model_hash_key(
-    table: &str,
-    tenant: Option<&RullstValue>,
-    id: &str,
-) -> Result<String, Error> {
-    build_model_hash_key(Orm::redis_cache_namespace()?, tenant, table, id)
-}
-
-fn build_model_hash_key(
-    namespace: &str,
-    tenant: Option<&RullstValue>,
-    table: &str,
-    id: &str,
-) -> Result<String, Error> {
-    validate_namespace(namespace)?;
-    if id.is_empty()
-        || id.len() > 64
-        || !id
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-    {
-        return Err(Error::Validation(
-            "Redis model hash ID must contain 1-64 ASCII letters, digits, '-' or '_'".to_string(),
-        ));
-    }
-    Ok(format!(
-        "{HASH_KEY_PREFIX}{namespace}:{}:table-{}:{id}",
-        scope_segment(tenant),
-        digest_bytes(table.as_bytes())
-    ))
-}
-
 /// The sorted set indexing one namespace, tenant scope and table's cache
 /// entries.
 fn index_key(namespace: &str, tenant: Option<&RullstValue>, table: &str) -> Result<String, Error> {
@@ -347,36 +310,8 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_key, build_model_hash_key, entry_index_key, index_key};
+    use super::{build_key, entry_index_key, index_key};
     use crate::RullstValue;
-
-    #[test]
-    fn model_hash_keys_bind_namespace_tenant_and_table() {
-        let tenant = RullstValue::String("private-school-name".to_string());
-        let key = build_model_hash_key("academy", Some(&tenant), "invoices", "42")
-            .expect("tenant hash key");
-        assert!(key.starts_with("rullst:orm:hash:v1:academy:tenant-"));
-        assert!(key.ends_with(":42"));
-        assert!(!key.contains("private-school-name"));
-        assert!(!key.contains("invoices"));
-        for other in [
-            build_model_hash_key("billing", Some(&tenant), "invoices", "42"),
-            build_model_hash_key(
-                "academy",
-                Some(&RullstValue::String("other".to_string())),
-                "invoices",
-                "42",
-            ),
-            build_model_hash_key("academy", None, "invoices", "42"),
-            build_model_hash_key("academy", Some(&tenant), "orders", "42"),
-        ] {
-            assert_ne!(key, other.expect("comparison key"));
-        }
-        for invalid in ["", "4:2", "4 2", &"9".repeat(65)] {
-            assert!(build_model_hash_key("academy", None, "invoices", invalid).is_err());
-        }
-        assert!(build_model_hash_key("bad namespace", None, "invoices", "1").is_err());
-    }
 
     #[test]
     fn entry_keys_resolve_to_their_table_index() {

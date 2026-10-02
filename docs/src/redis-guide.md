@@ -102,8 +102,9 @@ Ok(())
 
 Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
 hashes use the same namespace, and tenant models bind the active tenant into
-their key and require `with_tenant(...)`. Hashes written by earlier versions
-under `orm:<table>:<id>` are not read.
+their key and require `with_tenant(...)`. Hashes that 12.0 and 12.1 wrote under
+`orm:<table>:<id>` are handled as described in
+[Model hashes stored by 12.0 and 12.1](#model-hashes-stored-by-120-and-121).
 
 Use a stable, unique namespace for every application that shares a Redis
 database. Query keys bind that namespace, an opaque digest of the active tenant
@@ -127,6 +128,33 @@ The failure and consistency rules are explicit:
 
 The Core `Cache` facade and ORM query cache use different keyspaces and APIs;
 initializing one does not initialize the other.
+
+### Model hashes stored by 12.0 and 12.1
+
+Releases up to 12.1 stored every generated model hash under the shared key
+`orm:<table>:<id>`. For a model without a tenant scope, `get_from_redis` reads
+that key while the namespaced hash is missing, and the next `save_to_redis` or
+`increment_redis_field` moves it to the namespaced key in one Redis script
+(every field is kept; an existing namespaced hash wins and the stale legacy
+hash is removed). Nothing has to be run. Applications that share one Redis
+database also shared these keys, so the first one to write a hash takes it
+over. A 12.x hash of a model with `#[orm(encrypted)]` fields holds them in
+plaintext, so reading it fails closed until `save_to_redis()` rewrites it.
+
+Tenant models never read, move or delete the 12.x key, which every tenant
+shared, so until migrated `get_from_redis` returns `None` and
+`increment_redis_field` starts from zero. Migrate them once after deploying
+13:
+
+1. List the keys of each tenant model table:
+   `redis-cli --scan --pattern 'orm:<table>:*'`.
+2. Read each hash with `HGETALL`; every value is the JSON of one field.
+3. Check its tenant column against the tenant that owns row `<id>` in the
+   database, and skip mismatches: another tenant may have overwritten it.
+4. Decode the hash into the model (for example with `serde_json` from the
+   parsed values), or reload the row when the hash only cached it, and call
+   `with_tenant(tenant, model.save_to_redis())`.
+5. Remove the 12.x key with `UNLINK`.
 
 ## Queue choices
 
