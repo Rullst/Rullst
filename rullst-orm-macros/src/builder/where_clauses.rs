@@ -10,7 +10,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_eq() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("AND".to_string(), format!("{} = ?", column)));
+            self.wheres.push(("AND".to_string(), format!("{} = {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -20,7 +20,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_not_eq() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("AND".to_string(), format!("{} != ?", column)));
+            self.wheres.push(("AND".to_string(), format!("{} != {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -30,7 +30,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_gt() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("AND".to_string(), format!("{} > ?", column)));
+            self.wheres.push(("AND".to_string(), format!("{} > {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -40,7 +40,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_lt() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("AND".to_string(), format!("{} < ?", column)));
+            self.wheres.push(("AND".to_string(), format!("{} < {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -96,7 +96,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
 
         pub fn where_col<T: Into<rullst_orm::RullstValue>>(mut self, col: #column_enum_name, value: T) -> Self {
             self.reject_skipped_column(col.as_str());
-            self.wheres.push(("AND".to_string(), format!("{} = ?", col.as_str())));
+            self.wheres.push(("AND".to_string(), format!("{} = {}", col.as_str(), Self::__rullst_bind_marker(col.as_str()))));
             self.bindings.push(value.into());
             self
         }
@@ -133,7 +133,8 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
                 self.wheres.push(("AND".to_string(), "1 = 0".to_string()));
                 return self;
             }
-            let placeholders = vec!["?"; values.len()].join(", ");
+            let marker = Self::__rullst_bind_marker(column);
+            let placeholders = vec![marker.as_ref(); values.len()].join(", ");
             self.wheres.push(("AND".to_string(), format!("{} IN ({})", column, placeholders)));
             for v in values { self.bindings.push(v.into()); }
             self
@@ -145,7 +146,8 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
                 self.errors.push(rullst_orm::Error::Validation(format!("where_not_in() — invalid column identifier: {}", e)));
             }
             if values.is_empty() { return self; }
-            let placeholders = vec!["?"; values.len()].join(", ");
+            let marker = Self::__rullst_bind_marker(column);
+            let placeholders = vec![marker.as_ref(); values.len()].join(", ");
             self.wheres.push(("AND".to_string(), format!("{} NOT IN ({})", column, placeholders)));
             for v in values { self.bindings.push(v.into()); }
             self
@@ -156,7 +158,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_between() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("AND".to_string(), format!("{} BETWEEN ? AND ?", column)));
+            self.wheres.push(("AND".to_string(), format!("{} BETWEEN {marker} AND {marker}", column, marker = Self::__rullst_bind_marker(column))));
             self.bindings.push(min.into());
             self.bindings.push(max.into());
             self
@@ -167,7 +169,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_not_between() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("AND".to_string(), format!("{} NOT BETWEEN ? AND ?", column)));
+            self.wheres.push(("AND".to_string(), format!("{} NOT BETWEEN {marker} AND {marker}", column, marker = Self::__rullst_bind_marker(column))));
             self.bindings.push(min.into());
             self.bindings.push(max.into());
             self
@@ -191,7 +193,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("or_where() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("OR".to_string(), format!("{} = ?", column)));
+            self.wheres.push(("OR".to_string(), format!("{} = {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -201,7 +203,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("or_where_not_eq() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("OR".to_string(), format!("{} != ?", column)));
+            self.wheres.push(("OR".to_string(), format!("{} != {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -211,7 +213,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("or_where_gt() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("OR".to_string(), format!("{} > ?", column)));
+            self.wheres.push(("OR".to_string(), format!("{} > {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -221,7 +223,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("or_where_lt() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("OR".to_string(), format!("{} < ?", column)));
+            self.wheres.push(("OR".to_string(), format!("{} < {}", column, Self::__rullst_bind_marker(column))));
             self.bindings.push(value.into());
             self
         }
@@ -263,7 +265,8 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
                 self.wheres.push(("OR".to_string(), "1 = 0".to_string()));
                 return self;
             }
-            let placeholders = vec!["?"; values.len()].join(", ");
+            let marker = Self::__rullst_bind_marker(column);
+            let placeholders = vec![marker.as_ref(); values.len()].join(", ");
             self.wheres.push(("OR".to_string(), format!("{} IN ({})", column, placeholders)));
             for v in values { self.bindings.push(v.into()); }
             self
@@ -274,7 +277,7 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("or_where_between() — invalid column identifier: {}", e)));
             }
-            self.wheres.push(("OR".to_string(), format!("{} BETWEEN ? AND ?", column)));
+            self.wheres.push(("OR".to_string(), format!("{} BETWEEN {marker} AND {marker}", column, marker = Self::__rullst_bind_marker(column))));
             self.bindings.push(min.into());
             self.bindings.push(max.into());
             self

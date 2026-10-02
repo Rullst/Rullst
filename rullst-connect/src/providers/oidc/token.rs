@@ -25,8 +25,12 @@ impl OidcProvider {
         expected_nonce: Option<&str>,
     ) -> Result<ConnectUser, ConnectError> {
         let token_res = self
-            .http_client
-            .post(self.token_url())
+            .client_authentication
+            .authorize(
+                self.http_client.post(self.token_url()),
+                &self.client_id,
+                secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            )
             .form(form_data)
             .send()
             .await?
@@ -99,9 +103,7 @@ impl OidcProvider {
                     id: payload["sub"].as_str().map(String::from).ok_or_else(|| {
                         crate::error::ConnectError::Provider("Missing sub in id_token".to_owned())
                     })?,
-                    name: payload["name"].as_str().map(String::from).ok_or_else(|| {
-                        crate::error::ConnectError::Provider("Missing name in id_token".to_owned())
-                    })?,
+                    name: display_name(&payload),
                     email: payload["email"].as_str().map(String::from),
                     avatar_url: payload["picture"].as_str().map(String::from),
                     email_verified: payload["email_verified"].as_bool(),
@@ -134,6 +136,33 @@ impl OidcProvider {
     }
 }
 
+/// Display name from the optional standard profile claims (OIDC Core 5.1):
+/// `name`, else `given_name` and `family_name` joined by a space, else
+/// `preferred_username`, else `nickname`, else an empty string. Blank values
+/// are skipped. `email` and `sub` are never used: a display name is often
+/// shown to other users, and both are available in their own fields.
+fn display_name(claims: &Value) -> String {
+    let claim = |key: &str| {
+        claims[key]
+            .as_str()
+            .filter(|value| !value.trim().is_empty())
+    };
+    if let Some(name) = claim("name") {
+        return name.to_owned();
+    }
+    let full_name = [claim("given_name"), claim("family_name")]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    if !full_name.is_empty() {
+        return full_name.join(" ");
+    }
+    claim("preferred_username")
+        .or_else(|| claim("nickname"))
+        .map(str::to_owned)
+        .unwrap_or_default()
+}
+
 #[async_trait]
 impl Provider for OidcProvider {
     fn redirect_url(&self) -> String {
@@ -163,7 +192,9 @@ impl Provider for OidcProvider {
     ) -> Result<ConnectUser, ConnectError> {
         let form_data = crate::provider::TokenExchangeForm {
             client_id: self.client_id.as_str(),
-            client_secret: Some(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
+            client_secret: self
+                .client_authentication
+                .body_secret(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
             code: params.auth_code,
             grant_type: Some("authorization_code"),
             redirect_uri: self.redirect_url.as_str(),
@@ -189,9 +220,7 @@ impl Provider for OidcProvider {
             id: user_res["sub"].as_str().map(String::from).ok_or_else(|| {
                 crate::error::ConnectError::Provider("Missing sub in userinfo".to_owned())
             })?,
-            name: user_res["name"].as_str().map(String::from).ok_or_else(|| {
-                crate::error::ConnectError::Provider("Missing name in userinfo".to_owned())
-            })?,
+            name: display_name(&user_res),
             email: user_res["email"].as_str().map(String::from),
             avatar_url: user_res["picture"].as_str().map(String::from),
             email_verified: user_res["email_verified"].as_bool(),
@@ -207,15 +236,15 @@ impl Provider for OidcProvider {
     }
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<ConnectUser, ConnectError> {
-        let form_data = [
-            ("client_id", self.client_id.as_str()),
-            (
-                "client_secret",
-                secrecy::ExposeSecret::expose_secret(&self.client_secret),
-            ),
-            ("refresh_token", refresh_token),
-            ("grant_type", "refresh_token"),
-        ];
+        let mut form_data = vec![("client_id", self.client_id.as_str())];
+        if let Some(secret) = self
+            .client_authentication
+            .body_secret(secrecy::ExposeSecret::expose_secret(&self.client_secret))
+        {
+            form_data.push(("client_secret", secret));
+        }
+        form_data.push(("refresh_token", refresh_token));
+        form_data.push(("grant_type", "refresh_token"));
         self.get_user_from_form(&form_data, None).await
     }
 }

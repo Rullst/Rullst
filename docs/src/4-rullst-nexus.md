@@ -64,6 +64,17 @@ pub struct User {
 }
 ```
 
+On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
+
+- `#[orm(skip)]` and `#[sqlx(skip)]` fields have no column and are omitted.
+- `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields are hidden,
+  read-only `password` fields whatever `#[nexus(kind/options)]` they declare:
+  Nexus never lists, searches, renders or writes them, so an edit cannot store
+  plaintext in an encrypted column.
+- `#[orm(masked)]` fields default to the `password` widget, which Nexus masks
+  in the list and never pre-fills; an explicit `#[nexus(kind = ...)]`
+  deliberately shows them.
+
 The edit form sends only the fields you change, so an edit never rewrites a
 value its widget cannot show: NULL (shown as an empty `NULL` input), an enum
 value that is not a registered option (kept selected but disabled), a date-time

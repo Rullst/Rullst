@@ -11,6 +11,13 @@ pub use validator::Validate;
 /// Automatically renders HTMX-friendly HTML error components for HTMX requests,
 /// or standard JSON `422`/`400` responses for REST clients.
 ///
+/// HTMX 1.x and 2.x swap only successful responses by default, so an HTMX
+/// request (`HX-Request: true`) receives the fragment with `200 OK` and the
+/// `X-Rullst-Validation-Status` header set to the `400` or `422` a REST client
+/// would receive. htmx swaps it into the request's `hx-target` with its
+/// `hx-swap`; client scripts can read that header to tell a validation failure
+/// from success.
+///
 /// Every message, field name and validator message is HTML-escaped before it is
 /// placed in the HTMX fragment. The built-in extractors never copy the
 /// deserializer's error text (which can echo request input) into
@@ -77,6 +84,19 @@ fn extraction_error(status: StatusCode, detail: String, is_htmx: bool) -> Valida
     }
 }
 
+/// Response header carrying the REST status of an HTMX validation fragment.
+const VALIDATION_STATUS_HEADER: &str = "x-rullst-validation-status";
+
+/// Wraps an HTMX error fragment in a response htmx swaps by default.
+fn htmx_fragment(status: StatusCode, html: String) -> Response {
+    let mut response = (StatusCode::OK, Html(html)).into_response();
+    response.headers_mut().insert(
+        axum::http::HeaderName::from_static(VALIDATION_STATUS_HEADER),
+        axum::http::HeaderValue::from(status.as_u16()),
+    );
+    response
+}
+
 fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
     let mut map = HashMap::new();
     for (field, field_errors) in errors.field_errors() {
@@ -105,7 +125,7 @@ impl IntoResponse for ValidationError {
                         </div>"#,
                         crate::html::escape_str(&message)
                     );
-                    (StatusCode::BAD_REQUEST, Html(html_error)).into_response()
+                    htmx_fragment(StatusCode::BAD_REQUEST, html_error)
                 } else {
                     let mut err_map = HashMap::new();
                     err_map.insert("error".to_string(), vec![message]);
@@ -145,7 +165,7 @@ impl IntoResponse for ValidationError {
                         list_items
                     );
 
-                    (StatusCode::UNPROCESSABLE_ENTITY, Html(html_content)).into_response()
+                    htmx_fragment(StatusCode::UNPROCESSABLE_ENTITY, html_content)
                 } else {
                     let mut response_body = HashMap::new();
                     response_body.insert("errors", formatted);
@@ -314,7 +334,9 @@ mod tests {
             ValidationError::ValidationError { errors, is_htmx } => {
                 assert!(is_htmx);
                 let response = ValidationError::ValidationError { errors, is_htmx }.into_response();
-                assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+                // htmx swaps only 2xx/3xx responses, so the fragment is a 200.
+                assert_eq!(response.status(), StatusCode::OK);
+                assert_eq!(response.headers()[VALIDATION_STATUS_HEADER], "422");
 
                 let body_bytes = axum::body::to_bytes(response.into_body(), 10000)
                     .await
@@ -337,7 +359,8 @@ mod tests {
         assert!(format!("{}", err_htmx).contains("Malformed form data"));
 
         let resp_htmx = err_htmx.into_response();
-        assert_eq!(resp_htmx.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(resp_htmx.status(), StatusCode::OK);
+        assert_eq!(resp_htmx.headers()[VALIDATION_STATUS_HEADER], "400");
 
         let err_json = ValidationError::ExtractionError {
             message: "Invalid JSON syntax".to_string(),
@@ -345,6 +368,7 @@ mod tests {
         };
         let resp_json = err_json.into_response();
         assert_eq!(resp_json.status(), StatusCode::BAD_REQUEST);
+        assert!(!resp_json.headers().contains_key(VALIDATION_STATUS_HEADER));
     }
 
     #[derive(Debug, Deserialize, Validate)]

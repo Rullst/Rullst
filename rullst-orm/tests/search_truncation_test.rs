@@ -1,0 +1,112 @@
+//! A shared search index is truncated to `MAX_SEARCH_HITS` before tenant
+//! scoping, so a capped engine answer for a tenant-scoped model falls back to
+//! SQL; models without a tenant scope keep the engine answer.
+#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
+use rullst_orm::{Error, Orm, SearchEngine, set_search_engine, with_tenant};
+
+/// The built-in providers' hit cap (private in 12.x).
+const MAX_SEARCH_HITS: usize = 1_000;
+
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "truncated_invoices", searchable, tenant_column = "tenant_id")]
+struct TruncatedInvoice {
+    id: i32,
+    tenant_id: String,
+    title: String,
+}
+
+/// A soft-delete model without a tenant scope keeps the engine answer.
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "truncated_notes", searchable)]
+struct TruncatedNote {
+    id: i32,
+    title: String,
+    deleted_at: Option<String>,
+}
+
+/// Mimics a provider whose shared index is dominated by tenant B: "overdue"
+/// fills the cap with B's IDs, "rare" returns one of A's.
+struct SharedIndex;
+
+#[rullst_orm::async_trait]
+impl SearchEngine for SharedIndex {
+    async fn update(&self, _: &str, _: i32, _: serde_json::Value) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn delete(&self, _: &str, _: i32) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn search(&self, _: &str, query: &str) -> Result<Vec<i32>, Error> {
+        let capped = i32::try_from(MAX_SEARCH_HITS).expect("cap fits i32");
+        Ok(match query {
+            "overdue" => (1..=capped).collect(),
+            "rare" => vec![5_002],
+            _ => Vec::new(),
+        })
+    }
+}
+
+#[tokio::test]
+async fn capped_engine_results_do_not_hide_a_tenants_matches() {
+    Orm::init_with_options("sqlite::memory:", 1, 5)
+        .await
+        .expect("initialize SQLite");
+    let pool = Orm::pool().expect("pool");
+    rullst_orm::_sqlx::query(
+        "CREATE TABLE truncated_invoices (id INTEGER PRIMARY KEY, tenant_id TEXT NOT NULL, title TEXT NOT NULL)",
+    )
+    .execute(pool)
+    .await
+    .expect("create invoices");
+    rullst_orm::_sqlx::query(
+        "INSERT INTO truncated_invoices (id, tenant_id, title) VALUES \
+         (1, 'tenant-b', 'overdue b'), (2, 'tenant-b', 'overdue b'), \
+         (5001, 'tenant-a', 'overdue a'), (5002, 'tenant-a', 'overdue rare'), (5003, 'tenant-a', 'overdue a')",
+    )
+    .execute(pool)
+    .await
+    .expect("seed invoices");
+    set_search_engine(SharedIndex).expect("configure offline search");
+
+    let ids = |query: &'static str| {
+        with_tenant("tenant-a", async move {
+            TruncatedInvoice::search(query)
+                .await
+                .order_by("id")
+                .pluck_i32("id")
+                .await
+                .expect("scoped search")
+        })
+    };
+    // The engine returned only tenant B's IDs, at the cap: SQL answers instead.
+    assert_eq!(ids("overdue").await, [5_001, 5_002, 5_003]);
+    // Below the cap the engine's scoped answer is kept.
+    assert_eq!(ids("rare").await, [5_002]);
+
+    // Without a tenant scope the capped engine answer is kept and only
+    // filtered by the soft-delete scope, as in 12.1.
+    rullst_orm::_sqlx::query(
+        "CREATE TABLE truncated_notes (id INTEGER PRIMARY KEY, title TEXT NOT NULL, deleted_at TEXT)",
+    )
+    .execute(pool)
+    .await
+    .expect("create notes");
+    rullst_orm::_sqlx::query(
+        "INSERT INTO truncated_notes (id, title, deleted_at) VALUES \
+         (1, 'overdue', NULL), (2, 'overdue', '2026-01-01'), (5001, 'overdue', NULL)",
+    )
+    .execute(pool)
+    .await
+    .expect("seed notes");
+    let notes = TruncatedNote::search("overdue")
+        .await
+        .order_by("id")
+        .pluck_i32("id")
+        .await
+        .expect("unscoped search");
+    assert_eq!(notes, [1]);
+}

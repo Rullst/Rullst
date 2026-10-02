@@ -1,6 +1,12 @@
 use std::{collections::BTreeMap, time::Duration};
 
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use base64::{
+    Engine as _, alphabet,
+    engine::{
+        DecodePaddingMode,
+        general_purpose::{GeneralPurpose, GeneralPurposeConfig, STANDARD as BASE64},
+    },
+};
 use futures::StreamExt;
 use reqwest::{Client, Url, redirect::Policy};
 use serde::{Deserialize, Serialize};
@@ -8,6 +14,14 @@ use serde::{Deserialize, Serialize};
 use super::{PolyglotError, TursoQueryLimit, TursoRow, TursoStatement, TursoValue};
 
 const MAX_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
+
+/// Decoder for Hrana `blob` cells. libSQL server (`libsql-hrana`,
+/// `bytes_as_base64`) encodes them as standard base64 *without* padding, so
+/// responses decode with or without it; requests keep canonical padding.
+const BLOB_DECODER: GeneralPurpose = GeneralPurpose::new(
+    &alphabet::STANDARD,
+    GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
 
 pub(super) struct HranaClient {
     client: Client,
@@ -364,7 +378,7 @@ impl TryFrom<WireValue> for TursoValue {
                 .map_err(PolyglotError::serialization),
             WireValue::Float { value } => Ok(Self::Real(value)),
             WireValue::Text { value } => Ok(Self::Text(value)),
-            WireValue::Blob { base64 } => BASE64
+            WireValue::Blob { base64 } => BLOB_DECODER
                 .decode(base64)
                 .map(Self::Blob)
                 .map_err(PolyglotError::serialization),

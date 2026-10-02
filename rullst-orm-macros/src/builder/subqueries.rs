@@ -47,21 +47,51 @@ pub fn generate_subquery_methods() -> TokenStream {
                 self
             }
 
+            /// Adds a caller-owned raw CTE. On a query that already holds a
+            /// tenant/model-wide scope, JOIN or WHERE binding the fragment must
+            /// not contain bind markers: `bind()` values are appended after
+            /// those bindings, while the CTE renders before them.
             pub fn with_raw(mut self, cte_name: &str, query: &str) -> Self {
                 if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
                     self.errors.push(rullst_orm::Error::Validation(format!("with_raw() — invalid CTE identifier: {}", e)));
                 }
+                self.__rullst_reject_displaced_raw_markers("with_raw", query);
                 self.ctes.push(format!("{} AS ({})", cte_name, query));
                 self
             }
 
+            /// Recursive variant of [`Self::with_raw`], with the same bind
+            /// marker restriction.
             pub fn with_recursive_raw(mut self, cte_name: &str, query: &str) -> Self {
                 if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
                     self.errors.push(rullst_orm::Error::Validation(format!("with_recursive_raw() — invalid CTE identifier: {}", e)));
                 }
+                self.__rullst_reject_displaced_raw_markers("with_recursive_raw", query);
                 self.ctes.push(format!("{} AS ({})", cte_name, query));
                 self.has_recursive_cte = true;
                 self
+            }
+
+            /// A raw fragment rendered before FROM can only take `bind()`
+            /// values, which are appended after the scope, JOIN and WHERE
+            /// bindings already present. Its markers would then consume those
+            /// earlier values (the mandatory tenant binding first), so such a
+            /// fragment is rejected while any of them exists.
+            fn __rullst_reject_displaced_raw_markers(&mut self, method: &str, query: &str) {
+                if self.scope_bindings.is_empty()
+                    && self.join_bindings.is_empty()
+                    && self.bindings.is_empty()
+                {
+                    return;
+                }
+                let has_markers = rullst_orm::replace_placeholders(query) != query
+                    || rullst_orm::portable_subquery(query, Vec::new()).is_err();
+                if has_markers {
+                    self.errors.push(rullst_orm::Error::Validation(format!(
+                        "{}() SQL contains bind markers, but this query already holds tenant, scope, JOIN or WHERE bindings that bind() values cannot precede; use a typed with_cte()/where_raw() with explicit bindings instead",
+                        method,
+                    )));
+                }
             }
 
             pub fn with_cte<B: rullst_orm::schema::SubqueryBuilder>(mut self, cte_name: &str, subquery: B) -> Self {

@@ -2,9 +2,65 @@ use sha2::{Digest, Sha256};
 
 use crate::{Error, Orm, RullstValue};
 
-const CACHE_KEY_VERSION: &str = "v3";
+mod model_hash;
+#[doc(hidden)]
+pub use model_hash::{increment_model_hash, model_hash_key, read_model_hash, write_model_hash};
+
+/// Version 4 indexes entries in a sorted set; version 3 entries written by
+/// earlier releases were never indexed, are never read again and expire
+/// through their TTL.
+const KEY_PREFIX: &str = "rullst:orm:cache:v4:";
 const MAX_NAMESPACE_LEN: usize = 64;
 const MAX_INVALIDATION_KEYS: usize = 10_000;
+/// Suffix of the per-table sorted set that indexes the table's cached
+/// entries. It is not hexadecimal, so it can never equal an entry's digest
+/// segment.
+const INDEX_SUFFIX: &str = "index";
+
+/// Lua prelude shared by the index scripts: `now_ms` is the Redis server
+/// clock in milliseconds, the unit of key expiry, and index members scored
+/// below it belong to entries that have already expired. Redis 5+ replicates
+/// script effects, so a write after `TIME` is allowed; `replicate_commands`
+/// keeps that true on older servers and is a no-op where it is deprecated.
+const NOW_PRELUDE: &str = r"
+if redis.replicate_commands then redis.replicate_commands() end
+local clock = redis.call('TIME')
+local now_ms = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[#KEYS], '-inf', string.format('(%.0f', now_ms))
+";
+
+/// Stores an entry, scores its key in the table index by the entry's expiry
+/// time, prunes members of already-expired entries and extends the index's
+/// lifetime to the longest entry TTL, as one atomic step. `KEYS[2]` is the
+/// index (the prelude prunes `KEYS[#KEYS]`).
+const STORE_BODY: &str = r"
+local ttl = tonumber(ARGV[2])
+redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
+redis.call('ZADD', KEYS[2], string.format('%.0f', now_ms + ttl * 1000), KEYS[1])
+if redis.call('TTL', KEYS[2]) < ttl then
+  redis.call('EXPIRE', KEYS[2], ARGV[2])
+end
+return 1
+";
+
+/// Removes at most `ARGV[1]` live indexed entries together with their index
+/// members, after pruning the members of expired entries, and returns the
+/// number removed and the number of live members left. Keys added
+/// concurrently either leave in this batch or stay indexed.
+const INVALIDATE_BODY: &str = r"
+local limit = tonumber(ARGV[1])
+local removed = 0
+if limit > 0 then
+  local keys = redis.call('ZRANGE', KEYS[1], 0, limit - 1)
+  removed = #keys
+  if removed > 0 then
+    redis.call('ZREM', KEYS[1], unpack(keys))
+    redis.call('UNLINK', unpack(keys))
+  end
+end
+return {removed, redis.call('ZCARD', KEYS[1])}
+";
+const INVALIDATION_BATCH: usize = 500;
 
 pub(crate) fn validate_namespace(namespace: &str) -> Result<(), Error> {
     if namespace.is_empty()
@@ -37,7 +93,6 @@ fn build_key(
 ) -> Result<String, Error> {
     validate_namespace(namespace)?;
 
-    let scope = scope_segment(tenant);
     let mut digest = Sha256::new();
     update_field(&mut digest, 1, namespace.as_bytes());
     if let Some(value) = tenant {
@@ -52,53 +107,112 @@ fn build_key(
     }
 
     Ok(format!(
-        "rullst:orm:cache:{CACHE_KEY_VERSION}:{namespace}:{scope}:table-{}:{}",
-        digest_bytes(table.as_bytes()),
+        "{}:{}",
+        table_prefix(namespace, tenant, table)?,
         hex_digest(&digest.finalize())
     ))
 }
 
-/// Deletes every generated query-cache entry for a table.
-///
-/// An unconfigured Redis adapter is a no-op because model writes do not require
-/// caching. Once Redis is configured, transport errors fail visibly. The scan
-/// is bounded to prevent an accidental unbounded post-commit operation.
-pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
-    use crate::_redis::AsyncCommands;
-
-    let Ok(namespace) = Orm::redis_cache_namespace() else {
-        return Ok(0);
-    };
-    let tenant = crate::tenant::get_tenant_id();
-    let pattern = invalidation_pattern(namespace, tenant.as_ref(), table)?;
-    let mut scanner = Orm::redis_manager()?;
-    let mut deleter = scanner.clone();
-    let mut keys = scanner.scan_match::<_, String>(pattern).await?;
-    let mut deleted = 0_usize;
-
-    while let Some(key) = keys.next_item().await {
-        if deleted >= MAX_INVALIDATION_KEYS {
-            return Err(Error::CacheError(format!(
-                "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys"
-            )));
-        }
-        let _: usize = deleter.unlink(key?).await?;
-        deleted += 1;
-    }
-
-    Ok(deleted)
-}
-
-fn invalidation_pattern(
+/// Common prefix of one namespace, tenant scope and table's cache keys.
+fn table_prefix(
     namespace: &str,
     tenant: Option<&RullstValue>,
     table: &str,
 ) -> Result<String, Error> {
     validate_namespace(namespace)?;
     Ok(format!(
-        "rullst:orm:cache:{CACHE_KEY_VERSION}:{namespace}:{}:table-{}:*",
+        "{KEY_PREFIX}{namespace}:{}:table-{}",
         scope_segment(tenant),
         digest_bytes(table.as_bytes())
+    ))
+}
+
+/// The index of the table that a generated entry key belongs to.
+fn entry_index_key(cache_key: &str) -> Result<String, Error> {
+    match cache_key.rsplit_once(':') {
+        Some((prefix, digest))
+            if prefix.starts_with(KEY_PREFIX)
+                && prefix.contains(":table-")
+                && digest.len() == 64
+                && digest.bytes().all(|byte| byte.is_ascii_hexdigit()) =>
+        {
+            Ok(format!("{prefix}:{INDEX_SUFFIX}"))
+        }
+        _ => Err(Error::Validation(
+            "query cache key is not a generated entry key".to_string(),
+        )),
+    }
+}
+
+/// Stores one generated query result and indexes its key under its table,
+/// so a committed write can invalidate the table without scanning Redis.
+#[doc(hidden)]
+pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Result<(), Error> {
+    if ttl_seconds == 0 {
+        return Err(Error::Validation(
+            "query cache TTL must be greater than zero".to_string(),
+        ));
+    }
+    let index = entry_index_key(cache_key)?;
+    let mut connection = Orm::redis_manager()?;
+    let _: i64 = crate::_redis::cmd("EVAL")
+        .arg(format!("{NOW_PRELUDE}{STORE_BODY}"))
+        .arg(2)
+        .arg(cache_key)
+        .arg(&index)
+        .arg(payload)
+        .arg(ttl_seconds)
+        .query_async(&mut connection)
+        .await?;
+    Ok(())
+}
+
+/// Deletes every indexed query-cache entry for a table.
+///
+/// An unconfigured Redis adapter is a no-op because model writes do not require
+/// caching. Once Redis is configured, transport errors fail visibly. The work
+/// follows the table's own index, never the rest of the Redis keyspace, and is
+/// capped at `MAX_INVALIDATION_KEYS` live entries per call; entries beyond the
+/// cap stay indexed for the next write and otherwise expire through their
+/// TTL. Index members of already-expired entries are pruned without counting
+/// toward the cap. Entries written by earlier versions (key version 3) were
+/// never indexed; they are never read again and expire through their TTL.
+pub async fn invalidate_table(table: &str) -> Result<usize, Error> {
+    let Ok(namespace) = Orm::redis_cache_namespace() else {
+        return Ok(0);
+    };
+    let tenant = crate::tenant::get_tenant_id();
+    let index = index_key(namespace, tenant.as_ref(), table)?;
+    let script = format!("{NOW_PRELUDE}{INVALIDATE_BODY}");
+    let mut connection = Orm::redis_manager()?;
+    let mut deleted = 0_usize;
+    loop {
+        let batch = INVALIDATION_BATCH.min(MAX_INVALIDATION_KEYS.saturating_sub(deleted));
+        let (removed, remaining): (usize, usize) = crate::_redis::cmd("EVAL")
+            .arg(&script)
+            .arg(1)
+            .arg(&index)
+            .arg(batch)
+            .query_async(&mut connection)
+            .await?;
+        deleted = deleted.saturating_add(removed);
+        if remaining == 0 {
+            return Ok(deleted);
+        }
+        if deleted >= MAX_INVALIDATION_KEYS {
+            return Err(Error::CacheError(format!(
+                "table cache invalidation exceeded {MAX_INVALIDATION_KEYS} keys; the rest expire by TTL"
+            )));
+        }
+    }
+}
+
+/// The sorted set indexing one namespace, tenant scope and table's cache
+/// entries.
+fn index_key(namespace: &str, tenant: Option<&RullstValue>, table: &str) -> Result<String, Error> {
+    Ok(format!(
+        "{}:{INDEX_SUFFIX}",
+        table_prefix(namespace, tenant, table)?
     ))
 }
 
@@ -152,8 +266,26 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_key, invalidation_pattern};
+    use super::{build_key, entry_index_key, index_key};
     use crate::RullstValue;
+
+    #[test]
+    fn entry_keys_resolve_to_their_table_index() {
+        let tenant = RullstValue::Int(7);
+        let entry =
+            build_key("academy", Some(&tenant), "users", "SELECT *", &[]).expect("entry key");
+        let index = index_key("academy", Some(&tenant), "users").expect("index key");
+        assert_eq!(entry_index_key(&entry).expect("entry index"), index);
+        assert_ne!(index, entry);
+        for foreign in [
+            "",
+            "session:abc",
+            "rullst:orm:cache:v4:academy:global:table-x:not-a-digest",
+            index.as_str(),
+        ] {
+            assert!(entry_index_key(foreign).is_err(), "{foreign}");
+        }
+    }
 
     #[test]
     fn keys_are_versioned_deterministic_and_domain_separated() {
@@ -172,7 +304,7 @@ mod tests {
         .expect("typed cache key");
 
         assert_eq!(first, repeated);
-        assert!(first.starts_with("rullst:orm:cache:v3:academy:global:table-"));
+        assert!(first.starts_with("rullst:orm:cache:v4:academy:global:table-"));
         assert_ne!(first, typed);
     }
 
@@ -220,14 +352,17 @@ mod tests {
     #[test]
     fn invalidation_is_limited_to_the_active_opaque_tenant_scope() {
         let tenant = RullstValue::String("private-school-name".to_string());
-        let tenant_pattern = invalidation_pattern("academy", Some(&tenant), "users")
-            .expect("tenant invalidation pattern");
-        let global_pattern =
-            invalidation_pattern("academy", None, "users").expect("global invalidation pattern");
+        let tenant_index =
+            index_key("academy", Some(&tenant), "users").expect("tenant invalidation index");
+        let global_index = index_key("academy", None, "users").expect("global invalidation index");
 
-        assert_ne!(tenant_pattern, global_pattern);
-        assert!(tenant_pattern.contains(":tenant-"));
-        assert!(global_pattern.contains(":global:"));
-        assert!(!tenant_pattern.contains("private-school-name"));
+        assert_ne!(tenant_index, global_index);
+        assert!(tenant_index.contains(":tenant-"));
+        assert!(global_index.contains(":global:"));
+        assert!(!tenant_index.contains("private-school-name"));
+        assert!(
+            !tenant_index.contains('*'),
+            "invalidation never uses a key pattern"
+        );
     }
 }

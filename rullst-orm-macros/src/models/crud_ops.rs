@@ -8,6 +8,7 @@ use quote::quote;
 
 #[cfg_attr(test, mutants::skip)]
 pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     let name = &parsed.name;
     let table_name = &parsed.table_name;
     let normal_fields = &parsed.normal_fields;
@@ -225,7 +226,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             } else {
                 rullst_orm::ModelOperation::Updated
             };
-            #[cfg(feature = "redis")]
+            #redis_cfg
             {
                 let event = rullst_orm::ModelCommittedEvent::new(
                     #table_name,
@@ -235,7 +236,8 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 );
                 rullst_orm::after_commit(move || async move {
                     use rullst_orm::_redis::AsyncCommands;
-                    rullst_orm::query_cache::invalidate_table(event.table).await?;
+                    // A failed invalidation must not suppress the events.
+                    let invalidated = rullst_orm::query_cache::invalidate_table(event.table).await;
                     if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
                         let topic = format!(
                             "orm:events:{}:{}",
@@ -246,6 +248,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                         let topic = format!("orm:events:{}:saved", event.table);
                         let _: usize = connection.publish(&topic, &event.payload).await?;
                     }
+                    invalidated?;
                     Ok(())
                 }).await?;
             }

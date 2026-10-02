@@ -129,7 +129,9 @@ generated API.
   idempotent; generated observers are not silently converted into events.
   A nested `Orm::transaction` joins the active transaction through a
   savepoint, so a helper that enqueues inside its own transaction stays atomic
-  with its caller. See
+  with its caller. Concurrent sibling nested transactions take turns on the
+  shared connection, and a savepoint left open makes the enclosing transaction
+  roll back instead of committing. See
   the [transactional outbox tutorial](../tutorials/38-transactional-outbox.md).
 - **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
   PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes
@@ -222,6 +224,13 @@ Load fewer parents per query, raise the cap, or choose explicitly with
 `with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
 to the whole batch, and `unsafe_unlimited()` loads every related row.
 
+Parents that share a related row or group all receive it: every child of one
+`belongs_to` parent, parents whose non-unique `local_key` matches the same
+`has_many`/`has_one` rows, and duplicated parent rows. The shared value is
+cloned for all but the last such parent, so a related model without `Clone`
+loads normally until a row must be shared, and then `get()` fails with a
+`Validation` error instead of leaving a parent without its relation.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL
@@ -261,7 +270,19 @@ the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
 labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
-PostgreSQL; the method is a validated no-op on the other backends.
+PostgreSQL; the method is a validated no-op on the other backends. The enum
+type creation, its label check and `drop_native_enum` use the active
+`Orm::transaction` or test sandbox like the table DDL, so they roll back with it
+and the type can be dropped right after its tables in the same transaction.
+
+Builder filters on a model field whose type derives `Enum` (or
+`Option<...>` of it) work on every backend: under the `strict-postgres`
+runtime the comparison, `IN` and `BETWEEN` markers of that column become
+`CAST(? AS "<type_name>")`, because a text parameter has no operator against a
+named enum type. This covers `where_eq`, `where_in`, the generated
+`where_<column>` helpers and their `or_`/`not_` variants; `where_like` and raw
+SQL are unchanged. SQLx `Any` cannot decode named enum types, so on PostgreSQL
+through `Any` such fields stay text columns and keep plain `?` markers.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
@@ -269,6 +290,119 @@ on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
 builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
 defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
 SQLite and PostgreSQL DDL is unchanged.
+
+### Behaviour changes in 12.2
+
+#### Upgrading from 12.1
+
+The 12.2 ORM keeps the 12.x API, but an upgrading application can notice the
+following. Check each item that applies before deploying:
+
+- [ ] **Nested `Orm::transaction`** joins the outer transaction through a
+  savepoint, so inner work rolls back with the outer one: check helpers that
+  relied on committing on their own.
+- [ ] **Sibling nested transactions** started together (for example with
+  `tokio::join!`) take turns, and a savepoint left open rolls the outer
+  transaction back with an error: check concurrent nested calls.
+- [ ] **`SecretString` serializes as an encrypted envelope** (and fails without
+  a configured key): check JSON responses or exports that included it; use
+  `reveal_audited()` where plaintext is intended.
+- [ ] **`paginate()` caps `per_page`** at the query limit (1,000 by default):
+  check clients that request larger pages and read `per_page`/`last_page`.
+- [ ] **Query-cache keys move to `rullst:orm:cache:v4:`**: expect a cold cache
+  after deploying, and short TTLs during a rolling upgrade.
+- [ ] **Redis model hashes are namespaced**: global models migrate lazily on
+  their next write; tenant models need the procedure under
+  "12.1 Redis model hashes" below.
+- [ ] **12.1 Redis hashes with `#[orm(encrypted)]` fields** hold plaintext and
+  fail closed on read: re-save them with `save_to_redis()`.
+- [ ] **New typed errors for misuse**: `delete_all()` with `limit()`,
+  `offset()`, `order_by()`, joins, grouping or CTEs; `only_trashed()` without
+  soft deletes; a tenant context of the wrong type; raw CTE/select bind
+  markers with scope, JOIN or WHERE bindings; eager loads past the query limit
+  or sharing a non-`Clone` related row; a savepoint left open. Check logs and
+  tests for these errors.
+- [ ] **`restore()` and `force_delete()`** run hooks, observers, audit and
+  post-commit effects: a `before_delete` veto now blocks `force_delete()`.
+- [ ] **Secondary projections** (`to_json()`, audit rows, `orm:events:*`) carry
+  `"***"` for encrypted and masked fields, and Scout documents omit them: check
+  consumers of those payloads.
+- [ ] **`search()` without a search engine** skips hidden, encrypted, masked and
+  `SecretString` columns and matches `%`/`_` literally: check searches that
+  relied on them.
+- [ ] **Tenant-scoped `search()`** answers a 1,000-hit engine result from the
+  SQL fallback; other models keep the engine answer.
+- [ ] **New DDL only**: MySQL/MariaDB audit payloads become `LONGTEXT` and
+  `float()` becomes double precision in newly created tables; existing tables
+  keep their types (watch for the audit-table warning and migrate if needed).
+- [ ] **Enum filter casts** apply only under `strict-postgres`; nothing changes
+  on SQLx `Any`.
+- [ ] **`#[derive(Nexus)]`** hides encrypted, `SecretString` and
+  `#[orm(hidden)]` fields and omits skipped ones: check admin workflows that
+  edited them.
+- [ ] **Generated Redis code follows `rullst-orm/redis`** (or `rullst`'s
+  `redis`/`orm-redis`): applications that call `Orm::init_redis*` without a
+  `redis` feature of their own now invalidate the cache and publish
+  `orm:events:*` on every generated write.
+- [ ] **Stale soft-delete handles** are unchanged from 12.1: saving a handle
+  loaded before `delete()` writes its old soft-delete value back and undeletes
+  the row, so reload a model before saving it.
+
+#### Details
+
+- **Transactions:** concurrent sibling nested `Orm::transaction` calls take
+  turns on the shared connection; a savepoint left open makes the enclosing
+  transaction roll back and return an error, and the pool closes a connection
+  returned while still inside a transaction.
+- **Outbox:** MySQL/MariaDB read an idempotent duplicate back with
+  `FOR UPDATE`; a row that still cannot be read back is `DatabaseError`, not
+  `RecordNotFound`.
+- **Schema:** new MySQL/MariaDB audit tables use `LONGTEXT` payload columns
+  (existing tables log a warning naming the migration); `float()` emits
+  `DOUBLE PRECISION`/`DOUBLE` on PostgreSQL/MySQL for new DDL; PostgreSQL enum
+  DDL joins the task-scoped transaction. `boolean()` stays an `INTEGER` flag.
+- **Generated Redis code** follows `rullst-orm/redis` (or the facade's
+  `redis`/`orm-redis`): `.remember(...)`, commit-time invalidation and the
+  `orm:events:*` publications appear without an application `redis` feature.
+  Query-cache keys move to `rullst:orm:cache:v4:` with a per-table index, so
+  caches start cold. Model hashes use namespaced keys, and tenant models
+  require `with_tenant(...)`.
+- **12.1 Redis model hashes** (`orm:<table>:<id>`): for a model without a
+  tenant scope, `get_from_redis` reads the 12.1 hash while the namespaced one
+  is missing, and the next `save_to_redis` or `increment_redis_field` moves it
+  to the namespaced key; nothing has to be run. Applications that share one
+  Redis database also shared these keys, so the first one to write a hash
+  takes it over. A 12.1 hash of a model with `#[orm(encrypted)]` fields holds
+  them in plaintext, so reading it fails closed until `save_to_redis()`
+  rewrites it. Tenant models never read the 12.1 key, which every tenant
+  shared, so until migrated `get_from_redis` returns `None` and
+  `increment_redis_field` starts from zero. Migrate them once after deploying
+  12.2:
+  1. List the keys of each tenant model table:
+     `redis-cli --scan --pattern 'orm:<table>:*'`.
+  2. Read each hash with `HGETALL`; every value is the JSON of one field.
+  3. Check its tenant column against the tenant that owns row `<id>` in the
+     database, and skip mismatches: another tenant may have overwritten it.
+  4. Decode the hash into the model (for example with `serde_json` from the
+     parsed values), or reload the row when the hash only cached it, and call
+     `with_tenant(tenant, model.save_to_redis())`.
+  5. Remove the 12.1 key with `UNLINK`.
+- **Queries:** eager loads give a shared related row to every parent;
+  `delete_all()` rejects `limit()`, `offset()`, `order_by()`, joins, grouping
+  and CTEs; `only_trashed()` fails on models without soft deletes; `query()`
+  rejects a tenant context of the wrong type; raw CTE/select fragments with
+  bind markers fail once scope, JOIN or WHERE bindings exist; strict PostgreSQL
+  enum filters cast to the enum type; tenant-scoped `search()` answers a
+  1,000-hit engine result from SQL.
+- **Soft deletes:** `save()` still writes the soft-delete column from the
+  handle, as in 12.1. A handle loaded before `delete()` (or before another
+  request deleted the row) therefore restores the row when saved, without
+  `can_restore`, the `restored` audit entry or restore observers. Reload the
+  model before saving it, and change the marker only through
+  `delete()`/`restore()`.
+- **Audit and Nexus:** restore patches withhold sensitive keys that were added
+  or removed; `#[derive(Nexus)]` omits skipped fields and keeps encrypted,
+  `SecretString` and `#[orm(hidden)]` fields hidden and read-only.
 
 ---
 

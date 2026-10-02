@@ -20,6 +20,12 @@ proc-macro = true
 # Opted into by the matching 12.1 ORM runtime. Keep default expansion usable
 # with published 12.0 runtimes whose SQLx dependency includes every driver.
 runtime-driver-codecs = []
+# Opted into by the matching 12.2 ORM runtime, which forwards its `redis`
+# feature below so generated Redis APIs follow the runtime instead of an
+# identically named feature of the application. Without it the expansion keeps
+# the legacy `#[cfg(feature = "redis")]` output older runtimes expect.
+runtime-feature-gates = []
+redis = []
 strict-postgres = []
 strict-mysql = []
 strict-sqlite = []

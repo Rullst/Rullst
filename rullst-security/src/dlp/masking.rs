@@ -16,20 +16,41 @@ const DATABASE_SCHEMES: [&str; 4] = ["postgres://", "postgresql://", "mysql://",
 /// control character, so a raw delimiter inside a password ends masking there.
 pub(super) const MAX_DSN_AUTHORITY_BYTES: usize = 2_048;
 
+/// Private-key PEM blocks: PKCS#8 (plain and encrypted), PKCS#1 RSA, SEC 1
+/// EC, DSA, OpenSSH and OpenPGP. Each block is masked from its begin marker
+/// through the first end marker with the same label.
+const PRIVATE_KEY_BLOCKS: [(&str, &str); 7] = [
+    ("-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"),
+    (
+        "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+        "-----END ENCRYPTED PRIVATE KEY-----",
+    ),
+    (
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "-----END RSA PRIVATE KEY-----",
+    ),
+    (
+        "-----BEGIN EC PRIVATE KEY-----",
+        "-----END EC PRIVATE KEY-----",
+    ),
+    (
+        "-----BEGIN DSA PRIVATE KEY-----",
+        "-----END DSA PRIVATE KEY-----",
+    ),
+    (
+        "-----BEGIN OPENSSH PRIVATE KEY-----",
+        "-----END OPENSSH PRIVATE KEY-----",
+    ),
+    (
+        "-----BEGIN PGP PRIVATE KEY BLOCK-----",
+        "-----END PGP PRIVATE KEY BLOCK-----",
+    ),
+];
+
 /// Applies every masking pass in order. Returns `None` when nothing matched.
 pub(super) fn mask_text(text: &str) -> Option<String> {
     let mut current: Option<String> = None;
-    for (begin, end) in [
-        ("-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"),
-        (
-            "-----BEGIN RSA PRIVATE KEY-----",
-            "-----END RSA PRIVATE KEY-----",
-        ),
-        (
-            "-----BEGIN OPENSSH PRIVATE KEY-----",
-            "-----END OPENSSH PRIVATE KEY-----",
-        ),
-    ] {
+    for (begin, end) in PRIVATE_KEY_BLOCKS {
         let input = current.as_deref().unwrap_or(text);
         if let Some(masked) = mask_private_keys(input, begin, end) {
             current = Some(masked);
@@ -214,6 +235,34 @@ mod tests {
         assert!(was_modified);
         let masked = String::from_utf8(masked).unwrap();
         assert_eq!(masked, PRIVATE_KEY_MARKER.repeat(39_000));
+    }
+
+    #[test]
+    fn every_supported_private_key_block_label_is_masked() {
+        for label in [
+            "PRIVATE KEY",
+            "RSA PRIVATE KEY",
+            "EC PRIVATE KEY",
+            "DSA PRIVATE KEY",
+            "ENCRYPTED PRIVATE KEY",
+            "OPENSSH PRIVATE KEY",
+            "PGP PRIVATE KEY BLOCK",
+        ] {
+            let input = format!(
+                "config: -----BEGIN {label}-----\nMHcCAQEEIFixture\n-----END {label}----- done"
+            );
+            assert_eq!(
+                mask_text(&input).as_deref(),
+                Some("config: [DLP_BLOCKED_PRIVATE_KEY] done"),
+                "a supported PEM private-key label was not masked"
+            );
+        }
+        // A block needs its own end marker; a mismatched label is not masked.
+        let mismatched = "-----BEGIN EC PRIVATE KEY-----x-----END DSA PRIVATE KEY-----";
+        assert_eq!(mask_text(mismatched), None);
+        // Public material is not a private key.
+        let public = "-----BEGIN PUBLIC KEY-----x-----END PUBLIC KEY-----";
+        assert_eq!(mask_text(public), None);
     }
 
     #[test]

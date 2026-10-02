@@ -71,6 +71,11 @@ The ORM has a separate opt-in query-cache contract behind its `redis` feature:
 rullst-orm = { version = "12.1.0", features = ["redis"] }
 ```
 
+The generated `.remember(...)`, cache invalidation, `orm:events:*` publications
+and Redis hash helpers follow this ORM feature (or the facade's `redis` /
+`orm-redis`). From 12.2 the application does not declare a `redis` feature of
+its own; earlier macro output checked the application's features instead.
+
 ```rust,no_run
 use rullst_orm::{FromRow, Orm};
 
@@ -94,6 +99,15 @@ let _ = recent;
 Ok(())
 }
 ```
+
+Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
+hashes use the same namespace, and tenant models bind the active tenant into
+their key and require `with_tenant(...)`. A model without a tenant scope still
+reads a hash written by 12.1 under `orm:<table>:<id>` while its namespaced
+hash is missing, and its next `save_to_redis`/`increment_redis_field` moves
+that hash to the namespaced key. Tenant models never read that shared key;
+migrate their hashes as described in the
+[ORM 12.2 behaviour notes](crates/orm.md#behaviour-changes-in-122).
 
 Use a stable, unique namespace for every application that shares a Redis
 database. Query keys bind that namespace, an opaque digest of the active tenant

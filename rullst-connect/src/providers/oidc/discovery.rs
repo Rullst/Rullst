@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use crate::client::{HttpClient, HttpClientExt};
 use crate::configuration::CredentialMode;
 use crate::error::ConnectError;
-use crate::provider::{JwksCache, JwksCachePolicy};
+use crate::provider::{ClientAuthentication, JwksCache, JwksCachePolicy};
 
 /// Provider created from a validated OpenID Connect discovery document.
 pub struct OidcProvider {
@@ -19,6 +19,7 @@ pub struct OidcProvider {
     pub(crate) pkce_challenge: Option<String>,
     pub(crate) credential_mode: CredentialMode,
     pub(crate) jwks_cache: JwksCache,
+    pub(crate) client_authentication: ClientAuthentication,
 
     pub authorization_endpoint: String,
     pub token_endpoint: String,
@@ -101,6 +102,7 @@ impl OidcProvider {
         let userinfo_endpoint =
             validated_endpoint(&metadata, "userinfo_endpoint", &discovered_issuer_url)?;
         let jwks_uri = validated_endpoint(&metadata, "jwks_uri", &discovered_issuer_url)?;
+        let client_authentication = token_endpoint_authentication(&metadata);
 
         let http_client = if credential_mode.is_mock() {
             crate::configuration::provider_http_client(credential_mode, "oidc", None)
@@ -118,6 +120,7 @@ impl OidcProvider {
             pkce_challenge: None,
             credential_mode,
             jwks_cache: JwksCache::default(),
+            client_authentication,
             authorization_endpoint,
             token_endpoint,
             userinfo_endpoint,
@@ -158,6 +161,27 @@ impl OidcProvider {
     pub fn with_jwks_cache_policy(mut self, policy: JwksCachePolicy) -> Self {
         self.jwks_cache = JwksCache::new(policy);
         self
+    }
+}
+
+/// Selects the token-endpoint client authentication from discovery.
+///
+/// `client_secret_post` stays the default whenever it is advertised or the
+/// list is absent. `client_secret_basic` is used only when the provider lists
+/// it without `client_secret_post`, so an existing deployment keeps its
+/// method while a basic-only server is no longer sent an unsupported one.
+fn token_endpoint_authentication(metadata: &Value) -> ClientAuthentication {
+    let Some(methods) = metadata
+        .get("token_endpoint_auth_methods_supported")
+        .and_then(Value::as_array)
+    else {
+        return ClientAuthentication::RequestBody;
+    };
+    let supports = |method: &str| methods.iter().any(|value| value.as_str() == Some(method));
+    if !supports("client_secret_post") && supports("client_secret_basic") {
+        ClientAuthentication::HttpBasic
+    } else {
+        ClientAuthentication::RequestBody
     }
 }
 

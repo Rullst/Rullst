@@ -61,7 +61,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   global query cap fails with a `Validation` error instead of silently
   returning partial relations.
 - **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
-  `with_tenant`, inject the tenant predicate into generated queries, protect
+  `with_tenant`, inject the tenant predicate (typed as the tenant field, so a
+  mistyped context fails closed) into generated queries, protect
   instance mutations, and reserve explicit `unscoped()` for reviewed global
   paths. Authentication and permission to use that escape hatch remain the
   application's responsibility.
@@ -143,8 +144,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
   Generated model saves/deletes/restores/force-deletes invalidate keys for the
-  active tenant and table only after commit, using a bounded non-blocking scan; cluster/failover
-  evidence remains outside the current contract.
+  active tenant and table only after commit through a per-table key index,
+  never a keyspace `SCAN`, so write latency does not grow with unrelated keys
+  in a shared Redis database; cluster/failover evidence remains outside the
+  current contract.
 - **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
   instance mutations. Policy-protected models reject `delete_all()` because
   bulk SQL cannot invoke per-row authorization; load the intended rows and call
@@ -181,7 +184,11 @@ encrypted string projections use the original field name when decrypting.
 `where_in` and `or_where_in` with an empty vector emit a false predicate, so an
 empty selected-ID list cannot become an unrestricted read or delete. An empty
 `where_not_in` remains true. Unfiltered `delete_all` on models without policies
-is still deliberately a bulk operation. Model-wide, tenant, and soft-delete
+is still deliberately a bulk operation. Its statement renders only the WHERE
+and soft-delete predicates, so an explicit `limit()`, `offset()`, `order_by()`,
+a join, `group_by()` or a CTE makes it fail with `Validation` instead of
+deleting every matching row; select the IDs first and delete them with
+`where_in("id", ids)`. Model-wide, tenant, and soft-delete
 scopes constrain every user `OR` branch, and keyset traversal applies its cursor
 to the entire original filter. Nested generated subqueries propagate validation
 errors, including a missing tenant context, into their containing query.
@@ -189,6 +196,12 @@ Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
 `with_recursive` are embedded with portable `?` markers; on PostgreSQL the
 final statement is numbered once, in textual order, so nested scopes, CTEs and
 joins keep every tenant and caller binding at its own `$n` position.
+`with_raw`, `with_recursive_raw` and `select_raw` take no bindings, and
+`bind()` appends WHERE values after the scope, JOIN and WHERE bindings. On a
+tenant or model-wide scoped query, or once JOIN/WHERE values exist, these
+fragments therefore fail with `Validation` when they contain a bind marker,
+instead of letting the marker take the tenant binding; use a typed `with_cte`
+or `where_raw(..., bindings)` there.
 Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
 issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
 receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.
@@ -202,7 +215,12 @@ matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
 queries over 1,024 bytes or with control characters. Missing tenant context
 fails before contacting Scout, and an empty provider result remains an empty
 match even when a database contains an explicitly inserted ID of zero. Search
-index access controls still belong to the application/operator.
+index access controls still belong to the application/operator. Providers
+return at most 1,000 IDs for the whole shared index, before tenant, model-wide
+and soft-delete scopes apply. For a tenant-scoped model an answer of that size
+is treated as truncated and `search()` uses the SQL fallback instead, so
+another tenant's hits cannot hide a tenant's matches (the fallback's substring
+semantics then apply); other models keep the provider answer.
 
 Generated builders start with a global row cap (`Orm::set_max_query_limit`,
 1,000 by default; `0` disables it). `limit()` clamps to that cap and
@@ -217,6 +235,13 @@ rows exceed it, `get()` fails with a `Validation` error naming the relation.
 Load fewer parents per query, raise the cap, or choose explicitly with
 `with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
 to the whole batch, and `unsafe_unlimited()` loads every related row.
+
+Parents that share a related row or group all receive it: every child of one
+`belongs_to` parent, parents whose non-unique `local_key` matches the same
+`has_many`/`has_one` rows, and duplicated parent rows. The shared value is
+cloned for all but the last such parent, so a related model without `Clone`
+loads normally until a row must be shared, and then `get()` fails with a
+`Validation` error instead of leaving a parent without its relation.
 
 Prefer `Orm::transaction` with ordinary model/query methods when combining
 eager relationships or `after_fetch` hooks with transactional reads. Fetches
@@ -234,6 +259,18 @@ helper that wraps `Outbox::enqueue` or model saves in its own
 `Orm::transaction` is therefore atomic with its caller. The returned future is
 `Send`, so it can also run in a spawned task. Do not hold the shared handle's
 lock across a nested call.
+
+Sibling nested transactions started concurrently on one task (for example with
+`tokio::join!`) take turns on the shared connection: each opens its savepoint
+only after the previous sibling's savepoint was released or rolled back, so a
+failure rolls back only that sibling's work. Plain model statements issued by
+a sibling future while another sibling's savepoint is open still run inside
+that savepoint; wrap each concurrent branch in its own `Orm::transaction` when
+they must be isolated. A savepoint that cannot be settled (for example a nested
+future cancelled while another operation holds the connection) makes the
+enclosing transaction fail closed: it rolls back and returns an error instead
+of committing, and the pool closes any connection returned while still inside
+a transaction instead of reusing it.
 
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
@@ -395,7 +432,19 @@ the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
 labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
-PostgreSQL; the method is a validated no-op on the other backends.
+PostgreSQL; the method is a validated no-op on the other backends. The enum
+type creation, its label check and `drop_native_enum` use the active
+`Orm::transaction` or test sandbox like the table DDL, so they roll back with it
+and the type can be dropped right after its tables in the same transaction.
+
+Builder filters on a model field whose type derives `Enum` (or
+`Option<...>` of it) work on every backend: under the `strict-postgres`
+runtime the comparison, `IN` and `BETWEEN` markers of that column become
+`CAST(? AS "<type_name>")`, because a text parameter has no operator against a
+named enum type. This covers `where_eq`, `where_in`, the generated
+`where_<column>` helpers and their `or_`/`not_` variants; `where_like` and raw
+SQL are unchanged. SQLx `Any` cannot decode named enum types, so on PostgreSQL
+through `Any` such fields stay text columns and keep plain `?` markers.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
@@ -407,7 +456,8 @@ SQLite and PostgreSQL DDL is unchanged.
 ### Optional Redis query cache
 
 Enable the `redis` feature and give each application sharing a Redis database a
-stable namespace:
+stable namespace. Generated Redis methods and effects follow this ORM feature;
+the application does not need a `redis` feature of its own:
 
 ```rust
 use rullst_orm::Orm;
@@ -423,11 +473,24 @@ let users = User::query().where_like("email", "%@example.com")
     .await?;
 ```
 
+Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` hashes are
+keyed by that namespace, the table and, for tenant models, an opaque digest of
+the active tenant: they require `with_tenant(...)` and never read or overwrite
+another tenant's hash. For a model without a tenant scope, a hash stored by
+12.1 under `orm:<table>:<id>` is still read while the namespaced hash is
+missing and moves to the namespaced key on its next `save_to_redis` or
+`increment_redis_field`. Tenant models never read that shared key; migrate
+their hashes explicitly as described in the 12.2 behaviour notes of the ORM
+crate guide.
+
 An explicitly remembered query outside a transaction requires Redis
 initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and
 task-scoped transactions always bypass the cache. Generated model saves and
-deletes invalidate that table's generated cache keys after commit. Raw SQL,
+deletes invalidate that table's generated cache keys after commit, using the
+index each cache write maintains for its table (at most 10,000 live keys per
+write; members of entries that already expired are pruned and not counted, and
+entries cached by earlier versions are not read again and expire by TTL). Raw SQL,
 bulk builders and writes outside generated model methods cannot be inferred, so
 keep a defensive TTL and do not cache authorization or other reads whose
 freshness requires a stronger distributed consistency contract.

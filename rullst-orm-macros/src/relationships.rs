@@ -2,43 +2,15 @@ use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
+mod eager_assign;
+use eager_assign::generate_eager_load_assignment;
+
 pub struct GeneratedRelationships {
     pub flags: Vec<TokenStream>,
     pub inits: Vec<TokenStream>,
     pub methods: Vec<TokenStream>,
     pub model_methods: Vec<TokenStream>,
     pub eager_loads: TokenStream,
-}
-
-#[cfg_attr(test, mutants::skip)]
-fn generate_eager_load_assignment(
-    is_many: bool,
-    map_key_ident: &syn::Ident,
-    model_key_ident: &syn::Ident,
-    method_name: &syn::Ident,
-) -> TokenStream {
-    if is_many {
-        quote! {
-            let mut map = std::collections::HashMap::with_capacity(all_related.len());
-            for rel in all_related {
-                map.entry(rel.#map_key_ident.clone()).or_insert_with(Vec::new).push(rel);
-            }
-            for model in &mut results {
-                let matching = map.remove(&model.#model_key_ident).unwrap_or_default();
-                model.#method_name = Some(matching);
-            }
-        }
-    } else {
-        quote! {
-            let mut map = std::collections::HashMap::with_capacity(all_related.len());
-            for rel in all_related {
-                map.entry(rel.#map_key_ident.clone()).or_insert(rel);
-            }
-            for model in &mut results {
-                model.#method_name = map.remove(&model.#model_key_ident);
-            }
-        }
-    }
 }
 
 #[cfg_attr(test, mutants::skip)]
@@ -318,11 +290,11 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         };
 
         let eager_load_assignment = match rel_type.as_str() {
-            "has_many" => generate_eager_load_assignment(true, &fk_ident, &lk_ident, &method_name),
-            "has_one" => generate_eager_load_assignment(false, &fk_ident, &lk_ident, &method_name),
-            "belongs_to" => generate_eager_load_assignment(false, &pk_ident, &fk_ident, &method_name),
-            "morph_many" => generate_eager_load_assignment(true, &morph_id_ident, &lk_ident, &method_name),
-            "morph_one" => generate_eager_load_assignment(false, &morph_id_ident, &lk_ident, &method_name),
+            "has_many" => generate_eager_load_assignment(name, true, &fk_ident, &lk_ident, &method_name),
+            "has_one" => generate_eager_load_assignment(name, false, &fk_ident, &lk_ident, &method_name),
+            "belongs_to" => generate_eager_load_assignment(name, false, &pk_ident, &fk_ident, &method_name),
+            "morph_many" => generate_eager_load_assignment(name, true, &morph_id_ident, &lk_ident, &method_name),
+            "morph_one" => generate_eager_load_assignment(name, false, &morph_id_ident, &lk_ident, &method_name),
             _ => proc_macro2::TokenStream::new(),
         };
 
@@ -481,8 +453,9 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                     }
                                 }
 
+                                // Parents that share a local key each receive the group.
                                 for model in &mut results {
-                                    model.#method_name = parent_to_related.remove(&model.#lk_ident);
+                                    model.#method_name = parent_to_related.get(&model.#lk_ident).cloned();
                                 }
                             }
                         }

@@ -16,6 +16,22 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
         .filter(|field| !parsed.hidden_fields.contains(field) && !parsed.is_redacted(field))
         .map(|f| f.to_string())
         .collect::<Vec<_>>();
+    // Providers truncate hits over the whole shared index before the tenant
+    // scope applies, so one tenant's hits can fill a capped answer and hide
+    // another tenant's matches; a tenant-scoped model then answers from SQL.
+    // Global-scope and soft-delete models keep the 12.1 engine answer.
+    let scoped = !parsed.tenant_column.is_empty();
+    // 12.x keeps the providers' 1,000-hit cap (`scout::providers::common::
+    // MAX_SEARCH_HITS`) private, so the generated check repeats the value.
+    let engine_result = if scoped {
+        quote! {
+            if ids.len() < 1_000_usize {
+                return base_builder.where_in("id", ids);
+            }
+        }
+    } else {
+        quote! { return base_builder.where_in("id", ids); }
+    };
     quote! {
         pub async fn search(query: &str) -> #builder_name {
             let mut base_builder = Self::query();
@@ -30,7 +46,7 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
                         return base_builder;
                     }
                 };
-                return base_builder.where_in("id", ids);
+                #engine_result
             }
 
             let driver = match rullst_orm::Orm::driver() {
@@ -77,11 +93,28 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
         quote! {}
     };
 
-    let tenant_scope_logic = if !parsed.tenant_column.is_empty() {
+    let tenant_field_type = parsed
+        .normal_fields
+        .iter()
+        .zip(parsed.normal_fields_types.iter())
+        .find(|(field, _)| *field == parsed.tenant_column.as_str())
+        .map(|(_, ty)| ty);
+    let tenant_scope_logic = if let Some(tenant_type) = tenant_field_type {
         let col = &parsed.tenant_column;
+        // Bind the context as the tenant field's type, like the mutation
+        // paths: a mistyped context must not reach the mandatory predicate,
+        // where MySQL would compare it numerically across tenants.
         quote! {
             if let Some(tenant) = rullst_orm::tenant::get_tenant_id() {
-                builder = builder.where_eq(#col, tenant);
+                let typed: Result<#tenant_type, _> = tenant.try_into();
+                match typed {
+                    Ok(tenant) => builder = builder.where_eq(#col, tenant),
+                    Err(_) => builder.errors.push(rullst_orm::Error::Validation(format!(
+                        "tenant context type does not match `{}.{}`",
+                        #table_name,
+                        #col
+                    ))),
+                }
             } else {
                 builder.errors.push(rullst_orm::Error::Validation(format!(
                     "tenant context is required to query `{}`; use with_tenant(...) or the explicit unscoped() escape hatch",
@@ -89,8 +122,11 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
                 )));
             }
         }
-    } else {
+    } else if parsed.tenant_column.is_empty() {
         quote! {}
+    } else {
+        // The structured model parser rejects this before code generation.
+        quote! { compile_error!("tenant column is missing from the model"); }
     };
 
     quote! {
@@ -163,5 +199,56 @@ mod tests {
             );
         }
         assert!(generated.contains("LIKE ? ESCAPE '!'"));
+    }
+
+    #[test]
+    fn query_binds_the_tenant_context_as_the_tenant_field_type() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "orders", tenant_column = "org")]
+            struct Order { id: i32, org: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let builder = quote::format_ident!("OrderQueryBuilder");
+        let generated = generate_query_methods(&parsed, &builder).to_string();
+        assert!(generated.contains("let typed : Result < String , _ > = tenant . try_into ()"));
+        assert!(generated.contains("tenant context type does not match"));
+        assert!(!generated.contains("where_eq (\"org\" , tenant) ;"));
+    }
+
+    #[test]
+    fn tenant_scoped_models_answer_a_capped_engine_result_from_sql() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "invoices", searchable, tenant_column = "org")]
+            struct Invoice { id: i32, org: String, title: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let builder = quote::format_ident!("InvoiceQueryBuilder");
+        let generated = generate_search_method(&parsed, &builder).to_string();
+        assert!(generated.contains("ids . len () < 1_000_usize"));
+    }
+
+    #[test]
+    fn models_without_a_tenant_scope_keep_the_capped_engine_answer() {
+        for input in [
+            parse_quote! {
+                #[orm(table = "articles", searchable)]
+                struct Article { id: i32, title: String }
+            },
+            parse_quote! {
+                #[orm(table = "articles", searchable)]
+                struct Article { id: i32, title: String, deleted_at: Option<String> }
+            },
+            parse_quote! {
+                #[orm(table = "articles", searchable, global_scope = "published_only")]
+                struct Article { id: i32, title: String }
+            },
+        ] {
+            let input: DeriveInput = input;
+            let parsed = crate::parser::parse(&input).expect("test model should parse");
+            let builder = quote::format_ident!("ArticleQueryBuilder");
+            let generated = generate_search_method(&parsed, &builder).to_string();
+            assert!(!generated.contains("1_000_usize"));
+            assert!(generated.contains("return base_builder . where_in (\"id\" , ids)"));
+        }
     }
 }

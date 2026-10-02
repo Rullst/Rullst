@@ -102,6 +102,12 @@ The shared adapter boundary enforces:
 - five-second connect and twenty-second request deadlines;
 - disabled redirects and no secret-bearing error bodies.
 
+The 1,000-hit cap applies to the whole shared index, before generated tenant,
+model-wide and soft-delete scopes. For a tenant-scoped model, an answer of
+1,000 IDs is treated as truncated and `search()` answers from the SQL fallback
+instead, so another tenant's hits cannot hide a tenant's matches. Other models
+keep the provider answer, filtered by their scopes.
+
 Meilisearch and Algolia asynchronous indexing tasks are awaited with a bounded
 poll loop. Elasticsearch uses `refresh=wait_for` for the adapter operations.
 

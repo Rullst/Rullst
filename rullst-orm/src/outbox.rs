@@ -200,17 +200,23 @@ impl Outbox {
             .bind(&insert_token)
             .execute(&mut **transaction)
             .await?;
-        let select_sql = if driver == "postgres" {
-            "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = $1 AND event_key = $2"
-        } else {
-            "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = ? AND event_key = ?"
+        let select_sql = match driver {
+            "postgres" => POSTGRES_ENQUEUED_SELECT,
+            "mysql" => MYSQL_ENQUEUED_SELECT,
+            _ => SQLITE_ENQUEUED_SELECT,
         };
         let (id, stored_kind, stored_payload, stored_insert_token) =
             sqlx::query_as::<_, (i64, String, String, String)>(select_sql)
                 .bind(stream)
                 .bind(event_key)
-                .fetch_one(&mut **transaction)
-                .await?;
+                .fetch_optional(&mut **transaction)
+                .await?
+                .ok_or_else(|| {
+                    Error::DatabaseError(
+                        "outbox event could not be read back after its idempotent insert"
+                            .to_string(),
+                    )
+                })?;
         if stored_kind != event_kind || stored_payload != payload_json {
             return Err(Error::Validation(format!(
                 "outbox idempotency key '{event_key}' already exists in stream '{stream}' with different content"
@@ -513,6 +519,14 @@ const SQLITE_TABLE: &str = "CREATE TABLE IF NOT EXISTS rullst_outbox (id INTEGER
 const POSTGRES_INSERT: &str = "INSERT INTO rullst_outbox (stream, event_key, event_kind, payload_json, status, attempts, claimed_by, claim_expires_at_epoch, last_error, available_at_epoch, created_at_epoch, insert_token, claim_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '') ON CONFLICT (stream, event_key) DO NOTHING";
 const MYSQL_INSERT: &str = "INSERT INTO rullst_outbox (stream, event_key, event_kind, payload_json, status, attempts, claimed_by, claim_expires_at_epoch, last_error, available_at_epoch, created_at_epoch, insert_token, claim_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '') ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)";
 const SQLITE_INSERT: &str = "INSERT INTO rullst_outbox (stream, event_key, event_kind, payload_json, status, attempts, claimed_by, claim_expires_at_epoch, last_error, available_at_epoch, created_at_epoch, insert_token, claim_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '') ON CONFLICT (stream, event_key) DO NOTHING";
+
+const POSTGRES_ENQUEUED_SELECT: &str = "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = $1 AND event_key = $2";
+// InnoDB's default REPEATABLE READ serves a plain SELECT from the snapshot of
+// the caller's first read, which misses a key committed later by a concurrent
+// enqueue. A locking read returns the latest committed row, which the
+// preceding upsert has already locked.
+const MYSQL_ENQUEUED_SELECT: &str = "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = ? AND event_key = ? FOR UPDATE";
+const SQLITE_ENQUEUED_SELECT: &str = "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = ? AND event_key = ?";
 
 const POSTGRES_EXHAUST: &str = "UPDATE rullst_outbox SET status = $1, claimed_by = $2, claim_key = $3, claim_expires_at_epoch = $4, last_error = $5 WHERE stream = $6 AND attempts >= $7 AND (status = $8 OR (status = $9 AND claim_expires_at_epoch <= $10))";
 const PORTABLE_EXHAUST: &str = "UPDATE rullst_outbox SET status = ?, claimed_by = ?, claim_key = ?, claim_expires_at_epoch = ?, last_error = ? WHERE stream = ? AND attempts >= ? AND (status = ? OR (status = ? AND claim_expires_at_epoch <= ?))";

@@ -132,6 +132,30 @@ every workflow listed in `.github/release-required-workflows.json` at the exact
 crates in `.github/release-order.json` and attach verified native CLI binaries.
 See [release recovery](release-recovery.md) for partial publication handling.
 
+## Next 12.x minor: Core, Security and Connect review fixes
+
+These unreleased fixes, ported from the v13 review, keep the 12.x API and MSRV.
+Existing applications may notice the following behaviour changes:
+
+| Area | Change |
+|---|---|
+| Server probes | `Server`'s rate limiter and Traffic Shield no longer count or shed exact `GET`/`HEAD /health` and `/ready` requests. |
+| Scheduler | A scheduler attached with `Server::schedule` logs each task failure on the `rullst::scheduler` target; only a failed scheduler loop makes `Server::run` return `ServerError::Scheduler`. `Scheduler::task` keeps its `cron`-crate semantics (weekdays 1=Sunday to 7=Saturday, restricted day fields intersect), which are now documented. |
+| Validation | HTMX requests (`HX-Request: true`) receive `ValidatedForm`/`ValidatedJson` error fragments with `200 OK` and `X-Rullst-Validation-Status: 400\|422`; other clients keep `400`/`422` JSON. Update HTMX handlers or tests that matched the 4xx status. |
+| CSRF | `HEAD` is handled like `GET`: it receives the request `CsrfToken` and, without a CSRF cookie, the same `Set-Cookie`. An unrelated non-ASCII cookie no longer hides the `rullst_csrf` cookie. |
+| Body inspection | The Core WAF and PII layers and Security's RASP, schema guard, DLP and AI firewall classify JSON, XML and form media types case-insensitively, including `+json`/`+xml` suffixes and any `application/x-www-form-urlencoded` prefix, so such bodies are now inspected. |
+| Queue | The SQLite and Redis drivers fail a job, instead of requeuing it, when its fifth lease stalls. SQLite adds a `stalled_recoveries` column to an existing `rullst_jobs` table on start; `retry_failed_job` resets it. `stalled_after` must exceed the longest `job_timeout` of every worker sharing a queue. |
+| Feature flags | `DbFeatureDriver` caches missing flags and failed lookups for its TTL, serves the last value read after a failed refresh, bounds one lookup to two seconds and caches at most 4,096 flag names. |
+| Rate limiting | Security's `rate_limit_middleware` keys IPv6 peers per /64 (IPv4-mapped IPv6 as IPv4), so addresses in one /64 share a budget. |
+| Honeypot | A trap hit that a page initiated (`Sec-Fetch-Site` `same-origin`/`same-site`/`cross-site`, or `Origin`/`Referer` without fetch metadata) is refused but no longer bans the peer. |
+| Log redaction and DLP | `redact_secrets` also redacts compound key names (`DB_PASSWORD`, `access_token`, `client_secret`, `SECRET_KEY`) and whole unquoted `Authorization`/`Cookie` values. DLP also masks EC, DSA, encrypted PKCS#8 and OpenPGP private-key blocks. |
+| Connect | `XProvider` authenticates token requests with HTTP Basic. `OidcProvider` uses HTTP Basic when discovery lists `client_secret_basic` without `client_secret_post`. Refresh requests send `Accept: application/json`. `AutoRefreshingSession` keeps a rotated refresh token when a same-user refresh response is rejected. `OidcProvider` accepts profiles without `name`; `ConnectUser::name` may then be empty. |
+
+The ORM fixes of the same minor have their own
+[upgrade checklist](crates/orm.md#upgrading-from-121): nested transactions,
+`SecretString` serialization, `paginate()`, query-cache and Redis hash keys,
+new typed errors, Nexus field hiding and generated Redis effects.
+
 ## Next 12.x minor: Mail, Capital, Messaging, AI, IoT, Nexus and Studio review fixes
 
 These unreleased fixes, ported from the v13 review, keep the 12.x API and MSRV.
