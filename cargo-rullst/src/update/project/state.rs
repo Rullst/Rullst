@@ -115,9 +115,14 @@ impl State {
         let findings = plan["source_findings"]
             .as_array()
             .ok_or(ProjectError::Invalid("missing source review findings"))?;
-        if !findings.is_empty() {
+        // Review findings are reported with the plan; a must-change finding
+        // (severity BLOCKER) needs a source edit before execution.
+        if findings
+            .iter()
+            .any(|finding| finding["severity"] != "REVIEW")
+        {
             return Err(ProjectError::Invalid(
-                "resolve migration findings in the original project and prepare again before execution",
+                "resolve must-change migration findings in the original project and prepare again before execution",
             ));
         }
         let mut candidate_records = Vec::new();

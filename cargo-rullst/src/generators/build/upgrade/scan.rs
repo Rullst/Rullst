@@ -1,10 +1,6 @@
 use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
 
-/// Catalog identifier recorded in plans and preparations. v12 and v13 origins
-/// need no source-marker rules; v5/v6/v11-era rules were retired in v13.
-pub(super) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v3";
-
 /// Refuses symlinked Rust sources before a transaction snapshots the workspace,
 /// so a backup or restore never follows a link outside the project.
 pub(super) fn reject_symlinked_sources(
@@ -30,7 +26,8 @@ pub(super) fn reject_symlinked_sources(
     Ok(())
 }
 
-fn included_entry(entry: &DirEntry) -> bool {
+/// Walks a package without nested packages, VCS data or build output.
+pub(super) fn included_entry(entry: &DirEntry) -> bool {
     if entry.depth() == 0 || !entry.file_type().is_dir() {
         return true;
     }

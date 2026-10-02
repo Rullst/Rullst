@@ -3,6 +3,8 @@
 mod backup;
 mod isolated;
 mod manifest;
+mod report;
+mod rules;
 mod scan;
 
 pub(crate) use isolated::{
@@ -12,6 +14,7 @@ pub(crate) use isolated::{
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;
 use manifest::ManifestUpgradePlan;
+use rules::{FindingKind, SourceScan};
 use semver::Version;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -69,26 +72,23 @@ enum UpgradeError {
     },
 }
 
-pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Error>> {
-    let root = std::env::current_dir()?.canonicalize()?;
-    if let Some(backup_path) = options.restore.as_deref() {
-        let restored = backup::UpgradeBackup::restore_from(&root, backup_path)?;
-        println!(
-            "{}",
-            format!(
-                "Restored the Rullst upgrade backup from {}. Review the working tree before continuing.",
-                restored.display()
-            )
-            .green()
-            .bold()
-        );
-        return Ok(());
-    }
+/// A validated plan: dependency edits and source findings, nothing written.
+struct Planned {
+    target: Version,
+    plans: Vec<ManifestUpgradePlan>,
+    scan: SourceScan,
+    changed: usize,
+}
+
+fn plan_project(
+    root: &Path,
+    requested: Option<&str>,
+) -> Result<Planned, Box<dyn std::error::Error>> {
     if !root.join("Cargo.toml").is_file() {
         return Err(UpgradeError::NotRullstProject.into());
     }
-    let target = target_version(options.target.as_deref())?;
-    let plans = manifest::plan_workspace(&root, &target.to_string())?;
+    let target = target_version(requested)?;
+    let plans = manifest::plan_workspace(root, &target.to_string())?;
     let matched = plans.iter().map(|plan| plan.matched).sum::<usize>();
     let changed = plans.iter().map(|plan| plan.changes.len()).sum::<usize>();
     let source_majors = plans
@@ -115,13 +115,53 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         return Err(UpgradeError::RetiredSourceMajor(retired.join(", ")).into());
     }
 
-    reject_downgrade(&root, &target, &plans)?;
+    reject_downgrade(root, &target, &plans)?;
     scan::reject_symlinked_sources(&package_roots)?;
-    let json_report = render_json_report(&root, &target, &plans)?;
+    let scan = rules::scan_workspace(root, &plans, target.major)?;
+    Ok(Planned {
+        target,
+        plans,
+        scan,
+        changed,
+    })
+}
+
+/// Recovery advice when a Cargo gate fails while must-change findings remain.
+fn findings_hint(scan: &SourceScan) -> String {
+    match scan.count(FindingKind::MustChange) {
+        0 => String::new(),
+        count => format!(
+            "; the plan lists {count} must-change finding(s): fix them first, or rerun with --keep-on-failure to repair the kept state"
+        ),
+    }
+}
+
+pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::env::current_dir()?.canonicalize()?;
+    if let Some(backup_path) = options.restore.as_deref() {
+        let restored = backup::UpgradeBackup::restore_from(&root, backup_path)?;
+        println!(
+            "{}",
+            format!(
+                "Restored the Rullst upgrade backup from {}. Review the working tree before continuing.",
+                restored.display()
+            )
+            .green()
+            .bold()
+        );
+        return Ok(());
+    }
+    let Planned {
+        target,
+        plans,
+        scan,
+        changed,
+    } = plan_project(&root, options.target.as_deref())?;
+    let json_report = report::render_json_report(&root, &target, &plans, &scan)?;
     if options.json {
         println!("{json_report}");
     } else {
-        print_plan(&root, &target, &plans, options.dry_run);
+        report::print_plan(&root, &target, &plans, &scan, options.dry_run);
     }
 
     if options.dry_run {
@@ -145,7 +185,10 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
     }
 
     let backup = backup::UpgradeBackup::create(&root, &plans)?;
-    let report_path = backup.write_reports(&render_report(&root, &target, &plans), &json_report)?;
+    let report_path = backup.write_reports(
+        &report::render_report(&root, &target, &plans, &scan),
+        &json_report,
+    )?;
 
     if let Err(error) = manifest::apply_plans(&plans) {
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
@@ -172,7 +215,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
         return Err(UpgradeError::CommandFailed {
             command: "cargo fix --workspace --all-targets",
-            recovery,
+            recovery: format!("{recovery}{}", findings_hint(&scan)),
         }
         .into());
     }
@@ -187,15 +230,24 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
         return Err(UpgradeError::CommandFailed {
             command: "cargo check --workspace --all-targets --locked",
-            recovery,
+            recovery: format!("{recovery}{}", findings_hint(&scan)),
         }
         .into());
     }
 
+    let remaining = if scan.findings.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n{} must-change and {} review finding(s) are listed in the report.",
+            scan.count(FindingKind::MustChange),
+            scan.count(FindingKind::Review),
+        )
+    };
     println!(
         "{}",
         format!(
-            "\nUpgrade transaction completed and cargo check passed.\nBackup and review report: {}\nRun the full application tests, database restore/migration rehearsal, and deployment smoke tests before merging.",
+            "\nUpgrade transaction completed and cargo check passed.\nBackup and review report: {}{remaining}\nRun the full application tests, database restore/migration rehearsal, and deployment smoke tests before merging.",
             report_path.display()
         )
         .green()
@@ -295,97 +347,6 @@ fn recover_after_failure(
             backup.root().display()
         ))
     }
-}
-
-fn print_plan(root: &Path, target: &Version, plans: &[ManifestUpgradePlan], dry_run: bool) {
-    let mode = if dry_run { "DRY RUN" } else { "APPLY" };
-    println!(
-        "{}",
-        format!("\nRullst assisted upgrade — {mode} — target {target}")
-            .cyan()
-            .bold()
-    );
-    println!("Project: {}", root.display());
-
-    for plan in plans {
-        let relative = relative_report_path(root, &plan.path);
-        for change in &plan.changes {
-            println!(
-                "  {}: {} ({}) {} -> {}",
-                relative, change.key, change.package, change.from, change.to
-            );
-        }
-        for warning in &plan.warnings {
-            println!("  REVIEW {relative}: {warning}");
-        }
-    }
-}
-
-fn render_report(root: &Path, target: &Version, plans: &[ManifestUpgradePlan]) -> String {
-    let mut report = format!(
-        "# Rullst assisted upgrade report\n\n- Project: `{}`\n- Target: `{target}`\n- Scope: dependency manifests, Cargo.lock and compiler-provided Rust fixes\n\n",
-        root.display()
-    );
-    report.push_str("## Dependency plan\n\n");
-    for plan in plans {
-        let relative = relative_report_path(root, &plan.path);
-        for change in &plan.changes {
-            report.push_str(&format!(
-                "- `{}`: `{}` (`{}`) `{}` → `{}`\n",
-                relative, change.key, change.package, change.from, change.to
-            ));
-        }
-        for warning in &plan.warnings {
-            report.push_str(&format!("- REVIEW `{relative}`: {warning}\n"));
-        }
-    }
-    report.push_str(
-        "\n## Source review\n\nThe current rule catalog has no source-marker rules for v12 or v13 origins. This is not proof of runtime compatibility.\n",
-    );
-    report.push_str(
-        "\n## Mandatory manual gates\n\n- Review every diff and the migration guide for the target major.\n- Restore a database backup into a disposable environment and rehearse migrations and rollback.\n- Run formatting, Clippy, the complete application tests, authorization negatives and a production-profile smoke test.\n- Revalidate Nexus, Studio, providers, proxy trust, CSRF/CORS and secrets.\n",
-    );
-    report
-}
-
-fn render_json_report(
-    root: &Path,
-    target: &Version,
-    plans: &[ManifestUpgradePlan],
-) -> Result<String, serde_json::Error> {
-    let manifests = plans
-        .iter()
-        .map(|plan| {
-            serde_json::json!({
-                "path": relative_report_path(root, &plan.path),
-                "matched_dependencies": plan.matched,
-                "source_majors": plan.source_majors,
-                "changes": plan.changes,
-                "warnings": plan.warnings,
-            })
-        })
-        .collect::<Vec<_>>();
-    serde_json::to_string_pretty(&serde_json::json!({
-        "schema_version": "rullst.upgrade-plan.v1",
-        "rule_catalog": scan::RULE_CATALOG_VERSION,
-        "target": target.to_string(),
-        "manifests": manifests,
-        // Kept for rullst.upgrade-plan.v1 consumers; v12/v13 origins have no rules.
-        "source_findings": [],
-        "automatic_scope": [
-            "workspace dependency manifests",
-            "Cargo.lock resolution",
-            "compiler-provided Rust fixes",
-            "locked cargo check for the selected features"
-        ],
-        "manual_gates": [
-            "review the complete diff",
-            "rehearse database restore, migration and rollback",
-            "run the full application tests and authorization negatives",
-            "validate providers, proxy trust, Nexus, Studio, CSRF/CORS and secrets"
-        ],
-        "production_ready": false
-    }))
 }
 
 #[cfg(test)]
