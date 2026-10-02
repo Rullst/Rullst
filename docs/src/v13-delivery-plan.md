@@ -31,6 +31,17 @@ not waive the applicable verification, ownership or protected-publication
 checks. Choosing a prerelease label does not authorize an upload; stable
 `13.0.0` still requires its own readiness decision.
 
+**Direction recorded on 2 October:** publish 12.2.0 from `v12` first, through
+its complete admission and the protected crates.io step. The v13 publication
+decision is deferred to the owner's next working session, after 7 October. The
+owner is considering a first v13 alpha that includes the current candidate
+packages as well as the sixteen published ones. That option is not yet
+approved, and the alpha label does not waive the checks above: each candidate
+still needs its own admission and a place in the release order before upload.
+`main` remains the v13 development line. When stable 13.0.0 is published, a
+`v13` maintenance branch can be cut from its release source, as `v12` was, and
+`main` moves on to the next major.
+
 ## Source-line transition approved on 21 September
 
 The owner approved development on `main`, stable maintenance on `v12`, and
