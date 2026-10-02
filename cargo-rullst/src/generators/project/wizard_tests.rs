@@ -254,6 +254,24 @@ fn an_invalid_flag_name_is_refused_before_any_question() {
 }
 
 #[test]
+fn typed_names_not_starting_with_a_letter_get_that_reason() {
+    for name in ["_shop", "-api"] {
+        assert_eq!(
+            flow::validate_name(name),
+            Err("The project name must start with a letter.")
+        );
+    }
+    assert_eq!(
+        flow::validate_name("9shop"),
+        Err("The project name cannot start with a number.")
+    );
+    assert_eq!(
+        flow::validate_name("crate"),
+        Err("That name is reserved by Rust; choose another one.")
+    );
+}
+
+#[test]
 fn requested_integrations_keep_the_manifest_order() {
     let options = ProjectScaffoldOptions {
         qdrant: true,
