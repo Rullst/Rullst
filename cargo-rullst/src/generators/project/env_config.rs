@@ -247,6 +247,18 @@ BILLING_REPORT_PLAN_IDS=
 }
 
 pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    write_nix_files(project_path)?;
+    println!(
+        "{}",
+        "  ✅ flake.nix (Nix reproducible environment)".green()
+    );
+    println!("{}", "  ✅ .envrc (direnv support)".green());
+
+    Ok(())
+}
+
+/// [`generate_nix_files`] without progress output (used by previews).
+pub(crate) fn write_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let flake_nix = r#"{
   description = "A Rullst Application";
 
@@ -291,17 +303,23 @@ pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error:
 
     fs::write(project_path.join("flake.nix"), flake_nix)?;
     fs::write(project_path.join(".envrc"), envrc)?;
-
-    println!(
-        "{}",
-        "  ✅ flake.nix (Nix reproducible environment)".green()
-    );
-    println!("{}", "  ✅ .envrc (direnv support)".green());
-
     Ok(())
 }
 
 pub fn generate_buildah_script(
+    project_path: &Path,
+    project_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    write_buildah_script(project_path, project_name)?;
+    println!(
+        "{}",
+        "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
+    );
+    Ok(())
+}
+
+/// [`generate_buildah_script`] without progress output (used by previews).
+pub(crate) fn write_buildah_script(
     project_path: &Path,
     project_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -334,10 +352,6 @@ echo "✅ Build complete!"
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755))?;
     }
-    println!(
-        "{}",
-        "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
-    );
     Ok(())
 }
 

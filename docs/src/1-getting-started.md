@@ -66,6 +66,22 @@ creates a Portfolio with the stable v12 CLI:
 5. Leave **optional persistence capabilities** empty unless you need an add-on.
    That selector accepts zero or more choices; it is not another required database.
 
+> [!NOTE]
+> **v13 preview: the first run in about a minute.** The v13 CLI replaces those
+> prompts with a create wizard: `cargo rullst new my_app` (or **Create New
+> Project** on the home screen) asks for the blueprint, showing a one-line
+> description and a preview of its file tree, then the database and optional
+> features, and ends on a review of the files and of the commands it will run
+> before anything is written. Esc goes back; Cancel creates nothing. When it
+> finishes it prints three numbered next steps: `cd my_app`,
+> `cargo rullst dev` and the local URL of the generated welcome page, by
+> default `http://127.0.0.1:3000`. With Blank + SQLite and a warm Cargo cache,
+> that page is about a minute away; a cold first build takes longer.
+> `cargo rullst new my_app --default --dry-run` previews the same plan
+> without creating anything, and `cargo rullst tour` walks through the main
+> commands without changing a project. See the
+> [CLI reference](cli_reference.md#cargo-rullst-new-name).
+
 ```bash
 cd my_portfolio
 cargo rullst dev

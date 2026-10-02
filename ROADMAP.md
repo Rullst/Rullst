@@ -317,6 +317,15 @@ contains the more detailed evidence and acceptance boundaries.
   — worth demand-driven adapters only when each has a maintainer and passes the
   shared offline/live mail contract suite).*
 
+### Efficiency and sustainability
+
+- **Measured green-software reports and efficient defaults** *(planned —
+  `cargo rullst footprint` with an SCI-based (ISO/IEC 21031:2024) method,
+  a reproducible cross-framework benchmark, tuned release and HTTP caching
+  defaults, carbon-aware deferrable jobs. Reports state their method and
+  limits; no unsubstantiated "greener than" claims. See the
+  [green software roadmap](docs/src/green-software-roadmap.md)).*
+
 ### IoT, edge, AI, and critical systems
 
 - **MQTT 5, CoAP, Sparkplug B, CAN/J1939, LoRaWAN, GPIO/I2C, real firmware
