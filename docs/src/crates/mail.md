@@ -252,6 +252,9 @@ umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`. It
 rejects non-final/mock evidence and recipient/amount/currency substitution.
 Applications still reconcile webhooks and atomically claim the stable delivery
 key; provider acceptance and exactly-once delivery are not promised.
+The prepared message has no sender, so real providers need the application's
+verified sender set on a copy of `message()` before `Mail::send`; the helper's
+own `send` methods suit the offline mock.
 
 ---
 

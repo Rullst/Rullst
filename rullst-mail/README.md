@@ -232,6 +232,9 @@ enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
 recipient/amount/currency substitution before sending. The host must atomically
 claim its stable delivery key in durable state; webhook orchestration,
 provider acceptance and exactly-once delivery are not implied.
+The prepared message has no sender, so real providers need the application's
+verified sender set on a copy of `message()` before `Mail::send`; the helper's
+own `send` methods suit the offline mock.
 
 ---
 
