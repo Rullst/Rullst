@@ -710,8 +710,10 @@ Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf
 ### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
 Guided deployment helper that generates cloud manifests (`fly.toml`,
 `railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
-selected provider CLI where supported. Credentials, migrations, availability,
-DNS/TLS and rollback remain operator responsibilities.
+selected provider CLI where supported. A provider CLI that is not installed
+only prints the manual commands; one that runs and fails (`flyctl deploy`,
+`railway up`) makes `deploy` exit non-zero. Credentials, migrations,
+availability, DNS/TLS and rollback remain operator responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
