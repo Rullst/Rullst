@@ -14,7 +14,7 @@ Run this from a Rullst project root:
 cargo rullst auth
 ```
 
-The current command creates or updates:
+The current command creates:
 
 - `src/models/user.rs`;
 - `src/migrations/m<timestamp>_create_users_table.rs` and the migrations module;
@@ -23,9 +23,12 @@ The current command creates or updates:
 - `src/pages/auth.rs`; and
 - the corresponding module declarations.
 
-It does not support an `auth --api` flag, and it does not silently register
-application routes. Review the generated diff before editing or rerunning the
-command.
+It fails before writing anything when one of those files exists or when a
+`*_create_users.rs`/`*_create_users_table.rs` migration already creates the
+users table (the blank database starter ships one); add the account columns
+with `cargo rullst make:migration` in that case. It does not support an
+`auth --api` flag, and it does not silently register application routes.
+Review the generated diff before editing it.
 
 ---
 

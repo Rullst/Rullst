@@ -175,3 +175,52 @@ fn database_model_generation_keeps_existing_models_and_module_declarations() {
             .contains("pub id: i32")
     );
 }
+
+#[test]
+fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
+    let customized = Project::new();
+    fs::create_dir_all(customized.path("src/models")).expect("models directory");
+    let model = "// customized User with NexusModel\n";
+    fs::write(customized.path("src/models/user.rs"), model).expect("custom model");
+    let manifest = customized.read("Cargo.toml");
+    let refused = customized.fails(&["auth"]);
+    assert!(refused.contains("src/models/user.rs"), "{refused}");
+    assert_unchanged(&customized, "src/models/user.rs", model);
+    assert_unchanged(&customized, "Cargo.toml", &manifest);
+    assert!(
+        !customized
+            .path("src/controllers/auth_controller.rs")
+            .exists()
+    );
+    assert!(customized.migrations_ending_with(".rs").is_empty());
+
+    let starter = Project::new();
+    fs::create_dir_all(starter.path("src/migrations")).expect("migrations directory");
+    let users = "// starter users table\n";
+    let starter_migration = "src/migrations/m20260601000000_create_users_table.rs";
+    fs::write(starter.path(starter_migration), users).expect("starter migration");
+    let refused = starter.fails(&["auth"]);
+    assert!(
+        refused.contains("second users table migration"),
+        "{refused}"
+    );
+    assert_eq!(
+        starter
+            .migrations_ending_with("_create_users_table.rs")
+            .len(),
+        1
+    );
+    assert!(!starter.path("src/models/user.rs").exists());
+
+    let repeated = Project::new();
+    repeated.succeeds(&["auth"]);
+    let controller = repeated.read("src/controllers/auth_controller.rs");
+    repeated.fails(&["auth"]);
+    assert_eq!(
+        repeated
+            .migrations_ending_with("_create_users_table.rs")
+            .len(),
+        1
+    );
+    assert_unchanged(&repeated, "src/controllers/auth_controller.rs", &controller);
+}

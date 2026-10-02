@@ -1,6 +1,8 @@
 // cargo-rullst/src/generators/auth/models.rs — Migration and User model generator.
 
-use crate::generators::migration::regenerate_migrations_mod;
+use crate::generators::{
+    migration::regenerate_migrations_mod, output_guard::write_new, register_mod_ast,
+};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -50,7 +52,7 @@ impl Migration for MigrationImpl {{
 "##,
         file_stem = file_stem
     );
-    fs::write(&migration_path, migration_template)?;
+    write_new(&migration_path, migration_template.as_bytes())?;
     println!("{}", "  ✨ Created 'users' table migration.".green());
 
     regenerate_migrations_mod()?;
@@ -83,22 +85,9 @@ impl User {
     }
 }
 "##;
-    fs::write(&model_path, model_template)?;
+    write_new(&model_path, model_template.as_bytes())?;
     println!("{}", "  ✨ Created 'User' model.".green());
-
-    let mod_models_path = models_dir.join("mod.rs");
-    if !mod_models_path.exists() {
-        fs::write(&mod_models_path, "")?;
-    }
-    let mut mod_models_content = fs::read_to_string(&mod_models_path)?;
-    let mut modified = false;
-    if !mod_models_content.contains("pub mod user;") {
-        mod_models_content.push_str("pub mod user;\n");
-        modified = true;
-    }
-    if modified {
-        fs::write(&mod_models_path, mod_models_content)?;
-    }
+    register_mod_ast(&models_dir.join("mod.rs"), "user")?;
 
     Ok(())
 }

@@ -1,5 +1,6 @@
 // cargo-rullst/src/generators/auth/views.rs — Auth pages template generator.
 
+use crate::generators::{output_guard::write_new, register_mod_ast};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -109,18 +110,9 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Ht
     })
 }
 "##;
-    fs::write(&pages_path, pages_template)?;
+    write_new(&pages_path, pages_template.as_bytes())?;
     println!("{}", "  ✨ Created 'auth' views.".green());
-
-    let mod_pages_path = pages_dir.join("mod.rs");
-    if !mod_pages_path.exists() {
-        fs::write(&mod_pages_path, "")?;
-    }
-    let mut mod_pages_content = fs::read_to_string(&mod_pages_path)?;
-    if !mod_pages_content.contains("pub mod auth;") {
-        mod_pages_content.push_str("pub mod auth;\n");
-        fs::write(&mod_pages_path, mod_pages_content)?;
-    }
+    register_mod_ast(&pages_dir.join("mod.rs"), "auth")?;
 
     Ok(())
 }

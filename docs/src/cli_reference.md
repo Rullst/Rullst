@@ -714,8 +714,14 @@ DNS/TLS and rollback remain operator responsibilities.
 Creates an authentication starting point in your codebase, including:
 - User model and migration with asynchronous Argon2 password hashing.
 - Auth Controllers (Login, Registration, Logout).
-- Session or Token Middleware.
+- Encrypted-session middleware that inserts the signed-in user's id as `Extension<i32>`.
 - Complete HTML Views for Login and Signup (unless `--api` is used).
+
+It fails before writing anything when `src/models/user.rs`,
+`src/controllers/auth_controller.rs`, `src/middlewares/auth_middleware.rs` or
+`src/pages/auth.rs` already exists, or when a
+`*_create_users.rs`/`*_create_users_table.rs` migration already creates the
+users table (the blank database starter and the SaaS/LMS blueprints ship one).
 
 ### `cargo rullst make:mfa`
 Scaffolds a 2FA TOTP Multi-Factor Authentication controller at `src/controllers/mfa.rs` providing RFC 6238 Base32 secret generation, 6-digit TOTP code validation, and `otpauth://` QR URI generation.
