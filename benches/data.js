@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790958636895,
+  "lastUpdate": 1790974500715,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24933,6 +24933,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1190,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "232296c680d7dc3c5ca7e35226aff24b2c909754",
+          "message": "Merge pull request #409 from Rullst/claude/lucid-ride-q7hc27\n\ndocs(v13): record the 12.2.0-first direction; fix flaky release gate tests",
+          "timestamp": "2026-10-02T17:48:49-03:00",
+          "tree_id": "ebdf30c1ec5cee468a9b1fe3da71fd10334100bb",
+          "url": "https://github.com/Rullst/Rullst/commit/232296c680d7dc3c5ca7e35226aff24b2c909754"
+        },
+        "date": 1790974498650,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1002,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 635,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2349,
+            "range": "± 57",
             "unit": "ns/iter"
           }
         ]
