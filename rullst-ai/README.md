@@ -101,8 +101,9 @@ as CommonMark never renders them; lines end at LF, CRLF or a bare CR and only sp
 line blank, as in CommonMark. Code whose extent depends on an ambiguous layout (HTML blocks,
 list or quote containers, unclosed fences, multi-line spans) is still read. A reference image whose
 ASCII label matches no definition renders as literal text and is not blocked (so `vec![x]` next to
-a link passes); a non-ASCII label, which Unicode case folding could match to a definition, or an
-unterminated label is blocked when the text also names a remote URL. Raw HTML `<img>` tags are not
+a link passes). Labels keep their backslash escapes (`[a\]b]` ends at its unescaped `]`); a
+non-ASCII label, which Unicode case folding could match to a definition, a label with an escaped
+bracket, or an unterminated label is blocked when the text also names a remote URL. Raw HTML `<img>` tags are not
 inspected. Like all heuristic filters, this is one boundary in a
 defense-in-depth design; it is not a proof that arbitrary model output is safe.
 

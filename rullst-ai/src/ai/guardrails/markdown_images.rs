@@ -126,10 +126,11 @@ fn classify(label: &str, definitions: &Definitions, budget: &mut usize) -> Image
             Image::Remote
         };
     }
-    // `![a][b]` uses `b`, `![a][]` and `![a]` use `a`; both are checked.
+    // `![a][b]` uses `b`, `![a][]` and `![a]` use `a`; both are checked. The
+    // second label ends at its first unescaped `]`, as in `[a\]b]`.
     let reference = after
         .strip_prefix('[')
-        .and_then(|reference| reference.get(..reference.find(']')?));
+        .and_then(|reference| reference.get(..unescaped_close(reference)?));
     let labels = [Some(label), reference]
         .into_iter()
         .flatten()
@@ -145,12 +146,43 @@ fn classify(label: &str, definitions: &Definitions, budget: &mut usize) -> Image
         Image::Remote
     } else if resolutions.contains(&Resolution::Local) {
         Image::Local
-    } else if labels.iter().all(|label| label.is_ascii()) {
-        // An unmatched reference is literal text, not an image.
+    } else if labels
+        .iter()
+        .all(|label| label.is_ascii() && !label.contains("\\[") && !label.contains("\\]"))
+    {
+        // An unmatched reference is literal text, not an image. A label with
+        // an escaped bracket could still match a definition this reader
+        // delimited differently, so it stays unresolved.
         Image::Literal
     } else {
         Image::Unresolved
     }
+}
+
+/// The byte index of the first `]` that no backslash escapes.
+fn unescaped_close(text: &str) -> Option<usize> {
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\\' => index += 1,
+            b']' => return Some(index),
+            _ => {}
+        }
+        index += 1;
+    }
+    None
+}
+
+/// Whether the byte at `index` follows an odd number of backslashes.
+fn escaped_at(text: &str, index: usize) -> bool {
+    text.as_bytes()[..index]
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'\\')
+        .count()
+        % 2
+        == 1
 }
 
 enum LabelEnd {
@@ -227,30 +259,42 @@ struct Definitions(Vec<Definition>);
 
 impl Definitions {
     /// `None` when the text has more candidates than are inspected.
+    ///
+    /// A label starts at the nearest `[` before `]:` and, when that bracket
+    /// is escaped (`[a\[b]:`), also at the nearest unescaped one, so both
+    /// readings are candidates.
     fn read(text: &str) -> Option<Self> {
         let mut definitions = Vec::new();
         for (count, (colon, _)) in text.match_indices("]:").enumerate() {
             if count >= MAX_DEFINITIONS {
                 return None;
             }
-            let Some(start) = text[..colon]
+            let destination = definition_destination(&text[colon + 2..]);
+            if destination.is_empty() {
+                continue;
+            }
+            let mut opens = text[..colon]
                 .char_indices()
                 .rev()
                 .take(MAX_LABEL_CHARS + 1)
-                .find(|(_, character)| *character == '[')
-                .map(|(index, _)| index + 1)
-            else {
-                continue;
+                .filter(|(_, character)| *character == '[')
+                .map(|(index, _)| index);
+            let nearest = opens.next();
+            let unescaped = match nearest {
+                Some(index) if escaped_at(text, index) => {
+                    opens.find(|index| !escaped_at(text, *index))
+                }
+                _ => None,
             };
-            let label = &text[start..colon];
-            let destination = definition_destination(&text[colon + 2..]);
-            if label.trim().is_empty() || destination.is_empty() {
-                continue;
+            for start in [nearest, unescaped].into_iter().flatten() {
+                let label = &text[start + 1..colon];
+                if !label.trim().is_empty() {
+                    definitions.push(Definition {
+                        label: normalize_label(label),
+                        local: local_destination(destination),
+                    });
+                }
             }
-            definitions.push(Definition {
-                label: normalize_label(label),
-                local: local_destination(destination),
-            });
         }
         Some(Self(definitions))
     }
