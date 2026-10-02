@@ -434,8 +434,15 @@ mod tests {
             });
             let _ = sender.send(outcome);
         });
+        // The sanitizer workflow sets RULLST_TEST_TIME_SCALE because
+        // instrumentation slows every memory access.
+        let scale = std::env::var("RULLST_TEST_TIME_SCALE")
+            .ok()
+            .and_then(|value| value.parse::<u32>().ok())
+            .unwrap_or(1)
+            .clamp(1, 100);
         let outcome = receiver
-            .recv_timeout(std::time::Duration::from_secs(60))
+            .recv_timeout(std::time::Duration::from_secs(60) * scale)
             .expect("pipeline scans must finish in linear time");
         assert!(outcome);
     }

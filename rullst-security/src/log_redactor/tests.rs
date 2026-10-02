@@ -12,7 +12,7 @@ fn redact_within_budget(record: &str) -> String {
     let clean = redact_secrets(record);
     let elapsed = started.elapsed();
     assert!(
-        elapsed < MAX_RECORD_BUDGET,
+        elapsed < crate::test_timing::scaled(MAX_RECORD_BUDGET),
         "{} byte record took {elapsed:?}",
         record.len()
     );
