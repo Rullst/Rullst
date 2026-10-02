@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790902852378,
+  "lastUpdate": 1790905012909,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9074,6 +9074,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 575,
+            "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6d327811e96d83608b31411d029b0deb4733fa31",
+          "message": "Merge pull request #394 from Rullst/feat/v13-cli-palette-doctor\n\nfeat(cli): friendly errors, did-you-mean, visual doctor, completions, JSON views and command palette",
+          "timestamp": "2026-10-01T22:05:49-03:00",
+          "tree_id": "5eaa113ac0b40f6d65f802f54cd8f6f2c7cb34a1",
+          "url": "https://github.com/Rullst/Rullst/commit/6d327811e96d83608b31411d029b0deb4733fa31"
+        },
+        "date": 1790905012016,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 430,
             "range": "± 8",
             "unit": "ns/iter"
           }
