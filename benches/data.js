@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790891031581,
+  "lastUpdate": 1790901012954,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24447,6 +24447,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2424,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf7701dafaf8a6de9dcdcee47cdfe22a722a28ab",
+          "message": "Merge pull request #395 from Rullst/feat/v13-cli-dash-live\n\nfeat(cli,core): live metrics in cargo rullst dash from a loopback-only dev telemetry endpoint",
+          "timestamp": "2026-10-01T21:24:17-03:00",
+          "tree_id": "032038001ff424e123f5a0c2d7a34639fc13649f",
+          "url": "https://github.com/Rullst/Rullst/commit/bf7701dafaf8a6de9dcdcee47cdfe22a722a28ab"
+        },
+        "date": 1790901010439,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 517,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 755,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 553,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1625,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
