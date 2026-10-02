@@ -28,6 +28,8 @@ pub(super) enum PathError {
     Symlink,
     #[error("the path exists but is not a regular file")]
     NotAFile,
+    #[error("the path exists but is not a directory")]
+    NotADirectory,
     #[error("the path could not be inspected")]
     Io,
 }
@@ -150,6 +152,16 @@ fn sensitive(parts: &[String]) -> bool {
 /// checked with `symlink_metadata`, so no link is ever followed; missing
 /// components may be created later as plain directories.
 pub(super) fn resolve(root: &Path, raw: &str) -> Result<ProjectPath, PathError> {
+    walk(root, raw, false)
+}
+
+/// [`resolve`] for a directory a command reads or writes, such as an output
+/// directory: an existing final component must be a directory.
+pub(super) fn resolve_directory(root: &Path, raw: &str) -> Result<ProjectPath, PathError> {
+    walk(root, raw, true)
+}
+
+fn walk(root: &Path, raw: &str, directory: bool) -> Result<ProjectPath, PathError> {
     let parts = components(raw)?;
     let mut current = root.to_path_buf();
     let mut exists = true;
@@ -162,7 +174,10 @@ pub(super) fn resolve(root: &Path, raw: &str) -> Result<ProjectPath, PathError> 
             Ok(metadata) if metadata.file_type().is_symlink() => return Err(PathError::Symlink),
             Ok(metadata) => {
                 let last = index + 1 == parts.len();
-                if last && !metadata.is_file() {
+                if last && directory && !metadata.is_dir() {
+                    return Err(PathError::NotADirectory);
+                }
+                if last && !directory && !metadata.is_file() {
                     return Err(PathError::NotAFile);
                 }
                 if !last && !metadata.is_dir() {

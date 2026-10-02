@@ -3505,8 +3505,10 @@ flags. Outside a project the only command is `cargo rullst new <name>
 --default` with validated blueprint/database flags, creating a new directory
 in the current one; the session then continues inside it. `new` and
 `db:migrate` are always confirmed individually.
-Arguments follow a token grammar without `..` or absolute paths, and programs
-run without a shell, with standard input closed, bounded output and a deadline.
+Arguments follow a token grammar without `..`, absolute, drive or home-relative
+paths (a `--flag=value` value included); the path-valued `--schema`, `--output`
+and `--privacy-source` follow the file path policy below. Programs run without a
+shell, with standard input closed, bounded output and a deadline.
 Paths are relative to the nearest `Cargo.toml` directory; no component may be a
 symlink, `..`, `.git`, `target` or `.cargo`, and secret, key, lockfile and
 toolchain files are refused. Each action is previewed (diff or exact command)

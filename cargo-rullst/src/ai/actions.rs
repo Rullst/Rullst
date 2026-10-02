@@ -165,6 +165,13 @@ pub(super) fn prepare(
         Action::RunRullst { args } => {
             let invocation =
                 commands::validate_rullst(args.clone()).map_err(|error| error.to_string())?;
+            for (kind, value) in commands::path_values(args) {
+                let checked = match kind {
+                    commands::PathKind::File => paths::resolve(root, value),
+                    commands::PathKind::Directory => paths::resolve_directory(root, value),
+                };
+                checked.map_err(|error| format!("`{}`: {error}", sanitize(value)))?;
+            }
             match args.first().map(String::as_str) {
                 Some("db:migrate") => super::environment::ensure_migration_allowed(root)?,
                 // `inspect schema` prints a project-provided snapshot in full.

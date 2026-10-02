@@ -153,6 +153,13 @@ fn hostile_arguments_are_refused() {
         "-1",
         "--=x",
         "é",
+        // Values are checked however they are spelled.
+        "--output=/home/user/.config",
+        "--schema=~/api.json",
+        "C:/Users/me/.ssh/id_rsa",
+        "c:secrets",
+        "--output=C:/Windows",
+        "--output=d:",
     ] {
         assert!(
             matches!(
@@ -177,6 +184,32 @@ fn hostile_arguments_are_refused() {
             Err(CommandError::Argument(_))
         ));
     }
+}
+
+#[test]
+fn ordinary_values_and_urls_still_validate() {
+    for command in [
+        &["make:omni", "--platform=desktop,android"][..],
+        &["make:omni", "--backend-url=https://api.example.com"],
+        &["make:mail", "Welcome", "--welcome"],
+        &[
+            "generate:api",
+            "--schema=api/openapi.json",
+            "--output=src/api",
+        ],
+    ] {
+        assert!(validate_rullst(args(command)).is_ok(), "{command:?}");
+    }
+    assert_eq!(
+        path_values(&args(&[
+            "generate:api",
+            "--schema",
+            "a.json",
+            "--output=src/api",
+            "--check"
+        ])),
+        vec![(PathKind::File, "a.json"), (PathKind::Directory, "src/api")]
+    );
 }
 
 #[test]

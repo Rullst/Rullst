@@ -340,3 +340,55 @@ fn inspect_never_reads_a_file_the_path_policy_refuses() {
         assert!(refused.err().unwrap().contains("symbolic link"));
     }
 }
+
+#[test]
+fn path_valued_flags_follow_the_path_policy() {
+    let (_guard, root) = project();
+    fs::create_dir_all(root.join("api")).unwrap();
+    fs::write(root.join("api/openapi.json"), "{}").unwrap();
+    fs::write(root.join(".env"), "SECRET=1\n").unwrap();
+    let overlay = Overlay::new();
+    let generate = |schema: &str, output: &str| {
+        run(&[
+            "generate:api",
+            "--schema",
+            schema,
+            &format!("--output={output}"),
+        ])
+    };
+    assert!(
+        prepare(
+            &generate("api/openapi.json", "src/api"),
+            Some(&root),
+            &root,
+            &overlay
+        )
+        .is_ok()
+    );
+    for (schema, output) in [
+        (".env", "src/api"),
+        ("api/openapi.json", ".git/hooks"),
+        ("api/openapi.json", "target/api"),
+        ("api/openapi.json", "src/main.rs"),
+        ("api", "src/api"),
+    ] {
+        assert!(
+            prepare(&generate(schema, output), Some(&root), &root, &overlay).is_err(),
+            "{schema} {output}"
+        );
+    }
+    #[cfg(unix)]
+    {
+        let outside = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(outside.path(), root.join("linked")).unwrap();
+        let refused = prepare(
+            &generate("api/openapi.json", "linked/api"),
+            Some(&root),
+            &root,
+            &overlay,
+        );
+        assert!(refused.err().unwrap().contains("symbolic link"));
+        let privacy = run(&["make:privacy", "--privacy-source", "linked"]);
+        assert!(prepare(&privacy, Some(&root), &root, &overlay).is_err());
+    }
+}

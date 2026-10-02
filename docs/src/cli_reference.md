@@ -1325,8 +1325,11 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   symlinks, `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`),
   credentials, keys, `Cargo.lock` or toolchain files. Each action shows a
   coloured diff or the exact command and asks `[y]es / [n]o / [a]ll this turn
-  / [q]uit turn`. Commands run without a shell, with standard input closed,
-  bounded output and a time limit.
+  / [q]uit turn`. Command arguments may not name an absolute, drive (`C:`),
+  home (`~`) or parent (`..`) path, also as `--flag=value`; the values of
+  `--schema`, `--output` and `--privacy-source` follow the path rules above.
+  Commands run without a shell, with standard input closed, bounded output and
+  a time limit.
 * **Non-interactive use:** when standard input, output or error is not a
   terminal, or `CI`/`TERM=dumb` is set, actions are printed as a plan and never
   executed. `NO_COLOR` disables colour.
