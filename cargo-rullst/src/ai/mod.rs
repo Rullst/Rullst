@@ -21,6 +21,7 @@ use std::path::PathBuf;
 mod actions;
 mod backend;
 mod checkpoint;
+mod coalesce;
 mod commands;
 mod connect;
 mod credentials;

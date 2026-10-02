@@ -358,7 +358,9 @@ async fn reported_usage_is_shown_per_answer_and_per_session() {
     let provider = OpenAiCompatibleProvider::try_local(url, "fixture")
         .unwrap()
         .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_stream_usage());
-    let backend = Backend::Compatible(StreamingAiClient::new(provider));
+    let backend = Backend::Compatible(StreamingAiClient::new(crate::ai::coalesce::Coalesced(
+        provider,
+    )));
     let mut options = settings(Mode::PlanOnly("test"), None);
     options.prices = crate::ai::credentials::Prices::new(2.0, 8.0);
     let mut session = Session::new(&backend, options, Vec::new(), Input::script(&[]));

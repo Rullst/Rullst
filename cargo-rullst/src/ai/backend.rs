@@ -8,7 +8,11 @@
 //!   SSE (usage is read when the server sends it);
 //! - Anthropic and Gemini: their native SSE streams;
 //! - the offline assistant: a local fixture stream.
+//!
+//! Provider deltas are coalesced ([`Coalesced`]) so that a long answer is
+//! bounded by the 2 MiB output limit, not by the chunk limit.
 
+use super::coalesce::Coalesced;
 use super::credentials::Resolved;
 use super::mock::MockAssistant;
 use super::provider::Provider;
@@ -31,9 +35,9 @@ const MAX_ANSWER_BYTES: usize = 2 * 1024 * 1024;
 const CHUNK_BYTES: usize = 16 * 1024;
 
 pub(super) enum Backend {
-    Compatible(StreamingAiClient<OpenAiCompatibleProvider>),
-    Anthropic(StreamingAiClient<AnthropicProvider>),
-    Gemini(StreamingAiClient<GeminiProvider>),
+    Compatible(StreamingAiClient<Coalesced<OpenAiCompatibleProvider>>),
+    Anthropic(StreamingAiClient<Coalesced<AnthropicProvider>>),
+    Gemini(StreamingAiClient<Coalesced<GeminiProvider>>),
     Guarded(AiClient),
     Mock(StreamingAiClient<MockAssistant>),
 }
@@ -51,11 +55,11 @@ fn compatible(provider: OpenAiCompatibleProvider, usage: bool) -> Backend {
     } else {
         OpenAiCompatibleCapabilities::chat_only().with_streaming()
     };
-    Backend::Compatible(StreamingAiClient::new(
+    Backend::Compatible(StreamingAiClient::new(Coalesced(
         provider
             .with_capabilities(capabilities)
             .with_request_timeout(REQUEST_TIMEOUT),
-    ))
+    )))
 }
 
 /// The OpenAI-compatible base URL for an Ollama host when it is a literal
@@ -138,16 +142,16 @@ impl Backend {
                 true,
             ),
             Provider::Local => compatible(local_provider(secret, model)?, false),
-            Provider::Anthropic => Backend::Anthropic(StreamingAiClient::new(
+            Provider::Anthropic => Backend::Anthropic(StreamingAiClient::new(Coalesced(
                 AnthropicProvider::new(secret)
                     .with_model(model)
                     .with_request_timeout(REQUEST_TIMEOUT),
-            )),
-            Provider::Gemini => Backend::Gemini(StreamingAiClient::new(
+            ))),
+            Provider::Gemini => Backend::Gemini(StreamingAiClient::new(Coalesced(
                 GeminiProvider::new(secret)
                     .with_model(model)
                     .with_request_timeout(REQUEST_TIMEOUT),
-            )),
+            ))),
             Provider::Ollama => match ollama_loopback_base(secret)
                 .and_then(|base| OpenAiCompatibleProvider::try_local(base, model).ok())
             {
