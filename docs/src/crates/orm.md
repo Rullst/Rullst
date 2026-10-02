@@ -293,8 +293,62 @@ SQLite and PostgreSQL DDL is unchanged.
 
 ### Behaviour changes in 12.2
 
-These ORM fixes keep the 12.x API but change behaviour that applications can
-notice:
+#### Upgrading from 12.1
+
+The 12.2 ORM keeps the 12.x API, but an upgrading application can notice the
+following. Check each item that applies before deploying:
+
+- [ ] **Nested `Orm::transaction`** joins the outer transaction through a
+  savepoint, so inner work rolls back with the outer one: check helpers that
+  relied on committing on their own.
+- [ ] **Sibling nested transactions** started together (for example with
+  `tokio::join!`) take turns, and a savepoint left open rolls the outer
+  transaction back with an error: check concurrent nested calls.
+- [ ] **`SecretString` serializes as an encrypted envelope** (and fails without
+  a configured key): check JSON responses or exports that included it; use
+  `reveal_audited()` where plaintext is intended.
+- [ ] **`paginate()` caps `per_page`** at the query limit (1,000 by default):
+  check clients that request larger pages and read `per_page`/`last_page`.
+- [ ] **Query-cache keys move to `rullst:orm:cache:v4:`**: expect a cold cache
+  after deploying, and short TTLs during a rolling upgrade.
+- [ ] **Redis model hashes are namespaced**: global models migrate lazily on
+  their next write; tenant models need the procedure under
+  "12.1 Redis model hashes" below.
+- [ ] **12.1 Redis hashes with `#[orm(encrypted)]` fields** hold plaintext and
+  fail closed on read: re-save them with `save_to_redis()`.
+- [ ] **New typed errors for misuse**: `delete_all()` with `limit()`,
+  `offset()`, `order_by()`, joins, grouping or CTEs; `only_trashed()` without
+  soft deletes; a tenant context of the wrong type; raw CTE/select bind
+  markers with scope, JOIN or WHERE bindings; eager loads past the query limit
+  or sharing a non-`Clone` related row; a savepoint left open. Check logs and
+  tests for these errors.
+- [ ] **`restore()` and `force_delete()`** run hooks, observers, audit and
+  post-commit effects: a `before_delete` veto now blocks `force_delete()`.
+- [ ] **Secondary projections** (`to_json()`, audit rows, `orm:events:*`) carry
+  `"***"` for encrypted and masked fields, and Scout documents omit them: check
+  consumers of those payloads.
+- [ ] **`search()` without a search engine** skips hidden, encrypted, masked and
+  `SecretString` columns and matches `%`/`_` literally: check searches that
+  relied on them.
+- [ ] **Tenant-scoped `search()`** answers a 1,000-hit engine result from the
+  SQL fallback; other models keep the engine answer.
+- [ ] **New DDL only**: MySQL/MariaDB audit payloads become `LONGTEXT` and
+  `float()` becomes double precision in newly created tables; existing tables
+  keep their types (watch for the audit-table warning and migrate if needed).
+- [ ] **Enum filter casts** apply only under `strict-postgres`; nothing changes
+  on SQLx `Any`.
+- [ ] **`#[derive(Nexus)]`** hides encrypted, `SecretString` and
+  `#[orm(hidden)]` fields and omits skipped ones: check admin workflows that
+  edited them.
+- [ ] **Generated Redis code follows `rullst-orm/redis`** (or `rullst`'s
+  `redis`/`orm-redis`): applications that call `Orm::init_redis*` without a
+  `redis` feature of their own now invalidate the cache and publish
+  `orm:events:*` on every generated write.
+- [ ] **Stale soft-delete handles** are unchanged from 12.1: saving a handle
+  loaded before `delete()` writes its old soft-delete value back and undeletes
+  the row, so reload a model before saving it.
+
+#### Details
 
 - **Transactions:** concurrent sibling nested `Orm::transaction` calls take
   turns on the shared connection; a savepoint left open makes the enclosing
@@ -338,10 +392,14 @@ notice:
   and CTEs; `only_trashed()` fails on models without soft deletes; `query()`
   rejects a tenant context of the wrong type; raw CTE/select fragments with
   bind markers fail once scope, JOIN or WHERE bindings exist; strict PostgreSQL
-  enum filters cast to the enum type; scoped `search()` answers a 1,000-hit
-  engine result from SQL.
-- **Soft deletes:** `save()` no longer writes the soft-delete column, and
-  `update_partial()` rejects a soft-delete value; use `delete()`/`restore()`.
+  enum filters cast to the enum type; tenant-scoped `search()` answers a
+  1,000-hit engine result from SQL.
+- **Soft deletes:** `save()` still writes the soft-delete column from the
+  handle, as in 12.1. A handle loaded before `delete()` (or before another
+  request deleted the row) therefore restores the row when saved, without
+  `can_restore`, the `restored` audit entry or restore observers. Reload the
+  model before saving it, and change the marker only through
+  `delete()`/`restore()`.
 - **Audit and Nexus:** restore patches withhold sensitive keys that were added
   or removed; `#[derive(Nexus)]` omits skipped fields and keeps encrypted,
   `SecretString` and `#[orm(hidden)]` fields hidden and read-only.
