@@ -127,7 +127,10 @@ notification modules.
 ### `cargo rullst upgrade`
 Plans or applies a transactional application upgrade. The target defaults to
 the exact installed `cargo-rullst` version; `--to <VERSION>` accepts an exact
-version in the same major release train as that CLI.
+version in the same major release train as that CLI. The command fails before
+writing anything when the target is older than a managed requirement's lower
+bound or than a Rullst package locked in `Cargo.lock`, so an older CLI never
+downgrades the project; install a CLI that is not older than the project.
 
 ```bash
 # Human-readable plan; no writes or dependency resolution
