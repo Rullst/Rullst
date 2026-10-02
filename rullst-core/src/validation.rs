@@ -17,10 +17,10 @@ pub use validator::Validate;
 ///
 /// HTMX 1.x and 2.x swap only successful responses by default, so an HTMX
 /// request (`HX-Request: true`) receives the fragment with `200 OK` and the
-/// `X-Rullst-Validation-Status` header set to the `400` or `422` a REST client
-/// would receive. htmx swaps it into the request's `hx-target` with its
-/// `hx-swap`; client scripts can read that header to tell a validation failure
-/// from success.
+/// `X-Rullst-Validation-Status` header set to the status a REST client would
+/// receive (`400`, `413`, `415` or `422`). htmx swaps it into the request's
+/// `hx-target` with its `hx-swap`; client scripts can read that header to tell
+/// a validation failure from success.
 ///
 /// Every message, field name and validator message is HTML-escaped before it is
 /// placed in the HTMX fragment. The built-in extractors never copy the
