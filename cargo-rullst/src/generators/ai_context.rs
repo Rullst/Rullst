@@ -86,6 +86,11 @@ pub fn generate_ai_context(base_path: Option<&Path>) -> Result<(), Box<dyn std::
     Ok(())
 }
 
+/// [`generate_ai_context`] without progress output (used by previews).
+pub(crate) fn write_project_context(base_path: &Path) -> Result<(), ContextError> {
+    generate(base_path)
+}
+
 pub(crate) fn refresh_after_scaffold() {
     if let Err(error) = generate_ai_context(None) {
         eprintln!("Scaffold completed, but project context was not refreshed: {error}");

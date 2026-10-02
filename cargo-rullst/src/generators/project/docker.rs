@@ -45,6 +45,18 @@ pub fn generate_docker_files(
     redis_arg: Option<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "🐳 Generating Docker files...".cyan().bold());
+    write_docker_files(project_path, project_name, db_provider_arg, redis_arg)?;
+    println!("{}", "  ✅ Dockerfile generated.".green());
+    Ok(())
+}
+
+/// [`generate_docker_files`] without progress output (used by previews).
+pub(crate) fn write_docker_files(
+    project_path: &Path,
+    project_name: &str,
+    db_provider_arg: Option<&str>,
+    redis_arg: Option<bool>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let db_provider = db_provider_arg;
     let _wants_redis = redis_arg.unwrap_or(false);
 
@@ -95,7 +107,6 @@ CMD ["/app/{project_name}"]
     if !dockerignore.exists() {
         fs::write(dockerignore, dockerignore_content())?;
     }
-    println!("{}", "  ✅ Dockerfile generated.".green());
     Ok(())
 }
 

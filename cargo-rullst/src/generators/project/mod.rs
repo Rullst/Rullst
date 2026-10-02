@@ -1,17 +1,17 @@
 // cargo-rullst/src/generators/project/mod.rs — Root of project generator module (< 200 lines).
 
 pub mod cargo_toml;
+mod command;
+pub(crate) mod create;
 mod docker;
 pub mod env_config;
+mod next_steps;
 pub mod wizard;
 
-use colored::*;
-use std::fs;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::{Path, PathBuf};
 
-use crate::blueprints::BLANK_BLUEPRINT_ID;
-
+pub(crate) use command::{new_command, run_dry_run};
 pub use docker::generate_docker_files;
 pub use env_config::{generate_buildah_script, generate_nix_files};
 pub use wizard::{PolyglotIntegration, ProjectWizardOptions, run_project_wizard};
@@ -195,206 +195,13 @@ pub(crate) fn create_new_project_with_cli_options(
     blueprint_override: Option<usize>,
     skip_initial_migration: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut requested_integrations = Vec::new();
-    if options.turso || options.database == Some("Turso") {
-        requested_integrations.push(PolyglotIntegration::Turso);
-    }
-    if options.mongodb {
-        requested_integrations.push(PolyglotIntegration::MongoDb);
-    }
-    if options.duckdb {
-        requested_integrations.push(PolyglotIntegration::DuckDb);
-    }
-    if options.surrealdb {
-        requested_integrations.push(PolyglotIntegration::SurrealDb);
-    }
-    if options.qdrant {
-        requested_integrations.push(PolyglotIntegration::Qdrant);
-    }
-    let wizard_opts = wizard::run_project_wizard_with_blueprint(
-        name_arg,
+    create::run_new(&wizard::NewProjectRequest {
+        name: name_arg,
         options,
-        &requested_integrations,
-        blueprint_override,
-    )?;
-
-    let identity = ProjectIdentity::from_destination(&wizard_opts.name)?;
-    let project_name = identity.package_name();
-    let project_name_safe = identity.module_name();
-    let api = wizard_opts.api;
-    let mut db_needed = wizard_opts.db_needed;
-    let db_provider = wizard_opts.db_provider.clone();
-    let hot_reload = wizard_opts.hot_reload;
-    let blueprint_selection = wizard_opts.blueprint_selection;
-    let wants_ai = wizard_opts.wants_ai;
-    let wants_redis = wizard_opts.wants_redis;
-    let polyglot_integrations = wizard_opts.polyglot_integrations.clone();
-
-    if blueprint_selection != BLANK_BLUEPRINT_ID {
-        db_needed = true;
-    }
-
-    if db_provider == "Turso" && blueprint_selection != BLANK_BLUEPRINT_ID {
-        return Err(IoError::new(
-            ErrorKind::InvalidInput,
-            "Turso-primary currently requires the blank starter while the SQLx-specific blueprints are being ported",
-        )
-        .into());
-    }
-
-    let path = identity.destination_path();
-    if path.exists() {
-        return Err(IoError::new(
-            ErrorKind::AlreadyExists,
-            format!("directory '{}' already exists", path.display()),
-        )
-        .into());
-    }
-
-    fs::create_dir_all(path)?;
-    let current_dir = std::env::current_dir()?;
-
-    let cargo_toml_content = cargo_toml::build_cargo_toml(
-        project_name,
-        hot_reload,
-        db_needed,
-        &db_provider,
-        &polyglot_integrations,
-        wants_ai,
-        wants_redis,
-        blueprint_selection,
-        &wizard_opts.frontend_engine,
-        &current_dir,
-    )?;
-    fs::write(path.join("Cargo.toml"), cargo_toml_content)?;
-
-    let app_key = generate_secure_app_key();
-    env_config::generate_env_and_configs(
-        path,
-        db_needed,
-        &db_provider,
-        &polyglot_integrations,
-        blueprint_selection,
-        &app_key,
-    )?;
-
-    // Apply Blueprint templates
-    crate::blueprints::apply(
-        blueprint_selection,
-        path,
-        project_name,
-        project_name_safe,
-        api,
-        hot_reload,
-        db_needed,
-        &wizard_opts.orm_pattern,
-        &wizard_opts.frontend_engine,
-    )?;
-
-    if options.docker || options.buildah {
-        generate_docker_files(path, project_name, Some(&db_provider), Some(wants_redis))?;
-    }
-
-    if options.nix {
-        env_config::generate_nix_files(path)?;
-    }
-
-    crate::generators::ai_context::generate_ai_context(Some(path))?;
-
-    if db_needed && !skip_initial_migration {
-        println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
-        let migration = crate::ui::components::with_spinner(
-            "First build + initial migrations (the first compile can take several minutes)...",
-            || {
-                std::process::Command::new("cargo")
-                    .arg("run")
-                    .arg("-q")
-                    .arg("--")
-                    .arg("db:migrate")
-                    .current_dir(path)
-                    .output()
-            },
-        );
-
-        match migration {
-            Ok(output) if output.status.success() => {
-                println!("{}", "  ✅ Database tables created successfully.".green());
-            }
-            Ok(output) => {
-                println!(
-                    "{}",
-                    format!(
-                        "  ⚠️ Initial migration exited with {}. Project files were kept.",
-                        output.status
-                    )
-                    .yellow()
-                );
-                println!(
-                    "  Configure the selected database, then run: cd {path:?} && cargo run -- db:migrate"
-                );
-            }
-            Err(error) => {
-                println!(
-                    "{}",
-                    format!("  ⚠️ Could not invoke Cargo for the initial migration: {error}")
-                        .yellow()
-                );
-                println!(
-                    "  Project files were kept. Retry with: cd {path:?} && cargo run -- db:migrate"
-                );
-            }
-        }
-    }
-
-    if options.buildah {
-        env_config::generate_buildah_script(path, project_name)?;
-    }
-
-    println!(
-        "{}",
-        format!("✨ Project '{}' created successfully!", project_name)
-            .green()
-            .bold()
-    );
-    let generated_application_profile = if wizard_opts.api {
-        "Headless JSON API"
-    } else {
-        "Zero-Bundle HTMX (html! SSR)"
-    };
-    println!(
-        "{}",
-        format!("  Application profile: {generated_application_profile}")
-            .white()
-            .dimmed()
-    );
-    if db_needed {
-        println!(
-            "{}",
-            format!("  ORM profile: {}", wizard_opts.orm_pattern)
-                .white()
-                .dimmed()
-        );
-    }
-    println!("{}", "How to run:".magenta());
-    println!("{}", format!("  cd {path:?}").cyan());
-    println!("{}", "  Then, choose your experience:".white().dimmed());
-    println!(
-        "{}",
-        "    cargo rullst dash  (interactive dashboard)"
-            .white()
-            .bold()
-    );
-    println!("{}", "    cargo rullst dev   (standard output)".white());
-    if blueprint_selection == BLANK_BLUEPRINT_ID {
-        println!(
-            "{}",
-            "  Nexus CMS: not included in the minimal Blank starter. CMS-backed blueprints configure it explicitly."
-                .white()
-                .dimmed()
-        );
-    }
-
-    Ok(())
+        blueprint: blueprint_override,
+        skip_initial_migration,
+        dry_run: false,
+    })
 }
 
 #[deprecated(
