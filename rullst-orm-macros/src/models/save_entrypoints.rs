@@ -103,17 +103,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
 
     let lookup = audit_lookup(parsed);
     let revision_lookup = revision_lookup(parsed);
-    // save() never writes the soft-delete marker, so the audited post-state
-    // (and the handle) take the stored marker instead of a stale one.
-    let soft_delete_sync = parsed.soft_delete_column().map(|column| {
-        let column = syn::Ident::new(column, parsed.name.span());
-        quote! {
-            if let Some(old_model) = old_model_for_audit.as_ref() {
-                self.#column = old_model.#column.clone();
-            }
-        }
-    });
-    let before_tx = audit_before_tx(&lookup, soft_delete_sync);
+    let before_tx = audit_before_tx(&lookup);
     let after_tx = audit_after_tx(table_name);
     let revision_restore = revision_restore(table_name, &revision_lookup);
 
@@ -435,7 +425,7 @@ fn revision_lookup(parsed: &ParsedModel) -> TokenStream {
     }
 }
 
-fn audit_before_tx(lookup: &TokenStream, soft_delete_sync: Option<TokenStream>) -> TokenStream {
+fn audit_before_tx(lookup: &TokenStream) -> TokenStream {
     quote! {
         let mut old_model_for_audit = if !is_new {
             let driver = rullst_orm::Orm::driver()?;
@@ -447,7 +437,6 @@ fn audit_before_tx(lookup: &TokenStream, soft_delete_sync: Option<TokenStream>) 
         if let Some(old_model) = old_model_for_audit.as_mut() {
             old_model.__rullst_decrypt_encrypted_fields()?;
         }
-        #soft_delete_sync
     }
 }
 

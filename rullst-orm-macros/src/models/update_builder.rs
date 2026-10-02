@@ -92,23 +92,6 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
         });
     }
 
-    // The setter stays for compatibility, but the soft-delete marker only
-    // changes through delete()/restore()/force_delete().
-    let soft_delete_guard = match parsed.soft_delete_column().and_then(|column| {
-        normal_fields
-            .iter()
-            .find(|field| *field == column && *field != tenant_column)
-    }) {
-        Some(field) => quote! {
-            if self.#field.is_some() {
-                return Err(rullst_orm::Error::Validation(
-                    "update_partial() cannot change the soft-delete column; use delete() or restore()".to_string()
-                ));
-            }
-        },
-        None => quote! {},
-    };
-
     let policy_check = if !parsed.policy.is_empty() {
         let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
         quote! {
@@ -178,7 +161,6 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
 
             pub async fn save(mut self) -> Result<(), rullst_orm::Error> {
                 rullst_orm::__transaction_access::ensure_allowed()?;
-                #soft_delete_guard
                 let mut sets = vec![];
                 #(#set_clauses)*
 
