@@ -688,6 +688,9 @@ or claim broker connectivity.
 
 ### `cargo rullst make:k8s`
 Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.
+The command fails before writing anything when any of these manifests already
+exists, and it does not write through a symlinked `k8s/` directory or file; move
+customized manifests aside to regenerate the templates.
 
 ### `cargo rullst make:scalar`
 Scaffolds a Scalar API Documentation controller at

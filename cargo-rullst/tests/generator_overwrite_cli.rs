@@ -307,3 +307,29 @@ fn mfa_scaffold_is_server_side_registered_and_never_overwrites() {
     assert_unchanged(&customized, "src/controllers/mfa.rs", "// mine\n");
     assert!(customized.migrations_ending_with(".rs").is_empty());
 }
+
+#[test]
+fn kubernetes_manifests_are_never_replaced_or_written_through_links() {
+    let project = Project::new();
+    project.succeeds(&["make:k8s"]);
+    let customized = "# customized registry and secrets\n";
+    fs::write(project.path("k8s/deployment.yaml"), customized).expect("custom manifest");
+    fs::remove_file(project.path("k8s/ingress.yaml")).expect("remove one manifest");
+    let refused = project.fails(&["make:k8s"]);
+    assert!(refused.contains("deployment.yaml"), "{refused}");
+    assert_unchanged(&project, "k8s/deployment.yaml", customized);
+    assert!(
+        !project.path("k8s/ingress.yaml").exists(),
+        "a refused run must not write any manifest"
+    );
+
+    #[cfg(unix)]
+    {
+        let linked = Project::new();
+        let outside = linked.path("outside");
+        fs::create_dir_all(&outside).expect("outside directory");
+        std::os::unix::fs::symlink(&outside, linked.path("k8s")).expect("k8s link");
+        assert!(linked.fails(&["make:k8s"]).contains("symlink"));
+        assert_eq!(fs::read_dir(&outside).expect("outside").count(), 0);
+    }
+}
