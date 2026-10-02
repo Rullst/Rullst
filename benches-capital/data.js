@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790905343348,
+  "lastUpdate": 1790908035214,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10652,6 +10652,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "990acd15a8dc36576a913653fb0077129dba0cbb",
+          "message": "Merge pull request #399 from Rullst/feat/v13-cli-create-wizard-tour\n\nfeat(cli): interactive new wizard, dry-run preview, first-run steps and cargo rullst tour",
+          "timestamp": "2026-10-01T23:06:10-03:00",
+          "tree_id": "a644a63a6a680358c54cf10b1b1156bed7e368a6",
+          "url": "https://github.com/Rullst/Rullst/commit/990acd15a8dc36576a913653fb0077129dba0cbb"
+        },
+        "date": 1790908033975,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 4,
             "range": "± 0",
             "unit": "ns/iter"
           }
