@@ -52,6 +52,10 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
 /// software and `audit --network` scans local listeners.
 const FORBIDDEN_FLAGS: &[(&str, &str)] = &[("doctor", "--fix"), ("audit", "--network")];
 
+/// The only `inspect` targets: any other target is read as a file path and
+/// printed, which would bypass the path policy (`.env`, keys, symlinks).
+const INSPECT_TARGETS: &[&str] = &["routes", "route", "models", "model", "schema"];
+
 const CARGO_CHECK_FLAGS: &[&str] = &[
     "--all-targets",
     "--tests",
@@ -117,6 +121,21 @@ fn safe_token(value: &str) -> bool {
         })
 }
 
+/// A positional value or the value of `--name=value`: no absolute, drive,
+/// home-relative or parent path, however it is spelled.
+fn safe_value(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    let drive = bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    !drive
+        && !value.starts_with(['/', '~'])
+        && std::path::Path::new(value).components().all(|component| {
+            matches!(
+                component,
+                std::path::Component::Normal(_) | std::path::Component::CurDir
+            )
+        })
+}
+
 /// A flag (`-m`, `--api`, `--name=value`) or a positional value.
 fn safe_argument(value: &str) -> bool {
     if !safe_token(value) {
@@ -124,14 +143,53 @@ fn safe_argument(value: &str) -> bool {
     }
     match value.strip_prefix("--").or_else(|| value.strip_prefix('-')) {
         Some(flag) => {
-            let name = flag.split_once('=').map_or(flag, |(name, _)| name);
+            let (name, inline) = flag
+                .split_once('=')
+                .map_or((flag, None), |(name, value)| (name, Some(value)));
             name.starts_with(|c: char| c.is_ascii_alphabetic())
                 && name
                     .bytes()
                     .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+                && inline.is_none_or(safe_value)
         }
-        None => true,
+        None => safe_value(value),
     }
+}
+
+/// Flags whose value is a project path: `generate:api --schema` (read) and
+/// `--output`, `make:privacy`/`make:age-gate --privacy-source` (directories).
+pub(super) const PATH_FLAGS: &[(&str, PathKind)] = &[
+    ("--schema", PathKind::File),
+    ("--output", PathKind::Directory),
+    ("--privacy-source", PathKind::Directory),
+];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PathKind {
+    File,
+    Directory,
+}
+
+/// The values of [`PATH_FLAGS`] in `args`, written `--flag=value` or
+/// `--flag value`. A flag without a value yields nothing; the command
+/// itself then reports it.
+pub(super) fn path_values(args: &[String]) -> Vec<(PathKind, &str)> {
+    let mut values = Vec::new();
+    let mut iter = args.iter().skip(1);
+    while let Some(argument) = iter.next() {
+        let (flag, inline) = argument
+            .split_once('=')
+            .map_or((argument.as_str(), None), |(flag, value)| {
+                (flag, Some(value))
+            });
+        let Some((_, kind)) = PATH_FLAGS.iter().find(|(name, _)| *name == flag) else {
+            continue;
+        };
+        if let Some(value) = inline.or_else(|| iter.next().map(String::as_str)) {
+            values.push((*kind, value));
+        }
+    }
+    values
 }
 
 fn arity(args: &[String]) -> Result<(), CommandError> {
@@ -151,6 +209,14 @@ pub(super) fn validate_rullst(args: Vec<String>) -> Result<Invocation, CommandEr
             "cargo rullst {}",
             truncate(subcommand)
         )));
+    }
+    if subcommand == "inspect"
+        && let Some(refused) = args
+            .get(1)
+            .filter(|target| !INSPECT_TARGETS.contains(&target.as_str()))
+            .or_else(|| args.get(2))
+    {
+        return Err(CommandError::Argument(truncate(refused)));
     }
     for argument in &args[1..] {
         let flag = argument
@@ -333,6 +399,10 @@ impl Invocation {
     }
 
     pub(super) fn deadline(&self) -> Duration {
+        #[cfg(test)]
+        if let Some(deadline) = TEST_DEADLINE.with(std::cell::Cell::get) {
+            return deadline;
+        }
         match self.kind {
             // Scaffolding a project or migrating may build the application.
             CommandKind::Rullst if self.always_confirm() => Duration::from_secs(30 * 60),
@@ -365,6 +435,9 @@ thread_local! {
     /// executable is the test harness.
     pub(super) static TEST_RULLST_PROGRAM: std::cell::RefCell<Option<std::path::PathBuf>> =
         const { std::cell::RefCell::new(None) };
+    /// A short deadline for runner tests.
+    pub(super) static TEST_DEADLINE: std::cell::Cell<Option<Duration>> =
+        const { std::cell::Cell::new(None) };
 }
 
 #[cfg(test)]

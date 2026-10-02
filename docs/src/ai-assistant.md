@@ -108,10 +108,10 @@ database migrations yourself with `cargo rullst db:migrate`.
 
 | Allowed (after your confirmation) | Never allowed |
 | --- | --- |
-| Create or replace a file below the project root | Paths outside the project, `..`, absolute paths or symlinks |
+| Create or replace a file below the project root | Paths outside the project, `..`, absolute paths, symlinks, Windows short names (`GIT~1`) or reserved device names |
 | Replace one exact text occurrence in a file | `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`), keys, credentials, `Cargo.lock`, toolchain files |
-| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, shell commands |
-| `cargo rullst db:migrate` in a development or test project, confirmed on its own | `db:migrate` when `RULLST_ENV`/`APP_ENV` (process or `.env`) or `[app].env` says staging or production |
+| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, shell commands |
+| `cargo rullst db:migrate` in a development or test project, confirmed on its own | `db:migrate` when the environment the application would use (process `RULLST_ENV`/`APP_ENV` first, then `.env`, then `[app].env`) is staging or production |
 | Outside a project: `cargo rullst new <name> --default [--blueprint …] [--database …]`, confirmed on its own | `new` inside a project or over an existing directory |
 | `cargo check`, `cargo test` (simple flags only) | `cargo run`, `cargo install`, `--manifest-path`, `--config`, `-Z` |
 
@@ -154,8 +154,9 @@ explains the order of the two commands.
 The first change of each session is preceded by a git checkpoint stored under
 `refs/rullst/ai-checkpoints/`. It is built in a temporary index, so your staged
 changes, stash and files are not touched, and it excludes `.env*` files and
-`target/`. To review or undo everything since the checkpoint, run the printed
-commands from the project root:
+every `target/` directory, also in a project nested in a larger repository. To
+review or undo everything since the checkpoint, run the printed commands from
+the project root:
 
 ```bash
 git diff refs/rullst/ai-checkpoints/<timestamp>
@@ -175,8 +176,17 @@ repository the CLI asks before changing anything without a checkpoint.
   continues.
 - Model output is printed with terminal control characters escaped, so an
   answer cannot rewrite your screen or clipboard.
+- The guardrails also mask personal data in everything sent, your own message
+  and shared files included: e-mail usernames, card-like digit runs and valid
+  CPF/CNPJ numbers (`help@acme.com` reaches the model as `h***@acme.com`). The
+  CLI says when your message is masked and flags a proposed change that writes
+  a masked value back; enter the real value yourself.
 - Review every diff: an edit to `build.rs`, `Cargo.toml` or a test runs code on
-  the next `cargo check` or `cargo test`. Such files are flagged in the review.
+  the next `cargo check` or `cargo test`. The review flags `build.rs`,
+  `Cargo.toml`, `Rullst.toml`, `.github/`, files under `tests/`, `benches/` or
+  `examples/`, and Rust files with tests (`#[test]`, `#[cfg(test)]`) or
+  procedural macros. A custom build script named in `Cargo.toml` (`build =
+  "..."`) and code those files call are not flagged.
 - After each reply the CLI shows the tokens the provider reported and, on exit,
   the session totals. Nothing is estimated when a provider reports no usage. A
   cost appears only at prices you configured and is labelled as an estimate

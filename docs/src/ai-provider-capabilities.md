@@ -83,7 +83,8 @@ shapes; Rullst does not certify a product name or infer capabilities from it.
 static dispatch. For an exact OpenAI-compatible configuration that declares
 `with_streaming()`, Rullst parses incremental UTF-8 SSE deltas, requires the
 terminal `[DONE]` marker, rejects an incorrect media type, malformed/truncated
-events and all configured byte/chunk overflows. The maximums are 4,096 chunks,
+events, a `finish_reason` of `length` or `content_filter` (the reply was cut
+short or withheld) and all configured byte/chunk overflows. The maximums are 4,096 chunks,
 64 KiB per chunk and 2 MiB of raw response and delivered text.
 
 Anthropic and Gemini implement their native SSE protocols (v13) with the same

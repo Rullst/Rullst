@@ -190,6 +190,9 @@ fn parse_block(body: &str) -> Result<Action, String> {
 #[derive(Default)]
 pub(super) struct DisplayFilter {
     line: String,
+    /// Byte length of the leading whitespace of a held-back line, tracked
+    /// as characters arrive so each one costs constant time.
+    indent: usize,
     /// The current partial line was already printed.
     flushed: bool,
     in_block: bool,
@@ -215,7 +218,10 @@ impl DisplayFilter {
                 continue;
             }
             // Hold a line back while it could still become an action fence.
-            let trimmed = self.line.trim_start();
+            if self.indent + character.len_utf8() == self.line.len() && character.is_whitespace() {
+                self.indent = self.line.len();
+            }
+            let trimmed = &self.line[self.indent..];
             if !FENCE_START.starts_with(trimmed) && !trimmed.starts_with(FENCE_START) {
                 output.push_str(&self.line);
                 self.flushed = true;
@@ -226,6 +232,7 @@ impl DisplayFilter {
 
     fn end_line(&mut self, output: &mut String) {
         let line = std::mem::take(&mut self.line);
+        self.indent = 0;
         let flushed = std::mem::replace(&mut self.flushed, false);
         if self.in_block {
             if fence(&line) == Fence::End {
@@ -252,6 +259,7 @@ impl DisplayFilter {
     /// Flushes a trailing partial line at the end of a response.
     pub(super) fn finish(&mut self) -> String {
         let line = std::mem::take(&mut self.line);
+        self.indent = 0;
         if self.in_block || self.flushed || fence(&line) == Fence::Start {
             self.flushed = false;
             return String::new();

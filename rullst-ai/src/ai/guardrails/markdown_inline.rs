@@ -126,6 +126,70 @@ fn open_tag_end(tag: &str) -> Option<usize> {
     }
 }
 
+/// Whether `content`, the text between `(` and the first `)` after an image
+/// label, is certainly a valid inline destination with an optional title, so
+/// CommonMark never falls back to a shortcut reference. Anything unusual (a
+/// line ending, an unbalanced `(`, a second word that is not a quoted title)
+/// answers `false`, which only makes the caller also check the fallback.
+pub(super) fn plain_inline_link(content: &str) -> bool {
+    if content.contains(['\n', '\r']) {
+        return false;
+    }
+    let content = content.trim_matches([' ', '\t']);
+    let rest = if let Some(angled) = content.strip_prefix('<') {
+        match angled.find(['<', '>']) {
+            Some(end) if angled.as_bytes()[end] == b'>' => &angled[end + 1..],
+            _ => return false,
+        }
+    } else {
+        let end = content.find([' ', '\t']).unwrap_or(content.len());
+        let destination = &content[..end];
+        let bytes = destination.as_bytes();
+        let unescaped_paren = (0..bytes.len()).any(|index| {
+            bytes[index] == b'('
+                && bytes[..index]
+                    .iter()
+                    .rev()
+                    .take_while(|byte| **byte == b'\\')
+                    .count()
+                    % 2
+                    == 0
+        });
+        if unescaped_paren || bytes.iter().any(u8::is_ascii_control) {
+            return false;
+        }
+        &content[end..]
+    };
+    let title = rest.trim_start_matches([' ', '\t']);
+    if title.is_empty() {
+        return true;
+    }
+    if title.len() == rest.len() {
+        // The title must be separated from the destination.
+        return false;
+    }
+    let Some(quote @ (b'"' | b'\'')) = title.bytes().next() else {
+        return false;
+    };
+    let body = &title.as_bytes()[1..];
+    body.last() == Some(&quote)
+        && body[..body.len() - 1]
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| *byte != quote || escaped(&body[..index]))
+}
+
+/// Whether the byte after `before` is escaped by an odd backslash run.
+fn escaped(before: &[u8]) -> bool {
+    before
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'\\')
+        .count()
+        % 2
+        == 1
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +231,32 @@ mod tests {
         // Invalid tags are literal text.
         assert!(!raw_html_hides_bracket("<a b=\">\" ]"));
         assert!(!raw_html_hides_bracket("<a(b)> ]"));
+    }
+
+    #[test]
+    fn plain_inline_links_are_recognised_conservatively() {
+        for content in [
+            "",
+            "assets/logo.png",
+            " assets/logo.png ",
+            "a.png \"Logo\"",
+            "a.png 'Logo'",
+            "<a b.png>",
+            "a\\(b.png",
+        ] {
+            assert!(plain_inline_link(content), "{content:?}");
+        }
+        for content in [
+            "x y",
+            "a.png \"open",
+            "a(b",
+            "a.png\n\"title\"",
+            "<a<b>",
+            "<open",
+            "a.png (title",
+            "a.png \"x\"y\"",
+        ] {
+            assert!(!plain_inline_link(content), "{content:?}");
+        }
     }
 }

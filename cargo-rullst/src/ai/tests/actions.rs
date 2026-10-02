@@ -281,3 +281,202 @@ fn a_created_project_becomes_the_new_root() {
         Some(fs::canonicalize(root.join("shop")).unwrap())
     );
 }
+
+#[test]
+fn inspect_never_reads_a_file_the_path_policy_refuses() {
+    let (_guard, root) = project();
+    let outside = tempfile::tempdir().unwrap();
+    fs::write(outside.path().join("secret.txt"), "TOKEN=1\n").unwrap();
+    fs::write(
+        root.join(".env"),
+        "DATABASE_URL=postgres://user:pass@db/app\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("id_ed25519"),
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(outside.path().join("secret.txt"), root.join("notes.txt")).unwrap();
+    let overlay = Overlay::new();
+    for target in [
+        ".env",
+        "id_ed25519",
+        "notes.txt",
+        "src/main.rs",
+        "C:/Users/me/.ssh/id_rsa",
+    ] {
+        let refused = prepare(&run(&["inspect", target]), Some(&root), &root, &overlay);
+        assert!(refused.is_err(), "inspect {target} was allowed");
+    }
+    assert!(
+        prepare(
+            &run(&["inspect", "routes", "--x"]),
+            Some(&root),
+            &root,
+            &overlay
+        )
+        .is_err()
+    );
+    for args in [
+        &["inspect"][..],
+        &["inspect", "routes"],
+        &["inspect", "models"],
+    ] {
+        let prepared = prepare(&run(args), Some(&root), &root, &overlay).unwrap();
+        assert!(!prepared.mutates(), "{args:?}");
+    }
+    assert!(prepare(&run(&["inspect", "schema"]), Some(&root), &root, &overlay).is_ok());
+    // A schema snapshot that is a link is printed in full by `inspect schema`.
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(
+            outside.path().join("secret.txt"),
+            root.join("rullst-schema.json"),
+        )
+        .unwrap();
+        let refused = prepare(&run(&["inspect", "schema"]), Some(&root), &root, &overlay);
+        assert!(refused.err().unwrap().contains("symbolic link"));
+    }
+}
+
+#[test]
+fn path_valued_flags_follow_the_path_policy() {
+    let (_guard, root) = project();
+    fs::create_dir_all(root.join("api")).unwrap();
+    fs::write(root.join("api/openapi.json"), "{}").unwrap();
+    fs::write(root.join(".env"), "SECRET=1\n").unwrap();
+    let overlay = Overlay::new();
+    let generate = |schema: &str, output: &str| {
+        run(&[
+            "generate:api",
+            "--schema",
+            schema,
+            &format!("--output={output}"),
+        ])
+    };
+    assert!(
+        prepare(
+            &generate("api/openapi.json", "src/api"),
+            Some(&root),
+            &root,
+            &overlay
+        )
+        .is_ok()
+    );
+    for (schema, output) in [
+        (".env", "src/api"),
+        ("api/openapi.json", ".git/hooks"),
+        ("api/openapi.json", "target/api"),
+        ("api/openapi.json", "src/main.rs"),
+        ("api", "src/api"),
+    ] {
+        assert!(
+            prepare(&generate(schema, output), Some(&root), &root, &overlay).is_err(),
+            "{schema} {output}"
+        );
+    }
+    #[cfg(unix)]
+    {
+        let outside = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(outside.path(), root.join("linked")).unwrap();
+        let refused = prepare(
+            &generate("api/openapi.json", "linked/api"),
+            Some(&root),
+            &root,
+            &overlay,
+        );
+        assert!(refused.err().unwrap().contains("symbolic link"));
+        let privacy = run(&["make:privacy", "--privacy-source", "linked"]);
+        assert!(prepare(&privacy, Some(&root), &root, &overlay).is_err());
+    }
+}
+
+#[test]
+fn tests_and_proc_macros_are_flagged_in_the_review() {
+    let (_guard, root) = project();
+    let overlay = Overlay::new();
+    let flagged = |action: Action| {
+        let prepared = prepare(&action, Some(&root), &root, &overlay).unwrap();
+        preview(&prepared, 1, 1, PLAIN).contains("review carefully")
+    };
+    assert!(flagged(write("tests/smoke.rs", "fn main() {}\n")));
+    assert!(flagged(write(
+        "src/models/post.rs",
+        "#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() {}\n}\n"
+    )));
+    assert!(flagged(write(
+        "macros/src/lib.rs",
+        "use proc_macro::TokenStream;\n"
+    )));
+    assert!(!flagged(write("src/models/post.rs", "pub struct Post;\n")));
+    assert!(!flagged(write(
+        "notes.md",
+        "Run #[test] functions with cargo test.\n"
+    )));
+}
+
+/// Creates a file through the assistant and returns its mode.
+#[cfg(unix)]
+fn created_mode(root: &Path) -> u32 {
+    use std::os::unix::fs::PermissionsExt;
+    let overlay = Overlay::new();
+    let prepared = prepare(
+        &write("config/seed.toml", "key = 1\n"),
+        Some(root),
+        root,
+        &overlay,
+    )
+    .unwrap();
+    assert!(apply(&prepared, Some(root), &mut Vec::new(), PLAIN).success);
+    fs::metadata(root.join("config/seed.toml"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777
+}
+
+/// Run by [`new_files_follow_the_umask`] in a child process with umask 077.
+#[cfg(unix)]
+#[test]
+#[ignore = "run in a child process by new_files_follow_the_umask"]
+fn new_file_mode_under_umask_077() {
+    if std::env::var_os("RULLST_TEST_UMASK_CHILD").is_none() {
+        return;
+    }
+    let (_guard, root) = project();
+    assert_eq!(created_mode(&root), 0o600);
+}
+
+#[cfg(unix)]
+#[test]
+fn new_files_follow_the_umask() {
+    use std::os::unix::fs::PermissionsExt;
+    let (_guard, root) = project();
+    // A file created normally in this process gets the same mode.
+    fs::write(root.join("plain.toml"), "").unwrap();
+    let expected = fs::metadata(root.join("plain.toml"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(created_mode(&root), expected);
+
+    let output = std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg("umask 077 && exec \"$0\" \"$@\"")
+        .arg(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "ai::actions::tests::new_file_mode_under_umask_077",
+            "--ignored",
+            "--test-threads=1",
+        ])
+        .env("RULLST_TEST_UMASK_CHILD", "1")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "{stdout}");
+    assert!(stdout.contains("1 passed"), "{stdout}");
+}

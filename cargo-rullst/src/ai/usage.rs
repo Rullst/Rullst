@@ -21,13 +21,19 @@ fn estimate_text(cost: f64) -> String {
     format!("≈ {cost:.4} est. at your prices")
 }
 
-/// Running totals for one session.
+/// Running totals for one session. Each answer adds exactly what its line
+/// showed: input and output counts, or a total when the provider reported
+/// no split.
 #[derive(Debug, Default)]
 pub(super) struct UsageTotals {
     answers: usize,
     reported: usize,
     input: u64,
     output: u64,
+    /// Whether any answer reported an input or output count.
+    split: bool,
+    /// Totals of answers that reported no input/output split.
+    unsplit: Option<u64>,
     cost: Option<f64>,
 }
 
@@ -38,24 +44,33 @@ impl UsageTotals {
         let Some(usage) = usage else {
             return "usage not reported".to_string();
         };
-        self.reported += 1;
         let (input, output) = (usage.input_tokens(), usage.output_tokens());
-        self.input = self.input.saturating_add(input.unwrap_or(0));
-        self.output = self.output.saturating_add(output.unwrap_or(0));
         let mut parts = Vec::new();
-        match (input, output) {
-            (Some(input), Some(output)) => {
+        match (input, output, usage.total_tokens()) {
+            (Some(input), Some(output), _) => {
+                self.add_split(input, output);
                 parts.push(format!(
                     "{} in · {} out tokens",
                     thousands(input),
                     thousands(output)
                 ));
             }
-            _ => {
-                if let Some(total) = usage.total_tokens() {
-                    parts.push(format!("{} tokens", thousands(total)));
-                }
+            (_, _, Some(total)) => {
+                self.unsplit = Some(self.unsplit.unwrap_or(0).saturating_add(total));
+                parts.push(format!("{} tokens", thousands(total)));
             }
+            (Some(input), None, None) => {
+                self.add_split(input, 0);
+                parts.push(format!("{} in tokens", thousands(input)));
+            }
+            (None, Some(output), None) => {
+                self.add_split(0, output);
+                parts.push(format!("{} out tokens", thousands(output)));
+            }
+            (None, None, None) => {}
+        }
+        if !parts.is_empty() {
+            self.reported += 1;
         }
         if let Some(cached) = usage.cached_input_tokens().filter(|cached| *cached > 0) {
             parts.push(format!("{} cached", thousands(cached)));
@@ -72,17 +87,30 @@ impl UsageTotals {
         }
     }
 
+    fn add_split(&mut self, input: u64, output: u64) {
+        self.split = true;
+        self.input = self.input.saturating_add(input);
+        self.output = self.output.saturating_add(output);
+    }
+
     /// The end-of-session line, when any answer reported usage.
     pub(super) fn summary(&self) -> Option<String> {
         if self.reported == 0 {
             return None;
         }
-        let mut line = format!(
-            "Session usage: {} in · {} out tokens over {} answer(s)",
+        let split = format!(
+            "{} in · {} out tokens",
             thousands(self.input),
-            thousands(self.output),
-            self.answers
+            thousands(self.output)
         );
+        let counts = match (self.split, self.unsplit) {
+            (true, Some(total)) => {
+                format!("{split} + {} tokens without a split", thousands(total))
+            }
+            (false, Some(total)) => format!("{} tokens", thousands(total)),
+            _ => split,
+        };
+        let mut line = format!("Session usage: {counts} over {} answer(s)", self.answers);
         if self.reported < self.answers {
             line.push_str(&format!(" (reported for {})", self.reported));
         }
@@ -135,6 +163,29 @@ mod tests {
                 prices
             ),
             "42 tokens"
+        );
+        // The session line keeps what the answer line showed.
+        assert_eq!(
+            totals.summary().as_deref(),
+            Some("Session usage: 42 tokens over 1 answer(s)")
+        );
+        assert_eq!(
+            totals.record(Some(TokenUsage::new(Some(10), Some(5))), None),
+            "10 in · 5 out tokens"
+        );
+        assert_eq!(
+            totals.record(Some(TokenUsage::new(Some(7), None)), None),
+            "7 in tokens"
+        );
+        assert_eq!(
+            totals.record(Some(TokenUsage::new(None, None)), None),
+            "usage not reported"
+        );
+        assert_eq!(
+            totals.summary().as_deref(),
+            Some(
+                "Session usage: 17 in · 5 out tokens + 42 tokens without a split over 4 answer(s) (reported for 3)"
+            )
         );
     }
 }

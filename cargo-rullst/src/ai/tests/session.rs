@@ -358,7 +358,9 @@ async fn reported_usage_is_shown_per_answer_and_per_session() {
     let provider = OpenAiCompatibleProvider::try_local(url, "fixture")
         .unwrap()
         .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_stream_usage());
-    let backend = Backend::Compatible(StreamingAiClient::new(provider));
+    let backend = Backend::Compatible(StreamingAiClient::new(crate::ai::coalesce::Coalesced(
+        provider,
+    )));
     let mut options = settings(Mode::PlanOnly("test"), None);
     options.prices = crate::ai::credentials::Prices::new(2.0, 8.0);
     let mut session = Session::new(&backend, options, Vec::new(), Input::script(&[]));
@@ -381,4 +383,73 @@ async fn unreported_usage_is_never_invented() {
     let output = one_shot(Some(root), Mode::PlanOnly("test"), &[], "demo").await;
     assert!(output.contains("usage not reported"), "{output}");
     assert!(!output.contains("Session usage"));
+}
+
+/// A provider whose every request fails (nothing listens on the port).
+fn unreachable() -> Backend {
+    use rullst_ai::providers::openai_compatible::{
+        OpenAiCompatibleCapabilities, OpenAiCompatibleProvider,
+    };
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    drop(listener);
+    let provider = OpenAiCompatibleProvider::try_local(format!("http://{address}/v1"), "fixture")
+        .unwrap()
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_streaming());
+    Backend::Compatible(StreamingAiClient::new(crate::ai::coalesce::Coalesced(
+        provider,
+    )))
+}
+
+#[tokio::test]
+async fn failed_requests_keep_pending_context_without_their_goal() {
+    let backend = unreachable();
+    let results = format!("{RESULTS_MARKER}\n1. create notes.md: created");
+    for attachment in [
+        None,
+        Some("<untrusted-data label=\"file a.rs\">x</untrusted-data>"),
+    ] {
+        let mut session = Session::new(
+            &backend,
+            settings(Mode::PlanOnly("test"), None),
+            Vec::new(),
+            Input::script(&[]),
+        );
+        session.notes.push(results.clone());
+        session.attachments.extend(attachment.map(str::to_string));
+        session.turn("drop the posts migration").await;
+        session.turn("never mind, explain routing").await;
+        assert_eq!(
+            session.notes,
+            std::slice::from_ref(&results),
+            "{attachment:?}"
+        );
+        assert_eq!(session.attachments.len(), usize::from(attachment.is_some()));
+        assert!(session.history.is_empty());
+        let output = String::from_utf8(session.into_output()).unwrap();
+        assert_eq!(output.matches("[provider error").count(), 2, "{output}");
+    }
+}
+
+#[tokio::test]
+async fn masked_personal_data_is_announced_and_flagged_when_written_back() {
+    let (_guard, root) = project(false);
+    let output = one_shot(
+        Some(root.clone()),
+        Mode::PlanOnly("test"),
+        &[],
+        "set the support sender to help@acme.com",
+    )
+    .await;
+    assert!(
+        output.contains("reach the model masked (for example h***@acme.com)"),
+        "{output}"
+    );
+    // The offline model writes the goal as it received it, masked.
+    assert!(
+        output.contains("! writes `h***@acme.com`, a value the rullst-ai PII guardrail masked"),
+        "{output}"
+    );
+    let plain = one_shot(Some(root), Mode::PlanOnly("test"), &[], "add a posts page").await;
+    assert!(!plain.contains("masked"), "{plain}");
 }

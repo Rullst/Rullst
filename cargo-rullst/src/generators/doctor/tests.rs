@@ -204,7 +204,15 @@ fn tcp_reachability_reports_open_and_closed_ports() {
     let port = listener.local_addr().expect("local address").port();
     assert_eq!(tcp_reachable("127.0.0.1", port), Ok(()));
     drop(listener);
-    assert!(tcp_reachable("127.0.0.1", port).is_err());
+    // Tests run in parallel, so another test may bind the released ephemeral
+    // port before it is probed; a closed port must be seen at least once.
+    let closed = (0..8).any(|_| {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let port = listener.local_addr().expect("local address").port();
+        drop(listener);
+        tcp_reachable("127.0.0.1", port).is_err()
+    });
+    assert!(closed, "every released loopback port was still reachable");
 }
 
 #[test]

@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 
 /// Largest existing file the assistant may replace or edit.
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
+/// The snapshot `cargo rullst inspect schema` prints when it exists.
+const SCHEMA_SNAPSHOT: &str = "rullst-schema.json";
 
 /// Planned file contents for a plan that is shown but not executed, so later
 /// previews in the same plan build on earlier ones.
@@ -163,8 +165,20 @@ pub(super) fn prepare(
         Action::RunRullst { args } => {
             let invocation =
                 commands::validate_rullst(args.clone()).map_err(|error| error.to_string())?;
-            if args.first().map(String::as_str) == Some("db:migrate") {
-                super::environment::ensure_migration_allowed(root)?;
+            for (kind, value) in commands::path_values(args) {
+                let checked = match kind {
+                    commands::PathKind::File => paths::resolve(root, value),
+                    commands::PathKind::Directory => paths::resolve_directory(root, value),
+                };
+                checked.map_err(|error| format!("`{}`: {error}", sanitize(value)))?;
+            }
+            match args.first().map(String::as_str) {
+                Some("db:migrate") => super::environment::ensure_migration_allowed(root)?,
+                // `inspect schema` prints a project-provided snapshot in full.
+                Some("inspect") if args.get(1).map(String::as_str) == Some("schema") => {
+                    paths::resolve(root, SCHEMA_SNAPSHOT).map_err(|error| error.to_string())?;
+                }
+                _ => {}
             }
             Ok(Prepared::Command(invocation))
         }
@@ -188,9 +202,11 @@ pub(super) fn preview(prepared: &Prepared, index: usize, total: usize, style: St
                 stats.removed
             )));
             output.push('\n');
-            if target.sensitive {
+            let runs =
+                |text: &str| target.display.ends_with(".rs") && paths::runs_during_cargo(text);
+            if target.sensitive || runs(new) || old.as_deref().is_some_and(runs) {
                 output.push_str(&style.yellow(
-                    "  ! build configuration or code that runs during `cargo check`; review carefully",
+                    "  ! build configuration, a test or code that runs during `cargo check` or `cargo test`; review carefully",
                 ));
                 output.push('\n');
             }
@@ -207,7 +223,7 @@ pub(super) fn preview(prepared: &Prepared, index: usize, total: usize, style: St
             output.push('\n');
             if invocation.always_confirm() {
                 output.push_str(&style.yellow(
-                    "  ! changes the development database; a git checkpoint cannot undo it",
+                    "  ! changes the development or test database; a git checkpoint cannot undo it",
                 ));
                 output.push('\n');
             } else if invocation.mutates() {
@@ -243,6 +259,8 @@ pub(super) fn plan(prepared: &Prepared, overlay: &mut Overlay) {
 
 /// Atomically writes `content`, creating missing parent directories. The
 /// path is resolved again first, so a link created since review is refused.
+/// A replaced file keeps its mode; a new one gets `0o666` minus the umask,
+/// like any file the user creates.
 fn write_file(root: &Path, target: &ProjectPath, content: &str) -> Result<(), String> {
     let fresh = paths::resolve(root, &target.display).map_err(|error| error.to_string())?;
     let parent = fresh
@@ -250,8 +268,15 @@ fn write_file(root: &Path, target: &ProjectPath, content: &str) -> Result<(), St
         .parent()
         .ok_or("the path has no parent directory")?;
     std::fs::create_dir_all(parent).map_err(|_| "the parent directory could not be created")?;
-    let mut temporary = tempfile::Builder::new()
-        .prefix(".rullst-ai-")
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(".rullst-ai-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Applied through `open`, so the umask still restricts it.
+        builder.permissions(std::fs::Permissions::from_mode(0o666));
+    }
+    let mut temporary = builder
         .tempfile_in(parent)
         .map_err(|_| "a temporary file could not be created")?;
     temporary
@@ -259,11 +284,9 @@ fn write_file(root: &Path, target: &ProjectPath, content: &str) -> Result<(), St
         .and_then(|()| temporary.as_file().sync_all())
         .map_err(|_| "the file could not be written")?;
     #[cfg(unix)]
-    {
+    if let Ok(metadata) = std::fs::metadata(&fresh.absolute) {
         use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(&fresh.absolute)
-            .map(|metadata| metadata.permissions().mode() & 0o777)
-            .unwrap_or(0o644);
+        let mode = metadata.permissions().mode() & 0o777;
         std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(mode))
             .map_err(|_| "file permissions could not be set")?;
     }

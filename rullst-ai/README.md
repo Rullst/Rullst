@@ -97,11 +97,15 @@ an inline or reference image whose destination has a scheme or a `//` (or backsl
 blocked as `data_exfiltration`, as is an image the bounded reader cannot classify, including a label
 whose end a code span, raw HTML or autolink could move by hiding a bracket. Images and
 link reference definitions inside code spans and closed fenced or indented code blocks are ignored,
-as CommonMark never renders them; code whose extent depends on an ambiguous layout (HTML blocks,
+as CommonMark never renders them; lines end at LF, CRLF or a bare CR and only spaces and tabs make a
+line blank, as in CommonMark. Code whose extent depends on an ambiguous layout (HTML blocks,
 list or quote containers, unclosed fences, multi-line spans) is still read. A reference image whose
 ASCII label matches no definition renders as literal text and is not blocked (so `vec![x]` next to
-a link passes); a non-ASCII label, which Unicode case folding could match to a definition, or an
-unterminated label is blocked when the text also names a remote URL. Raw HTML `<img>` tags are not
+a link passes). Labels keep their backslash escapes (`[a\]b]` ends at its unescaped `]`); a
+non-ASCII label, which Unicode case folding could match to a definition, a label with an escaped
+bracket, or an unterminated label is blocked when the text also names a remote URL. An inline
+image whose destination and title are not certainly valid (such as `![ß](x y)`) is also judged by
+the shortcut reference CommonMark falls back to, under Unicode case folding. Raw HTML `<img>` tags are not
 inspected. Like all heuristic filters, this is one boundary in a
 defense-in-depth design; it is not a proof that arbitrary model output is safe.
 

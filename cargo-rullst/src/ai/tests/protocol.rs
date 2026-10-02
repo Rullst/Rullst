@@ -168,3 +168,34 @@ fn display_filter_sanitises_terminal_controls() {
     assert!(!shown.contains('\x1b'));
     assert!(shown.contains("\\u{1b}"));
 }
+
+#[test]
+fn display_filter_is_linear_on_long_whitespace_lines() {
+    // Indented fences are still hidden.
+    let mut filter = DisplayFilter::default();
+    let response = format!("a\n\t  {}b\n", block("{}").replace('\n', "\n  "));
+    let shown = filter.push(&response) + &filter.finish();
+    assert_eq!(filter.hidden_blocks, 1, "{shown:?}");
+    assert!(
+        shown.starts_with("a\n") && shown.ends_with("b\n"),
+        "{shown:?}"
+    );
+
+    // 1 MiB of whitespace without a newline, in small chunks, then text: each
+    // character used to rescan the whole held-back line.
+    let started = std::time::Instant::now();
+    let mut filter = DisplayFilter::default();
+    let mut shown = String::new();
+    let spaces = " \t".repeat(256);
+    for _ in 0..2048 {
+        shown.push_str(&filter.push(&spaces));
+    }
+    assert!(shown.is_empty(), "whitespace could still start a fence");
+    shown.push_str(&filter.push("text\n"));
+    assert_eq!(shown.len(), 1024 * 1024 + 5);
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(10),
+        "took {:?}",
+        started.elapsed()
+    );
+}

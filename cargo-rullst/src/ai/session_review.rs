@@ -27,6 +27,30 @@ fn results_message(results: &[String]) -> String {
 }
 
 impl<W: Write + Send> Session<'_, W> {
+    pub(super) async fn offer_check(&mut self) {
+        if self.mode != Mode::Execute || self.root.is_none() {
+            return;
+        }
+        if !self.confirm("Run `cargo check` now? [y/N] ").await {
+            return;
+        }
+        let Some(root) = self.root.clone() else {
+            return;
+        };
+        let Ok(invocation) = super::super::commands::validate_cargo(vec!["check".to_string()])
+        else {
+            return;
+        };
+        let prepared = Prepared::Command(invocation);
+        let applied = actions::apply(&prepared, Some(&root), &mut self.out, self.style);
+        let mut note = format!("cargo check after the last changes: {}", applied.result);
+        if let Some(output) = applied.output.filter(|_| !applied.success) {
+            note.push('\n');
+            note.push_str(&output);
+        }
+        self.notes.push(data("cargo-check", &note, 12 * 1024));
+    }
+
     async fn decide(&mut self) -> Decision {
         self.input.drain_typeahead();
         for _ in 0..3 {
@@ -122,6 +146,16 @@ impl<W: Write + Send> Session<'_, W> {
             };
             let text = actions::preview(&prepared, number, total, self.style);
             let _ = write!(self.out, "{text}");
+            if let Prepared::File { old, new, .. } = &prepared
+                && let Some(token) =
+                    super::super::masked::written_back(&self.masked, old.as_deref(), new)
+            {
+                let warning = self.style.yellow(&format!(
+                    "  ! writes `{}`, a value the rullst-ai PII guardrail masked before the model saw it; enter the real value yourself",
+                    sanitize(token)
+                ));
+                self.say(&warning);
+            }
             if let Mode::PlanOnly(_) = self.mode {
                 actions::plan(&prepared, &mut overlay);
                 let note = self.style.dim("  (not executed)");

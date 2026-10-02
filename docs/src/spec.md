@@ -3497,25 +3497,38 @@ The model can only propose fenced `rullst-action` JSON objects, parsed with
 exact keys, types and sizes: `write_file`, `edit_file` (one exact match), an
 allowlisted `cargo rullst` command (`make:*`, `generate:*` except
 `generate:models`, `db:status`, `doctor` without `--fix`, `audit` without
-`--network`, `inspect`, and `db:migrate` only when the project environment
-resolves to development or test) and `cargo check`/`cargo test` with fixed
+`--network`, `inspect` limited to its routes, models and schema targets (a
+linked schema snapshot is refused), and `db:migrate` only when the project
+environment, resolved with the `Server` precedence (process variables before
+`.env`), is development or test) and `cargo check`/`cargo test` with fixed
 flags. Outside a project the only command is `cargo rullst new <name>
 --default` with validated blueprint/database flags, creating a new directory
 in the current one; the session then continues inside it. `new` and
 `db:migrate` are always confirmed individually.
-Arguments follow a token grammar without `..` or absolute paths, and programs
-run without a shell, with standard input closed, bounded output and a deadline.
+Arguments follow a token grammar without `..`, absolute, drive or home-relative
+paths (a `--flag=value` value included); the path-valued `--schema`, `--output`
+and `--privacy-source` follow the file path policy below. Programs run without a
+shell, with standard input closed, bounded output and a deadline; on Unix in their
+own process group, which the deadline (or leftover processes holding the output
+after exit) stops as a whole and to which Ctrl+C is forwarded.
 Paths are relative to the nearest `Cargo.toml` directory; no component may be a
 symlink, `..`, `.git`, `target` or `.cargo`, and secret, key, lockfile and
-toolchain files are refused. Each action is previewed (diff or exact command)
+toolchain files are refused, also through an 8.3 alias (`GIT~1`), a reserved
+device name, a trailing dot or space or an HFS+-ignored character; existing
+components are checked under their canonical name. Build files, CI workflows,
+Cargo test/bench/example targets and Rust code with tests or procedural macros
+are flagged in the preview. Each action is previewed (diff or exact command)
 and confirmed; without an interactive terminal, under `CI` or `TERM=dumb`, or
 with `--dry-run`, actions are displayed and never executed. The first change of
 a session is preceded by a checkpoint commit built in a temporary index and
-stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and `target/`.
+stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and every `target/`
+directory.
 
 Project context (inventory names and paths, project `AGENTS.md`), shared files
 and command output are delimited untrusted data, size-capped and guardrail
-checked; a match is withheld. The project context is its own system message.
+checked; a match is withheld. The mandatory PII masking applies to every message,
+the user's goal included; the CLI announces a masked goal or attachment and flags
+a file change that writes a masked form back. The project context is its own system message.
 Terminal output escapes control characters. Live provider interoperability is
 not established by the offline test suite. See the
 [assistant guide](ai-assistant.md).

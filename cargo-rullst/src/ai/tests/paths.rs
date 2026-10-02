@@ -29,6 +29,20 @@ fn ordinary_project_files_resolve_below_the_root() {
             .unwrap()
             .sensitive
     );
+    // Cargo builds and runs these targets on `cargo test`.
+    for raw in [
+        "tests/smoke.rs",
+        "benches/load.rs",
+        "examples/demo.rs",
+        "macros/tests/ui.rs",
+    ] {
+        assert!(resolve(&root, raw).unwrap().sensitive, "{raw}");
+    }
+    assert!(!resolve(&root, "src/tests.rs").unwrap().sensitive);
+    assert!(runs_during_cargo("#[cfg(test)]\nmod tests {}"));
+    assert!(runs_during_cargo("#[tokio::test]\nasync fn t() {}"));
+    assert!(runs_during_cargo("use proc_macro::TokenStream;"));
+    assert!(!runs_during_cargo("fn main() {}"));
 }
 
 #[test]
@@ -59,6 +73,14 @@ fn traversal_absolute_and_malformed_paths_are_rejected() {
         "src/con.txt",
         "src/com1",
         "trailing.",
+        // Windows 8.3 aliases of `.git`, `.cargo` and `.env`.
+        "GIT~1/hooks/pre-commit",
+        "CARGO~1/config.toml",
+        "ENV~1",
+        "src/PROJEC~2.RS",
+        // HFS+ ignores these characters, so this name would be `.git`.
+        ".g\u{200c}it/hooks/pre-commit",
+        "src/\u{feff}main.rs",
     ] {
         assert_eq!(resolve(&root, raw), Err(PathError::Malformed), "{raw:?}");
     }

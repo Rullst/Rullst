@@ -1,11 +1,12 @@
 //! Database migrations proposed by the assistant run only for development
 //! or test projects.
 //!
-//! The environment is resolved like the application resolves it
-//! (`rullst_core::config::Environment`): `RULLST_ENV`, then `APP_ENV`, then
-//! `[app].env` in `Rullst.toml`. The two variables are read from the process
-//! and, as the application server does, from the project's `.env`; values
-//! never leave this function. An unreadable or unknown setting refuses.
+//! The environment is resolved with the `Server` precedence
+//! (`rullst_core::server::ProjectSettings::environment`): the process
+//! `RULLST_ENV`, then the process `APP_ENV`, then `RULLST_ENV` or `APP_ENV`
+//! from the project's `.env` (which never overrides the process), then
+//! `[app].env` in `Rullst.toml`. Values never leave this function. An
+//! unreadable, non-Unicode or unknown setting refuses.
 
 use rullst_core::config::Environment;
 use std::path::Path;
@@ -63,16 +64,31 @@ pub(super) fn resolve(
     root: &Path,
 ) -> Result<Environment, String> {
     let (dotenv_rullst, dotenv_app) = dotenv_selectors(root)?;
-    let rullst = process("RULLST_ENV").or(dotenv_rullst);
-    let app = process("APP_ENV").or(dotenv_app);
     let configured = configured_environment(root)?;
-    Environment::resolve(rullst.as_deref(), app.as_deref(), configured.as_deref())
-        .map_err(|_| "the project environment name is not recognized".to_string())
+    // Both process variables outrank `.env`, as in `Server`; a `.env`
+    // `RULLST_ENV=development` must not hide a process `APP_ENV=production`.
+    let fallback = dotenv_rullst.or(dotenv_app).or(configured);
+    Environment::resolve(
+        process("RULLST_ENV").as_deref(),
+        process("APP_ENV").as_deref(),
+        fallback.as_deref(),
+    )
+    .map_err(|_| "the project environment name is not recognized".to_string())
+}
+
+/// A process variable; a non-Unicode value is kept as an unrecognized name
+/// instead of being skipped, so it refuses rather than falling through.
+fn process_variable(name: &str) -> Option<String> {
+    std::env::var_os(name).map(|value| {
+        value
+            .into_string()
+            .unwrap_or_else(|_| char::REPLACEMENT_CHARACTER.to_string())
+    })
 }
 
 /// `Ok` only for a development or test project.
 pub(super) fn ensure_migration_allowed(root: &Path) -> Result<(), String> {
-    match resolve(|name| std::env::var(name).ok(), root)? {
+    match resolve(process_variable, root)? {
         Environment::Development | Environment::Test => Ok(()),
         environment => Err(format!(
             "db:migrate is refused in the {environment} environment; run it yourself after review"
@@ -103,6 +119,62 @@ mod tests {
 
         let process = |name: &str| (name == "RULLST_ENV").then(|| "prod".to_string());
         assert_eq!(resolve(process, root).unwrap(), Environment::Production);
+    }
+
+    #[test]
+    fn process_variables_outrank_every_dotenv_value() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        // The scaffolded `.env` of every new project.
+        fs::write(root.join(".env"), "RULLST_ENV=development\n").unwrap();
+        let process = |name: &str| (name == "APP_ENV").then(|| "production".to_string());
+        assert_eq!(resolve(process, root).unwrap(), Environment::Production);
+
+        fs::write(root.join(".env"), "RULLST_ENV=development\nAPP_ENV=test\n").unwrap();
+        assert_eq!(resolve(none, root).unwrap(), Environment::Development);
+        let process = |name: &str| (name == "APP_ENV").then(|| "staging".to_string());
+        assert_eq!(resolve(process, root).unwrap(), Environment::Staging);
+
+        let unreadable = |name: &str| (name == "APP_ENV").then(|| "\u{fffd}".to_string());
+        assert!(resolve(unreadable, root).is_err());
+    }
+
+    /// The same project files resolve as in `Server` when the process sets
+    /// neither variable (the test does not change the process environment).
+    #[tokio::test]
+    async fn project_files_resolve_like_the_server() {
+        if std::env::var_os("RULLST_ENV").is_some() || std::env::var_os("APP_ENV").is_some() {
+            return;
+        }
+        let cases = [
+            ("", None),
+            ("APP_ENV=staging\n", None),
+            ("RULLST_ENV=development\nAPP_ENV=production\n", None),
+            ("APP_ENV=test\n", Some("production")),
+            ("", Some("staging")),
+        ];
+        for (dotenv, configured) in cases {
+            let directory = tempfile::tempdir().unwrap();
+            let root = directory.path();
+            fs::write(root.join(".env"), dotenv).unwrap();
+            if let Some(configured) = configured {
+                fs::write(
+                    root.join("Rullst.toml"),
+                    format!("[app]\nenv = \"{configured}\"\n"),
+                )
+                .unwrap();
+            }
+            let server = rullst_core::server::ProjectSettings::load(root)
+                .await
+                .unwrap()
+                .environment(configured)
+                .unwrap();
+            assert_eq!(
+                resolve(none, root).unwrap(),
+                server,
+                "{dotenv:?} {configured:?}"
+            );
+        }
     }
 
     #[test]

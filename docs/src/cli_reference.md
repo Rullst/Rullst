@@ -1284,7 +1284,9 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
 * **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and
   a local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM,
   LocalAI, Jan), all through `rullst-ai` and its mandatory
-  prompt-injection/PII guardrails. Every provider streams its answers except an
+  prompt-injection/PII guardrails. PII masking also applies to your goal and
+  shared files (`help@acme.com` is sent as `h***@acme.com`); the CLI notes when
+  your message is masked and flags a change that writes a masked value back. Every provider streams its answers except an
   Ollama host that is not a loopback address, which answers at once. A local
   server must listen on loopback (`http://127.0.0.1:...`, `http://[::1]:...`;
   `localhost` is pinned to `127.0.0.1`); its model name must match the model
@@ -1321,10 +1323,11 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
 * **Actions:** the model may only propose `write_file`, `edit_file` (one exact
   replacement), an allowlisted `cargo rullst` command (`make:*`, `generate:*`
   except `generate:models`, `db:status`, `db:migrate`, `doctor` without
-  `--fix`, `audit` without `--network`, `inspect`) or `cargo check`/`cargo
-  test`. `db:migrate` is refused when the project environment (`RULLST_ENV`,
-  then `APP_ENV`, from the process or the project `.env`, then `[app].env` in
-  `Rullst.toml`) is staging, production or unrecognized. Outside a project the
+  `--fix`, `audit` without `--network`, `inspect` with no target or `routes`,
+  `models` or `schema`, never a file path) or `cargo check`/`cargo test`. `db:migrate` is refused when the project environment, resolved as the
+  application server resolves it (the process `RULLST_ENV`, then the process
+  `APP_ENV`, then `RULLST_ENV` or `APP_ENV` from the project `.env`, then
+  `[app].env` in `Rullst.toml`), is staging, production or unrecognized. Outside a project the
   only action is `cargo rullst new <name> --default` with optional
   `--blueprint`, `--database`, `--no-database`, `--api`, `--ai`, `--redis` and
   `--skip-initial-migration` (`--default` is added when missing); the name must
@@ -1333,10 +1336,22 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   always confirmed one by one, even after `a`. Paths must stay
   below the project root (nearest `Cargo.toml`): no `..`, absolute paths,
   symlinks, `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`),
-  credentials, keys, `Cargo.lock` or toolchain files. Each action shows a
+  credentials, keys, `Cargo.lock` or toolchain files, and no name a filesystem
+  could map onto one of them (Windows 8.3 aliases such as `GIT~1`, reserved
+  device names, trailing dots or spaces, characters HFS+ ignores). Changes to
+  build files, `.github/`, `tests/`, `benches/`, `examples/` and Rust code with
+  tests or procedural macros are flagged in the review. Each action shows a
   coloured diff or the exact command and asks `[y]es / [n]o / [a]ll this turn
-  / [q]uit turn`. Commands run without a shell, with standard input closed,
-  bounded output and a time limit.
+  / [q]uit turn`. Files are replaced atomically; a replaced file keeps its
+  mode and a new one gets the mode your umask allows. Command arguments may
+  not name an absolute, drive (`C:`),
+  home (`~`) or parent (`..`) path, also as `--flag=value`; the values of
+  `--schema`, `--output` and `--privacy-source` follow the path rules above.
+  Commands run without a shell, with standard input closed, bounded output and
+  a time limit, and finish when the command exits. On Unix each runs in its
+  own process group: Ctrl+C is forwarded to it, and the time limit, or
+  processes it leaves holding its output, stop the whole group (on Windows,
+  only the command itself).
 * **Non-interactive use:** when standard input, output or error is not a
   terminal, or `CI`/`TERM=dumb` is set, actions are printed as a plan and never
   executed. `NO_COLOR` disables colour.

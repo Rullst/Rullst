@@ -79,6 +79,8 @@ pub(super) struct Session<'a, W: Write + Send> {
     history: Vec<Message>,
     attachments: Vec<String>,
     notes: Vec<String>,
+    /// Masked forms of PII the model saw in the last request.
+    masked: Vec<String>,
     checkpoint: CheckpointState,
     /// Input ended while a prompt was waiting: finish after this turn.
     finished: bool,
@@ -122,6 +124,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
             history: Vec::new(),
             attachments: Vec::new(),
             notes: Vec::new(),
+            masked: Vec::new(),
             checkpoint: CheckpointState::Pending,
             finished: false,
         }
@@ -291,13 +294,19 @@ impl<'a, W: Write + Send> Session<'a, W> {
         self.say(&message);
     }
 
-    /// The user's message with pending attachments and notes.
-    fn compose(&mut self, goal: &str) -> String {
+    /// The user's message with pending attachments and notes. They stay
+    /// pending until the message is answered, so a failed request loses
+    /// none of them and never carries its goal into the next message.
+    fn compose(&self, goal: &str) -> String {
         if self.attachments.is_empty() && self.notes.is_empty() {
             return goal.to_string();
         }
-        let mut parts: Vec<String> = std::mem::take(&mut self.attachments);
-        parts.append(&mut self.notes);
+        let parts: Vec<&str> = self
+            .attachments
+            .iter()
+            .chain(&self.notes)
+            .map(String::as_str)
+            .collect();
         format!("{}\n\nGoal:\n{goal}", parts.join("\n\n"))
     }
 
@@ -318,14 +327,26 @@ impl<'a, W: Write + Send> Session<'a, W> {
             return;
         }
         let message = self.compose(goal);
+        if let Some(example) = super::masked::tokens(&message).first() {
+            let note = self.style.dim(&format!(
+                "Note: values that look like personal data reach the model masked (for example {}); it cannot write their real form.",
+                sanitize(example)
+            ));
+            self.say(&note);
+        }
         self.history.push(Message::user(message));
         let mut approve_all = false;
         let mut changed = false;
         let mut checked_after_change = false;
         for step in 0..MAX_STEPS {
-            let Some(response) = self.ask().await else {
+            let Some(response) = self.ask(step > 0).await else {
                 return;
             };
+            if step == 0 {
+                // The message that carried them has been answered.
+                self.attachments.clear();
+                self.notes.clear();
+            }
             let proposals = protocol::parse(&response);
             if proposals.is_empty() {
                 break;
@@ -351,13 +372,16 @@ impl<'a, W: Write + Send> Session<'a, W> {
     }
 
     /// Sends the conversation and records the answer. `None` when the step
-    /// failed or was cancelled (the unanswered message is removed).
-    async fn ask(&mut self) -> Option<String> {
+    /// failed or was cancelled: the unanswered message is removed, and when
+    /// it carried action results (`results`, a later step) they are kept as
+    /// a note for the next message.
+    async fn ask(&mut self, results: bool) -> Option<String> {
         self.trim_history();
         let mut messages = Vec::with_capacity(self.history.len() + 2);
         messages.push(self.system.clone());
         messages.extend(self.context.iter().cloned());
         messages.extend(self.history.iter().cloned());
+        self.masked = super::masked::in_messages(&messages);
         let backend = self.backend;
         let watch = self.input.watches_interrupts();
         let style = self.style;
@@ -411,6 +435,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
                 let message = style.red(&message);
                 self.say(&message);
                 if let Some(unanswered) = self.history.pop()
+                    && results
                     && unanswered.content.starts_with(RESULTS_MARKER)
                 {
                     // Keep executed results for the next turn instead of losing them.
@@ -435,29 +460,6 @@ impl<'a, W: Write + Send> Session<'a, W> {
         };
         self.history.push(Message::assistant(recorded));
         Some(full)
-    }
-
-    async fn offer_check(&mut self) {
-        if self.mode != Mode::Execute || self.root.is_none() {
-            return;
-        }
-        if !self.confirm("Run `cargo check` now? [y/N] ").await {
-            return;
-        }
-        let Some(root) = self.root.clone() else {
-            return;
-        };
-        let Ok(invocation) = super::commands::validate_cargo(vec!["check".to_string()]) else {
-            return;
-        };
-        let prepared = Prepared::Command(invocation);
-        let applied = actions::apply(&prepared, Some(&root), &mut self.out, self.style);
-        let mut note = format!("cargo check after the last changes: {}", applied.result);
-        if let Some(output) = applied.output.filter(|_| !applied.success) {
-            note.push('\n');
-            note.push_str(&output);
-        }
-        self.notes.push(data("cargo-check", &note, 12 * 1024));
     }
 
     /// A yes/no question; anything but `y`/`yes` is no.

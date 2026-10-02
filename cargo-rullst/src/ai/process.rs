@@ -1,5 +1,13 @@
 //! Runs a validated [`Invocation`] directly (never through a shell) with
 //! standard input closed, bounded captured output and a deadline.
+//!
+//! The run ends when the command exits, not when its output pipes close: a
+//! process it started that keeps them open (a test server, say) delays the
+//! result by at most [`EXIT_GRACE`]. On Unix the command runs in its own
+//! process group, so a timeout, or anything left holding its output after
+//! it exits, stops everything it started; Ctrl+C is forwarded to that group
+//! because the terminal no longer delivers it there. On Windows only the
+//! command itself is stopped.
 
 use super::commands::Invocation;
 use std::io::Read;
@@ -18,6 +26,8 @@ pub(super) struct Capture {
 
 const HEAD_BYTES: usize = 6 * 1024;
 const TAIL_BYTES: usize = 10 * 1024;
+/// How long output may still arrive after the command exited.
+pub(super) const EXIT_GRACE: Duration = Duration::from_secs(2);
 
 impl Capture {
     pub(super) fn push(&mut self, bytes: &[u8]) {
@@ -80,7 +90,8 @@ pub(super) fn run(
     root: &Path,
     mut on_line: impl FnMut(&str),
 ) -> std::io::Result<Outcome> {
-    let mut child = Command::new(invocation.program()?)
+    let mut command = Command::new(invocation.program()?);
+    command
         .args(&invocation.args)
         .current_dir(root)
         .env("CARGO_TERM_COLOR", "never")
@@ -88,8 +99,12 @@ pub(super) fn run(
         .env("RULLST_UPDATE_CHECK", "0")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut command, 0);
+    let mut child = command.spawn()?;
+    #[cfg(unix)]
+    let _interrupts = group::forward_interrupts(&child);
     let (sender, receiver) = mpsc::channel::<Vec<u8>>();
     let mut readers = Vec::new();
     if let Some(stdout) = child.stdout.take() {
@@ -102,6 +117,8 @@ pub(super) fn run(
     let deadline = Instant::now() + invocation.deadline();
     let mut capture = Capture::default();
     let mut timed_out = false;
+    let mut lingering = false;
+    let mut exited_at: Option<Instant> = None;
     loop {
         match receiver.recv_timeout(Duration::from_millis(100)) {
             Ok(line) => {
@@ -111,20 +128,30 @@ pub(super) fn run(
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
             Err(mpsc::RecvTimeoutError::Timeout) => {}
         }
+        if exited_at.is_none() && child.try_wait()?.is_some() {
+            exited_at = Some(Instant::now());
+        }
+        if exited_at.is_some_and(|exited| exited.elapsed() > EXIT_GRACE) {
+            // Something the command started still holds its output.
+            lingering = true;
+            stop(&mut child);
+            break;
+        }
         if Instant::now() > deadline {
             timed_out = true;
-            let _ = child.kill();
+            stop(&mut child);
             break;
         }
     }
     let status = child.wait()?;
-    // After a timeout a grandchild may still hold the pipes; do not wait for it.
-    if !timed_out {
+    // A process that ignored the stop may still hold the pipes; the reader
+    // threads are then left to end with it instead of being joined.
+    if !timed_out && !lingering {
         for reader in readers {
             let _ = reader.join();
         }
     }
-    let status_text = if timed_out {
+    let mut status_text = if timed_out {
         "stopped after the time limit".to_string()
     } else {
         match status.code() {
@@ -132,9 +159,88 @@ pub(super) fn run(
             None => "terminated by a signal".to_string(),
         }
     };
+    if lingering {
+        status_text.push_str(if cfg!(unix) {
+            " (processes it left running were stopped)"
+        } else {
+            " (processes it left running still hold its output)"
+        });
+    }
     Ok(Outcome {
         success: status.success() && !timed_out,
         status: status_text,
         output: capture.text(),
     })
+}
+
+/// Stops the command and, on Unix, every process in its group.
+fn stop(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    group::signal(child, rustix::process::Signal::KILL);
+    let _ = child.kill();
+}
+
+#[cfg(unix)]
+mod group {
+    use std::process::Child;
+    use std::thread::JoinHandle;
+    use tokio::sync::oneshot;
+
+    /// Sends `signal` to the process group the command leads.
+    pub(super) fn signal(child: &Child, signal: rustix::process::Signal) {
+        let pid = rustix::process::Pid::from_child(child);
+        // `kill(-1)` would signal every process the user owns.
+        if pid.as_raw_nonzero().get() > 1 {
+            let _ = rustix::process::kill_process_group(pid, signal);
+        }
+    }
+
+    /// Forwards Ctrl+C to the command's group while it is alive. The command
+    /// is not in the terminal's foreground group, so it would not see it.
+    pub(super) struct Interrupts {
+        stop: Option<oneshot::Sender<()>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    pub(super) fn forward_interrupts(child: &Child) -> Interrupts {
+        let pid = rustix::process::Pid::from_child(child);
+        let (stop, stopped) = oneshot::channel::<()>();
+        let thread = std::thread::Builder::new()
+            .name("rullst-ai-interrupts".to_string())
+            .spawn(move || {
+                let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                else {
+                    return;
+                };
+                runtime.block_on(async move {
+                    tokio::select! {
+                        result = tokio::signal::ctrl_c() => {
+                            if result.is_ok() && pid.as_raw_nonzero().get() > 1 {
+                                let _ = rustix::process::kill_process_group(
+                                    pid,
+                                    rustix::process::Signal::INT,
+                                );
+                            }
+                        }
+                        _ = stopped => {}
+                    }
+                });
+            })
+            .ok();
+        Interrupts {
+            stop: Some(stop),
+            thread,
+        }
+    }
+
+    impl Drop for Interrupts {
+        fn drop(&mut self) {
+            drop(self.stop.take());
+            if let Some(thread) = self.thread.take() {
+                let _ = thread.join();
+            }
+        }
+    }
 }

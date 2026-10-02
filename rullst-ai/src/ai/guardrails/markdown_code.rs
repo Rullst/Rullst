@@ -6,6 +6,10 @@
 //! CommonMark: code it does not recognise stays visible and is judged like
 //! any other text, so a miss can only over-block, never hide an image.
 //!
+//! Lines follow CommonMark: they end at `\n`, `\r\n` or a bare `\r`, and a
+//! blank line holds only spaces and tabs (a no-break space or other Unicode
+//! whitespace makes a line non-blank).
+//!
 //! - A fenced block needs an opening fence at column 0 (or indented by up to
 //!   three spaces when the text has no block quote or list item, whose
 //!   containers could end the block early) and a matching closing fence. An
@@ -39,8 +43,38 @@ fn indentation(line: &str) -> usize {
     column
 }
 
+/// A CommonMark blank line: only spaces and tabs before its line ending.
 fn is_blank(line: &str) -> bool {
-    line.trim().is_empty()
+    line.trim_end_matches(['\n', '\r'])
+        .bytes()
+        .all(|byte| matches!(byte, b' ' | b'\t'))
+}
+
+/// Splits `text` into lines that keep their ending: `\n`, `\r\n` or a bare
+/// `\r`, as CommonMark reads them.
+fn lines(text: &str) -> Vec<&str> {
+    let bytes = text.as_bytes();
+    let mut lines = Vec::new();
+    let mut start = 0;
+    let mut index = 0;
+    while index < bytes.len() {
+        let end = match bytes[index] {
+            b'\n' => index + 1,
+            b'\r' if bytes.get(index + 1) == Some(&b'\n') => index + 2,
+            b'\r' => index + 1,
+            _ => {
+                index += 1;
+                continue;
+            }
+        };
+        lines.push(&text[start..end]);
+        start = end;
+        index = end;
+    }
+    if start < text.len() {
+        lines.push(&text[start..]);
+    }
+    lines
 }
 
 /// A block quote or list item marker anywhere (read liberally: a false
@@ -201,17 +235,17 @@ fn span_contents(line: &str) -> Vec<(usize, usize)> {
 }
 
 fn blank(text: &str, output: &mut String) {
-    output.extend(
-        text.chars()
-            .map(|character| if character == '\n' { '\n' } else { ' ' }),
-    );
+    output.extend(text.chars().map(|character| match character {
+        '\n' | '\r' => character,
+        _ => ' ',
+    }));
 }
 
 /// Returns `text` with recognised code replaced by spaces. Code span
 /// delimiters are kept, so a span inside an image label stays visible to
 /// the label reader.
 pub(super) fn blank_code(text: &str) -> String {
-    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+    let lines = lines(text);
     let mut code = vec![false; lines.len()];
     if !lines.iter().any(|line| html_block_line(line)) {
         let containers = lines.iter().any(|line| container_line(line));
@@ -279,6 +313,15 @@ mod tests {
         assert!(!blank_code(tilde).contains("evil"));
         let indented = "text\n\n    ![a](//evil.example/x)\n\nmore";
         assert!(!blank_code(indented).contains("evil"));
+        // CRLF and bare CR line endings are kept and delimit code like LF.
+        let crlf = "intro\r\n```\r\n![a](//evil.example/x)\r\n```\r\nafter";
+        assert_eq!(
+            blank_code(crlf),
+            format!("intro\r\n   \r\n{}\r\n   \r\nafter", " ".repeat(22))
+        );
+        let bare = "intro\r\r    ![a](//evil.example/x)\r";
+        assert!(!blank_code(bare).contains("evil"));
+        assert_eq!(lines("a\rb\r\nc\nd"), ["a\r", "b\r\n", "c\n", "d"]);
     }
 
     #[test]
@@ -297,6 +340,11 @@ mod tests {
             "- item\n\n    ![a](//evil.example/x)\n",
             // Indented code cannot interrupt a paragraph.
             "para\n    ![a](//evil.example/x)\n",
+            // A bare CR ends the code line; the image line is a paragraph.
+            "intro\n\n    x\r![a](//evil.example/x)\n",
+            // A no-break space line is not blank, so this is a paragraph
+            // continuation, not indented code.
+            "intro\n\u{a0}\n    ![a](//evil.example/x)\n",
             // An info string with a backtick is not a fence.
             "``` `x`\n![a](//evil.example/x)\n```\n",
         ] {
