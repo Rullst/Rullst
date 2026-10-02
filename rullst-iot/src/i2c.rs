@@ -89,6 +89,7 @@ impl I2cHelper {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::string::ToString;
 
     #[test]
     fn test_i2c_frame_builder() {
