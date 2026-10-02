@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790926464300,
+  "lastUpdate": 1790930890336,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24771,6 +24771,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2398,
             "range": "± 51",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b9be9e7b77bd23cdb1d71dee25ed2752122f4e45",
+          "message": "Merge pull request #405 from Rullst/fix/v13-new-cli-ai-review\n\nfix(cli,ai): review fixes for cargo rullst ai (inspect exfiltration, migrate gate, path policy, guardrail)",
+          "timestamp": "2026-10-02T05:34:36-03:00",
+          "tree_id": "5fe4b786194dad2bf714c573fb776b01289100ad",
+          "url": "https://github.com/Rullst/Rullst/commit/b9be9e7b77bd23cdb1d71dee25ed2752122f4e45"
+        },
+        "date": 1790930886233,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 616,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 892,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 607,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1908,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
