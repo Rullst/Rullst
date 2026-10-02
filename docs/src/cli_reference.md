@@ -179,7 +179,9 @@ wizard. It asks, one screen at a time:
    the project*, *Back* and *Cancel*.
 
 ↑/↓ (or `j`/`k`, or a digit) moves, Space toggles a feature, Enter confirms
-and Esc, Backspace or ← returns to the previous question. Cancel and Ctrl+C
+and Esc, Backspace or ← returns to the previous question. On a terminal too
+short for every choice, the list scrolls with the highlighted entry and counts
+the hidden ones. Cancel and Ctrl+C
 create nothing. Colours follow the home screen: `NO_COLOR` removes them and
 24-bit colour needs `COLORTERM=truecolor`. Every question has a flag; a
 question answered by a flag is skipped. When standard input, output or error

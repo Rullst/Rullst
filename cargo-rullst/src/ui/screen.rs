@@ -243,11 +243,16 @@ fn footer(screen: &Screen) -> String {
     hints.join(" · ")
 }
 
-/// The lines of `screen` for a `width` × `height` terminal. The detail panel
-/// shrinks first, then the body, so the frame never scrolls the terminal.
+/// The lines of `screen` for a `width` × `height` terminal, at most
+/// `height - 1` of them so the frame never scrolls the terminal (which would
+/// leave stale copies behind on every redraw). The detail panel shrinks
+/// first, then the body. When the choices still do not fit, the list shows a
+/// window around the highlighted entry with a count of the hidden ones, and
+/// on very short terminals the blank lines, the question, the title and the
+/// key hints give way, in that order. A size of 0 (unknown) counts as 80×24.
 pub(crate) fn frame(screen: &Screen, cursor: &Cursor, width: u16, height: u16) -> Vec<Line> {
-    let width = usize::from(width.max(20)) - 1;
-    let budget = usize::from(height.max(8)) - 1;
+    let width = usize::from(if width == 0 { 80 } else { width.max(20) }) - 1;
+    let budget = usize::from(if height == 0 { 24 } else { height.max(2) }) - 1;
     let many = matches!(screen.selection, Selection::Many { .. });
 
     let mut head = vec![
@@ -279,14 +284,15 @@ pub(crate) fn frame(screen: &Screen, cursor: &Cursor, width: u16, height: u16) -
         .map(|choice| choice.label.chars().count())
         .max()
         .unwrap_or(0);
-    let mut list = Vec::new();
+    let mut question = Vec::new();
     if !screen.question.is_empty() {
-        list.push(
+        question.push(
             Line::new()
                 .push(Tone::Plain, "  ")
                 .push(Tone::Strong, screen.question.clone()),
         );
     }
+    let mut choices = Vec::new();
     for (index, choice) in screen.choices.iter().enumerate() {
         let active = index == cursor.index;
         let mut line = Line::new().push(Tone::Accent, if active { "  ❯ " } else { "    " });
@@ -303,15 +309,49 @@ pub(crate) fn frame(screen: &Screen, cursor: &Cursor, width: u16, height: u16) -
         if !choice.hint.is_empty() {
             line = line.push(Tone::Muted, format!("  {}", choice.hint));
         }
-        list.push(line);
+        choices.push(line);
     }
 
-    let tail = vec![
+    let mut tail = vec![
         Line::new(),
         Line::new()
             .push(Tone::Plain, "  ")
             .push(Tone::Muted, footer(screen)),
     ];
+
+    // Room for at least the highlighted choice: drop the blank lines, then
+    // the question, the title and the key hints.
+    let fixed =
+        |head: &[Line], question: &[Line], tail: &[Line]| head.len() + question.len() + tail.len();
+    let needed = budget.saturating_sub(choices.len().min(1));
+    if fixed(&head, &question, &tail) > needed {
+        head.truncate(1);
+        tail.remove(0);
+    }
+    if fixed(&head, &question, &tail) > needed {
+        question.clear();
+    }
+    if fixed(&head, &question, &tail) > needed {
+        head.clear();
+    }
+    if fixed(&head, &question, &tail) > needed {
+        tail.clear();
+    }
+    let room = budget.saturating_sub(fixed(&head, &question, &tail));
+    let (start, end) = window(choices.len(), cursor.index, room);
+    let (above, below) = (start, choices.len() - end);
+    if (above, below) != (0, 0) && tail.len() == 2 {
+        let mut hidden = Vec::new();
+        if above > 0 {
+            hidden.push(format!("↑ {above} more"));
+        }
+        if below > 0 {
+            hidden.push(format!("↓ {below} more"));
+        }
+        tail[0] = Line::new().push(Tone::Muted, format!("    {}", hidden.join(" · ")));
+    }
+    let mut list = question;
+    list.extend(choices.drain(start..end));
 
     let fixed = head.len() + list.len() + tail.len();
     let room = budget.saturating_sub(fixed);
@@ -347,6 +387,17 @@ pub(crate) fn frame(screen: &Screen, cursor: &Cursor, width: u16, height: u16) -
     head.append(&mut detail);
     head.extend(tail);
     head.iter().map(|line| line.truncated(width)).collect()
+}
+
+/// The `[start, end)` range of `count` choices shown in `room` lines, with the
+/// highlighted `cursor` near the middle.
+fn window(count: usize, cursor: usize, room: usize) -> (usize, usize) {
+    if count <= room {
+        return (0, count);
+    }
+    let room = room.max(1);
+    let start = cursor.saturating_sub(room / 2).min(count - room);
+    (start, start + room)
 }
 
 /// The `✔ <echo> · <answer>` line printed after a screen is answered.
