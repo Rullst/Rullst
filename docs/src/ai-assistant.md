@@ -176,7 +176,11 @@ repository the CLI asks before changing anything without a checkpoint.
 - Model output is printed with terminal control characters escaped, so an
   answer cannot rewrite your screen or clipboard.
 - Review every diff: an edit to `build.rs`, `Cargo.toml` or a test runs code on
-  the next `cargo check` or `cargo test`. Such files are flagged in the review.
+  the next `cargo check` or `cargo test`. The review flags `build.rs`,
+  `Cargo.toml`, `Rullst.toml`, `.github/`, files under `tests/`, `benches/` or
+  `examples/`, and Rust files with tests (`#[test]`, `#[cfg(test)]`) or
+  procedural macros. A custom build script named in `Cargo.toml` (`build =
+  "..."`) and code those files call are not flagged.
 - After each reply the CLI shows the tokens the provider reported and, on exit,
   the session totals. Nothing is estimated when a provider reports no usage. A
   cost appears only at prices you configured and is labelled as an estimate

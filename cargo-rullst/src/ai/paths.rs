@@ -168,6 +168,10 @@ fn denied(name: &str, last: bool) -> bool {
     DENIED_DIRECTORIES.contains(&name.to_ascii_lowercase().as_str()) || (last && denied_file(name))
 }
 
+/// Directories of Cargo targets that `cargo test` (or `--all-targets`) builds
+/// and runs automatically.
+const TARGET_DIRECTORIES: &[&str] = &["tests", "benches", "examples"];
+
 fn sensitive(parts: &[String]) -> bool {
     let first = parts.first().map(|part| part.to_ascii_lowercase());
     let last = parts.last().map(|part| part.to_ascii_lowercase());
@@ -175,6 +179,23 @@ fn sensitive(parts: &[String]) -> bool {
         last.as_deref(),
         Some("build.rs" | "cargo.toml" | "rullst.toml")
     ) || matches!(first.as_deref(), Some(".github"))
+        || parts[..parts.len().saturating_sub(1)]
+            .iter()
+            .any(|part| TARGET_DIRECTORIES.contains(&part.to_ascii_lowercase().as_str()))
+}
+
+/// Rust source that `cargo check` or `cargo test` compiles into code that runs:
+/// tests, benchmarks and procedural macros.
+pub(super) fn runs_during_cargo(text: &str) -> bool {
+    [
+        "#[test]",
+        "::test]",
+        "#[cfg(test)]",
+        "#[bench]",
+        "proc_macro",
+    ]
+    .iter()
+    .any(|marker| text.contains(marker))
 }
 
 /// The canonical (long, case-preserved) name of an existing component, so an

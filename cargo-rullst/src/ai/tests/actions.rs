@@ -392,3 +392,27 @@ fn path_valued_flags_follow_the_path_policy() {
         assert!(prepare(&privacy, Some(&root), &root, &overlay).is_err());
     }
 }
+
+#[test]
+fn tests_and_proc_macros_are_flagged_in_the_review() {
+    let (_guard, root) = project();
+    let overlay = Overlay::new();
+    let flagged = |action: Action| {
+        let prepared = prepare(&action, Some(&root), &root, &overlay).unwrap();
+        preview(&prepared, 1, 1, PLAIN).contains("review carefully")
+    };
+    assert!(flagged(write("tests/smoke.rs", "fn main() {}\n")));
+    assert!(flagged(write(
+        "src/models/post.rs",
+        "#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() {}\n}\n"
+    )));
+    assert!(flagged(write(
+        "macros/src/lib.rs",
+        "use proc_macro::TokenStream;\n"
+    )));
+    assert!(!flagged(write("src/models/post.rs", "pub struct Post;\n")));
+    assert!(!flagged(write(
+        "notes.md",
+        "Run #[test] functions with cargo test.\n"
+    )));
+}

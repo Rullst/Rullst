@@ -29,6 +29,20 @@ fn ordinary_project_files_resolve_below_the_root() {
             .unwrap()
             .sensitive
     );
+    // Cargo builds and runs these targets on `cargo test`.
+    for raw in [
+        "tests/smoke.rs",
+        "benches/load.rs",
+        "examples/demo.rs",
+        "macros/tests/ui.rs",
+    ] {
+        assert!(resolve(&root, raw).unwrap().sensitive, "{raw}");
+    }
+    assert!(!resolve(&root, "src/tests.rs").unwrap().sensitive);
+    assert!(runs_during_cargo("#[cfg(test)]\nmod tests {}"));
+    assert!(runs_during_cargo("#[tokio::test]\nasync fn t() {}"));
+    assert!(runs_during_cargo("use proc_macro::TokenStream;"));
+    assert!(!runs_during_cargo("fn main() {}"));
 }
 
 #[test]

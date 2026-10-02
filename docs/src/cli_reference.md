@@ -1325,7 +1325,9 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   symlinks, `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`),
   credentials, keys, `Cargo.lock` or toolchain files, and no name a filesystem
   could map onto one of them (Windows 8.3 aliases such as `GIT~1`, reserved
-  device names, trailing dots or spaces, characters HFS+ ignores). Each action shows a
+  device names, trailing dots or spaces, characters HFS+ ignores). Changes to
+  build files, `.github/`, `tests/`, `benches/`, `examples/` and Rust code with
+  tests or procedural macros are flagged in the review. Each action shows a
   coloured diff or the exact command and asks `[y]es / [n]o / [a]ll this turn
   / [q]uit turn`. Command arguments may not name an absolute, drive (`C:`),
   home (`~`) or parent (`..`) path, also as `--flag=value`; the values of

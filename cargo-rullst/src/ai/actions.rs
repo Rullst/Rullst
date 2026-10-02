@@ -202,9 +202,11 @@ pub(super) fn preview(prepared: &Prepared, index: usize, total: usize, style: St
                 stats.removed
             )));
             output.push('\n');
-            if target.sensitive {
+            let runs =
+                |text: &str| target.display.ends_with(".rs") && paths::runs_during_cargo(text);
+            if target.sensitive || runs(new) || old.as_deref().is_some_and(runs) {
                 output.push_str(&style.yellow(
-                    "  ! build configuration or code that runs during `cargo check`; review carefully",
+                    "  ! build configuration, a test or code that runs during `cargo check` or `cargo test`; review carefully",
                 ));
                 output.push('\n');
             }
