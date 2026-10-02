@@ -214,7 +214,7 @@ pub(super) fn preview(prepared: &Prepared, index: usize, total: usize, style: St
             output.push('\n');
             if invocation.always_confirm() {
                 output.push_str(&style.yellow(
-                    "  ! changes the development database; a git checkpoint cannot undo it",
+                    "  ! changes the development or test database; a git checkpoint cannot undo it",
                 ));
                 output.push('\n');
             } else if invocation.mutates() {
