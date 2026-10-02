@@ -25,6 +25,7 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("DbFeatureDriver", &DB_FEATURE_SPLITS),
     ("GeminiProvider", &GEMINI_STOP_REASONS),
     ("RagPipeline", &RAG_TENANT_TAGS),
+    ("SqlChatMemory", &CHAT_MEMORY_KEYS),
     ("AnthropicProvider", &ANTHROPIC_OUTPUT),
     ("OpenAiProvider", &OPENAI_OUTPUT),
     ("with_machine_endpoints", &MACHINE_ENDPOINTS),
@@ -34,8 +35,14 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("HoneypotState", &SECURITY_LAYERS),
     ("RaspSecurityLayer", &SECURITY_LAYERS),
     ("redact_secrets", &SECURITY_LAYERS),
+    ("StdoutAuditLogger", &AUDIT_LOG_LINES),
     ("OidcProvider", &OIDC_OPTIONAL_NAME),
     ("update_partial", &ORM_PARTIAL_UPDATE),
+    ("save_to_redis", &ORM_REDIS_HASHES),
+    ("get_from_redis", &ORM_REDIS_HASHES),
+    ("increment_redis_field", &ORM_REDIS_HASHES),
+    ("OutboxMigration", &OUTBOX_MYSQL_KEYS),
+    ("create_audit_table", &AUDIT_PAYLOADS),
     ("query_key", &ORM_CACHE_KEY),
     ("rollback_last", &TURSO_ROLLBACK),
     ("sorted_set_top", &REDIS_MOCK_ORDER),
@@ -49,8 +56,10 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("local_development_or_basic_from_env", &NEXUS_DOTENV),
     ("parse_webhook_payload", &WISE_WEBHOOK),
     ("SqlQuotaStore", &QUOTA_KEYS),
+    ("SqlQuotaBackend", &QUOTA_KEYS),
     ("quota_request", &ZERO_TIER),
     ("OrmOutboxRelay", &OUTBOX_RELAY_KEY),
+    ("register_mail_handler", &MAIL_QUEUED_ATTACHMENTS),
     ("LocalAttachmentInspector", &MAIL_ATTACHMENTS),
     ("ResendDriver", &MAIL_RESEND_SCHEDULE),
     ("try_with_open_tracking", &MAIL_TRACKING),
@@ -340,7 +349,13 @@ impl Scanner<'_, '_> {
                 self.facts.server_start.get_or_insert(at);
             }
             [.., "render_page"] => self.hit(&PAGE_LANGUAGE, at),
-            [.., "Mail", _] => self.hit(&MAIL_FACADE, at),
+            [.., "Mail", function] => {
+                self.hit(&MAIL_FACADE, at);
+                if matches!(*function, "init_queue" | "enqueue" | "enqueue_for_tenant") {
+                    self.hit(&MAIL_QUEUED_ATTACHMENTS, at);
+                }
+            }
+            [.., "Outbox", _] => self.hit(&OUTBOX_MYSQL_KEYS, at),
             [.., "Profile", "find"] if args.len() == 1 && args[0].to_string() == "1" => {
                 self.hit(&PROFILE_FIND, at);
             }

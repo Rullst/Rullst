@@ -2,6 +2,7 @@
 
 use super::*;
 
+mod data;
 mod files;
 
 /// Codes and lines found in one Rust source.
@@ -258,6 +259,7 @@ pub struct Post {
             "V13-ORM-SQLX-JSON-SERIALIZE",
             "V13-PASSWORD-HASH-HIDDEN",
             "V13-SECRET-STRING-CLIENT-INPUT",
+            "V13-ORM-PROTECTED-VALUES",
         ],
     );
     assert_only(

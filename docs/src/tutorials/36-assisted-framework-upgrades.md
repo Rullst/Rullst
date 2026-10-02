@@ -346,12 +346,12 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (8 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (83 rows);
+  the affected API, feature or configuration, which the rules locate (90 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (43 rows).
+  of inputs that previously failed) (44 rows).
 
-The catalog has 88 rules. A row can map to several rules and a rule to
+The catalog has 95 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -363,8 +363,8 @@ the rule together.
 | R2 public URLs | (b) review | `V13-R2-PUBLIC-URL` |  |
 | Recoverable Live UI | (c) none | — | Opt-in module |
 | Distributed tracing | (b) review | `V13-OTLP-ENVIRONMENT` |  |
-| Core queue | (b) review | `V13-QUEUE-SEMANTICS` |  |
-| Core scheduler, cache and realtime | (b) review | `V13-PRESENCE-COUNTING` |  |
+| Core queue | (b) review | `V13-QUEUE-SEMANTICS` | Unindexed 12.x Redis failures are not located |
+| Core scheduler, cache and realtime | (b) review | `V13-PRESENCE-COUNTING` | The `TenantCache` key encoding is not located |
 | Core memory cache sweeps | (c) none | — | Internal sweep cadence; reads unchanged |
 | Studio queue monitor | (b) review | `V13-QUEUE-DRIVER-PREVIEWS` |  |
 | Studio API playground | (a) must-change | `V13-STUDIO-UTOIPA-6` | Must-change when a manifest declares utoipa < 6 or utoipa-axum < 0.3 |
@@ -373,7 +373,7 @@ the rule together.
 | Consumer generators | (c) none | — | Generator commands |
 | `html!` event handlers | (a) must-change | `V13-HTML-DYNAMIC-EVENT-HANDLER` |  |
 | Core request validation | (b) review | `V13-VALIDATION-STATUS` |  |
-| Core feature flags and scheduler | (b) review | `V13-SCHEDULER-WEEKDAYS` | A/B splits: the two feature-flag rules below |
+| Core feature flags and scheduler | (b) review | `V13-SCHEDULER-WEEKDAYS` | A/B splits: the two feature-flag rules below; the bucket reassignment depends on flag configuration and is not located |
 | Memory feature-flag splits | (b) review | `V13-MEMORY-FEATURE-SPLITS` |  |
 | Database feature-flag splits | (b) review | `V13-DB-FEATURE-SPLITS` |  |
 | Security headers | (b) review | `V13-REFERRER-NO-REFERRER` |  |
@@ -383,11 +383,13 @@ the rule together.
 | Anthropic provider output | (b) review | `V13-AI-ANTHROPIC-OUTPUT` |  |
 | OpenAI provider output | (b) review | `V13-AI-OPENAI-OUTPUT` |  |
 | Ollama host | (c) none | — | Only values that previously failed change meaning |
+| AI chat memory keys on MySQL/MariaDB | (b) review | `V13-AI-CHAT-MEMORY-KEYS` | The database backend is not located |
 | Core CSRF on HEAD | (c) none | — | HEAD previously failed with 500 |
 | Hot-reload machine endpoints | (b) review | `V13-HOT-RELOAD-MACHINE-ENDPOINTS` |  |
 | Core JSON PII masking | (b) review | `V13-PII-MASKING` |  |
 | Core PII masking of range responses | (b) review | `V13-PII-MASKING` |  |
 | Security DLP, RASP and honeypot | (b) review | `V13-SECURITY-DLP-HONEYPOT` |  |
+| Security audit log lines | (b) review | `V13-SECURITY-AUDIT-LOG-LINES` |  |
 | Connect generic OIDC | (b) review | `V13-OIDC-OPTIONAL-NAME` |  |
 | Android release command | (b) review | `V13-ANDROID-RELEASE-SIGNING` | Detected in workflows, root scripts, Makefile and justfile |
 | Age assurance | (c) none | — | Opt-in APIs and generator |
@@ -400,10 +402,14 @@ the rule together.
 | ORM derive checks | (a) must-change | `V13-ORM-BELONGS-TO-KEY`, `V13-ORM-IGNORED-RELATION-KEY`, `V13-ORM-SEARCHABLE-TABLE` |  |
 | ORM queries and cache | (b) review | `V13-ORM-SQLX-JSON-SERIALIZE`, `V13-ORM-QUERY-CACHE-KEY` | Count, chunk-order and stream changes are not located |
 | ORM query-cache index | (b) review | `V13-ORM-CACHE-PREFIX` |  |
+| ORM Redis model hashes | (b) review | `V13-ORM-REDIS-HASHES` |  |
+| ORM outbox keys on MySQL/MariaDB | (b) review | `V13-OUTBOX-MYSQL-KEYS` | The database backend is not located |
+| ORM audit payloads on MySQL/MariaDB | (b) review | `V13-ORM-AUDIT-PAYLOADS` | Auditable models and audit-table setup; the database backend is not located |
 | Turso migrations | (b) review | `V13-TURSO-ROLLBACK-DRIFT` |  |
 | Schema table names on PostgreSQL | (b) review | `V13-SCHEMA-PG-TABLE-CASE` |  |
 | Legacy `SecretString` ciphertext | (c) none | — | Older values become readable; no source change |
 | `SecretString` client input | (b) review | `V13-SECRET-STRING-CLIENT-INPUT` |  |
+| ORM protected values and `SecretString` serialization | (b) review | `V13-ORM-PROTECTED-VALUES` | Encrypted and masked model fields, and `SecretString` fields of serialized structs and models |
 | Offline Redis mock | (b) review | `V13-REDIS-MOCK-TIE-ORDER` |  |
 | SQLite DSN paths | (c) none | — | Only stray files of earlier versions |
 | Auto-healing diagnostics | (b) review | `V13-AUTO-HEALING-DIAGNOSTICS` |  |
@@ -442,7 +448,7 @@ the rule together.
 | CLI output additions | (c) none | — | CLI |
 | SaaS plan gates | (c) none | — | Opt-in generated module |
 | Capital provider webhooks | (b) review | `V13-CAPITAL-WEBHOOKS` |  |
-| Capital quota keys on MySQL/MariaDB | (b) review | `V13-CAPITAL-QUOTA-KEYS` |  |
+| Capital quota keys on MySQL/MariaDB | (b) review | `V13-CAPITAL-QUOTA-KEYS` | `SqlQuotaStore`/`SqlQuotaBackend`; the database backend is not located |
 | Capital zero tier limit | (b) review | `V13-CAPITAL-ZERO-TIER` |  |
 | Capital provider subscription IDs | (c) none | — | Rejects dot-only identifiers before a request |
 | Messaging outbox relay key | (b) review | `V13-OUTBOX-RELAY-KEY` |  |
@@ -453,6 +459,7 @@ the rule together.
 | Mail attachment inspection | (b) review | `V13-MAIL-ATTACHMENT-INSPECTION` |  |
 | Mail link checks | (c) none | — | Depends on message content |
 | Mail facade settings | (b) review | `V13-MAIL-FACADE-CONFIG` |  |
+| Mail queued attachments | (b) review | `V13-MAIL-QUEUED-ATTACHMENTS` | `Mail::init_queue`, `Mail::enqueue`/`enqueue_for_tenant` and `register_mail_handler` |
 | Mail SES addresses | (c) none | — | Requests SES rejected now succeed |
 | Mail Resend scheduling | (b) review | `V13-MAIL-RESEND-SCHEDULE` |  |
 | Mail tracking recipient | (b) review | `V13-MAIL-TRACKING-RECIPIENT` |  |
@@ -486,6 +493,7 @@ the rule together.
 | Kubernetes and Buildah names | (b) review | `V13-K8S-NAMES` |  |
 | Pre-compressed static assets | (c) none | — | CLI |
 | Interactive `new --api` | (c) none | — | CLI |
+| CLI `new` wizard | (c) none | — | CLI |
 | Generated `rullst-orm` dependency | (b) review | `V13-ORM-DEFAULT-FEATURES` |  |
 | Omni desktop runner | (b) review | `V13-OMNI-RUNNER` |  |
 | Omni managed backend | (b) review | `V13-OMNI-BACKEND` |  |
