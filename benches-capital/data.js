@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790959546358,
+  "lastUpdate": 1790975642605,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10862,6 +10862,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "232296c680d7dc3c5ca7e35226aff24b2c909754",
+          "message": "Merge pull request #409 from Rullst/claude/lucid-ride-q7hc27\n\ndocs(v13): record the 12.2.0-first direction; fix flaky release gate tests",
+          "timestamp": "2026-10-02T17:48:49-03:00",
+          "tree_id": "ebdf30c1ec5cee468a9b1fe3da71fd10334100bb",
+          "url": "https://github.com/Rullst/Rullst/commit/232296c680d7dc3c5ca7e35226aff24b2c909754"
+        },
+        "date": 1790975641825,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
