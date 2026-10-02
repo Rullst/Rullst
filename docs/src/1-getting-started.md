@@ -172,6 +172,11 @@ An inventory-oriented back-office starter. It features:
 - Full CRUD operations with HTMX.
 - A sleek, split-pane dashboard for simultaneous product listing and order creation.
 
+The dashboard lists customer names and revenue, so every ERP route shares the
+Nexus administrator policy described below: loopback-only in a debug build and
+Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
+build. Per-employee accounts and roles remain application work.
+
 ---
 
 > [!TIP]

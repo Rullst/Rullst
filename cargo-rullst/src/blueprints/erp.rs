@@ -33,7 +33,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         .register::<models::order::Order>()
         .try_build()?;
 
+    // The whole back office shares the Nexus administrator policy, including the
+    // dashboard that lists every order's customer and the revenue totals:
+    // loopback-only in debug builds, Basic Auth over verified TLS in release.
     let admin_routes = routes![
+        get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
         // rullst-access: admin — protected by admin_access.protect_router below.
         post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
@@ -41,13 +45,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
     ];
     let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
 
-    Ok(routes![
-        get("/" => controllers::erp_controller::index),
-    ]
-    .merge_axum(admin_routes)
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus))
+    Ok(Router::new()
+        .merge_axum(admin_routes)
+        .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+        .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+        .nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
@@ -60,6 +62,29 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         }}
     }};
     Box::into_raw(Box::new(router))
+}}
+
+// A debug build uses the loopback-only policy; a release build needs the
+// NEXUS_ADMIN_* credentials before the router can be constructed.
+#[cfg(all(test, debug_assertions))]
+mod tests {{
+    use rullst::web::axum::body::Body;
+    use rullst::web::axum::extract::ConnectInfo;
+    use rullst::web::axum::http::{{Request, StatusCode}};
+    use rullst::web::tower::ServiceExt;
+
+    #[tokio::test]
+    async fn back_office_dashboard_is_not_public() {{
+        let router = super::router().expect("ERP router").into_axum();
+        let remote_peer = std::net::SocketAddr::from(([192, 0, 2, 10], 41_000));
+        let request = Request::builder()
+            .uri("/")
+            .extension(ConnectInfo(remote_peer))
+            .body(Body::empty())
+            .expect("dashboard request");
+        let response = router.oneshot(request).await.expect("dashboard response");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }}
 }}
 "##,
             repo_decl = repo_decl
@@ -111,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     } else {
         let repo_decl = common::repo_mod_decl(orm_pattern);
         let main_rs = format!(
-            r##"use rullst::{{routes, Server}};
+            r##"use rullst::{{routes, Router, Server}};
 
 pub mod migrations;
 pub mod models;
@@ -131,7 +156,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .register::<models::order::Order>()
         .try_build()?;
 
+    // The whole back office shares the Nexus administrator policy, including the
+    // dashboard that lists every order's customer and the revenue totals:
+    // loopback-only in debug builds, Basic Auth over verified TLS in release.
     let admin_routes = routes![
+        get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
         // rullst-access: admin — protected by admin_access.protect_router below.
         post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
@@ -139,13 +168,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     ];
     let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
 
-    let router = routes![
-        get("/" => controllers::erp_controller::index),
-    ]
-    .merge_axum(admin_routes)
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus);
+    let router = Router::new()
+        .merge_axum(admin_routes)
+        .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+        .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+        .nest_axum("/nexus", nexus);
 
     #[cfg(debug_assertions)]
     {{
@@ -697,4 +724,38 @@ fn render_forms(products: &[Product], csrf_token: &str) -> String {
     }
 
     manifest
+}
+
+#[cfg(test)]
+mod tests {
+    use super::file_manifest;
+
+    #[test]
+    fn every_erp_route_shares_the_admin_policy() {
+        for hot_reload in [false, true] {
+            let manifest =
+                file_manifest("erp_app", hot_reload, "Active Record", "Zero-Bundle HTMX");
+            let entry = if hot_reload {
+                "src/lib.rs"
+            } else {
+                "src/main.rs"
+            };
+            let source = manifest
+                .iter()
+                .find_map(|(path, source)| (*path == entry).then_some(source.as_str()))
+                .unwrap_or_default();
+            let protected = source
+                .split_once("let admin_routes = routes![")
+                .and_then(|(_, rest)| rest.split_once("];"))
+                .map(|(routes, _)| routes)
+                .unwrap_or_default();
+            // The dashboard lists every order's customer and the revenue totals.
+            assert!(protected.contains("get(\"/\" => controllers::erp_controller::index)"));
+            assert_eq!(source.matches("routes![").count(), 1, "{entry}");
+            assert!(source.contains("admin_access.protect_router(admin_routes.into_axum())?"));
+        }
+        let library = file_manifest("erp_app", true, "Active Record", "Zero-Bundle HTMX");
+        assert!(library.iter().any(|(path, source)| *path == "src/lib.rs"
+            && source.contains("fn back_office_dashboard_is_not_public()")));
+    }
 }
