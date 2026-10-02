@@ -79,6 +79,8 @@ pub(super) struct Session<'a, W: Write + Send> {
     history: Vec<Message>,
     attachments: Vec<String>,
     notes: Vec<String>,
+    /// Masked forms of PII the model saw in the last request.
+    masked: Vec<String>,
     checkpoint: CheckpointState,
     /// Input ended while a prompt was waiting: finish after this turn.
     finished: bool,
@@ -122,6 +124,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
             history: Vec::new(),
             attachments: Vec::new(),
             notes: Vec::new(),
+            masked: Vec::new(),
             checkpoint: CheckpointState::Pending,
             finished: false,
         }
@@ -324,6 +327,13 @@ impl<'a, W: Write + Send> Session<'a, W> {
             return;
         }
         let message = self.compose(goal);
+        if let Some(example) = super::masked::tokens(&message).first() {
+            let note = self.style.dim(&format!(
+                "Note: values that look like personal data reach the model masked (for example {}); it cannot write their real form.",
+                sanitize(example)
+            ));
+            self.say(&note);
+        }
         self.history.push(Message::user(message));
         let mut approve_all = false;
         let mut changed = false;
@@ -371,6 +381,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
         messages.push(self.system.clone());
         messages.extend(self.context.iter().cloned());
         messages.extend(self.history.iter().cloned());
+        self.masked = super::masked::in_messages(&messages);
         let backend = self.backend;
         let watch = self.input.watches_interrupts();
         let style = self.style;
@@ -449,29 +460,6 @@ impl<'a, W: Write + Send> Session<'a, W> {
         };
         self.history.push(Message::assistant(recorded));
         Some(full)
-    }
-
-    async fn offer_check(&mut self) {
-        if self.mode != Mode::Execute || self.root.is_none() {
-            return;
-        }
-        if !self.confirm("Run `cargo check` now? [y/N] ").await {
-            return;
-        }
-        let Some(root) = self.root.clone() else {
-            return;
-        };
-        let Ok(invocation) = super::commands::validate_cargo(vec!["check".to_string()]) else {
-            return;
-        };
-        let prepared = Prepared::Command(invocation);
-        let applied = actions::apply(&prepared, Some(&root), &mut self.out, self.style);
-        let mut note = format!("cargo check after the last changes: {}", applied.result);
-        if let Some(output) = applied.output.filter(|_| !applied.success) {
-            note.push('\n');
-            note.push_str(&output);
-        }
-        self.notes.push(data("cargo-check", &note, 12 * 1024));
     }
 
     /// A yes/no question; anything but `y`/`yes` is no.

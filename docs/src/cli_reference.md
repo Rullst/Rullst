@@ -1273,7 +1273,9 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
 * **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and
   a local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM,
   LocalAI, Jan), all through `rullst-ai` and its mandatory
-  prompt-injection/PII guardrails. Every provider streams its answers except an
+  prompt-injection/PII guardrails. PII masking also applies to your goal and
+  shared files (`help@acme.com` is sent as `h***@acme.com`); the CLI notes when
+  your message is masked and flags a change that writes a masked value back. Every provider streams its answers except an
   Ollama host that is not a loopback address, which answers at once. A local
   server must listen on loopback (`http://127.0.0.1:...`, `http://[::1]:...`;
   `localhost` is pinned to `127.0.0.1`); its model name must match the model

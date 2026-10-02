@@ -3526,7 +3526,9 @@ directory.
 
 Project context (inventory names and paths, project `AGENTS.md`), shared files
 and command output are delimited untrusted data, size-capped and guardrail
-checked; a match is withheld. The project context is its own system message.
+checked; a match is withheld. The mandatory PII masking applies to every message,
+the user's goal included; the CLI announces a masked goal or attachment and flags
+a file change that writes a masked form back. The project context is its own system message.
 Terminal output escapes control characters. Live provider interoperability is
 not established by the offline test suite. See the
 [assistant guide](ai-assistant.md).

@@ -176,6 +176,11 @@ repository the CLI asks before changing anything without a checkpoint.
   continues.
 - Model output is printed with terminal control characters escaped, so an
   answer cannot rewrite your screen or clipboard.
+- The guardrails also mask personal data in everything sent, your own message
+  and shared files included: e-mail usernames, card-like digit runs and valid
+  CPF/CNPJ numbers (`help@acme.com` reaches the model as `h***@acme.com`). The
+  CLI says when your message is masked and flags a proposed change that writes
+  a masked value back; enter the real value yourself.
 - Review every diff: an edit to `build.rs`, `Cargo.toml` or a test runs code on
   the next `cargo check` or `cargo test`. The review flags `build.rs`,
   `Cargo.toml`, `Rullst.toml`, `.github/`, files under `tests/`, `benches/` or

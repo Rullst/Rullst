@@ -430,3 +430,26 @@ async fn failed_requests_keep_pending_context_without_their_goal() {
         assert_eq!(output.matches("[provider error").count(), 2, "{output}");
     }
 }
+
+#[tokio::test]
+async fn masked_personal_data_is_announced_and_flagged_when_written_back() {
+    let (_guard, root) = project(false);
+    let output = one_shot(
+        Some(root.clone()),
+        Mode::PlanOnly("test"),
+        &[],
+        "set the support sender to help@acme.com",
+    )
+    .await;
+    assert!(
+        output.contains("reach the model masked (for example h***@acme.com)"),
+        "{output}"
+    );
+    // The offline model writes the goal as it received it, masked.
+    assert!(
+        output.contains("! writes `h***@acme.com`, a value the rullst-ai PII guardrail masked"),
+        "{output}"
+    );
+    let plain = one_shot(Some(root), Mode::PlanOnly("test"), &[], "add a posts page").await;
+    assert!(!plain.contains("masked"), "{plain}");
+}

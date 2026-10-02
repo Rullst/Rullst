@@ -28,6 +28,7 @@ mod credentials;
 mod diff;
 mod environment;
 mod input;
+mod masked;
 mod mock;
 mod paths;
 mod process;
