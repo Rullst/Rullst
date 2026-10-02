@@ -274,6 +274,73 @@ mod tests {
         assert!(seeded_tables > 0, "no explicit-id seed was inspected");
     }
 
+    /// v12 Academy LMS migrations that still index `string()` (TEXT) columns.
+    /// They have no v13 counterpart; MySQL/MariaDB support for the complete
+    /// LMS profile remains documented roadmap work.
+    const ACADEMY_TEXT_INDEX_MIGRATIONS: [&str; 11] = [
+        "m20260828000000_add_academy_domains.rs",
+        "m20260829000000_add_lesson_availability.rs",
+        "m20260830000000_add_notifications.rs",
+        "m20260831000000_add_scheduler_leases.rs",
+        "m20260901000000_add_course_publication.rs",
+        "m20260901500000_add_school_tenancy.rs",
+        "m20260902000000_add_education_roles.rs",
+        "m20260903000000_add_course_completion.rs",
+        "m20260904000000_add_publication_rollbacks.rs",
+        "m20260905000000_add_assignments.rs",
+        "m20260906000000_add_privacy_lifecycle.rs",
+    ];
+
+    #[test]
+    fn indexed_string_columns_are_bounded_for_mysql() {
+        // MySQL/MariaDB reject an index on a TEXT column without a prefix
+        // length, and `string()`/`timestamps()` columns are TEXT.
+        let mut indexed_strings = 0;
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                if ACADEMY_TEXT_INDEX_MIGRATIONS
+                    .iter()
+                    .any(|migration| path.ends_with(migration))
+                {
+                    continue;
+                }
+                for statement in source.split("CREATE ").skip(1) {
+                    let Some((_, definition)) = statement
+                        .split_once("INDEX ")
+                        .filter(|(kind, _)| kind.is_empty() || *kind == "UNIQUE ")
+                    else {
+                        continue;
+                    };
+                    let Some(columns) = definition
+                        .split_once('(')
+                        .and_then(|(_, columns)| columns.split_once(')'))
+                        .map(|(columns, _)| columns)
+                    else {
+                        continue;
+                    };
+                    for column in columns.split(',').map(str::trim) {
+                        assert!(
+                            !matches!(column, "created_at" | "updated_at"),
+                            "{blueprint}:{path} indexes TEXT timestamp {column}"
+                        );
+                        let declaration = format!("table.string(\"{column}\")");
+                        for line in source.lines().filter(|line| line.contains(&declaration)) {
+                            indexed_strings += 1;
+                            assert!(
+                                line.contains(".col_type = \"VARCHAR("),
+                                "{blueprint}:{path} indexes TEXT column {column}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            indexed_strings > 0,
+            "no indexed string column was inspected"
+        );
+    }
+
     #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(

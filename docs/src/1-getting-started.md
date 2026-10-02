@@ -145,7 +145,10 @@ media transcoding and signed delivery, advanced/localized search, billing-linked
 entitlements, distributed failover, native offline playback, real-browser/WCAG
 evidence and PostgreSQL/MySQL isolation evidence remain application or roadmap
 work. Smaller `auth`, `auth,learning` and `auth,learning,assessment` profiles are
-available when the complete domain scaffold is unnecessary.
+available when the complete domain scaffold is unnecessary. On MySQL/MariaDB,
+the complete profile and the assessment and gamification profiles still index
+unbounded `TEXT` columns in their academy migrations, so `db:migrate` fails
+there; use SQLite or PostgreSQL for them.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
