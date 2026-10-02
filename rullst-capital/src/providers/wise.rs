@@ -1,7 +1,9 @@
 use super::{PayoutEvent, PayoutProvider, PayoutStatus};
-use crate::error::CapitalError;
+use crate::error::{CapitalError, ProviderFailure};
 use async_trait::async_trait;
 use serde_json::Value;
+
+const WISE_API_BASE: &str = "https://api.wise.com";
 
 /// Payout provider implementation for Wise (Global Multi-Currency B2B Payouts & Disbursements).
 pub struct WiseProvider {
@@ -103,24 +105,67 @@ impl PayoutProvider for WiseProvider {
             return Ok(PayoutStatus::OutgoingPaymentSent);
         }
 
-        crate::subscription::validate_provider_subscription_id(transfer_id)?;
-        let client = crate::providers::http_client()?;
-        let body: Value = crate::providers::send_http_json(
-            client
-                .get(format!("https://api.wise.com/v1/transfers/{}", transfer_id))
-                .bearer_auth(&self.api_token),
+        transfer_status_at(&self.api_token, WISE_API_BASE, transfer_id).await
+    }
+}
+
+/// Reads one live transfer and binds the response to the requested numeric ID.
+async fn transfer_status_at(
+    api_token: &str,
+    api_base: &str,
+    transfer_id: &str,
+) -> Result<PayoutStatus, CapitalError> {
+    crate::subscription::validate_provider_subscription_id(transfer_id)?;
+    let transfer_id = transfer_id
+        .parse::<u64>()
+        .ok()
+        .filter(|id| *id > 0 && id.to_string() == transfer_id)
+        .ok_or_else(|| {
+            CapitalError::SubscriptionError(
+                "Wise transfer ID must be a positive decimal number".to_string(),
+            )
+        })?;
+    let client = crate::providers::http_client()?;
+    let body: Value = crate::providers::send_http_json(
+        client
+            .get(format!("{api_base}/v1/transfers/{transfer_id}"))
+            .bearer_auth(api_token),
+        "wise",
+        "get transfer status",
+    )
+    .await?;
+    bind_transfer_status(transfer_id, &body)
+}
+
+/// Maps only Wise's documented transfer states. A response for another
+/// transfer, or a missing or undocumented state (including Wise's `unknown`),
+/// is a contract failure, never "processing". Bounced-back and charged-back
+/// transfers failed, which the coarse `PayoutStatus` cannot express, so they
+/// are reported as an error instead of a transfer in flight.
+fn bind_transfer_status(transfer_id: u64, body: &Value) -> Result<PayoutStatus, CapitalError> {
+    let mismatch = || {
+        CapitalError::from(ProviderFailure::contract_mismatch(
             "wise",
             "get transfer status",
-        )
-        .await?;
-
-        let status_str = body["status"].as_str().unwrap_or("processing");
-        match status_str {
-            "outgoing_payment_sent" => Ok(PayoutStatus::OutgoingPaymentSent),
-            "funds_refunded" => Ok(PayoutStatus::FundsRefunded),
-            "cancelled" => Ok(PayoutStatus::Cancelled),
-            _ => Ok(PayoutStatus::Processing),
+        ))
+    };
+    if body["id"].as_u64() != Some(transfer_id) {
+        return Err(mismatch());
+    }
+    match body["status"].as_str().ok_or_else(mismatch)? {
+        "incoming_payment_waiting"
+        | "incoming_payment_initiated"
+        | "processing"
+        | "funds_converted" => Ok(PayoutStatus::Processing),
+        "outgoing_payment_sent" => Ok(PayoutStatus::OutgoingPaymentSent),
+        "funds_refunded" => Ok(PayoutStatus::FundsRefunded),
+        "cancelled" => Ok(PayoutStatus::Cancelled),
+        state @ ("bounced_back" | "charged_back") => {
+            Err(CapitalError::UnsupportedOperation(format!(
+                "Wise transfer is {state}; PayoutStatus cannot represent it and it is not in flight"
+            )))
         }
+        _ => Err(mismatch()),
     }
 }
 
@@ -267,3 +312,7 @@ mod tests {
         assert!(provider.parse_webhook_payload(b"invalid json").is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "wise_status_tests.rs"]
+mod status_tests;

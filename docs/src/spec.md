@@ -1302,7 +1302,11 @@ sending.
   is not a `BillingProvider` webhook. It accepts only an explicit `mock_*` API
   token as an offline fixture; an empty token returns `ConfigurationError` and a
   live token returns `UnsupportedOperation` before reading the body. Its result
-  must never drive a payout, refund or release decision.
+  must never drive a payout, refund or release decision. A live Wise transfer
+  status read requires a positive decimal transfer ID, binds the response `id`
+  to it and parses only documented transfer states: a missing, `unknown` or
+  other undocumented state is a provider contract failure, and `bounced_back`
+  or `charged_back` returns `UnsupportedOperation` instead of `Processing`.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters that accept live
   deliveries use provider-appropriate cryptographic verification; legacy

@@ -110,6 +110,13 @@ fixture restricted to an explicit `mock_*` API token: an empty token returns
 `ConfigurationError` and a live token returns `UnsupportedOperation` before
 the body is read. Do not re-issue, release or reconcile payouts from it.
 
+With a live token, the Wise transfer-status read accepts only a positive
+decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
+or undocumented state fails the provider response contract, and a
+`bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
+because `PayoutStatus` cannot express a returned or reversed payout; it is
+never reported as `Processing`.
+
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
 The plan argument must be a numeric variant ID belonging to that store. The
