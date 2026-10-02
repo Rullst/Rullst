@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790891857007,
+  "lastUpdate": 1790901766291,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9015,6 +9015,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 584,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf7701dafaf8a6de9dcdcee47cdfe22a722a28ab",
+          "message": "Merge pull request #395 from Rullst/feat/v13-cli-dash-live\n\nfeat(cli,core): live metrics in cargo rullst dash from a loopback-only dev telemetry endpoint",
+          "timestamp": "2026-10-01T21:24:17-03:00",
+          "tree_id": "032038001ff424e123f5a0c2d7a34639fc13649f",
+          "url": "https://github.com/Rullst/Rullst/commit/bf7701dafaf8a6de9dcdcee47cdfe22a722a28ab"
+        },
+        "date": 1790901765505,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 418,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
