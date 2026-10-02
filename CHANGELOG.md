@@ -27,6 +27,20 @@ A prepared version section does not establish that its tag or crates exist.
   invalid flag name before the first question, and choice screens fit short
   terminals.
 
+### Direct 12.x → 13 upgrade parity
+
+- Generated Redis model hashes of models without a tenant scope read the 12.x
+  key `orm:<table>:<id>` while the namespaced hash is missing and move it on
+  their next write; tenant models keep ignoring the shared key and have a
+  documented one-time migration.
+- The v13 migration guide covers 12.x data and rolling-deployment changes:
+  queued mail attachments (upgrade workers before producers), MySQL/MariaDB
+  outbox, chat-memory and audit tables, protected ORM values and
+  `SecretString` serialization, audit log lines, unindexed 12.x Redis queue
+  failures, tenant cache keys, feature bucket reassignment, and the
+  generated-file fixes for projects from the 12.0 CLI.
+- `rullst-upgrade-rules-v4` reports these as review findings (95 rules).
+
 ### Assisted v12 → v13 upgrade
 
 - `cargo rullst upgrade` reports v12 → v13 source findings
