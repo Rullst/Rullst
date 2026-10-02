@@ -1,5 +1,6 @@
 //! A shared search index is truncated to `MAX_SEARCH_HITS` before tenant
-//! scoping, so a capped engine answer for a scoped model falls back to SQL.
+//! scoping, so a capped engine answer for a tenant-scoped model falls back to
+//! SQL; models without a tenant scope keep the engine answer.
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -14,6 +15,15 @@ struct TruncatedInvoice {
     id: i32,
     tenant_id: String,
     title: String,
+}
+
+/// A soft-delete model without a tenant scope keeps the engine answer.
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "truncated_notes", searchable)]
+struct TruncatedNote {
+    id: i32,
+    title: String,
+    deleted_at: Option<String>,
 }
 
 /// Mimics a provider whose shared index is dominated by tenant B: "overdue"
@@ -76,4 +86,27 @@ async fn capped_engine_results_do_not_hide_a_tenants_matches() {
     assert_eq!(ids("overdue").await, [5_001, 5_002, 5_003]);
     // Below the cap the engine's scoped answer is kept.
     assert_eq!(ids("rare").await, [5_002]);
+
+    // Without a tenant scope the capped engine answer is kept and only
+    // filtered by the soft-delete scope, as in 12.1.
+    rullst_orm::_sqlx::query(
+        "CREATE TABLE truncated_notes (id INTEGER PRIMARY KEY, title TEXT NOT NULL, deleted_at TEXT)",
+    )
+    .execute(pool)
+    .await
+    .expect("create notes");
+    rullst_orm::_sqlx::query(
+        "INSERT INTO truncated_notes (id, title, deleted_at) VALUES \
+         (1, 'overdue', NULL), (2, 'overdue', '2026-01-01'), (5001, 'overdue', NULL)",
+    )
+    .execute(pool)
+    .await
+    .expect("seed notes");
+    let notes = TruncatedNote::search("overdue")
+        .await
+        .order_by("id")
+        .pluck_i32("id")
+        .await
+        .expect("unscoped search");
+    assert_eq!(notes, [1]);
 }

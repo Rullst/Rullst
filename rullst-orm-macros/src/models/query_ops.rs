@@ -16,12 +16,11 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
         .filter(|field| !parsed.hidden_fields.contains(field) && !parsed.is_redacted(field))
         .map(|f| f.to_string())
         .collect::<Vec<_>>();
-    // Providers truncate hits over the whole shared index before this model's
-    // tenant, global and soft-delete scopes apply, so a capped answer may hold
-    // none of the scoped matches. Such a model then answers from SQL.
-    let scoped = !parsed.tenant_column.is_empty()
-        || !parsed.global_scope.is_empty()
-        || parsed.has_soft_deletes;
+    // Providers truncate hits over the whole shared index before the tenant
+    // scope applies, so one tenant's hits can fill a capped answer and hide
+    // another tenant's matches; a tenant-scoped model then answers from SQL.
+    // Global-scope and soft-delete models keep the 12.1 engine answer.
+    let scoped = !parsed.tenant_column.is_empty();
     // 12.x keeps the providers' 1,000-hit cap (`scout::providers::common::
     // MAX_SEARCH_HITS`) private, so the generated check repeats the value.
     let engine_result = if scoped {
@@ -217,35 +216,39 @@ mod tests {
     }
 
     #[test]
-    fn scoped_models_answer_a_capped_engine_result_from_sql() {
+    fn tenant_scoped_models_answer_a_capped_engine_result_from_sql() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "invoices", searchable, tenant_column = "org")]
+            struct Invoice { id: i32, org: String, title: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let builder = quote::format_ident!("InvoiceQueryBuilder");
+        let generated = generate_search_method(&parsed, &builder).to_string();
+        assert!(generated.contains("ids . len () < 1_000_usize"));
+    }
+
+    #[test]
+    fn models_without_a_tenant_scope_keep_the_capped_engine_answer() {
         for input in [
             parse_quote! {
-                #[orm(table = "invoices", searchable, tenant_column = "org")]
-                struct Invoice { id: i32, org: String, title: String }
+                #[orm(table = "articles", searchable)]
+                struct Article { id: i32, title: String }
             },
             parse_quote! {
-                #[orm(table = "invoices", searchable)]
-                struct Invoice { id: i32, title: String, deleted_at: Option<String> }
+                #[orm(table = "articles", searchable)]
+                struct Article { id: i32, title: String, deleted_at: Option<String> }
+            },
+            parse_quote! {
+                #[orm(table = "articles", searchable, global_scope = "published_only")]
+                struct Article { id: i32, title: String }
             },
         ] {
             let input: DeriveInput = input;
             let parsed = crate::parser::parse(&input).expect("test model should parse");
-            let builder = quote::format_ident!("InvoiceQueryBuilder");
+            let builder = quote::format_ident!("ArticleQueryBuilder");
             let generated = generate_search_method(&parsed, &builder).to_string();
-            assert!(generated.contains("ids . len () < 1_000_usize"));
+            assert!(!generated.contains("1_000_usize"));
+            assert!(generated.contains("return base_builder . where_in (\"id\" , ids)"));
         }
-    }
-
-    #[test]
-    fn unscoped_models_keep_the_capped_engine_answer() {
-        let input: DeriveInput = parse_quote! {
-            #[orm(table = "articles", searchable)]
-            struct Article { id: i32, title: String }
-        };
-        let parsed = crate::parser::parse(&input).expect("test model should parse");
-        let builder = quote::format_ident!("ArticleQueryBuilder");
-        let generated = generate_search_method(&parsed, &builder).to_string();
-        assert!(!generated.contains("1_000_usize"));
-        assert!(generated.contains("return base_builder . where_in (\"id\" , ids)"));
     }
 }
