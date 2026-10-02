@@ -557,5 +557,5 @@ required.
 
 ## 📚 Documentation & Roadmap
 
-- Architecture & Master Roadmap: [`rullst-mail/ROADMAP.md`](https://github.com/Rullst/Rullst/blob/v12.1.2/rullst-mail/ROADMAP.md)
-- Official Documentation Book: [`docs/src/crates/mail.md`](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/crates/mail.md)
+- Architecture & Master Roadmap: [`rullst-mail/ROADMAP.md`](https://github.com/Rullst/Rullst/blob/v12.2.0/rullst-mail/ROADMAP.md)
+- Official Documentation Book: [`docs/src/crates/mail.md`](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/crates/mail.md)

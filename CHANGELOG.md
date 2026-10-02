@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [12.2.0] - 2026-10-02
+
+Compatible minor release on `v12` with the fixes ported from the v13 review.
+It keeps the 12.x public API and Rust 1.96.0. Some fixes change behaviour,
+stored keys or generated files: read the
+[12.2 upgrade notes](docs/src/migration-v12-1.md#upgrading-to-122) and the
+[ORM upgrade checklist](docs/src/crates/orm.md#upgrading-from-121) before
+deploying. The [release review](docs/src/v12-2-0-review.md) lists the
+verification requirements; publication evidence is recorded separately in the
+[release record](docs/src/v12.md).
+
 ### CLI review fixes (12.2)
 
 Ported from the v13 review; see the CLI table in the
@@ -249,6 +260,14 @@ v12 documents the existing-API workaround instead.
   only of dots are rejected, and `TenantStorage` returns
   `StorageError::PathTraversal` unless the tenant ID is one normal path
   segment. Before, tenant `.` resolved into another tenant's storage root.
+
+### Maintenance
+
+- Prepare all sixteen packages and internal requirements as 12.2.0, with
+  synchronized workspace and fuzz locks and absolute versioned README links.
+  `rullst-orm` 12.2.0 requires `rullst-orm-macros` 12.2.0 for its new internal
+  `runtime-feature-gates` and `redis` features; the 12.2.0 macros keep the
+  legacy expansion for older runtimes.
 
 ## [12.1.2] - 2026-09-27
 

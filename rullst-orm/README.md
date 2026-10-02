@@ -5,13 +5,13 @@
   <p>
     <a href="https://crates.io/crates/rullst-orm"><img src="https://img.shields.io/crates/v/rullst-orm?style=flat-square&color=orange" alt="Crates.io" /></a>
     <a href="https://crates.io/crates/rullst-orm"><img src="https://img.shields.io/crates/d/rullst-orm?style=flat-square&color=orange" alt="Downloads" /></a>
-    <a href="https://docs.rs/rullst-orm/12.1.2"><img src="https://img.shields.io/docsrs/rullst-orm?style=flat-square&color=blue" alt="Docs.rs" /></a>
+    <a href="https://docs.rs/rullst-orm/12.2.0"><img src="https://img.shields.io/docsrs/rullst-orm?style=flat-square&color=blue" alt="Docs.rs" /></a>
     <a href="https://github.com/Rullst/Rullst/actions"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=v12&style=flat-square&label=Build" alt="Build Status" /></a>
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT" />
   </p>
 </div>
 
-🚀 **[Visit the Official Website & Documentation Hub](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/SUMMARY.md)** 🚀
+🚀 **[Visit the Official Website & Documentation Hub](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/SUMMARY.md)** 🚀
 
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
@@ -73,7 +73,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   identity, and sensitive-field guards; the compensating update records its
   actor, reason, and source revision. Bulk per-row history and durable external
   export remain explicit application/outbox work. See the
-  [audit revision guide](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/50-auditable-revisions.md).
+  [audit revision guide](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/50-auditable-revisions.md).
 - **Bounded Post-Commit Effects**: `after_commit` and the generated observer
   `committed` callback run only after `Orm::transaction` or a direct generated
   save/delete/restore/force_delete commits. Rollback discards them, and post-commit failures use a
@@ -158,7 +158,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   DuckDB OLAP queries, Turso/libSQL edge SQL, and SurrealDB document/read-only
   graph operations live behind explicit capability APIs instead of pretending
   to be one universal Active Record interface. See the
-  [Polyglot guide](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/polyglot-persistence.md).
+  [Polyglot guide](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/polyglot-persistence.md).
 - **Authenticated Portable Document Recovery**: MongoDB, SurrealDB and the
   deterministic store expose stable identifier-preserving inventory. A bounded
   AES-256-GCM snapshot performs two equal source scans, binds application and
@@ -543,7 +543,7 @@ MySQL/MariaDB, run `Outbox::install()` once (for example from a new migration)
 to convert a table created by an earlier version, whose key columns used the
 server's case-insensitive default collation. Generated observers are not silently persisted, and an ACK lost
 after the external effect can cause redelivery; see the
-[transactional outbox tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/38-transactional-outbox.md).
+[transactional outbox tutorial](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/38-transactional-outbox.md).
 
 ---
 
@@ -551,7 +551,7 @@ after the external effect can cause redelivery; see the
 
 We recently launched a brand-new **Interactive Documentation Hub**! 
 
-👉 **[Explore the Full Documentation in the Rullst Book](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/SUMMARY.md)**
+👉 **[Explore the Full Documentation in the Rullst Book](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/SUMMARY.md)**
 
 ---
 
@@ -560,4 +560,4 @@ We recently launched a brand-new **Interactive Documentation Hub**!
 Rullst ORM uses SQLx prepared-statement bindings for values accepted by its query builders. Structural identifiers are restricted to a bounded ASCII identifier grammar before interpolation. Raw SQL and application authorization remain the caller's responsibility; these controls reduce injection risk but are not an absolute safety guarantee.
 
 ## 📄 License
-This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/v12.1.2/LICENSE).
+This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/v12.2.0/LICENSE).

@@ -3,7 +3,7 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.1.2/Rullst.png" alt="Rullst Logo" width="300">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.2.0/Rullst.png" alt="Rullst Logo" width="300">
 </p>
 
 <h1 align="center">🌐🦀📜 Rullst 📜🦀🌐</h1>
@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io"></a>
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/d/rullst?style=for-the-badge&color=blue" alt="Crates.io Downloads"></a>
-  <a href="https://docs.rs/rullst/12.1.2"><img src="https://img.shields.io/docsrs/rullst?style=for-the-badge&logo=docsdotrs" alt="Docs.rs"></a>
+  <a href="https://docs.rs/rullst/12.2.0"><img src="https://img.shields.io/docsrs/rullst?style=for-the-badge&logo=docsdotrs" alt="Docs.rs"></a>
   <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Av12"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=v12&style=for-the-badge&label=Stable%20Build" alt="Stable Rust CI"></a>
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
 </p>
@@ -22,34 +22,36 @@
 <p align="center">
   <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://codecov.io/github/Rullst/Rullst/branch/v12/graph/badge.svg" alt="Whole-repository coverage"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard" alt="OpenSSF Scorecard"></a>
-  <a href="https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/compatibility-policy.md"><img src="https://img.shields.io/badge/MSRV-1.96.0-f74c00?logo=rust" alt="MSRV 1.96.0"></a>
+  <a href="https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/compatibility-policy.md"><img src="https://img.shields.io/badge/MSRV-1.96.0-f74c00?logo=rust" alt="MSRV 1.96.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/start-here.md"><strong>Start building</strong></a> ·
+  <a href="https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/start-here.md"><strong>Start building</strong></a> ·
   <a href="https://academy.rullst.win/"><strong>Learn at Rullst Academy</strong></a> ·
   <a href="#live-examples"><strong>Try live examples</strong></a> ·
-  <a href="https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/SUMMARY.md"><strong>Documentation</strong></a> ·
-  <a href="https://github.com/Rullst/Rullst/blob/v12.1.2/CONTRIBUTING.md"><strong>Contribute</strong></a>
+  <a href="https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/SUMMARY.md"><strong>Documentation</strong></a> ·
+  <a href="https://github.com/Rullst/Rullst/blob/v12.2.0/CONTRIBUTING.md"><strong>Contribute</strong></a>
 </p>
 
 > **Rullst v12.** The crates.io badge above shows the latest published version.
 > `v12` receives stable maintenance; next-major work lives on `main`. The legacy
-> `v5` line is no longer maintained. [Release record](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/v12.md)
-> · [Compatibility policy](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/compatibility-policy.md).
+> `v5` line is no longer maintained. [Release record](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/v12.md)
+> · [Compatibility policy](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/compatibility-policy.md).
 
-**Rullst 12.1.2** includes fixes for Nexus stored-value escaping, HTML macro
-variable hygiene, OAuth authorization URLs and generated Omni dependencies,
-plus stronger Auth, HTTP lifecycle and SQLite messaging regression tests.
-Public APIs and Rust 1.96.0 compatibility are preserved. See the
+**Rullst 12.2.0** ports the fixes found by the v13 review of every framework
+crate and of the CLI generators and starters. Public APIs and Rust 1.96.0
+compatibility are preserved; some fixes change behaviour, stored keys or
+generated files. Read the
+[12.2 upgrade notes](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/migration-v12-1.md#upgrading-to-122)
+before deploying. See the
 [release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
 for publication evidence and the
-[maintenance review](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/v12-1-2-review.md)
-for application actions and verification boundaries.
+[release review](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/v12-2-0-review.md)
+for verification boundaries.
 
 Release artifacts include a portable signed provenance bundle. Verify the
 artifact, publisher, release tag and commit using the
-[verification guide](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/openssf-scorecard.md#portable-release-attestations).
+[verification guide](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/openssf-scorecard.md#portable-release-attestations).
 The public OpenSSF score is a repository assessment, not a security certification.
 
 ## 🎓 Rullst Academy — built with Rullst to teach Rullst
@@ -78,13 +80,13 @@ Choose **Blank / API, Blog, SaaS, LMS, Portfolio or ERP**. Generated projects
 contain ordinary Rust you can inspect and change.
 
 The selector installs the latest published stable v12 CLI. To reproduce a
-particular release, use its full version, such as `--version 12.1.2`, after
+particular release, use its full version, such as `--version 12.2.0`, after
 confirming its availability on [crates.io](https://crates.io/crates/cargo-rullst).
 
-[Installation and prerequisites](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/1-getting-started.md)
-· [Zero-to-Hero tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/01-hello-world.md)
-· [Build a JSON REST API](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/rest-api-quickstart.md)
-· [CLI reference](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/cli_reference.md)
+[Installation and prerequisites](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/1-getting-started.md)
+· [Zero-to-Hero tutorial](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/01-hello-world.md)
+· [Build a JSON REST API](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/rest-api-quickstart.md)
+· [CLI reference](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/cli_reference.md)
 
 <a id="live-examples"></a>
 
@@ -137,13 +139,13 @@ Rullst coordinates application foundations in one versioned Rust workspace:
 interchangeable; security middleware does not replace application authorization;
 live fiscal authorization and remote message-broker adapters remain roadmap work.
 Choose the features you need and review their
-[documented capabilities](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/capability-ledger.md).
+[documented capabilities](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/capability-ledger.md).
 
 Rullst builds on **Axum, Tokio, Tower and SQLx**, with standard routers and pools
 available at documented integration points. You can adopt it incrementally.
-[Why Rullst?](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/why-Rullst.md)
-· [Axum & SQLx escape hatches](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/axum-sqlx-migration.md)
-· [Omni's web-first contract](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/43-omni-web-first.md)
+[Why Rullst?](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/why-Rullst.md)
+· [Axum & SQLx escape hatches](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/axum-sqlx-migration.md)
+· [Omni's web-first contract](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/43-omni-web-first.md)
 
 <details>
 <summary><strong>See the CLI and blueprint gallery</strong></summary>
@@ -152,7 +154,7 @@ available at documented integration points. You can adopt it incrementally.
 
 <h2 align="center">CLI · From idea to inspectable Rust</h2>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.1.2/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.2.0/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -169,10 +171,10 @@ available at documented integration points. You can adopt it incrementally.
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.1.2/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.2.0/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.1.2/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.2.0/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
     </td>
   </tr>
 </table>
@@ -183,11 +185,11 @@ available at documented integration points. You can adopt it incrementally.
 <summary><strong>Open the development dashboard preview</strong></summary>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.1.2/images/cargo-rullst-dash.png" alt="Recorded Rullst terminal dashboard with project information, logs and controls" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/v12.2.0/images/cargo-rullst-dash.png" alt="Recorded Rullst terminal dashboard with project information, logs and controls" width="100%"/>
 </p>
 
 Repository screenshot, not live telemetry. Layout and available controls can
-differ by version. [Development workflow](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/51-authenticated-hot-reload.md).
+differ by version. [Development workflow](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/51-authenticated-hot-reload.md).
 
 </details>
 
@@ -204,8 +206,8 @@ The CLI coordinates dependency updates, backs up controlled files and runs
 compiler checks. Review the plan and application behavior; it does not migrate
 production data or guarantee compatibility with an unreleased major version.
 
-[Assisted upgrade tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/36-assisted-framework-upgrades.md)
-· [v5 → v12 migration guide](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/migration-v5-to-v12.md)
+[Assisted upgrade tutorial](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/36-assisted-framework-upgrades.md)
+· [v5 → v12 migration guide](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/migration-v5-to-v12.md)
 
 <a id="the-rullst-ecosystem"></a>
 
@@ -213,29 +215,29 @@ production data or guarantee compatibility with an unreleased major version.
 
 Sixteen publishable crates share one release train. Select what your application
 needs; detailed feature and provider boundaries live in the
-[specification](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/spec.md).
+[specification](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/spec.md).
 
 <details>
 <summary><strong>Browse the crate directory</strong></summary>
 
 | Crate | Focus |
 | :--- | :--- |
-| [rullst](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst) | Public framework facade and feature selection |
-| [rullst-core](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-core) | HTTP runtime, routing, lifecycle and telemetry |
-| [rullst-orm](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-orm) | Relational models, transactions and capability-specific persistence |
-| [rullst-auth](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-auth) | Passwords, sessions, passkeys and authorization helpers |
-| [rullst-security](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-security) | Defense-in-depth middleware, guards and audit helpers |
-| [rullst-connect](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-connect) | OAuth2/OIDC identity integrations |
-| [rullst-ai](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval |
-| [rullst-capital](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-capital) | Payment/payout adapters, webhooks and bounded billing helpers |
-| [rullst-mail](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-mail) | Transactional email and delivery controls |
-| [rullst-messaging](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-messaging) | Broker-neutral contracts and durable local messaging |
-| [rullst-studio](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-studio) | Local developer control room |
-| [rullst-nexus](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-nexus) | Registered-model admin with explicit access policy |
-| [rullst-iot](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration |
-| [rullst-macros](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-macros) | Compile-time HTML and application macros |
-| [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/v12.1.2/rullst-orm-macros) | Typed ORM code generation |
-| [cargo-rullst](https://github.com/Rullst/Rullst/tree/v12.1.2/cargo-rullst) | Project scaffolding, development and upgrade CLI |
+| [rullst](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst) | Public framework facade and feature selection |
+| [rullst-core](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-core) | HTTP runtime, routing, lifecycle and telemetry |
+| [rullst-orm](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-orm) | Relational models, transactions and capability-specific persistence |
+| [rullst-auth](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-auth) | Passwords, sessions, passkeys and authorization helpers |
+| [rullst-security](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-security) | Defense-in-depth middleware, guards and audit helpers |
+| [rullst-connect](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-connect) | OAuth2/OIDC identity integrations |
+| [rullst-ai](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval |
+| [rullst-capital](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-capital) | Payment/payout adapters, webhooks and bounded billing helpers |
+| [rullst-mail](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-mail) | Transactional email and delivery controls |
+| [rullst-messaging](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-messaging) | Broker-neutral contracts and durable local messaging |
+| [rullst-studio](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-studio) | Local developer control room |
+| [rullst-nexus](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-nexus) | Registered-model admin with explicit access policy |
+| [rullst-iot](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration |
+| [rullst-macros](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-macros) | Compile-time HTML and application macros |
+| [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/v12.2.0/rullst-orm-macros) | Typed ORM code generation |
+| [cargo-rullst](https://github.com/Rullst/Rullst/tree/v12.2.0/cargo-rullst) | Project scaffolding, development and upgrade CLI |
 
 </details>
 
@@ -245,14 +247,14 @@ The [benchmark hub](https://rullst.github.io/Rullst/benches/) publishes eight
 Criterion groups backed by nine benchmark binaries. They measure specific
 workloads and regressions—not universal speed, application throughput or a
 ranking of frameworks. Read the
-[methodology](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/35-high-performance-benchmarking.md)
+[methodology](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/tutorials/35-high-performance-benchmarking.md)
 alongside the results.
 
 ## 🛡️ Verification, with visible scope
 
-Explore the [stable release audit](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/v12-release-audit.md),
-[current capability status](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/capability-status.md)
-and [quality scorecard](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/quality-scorecard.md).
+Explore the [stable release audit](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/v12-release-audit.md),
+[current capability status](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/capability-status.md)
+and [quality scorecard](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/quality-scorecard.md).
 Badges and test results are evidence for their stated scope, not a security
 certification of every application built with the framework.
 
@@ -269,7 +271,7 @@ certification of every application built with the framework.
 | Continuous or change-aware gate | v12 maintenance status | Actual scope |
 | :--- | :---: | :--- |
 | **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=v12&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Av12) | Format, all-target/all-feature Clippy, tests on Linux/macOS/Windows, Cargo-aware doctests sourced from all 52 public tutorials, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
-| **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/compatibility-policy.md) | Every publishable v12 manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
+| **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/compatibility-policy.md) | Every publishable v12 manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=v12&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Av12) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=v12&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Av12) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
 | **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=v12&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Av12) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
@@ -279,7 +281,7 @@ certification of every application built with the framework.
 | **Security exception governance** | [![Security Governance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?branch=v12&style=flat-square&label=Exception%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml?query=branch%3Av12) | Cross-checks scanner allowlists against the owner/expiry ledger, then independently reruns Cargo Audit. |
 | **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?branch=v12&style=flat-square&label=Cargo%20Deny)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml?query=branch%3Av12) | Advisory, license, ban, and source policy. |
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=v12&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Av12) | Rust semantic analysis after an all-target/all-feature build. |
-| **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. [Evidence and improvements](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/openssf-scorecard.md). |
+| **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. [Evidence and improvements](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/openssf-scorecard.md). |
 | **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=v12&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Av12) | Unused direct dependency detection. |
 | **SemVer checks** | [![SemVer](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?branch=v12&style=flat-square&label=SemVer)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml?query=branch%3Av12) | Supported library APIs are compared with exact latest non-yanked registry baselines; never-published packages and unsupported proc-macro/binary surfaces are reported explicitly. |
 | **Zero-panics policy** | [![Zero Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=v12&style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml?query=branch%3Av12) | Denies panic-family operations in published production targets and generated runtime templates. |
@@ -313,13 +315,13 @@ green continuous gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous v12 evidence are separate from development `main`. The recommended required-check
 profile and the exact scope of all
-38 workflow definitions are documented in [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/v12.1.2/WORKFLOWS.md).
+38 workflow definitions are documented in [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/v12.2.0/WORKFLOWS.md).
 
-> 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/v12.1.2/WORKFLOWS.md).**
+> 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/v12.2.0/WORKFLOWS.md).**
 >
-> 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
+> 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
 >
-> 📋 **[Simple Capability Status](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/capability-status.md)** and the **[per-commit quality scorecard](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/quality-scorecard.md)** keep feature progress separate from SHA-bound engineering evidence.
+> 📋 **[Simple Capability Status](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/capability-status.md)** and the **[per-commit quality scorecard](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/quality-scorecard.md)** keep feature progress separate from SHA-bound engineering evidence.
 
 </details>
 
@@ -329,17 +331,17 @@ Try a blueprint, report a reproducible bug, improve a tutorial or contribute a
 focused change with tests. Documentation, accessibility and integration feedback
 matter as much as new features.
 
-[Contributing](https://github.com/Rullst/Rullst/blob/v12.1.2/CONTRIBUTING.md)
+[Contributing](https://github.com/Rullst/Rullst/blob/v12.2.0/CONTRIBUTING.md)
 · [Issues](https://github.com/Rullst/Rullst/issues)
 · [Discord](https://discord.com/invite/2ntKFtsSjw)
 · [Community links](https://rullst.github.io/Rullst/#community)
-· [Our story and philosophy](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/philosophy.md)
+· [Our story and philosophy](https://github.com/Rullst/Rullst/blob/v12.2.0/docs/src/philosophy.md)
 
 **What's next?** v12 receives compatible maintenance. The
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md) guides
 next-major development; planned capabilities are not shipped features.
 
-[MIT license](https://github.com/Rullst/Rullst/blob/v12.1.2/LICENSE)
+[MIT license](https://github.com/Rullst/Rullst/blob/v12.2.0/LICENSE)
 · [Report a vulnerability privately](https://github.com/Rullst/Rullst/security/policy)
 · [Website privacy notice](https://rullst.github.io/Rullst/#privacy)
 
