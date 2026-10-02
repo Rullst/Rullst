@@ -38,7 +38,7 @@ pub enum Commands {
         /// Generates a blank project without a primary relational database
         #[arg(long, requires = "default", conflicts_with = "database")]
         no_database: bool,
-        /// Legacy DLL profile; rejected in v12 because runtime globals cross an unstable ABI
+        /// Legacy DLL profile; always rejected because runtime globals cross an unstable ABI
         #[arg(long, requires = "default", hide = true)]
         hot_reload: bool,
         /// Enables the Rullst AI facade in deterministic/CI mode
@@ -122,7 +122,7 @@ pub enum Commands {
     MakeMigrationAuto,
     /// Scaffolds authentication (login, registration, User model, migrations, middlewares, and HTML views)
     Auth,
-    /// Scaffolds SaaS Billing (Stripe / LemonSqueezy database migrations, webhooks, checkout views)
+    /// Scaffolds SaaS Billing (Stripe and Paddle checkout, webhooks and migrations; Lemon Squeezy as an offline fixture)
     #[command(name = "make:billing")]
     MakeBilling {
         /// The primary Billable model (e.g. User, Team, Workspace)
@@ -300,7 +300,7 @@ pub enum Commands {
         #[arg(long = "ts-sync")]
         ts_sync: bool,
     },
-    /// Manages community extensions and RullstPackage dependencies
+    /// Adds or lists rullst-* dependencies in Cargo.toml
     #[command(name = "pkg")]
     Pkg {
         /// Action to perform (add, list)

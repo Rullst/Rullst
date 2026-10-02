@@ -121,7 +121,7 @@ fn validate_request(request: &NewProjectRequest<'_>) -> WizardResult<()> {
     let options = &request.options;
     if options.hot_reload {
         return Err(invalid_input(
-            "DLL hot reload is unavailable in v12: generate without --hot-reload and use `cargo rullst dev` for supervised process reload",
+            "DLL hot reload is unavailable: generate without --hot-reload and use `cargo rullst dev` for supervised process reload",
         ));
     }
     if options.database.is_some_and(|provider| {

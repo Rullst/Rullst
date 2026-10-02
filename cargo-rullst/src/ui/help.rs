@@ -14,7 +14,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 (
                     "cargo rullst pkg add <name>",
-                    "Install RullstPackage community extension",
+                    "Add a rullst-* dependency to Cargo.toml",
                 ),
                 (
                     "cargo rullst upgrade",
