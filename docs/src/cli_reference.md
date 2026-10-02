@@ -1396,8 +1396,8 @@ the dashboard exits.
 * errors: 5xx responses and their share of all requests over the last 60 s;
 * p50/p95 latency over the last 60 s and a p95-per-poll sparkline (up to two
   minutes), computed from the individual requests the dashboard observed. They
-  are marked `sampled` when more requests arrived between two polls than the 64
-  newest the application returns;
+  are marked `sampled` when more requests arrived between two polls, or before
+  the first poll of a process, than the 64 newest the application returns;
 * the newest requests with status, method, duration and path (never the query
   string);
 * ORM queries since start and slow ORM operations (at least 100 ms);

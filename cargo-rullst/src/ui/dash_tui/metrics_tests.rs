@@ -162,6 +162,25 @@ fn a_burst_beyond_the_recent_list_is_marked_as_sampled() {
 }
 
 #[test]
+fn a_first_poll_or_a_restart_with_a_truncated_list_is_marked_as_sampled() {
+    let start = Instant::now();
+    let mut metrics = Metrics::new();
+    // The dashboard connects after the process served 700 requests.
+    metrics.ingest(snapshot(FIRST, 700, 0, 64), start);
+    assert!(metrics.sampled(start));
+    assert_eq!(metrics.latency(start).unwrap().samples, 64);
+
+    // A new process whose whole history fits is exact again...
+    let restart = start + Duration::from_secs(1);
+    metrics.ingest(snapshot(SECOND, 3, 0, 3), restart);
+    assert!(!metrics.sampled(restart));
+    // ...until another one is first seen after a burst.
+    let burst = start + Duration::from_secs(2);
+    metrics.ingest(snapshot(FIRST, 700, 0, 64), burst);
+    assert!(metrics.sampled(burst));
+}
+
+#[test]
 fn a_new_generation_restarts_baselines_without_negative_rates() {
     let start = Instant::now();
     let mut metrics = Metrics::new();

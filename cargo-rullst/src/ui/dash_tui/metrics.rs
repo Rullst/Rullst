@@ -202,21 +202,20 @@ impl Metrics {
                 while self.rates.len() > RATE_SAMPLES {
                     self.rates.pop_front();
                 }
-                let expected = http
-                    .requests_total
-                    .saturating_sub(baseline.last_request_seq);
-                let observed = http
-                    .recent
-                    .iter()
-                    .filter(|sample| sample.seq > baseline.last_request_seq)
-                    .count() as u64;
-                if observed < expected {
-                    self.sampled_at = Some(now);
-                }
                 (baseline.last_request_seq, baseline.last_slow_seq)
             }
+            // The first poll of a process covers every request it served.
             None => (0, 0),
         };
+        let expected = http.requests_total.saturating_sub(last_request_seq);
+        let observed = http
+            .recent
+            .iter()
+            .filter(|sample| sample.seq > last_request_seq)
+            .count() as u64;
+        if observed < expected {
+            self.sampled_at = Some(now);
+        }
         let new_requests = http
             .recent
             .iter()
