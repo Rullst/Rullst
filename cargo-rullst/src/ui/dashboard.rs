@@ -83,6 +83,10 @@ pub fn execute_command(cmd_args: Vec<String>) -> DashboardResult<()> {
 }
 
 /// Runs a menu command, optionally from `directory` (the project root).
+///
+/// The child shares standard error and prints its own report, so a failure
+/// with an exit code is returned as already reported with that code instead
+/// of being reported a second time with generic advice.
 fn execute_command_in(directory: Option<&Path>, cmd_args: Vec<String>) -> DashboardResult<()> {
     let Some((program, arguments)) = cmd_args.split_first() else {
         return Err(std::io::Error::new(
@@ -97,13 +101,18 @@ fn execute_command_in(directory: Option<&Path>, cmd_args: Vec<String>) -> Dashbo
         command.current_dir(directory);
     }
     let status = command.status()?;
-    if !status.success() {
-        return Err(std::io::Error::other(format!(
-            "dashboard command `{program}` failed with status {status}"
-        ))
-        .into());
+    if status.success() {
+        return Ok(());
     }
-    Ok(())
+    let message = format!("dashboard command `{program}` failed with status {status}");
+    Err(match status.code() {
+        Some(code) => {
+            let code = u8::try_from(code).unwrap_or(1);
+            super::error_report::AlreadyReported::new(code, message).into()
+        }
+        // Ended by a signal: the child may not have printed anything.
+        None => std::io::Error::other(message).into(),
+    })
 }
 
 fn handle_scaffold_code<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>

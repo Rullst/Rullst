@@ -74,6 +74,10 @@ Connection-string passwords, `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values,
 bearer tokens and well-known credential formats are masked, and terminal
 control characters are replaced, in every line of the report.
 
+A command started from the home menu or the command palette prints its own
+report, and `cargo rullst` then exits with that command's status (for example
+`2` for a usage error) without a second report.
+
 `-v`/`--verbose` (accepted by every command) adds the underlying causes and
 the error's `Debug` form, still redacted. A panic prints a short "Internal
 error" report instead of the default panic message and backtrace unless `-v`
