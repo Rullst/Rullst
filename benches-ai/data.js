@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790903087655,
+  "lastUpdate": 1790905252877,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12321,6 +12321,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 403,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6d327811e96d83608b31411d029b0deb4733fa31",
+          "message": "Merge pull request #394 from Rullst/feat/v13-cli-palette-doctor\n\nfeat(cli): friendly errors, did-you-mean, visual doctor, completions, JSON views and command palette",
+          "timestamp": "2026-10-01T22:05:49-03:00",
+          "tree_id": "5eaa113ac0b40f6d65f802f54cd8f6f2c7cb34a1",
+          "url": "https://github.com/Rullst/Rullst/commit/6d327811e96d83608b31411d029b0deb4733fa31"
+        },
+        "date": 1790905251693,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1313,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 281,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 288,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
