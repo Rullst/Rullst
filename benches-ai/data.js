@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790927535066,
+  "lastUpdate": 1790933191452,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12513,6 +12513,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 401,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec7fc9d19caa6866959edba4fd6e18c3559f60cc",
+          "message": "Merge pull request #406 from Rullst/fix/v13-direct-upgrade-parity\n\nfix(orm,cli): smooth direct 12.x to 13 upgrade (Redis hash fallback, data migration rows, 95 upgrade rules)",
+          "timestamp": "2026-10-02T06:02:53-03:00",
+          "tree_id": "0339c13d5ddb851148a0c1472556930ee03f6e80",
+          "url": "https://github.com/Rullst/Rullst/commit/ec7fc9d19caa6866959edba4fd6e18c3559f60cc"
+        },
+        "date": 1790933190514,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1778,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 383,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 360,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
