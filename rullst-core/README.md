@@ -18,6 +18,8 @@
 - **Bounded Rate Limiting:** `RateLimiter` keys IPv4 peers per address and
   IPv6 peers per /64, and bounds its process-local bucket map to 100,000 keys
   by dropping refilled buckets and evicting the least recently used ones.
+  `Server`'s limiter and Traffic Shield exempt exact `GET`/`HEAD /health` and
+  `/ready` probes.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
@@ -35,15 +37,29 @@
 - **Fenced Queue Leases:** SQLite and Redis complete, fail or requeue a claimed
   job only under the attempt number `pop` returned, so a stale worker whose
   lease was recovered and claimed again cannot finish the newer claim.
+- **Queue-wide Stalled-lease Recovery:** each worker periodically requeues
+  every processing lease older than its `stalled_after`, including other
+  workers' leases, so every worker sharing a queue needs a `stalled_after`
+  longer than the longest `job_timeout` among them. SQLite and Redis fail a
+  job whose fifth lease stalls (for example because it keeps crashing its
+  worker) instead of requeuing it forever.
 - **Rolling-deploy Safe Dispatch:** A worker without a handler for a job's
   name hands the claim back with a five-second delay (SQLite and Redis) instead
   of failing it, so a worker that registered that name can run it.
 - **Bounded Redis Failure State:** Failed jobs and dead letters are each
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
+- **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send
+  HTMX requests their error fragment with `200 OK` plus
+  `X-Rullst-Validation-Status: 400|422`; other clients keep `400`/`422` JSON.
+- **Cron Semantics:** `Scheduler::task` evaluates five-field expressions in
+  UTC with the `cron` crate's rules: weekdays 1 (Sunday) to 7 (Saturday), 0
+  rejected, and restricted day fields must both match. Prefer weekday names.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.
+  `Server::schedule` drains its own handle, logging each task failure; only a
+  failed scheduler loop makes `Server::run` return an error.
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.

@@ -81,10 +81,13 @@ Official support for 11 core providers:
 5. **Auth0**
 6. **AWS Cognito**
 7. **Facebook**
-8. **X (Twitter)** (Strict PKCE requirement)
+8. **X (Twitter)** (Strict PKCE requirement; confidential clients authenticate
+   to the token endpoint with HTTP Basic, `client_secret_basic`)
 9. **Discord**
 10. **LinkedIn**
-11. **OIDC (OpenID Connect Custom Provider)**
+11. **OIDC (OpenID Connect Custom Provider)** (sends the client secret in the
+    token request body unless discovery lists `client_secret_basic` without
+    `client_secret_post`, in which case it uses HTTP Basic)
 
 ID-token verification is implemented by Google, Apple and `OidcProvider`.
 Those paths require signed `iss`, `aud`, `sub`, `exp` and `iat` claims, bind the
@@ -359,7 +362,10 @@ async fn authorized_call(
 The coordinator uses a 60-second early-refresh window, prevents overlapping
 provider calls, lets waiters reuse a successful refresh, retains a provider that
 does not rotate its refresh token, adopts a validated rotation and binds every
-response to the original provider user. Seal `state_snapshot()` with
+response to the original provider user. When a response for that user is
+otherwise rejected (for example it omits `expires_in`), the rotated refresh
+token is still kept and the generation advances, so persist the snapshot after
+that failure too; the next call refreshes with the rotation. Seal `state_snapshot()` with
 `EncryptedTokenSnapshot` before writing it to application-owned storage:
 
 ```rust
@@ -464,7 +470,10 @@ normalization; a trailing slash may differ. ID tokens must carry the discovered 
 published it, so an Auth0 tenant whose issuer is `https://TENANT/` is validated with
 the trailing slash. `OidcProvider::issuer` holds that published value. Discovered token,
 authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
-both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
+both the issuer and endpoint use the same exact loopback origin. Profile claims are optional
+(OIDC Core 5.1): without `name`, `ConnectUser::name` falls back to `given_name` and
+`family_name`, then `preferred_username`, then `nickname`, and is empty when none is
+present; the email address and subject are never used as a display name. JWKS entries are refreshed
 after their TTL and when a token presents an unknown `kid`. Because the `kid` is
 unverified input, a forced refresh of a fresh set happens at most once per 30 seconds per
 JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes

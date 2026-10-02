@@ -10,18 +10,40 @@ use super::resolvers::{calculate_hash_bucket, parse_variants, resolve_variant};
 
 static DB_FEATURE_CACHE_EPOCH: AtomicU64 = AtomicU64::new(0);
 
+/// Longest time one flag lookup may wait for a connection and its query.
+const LOOKUP_TIMEOUT: Duration = Duration::from_secs(2);
+/// Most flag names cached by one driver, including negative entries.
+const MAX_CACHED_FLAGS: usize = 4_096;
+
+/// `enabled`, `rollout_percentage` and `variants` of one stored flag.
+type FlagRow = (bool, Option<u32>, Option<String>);
+
 struct DbCacheValue {
-    enabled: bool,
-    rollout_percentage: Option<u32>,
-    variants: Option<String>,
+    /// `None` caches a missing flag (or a failed lookup with no known value).
+    flag: Option<FlagRow>,
     expires_at: Instant,
     epoch: u64,
+}
+
+enum Lookup {
+    /// No database pool is initialized yet; nothing was queried.
+    Unavailable,
+    Found(FlagRow),
+    Missing,
+    /// The query failed or exceeded [`LOOKUP_TIMEOUT`].
+    Failed,
 }
 
 /// Feature flag driver backed by a database table `rullst_feature_flags`.
 ///
 /// Uses a concurrent process-local cache with a configurable TTL. Lookup
 /// latency depends on contention, key/value size, hardware, and build profile.
+/// A flag without a row, and a failed or timed-out lookup (for example a
+/// missing table or an unavailable database), is cached for the same TTL, so
+/// an undefined flag does not cost a query on every evaluation. After a failed
+/// lookup the last value read for that flag keeps being served until a later
+/// lookup succeeds. One lookup waits at most two seconds, and at most 4,096
+/// flag names are cached per driver.
 ///
 /// # Note on Database Pool Initialization
 /// This driver requires a live database pool to function. If feature flags are evaluated before the
@@ -63,21 +85,23 @@ impl DbFeatureDriver {
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn fetch_flag_from_db(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
+    async fn fetch_flag_from_db(&self, flag: &str) -> Lookup {
         use sqlx::Row;
 
-        let pool = crate::db::safe_pool()?;
+        let Some(pool) = crate::db::safe_pool() else {
+            return Lookup::Unavailable;
+        };
         let sql = if crate::db::safe_driver() == Some("postgres") {
             "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = $1"
         } else {
             "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = ?"
         };
-        let row = sqlx::query(sql)
-            .bind(flag)
-            .fetch_optional(pool)
-            .await
-            .ok()
-            .flatten()?;
+        let query = sqlx::query(sql).bind(flag).fetch_optional(pool);
+        let row = match tokio::time::timeout(LOOKUP_TIMEOUT, query).await {
+            Ok(Ok(Some(row))) => row,
+            Ok(Ok(None)) => return Lookup::Missing,
+            Ok(Err(_)) | Err(_) => return Lookup::Failed,
+        };
 
         // Resolve enabled column safely (support int 0/1 or boolean)
         let enabled = row
@@ -93,37 +117,59 @@ impl DbFeatureDriver {
 
         let variants = row.try_get::<String, _>("variants").ok();
 
-        Some((enabled, rollout_percentage, variants))
+        Lookup::Found((enabled, rollout_percentage, variants))
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn resolve_flag(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
+    async fn resolve_flag(&self, flag: &str) -> Option<FlagRow> {
+        self.resolve_with(flag, || self.fetch_flag_from_db(flag))
+            .await
+    }
+
+    /// Applies the cache policy around one `lookup` of `flag`.
+    async fn resolve_with<F, Fut>(&self, flag: &str, lookup: F) -> Option<FlagRow>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = Lookup>,
+    {
         let epoch = DB_FEATURE_CACHE_EPOCH.load(Ordering::Acquire);
-        if let Some(entry) = self.cache.get(flag)
-            && Instant::now() < entry.expires_at
-            && entry.epoch == epoch
-        {
-            return Some((
-                entry.enabled,
-                entry.rollout_percentage,
-                entry.variants.clone(),
-            ));
+        let previous = self.cache.get(flag).map(|entry| {
+            let fresh = Instant::now() < entry.expires_at && entry.epoch == epoch;
+            (entry.flag.clone(), fresh)
+        });
+        if let Some((cached, true)) = previous {
+            return cached;
         }
 
-        // Cache miss or expired — fetch fresh from DB
-        let (enabled, rollout, variants) = self.fetch_flag_from_db(flag).await?;
+        let resolved = match lookup().await {
+            Lookup::Unavailable => return None,
+            Lookup::Found(row) => Some(row),
+            Lookup::Missing => None,
+            // Keep serving the last value read (stale-if-error) until the TTL
+            // allows another attempt.
+            Lookup::Failed => previous.and_then(|(cached, _)| cached),
+        };
+        self.remember(flag, resolved.clone(), epoch);
+        resolved
+    }
+
+    fn remember(&self, flag: &str, value: Option<FlagRow>, epoch: u64) {
+        let now = Instant::now();
+        if !self.cache.contains_key(flag) && self.cache.len() >= MAX_CACHED_FLAGS {
+            self.cache
+                .retain(|_, entry| now < entry.expires_at && entry.epoch == epoch);
+            if self.cache.len() >= MAX_CACHED_FLAGS {
+                return;
+            }
+        }
         self.cache.insert(
             flag.to_string(),
             DbCacheValue {
-                enabled,
-                rollout_percentage: rollout,
-                variants: variants.clone(),
-                expires_at: Instant::now() + self.ttl,
+                flag: value,
+                expires_at: now + self.ttl,
                 epoch,
             },
         );
-
-        Some((enabled, rollout, variants))
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -197,3 +243,7 @@ impl FeatureDriver for DbFeatureDriver {
         self.evaluate(enabled, rollout, variants, flag, Some(identifier))
     }
 }
+
+#[cfg(test)]
+#[path = "db_tests.rs"]
+mod tests;

@@ -2,8 +2,12 @@
 
 Rullst provides `ValidatedForm<T>` and `ValidatedJson<T>` extractors. They parse
 the request and run `validator` constraints before the handler is called.
-Invalid payloads become bounded `400` or `422` responses; HTMX requests receive
-an HTML error fragment and other clients receive JSON.
+Invalid payloads become bounded `400` or `422` JSON responses. HTMX requests
+(`HX-Request: true`) instead receive an HTML error fragment with `200 OK`,
+because HTMX 1.x and 2.x swap only successful responses by default; the
+`X-Rullst-Validation-Status` header carries the `400` or `422` status. htmx
+swaps the fragment into the form's `hx-target` with its `hx-swap`, so point
+`hx-target` at an error or result container rather than at the form itself.
 
 A body that cannot be parsed (wrong content type, oversized, malformed or with
 an unknown enum variant) gets a fixed `400` message such as "The submitted data
@@ -135,7 +139,8 @@ before deployment; do not remove `Secure` to accommodate a production HTTP URL.
 ### Show failures instead of a silent spinner
 
 For the pinned HTMX 1.9.12 used by these examples, ordinary HTTP errors do not
-automatically replace the target content. Put the following in an
+automatically replace the target content (`ValidatedForm` failures are the
+exception described above). Put the following in an
 application-owned, same-origin external script loaded with `defer`. This avoids
 requiring inline event handlers or weakening Content Security Policy:
 
@@ -151,7 +156,9 @@ if (form && status) {
         form.addEventListener(name, showFailure);
     }
     form.addEventListener('htmx:afterRequest', (event) => {
-        if (event.detail.elt === form && event.detail.successful) {
+        // Validation fragments are swapped with 200 and this header.
+        const rejected = event.detail.xhr.getResponseHeader('X-Rullst-Validation-Status');
+        if (event.detail.elt === form && event.detail.successful && !rejected) {
             const input = form.elements.namedItem('message');
             if (input instanceof HTMLInputElement) input.value = '';
         }

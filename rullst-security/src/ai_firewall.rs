@@ -243,9 +243,8 @@ pub async fn ai_firewall_middleware(req: Request, next: Next) -> Response {
         .headers()
         .get(axum::http::header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(';').next())
-        .map(str::trim)
-        .is_some_and(|value| value == "application/json" || value.ends_with("+json"));
+        .map(crate::media_type::essence)
+        .is_some_and(crate::media_type::is_json);
     let (parts, body) = req.into_parts();
 
     let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
@@ -481,15 +480,21 @@ mod tests {
             .expect("middleware request should complete");
         assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
 
-        let malformed = protected_app()
-            .oneshot(
-                Request::post("/")
-                    .header(axum::http::header::CONTENT_TYPE, "application/json")
-                    .body(Body::from(r#"{"prompt":true"#))
-                    .expect("request should be valid"),
-            )
-            .await
-            .expect("middleware request should complete");
-        assert_eq!(malformed.status(), StatusCode::BAD_REQUEST);
+        for media_type in [
+            "application/json",
+            "APPLICATION/JSON",
+            "application/vnd.api+JSON",
+        ] {
+            let malformed = protected_app()
+                .oneshot(
+                    Request::post("/")
+                        .header(axum::http::header::CONTENT_TYPE, media_type)
+                        .body(Body::from(r#"{"prompt":true"#))
+                        .expect("request should be valid"),
+                )
+                .await
+                .expect("middleware request should complete");
+            assert_eq!(malformed.status(), StatusCode::BAD_REQUEST, "{media_type}");
+        }
     }
 }

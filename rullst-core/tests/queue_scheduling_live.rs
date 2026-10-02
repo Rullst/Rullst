@@ -335,6 +335,61 @@ async fn redis_failed_jobs_and_dead_letters_are_retained_up_to_the_limit() {
 }
 
 #[tokio::test]
+async fn redis_fails_a_job_whose_lease_keeps_stalling() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let namespace = unique_namespace("poison");
+    let driver = RedisDriver::new(redis_url.clone())
+        .expect("Redis queue configuration")
+        .try_with_namespace(&namespace)
+        .expect("isolated queue namespace");
+    driver
+        .push("poison", "resize_image", "{}")
+        .await
+        .expect("push crashing job");
+
+    for stall in 1..=4 {
+        let claim = driver.pop().await.expect("claim").expect("job");
+        assert_eq!(claim.attempts, stall);
+        assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    }
+    let fifth = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(fifth.attempts, 5);
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    assert!(
+        driver.pop().await.expect("empty queue").is_none(),
+        "the fifth stalled lease must fail the job instead of requeuing it"
+    );
+
+    let client = redis::Client::open(redis_url).expect("Redis client");
+    let mut connection = client
+        .get_multiplexed_async_connection()
+        .await
+        .expect("Redis connection");
+    let queue_key = format!("rullst:queue:{namespace}");
+    let failure: String = redis::cmd("HGET")
+        .arg(format!("{queue_key}:failed"))
+        .arg("poison")
+        .query_async(&mut connection)
+        .await
+        .expect("failed job entry");
+    let failure: serde_json::Value = serde_json::from_str(&failure).expect("failure envelope");
+    assert!(
+        failure["error"]
+            .as_str()
+            .unwrap()
+            .contains("stalled 5 times")
+    );
+    let indexed: u64 = redis::cmd("ZCARD")
+        .arg(format!("{queue_key}:failed:index"))
+        .query_async(&mut connection)
+        .await
+        .expect("failure index size");
+    assert_eq!(indexed, 1);
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")

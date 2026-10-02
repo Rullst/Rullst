@@ -119,15 +119,36 @@ redis.call('ZADD', KEYS[3], due_ms, raw)
 return 1
 "#;
 
+// Recovers leases claimed at or before ARGV[1]. KEYS: processing set,
+// processing index, pending list, dead letters, failed hash, failed index.
+// ARGV[3] is the stalled-lease ceiling: the lease that reaches it fails the
+// job with message ARGV[4] (failed retention ARGV[5]) instead of requeuing
+// it, so a job that keeps crashing its worker cannot be reclaimed forever.
 pub(super) const RECOVER_SCRIPT: &str = r#"
 local stalled = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+local now = redis.call('TIME')
+local failed_at_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
 local recovered = 0
 for _, raw in ipairs(stalled) do
     redis.call('ZREM', KEYS[1], raw)
     local ok, envelope = pcall(cjson.decode, raw)
     if ok and type(envelope) == 'table' and type(envelope.id) == 'string' then
         redis.call('HDEL', KEYS[2], envelope.id)
-        redis.call('RPUSH', KEYS[3], raw)
+        local stalls = (tonumber(envelope.stalled_recoveries) or 0) + 1
+        if stalls >= tonumber(ARGV[3]) then
+            redis.call('HSET', KEYS[5], envelope.id, cjson.encode({ raw = raw, error = ARGV[4] }))
+            redis.call('ZADD', KEYS[6], failed_at_ms, envelope.id)
+            local excess = redis.call('ZCARD', KEYS[6]) - tonumber(ARGV[5])
+            if excess > 0 then
+                for _, evicted in ipairs(redis.call('ZRANGE', KEYS[6], 0, excess - 1)) do
+                    redis.call('HDEL', KEYS[5], evicted)
+                end
+                redis.call('ZREMRANGEBYRANK', KEYS[6], 0, excess - 1)
+            end
+        else
+            envelope.stalled_recoveries = stalls
+            redis.call('RPUSH', KEYS[3], cjson.encode(envelope))
+        end
         recovered = recovered + 1
     else
         redis.call('RPUSH', KEYS[4], cjson.encode({ raw = raw, error = 'invalid stalled job envelope' }))

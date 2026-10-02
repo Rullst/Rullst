@@ -15,6 +15,7 @@ impl Provider for XProvider {
         &self,
         params: crate::provider::ExchangeParams<'_>,
     ) -> Result<ConnectUser, ConnectError> {
+        crate::provider::require_oauth_only(params.expected_nonce)?;
         let form_data = crate::provider::TokenExchangeForm {
             client_id: self.client_id.as_str(),
             client_secret: Some(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
@@ -23,14 +24,16 @@ impl Provider for XProvider {
             redirect_uri: self.redirect_url.as_str(),
             code_verifier: params.code_verifier,
         };
-        crate::provider::exchange_and_get_user(
-            self,
+        // X requires confidential clients to authenticate with HTTP Basic
+        // (`client_secret_basic`) and rejects a secret in the form body.
+        let token = crate::provider::request_access_token(
             self.http_client.as_ref(),
             &self.token_url(),
             &form_data,
-            params.expected_nonce,
+            crate::provider::ClientAuthentication::HttpBasic,
         )
-        .await
+        .await?;
+        crate::provider::user_with_tokens(self, token).await
     }
 
     async fn get_user_from_token(&self, access_token: &str) -> Result<ConnectUser, ConnectError> {
@@ -68,7 +71,18 @@ impl Provider for XProvider {
         "https://api.twitter.com/2/oauth2/token".to_string()
     }
 
-    crate::impl_standard_refresh_token!();
+    async fn refresh_token(&self, refresh_token: &str) -> Result<ConnectUser, ConnectError> {
+        crate::provider::refresh_with_authentication(
+            self,
+            self.http_client.as_ref(),
+            &self.token_url(),
+            &self.client_id,
+            &self.client_secret,
+            refresh_token,
+            crate::provider::ClientAuthentication::HttpBasic,
+        )
+        .await
+    }
 }
 
 #[cfg(test)]

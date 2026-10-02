@@ -72,7 +72,16 @@ impl Worker {
         self
     }
 
-    /// Sets the age after which a processing lease is recovered at startup.
+    /// Sets the age after which a processing lease counts as stalled.
+    ///
+    /// The worker returns stalled leases to pending when it starts and then
+    /// every `min(age, 60 s)` (at least every second). Recovery is queue-wide:
+    /// it covers every processing lease in the shared SQLite table or Redis
+    /// namespace, including leases held by other workers. `age` must exceed
+    /// this worker's [`Self::job_timeout`], and every worker sharing a queue
+    /// must use an `age` longer than the longest `job_timeout` among them, or
+    /// a worker with a short `age` requeues another worker's running job and
+    /// it runs twice.
     pub fn stalled_after(mut self, age: Duration) -> Self {
         self.stalled_after = age;
         self

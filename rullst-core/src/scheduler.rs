@@ -112,7 +112,22 @@ impl Scheduler {
         self
     }
 
-    /// Registers a recurring task using a standard five-field cron expression.
+    /// Registers a recurring task from a five-field cron expression,
+    /// `minute hour day-of-month month day-of-week`, evaluated in UTC.
+    ///
+    /// The fields are passed unchanged to the `cron` crate, which differs from
+    /// POSIX crontab in two ways:
+    ///
+    /// - Day-of-week numbers run from 1 (Sunday) to 7 (Saturday), and 0 is
+    ///   rejected. `1-5` therefore means Sunday to Thursday; use names such as
+    ///   `MON-FRI`, which mean what they say, or `2-6` for Monday to Friday.
+    /// - When both day-of-month and day-of-week are restricted, a day must
+    ///   match both (`0 0 1 * MON` runs only on a 1st that is a Monday), not
+    ///   either as in POSIX cron.
+    ///
+    /// Minute, hour, day-of-month and month accept the usual ranges, names,
+    /// lists and steps. There is no seconds or year field and no time-zone
+    /// selection.
     ///
     /// # Errors
     /// Returns [`SchedulerError::InvalidCron`] when the expression cannot be
@@ -522,4 +537,4 @@ mod tests {
 
 #[cfg(test)]
 #[path = "scheduler_contract_tests.rs"]
-mod contract_tests;
+pub(crate) mod contract_tests;

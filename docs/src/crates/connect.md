@@ -93,10 +93,13 @@ Official support for 11 core providers:
 5. **Auth0**
 6. **AWS Cognito**
 7. **Facebook**
-8. **X (Twitter)** (Strict PKCE requirement)
+8. **X (Twitter)** (Strict PKCE requirement; confidential clients authenticate
+   to the token endpoint with HTTP Basic, `client_secret_basic`)
 9. **Discord**
 10. **LinkedIn**
-11. **OIDC (OpenID Connect Custom Provider)**
+11. **OIDC (OpenID Connect Custom Provider)** (sends the client secret in the
+    token request body unless discovery lists `client_secret_basic` without
+    `client_secret_post`, in which case it uses HTTP Basic)
 
 ### Tokens supplied by native or mobile clients
 
@@ -115,6 +118,12 @@ Use `get_user_from_token` only for tokens your server obtained itself. Apple's
 adapter treats its argument as an ID token and checks signature, issuer,
 audience and expiry but no nonce, so a captured Apple ID token for your client
 can be replayed until it expires.
+
+`OidcProvider` treats profile claims as optional (OIDC Core 5.1) in ID tokens
+and userinfo alike: without `name`, `ConnectUser::name` falls back to
+`given_name` and `family_name`, then `preferred_username`, then `nickname`, and
+is empty when none is present. The email address and subject are never used as
+a display name.
 
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
@@ -329,9 +338,14 @@ async fn call_provider_api(
 ```
 
 The default checks 60 seconds before expiration. Refresh calls cannot overlap;
-callers waiting behind a successful refresh reuse its state. A response can
-replace the refresh token only after the lifetime and original provider user ID
-validate. Use `access_token_at` in deterministic workers/tests. Seal
+callers waiting behind a successful refresh reuse its state. A response
+replaces the access token only after the lifetime and original provider user ID
+validate. If a response for the original user is otherwise rejected (for
+example it omits `expires_in`), its rotated refresh token is still kept and the
+generation advances, because the provider has already consumed the prior one;
+the call fails and the next call refreshes with the rotation. Persist the
+snapshot after such a failure too. Use `access_token_at` in deterministic
+workers/tests. Seal
 `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
 dedicated application store:
 

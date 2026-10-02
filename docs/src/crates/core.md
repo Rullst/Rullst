@@ -57,6 +57,18 @@ When a handler finishes while its timeout or a graceful shutdown is being
 processed, the worker records the handler's own result: only a handler that
 was actually cancelled is failed as timed out or requeued, so a success is
 never reported as a timeout or run again.
+Stalled-lease recovery runs when a worker starts and then every
+`min(stalled_after, 60 s)`, and it is queue-wide: it returns every processing
+lease in the shared SQLite table or Redis namespace that is older than the
+recovering worker's `stalled_after`, including leases of other workers. Every
+worker that shares a queue must therefore use a `stalled_after` longer than the
+longest `job_timeout` of any of them; otherwise a worker with a short
+`stalled_after` requeues a slower pool's running job and it runs concurrently.
+A job that crashes, aborts or hangs its worker would otherwise be recovered and
+claimed forever, so the SQLite and Redis drivers count stalled leases per job
+and fail the job, instead of requeuing it, when its fifth lease stalls. The
+failure is recorded like any other failed job; SQLite's `retry_failed_job`
+restarts the count.
 Worker transitions are fenced by the claim's attempt number. The SQLite and
 Redis drivers complete, fail or requeue a job only while it is still processing
 under the attempt that `pop` returned, so a worker whose lease was recovered and
@@ -77,11 +89,24 @@ delay keeps the claiming worker out of a hot loop, and it still reports
 stays pending and is re-offered every five seconds instead of being failed.
 Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
 the previous behaviour and fail the job.
+`ValidatedForm`/`ValidatedJson` failures keep REST status codes (`400`/`422`
+JSON) for other clients, but an HTMX request receives its escaped HTML
+fragment with `200 OK` and an `X-Rullst-Validation-Status: 400|422` header,
+because htmx swaps only successful responses by default.
+`Scheduler::task` takes a five-field expression (`minute hour day-of-month
+month day-of-week`) evaluated in UTC and passed unchanged to the `cron` crate.
+Unlike POSIX crontab, day-of-week numbers run from 1 (Sunday) to 7 (Saturday)
+and 0 is rejected, so `1-5` is Sunday to Thursday; prefer names such as
+`MON-FRI`. When both day fields are restricted, a day must match both.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained
 does not grow memory. Drain `next_error` (for example from a supervising task)
-to observe every failure.
+to observe every failure. A scheduler attached with `Server::schedule` is
+drained by the server: each task failure is logged as a `tracing` error on the
+`rullst::scheduler` target when reported, and a past task failure no longer
+turns a clean shutdown into `Err(ServerError::Scheduler)`; only a failed
+scheduler loop does.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
@@ -142,7 +167,16 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
 - **Bounded token-bucket rate limiter:** `RateLimiter` keys IPv4 peers per
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
-  that cap; state is process-local, not a distributed limit.
+  that cap; state is process-local, not a distributed limit. When attached to
+  `Server`, the limiter and the Traffic Shield let exact `GET`/`HEAD /health`
+  and `/ready` probes through, so load shedding or an exhausted bucket cannot
+  fail a liveness probe.
+- **Bounded database flag cache:** `DbFeatureDriver` caches a found flag, a
+  flag without a row and a failed or timed-out lookup (missing table,
+  unavailable database) for its TTL, so an undefined flag does not query the
+  database on every evaluation. A failed refresh keeps serving the last value
+  read; one lookup waits at most two seconds and each driver caches at most
+  4,096 flag names.
 - **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
   TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
   SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.

@@ -22,21 +22,14 @@ const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
 fn textual_media_type(headers: &HeaderMap) -> Option<&str> {
     let value = headers.get(header::CONTENT_TYPE)?.to_str().ok()?;
-    let media_type = value.split(';').next()?.trim();
+    let media_type = crate::media_type::essence(value);
 
     if media_type.eq_ignore_ascii_case("text/event-stream") {
         return None;
     }
 
-    let is_text = media_type
-        .get(..5)
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("text/"));
-    let is_json = media_type.eq_ignore_ascii_case("application/json")
-        || media_type
-            .strip_suffix("+json")
-            .is_some_and(|prefix| prefix.starts_with("application/"));
-
-    (is_text || is_json).then_some(media_type)
+    (crate::media_type::is_text(media_type) || crate::media_type::is_json(media_type))
+        .then_some(media_type)
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -100,7 +93,9 @@ fn body_collection_failure() -> Response<Body> {
 
 /// Masks sensitive patterns from response payloads. Returns (sanitized_bytes, was_masked).
 ///
-/// Masks complete PEM private-key blocks, 20-character AWS access-key IDs and
+/// Masks complete PEM private-key blocks (`PRIVATE KEY`, `ENCRYPTED PRIVATE
+/// KEY`, `RSA`, `EC`, `DSA` and `OPENSSH PRIVATE KEY`, and `PGP PRIVATE KEY
+/// BLOCK`), 20-character AWS access-key IDs and
 /// the password in `postgres://`, `postgresql://`, `mysql://` and `redis://`
 /// URLs. Each pass is linear in the input length. A URL password is masked
 /// only when it appears inside the URL authority: credentials must be RFC 3986
@@ -210,6 +205,26 @@ pub type DlpService<S> = DlpResponseService<S>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn textual_media_types_are_recognized_in_any_ascii_case() {
+        for (media_type, textual) in [
+            ("application/vnd.api+JSON", true),
+            ("Application/Problem+Json; charset=utf-8", true),
+            ("APPLICATION/JSON", true),
+            ("Text/HTML", true),
+            ("Text/Event-Stream", false),
+            ("application/octet-stream", false),
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(media_type));
+            assert_eq!(
+                textual_media_type(&headers).is_some(),
+                textual,
+                "{media_type}"
+            );
+        }
+    }
 
     #[test]
     fn test_mask_private_key() {
