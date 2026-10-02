@@ -26,12 +26,16 @@ pub(super) fn height(height: u16) -> u16 {
     }
 }
 
+/// Terminals this wide add the recent-requests panel.
+const RECENT_PANEL_COLUMNS: u16 = 105;
+
 pub(super) fn render(
     frame: &mut ratatui::Frame,
     area: Rect,
     app: &App,
     palette: Palette,
     now: Instant,
+    terminal_width: u16,
 ) {
     let metrics = &app.metrics;
     match metrics.source {
@@ -43,7 +47,7 @@ pub(super) fn render(
         }
         _ => {}
     }
-    let wide = area.width >= 105;
+    let wide = terminal_width >= RECENT_PANEL_COLUMNS;
     let constraints = if wide {
         vec![
             Constraint::Percentage(34),

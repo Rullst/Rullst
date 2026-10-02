@@ -82,12 +82,14 @@ pub(super) fn ui_at(frame: &mut ratatui::Frame, app: &App, now: Instant) {
     let summary = (metrics_height == 0)
         .then(|| metrics::summary(&app.metrics, now))
         .flatten();
+    // Documented thresholds are terminal widths, not the area inside the margin.
+    let terminal_width = frame.area().width;
     render_header(frame, areas[0], app, palette, summary);
     if metrics_height > 0 {
-        metrics::render(frame, areas[1], app, palette, now);
+        metrics::render(frame, areas[1], app, palette, now, terminal_width);
     }
     render_workspace(frame, areas[2], app, palette);
-    render_footer(frame, areas[3], app, palette);
+    render_footer(frame, areas[3], app, palette, terminal_width);
     if app.show_help {
         help::render(frame, frame.area(), palette);
     }
@@ -345,7 +347,17 @@ fn status_line(label: &str, value: impl Into<String>, palette: Palette) -> Line<
     ])
 }
 
-fn render_footer(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
+/// Terminals this wide list `d` and `Tab` in the footer.
+const FULL_FOOTER_COLUMNS: u16 = 120;
+
+fn render_footer(
+    frame: &mut ratatui::Frame,
+    area: Rect,
+    app: &App,
+    palette: Palette,
+    terminal_width: u16,
+) {
+    let full = terminal_width >= FULL_FOOTER_COLUMNS;
     let mut shortcuts = vec![
         key("r", palette.orange),
         Span::raw(" restart  "),
@@ -354,7 +366,7 @@ fn render_footer(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         key("s", palette.magenta),
         Span::raw(" studio  "),
     ];
-    if area.width >= 120 {
+    if full {
         shortcuts.extend([key("d", palette.blue), Span::raw(" api docs  ")]);
     }
     shortcuts.extend([
@@ -365,7 +377,7 @@ fn render_footer(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         key("f", palette.orange),
         Span::raw(" filter  "),
     ]);
-    if area.width >= 120 {
+    if full {
         shortcuts.extend([key("tab", palette.magenta), Span::raw(" focus  ")]);
     }
     shortcuts.extend([

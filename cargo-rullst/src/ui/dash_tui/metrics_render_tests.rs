@@ -374,3 +374,18 @@ fn restart_is_queued_once_for_a_running_application() {
     super::apply_status(&mut app, DevStatus::Ready);
     assert!(app.action_notice.is_some());
 }
+
+#[test]
+fn width_thresholds_are_terminal_widths() {
+    let (app, now) = live_app(false);
+    // The recent-requests panel needs a 105-column terminal.
+    assert!(screen(&app, 105, 36, now).contains("RECENT REQUESTS"));
+    assert!(!screen(&app, 104, 36, now).contains("RECENT REQUESTS"));
+    // The footer lists d and Tab from 120 columns.
+    let full = screen(&app, 120, 36, now);
+    assert!(full.contains("[d] api docs"), "{full}");
+    assert!(full.contains("[tab] focus"));
+    let short = screen(&app, 119, 36, now);
+    assert!(!short.contains("[d] api docs"));
+    assert!(!short.contains("[tab] focus"));
+}
