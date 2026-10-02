@@ -22,15 +22,16 @@ fn rules() -> Option<&'static [(Regex, &'static str)]> {
                 ),
                 // scheme://<long token>@host
                 (r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/@]{16,})@", "${1}***@"),
-                // NAME=value / name: value for secret-like names.
+                // NAME=value / name: value for secret-like names, including
+                // every `*_KEY` (`RULLST_ENCRYPTION_KEY`, `STRIPE_KEY`, ...).
                 (
-                    r#"(?i)\b([a-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|app[_\-]?key|client[_\-]?secret|credential)s?[a-z0-9_]*)(\s*(?:=|:\s)\s*)("[^"]*"|'[^']*'|[^\s&;,]+)"#,
+                    r#"(?i)\b([a-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|app[_\-]?key|client[_\-]?secret|credential|[_\-]key)s?[a-z0-9_]*)(\s*(?:=|:\s)\s*)("[^"]*"|'[^']*'|[^\s&;,]+)"#,
                     "${1}${2}***",
                 ),
                 (r"(?i)\b(bearer|basic)\s+[a-z0-9._~+/=\-]{8,}", "${1} ***"),
                 // Well-known credential formats.
                 (
-                    r"\b(?:sk-[A-Za-z0-9_\-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abpr]-[A-Za-z0-9\-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_\-]{30,})",
+                    r"\b(?:sk-[A-Za-z0-9_\-]{16,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9+/=]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abpr]-[A-Za-z0-9\-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_\-]{30,})",
                     "***",
                 ),
             ]
@@ -118,6 +119,41 @@ mod tests {
             sanitize("unknown pkg action 'x'; use 'add' or 'list'"),
             "unknown pkg action 'x'; use 'add' or 'list'"
         );
+    }
+
+    #[test]
+    fn every_key_suffix_and_payment_provider_secret_is_masked() {
+        for (input, expected) in [
+            (
+                "RULLST_ENCRYPTION_KEY=6f1d9c0a",
+                "RULLST_ENCRYPTION_KEY=***",
+            ),
+            (
+                "RULLST_ENCRYPTION_KEYRING=v1:abc",
+                "RULLST_ENCRYPTION_KEYRING=***",
+            ),
+            ("RULLST_AGE_KEY_HEX=00ff", "RULLST_AGE_KEY_HEX=***"),
+            ("set STRIPE_KEY: abc rest", "set STRIPE_KEY: *** rest"),
+            ("--signing-key=abc", "--signing-key=***"),
+            (
+                "charge sk_live_abcdefghijklmnop1234 failed",
+                "charge *** failed",
+            ),
+            (
+                "webhook whsec_abcdefghijklmnop1234 rejected",
+                "webhook *** rejected",
+            ),
+        ] {
+            assert_eq!(sanitize(input), expected);
+        }
+        // Words that only contain `key` and file names keep their values.
+        for kept in [
+            "duplicate key: email",
+            "MONKEY=banana",
+            "read tls/server.key: No such file",
+        ] {
+            assert_eq!(sanitize(kept), kept);
+        }
     }
 
     #[test]

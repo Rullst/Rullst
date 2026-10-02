@@ -71,8 +71,9 @@ The common failures have their own title and fix: not inside a Rullst project
 use, permission denied, invalid input, network failures and an interrupted
 prompt. Anything else gets a generic report naming the failed command.
 Connection-string passwords, `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values,
-bearer tokens and well-known credential formats are masked, and terminal
-control characters are replaced, in every line of the report.
+bearer tokens and well-known credential formats (including Stripe
+`sk_live_`/`whsec_` secrets) are masked, and terminal control characters are
+replaced, in every line of the report.
 
 A command started from the home menu or the command palette prints its own
 report, and `cargo rullst` then exits with that command's status (for example
