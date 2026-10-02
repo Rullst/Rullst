@@ -162,6 +162,7 @@
 - [v13 Framework References & Comparative Evaluation](v13-framework-comparison.md)
 - [Nexus Application Integration Plan](nexus-integration-plan.md)
 - [AI Maintainability & Project-Building Roadmap](ai-maintainability-roadmap.md)
+- [Legal & Regulatory Compliance Roadmap](legal-compliance-roadmap.md)
 - [Rullst Labs Roadmap](rullst-labs-roadmap.md)
 - [Labs Runner Contract: Bring Your Own Runner](labs-runner-contract.md)
 - [Labs First Profile Decision & Threat Model (Removed Runner)](labs-first-profile.md)
