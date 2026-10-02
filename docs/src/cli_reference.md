@@ -412,8 +412,12 @@ fail before project code runs. Fix findings in the original and prepare again.
 Builds and tests use another fresh private copy, preserving the reviewed copy.
 
 The sequence probes `rustc --version --verbose` and `cargo --version`, resolves
-`Cargo.lock`, checks all workspace targets, and runs workspace tests with the
-resolved lockfile. Every managed Rullst package must resolve to the exact target.
+`Cargo.lock` with `cargo update --workspace`, checks all workspace targets, and
+runs workspace tests with the resolved lockfile. That resolution keeps every
+existing lock entry the edited manifests still accept and resolves only what
+the dependency edits require; it does not upgrade unrelated pins (a missing
+lockfile is resolved in full). Every managed Rullst package must resolve to the
+exact target.
 Default features apply unless `--all-features`, `--features names` or
 `--no-default-features` selects another policy. This verifies that policy only;
 application-specific service/browser/deployment tests remain separate.

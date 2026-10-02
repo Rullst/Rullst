@@ -77,6 +77,10 @@ fn verification_runs_real_locked_checks_and_tests_only_in_a_fresh_candidate() {
     let candidate = Path::new(report["verified_candidate_directory"].as_str().unwrap());
     assert_ne!(candidate, stage.join("candidate"));
     assert!(!candidate.starts_with(&fixture.app));
+    assert_eq!(
+        report["commands"][2]["args"],
+        serde_json::json!(["update", "--workspace", "--offline"])
+    );
     for observation in report["commands"]
         .as_array()
         .unwrap()
