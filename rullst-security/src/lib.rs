@@ -23,6 +23,8 @@ pub mod sentinel;
 pub mod siem;
 pub mod sri;
 pub mod telemetry;
+#[cfg(test)]
+mod test_timing;
 pub mod timing_guard;
 pub mod vault;
 pub mod zero_trust;
