@@ -5,13 +5,16 @@
 //! supervisor-provided `RULLST_DEV_GENERATION`. Staging, production, release
 //! builds and applications started without the CLI supervisor never mount it.
 //! It answers only a loopback peer that names a loopback `Host` (and, when
-//! present, a loopback `Origin`); every other request receives `404`.
+//! present, a loopback `Origin`) over HTTP/1.1 or newer without proxy
+//! forwarding headers; every other request receives `404`.
 //!
 //! The payload holds counters and bounded recent lists: request method, path
 //! without query string, status and duration; ORM operation labels and
 //! durations; a configured queue's pending count. Request and response bodies,
 //! headers, cookies, query strings, SQL text, bindings and error messages are
-//! never recorded.
+//! never recorded. Requests are recorded by [`record_responses`], the
+//! outermost layer, so a panic answered by the development console and the
+//! responses of the security, lifecycle and traffic layers are counted too.
 
 mod orm_layer;
 mod recorder;
@@ -19,7 +22,7 @@ mod recorder;
 mod tests;
 
 pub(crate) use orm_layer::{debug_layer, mark_installed};
-pub(crate) use recorder::record_request;
+use recorder::record_request;
 
 use crate::queue::Queue;
 use axum::{
@@ -27,6 +30,7 @@ use axum::{
     body::Body,
     extract::{ConnectInfo, Request, State, connect_info::MockConnectInfo},
     http::{HeaderValue, StatusCode, header},
+    middleware::Next,
     response::{IntoResponse, Response},
     routing::get,
 };
@@ -42,6 +46,18 @@ pub(super) const PATH: &str = "/_rullst/dev-telemetry";
 const SCHEMA: &str = "rullst.dev-telemetry.v1";
 /// Longest wait for a configured queue's pending count.
 const QUEUE_PROBE_TIMEOUT: Duration = Duration::from_millis(250);
+/// Headers a reverse proxy or tunnel adds; the dashboard never sends them.
+const FORWARDING_HEADERS: [&str; 9] = [
+    "forwarded",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-forwarded-server",
+    "x-real-ip",
+    "via",
+    "cf-connecting-ip",
+    "true-client-ip",
+];
 
 /// A `GET`/`HEAD` of the telemetry endpoint.
 pub(super) fn is_telemetry_request(request: &Request) -> bool {
@@ -65,6 +81,39 @@ pub(super) fn mount(
         return router;
     };
     router.route(PATH, routes(recorder::enable_global(), generation, queue))
+}
+
+/// Wraps the complete application, as its outermost layer, with the request
+/// recorder; added only where [`mount`] mounted the endpoint. Development
+/// polls and, when `static_mounted`, the framework's `/static` files are not
+/// counted, matching the access log.
+pub(super) fn record_responses(router: Router, static_mounted: bool) -> Router {
+    router.layer(axum::middleware::from_fn(
+        move |request: Request, next: Next| async move {
+            record(request, next, static_mounted).await
+        },
+    ))
+}
+
+async fn record(request: Request, next: Next, static_mounted: bool) -> Response {
+    let method = request.method().clone();
+    let path = request.uri().path().to_string();
+    let started = std::time::Instant::now();
+    let response = next.run(request).await;
+    if is_recorded(&path, static_mounted) {
+        record_request(
+            method.as_str(),
+            &path,
+            response.status().as_u16(),
+            started.elapsed(),
+        );
+    }
+    response
+}
+
+fn is_recorded(path: &str, static_mounted: bool) -> bool {
+    let static_file = path == "/static" || path.starts_with("/static/");
+    super::console::is_logged(path) && !(static_mounted && static_file)
 }
 
 fn routes(
@@ -184,8 +233,20 @@ async fn queue_depth(queue: Option<&Queue>) -> QueueDepth {
 
 /// A direct loopback peer that addresses the server by a loopback authority.
 /// The `Host` check rejects DNS-rebinding pages; the peer check rejects other
-/// machines and clients resolved through trusted proxies.
+/// machines and clients resolved through trusted proxies. A same-host reverse
+/// proxy or tunnel connects from loopback and may rewrite `Host`, so requests
+/// with a forwarding header, or over HTTP/1.0 (nginx's default upstream
+/// protocol), are refused as well.
 fn is_local(request: &Request) -> bool {
+    if matches!(
+        request.version(),
+        axum::http::Version::HTTP_09 | axum::http::Version::HTTP_10
+    ) || FORWARDING_HEADERS
+        .iter()
+        .any(|name| request.headers().contains_key(*name))
+    {
+        return false;
+    }
     let extensions = request.extensions();
     let peer = extensions
         .get::<ConnectInfo<SocketAddr>>()

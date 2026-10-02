@@ -22,42 +22,47 @@ pub(crate) fn parse_rustc_version(output: &str) -> Option<RustVersion> {
     Some(RustVersion(major, minor, patch))
 }
 
-/// Optional tools: (display name, probe arguments after the program, install hint).
-const OPTIONAL: [(&str, &str, &[&str], &str); 6] = [
+/// How an optional tool is detected.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Detect {
+    /// Runs `program args`, a side-effect-free `--version` call.
+    Run(&'static str, &'static [&'static str]),
+    /// Looks for the executable without running it: `cargo kani` (even with
+    /// `--version`) starts Kani's first-time setup, a download and a
+    /// toolchain install, when it is not set up yet.
+    Installed(&'static str),
+}
+
+/// Optional tools: (display name, detection, install hint).
+pub(crate) const OPTIONAL: [(&str, Detect, &str); 6] = [
     (
         "cargo-deny",
-        "cargo",
-        &["deny", "--version"],
+        Detect::Run("cargo", &["deny", "--version"]),
         "cargo install cargo-deny",
     ),
     (
         "cargo-geiger",
-        "cargo",
-        &["geiger", "--version"],
+        Detect::Run("cargo", &["geiger", "--version"]),
         "cargo install cargo-geiger",
     ),
     (
         "cargo-mutants",
-        "cargo",
-        &["mutants", "--version"],
+        Detect::Run("cargo", &["mutants", "--version"]),
         "cargo install cargo-mutants",
     ),
     (
         "kani",
-        "cargo",
-        &["kani", "--version"],
+        Detect::Installed("cargo-kani"),
         "cargo install kani-verifier && cargo kani setup",
     ),
     (
         "cargo-llvm-cov",
-        "cargo",
-        &["llvm-cov", "--version"],
+        Detect::Run("cargo", &["llvm-cov", "--version"]),
         "cargo install cargo-llvm-cov",
     ),
     (
         "docker",
-        "docker",
-        &["--version"],
+        Detect::Run("docker", &["--version"]),
         "https://docs.docker.com/get-docker/",
     ),
 ];
@@ -85,11 +90,10 @@ impl Probes {
             ("git", vec!["--version"]),
             ("cargo", vec!["audit", "--version"]),
         ];
-        list.extend(
-            OPTIONAL
-                .iter()
-                .map(|(_, program, args, _)| (*program, args.to_vec())),
-        );
+        list.extend(OPTIONAL.iter().filter_map(|(_, detect, _)| match detect {
+            Detect::Run(program, args) => Some((*program, args.to_vec())),
+            Detect::Installed(_) => None,
+        }));
         if needs_wasm {
             list.push(("rustup", vec!["target", "list", "--installed"]));
         }
@@ -101,7 +105,13 @@ impl Probes {
         let clippy = next();
         let git = next();
         let cargo_audit = next();
-        let optional = OPTIONAL.iter().map(|_| next()).collect();
+        let optional = OPTIONAL
+            .iter()
+            .map(|(_, detect, _)| match detect {
+                Detect::Run(..) => next(),
+                Detect::Installed(binary) => probe::installed(binary),
+            })
+            .collect();
         let targets = needs_wasm.then(&mut next);
         Self {
             rustc,
@@ -233,7 +243,7 @@ pub(crate) fn optional_check(probes: &[Probe]) -> Check {
     let mut installed = Vec::new();
     let mut missing = Vec::new();
     let mut hints = Vec::new();
-    for ((name, _, _, hint), probe) in OPTIONAL.iter().zip(probes) {
+    for ((name, _, hint), probe) in OPTIONAL.iter().zip(probes) {
         if probe.ok() {
             installed.push(*name);
         } else {

@@ -7,12 +7,11 @@ use super::telemetry::{
     TelemetrySnapshot,
 };
 use super::{handle_key, ingest_telemetry, render};
-use crate::generators::dev::{DevCommand, DevStatus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend, style::Color};
 use std::time::{Duration, Instant};
 
-const GENERATION: &str = "0123456789abcdef0123456789abcdef";
+pub(super) const GENERATION: &str = "0123456789abcdef0123456789abcdef";
 
 fn request(seq: u64, method: &str, path: &str, status: u16, duration_us: u64) -> RequestSample {
     RequestSample {
@@ -64,10 +63,11 @@ fn observed_database() -> DatabaseReport {
 }
 
 /// An application with two polls one second apart: four requests, one 5xx.
-fn live_app(colors: bool) -> (App, Instant) {
+pub(super) fn live_app(colors: bool) -> (App, Instant) {
     let start = Instant::now();
     let mut app = App::new(3_000, true, "configured: SQLite".to_string(), colors, false);
     app.server_status = ServerStatus::Ready;
+    app.metrics.own_generation(GENERATION);
     ingest_telemetry(
         &mut app,
         snapshot(
@@ -118,7 +118,7 @@ fn rows(app: &App, width: u16, height: u16, now: Instant) -> Vec<String> {
         .collect()
 }
 
-fn screen(app: &App, width: u16, height: u16, now: Instant) -> String {
+pub(super) fn screen(app: &App, width: u16, height: u16, now: Instant) -> String {
     rows(app, width, height, now).join("\n")
 }
 
@@ -249,6 +249,7 @@ fn unreported_database_and_queue_values_say_how_to_report_them() {
         ),
     ] {
         let mut app = App::new(3_000, true, "not configured".into(), false, false);
+        app.metrics.own_generation(GENERATION);
         ingest_telemetry(&mut app, snapshot(0, Vec::new(), database, queue), now);
         let output = screen(&app, 140, 36, now);
         for text in expected {
@@ -324,53 +325,16 @@ fn help_opens_with_question_mark_and_any_key_closes_it() {
 }
 
 #[test]
-fn restart_is_queued_once_for_a_running_application() {
-    let (logs, _rx) = tokio::sync::mpsc::channel(4);
-    let (commands, mut command_rx) = tokio::sync::mpsc::channel(1);
-    let mut app = App::new(3_000, true, "not configured".into(), false, false);
-    let restart = KeyEvent::new(KeyCode::Char('r'), KeyModifiers::NONE);
-
-    app.server_status = ServerStatus::Starting;
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(command_rx.try_recv().is_err());
-    assert!(
-        app.action_notice
-            .as_deref()
-            .is_some_and(|notice| notice.contains("still starting"))
-    );
-
-    app.server_status = ServerStatus::Ready;
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(matches!(command_rx.try_recv(), Ok(DevCommand::Restart)));
-    assert!(command_rx.try_recv().is_err());
-    assert!(
-        app.system_logs()
-            .iter()
-            .any(|line| line.contains("supervisor is busy"))
-    );
-
-    app.server_status = ServerStatus::Exited {
-        success: false,
-        code: Some(1),
-    };
-    assert!(!handle_key(restart, &mut app, &logs, &commands));
-    assert!(matches!(command_rx.try_recv(), Ok(DevCommand::Restart)));
-    let output = screen(&app, 120, 30, Instant::now());
-    assert!(output.contains("Restarting the application"));
-    // The supervisor logs the restart; the dashboard does not repeat it.
-    assert!(
-        !app.system_logs()
-            .iter()
-            .any(|line| line.contains("Restarting the application"))
-    );
-    // The notice ends when the restarted process is ready; others persist.
-    super::apply_status(&mut app, DevStatus::Starting);
-    assert!(app.action_notice.is_some());
-    super::apply_status(&mut app, DevStatus::Ready);
-    assert_eq!(app.server_status, ServerStatus::Ready);
-    assert!(app.action_notice.is_none());
-    app.action_notice = Some("API docs unavailable".to_string());
-    super::apply_status(&mut app, DevStatus::Ready);
-    assert!(app.action_notice.is_some());
+fn width_thresholds_are_terminal_widths() {
+    let (app, now) = live_app(false);
+    // The recent-requests panel needs a 105-column terminal.
+    assert!(screen(&app, 105, 36, now).contains("RECENT REQUESTS"));
+    assert!(!screen(&app, 104, 36, now).contains("RECENT REQUESTS"));
+    // The footer lists d and Tab from 120 columns.
+    let full = screen(&app, 120, 36, now);
+    assert!(full.contains("[d] api docs"), "{full}");
+    assert!(full.contains("[tab] focus"));
+    let short = screen(&app, 119, 36, now);
+    assert!(!short.contains("[d] api docs"));
+    assert!(!short.contains("[tab] focus"));
 }

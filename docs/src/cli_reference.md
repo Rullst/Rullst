@@ -70,9 +70,16 @@ The common failures have their own title and fix: not inside a Rullst project
 (`rustup target add <target>`), an unreachable database, a port already in
 use, permission denied, invalid input, network failures and an interrupted
 prompt. Anything else gets a generic report naming the failed command.
-Connection-string passwords, `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values,
-bearer tokens and well-known credential formats are masked, and terminal
-control characters are replaced, in every line of the report.
+Connection-string passwords (up to the host, even when they contain an
+unencoded `@`), `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values (also under the
+quoted keys of JSON or `Debug` maps), bearer tokens and well-known credential
+formats (including Stripe `sk_live_`/`whsec_` secrets) are masked, and
+terminal control characters are replaced, in every line of the report. The
+whole message is redacted before a long one is cut to 4,096 characters.
+
+A command started from the home menu or the command palette prints its own
+report, and `cargo rullst` then exits with that command's status (for example
+`2` for a usage error) without a second report.
 
 `-v`/`--verbose` (accepted by every command) adds the underlying causes and
 the error's `Debug` form, still redacted. A panic prints a short "Internal
@@ -83,7 +90,7 @@ or `RUST_BACKTRACE` is set.
 | :--- | :--- |
 | `0` | Success (`doctor`: no failed check; warnings are allowed). |
 | `1` | The command failed, including `doctor` with a failed (✗) check. |
-| `2` | Usage error: an unknown command or invalid arguments. |
+| `2` | Usage error: an unknown command, invalid arguments or an argument that is not valid UTF-8. |
 
 An unknown command lists the closest commands at the level where it was typed
 (`cargo rullst make:modek` suggests `make:model`; `cargo rullst update chekk`
@@ -156,7 +163,9 @@ create wizard; the home screen's **Create New Project** entry runs the same
 wizard. It asks, one screen at a time:
 
 1. the project name, when none was given (letters, digits, `_` and `-`,
-   starting with a letter; Rust keywords and existing paths are refused);
+   starting with a letter; Rust keywords and existing paths are refused). A
+   name given on the command line is checked by the same package-name rules
+   before the first question;
 2. the **blueprint**, each with a one-line description and a compact preview
    of the file tree it generates. The preview is rendered by the real project
    writers into a private temporary directory that is removed immediately;
@@ -170,7 +179,9 @@ wizard. It asks, one screen at a time:
    the project*, *Back* and *Cancel*.
 
 ↑/↓ (or `j`/`k`, or a digit) moves, Space toggles a feature, Enter confirms
-and Esc, Backspace or ← returns to the previous question. Cancel and Ctrl+C
+and Esc, Backspace or ← returns to the previous question. On a terminal too
+short for every choice, the list scrolls with the highlighted entry and counts
+the hidden ones. Cancel and Ctrl+C
 create nothing. Colours follow the home screen: `NO_COLOR` removes them and
 24-bit colour needs `COLORTERM=truecolor`. Every question has a flag; a
 question answered by a flag is skipped. When standard input, output or error
@@ -1442,8 +1453,8 @@ the dashboard exits.
 * errors: 5xx responses and their share of all requests over the last 60 s;
 * p50/p95 latency over the last 60 s and a p95-per-poll sparkline (up to two
   minutes), computed from the individual requests the dashboard observed. They
-  are marked `sampled` when more requests arrived between two polls than the 64
-  newest the application returns;
+  are marked `sampled` when more requests arrived between two polls, or before
+  the first poll of a process, than the 64 newest the application returns;
 * the newest requests with status, method, duration and path (never the query
   string);
 * ORM queries since start and slow ORM operations (at least 100 ms);
@@ -1455,7 +1466,11 @@ Histories are bounded: 120 sparkline points, 50 requests, 16 slow operations and
 4,096 latency samples. A response larger than 256 KiB, with another schema or
 with inconsistent counters is rejected, and control or bidirectional-formatting
 characters are replaced before anything reaches the terminal. A value the
-application does not report is shown as `not reported`, never as zero.
+application does not report is shown as `not reported`, never as zero. Only
+the process the dashboard started is measured: a response carrying another
+`RULLST_DEV_GENERATION`, for example from a second `dev`/`dash` already
+listening on the port, replaces the metrics row with an **ANOTHER PROCESS ON
+THE PORT** panel instead of showing that process's figures.
 
 The endpoint exists only in a debug build running in Development under
 `cargo rullst dev`/`dash`; see the
@@ -1476,8 +1491,10 @@ AVAILABLE** panel with these steps:
 | Queue pending | The application passes its queue to the server. | `Server::new(router).with_dev_queue(queue)` (accepts a `Queue` or an `Arc<Queue>`). |
 
 ORM queries count the outermost `rullst.orm.query` span of each ORM operation
-(model queries, saves, deletes and `Orm::raw`). One operation can run several
-SQL statements, and SQL executed directly through SQLx is not counted.
+(model queries, saves, deletes and `Orm::raw`). A `chunk`/`chunk_by_id`
+traversal is not counted itself: each page it fetches and each operation its
+handler runs counts separately. One operation can run several SQL statements,
+and SQL executed directly through SQLx is not counted.
 
 Terminals at least 26 rows tall show the metrics row and terminals at least 105
 columns wide add the recent-requests panel; shorter terminals show a one-line
@@ -1485,8 +1502,11 @@ summary in the header. The layout adapts to narrower terminals and provides
 these keyboard controls:
 
 * `r`: restart the application from the current build (no rebuild). It is
-  ignored while the application is still starting and reports when the
-  supervisor is busy, for example with a migration.
+  refused, with a notice, while the application is still starting, while a
+  migration runs and while a saved change is being rebuilt (a successful
+  rebuild restarts the application itself). The notice clears once the
+  restarted application is ready, or says that its readiness was not
+  confirmed or that it exited.
 * `o`: open the application.
 * `s`: probe the loopback Studio endpoint and open it only when reachable.
 * `d`: open existing Scalar docs. Missing files produce explicit
@@ -1714,7 +1734,10 @@ exits with status `1` when any check failed; warnings do not fail it.
 only the toolchain, project, security (cargo-audit) and disk groups appear.
 Checks are local and bounded: tool probes are `--version` calls run in
 parallel, the database probe is a 2-second TCP connect (no credentials are
-sent) and a SQLite file is opened read-only. Values from `.env` are measured,
+sent) and a SQLite file is opened read-only. Kani is only looked up as a
+`cargo-kani` executable (in Cargo's `bin` directory or on `PATH`), never run:
+`cargo kani` starts its first-time download and toolchain installation when it
+is not set up yet. Values from `.env` are measured,
 never printed.
 
 #### Doctor: toolchain

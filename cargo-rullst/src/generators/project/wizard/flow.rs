@@ -93,6 +93,9 @@ pub(crate) fn validate_name(raw: &str) -> Result<String, &'static str> {
     {
         return Err("Only letters, numbers, underscores and dashes are allowed.");
     }
+    if !name.starts_with(|first: char| first.is_ascii_alphabetic()) {
+        return Err("The project name must start with a letter.");
+    }
     if ProjectIdentity::from_destination(name).is_err() {
         return Err("That name is reserved by Rust; choose another one.");
     }

@@ -28,6 +28,24 @@ A prepared version section does not establish that its tag or crates exist.
   the shortcut fallback of an invalid inline image; OpenAI-compatible streams
   reject `finish_reason` `length`/`content_filter`.
 
+### Dashboard and CLI UX review fixes
+
+- `cargo rullst dash` counts panics and the responses of the security,
+  lifecycle and traffic layers, counts ORM operations inside
+  `chunk`/`chunk_by_id` handlers individually, marks first-poll percentiles as
+  sampled, measures its layout thresholds on the terminal, shows metrics only
+  from the process the supervisor started, and refuses `r` while a migration
+  or rebuild runs. The `/_rullst/dev-telemetry` endpoint refuses HTTP/1.0 and
+  proxy-forwarded requests.
+- Failed home-menu and palette commands are reported once and keep their exit
+  status. Error reports mask every `*_KEY` value, quoted JSON/`Debug` keys,
+  connection-string passwords containing `@` and Stripe secrets, and redact
+  before truncating.
+- `doctor` detects Kani without running its first-time setup, a non-UTF-8
+  argument is a usage error (exit 2) instead of a panic, `new` refuses an
+  invalid flag name before the first question, and choice screens fit short
+  terminals.
+
 ### Assisted v12 → v13 upgrade
 
 - `cargo rullst upgrade` reports v12 → v13 source findings

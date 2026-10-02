@@ -31,10 +31,11 @@ impl Server {
     }
 
     /// Builds the static application. Outer-to-inner request order:
-    /// trusted proxy → security baseline → lifecycle → Traffic Shield → rate
-    /// limit (both skipped for exact health probes) → development/static/access
-    /// log layers → application routes. The development reload and telemetry
-    /// routes exist only in a supervised debug Development process.
+    /// (development telemetry recorder) → trusted proxy → security baseline →
+    /// lifecycle → Traffic Shield → rate limit (both skipped for exact health
+    /// probes) → development/static/access log layers → application routes.
+    /// The development reload and telemetry routes and the telemetry recorder
+    /// exist only in a supervised debug Development process.
     pub(super) fn into_static_app(
         self,
         security: SecurityConfig,
@@ -53,7 +54,8 @@ impl Server {
             super::console::access_log_middleware,
         ));
 
-        if std::path::Path::new("static").exists() {
+        let static_mounted = std::path::Path::new("static").exists();
+        if static_mounted {
             app = app
                 .nest_service(
                     "/static",
@@ -100,6 +102,11 @@ impl Server {
         // Outermost: every inner layer observes the resolved client address.
         if let Some(layer) = trusted_proxy {
             app = app.layer(layer);
+        }
+        // Around everything, so development telemetry also counts panics
+        // answered by the console and responses of the layers above.
+        if dev_reload {
+            app = super::dev_telemetry::record_responses(app, static_mounted);
         }
         Ok(app)
     }

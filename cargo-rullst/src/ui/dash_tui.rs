@@ -3,28 +3,32 @@ mod metrics;
 mod metrics_render_tests;
 #[cfg(test)]
 mod metrics_tests;
+mod profile;
 mod render;
 #[cfg(test)]
 mod render_tests;
 mod state;
+#[cfg(test)]
+mod supervision_tests;
 mod telemetry;
 #[cfg(test)]
 mod telemetry_tests;
 mod terminal;
 
-use crate::generators::dev::{DevCommand, DevStatus};
+use crate::generators::dev::{DevCommand, DevState, DevStatus};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+pub(super) use profile::database_kind;
+#[cfg(test)]
+use profile::database_profile_from_env;
+use profile::detect_database_profile;
 use ratatui::{Terminal, backend::CrosstermBackend};
-use state::{App, LogLevel, ServerStatus};
+use state::{App, LogLevel, PendingRestart, ServerStatus};
 use std::{
-    fs::File,
-    io::{self, IsTerminal, Read},
+    io::{self, IsTerminal},
     process::{Command, ExitStatus, Stdio},
     time::Duration,
 };
 use tokio::sync::mpsc::{Receiver, Sender};
-
-const ENV_READ_LIMIT: u64 = 64 * 1_024;
 
 #[derive(Debug)]
 pub enum LogMsg {
@@ -40,7 +44,7 @@ pub(crate) async fn run(
     log_tx: Sender<LogMsg>,
     port: u16,
     hmr_enabled: bool,
-    mut process_status: tokio::sync::watch::Receiver<DevStatus>,
+    mut process_status: tokio::sync::watch::Receiver<DevState>,
     commands: Sender<DevCommand>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !io::stdout().is_terminal() {
@@ -91,7 +95,7 @@ pub(crate) async fn run(
         Duration::from_secs(1)
     };
     let mut ticker = tokio::time::interval(tick_duration);
-    app.server_status = supervisor_status(*process_status.borrow_and_update());
+    apply_state(&mut app, &process_status.borrow_and_update().clone());
     let (telemetry_tx, mut telemetry_rx) = tokio::sync::mpsc::channel(2);
     telemetry::spawn_poller(port, telemetry_tx);
 
@@ -104,7 +108,7 @@ pub(crate) async fn run(
             }
             changed = process_status.changed() => {
                 if changed.is_err() { break; }
-                apply_status(&mut app, *process_status.borrow_and_update());
+                apply_state(&mut app, &process_status.borrow_and_update().clone());
             }
             message = log_rx.recv() => {
                 if let Some(message) = message {
@@ -188,6 +192,10 @@ fn ingest_telemetry(app: &mut App, outcome: telemetry::PollOutcome, now: std::ti
         Some(metrics::Notice::Lost(metrics::Source::Rejected(reason))) => {
             format!("Telemetry response rejected ({reason}); metrics hidden.")
         }
+        Some(metrics::Notice::Lost(metrics::Source::Foreign)) => format!(
+            "Live metrics hidden: 127.0.0.1:{} is answered by a process this dashboard did not start.",
+            app.port
+        ),
         Some(metrics::Notice::Lost(_)) => {
             "Live metrics paused: the application is not answering.".to_string()
         }
@@ -197,12 +205,21 @@ fn ingest_telemetry(app: &mut App, outcome: telemetry::PollOutcome, now: std::ti
 }
 
 /// `r`: restarts the owned process from its current executable snapshot.
+/// The supervisor runs one task at a time, so `r` is refused, not silently
+/// queued, while a migration or a rebuild is running.
 fn request_restart(app: &mut App, commands: &Sender<DevCommand>) {
     let refused = if app.server_status == ServerStatus::Starting {
         "The application is still starting; restart once it is ready or has exited."
+    } else if app.migration_running {
+        "The supervisor is busy migrating the database; press r again once the migration finishes."
+    } else if app.rebuilding {
+        "The supervisor is rebuilding a saved change, which restarts the application when it succeeds."
     } else if commands.try_send(DevCommand::Restart).is_ok() {
         // The supervisor logs the restart itself.
         app.action_notice = Some(RESTART_NOTICE.to_string());
+        app.pending_restart = Some(PendingRestart {
+            from: app.metrics.generation().map(str::to_string),
+        });
         return;
     } else {
         "Restart could not be queued; the supervisor is busy (for example migrating)."
@@ -213,13 +230,33 @@ fn request_restart(app: &mut App, commands: &Sender<DevCommand>) {
 
 const RESTART_NOTICE: &str = "Restarting the application from the current build...";
 
-/// Applies a supervisor status; a restart notice ends once the app is ready.
-fn apply_status(app: &mut App, status: DevStatus) {
-    app.server_status = supervisor_status(status);
-    if app.server_status == ServerStatus::Ready
-        && app.action_notice.as_deref() == Some(RESTART_NOTICE)
-    {
-        app.action_notice = None;
+/// Applies the supervisor's state. A restart notice is replaced by the
+/// restart's outcome once a new process generation stopped starting.
+fn apply_state(app: &mut App, state: &DevState) {
+    app.server_status = supervisor_status(state.status);
+    app.rebuilding = state.rebuilding;
+    if let Some(generation) = &state.generation {
+        app.metrics.own_generation(generation);
+    }
+    let finished = app.pending_restart.as_ref().is_some_and(|pending| {
+        pending.from != state.generation && app.server_status != ServerStatus::Starting
+    });
+    if !finished {
+        return;
+    }
+    app.pending_restart = None;
+    if app.action_notice.as_deref() == Some(RESTART_NOTICE) {
+        app.action_notice = match app.server_status {
+            ServerStatus::Ready | ServerStatus::Starting => None,
+            ServerStatus::Unverified => Some(
+                "Restarted, but readiness was not confirmed; check the application logs."
+                    .to_string(),
+            ),
+            ServerStatus::Exited { .. } => Some(
+                "The restarted application exited; check the application logs, then save or press r."
+                    .to_string(),
+            ),
+        };
     }
 }
 
@@ -379,62 +416,6 @@ fn browser_command(url: &str) -> io::Result<Command> {
     Ok(command)
 }
 
-fn detect_database_profile() -> String {
-    let mut contents = String::new();
-    let Ok(file) = File::open(".env") else {
-        return "not configured (.env missing)".to_string();
-    };
-    if file
-        .take(ENV_READ_LIMIT)
-        .read_to_string(&mut contents)
-        .is_err()
-    {
-        return "configuration unreadable".to_string();
-    }
-
-    database_profile_from_env(&contents)
-}
-
-fn database_profile_from_env(contents: &str) -> String {
-    for line in contents.lines() {
-        let Some((name, raw_value)) = line.trim().split_once('=') else {
-            continue;
-        };
-        if name.trim() != "DATABASE_URL" {
-            continue;
-        }
-        let value = raw_value.trim().trim_matches(['"', '\'']);
-        return format!("configured: {}", database_kind(value));
-    }
-
-    if contents.lines().any(|line| {
-        line.trim()
-            .strip_prefix("TURSO_DATABASE_URL=")
-            .is_some_and(|value| !value.trim().is_empty())
-    }) {
-        return "configured: Turso/libSQL".to_string();
-    }
-    "not configured".to_string()
-}
-
-/// Names the database family of a connection URL without exposing any part
-/// of the URL itself (credentials, hosts or file paths).
-pub(super) fn database_kind(url: &str) -> &'static str {
-    if url.starts_with("postgres://") || url.starts_with("postgresql://") {
-        "PostgreSQL"
-    } else if url.starts_with("mysql://") {
-        "MySQL/MariaDB"
-    } else if url.starts_with("sqlite:") {
-        "SQLite"
-    } else if url.starts_with("libsql://") {
-        "Turso/libSQL"
-    } else if url.is_empty() {
-        "empty DATABASE_URL"
-    } else {
-        "custom URL"
-    }
-}
-
 fn reduced_motion_requested() -> bool {
     reduced_motion_value(std::env::var("RULLST_REDUCED_MOTION").ok().as_deref())
 }
@@ -459,24 +440,6 @@ mod tests {
     #[test]
     fn ansi_sequences_are_removed_from_dashboard_logs() {
         assert_eq!(strip_ansi("\u{1b}[31mfailed\u{1b}[0m"), "failed");
-    }
-
-    #[test]
-    fn database_profile_reports_configuration_without_exposing_credentials() {
-        let postgres =
-            database_profile_from_env("DATABASE_URL=postgres://admin:secret@127.0.0.1/app\n");
-        assert_eq!(postgres, "configured: PostgreSQL");
-        assert!(!postgres.contains("admin"));
-        assert!(!postgres.contains("secret"));
-
-        assert_eq!(
-            database_profile_from_env("TURSO_DATABASE_URL=libsql://example.turso.io\n"),
-            "configured: Turso/libSQL"
-        );
-        assert_eq!(
-            database_profile_from_env("APP_ENV=development\n"),
-            "not configured"
-        );
     }
 
     #[test]

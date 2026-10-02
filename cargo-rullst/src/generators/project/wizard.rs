@@ -259,14 +259,17 @@ pub(crate) fn plan_project(
             "Turso-primary currently requires the blank starter while the SQLx-specific blueprints are being ported",
         ));
     }
-    if let Some(name) = request.name
-        && std::path::Path::new(name).exists()
-    {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::AlreadyExists,
-            format!("directory '{name}' already exists"),
-        )
-        .into());
+    if let Some(name) = request.name {
+        // The Name step is skipped for a flag name, so check it before the
+        // other questions rather than after the review.
+        super::ProjectIdentity::from_destination(name)?;
+        if std::path::Path::new(name).exists() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                format!("directory '{name}' already exists"),
+            )
+            .into());
+        }
     }
 
     terminal.print(&[Line::new()

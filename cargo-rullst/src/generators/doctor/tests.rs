@@ -2,12 +2,12 @@
 
 use super::context::DotEnv;
 use super::database::{Target, parse_target, pending_check, tcp_reachable};
-use super::probe::{Probe, version_token};
+use super::probe::{Probe, executable_in, version_token};
 use super::project::{requirement_major, version_check};
 use super::report::Status;
 use super::toolchain::{
-    RULLST_MSRV, RustVersion, components_check, optional_check, parse_rustc_version, rustc_check,
-    wasm_check,
+    Detect, OPTIONAL, RULLST_MSRV, RustVersion, components_check, optional_check,
+    parse_rustc_version, rustc_check, wasm_check,
 };
 use super::*;
 use std::collections::{BTreeSet, HashMap};
@@ -104,6 +104,30 @@ fn components_wasm_and_optional_tools_are_classified() {
         "installed: docker · not installed: cargo-deny, cargo-geiger, cargo-mutants, kani, cargo-llvm-cov"
     );
     assert!(optional.fix.unwrap().contains("cargo install cargo-deny"));
+}
+
+#[test]
+fn kani_is_detected_without_running_its_setup_prone_proxy() {
+    // `cargo kani` downloads and installs Kani on first use, even for --version.
+    let kani = OPTIONAL
+        .iter()
+        .find(|(name, _, _)| *name == "kani")
+        .map(|(_, detect, _)| *detect);
+    assert_eq!(kani, Some(Detect::Installed("cargo-kani")));
+    assert!(
+        OPTIONAL.iter().all(
+            |(_, detect, _)| !matches!(detect, Detect::Run(_, args) if args.contains(&"kani"))
+        )
+    );
+
+    let bin = tempfile::tempdir().expect("bin directory");
+    let empty = tempfile::tempdir().expect("empty directory");
+    let directories = [empty.path().to_path_buf(), bin.path().to_path_buf()];
+    assert!(!executable_in("cargo-kani", &directories));
+    let file = format!("cargo-kani{}", std::env::consts::EXE_SUFFIX);
+    fs::write(bin.path().join(file), "").expect("fake executable");
+    assert!(executable_in("cargo-kani", &directories));
+    assert!(!executable_in("cargo-kani", &directories[..1]));
 }
 
 #[test]
