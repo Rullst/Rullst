@@ -118,8 +118,12 @@ fn classify(label: &str, definitions: &Definitions, budget: &mut usize) -> Image
         let Some(close) = inline.find(')') else {
             return Image::Remote;
         };
+        // CommonMark matches that shortcut with Unicode case folding, so a
+        // non-ASCII label may match any definition unless the inline syntax
+        // is certainly valid.
+        let fold = !inline::plain_inline_link(&inline[..close]);
         return if local_destination(&inline[..close])
-            && !matches!(definitions.resolve(label, false), Resolution::Remote)
+            && !matches!(definitions.resolve(label, fold), Resolution::Remote)
         {
             Image::Local
         } else {

