@@ -59,6 +59,14 @@ fn traversal_absolute_and_malformed_paths_are_rejected() {
         "src/con.txt",
         "src/com1",
         "trailing.",
+        // Windows 8.3 aliases of `.git`, `.cargo` and `.env`.
+        "GIT~1/hooks/pre-commit",
+        "CARGO~1/config.toml",
+        "ENV~1",
+        "src/PROJEC~2.RS",
+        // HFS+ ignores these characters, so this name would be `.git`.
+        ".g\u{200c}it/hooks/pre-commit",
+        "src/\u{feff}main.rs",
     ] {
         assert_eq!(resolve(&root, raw), Err(PathError::Malformed), "{raw:?}");
     }

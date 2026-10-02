@@ -108,7 +108,7 @@ database migrations yourself with `cargo rullst db:migrate`.
 
 | Allowed (after your confirmation) | Never allowed |
 | --- | --- |
-| Create or replace a file below the project root | Paths outside the project, `..`, absolute paths or symlinks |
+| Create or replace a file below the project root | Paths outside the project, `..`, absolute paths, symlinks, Windows short names (`GIT~1`) or reserved device names |
 | Replace one exact text occurrence in a file | `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`), keys, credentials, `Cargo.lock`, toolchain files |
 | `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, shell commands |
 | `cargo rullst db:migrate` in a development or test project, confirmed on its own | `db:migrate` when the environment the application would use (process `RULLST_ENV`/`APP_ENV` first, then `.env`, then `[app].env`) is staging or production |

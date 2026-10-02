@@ -3511,7 +3511,9 @@ and `--privacy-source` follow the file path policy below. Programs run without a
 shell, with standard input closed, bounded output and a deadline.
 Paths are relative to the nearest `Cargo.toml` directory; no component may be a
 symlink, `..`, `.git`, `target` or `.cargo`, and secret, key, lockfile and
-toolchain files are refused. Each action is previewed (diff or exact command)
+toolchain files are refused, also through an 8.3 alias (`GIT~1`), a reserved
+device name, a trailing dot or space or an HFS+-ignored character; existing
+components are checked under their canonical name. Each action is previewed (diff or exact command)
 and confirmed; without an interactive terminal, under `CI` or `TERM=dumb`, or
 with `--dry-run`, actions are displayed and never executed. The first change of
 a session is preceded by a checkpoint commit built in a temporary index and
