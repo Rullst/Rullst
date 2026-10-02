@@ -20,6 +20,10 @@ class InputTests(unittest.TestCase):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "fixture@example.invalid")
         self.run_git("config", "user.name", "Fixture")
+        # Background auto-maintenance can still be writing objects/pack when
+        # the temporary repository is removed, so keep it off in fixtures.
+        self.run_git("config", "maintenance.auto", "false")
+        self.run_git("config", "gc.auto", "0")
         self.v13_inventory = json.loads((ROOT / ".github/fuzz-targets.json").read_text()) + [
             {"dir": "rullst-privacy/fuzz", "target": target}
             for target in ("fuzz_age_challenge_token", "fuzz_age_attestation")

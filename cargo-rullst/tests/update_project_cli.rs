@@ -269,12 +269,18 @@ fn virtual_workspace_prepares_members_and_records_an_absent_lockfile() {
 fn rejects_unknown_catalog_downgrades_and_unversioned_dependencies_without_retaining_staging() {
     let unknown = Fixture::new("7", "7.0.0");
     unknown.assert_clean_failure(&unknown.prepare(), "source majors 5, 6, 11 and 12");
-    let future = Fixture::new("12.2", "12.2.0");
+    // A release above the installed CLI, so the test keeps meaning a downgrade
+    // whatever version this CLI carries.
+    let mut newer = semver::Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+    newer.patch += 1;
+    newer.pre = semver::Prerelease::EMPTY;
+    let newer = newer.to_string();
+    let future = Fixture::new(&newer, &newer);
     future.assert_clean_failure(
         &future.prepare(),
         "cannot downgrade a dependency requirement",
     );
-    let locked = Fixture::new("12", "12.2.0");
+    let locked = Fixture::new("12", &newer);
     locked.assert_clean_failure(
         &locked.prepare(),
         "cannot downgrade a locked Rullst package",

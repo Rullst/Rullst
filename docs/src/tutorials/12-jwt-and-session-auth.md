@@ -12,8 +12,8 @@ removes the need for TLS, authorization, rotation, expiry, and revocation design
 cargo rullst make:jwt
 ```
 
-This creates `src/middlewares/jwt_auth.rs`, registers its module, and adds the
-direct `jsonwebtoken`, `chrono`, and `serde` dependencies when missing.
+This creates `src/middlewares/jwt_middleware.rs`, registers its module, and adds
+the direct `jsonwebtoken`, `chrono`, and `serde` dependencies when missing.
 
 Configure a high-entropy secret plus exact issuer and audience values:
 
@@ -34,7 +34,7 @@ diversity. Keep the secret out of source control and logs.
 ```rust,ignore
 use rullst::{Router, routing::get};
 use rullst::web::axum::middleware;
-use crate::middlewares::jwt_auth::jwt_middleware;
+use crate::middlewares::jwt_middleware::jwt_middleware;
 
 pub fn protected_routes() -> Router {
     Router::new()

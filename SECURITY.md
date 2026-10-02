@@ -17,6 +17,14 @@ source integration alone does not establish a published fix. See the
 for scope, validation and application actions. An application-specific patch
 does not update other installations of the published framework.
 
+The **12.2.0** minor release ports the fixes of the v13 review, including
+stored HTML escaping in the generated portfolio page, linear-time PII masking,
+tenant namespace encoding, login-jail, DLP and redaction hardening, and
+generators that no longer overwrite files. Confirm availability on the
+registry; see the
+[release review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-2-0-review.md)
+and the [upgrade notes](https://github.com/Rullst/Rullst/blob/v12/docs/src/migration-v12-1.md#upgrading-to-122).
+
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an
