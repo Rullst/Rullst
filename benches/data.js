@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790907075497,
+  "lastUpdate": 1790920440041,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -24663,6 +24663,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1242,
             "range": "± 56",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4dcd71c699b6235b2d841a2e57326bb5a4e9404d",
+          "message": "Merge pull request #401 from Rullst/feat/v13-assisted-upgrade\n\nfeat(cli): assisted v12 to v13 upgrade with source findings and cargo rullst ai upgrade",
+          "timestamp": "2026-10-02T02:40:04-03:00",
+          "tree_id": "f7b42d090e174edeb7daef473ccf88734af73d53",
+          "url": "https://github.com/Rullst/Rullst/commit/4dcd71c699b6235b2d841a2e57326bb5a4e9404d"
+        },
+        "date": 1790920438046,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 751,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 988,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 654,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2354,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
