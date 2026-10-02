@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790921517652,
+  "lastUpdate": 1790927535066,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12465,6 +12465,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 366,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e70dda40e256becd32b52f5e11b2bd859c3806c6",
+          "message": "Merge pull request #404 from Rullst/fix/v13-new-cli-dash-ux-review\n\nfix(cli,core): review fixes for dev telemetry, dash and CLI UX",
+          "timestamp": "2026-10-02T04:22:20-03:00",
+          "tree_id": "c6865691e267f11d13a9174a8ed12a65057d002f",
+          "url": "https://github.com/Rullst/Rullst/commit/e70dda40e256becd32b52f5e11b2bd859c3806c6"
+        },
+        "date": 1790927534222,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1687,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 401,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
