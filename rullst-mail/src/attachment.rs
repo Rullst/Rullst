@@ -20,12 +20,19 @@ pub const MAX_ATTACHMENT_MIME_BYTES: usize = 127;
 /// Maximum Content-ID length in bytes, without angle brackets.
 pub const MAX_ATTACHMENT_CID_BYTES: usize = 128;
 
+mod content_serde;
+
 /// Represents an email attachment or inline asset (e.g. image with Content-ID).
+///
+/// Serialization keeps the 12.1 form of `content`, one JSON number per byte,
+/// so 12.1 workers can read queued jobs. Deserialization also accepts a
+/// standard base64 string, the compact form 13.0 producers write.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Attachment {
     /// Name of the attached file (e.g. `"invoice.pdf"`).
     pub filename: String,
     /// Raw byte payload of the attachment.
+    #[serde(with = "content_serde")]
     pub content: Vec<u8>,
     /// MIME media type (e.g. `"application/pdf"`, `"image/png"`).
     pub mime_type: String,

@@ -26,9 +26,7 @@ async fn sql_chat_memory_orders_mysql_exchanges() {
         .get_host_port_ipv4(3306)
         .await
         .expect("MySQL port");
-    sql_chat_memory_support::exercise_sql_chat_memory(
-        &format!("mysql://root:root@{host}:{port}/testdb"),
-        SqlChatBackend::Mysql,
-    )
-    .await;
+    let database_url = format!("mysql://root:root@{host}:{port}/testdb");
+    sql_chat_memory_support::exercise_sql_chat_memory(&database_url, SqlChatBackend::Mysql).await;
+    sql_chat_memory_support::exercise_case_sensitive_mysql_keys(&database_url).await;
 }

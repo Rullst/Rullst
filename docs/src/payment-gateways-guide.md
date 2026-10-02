@@ -136,6 +136,12 @@ repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
 Paddle and Polar expose typed adapter contracts; the host supplies durable
 orchestration, atomic event processing and reconciliation for those integrations.
+Razorpay's legacy plan checkout creates a fixed 12-cycle subscription;
+`subscription.completed` reports the end of billing as `Canceled`.
+Paddle's legacy normalized path accepts only documented `subscription.*`
+lifecycle events whose status matches the event; signed transaction,
+adjustment and customer events are rejected rather than treated as a
+subscription snapshot.
 
 Rullst also supplies canonical Axum/Actix webhook middleware for supported
 normalized events. The production entry points reject empty/`mock_*` secrets.
@@ -269,7 +275,13 @@ email-based operation remains an offline fixture and returns
 `UnsupportedOperation` with real credentials before network dispatch. A usable
 transfer needs a real recipient account, authenticated quote UUID and durable
 UUID idempotency identity; funding is a separate operation. The existing
-status/webhook foundation does not provide that missing transfer workflow.
+transfer-status read does not provide that missing transfer workflow.
+
+`parse_webhook_payload` performs no signature verification. It is an offline
+fixture limited to an explicit `mock_*` API token; an empty token is a
+configuration error and a live token returns `UnsupportedOperation` before the
+body is read. A forged `funds_refunded` or `outgoing_payment_sent` body must
+never trigger a payout, refund or release.
 
 ---
 

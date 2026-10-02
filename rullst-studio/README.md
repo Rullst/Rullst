@@ -9,7 +9,8 @@ telemetry views from the sources explicitly supplied by the application.
 - **Database inspector:** Read and filter configured SQLx tables, edit bounded
   primitive non-key values, delete one primary-key-selected row with explicit
   confirmation, and inspect a live ER diagram. Mutation contracts run against
-  SQLite, PostgreSQL, MySQL, and MariaDB.
+  SQLite, PostgreSQL, MySQL, and MariaDB; PostgreSQL runs under both the
+  default `sqlx::Any` build and `strict-postgres`.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
@@ -51,6 +52,20 @@ The supported v12 mode is a standalone debug server. `run_studio` and
 and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. Non-local
 `Host`, cross-origin requests, and unsafe requests without `Origin` fail closed.
+Studio responses use `Referrer-Policy: same-origin` so that browsers keep the
+real origin on Studio's own form posts. `Origin: null` is accepted only with
+`Sec-Fetch-Site: same-origin` (sent when a host layer imposes `no-referrer`);
+a bare `null` origin or a same-site document on another port is rejected.
+
+**Database selection:** Studio uses the process-wide ORM pool that the
+application initialized (`Server`, Artisan or an explicit `Orm::init`). When no
+pool exists yet, the first database view initializes it once from the process
+`DATABASE_URL` or, when that is unset, `[database].url` parsed from
+`./Rullst.toml`. Without a configured database, Studio reports that its
+database tools are unavailable and creates nothing; there is no
+`sqlite://db.sqlite` fallback. Error messages never echo configuration content.
+`data_browser::resolve_db_url` remains only for API compatibility; Studio no
+longer uses it.
 Data-browser writes additionally require a crate-private marker created only by
 that verified access middleware, so importing the raw browser router cannot
 turn its mutation handlers into an unprotected database API.
@@ -143,10 +158,16 @@ nor exact logical keys.
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types
-remain read-only, a mutation must affect exactly one row, request bodies are
-limited to 64 KiB, and deletion requires typing `DELETE <table>`. This is a
-local developer database tool, not application authorization, tenant policy,
-audit history, rollback, or a supported shared-production admin surface.
+remain read-only, request bodies are limited to 64 KiB, and deletion requires
+typing `DELETE <table>`. A table stays read-only when any primary-key column is
+outside Studio's ASCII identifier boundary or beyond its 256-column cap, and a
+row whose key value is `NULL` offers no actions. Each write runs in a database
+transaction that commits only when exactly one row changed; otherwise it is
+rolled back and reported as `404` (no row) or `409` (several rows). Storage
+engines without transactions, such as MySQL MyISAM, cannot provide that
+rollback. This is a local developer database tool, not application
+authorization, tenant policy, audit history, undo, or a supported
+shared-production admin surface.
 
 ## 📚 Documentation
 

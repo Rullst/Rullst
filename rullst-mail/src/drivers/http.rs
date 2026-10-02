@@ -4,12 +4,16 @@ use std::{sync::OnceLock, time::Duration};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
-fn build_client(timeout: Duration) -> Result<reqwest::Client, MailError> {
+fn builder(timeout: Duration) -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
         .connect_timeout(Duration::from_secs(5))
         .timeout(timeout)
+}
+
+fn build_client(timeout: Duration) -> Result<reqwest::Client, MailError> {
+    builder(timeout)
         .build()
         .map_err(|_| MailError::ConfigError("cannot initialize provider HTTP client".into()))
 }
@@ -18,6 +22,28 @@ pub(super) fn client() -> Result<&'static reqwest::Client, MailError> {
     static CLIENT: OnceLock<Result<reqwest::Client, MailError>> = OnceLock::new();
     CLIENT
         .get_or_init(|| build_client(REQUEST_TIMEOUT))
+        .as_ref()
+        .map_err(Clone::clone)
+}
+
+/// Client for host-local credential endpoints. The name `localhost` is pinned
+/// to the IPv4/IPv6 loopback addresses instead of the system resolver, so a
+/// secret header sent to `http://localhost:<port>` cannot leave the host.
+pub(super) fn loopback_client() -> Result<&'static reqwest::Client, MailError> {
+    static CLIENT: OnceLock<Result<reqwest::Client, MailError>> = OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            let loopback = [
+                std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, 0)),
+                std::net::SocketAddr::from((std::net::Ipv6Addr::LOCALHOST, 0)),
+            ];
+            builder(REQUEST_TIMEOUT)
+                .resolve_to_addrs("localhost", &loopback)
+                .build()
+                .map_err(|_| {
+                    MailError::ConfigError("cannot initialize provider HTTP client".into())
+                })
+        })
         .as_ref()
         .map_err(Clone::clone)
 }

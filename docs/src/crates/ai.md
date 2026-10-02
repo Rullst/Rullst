@@ -53,10 +53,11 @@ Call custom `AiProvider` implementations through `AiClient` when the application
 mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
-Markdown beacons, and selected invisible Unicode controls. Supported PII classes are masked before
-outbound transmission. This is a bounded heuristic control, not proof that arbitrary input or model
-output is safe; authorization, tool permissions, output encoding, and domain validation remain
-application responsibilities.
+Markdown beacons, and selected invisible Unicode controls. Check-digit-valid CPF/CNPJ numbers
+(canonical formatted or unformatted), card-like digit runs and email usernames are masked before
+outbound transmission; alphanumeric CNPJs and other identifiers are not recognized. This is a
+bounded heuristic control, not proof that arbitrary input or model output is safe; authorization,
+tool permissions, output encoding, and domain validation remain application responsibilities.
 
 ## Adaptive evaluation runner
 
@@ -114,14 +115,21 @@ semantics until their different wire protocols have equivalent tests.
 `StatefulChat<M>` is a static-dispatch orchestration boundary over
 `ChatMemory`. It binds every conversation to trusted `TenantContext`, loads a
 bounded even history, calls the guarded client, and atomically appends the user
-and assistant halves after successful generation. `InMemoryChatMemory` is a
-bounded deterministic offline store.
+and assistant halves after successful generation. A response that the guardrail
+would block when the history is replayed is rejected as
+`StatefulChatError::Generation(AiError::BlockedByFirewall(_))` and is not
+stored. `InMemoryChatMemory` is a bounded deterministic offline store.
 
 With the opt-in umbrella `ai-sql-memory` feature, `SqlChatMemory` supplies a
 dedicated SQLx Any pool and fixed schema for SQLite, PostgreSQL, MySQL, and
 MariaDB. Its revision compare-and-swap rejects stale cross-process writers. It
 does not retry the provider call, because doing so could duplicate cost or side
-effects. The [AI integration tutorial](../6-ai-integration-tutorial.md#8-durable-chat-memory)
+effects. Tenant and conversation IDs compare case-sensitively on every backend:
+new MySQL/MariaDB tables use `ascii_bin` key columns, and every tenant-scoped
+MySQL/MariaDB statement also compares the key byte-exactly, so an older
+case-insensitive table fails closed until the migration in the
+[crate README](https://github.com/Rullst/Rullst/tree/main/rullst-ai#upgrading-mysqlmariadb-chat-memory-tables)
+is applied. The [AI integration tutorial](../6-ai-integration-tutorial.md#8-durable-chat-memory)
 shows the complete setup and application-owned security/retention boundary.
 
 ## Tenant-aware RAG pipeline

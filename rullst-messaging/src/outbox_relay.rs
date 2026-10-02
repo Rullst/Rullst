@@ -4,6 +4,7 @@ use crate::{
     MessageBroker, MessagingError, Namespace, PublishReceipt, PublishRequest, Result, TopicName,
 };
 use rullst_orm::{ClaimedOutboxEvent, Outbox};
+use sha2::{Digest, Sha256};
 use std::fmt;
 
 const MAX_CLAIM_ATTEMPTS: i32 = 100;
@@ -70,8 +71,15 @@ impl OrmOutboxRelayError {
 /// The application must enqueue its domain mutation and [`Outbox`] event in the
 /// same database transaction, then supervise claiming and retries. Publication
 /// and ORM acknowledgement are necessarily two operations. A crash between
-/// them republishes the same outbox `event_key`, which the broker treats as an
-/// exact idempotent replay when its content is unchanged.
+/// them republishes the same event under the same broker idempotency key,
+/// which the broker treats as an exact idempotent replay when its content is
+/// unchanged.
+///
+/// The ORM makes `event_key` unique only within its stream, while a broker
+/// deduplicates per topic. The broker idempotency key is therefore the
+/// lowercase hex SHA-256 of the stream, `/`, then the event key, so relays of
+/// different streams can share a topic without suppressing or conflicting
+/// with each other's events.
 pub struct OrmOutboxRelay<B> {
     stream: Namespace,
     topic: TopicName,
@@ -169,7 +177,7 @@ impl<B: MessageBroker> OrmOutboxRelay<B> {
         PublishRequest::try_new(
             self.topic.as_str(),
             &claim.event_kind,
-            &claim.event_key,
+            broker_idempotency_key(self.stream.as_str(), &claim.event_key),
             normalized_json.into_bytes(),
         )
         .and_then(|request| request.with_content_type("application/json"))
@@ -188,6 +196,26 @@ impl<B> fmt::Debug for OrmOutboxRelay<B> {
     }
 }
 
+/// Scopes the stream-unique outbox event key to its stream.
+///
+/// The fixed-length digest keeps the result within the 255-byte idempotency
+/// bound for the longest stream and event key (64 + 1 + 128 bytes) and makes
+/// the separator unambiguous.
+fn broker_idempotency_key(stream: &str, event_key: &str) -> String {
+    let mut key = String::with_capacity(65 + event_key.len());
+    for byte in Sha256::digest(stream.as_bytes()) {
+        key.push(hex_digit(byte >> 4));
+        key.push(hex_digit(byte & 0x0f));
+    }
+    key.push('/');
+    key.push_str(event_key);
+    key
+}
+
+fn hex_digit(nibble: u8) -> char {
+    char::from_digit(u32::from(nibble), 16).unwrap_or('0')
+}
+
 fn valid_claim_key(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= MAX_CLAIM_KEY_BYTES
@@ -198,4 +226,22 @@ fn valid_claim_key(value: &str) -> bool {
 
 const fn invalid_claim(source: MessagingError) -> OrmOutboxRelayError {
     OrmOutboxRelayError::InvalidClaim { source }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn broker_key_scopes_the_event_key_by_stream_within_the_bound() {
+        let key = broker_idempotency_key("tenant-a", "order-42");
+        assert_eq!(
+            key,
+            "80a707af7dc77ee1228f9127180f3964835e5beb4c4ab0d812f0fe7593579b3a/order-42"
+        );
+        assert_ne!(key, broker_idempotency_key("tenant-b", "order-42"));
+        let longest = broker_idempotency_key(&"s".repeat(128), &"k".repeat(128));
+        assert_eq!(longest.len(), 64 + 1 + 128);
+        assert!(crate::IdempotencyKey::try_new(longest).is_ok());
+    }
 }

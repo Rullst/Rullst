@@ -92,7 +92,7 @@ flowchart TD
 
 ### Phase 4: Enterprise Security, DLP, Deliverability & Compliance 🛡️
 - [x] **Outbound DLP Email Secret Interceptor**: Scans both email subject, HTML/plain-text bodies (`redact_email_secrets` & `.sanitize_secrets()`) to prevent accidental leaks of AWS keys (`AKIA...`), database passwords, private keys, API keys, and bearer tokens.
-- [~] **Outbound Phishing & Homograph URL Interceptor (`.validate_security()`)**: Bounded URL heuristics reject selected schemes and mixed Latin/Cyrillic/Greek domains; this is not a complete HTML/URL parser or phishing guarantee.
+- [~] **Outbound Phishing & Homograph URL Interceptor (`.validate_security()`)**: Bounded URL heuristics reject selected schemes and host labels that mix Latin/Cyrillic/Greek letters or spell Latin with Cyrillic lookalikes; this is not a complete HTML/URL parser or phishing guarantee.
 - [~] **RFC 8058 One-Click List-Unsubscribe**: Supported providers emit the headers when an HTTPS unsubscribe URL is explicitly configured. Application policy and mailbox-provider compliance remain external.
 - [ ] **DMARC, SPF & MTA-STS Live Ingestion Parser**: Automated ingestion endpoint for DMARC aggregate XML reports (`rua`/`ruf`) sent by major mailbox providers (Google, Microsoft, Yahoo), alerting against domain spoofing attempts in real time.
 - [ ] **S/MIME X.509 Digital Signatures & PGP Envelope Encryption (`rullst-mail::crypto`)**: Native cryptographic signatures and payload encryption for high-assurance enterprise communications (banking receipts, medical reports, government alerts).

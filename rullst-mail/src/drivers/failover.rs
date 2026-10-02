@@ -123,18 +123,26 @@ fn circuit_unavailable() -> MailError {
     MailError::ConfigError("mail failover circuit state is unavailable".to_string())
 }
 
+/// How each driver in the chain is invoked, so every attempt keeps the
+/// caller's delivery identity or tenant context.
+#[derive(Clone, Copy)]
+enum Route<'a> {
+    Plain,
+    DeliveryId(&'a str),
+    Tenant(&'a str),
+}
+
 impl FailoverDriver {
-    async fn dispatch(
-        &self,
-        message: &Message,
-        delivery_id: Option<&str>,
-    ) -> Result<(), MailError> {
-        let prepared = DeliveryPipeline::prepare(message)?;
+    async fn dispatch(&self, message: &Message, route: Route<'_>) -> Result<(), MailError> {
+        let prepared = match route {
+            Route::Tenant(tenant_id) => DeliveryPipeline::prepare_for_tenant(tenant_id, message)?,
+            Route::Plain | Route::DeliveryId(_) => DeliveryPipeline::prepare(message)?,
+        };
         let message = prepared.message();
         let tripped = self.is_tripped()?;
 
         let primary_error = if !tripped {
-            match dispatch_to(self.primary.as_ref(), message, delivery_id).await {
+            match dispatch_to(self.primary.as_ref(), message, route).await {
                 Ok(()) => {
                     if self.failure_count()? > 0 {
                         tracing::info!(
@@ -182,7 +190,7 @@ impl FailoverDriver {
         }
 
         for (idx, fallback) in self.fallbacks.iter().enumerate() {
-            match dispatch_to(fallback.as_ref(), message, delivery_id).await {
+            match dispatch_to(fallback.as_ref(), message, route).await {
                 Ok(()) => {
                     tracing::info!(
                         event = "mail.failover.fallback_succeeded",
@@ -212,18 +220,19 @@ impl FailoverDriver {
 async fn dispatch_to(
     driver: &dyn MailDriver,
     message: &Message,
-    delivery_id: Option<&str>,
+    route: Route<'_>,
 ) -> Result<(), MailError> {
-    match delivery_id {
-        Some(id) => driver.send_with_delivery_id(message, id).await,
-        None => driver.send(message).await,
+    match route {
+        Route::Plain => driver.send(message).await,
+        Route::DeliveryId(id) => driver.send_with_delivery_id(message, id).await,
+        Route::Tenant(tenant_id) => driver.send_for_tenant(tenant_id, message).await,
     }
 }
 
 #[async_trait]
 impl MailDriver for FailoverDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
-        self.dispatch(message, None).await
+        self.dispatch(message, Route::Plain).await
     }
 
     // Identities are scoped by each provider. Switching providers after an
@@ -234,7 +243,13 @@ impl MailDriver for FailoverDriver {
         delivery_id: &str,
     ) -> Result<(), MailError> {
         super::traits::validate_delivery_id(delivery_id)?;
-        self.dispatch(message, Some(delivery_id)).await
+        self.dispatch(message, Route::DeliveryId(delivery_id)).await
+    }
+
+    // Tenant-aware primaries and fallbacks (e.g. `TenantMailResolver`) must
+    // receive the tenant rather than their default no-tenant route.
+    async fn send_for_tenant(&self, tenant_id: &str, message: &Message) -> Result<(), MailError> {
+        self.dispatch(message, Route::Tenant(tenant_id)).await
     }
 }
 
@@ -262,5 +277,49 @@ mod tests {
             .await;
         assert!(matches!(result, Err(MailError::ConfigError(_))));
         assert!(primary_store.lock().expect("primary store").is_empty());
+    }
+
+    struct TransientFailure;
+
+    #[async_trait]
+    impl MailDriver for TransientFailure {
+        async fn send(&self, _message: &Message) -> Result<(), MailError> {
+            Err(MailError::transport("fixture", "unavailable"))
+        }
+    }
+
+    #[tokio::test]
+    async fn tenant_context_reaches_the_primary_and_fallbacks() {
+        use crate::TenantMailResolver;
+        let message = Message::new()
+            .to("user@example.com")
+            .subject("Tenant route");
+
+        let (tenant, tenant_store) = MemoryDriver::isolated();
+        let (global, global_store) = MemoryDriver::isolated();
+        let primary = TenantMailResolver::with_default(global);
+        primary
+            .register("tenant_acme", tenant)
+            .expect("register tenant");
+        let failover = FailoverDriver::new(primary).with_fallback(TransientFailure);
+        failover
+            .send_for_tenant("tenant_acme", &message)
+            .await
+            .expect("tenant delivery");
+        assert_eq!(tenant_store.lock().expect("tenant store").len(), 1);
+        assert!(global_store.lock().expect("global store").is_empty());
+
+        let (tenant, tenant_store) = MemoryDriver::isolated();
+        let fallback = TenantMailResolver::new();
+        fallback
+            .register("tenant_acme", tenant)
+            .expect("register tenant");
+        let failover = FailoverDriver::new(TransientFailure).with_fallback(fallback);
+        failover
+            .send_for_tenant("tenant_acme", &message)
+            .await
+            .expect("fallback tenant delivery");
+        assert_eq!(tenant_store.lock().expect("tenant store").len(), 1);
+        assert!(failover.send_for_tenant("../acme", &message).await.is_err());
     }
 }

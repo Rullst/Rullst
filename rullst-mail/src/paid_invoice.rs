@@ -8,6 +8,21 @@ use rullst_capital::PaidInvoice;
 /// The stable delivery key lets the application atomically claim its own
 /// durable outbox record before calling [`Self::send`]. Rullst Mail is
 /// at-least-once and does not claim distributed exactly-once provider delivery.
+///
+/// The prepared message has no sender. Real providers require one from a domain
+/// verified for the account, so set it on a copy of [`Self::message`] and send
+/// that through [`Mail::send`], which re-runs the pre-flight pipeline:
+///
+/// ```rust,no_run
+/// # async fn deliver(delivery: rullst_mail::PaidInvoiceDelivery) -> Result<(), rullst_mail::MailError> {
+/// let message = delivery.message().clone().from("billing@example.com");
+/// rullst_mail::Mail::send(message).await
+/// # }
+/// ```
+///
+/// The sender-less [`Self::send`], [`Self::send_for_tenant`] and
+/// [`Self::send_with`] suit the offline mock; real drivers either reject the
+/// missing sender or fall back to a placeholder that providers reject.
 #[derive(Clone)]
 pub struct PaidInvoiceDelivery {
     delivery_key: String,

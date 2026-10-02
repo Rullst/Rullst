@@ -182,12 +182,90 @@ pub fn is_disposable_domain(domain: &str) -> bool {
 }
 
 /// Checks whether a given email address belongs to a disposable email service.
+///
+/// Display-name and angle-bracket forms are checked by their bare address.
 pub fn is_disposable_email(email: &str) -> bool {
-    if let Some(domain) = extract_domain(email) {
+    let address = recipient_address(email).unwrap_or(email);
+    if let Some(domain) = extract_domain(address) {
         is_disposable_domain(domain)
     } else {
         false
     }
+}
+
+/// Largest bare recipient address accepted, matching the suppression key bound.
+const MAX_RECIPIENT_ADDRESS_BYTES: usize = 320;
+
+/// Extracts the bare `local@domain` address from one recipient.
+///
+/// This is the single recipient parser used by the delivery pipeline, the
+/// deliverability check and suppression normalization. It accepts a bare
+/// address, `<address>` or `Display Name <address>`, where the name may be a
+/// quoted string. Lists, groups, comments, quoted local parts, domain literals
+/// and control characters are rejected rather than guessed at.
+pub(crate) fn recipient_address(value: &str) -> Result<&str, DeliverabilityError> {
+    if value.chars().any(char::is_control) {
+        return Err(recipient_form_error());
+    }
+    let value = value.trim();
+    let address = match value.strip_suffix('>') {
+        Some(head) => {
+            let (name, address) = head.rsplit_once('<').ok_or_else(recipient_form_error)?;
+            validate_display_name(name.trim_end())?;
+            address
+        }
+        None => value,
+    };
+    if address.len() > MAX_RECIPIENT_ADDRESS_BYTES
+        || address.chars().any(|character| {
+            character.is_whitespace()
+                || matches!(
+                    character,
+                    '<' | '>' | '(' | ')' | '[' | ']' | ':' | ';' | ',' | '"' | '\\'
+                )
+        })
+    {
+        return Err(recipient_form_error());
+    }
+    validate_email_syntax(address)?;
+    Ok(address)
+}
+
+fn validate_display_name(name: &str) -> Result<(), DeliverabilityError> {
+    if let Some(quoted) = name
+        .strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
+    {
+        let mut escaped = false;
+        for character in quoted.chars() {
+            match (escaped, character) {
+                (true, _) => escaped = false,
+                (false, '\\') => escaped = true,
+                (false, '"') => return Err(recipient_form_error()),
+                (false, _) => {}
+            }
+        }
+        return if escaped {
+            Err(recipient_form_error())
+        } else {
+            Ok(())
+        };
+    }
+    if name.chars().any(|character| {
+        matches!(
+            character,
+            '<' | '>' | '(' | ')' | '[' | ']' | ':' | ';' | '@' | '\\' | ',' | '"'
+        )
+    }) {
+        return Err(recipient_form_error());
+    }
+    Ok(())
+}
+
+fn recipient_form_error() -> DeliverabilityError {
+    DeliverabilityError::InvalidSyntax(
+        "Recipient must be one address, optionally as `Name <address>`".into(),
+    )
 }
 
 /// Validates email address syntax (RFC compliant basic checks).
@@ -227,8 +305,11 @@ pub fn validate_email_syntax(email: &str) -> Result<(), DeliverabilityError> {
 }
 
 /// Comprehensive pre-flight email deliverability check: validates syntax and ensures domain is not disposable.
+///
+/// A display-name or angle-bracket recipient is parsed to its bare address
+/// first, so the disposable-domain check never sees a trailing `>`.
 pub fn validate_email_deliverability(email: &str) -> Result<(), DeliverabilityError> {
-    validate_email_syntax(email)?;
+    let email = recipient_address(email)?;
 
     if let Some(domain) = extract_domain(email) {
         if is_disposable_domain(domain) {
@@ -287,6 +368,65 @@ mod tests {
         assert!(validate_email_deliverability("user@").is_err());
         assert!(validate_email_deliverability("@domain.com").is_err());
         assert!(validate_email_deliverability("user@domain").is_err());
+    }
+
+    #[test]
+    fn recipient_parser_extracts_one_bare_address_or_rejects() {
+        for (input, expected) in [
+            ("alice@example.com", "alice@example.com"),
+            ("  alice@example.com ", "alice@example.com"),
+            ("<alice@example.com>", "alice@example.com"),
+            ("Alice <alice@example.com>", "alice@example.com"),
+            ("Alice Q. O'Neil <alice@example.com>", "alice@example.com"),
+            ("\"Doe, Alice\" <alice@example.com>", "alice@example.com"),
+            (
+                "\"bob@evil.example <x>\" <alice@example.com>",
+                "alice@example.com",
+            ),
+            (
+                "\"Say \\\"hi\\\"\" <alice@example.com>",
+                "alice@example.com",
+            ),
+            ("José <jose@example.com>", "jose@example.com"),
+        ] {
+            assert_eq!(recipient_address(input), Ok(expected), "{input}");
+        }
+        for input in [
+            "",
+            "Alice <alice@example.com",
+            "Alice alice@example.com>",
+            "<alice@example.com> trailing",
+            "alice@example.com, bob@example.com",
+            "alice@example.com,bob",
+            "a <b@example.com>, c <d@example.com>",
+            "group: alice@example.com;",
+            "alice@example.com (comment)",
+            "bob@evil.example <alice@example.com>",
+            "\"unterminated <alice@example.com>",
+            "\"a\"b\" <alice@example.com>",
+            "\"a\\\" <alice@example.com>",
+            "\"quoted local\"@example.com",
+            "user@[192.0.2.1]",
+            "a b@example.com",
+            "alice@example.com\t",
+            "<<alice@example.com>>",
+        ] {
+            assert!(recipient_address(input).is_err(), "{input}");
+        }
+        let long = format!("{}@example.com", "a".repeat(MAX_RECIPIENT_ADDRESS_BYTES));
+        assert!(recipient_address(&long).is_err());
+    }
+
+    #[test]
+    fn display_name_recipients_cannot_bypass_the_disposable_filter() {
+        for input in ["x <x@mailinator.com>", "<x@MAILINATOR.com>"] {
+            assert!(matches!(
+                validate_email_deliverability(input),
+                Err(DeliverabilityError::DisposableDomain(_))
+            ));
+            assert!(is_disposable_email(input));
+        }
+        assert!(validate_email_deliverability("Alice <alice@example.com").is_err());
     }
 
     #[test]

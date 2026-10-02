@@ -30,9 +30,14 @@ pub(super) async fn create_record(
     };
 
     let mut keys = Vec::new();
-    let mut values = Vec::new();
+    let mut values: Vec<Option<String>> = Vec::new();
     for value in data {
-        if value.field.name == entry.pk && value.value.trim().is_empty() {
+        if value.field.name == entry.pk
+            && value
+                .value
+                .as_deref()
+                .is_none_or(|key| key.trim().is_empty())
+        {
             continue;
         }
         keys.push(value.field.name);
@@ -40,7 +45,7 @@ pub(super) async fn create_record(
     }
     if let (Some(tenant_column), Some(tenant_id)) = (entry.tenant_column, tenant_id) {
         keys.push(tenant_column);
-        values.push(tenant_id.to_string());
+        values.push(Some(tenant_id.to_string()));
     }
     if keys.is_empty() {
         return (
@@ -70,7 +75,7 @@ pub(super) async fn create_record(
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
     for value in &values {
-        query = query.bind(value);
+        query = query.bind(value.as_deref());
     }
     let result = match query.execute(&mut *transaction).await {
         Ok(result) if result.rows_affected() > 0 => result,
@@ -167,8 +172,9 @@ pub(super) async fn update_record(
         Err(_) => return database_failure("update", entry.table),
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+    // Only submitted fields are written; `None` stores SQL NULL.
     for value in &data {
-        query = query.bind(&value.value);
+        query = query.bind(value.value.as_deref());
     }
     if let Ok(numeric_id) = id.parse::<i64>() {
         query = query.bind(numeric_id);
