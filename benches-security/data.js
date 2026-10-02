@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790891991285,
+  "lastUpdate": 1790902969932,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -13905,6 +13905,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_role",
             "value": 14,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2919aab55f48d725cccdd273e15d1969e4b742c",
+          "message": "Merge pull request #396 from Rullst/docs/v13-legal-compliance-roadmap\n\ndocs(roadmap): legal compliance readiness and human/AI ease plans",
+          "timestamp": "2026-10-01T21:43:33-03:00",
+          "tree_id": "bf5bb932ea5d5d4491b0f3c3b3f4a9979911889a",
+          "url": "https://github.com/Rullst/Rullst/commit/e2919aab55f48d725cccdd273e15d1969e4b742c"
+        },
+        "date": 1790902969383,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5337,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 706,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
