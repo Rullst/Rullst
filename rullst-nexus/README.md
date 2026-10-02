@@ -34,6 +34,13 @@ applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
 change.
 
+A `number` field accepts any finite decimal, including a fraction or a value
+outside the Rust field's range: 12.x field metadata does not record whether the
+model field is an integer. For integer columns, enforce the type and range in
+the database (for example a `CHECK` constraint or a SQLite `STRICT` table), or
+mark the field `readonly`, so an edit cannot store a value the application
+cannot decode.
+
 ## Tenant-scoped CRUD and mutation audit
 
 Models whose rows belong to one tenant may opt into an exact text-column scope.
