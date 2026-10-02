@@ -64,20 +64,39 @@ mod tests {
     use super::*;
 
     #[test]
-    // TM-DEPLOY-06: generated auth keeps blocking password work off the executor.
+    // TM-DEPLOY-06: generated auth keeps blocking password work off the executor
+    // and bounds how much of it runs at once.
     fn generated_auth_is_async_query_bound_and_panic_free() {
         let source = render_auth_controller(None);
         syn::parse_file(&source).expect("auth controller must parse");
         assert!(source.contains("find_by_email"));
-        assert!(source.contains("verify_password_async"));
-        assert!(source.contains("hash_password_async"));
+        // Each Argon2id run holds ~19 MiB: the unbounded async helpers would
+        // let a burst of logins exhaust memory on the blocking pool.
+        assert!(!source.contains("verify_password_async"));
+        assert!(!source.contains("hash_password_async"));
+        assert!(source.contains("Semaphore::new(MAX_CONCURRENT_PASSWORD_WORK)"));
+        assert!(source.contains("rullst::runtime::task::spawn_blocking(move || {"));
+        assert!(source.contains("drop(permit);"));
+        for call in [
+            "rullst_auth::verify_password(",
+            "rullst_auth::hash_password(",
+        ] {
+            let lines = source
+                .lines()
+                .filter(|line| line.contains(call))
+                .collect::<Vec<_>>();
+            assert_eq!(lines.len(), 1, "{call}");
+            assert!(
+                lines
+                    .iter()
+                    .all(|line| line.contains("run_password_work(move ||"))
+            );
+        }
         assert!(source.contains("DUMMY_PASSWORD_HASH"));
         assert!(source.contains("save_with_tx"));
         assert!(source.contains("transaction.rollback()"));
         assert!(!source.contains(REGISTRATION_HOOK_MARKER));
         assert!(!source.contains("User::all()"));
-        assert!(!source.contains("verify_password("));
-        assert!(!source.contains("hash_password("));
         assert!(!source.contains(".unwrap("));
         assert!(!source.contains(".expect("));
         assert!(!source.contains("panic!("));

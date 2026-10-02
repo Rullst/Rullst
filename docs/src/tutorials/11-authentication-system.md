@@ -75,8 +75,13 @@ edge.
 
 ## What the scaffold currently enforces
 
-- Passwords are hashed with the asynchronous Argon2id helper; plaintext is not
-  written to the user model.
+- Passwords are hashed with Argon2id on Tokio's blocking pool; plaintext is not
+  written to the user model. At most four hashes or verifications run at once
+  (each holds about 19 MiB); a submission that waits two seconds without
+  capacity receives 503. Adjust `MAX_CONCURRENT_PASSWORD_WORK` to the host.
+  This bounds memory, not abuse: per-client login throttling remains
+  application work (Core's `RateLimiter` keys by transport peer, so behind a
+  reverse proxy every client would share the proxy's budget).
 - Registration accepts passwords from 12 through 72 bytes and normalizes email.
 - Login performs a dummy password verification for unknown users to reduce the
   obvious account-enumeration timing difference.
