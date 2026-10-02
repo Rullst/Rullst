@@ -171,6 +171,50 @@ fn the_orm_layer_counts_outermost_operations_with_their_static_labels() {
 }
 
 #[test]
+fn chunk_traversals_count_their_pages_and_handler_operations_instead_of_themselves() {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let recorder = Arc::new(Recorder::new());
+    let subscriber = tracing_subscriber::registry().with(OrmQueryLayer::local(recorder.clone()));
+    tracing::subscriber::with_default(subscriber, || {
+        for operation in ["chunk", "chunk_by_id"] {
+            let traversal = tracing::info_span!(
+                target: "rullst_orm",
+                "rullst.orm.query",
+                orm.model = "Post",
+                orm.table = "posts",
+                orm.operation = operation
+            );
+            traversal.in_scope(|| {
+                // One page fetch and one save run by the handler.
+                tracing::info_span!(
+                    target: "rullst_orm",
+                    "rullst.orm.query",
+                    orm.operation = "select_many"
+                )
+                .in_scope(|| {
+                    // Eager loading inside the page fetch stays part of it.
+                    tracing::info_span!(
+                        target: "rullst_orm",
+                        "rullst.orm.query",
+                        orm.operation = "select_many"
+                    )
+                    .in_scope(|| {});
+                });
+                tracing::info_span!(target: "rullst_orm", "rullst.orm.query", orm.operation = "save")
+                    .in_scope(|| {});
+                // Handler time is not an ORM operation of its own.
+                std::thread::sleep(Duration::from_millis(110));
+            });
+        }
+    });
+
+    let snapshot = recorder.query_snapshot();
+    assert_eq!(snapshot.queries_total, 4);
+    assert_eq!(snapshot.slow_queries_total, 0);
+}
+
+#[test]
 fn database_state_names_why_queries_are_not_reported() {
     let recorder = Recorder::new();
     assert_eq!(

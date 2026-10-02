@@ -1430,8 +1430,10 @@ AVAILABLE** panel with these steps:
 | Queue pending | The application passes its queue to the server. | `Server::new(router).with_dev_queue(queue)` (accepts a `Queue` or an `Arc<Queue>`). |
 
 ORM queries count the outermost `rullst.orm.query` span of each ORM operation
-(model queries, saves, deletes and `Orm::raw`). One operation can run several
-SQL statements, and SQL executed directly through SQLx is not counted.
+(model queries, saves, deletes and `Orm::raw`). A `chunk`/`chunk_by_id`
+traversal is not counted itself: each page it fetches and each operation its
+handler runs counts separately. One operation can run several SQL statements,
+and SQL executed directly through SQLx is not counted.
 
 Terminals at least 26 rows tall show the metrics row and terminals at least 105
 columns wide add the recent-requests panel; shorter terminals show a one-line

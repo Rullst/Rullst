@@ -204,9 +204,12 @@ ORM figures come from the existing secret-free `rullst.orm.query` spans. In
 debug builds `telemetry::init_telemetry` (which `Server::run` calls) adds a
 passive layer that times the outermost such span of each ORM operation, from
 creation until it closes; nested operations such as eager loads belong to their
-outer operation. An application that installs its own global subscriber first,
-or a `RUST_LOG` that disables `rullst_orm` INFO spans, receives the
-`unavailable` state instead of misleading zeros. Statements executed directly
+outer operation. The span of a `chunk`/`chunk_by_id` traversal also covers the
+application's handler, so it is neither counted nor treated as enclosing: each
+page it fetches and each operation the handler runs is counted on its own. An
+application that installs its own global subscriber first, or a `RUST_LOG` that
+disables `rullst_orm` INFO spans, receives the `unavailable` state instead of
+misleading zeros. Statements executed directly
 through SQLx are not observed.
 
 Report a queue's pending count, read with a 250 ms limit on each poll:
