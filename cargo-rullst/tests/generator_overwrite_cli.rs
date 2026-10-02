@@ -261,3 +261,49 @@ fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
     assert!(!turso.path("src/migrations").exists());
     assert!(!turso.path("src/models").exists());
 }
+
+#[test]
+fn mfa_scaffold_is_server_side_registered_and_never_overwrites() {
+    let project = Project::new();
+    project.succeeds(&["auth"]);
+    project.succeeds(&["make:mfa"]);
+    let controller = project.read("src/controllers/mfa.rs");
+    assert!(controller.contains("verify_totp_step_after"));
+    assert!(!controller.contains("pub secret: String,\n    pub code"));
+    assert!(
+        project
+            .read("src/controllers/mod.rs")
+            .contains("pub mod mfa;")
+    );
+    assert!(
+        project
+            .read("src/migrations/mod.rs")
+            .contains("create_user_mfa_factors_table")
+    );
+    let manifest: toml::Value = toml::from_str(&project.read("Cargo.toml")).expect("manifest");
+    let features = manifest["dependencies"]["rullst"]["features"]
+        .as_array()
+        .expect("rullst features");
+    assert!(
+        features
+            .iter()
+            .any(|value| value.as_str() == Some("security"))
+    );
+
+    let refused = project.fails(&["make:mfa"]);
+    assert!(refused.contains("src/controllers/mfa.rs"), "{refused}");
+    assert_unchanged(&project, "src/controllers/mfa.rs", &controller);
+    assert_eq!(
+        project
+            .migrations_ending_with("_create_user_mfa_factors_table.rs")
+            .len(),
+        1
+    );
+
+    let customized = Project::new();
+    fs::create_dir_all(customized.path("src/controllers")).expect("controllers directory");
+    fs::write(customized.path("src/controllers/mfa.rs"), "// mine\n").expect("custom MFA");
+    customized.fails(&["make:mfa"]);
+    assert_unchanged(&customized, "src/controllers/mfa.rs", "// mine\n");
+    assert!(customized.migrations_ending_with(".rs").is_empty());
+}
