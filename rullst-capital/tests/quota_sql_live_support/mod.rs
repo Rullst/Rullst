@@ -30,6 +30,9 @@ pub async fn exercise_sql_quota(database_url: &str, backend: SqlQuotaBackend) {
         .expect("live SQL quota store");
     assert_eq!(store.backend(), backend);
     store.prepare_schema().await.expect("live quota schema");
+    // Tables created (or migrated) by 12.2 never take the legacy warning path.
+    let expected_legacy = (backend == SqlQuotaBackend::Mysql).then_some(false);
+    assert_eq!(store.legacy_case_insensitive_keys(), expected_legacy);
     let workspace = BillingSubject::try_new("workspace", "live-team").expect("subject");
     let request = QuotaRequest::try_new(workspace.clone(), "projects", "project-live-1", 2, 3)
         .expect("request");

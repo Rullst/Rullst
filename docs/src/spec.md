@@ -1348,8 +1348,10 @@ MySQL and MariaDB. Its conditional counter update and unique event claim prevent
 concurrent members from exceeding the same limit. Exact retries return a replay
 grant without consuming or executing again; a key reused with different units
 or limit fails closed. Subjects, features and event keys are case-sensitive on
-every backend: MySQL/MariaDB key columns use `ascii_bin`, and the store refuses
-a legacy table whose key columns fold case until its documented migration runs.
+SQLite, PostgreSQL and new MySQL/MariaDB tables, whose key columns use
+`ascii_bin`. A MySQL/MariaDB table created by 12.1 or earlier keeps its
+case-insensitive 12.1 behaviour, and the store logs one warning per store
+naming the recommended documented migration.
 `QuotaGate::execute` blocks the callback before an
 over-limit creation and compensates an ordinary callback error.
 

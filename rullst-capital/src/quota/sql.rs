@@ -5,11 +5,8 @@ use super::{
     tokens_match, validate_replay,
 };
 use async_trait::async_trait;
-use rullst_orm::sqlx::{Any, AnyPool, Executor, Row, Transaction, any::AnyPoolOptions};
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use rullst_orm::sqlx::{Any, AnyPool, Row, Transaction, any::AnyPoolOptions};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 mod mysql;
@@ -38,8 +35,8 @@ pub enum SqlQuotaBackend {
 pub struct SqlQuotaStore {
     pool: AnyPool,
     backend: SqlQuotaBackend,
-    // Set once the MySQL/MariaDB key columns were seen to compare case-sensitively.
-    keys_verified: Arc<AtomicBool>,
+    // The first complete MySQL/MariaDB key-collation check of this store.
+    key_collation: Arc<OnceLock<mysql::KeyCollation>>,
 }
 
 impl std::fmt::Debug for SqlQuotaStore {
@@ -79,7 +76,7 @@ impl SqlQuotaStore {
         Self {
             pool,
             backend,
-            keys_verified: Arc::new(AtomicBool::new(false)),
+            key_collation: Arc::new(OnceLock::new()),
         }
     }
 
@@ -98,13 +95,14 @@ impl SqlQuotaStore {
     /// Release migrations should normally own this DDL. It is never run
     /// implicitly by a request path.
     ///
-    /// On MySQL/MariaDB the subject, feature and event-key columns use the
-    /// binary `ascii_bin` collation, so keys that differ only by letter case
-    /// stay distinct as on PostgreSQL and SQLite. An existing table is never
-    /// altered. If one of its key columns folds case (a table created by an
-    /// earlier release), this method and every store operation return
-    /// [`QuotaError::StorageUnavailable`] until the documented migration
-    /// converts those columns.
+    /// On MySQL/MariaDB new tables declare the subject, feature and event-key
+    /// columns with the binary `ascii_bin` collation, so keys that differ only
+    /// by letter case stay distinct as on PostgreSQL and SQLite. An existing
+    /// table is never altered. A table created by 12.1 or earlier keeps
+    /// working with its case-insensitive keys, which share one counter or claim
+    /// when they differ only by case; the store then logs one warning (target
+    /// `rullst_capital::quota`) naming the recommended `ALTER TABLE` migration
+    /// documented in the crate README.
     pub async fn prepare_schema(&self) -> Result<(), QuotaError> {
         let (counters, claims) = schema_sql(self.backend);
         rullst_orm::sqlx::query(counters)
@@ -115,7 +113,8 @@ impl SqlQuotaStore {
             .execute(&self.pool)
             .await
             .map_err(|_| QuotaError::StorageUnavailable)?;
-        self.ensure_case_sensitive_keys(&self.pool).await
+        self.check_key_collation().await;
+        Ok(())
     }
 
     /// Reserves quota inside a caller-owned transaction.
@@ -127,7 +126,6 @@ impl SqlQuotaStore {
         transaction: &mut Transaction<'_, Any>,
         request: &QuotaRequest,
     ) -> Result<QuotaGrant, QuotaError> {
-        self.ensure_case_sensitive_keys(&mut **transaction).await?;
         let claim_token = random_claim_token()?;
         rullst_orm::sqlx::query(insert_claim_sql(self.backend))
             .bind(request.subject.kind())
@@ -233,7 +231,6 @@ impl SqlQuotaStore {
         transaction: &mut Transaction<'_, Any>,
         grant: &QuotaGrant,
     ) -> Result<bool, QuotaError> {
-        self.ensure_case_sensitive_keys(&mut **transaction).await?;
         let request = grant.request();
         let row = rullst_orm::sqlx::query(select_claim_sql(self.backend))
             .bind(request.subject.kind())
@@ -274,27 +271,48 @@ impl SqlQuotaStore {
         Ok(true)
     }
 
-    /// Fails closed while a MySQL/MariaDB quota key column folds letter case.
+    /// Detects, once per store, MySQL/MariaDB quota tables whose key columns
+    /// still fold letter case, and warns instead of failing so that tables
+    /// created by 12.1 keep their 12.1 behaviour.
     ///
-    /// Only a successful check is remembered, so a store recovers once the
-    /// operator has migrated a legacy table.
-    async fn ensure_case_sensitive_keys<'e, E>(&self, executor: E) -> Result<(), QuotaError>
-    where
-        E: Executor<'e, Database = Any>,
-    {
-        if self.backend != SqlQuotaBackend::Mysql || self.keys_verified.load(Ordering::Acquire) {
-            return Ok(());
+    /// The lookup runs on the pool, never inside a caller-owned transaction.
+    /// A failed lookup, or tables that do not exist yet, decide nothing: the
+    /// statement that follows reports its own error, and the next call checks
+    /// again.
+    async fn check_key_collation(&self) {
+        if self.backend != SqlQuotaBackend::Mysql || self.key_collation.get().is_some() {
+            return;
         }
-        let case_sensitive =
-            rullst_orm::sqlx::query_scalar::<_, i64>(mysql::CASE_SENSITIVE_KEY_COLUMNS)
-                .fetch_one(executor)
-                .await
-                .map_err(|_| QuotaError::StorageUnavailable)?;
-        if case_sensitive != mysql::KEY_COLUMNS {
-            return Err(QuotaError::StorageUnavailable);
+        let Ok(row) = rullst_orm::sqlx::query(mysql::KEY_COLUMN_COLLATIONS)
+            .fetch_one(&self.pool)
+            .await
+        else {
+            return;
+        };
+        let (Ok(present), Ok(case_sensitive)) =
+            (row.try_get::<i64, _>(0), row.try_get::<i64, _>(1))
+        else {
+            return;
+        };
+        let Some(observed) = mysql::KeyCollation::classify(present, case_sensitive) else {
+            return;
+        };
+        if mysql::record_key_collation(&self.key_collation, observed) {
+            rullst_orm::_tracing::warn!(
+                target: "rullst_capital::quota",
+                "MySQL/MariaDB quota tables created before 12.2 compare subjects, features and event keys case-insensitively, so keys that differ only by case share one counter or claim; run the ALTER TABLE migration in the rullst-capital README (\"Upgrading MySQL/MariaDB quota tables\") to make them case-sensitive"
+            );
         }
-        self.keys_verified.store(true, Ordering::Release);
-        Ok(())
+    }
+
+    /// Whether this store found MySQL/MariaDB quota key columns that still
+    /// fold letter case. `None` until a complete check succeeded, and always
+    /// for other backends. Exposed for upgrade tests only.
+    #[doc(hidden)]
+    pub fn legacy_case_insensitive_keys(&self) -> Option<bool> {
+        self.key_collation
+            .get()
+            .map(|collation| *collation == mysql::KeyCollation::LegacyCaseInsensitive)
     }
 
     async fn usage_with_transaction(
@@ -336,9 +354,9 @@ impl SqlQuotaStore {
 #[async_trait]
 impl QuotaStore for SqlQuotaStore {
     async fn reserve(&self, request: &QuotaRequest) -> Result<QuotaGrant, QuotaError> {
-        // Checked before the transaction starts, so the first read does not
-        // open the MySQL/MariaDB snapshot ahead of the claim insert.
-        self.ensure_case_sensitive_keys(&self.pool).await?;
+        // Checked on the pool before the transaction starts, so the lookup
+        // never opens the MySQL/MariaDB snapshot ahead of the claim insert.
+        self.check_key_collation().await;
         let mut transaction = self
             .pool
             .begin()
@@ -366,7 +384,7 @@ impl QuotaStore for SqlQuotaStore {
     }
 
     async fn release(&self, grant: &QuotaGrant) -> Result<bool, QuotaError> {
-        self.ensure_case_sensitive_keys(&self.pool).await?;
+        self.check_key_collation().await;
         let mut transaction = self
             .pool
             .begin()
@@ -392,7 +410,7 @@ impl QuotaStore for SqlQuotaStore {
 
     async fn usage(&self, subject: &BillingSubject, feature: &str) -> Result<u64, QuotaError> {
         super::validate_identifier("quota feature", feature, super::MAX_FEATURE_BYTES)?;
-        self.ensure_case_sensitive_keys(&self.pool).await?;
+        self.check_key_collation().await;
         let value = rullst_orm::sqlx::query_scalar::<_, i64>(select_usage_sql(self.backend))
             .bind(subject.kind())
             .bind(subject.id())

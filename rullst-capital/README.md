@@ -566,17 +566,22 @@ that same transaction and commit once. See the
 [SaaS billing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/19-saas-billing-capital.md#8-enforce-one-shared-workspace-quota-before-creation)
 for the complete flow.
 
-Subject kinds and IDs, features and event keys are case-sensitive on every
-backend, so tenants such as `aB3x` and `Ab3X` keep separate counters. New
-MySQL/MariaDB tables declare those columns `CHARACTER SET ascii COLLATE
-ascii_bin`. `prepare_schema` never alters an existing table: while a key column
-of either quota table still folds case, `prepare_schema` and every store
-operation return `QuotaError::StorageUnavailable`.
+Subject kinds and IDs, features and event keys are case-sensitive on
+SQLite, PostgreSQL and on MySQL/MariaDB tables created by 12.2, so tenants such
+as `aB3x` and `Ab3X` keep separate counters. New MySQL/MariaDB tables declare
+those columns `CHARACTER SET ascii COLLATE ascii_bin`. `prepare_schema` never
+alters an existing table. A MySQL/MariaDB table created by 12.1 or earlier
+keeps working as in 12.1: its keys fold case, so tenants, features and event
+keys that differ only by letter case share one counter or claim until the table
+is migrated. The store detects such a table once (from `prepare_schema`,
+`reserve`, `release` or `usage`) and logs one `tracing` warning per store,
+target `rullst_capital::quota`, that names the migration below. Running it is
+recommended.
 
 #### Upgrading MySQL/MariaDB quota tables
 
-Tables created by an earlier release use the server's case-insensitive default
-collation, so keys that differ only by letter case shared one counter or claim.
+Tables created by 12.1 or earlier use the server's case-insensitive default
+collation, so keys that differ only by letter case share one counter or claim.
 The migration cannot split rows merged that way; review subjects and event keys
 that differ only by case first. Stop quota writers, back up both tables, then
 convert the key columns:
@@ -594,7 +599,9 @@ ALTER TABLE rullst_capital_quota_claims
 ```
 
 Any binary or case-sensitive (`_bin`/`_cs`) collation also passes the check.
-The MySQL 8.0 and MariaDB contract tests run this migration on legacy tables.
+The check runs once per store, so an application restarted after the migration
+no longer warns. The MySQL 8.0 and MariaDB contract tests run 12.1 tables through the
+warning path and this migration.
 
 Membership/authentication, tier persistence and webhook reconciliation,
 migrations, cleanup policy for abandoned standalone reservations, and
