@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790927413895,
+  "lastUpdate": 1790933070320,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -14180,6 +14180,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec7fc9d19caa6866959edba4fd6e18c3559f60cc",
+          "message": "Merge pull request #406 from Rullst/fix/v13-direct-upgrade-parity\n\nfix(orm,cli): smooth direct 12.x to 13 upgrade (Redis hash fallback, data migration rows, 95 upgrade rules)",
+          "timestamp": "2026-10-02T06:02:53-03:00",
+          "tree_id": "0339c13d5ddb851148a0c1472556930ee03f6e80",
+          "url": "https://github.com/Rullst/Rullst/commit/ec7fc9d19caa6866959edba4fd6e18c3559f60cc"
+        },
+        "date": 1790933069381,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5319,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 708,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
             "range": "± 1",
             "unit": "ns/iter"
           },
