@@ -75,8 +75,19 @@ fn refilled_buckets_are_released() {
         assert!(limiter.check_and_consume(&format!("later-{client}")));
     }
 
+    // The sweep at the 8,192nd new key runs after the pause, so every burst
+    // bucket has refilled by then. Whether the newest buckets have refilled
+    // too depends on how fast the second loop runs, so only the burst
+    // buckets are asserted.
     assert!(
-        limiter.buckets.len() < 5_000,
+        !limiter
+            .buckets
+            .iter()
+            .any(|bucket| bucket.key().starts_with("burst-")),
+        "refilled burst buckets were retained"
+    );
+    assert!(
+        limiter.buckets.len() <= 5_000,
         "{} buckets retained",
         limiter.buckets.len()
     );
