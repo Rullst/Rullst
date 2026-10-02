@@ -78,6 +78,20 @@ impl Migration for MigrationImpl {
             "INSERT INTO rubric_criteria (id, assignment_id, criterion_key, label, max_points, position, created_at, updated_at) VALUES (1, 1, 'analysis', 'Root-cause analysis', 60, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
             "INSERT INTO rubric_criteria (id, assignment_id, criterion_key, label, max_points, position, created_at, updated_at) VALUES (2, 1, 'remediation', 'Safe remediation', 40, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
         ] { sqlx::query(sqlx::AssertSqlSafe(fixture)).execute(pool).await?; }
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('assignments', 'id'), (SELECT MAX(id) FROM assignments))",
+                "SELECT setval(pg_get_serial_sequence('rubric_criteria', 'id'), (SELECT MAX(id) FROM rubric_criteria))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 

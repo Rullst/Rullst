@@ -357,6 +357,19 @@ impl Migration for MigrationImpl {
             "INSERT INTO course_versions (id, course_id, version_key, revision, status, content_json, authored_by, reviewed_by, scheduled_at_epoch, published_at_epoch, created_at, updated_at) VALUES (1, 1, 'course-1-v1', 1, 'published', '{\"schema_version\":1,\"lesson_ids\":[1,2],\"completion\":{\"schema_version\":1,\"ruleset_version\":\"course-1-completion-v1\",\"required_lesson_ids\":[1,2],\"required_progress_percent\":100}}', 1, 2, 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
             "INSERT INTO course_versions (id, course_id, version_key, revision, status, content_json, authored_by, reviewed_by, scheduled_at_epoch, published_at_epoch, created_at, updated_at) VALUES (2, 2, 'course-2-v1', 1, 'published', '{\"schema_version\":1,\"lesson_ids\":[3,4],\"completion\":{\"schema_version\":1,\"ruleset_version\":\"course-2-completion-v1\",\"required_lesson_ids\":[3,4],\"required_progress_percent\":100}}', 1, 2, 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
         ] { sqlx::query(sqlx::AssertSqlSafe(fixture)).execute(pool).await?; }
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('course_versions', 'id'), (SELECT MAX(id) FROM course_versions))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 

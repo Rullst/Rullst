@@ -222,6 +222,59 @@ mod tests {
     }
 
     #[test]
+    fn explicit_id_seeds_resynchronize_postgres_sequences() {
+        let mut manifests = sqlx_blueprint_manifests();
+        for modules in [
+            &[
+                lms::LmsModule::Auth,
+                lms::LmsModule::Learning,
+                lms::LmsModule::Assessment,
+            ][..],
+            &[
+                lms::LmsModule::Auth,
+                lms::LmsModule::Learning,
+                lms::LmsModule::Gamification,
+            ][..],
+        ] {
+            let manifest = lms::file_manifest_for_modules(
+                "demo",
+                false,
+                "Active Record",
+                "Zero-Bundle HTMX",
+                modules,
+            )
+            .expect("detached LMS profile");
+            manifests.push(("lms-foundation", manifest));
+        }
+        let mut seeded_tables = 0;
+        for (blueprint, manifest) in manifests {
+            for (path, source) in manifest {
+                // Generated test modules seed their own fixtures.
+                let production = source.split("#[cfg(test)]").next().unwrap_or_default();
+                for seed in production.split("INSERT INTO ").skip(1) {
+                    let Some(table) = seed
+                        .split_once(" (id,")
+                        .map(|(table, _)| table)
+                        .filter(|table| !table.contains(char::is_whitespace))
+                    else {
+                        continue;
+                    };
+                    seeded_tables += 1;
+                    let reset = format!(
+                        "setval(pg_get_serial_sequence('{table}', 'id'), (SELECT MAX(id) FROM {table}))"
+                    );
+                    assert!(
+                        source.contains(&reset),
+                        "{blueprint}:{path} seeds explicit {table} ids without advancing its PostgreSQL sequence"
+                    );
+                    assert!(source.contains("Orm::driver()? == \"postgres\""));
+                }
+            }
+        }
+        assert!(seeded_tables > 0, "no explicit-id seed was inspected");
+    }
+
+    #[test]
     fn unknown_blueprint_id_is_not_silently_scaffolded_as_blank() {
         let root = std::env::temp_dir().join(format!(
             "rullst-unknown-blueprint-{}",

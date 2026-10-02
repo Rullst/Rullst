@@ -63,6 +63,19 @@ impl Migration for MigrationImpl {
         sqlx::query(sqlx::AssertSqlSafe(
             "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, max_attempts, ruleset_version, status) VALUES (1, 1, 'Borrow Checker Rescue', 'game', 100, 3, 'rescue-rules-v1', 'published')",
         )).execute(pool).await?;
+        // PostgreSQL SERIAL sequences do not advance for explicit ids: move them
+        // past the seeded rows so later inserts (for example from Nexus) do not
+        // collide. MySQL/MariaDB and SQLite advance their counters themselves.
+        if rullst::db::Orm::driver()? == "postgres" {
+            for statement in [
+                "SELECT setval(pg_get_serial_sequence('activities', 'id'), (SELECT MAX(id) FROM activities))",
+            ] {
+                rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+                    .execute(pool)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 
