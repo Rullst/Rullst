@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790931707847,
+  "lastUpdate": 1790932960763,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9225,6 +9225,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 500,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec7fc9d19caa6866959edba4fd6e18c3559f60cc",
+          "message": "Merge pull request #406 from Rullst/fix/v13-direct-upgrade-parity\n\nfix(orm,cli): smooth direct 12.x to 13 upgrade (Redis hash fallback, data migration rows, 95 upgrade rules)",
+          "timestamp": "2026-10-02T06:02:53-03:00",
+          "tree_id": "0339c13d5ddb851148a0c1472556930ee03f6e80",
+          "url": "https://github.com/Rullst/Rullst/commit/ec7fc9d19caa6866959edba4fd6e18c3559f60cc"
+        },
+        "date": 1790932959805,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 576,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
