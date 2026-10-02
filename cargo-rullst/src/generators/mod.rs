@@ -35,6 +35,7 @@ pub mod middleware;
 pub mod migration;
 pub mod model;
 pub mod openapi;
+mod output_guard;
 pub mod project;
 pub mod resource;
 pub mod scalar;

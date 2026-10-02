@@ -4,7 +4,9 @@
 use crate::generators::{
     ProjectOrmBackend, is_rullst_project,
     migration::{regenerate_migrations_mod, render_migration},
-    model_to_pascal_case, model_to_snake_case, pluralize, project_orm_backend,
+    model_to_pascal_case, model_to_snake_case,
+    output_guard::existing_migrations,
+    pluralize, project_orm_backend,
 };
 use colored::*;
 use std::fs;
@@ -68,7 +70,8 @@ pub fn create_new_model(
 
     // 5. Create model file
     let model_path = models_dir.join(format!("{}.rs", snake_name));
-    if model_path.exists() {
+    let model_existed = model_path.exists();
+    if model_existed {
         println!(
             "{}",
             format!(
@@ -128,8 +131,26 @@ pub struct {pascal_name} {{
         .bold()
     );
 
-    // 7. Create migration if requested
-    if create_migration {
+    // 7. Create migration if requested. A second create migration for an
+    // existing table would be a no-op upgrade whose rollback drops live data.
+    let existing_create_migrations = if create_migration {
+        existing_create_migrations(&plural_name)?
+    } else {
+        Vec::new()
+    };
+    if create_migration && (model_existed || !existing_create_migrations.is_empty()) {
+        let reason = existing_create_migrations
+            .first()
+            .map(|path| format!("'{}' already creates it", path.display()))
+            .unwrap_or_else(|| format!("model '{snake_name}.rs' already existed"));
+        println!(
+            "{}",
+            format!(
+                "⚠️ Skipping the create migration for '{plural_name}': {reason}. Use `cargo rullst make:migration` for schema changes."
+            )
+            .yellow()
+        );
+    } else if create_migration {
         let migrations_dir = Path::new("src/migrations");
         if !migrations_dir.exists() {
             fs::create_dir_all(migrations_dir)?;
@@ -176,4 +197,12 @@ pub struct {pascal_name} {{
     );
 
     Ok(())
+}
+
+/// Returns existing migrations that already create `table` with a generator name.
+fn existing_create_migrations(table: &str) -> std::io::Result<Vec<std::path::PathBuf>> {
+    existing_migrations(&[
+        format!("_create_{table}.rs"),
+        format!("_create_{table}_table.rs"),
+    ])
 }
