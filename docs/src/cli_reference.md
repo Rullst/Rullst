@@ -961,7 +961,10 @@ restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
 reviewed `curl`, systemd, and Caddy installation plus root or passwordless
 non-interactive `sudo`. Candidate files are staged under an application-specific
 `/opt/rullst/<app>` root, the Caddy configuration is validated, and `.previous`
-copies of replaced files are retained. The application runs as a dedicated
+copies of replaced files are retained. The service environment file holds the
+`[env]` table plus `PORT`, the `[app] port` (default 3000) that Caddy proxies to
+and the health check probes, unless `[env]` sets `PORT` itself; an `[env] PORT`
+different from `[app] port` is rejected. The application runs as a dedicated
 `rullst-<app>` system account (created with `useradd`) under a sandboxed unit
 (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
 capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write

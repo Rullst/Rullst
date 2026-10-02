@@ -36,6 +36,27 @@ fn configuration_requires_a_preinstalled_caddy_and_blocks_reload_failure() {
 }
 
 #[test]
+fn the_application_listens_on_the_port_caddy_and_the_probe_use() {
+    // The old environment file had no PORT, so the app kept its fallback port
+    // while Caddy proxied to app.port.
+    let mut cfg = test_config("true");
+    cfg.port = "8080".to_string();
+    let command = render_configure_command(&cfg, "demo");
+    assert!(command.contains("reverse_proxy localhost:8080"));
+    assert!(command.contains("\nPORT=\"8080\"\n"));
+
+    cfg.port = String::new();
+    cfg.env_vars.push(("PORT".to_string(), "8081".to_string()));
+    let command = render_configure_command(&cfg, "demo");
+    assert!(command.contains("reverse_proxy localhost:8081"));
+    assert_eq!(command.matches("PORT=").count(), 1);
+
+    cfg.env_vars.retain(|(name, _)| name != "PORT");
+    let command = render_configure_command(&cfg, "demo");
+    assert!(command.contains("PORT=\"3000\""));
+}
+
+#[test]
 fn provisioning_requires_reviewed_tools_and_uses_an_app_specific_root() {
     let command = render_provision_command(&test_config("false"));
     assert!(command.contains("command -v curl"));

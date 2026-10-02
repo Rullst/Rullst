@@ -246,11 +246,7 @@ pub fn execute_configure_step(
 }
 
 fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
-    let app_port = if cfg.port.is_empty() {
-        "3000"
-    } else {
-        &cfg.port
-    };
+    let app_port = cfg.app_port();
     let caddy_site = if cfg.auto_https == "true" || cfg.auto_https.is_empty() {
         format!(
             r#"{domain} {{
@@ -277,12 +273,17 @@ fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
         )
     };
 
-    let env_lines = cfg
+    let mut env_lines = cfg
         .env_vars
         .iter()
         .map(|(key, value)| format!("{key}=\"{}\"", escape_systemd_env_value(value)))
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<Vec<_>>();
+    // The unit runs from data/ without the project's Rullst.toml, so the port
+    // Caddy proxies to must reach the application through its environment.
+    if cfg.env_value("PORT").is_none() {
+        env_lines.push(format!("PORT=\"{app_port}\""));
+    }
+    let env_lines = env_lines.join("\n");
     format!(
         r#"set -e
 umask 077
@@ -358,11 +359,7 @@ fn escape_systemd_env_value(value: &str) -> String {
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn print_deployment_summary(cfg: &FoundryConfig) {
-    let app_port = if cfg.port.is_empty() {
-        "3000"
-    } else {
-        &cfg.port
-    };
+    let app_port = cfg.app_port();
     println!(
         "\n{}",
         "┌────────────────────────────────────────────────────────────┐"

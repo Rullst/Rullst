@@ -47,7 +47,7 @@ chown -R -h {account}:{account} /opt/rullst/{app_name}/data"#,
 pub(super) fn render_unit_hardening(cfg: &FoundryConfig) -> String {
     let account = service_account(&cfg.app_name);
     let privileged_port = cfg
-        .port
+        .app_port()
         .parse::<u16>()
         .is_ok_and(|port| (1..1024).contains(&port));
     let capabilities = if privileged_port {
