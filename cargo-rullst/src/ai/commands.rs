@@ -399,6 +399,10 @@ impl Invocation {
     }
 
     pub(super) fn deadline(&self) -> Duration {
+        #[cfg(test)]
+        if let Some(deadline) = TEST_DEADLINE.with(std::cell::Cell::get) {
+            return deadline;
+        }
         match self.kind {
             // Scaffolding a project or migrating may build the application.
             CommandKind::Rullst if self.always_confirm() => Duration::from_secs(30 * 60),
@@ -431,6 +435,9 @@ thread_local! {
     /// executable is the test harness.
     pub(super) static TEST_RULLST_PROGRAM: std::cell::RefCell<Option<std::path::PathBuf>> =
         const { std::cell::RefCell::new(None) };
+    /// A short deadline for runner tests.
+    pub(super) static TEST_DEADLINE: std::cell::Cell<Option<Duration>> =
+        const { std::cell::Cell::new(None) };
 }
 
 #[cfg(test)]

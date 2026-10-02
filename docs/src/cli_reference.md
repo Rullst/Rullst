@@ -1335,7 +1335,10 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   home (`~`) or parent (`..`) path, also as `--flag=value`; the values of
   `--schema`, `--output` and `--privacy-source` follow the path rules above.
   Commands run without a shell, with standard input closed, bounded output and
-  a time limit.
+  a time limit, and finish when the command exits. On Unix each runs in its
+  own process group: Ctrl+C is forwarded to it, and the time limit, or
+  processes it leaves holding its output, stop the whole group (on Windows,
+  only the command itself).
 * **Non-interactive use:** when standard input, output or error is not a
   terminal, or `CI`/`TERM=dumb` is set, actions are printed as a plan and never
   executed. `NO_COLOR` disables colour.

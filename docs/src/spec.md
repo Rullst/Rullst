@@ -3508,7 +3508,9 @@ in the current one; the session then continues inside it. `new` and
 Arguments follow a token grammar without `..`, absolute, drive or home-relative
 paths (a `--flag=value` value included); the path-valued `--schema`, `--output`
 and `--privacy-source` follow the file path policy below. Programs run without a
-shell, with standard input closed, bounded output and a deadline.
+shell, with standard input closed, bounded output and a deadline; on Unix in their
+own process group, which the deadline (or leftover processes holding the output
+after exit) stops as a whole and to which Ctrl+C is forwarded.
 Paths are relative to the nearest `Cargo.toml` directory; no component may be a
 symlink, `..`, `.git`, `target` or `.cargo`, and secret, key, lockfile and
 toolchain files are refused, also through an 8.3 alias (`GIT~1`), a reserved
