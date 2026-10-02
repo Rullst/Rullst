@@ -48,9 +48,41 @@ prompting.
 ### `cargo rullst new <name>`
 Creates a Rullst project from scratch. Version 12 intentionally generates one
 audited application architecture: Active Record for database-backed code and
-server-rendered `html!` views enhanced with HTMX for full-stack pages. The
-interactive wizard prompts for the product capabilities that materially change
-the generated application:
+server-rendered `html!` views enhanced with HTMX for full-stack pages.
+
+In a terminal, `cargo rullst new` (with or without a name) runs the v13
+create wizard; the home screen's **Create New Project** entry runs the same
+wizard. It asks, one screen at a time:
+
+1. the project name, when none was given (letters, digits, `_` and `-`,
+   starting with a letter; Rust keywords and existing paths are refused);
+2. the **blueprint**, each with a one-line description and a compact preview
+   of the file tree it generates. The preview is rendered by the real project
+   writers into a private temporary directory that is removed immediately;
+   nothing is built and no network is used;
+3. for the Blank starter, **full-stack web app** or **JSON API**;
+4. the **primary database** (Turso and *No database* only for Blank);
+5. **optional features** (zero or more): AI, Redis adapters, Dockerfile, Nix
+   flake and the Turso, MongoDB, DuckDB, SurrealDB and Qdrant add-ons;
+6. a **review** of the answers, the file tree and the commands `new` will run
+   (the initial migration, unless skipped or database-free), with *Create
+   the project*, *Back* and *Cancel*.
+
+↑/↓ (or `j`/`k`, or a digit) moves, Space toggles a feature, Enter confirms
+and Esc, Backspace or ← returns to the previous question. Cancel and Ctrl+C
+create nothing. Colours follow the home screen: `NO_COLOR` removes them and
+24-bit colour needs `COLORTERM=truecolor`. Every question has a flag; a
+question answered by a flag is skipped. When standard input, output or error
+is not a terminal, `CI` is set or `TERM=dumb`, `new` never prompts: without
+`--default` it exits with an error that names the flags instead.
+
+After creation, `new` prints numbered next steps: `cd <name>`,
+`cargo rullst dev` (which applies pending migrations) and the URL of the
+generated welcome page (`http://127.0.0.1:<port>`, where the port comes from
+`PORT`, the project's `.env`, `[app].port` in `Rullst.toml`, then 3000; JSON
+APIs show a `curl` command instead).
+
+The choices that materially change the generated application:
 * **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
@@ -92,13 +124,20 @@ the generated application:
   * `--qdrant`: Enables bounded dense-vector Qdrant operations and generates empty/`mock_*`-compatible environment fields; it is additive, not the SQL primary.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
   * `--buildah`: Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
-  * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
-  * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
-  * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend with `--default`; network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
+  * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
+  * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects the blueprint; the wizard skips that question.
+  * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend; the wizard skips that question. Network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
   * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
-  * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
+  * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
+  * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
+
+Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
+no longer require `--default`: in a terminal they answer their questions and
+the wizard asks the rest. `--api`, `--no-database` and `--database turso`
+select the Blank starter. The retired `--hot-reload` still requires
+`--default` and is rejected.
 
 When the generating Linux host has `mold` or `lld`, the project's
 `.cargo/config.toml` selects it to speed up local linking. That file describes
@@ -111,6 +150,12 @@ build before applying migrations. A clean first build can take several minutes,
 especially for the larger LMS/SaaS profiles; the animated status remains visible
 while Cargo is working. Later migration and server runs reuse that project-local
 build cache.
+
+Preview a starter without writing anything:
+
+```bash
+cargo rullst new shop --default --blueprint saas --dry-run
+```
 
 For example, the release gate can generate a SaaS starter without prompts or
 network-dependent bootstrap work:
@@ -166,6 +211,24 @@ and the earlier complete Academy scaffold.
 ```bash
 cargo rullst new academy --default --blueprint lms --skip-initial-migration
 ```
+
+### `cargo rullst tour` (v13)
+A short guided walkthrough of the main commands in seven skippable steps:
+`new`, `dev`, `dash`, `make:*`, `db:*`, `doctor` and `ai`. Each step explains
+what the command family does, lists commands to try and offers one read-only
+example that runs only when you pick it: `cargo rullst new tour-demo --default
+--dry-run` for `new` and `--help` for the others (the `ai` step falls back to
+`generate:ai-context --help` in a build without `cargo rullst ai`). Next,
+Previous (or Esc) and *Quit the tour* move between steps. The tour needs no
+network and never creates or changes a project.
+
+```bash
+cargo rullst tour          # guided, in a terminal
+cargo rullst tour --list   # every step and its example, without prompting
+```
+
+Outside an interactive terminal (pipes, `CI`, `TERM=dumb`) `cargo rullst tour`
+prints the same list as `--list` and exits successfully.
 
 ### `cargo rullst upgrade`
 Plans or applies a transactional application upgrade. The target defaults to
