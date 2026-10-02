@@ -5,7 +5,8 @@
 //! supervisor-provided `RULLST_DEV_GENERATION`. Staging, production, release
 //! builds and applications started without the CLI supervisor never mount it.
 //! It answers only a loopback peer that names a loopback `Host` (and, when
-//! present, a loopback `Origin`); every other request receives `404`.
+//! present, a loopback `Origin`) over HTTP/1.1 or newer without proxy
+//! forwarding headers; every other request receives `404`.
 //!
 //! The payload holds counters and bounded recent lists: request method, path
 //! without query string, status and duration; ORM operation labels and
@@ -45,6 +46,18 @@ pub(super) const PATH: &str = "/_rullst/dev-telemetry";
 const SCHEMA: &str = "rullst.dev-telemetry.v1";
 /// Longest wait for a configured queue's pending count.
 const QUEUE_PROBE_TIMEOUT: Duration = Duration::from_millis(250);
+/// Headers a reverse proxy or tunnel adds; the dashboard never sends them.
+const FORWARDING_HEADERS: [&str; 9] = [
+    "forwarded",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-forwarded-server",
+    "x-real-ip",
+    "via",
+    "cf-connecting-ip",
+    "true-client-ip",
+];
 
 /// A `GET`/`HEAD` of the telemetry endpoint.
 pub(super) fn is_telemetry_request(request: &Request) -> bool {
@@ -220,8 +233,20 @@ async fn queue_depth(queue: Option<&Queue>) -> QueueDepth {
 
 /// A direct loopback peer that addresses the server by a loopback authority.
 /// The `Host` check rejects DNS-rebinding pages; the peer check rejects other
-/// machines and clients resolved through trusted proxies.
+/// machines and clients resolved through trusted proxies. A same-host reverse
+/// proxy or tunnel connects from loopback and may rewrite `Host`, so requests
+/// with a forwarding header, or over HTTP/1.0 (nginx's default upstream
+/// protocol), are refused as well.
 fn is_local(request: &Request) -> bool {
+    if matches!(
+        request.version(),
+        axum::http::Version::HTTP_09 | axum::http::Version::HTTP_10
+    ) || FORWARDING_HEADERS
+        .iter()
+        .any(|name| request.headers().contains_key(*name))
+    {
+        return false;
+    }
     let extensions = request.extensions();
     let peer = extensions
         .get::<ConnectInfo<SocketAddr>>()

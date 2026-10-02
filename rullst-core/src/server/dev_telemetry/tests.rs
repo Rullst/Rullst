@@ -291,6 +291,40 @@ async fn only_loopback_peers_with_a_loopback_authority_are_answered() {
     assert!(!router.oneshot(post).await.unwrap().status().is_success());
 }
 
+#[tokio::test]
+async fn requests_forwarded_by_a_same_host_proxy_are_refused() {
+    let router = endpoint(Arc::new(Recorder::new()), None);
+    for (name, value) in [
+        ("forwarded", "for=203.0.113.7"),
+        ("x-forwarded-for", "203.0.113.7"),
+        ("X-Forwarded-Host", "dev.example.com"),
+        ("x-forwarded-proto", "https"),
+        ("x-real-ip", "203.0.113.7"),
+        ("via", "1.1 ngrok"),
+        ("cf-connecting-ip", "203.0.113.7"),
+    ] {
+        let mut forwarded = local();
+        forwarded
+            .headers_mut()
+            .insert(name, HeaderValue::from_static(value));
+        let response = router.clone().oneshot(forwarded).await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{name}");
+    }
+    // nginx proxies with HTTP/1.0 unless configured otherwise.
+    let mut http10 = local();
+    *http10.version_mut() = axum::http::Version::HTTP_10;
+    assert_eq!(
+        router.clone().oneshot(http10).await.unwrap().status(),
+        StatusCode::NOT_FOUND
+    );
+    let mut http2 = local();
+    *http2.version_mut() = axum::http::Version::HTTP_2;
+    assert_eq!(
+        router.oneshot(http2).await.unwrap().status(),
+        StatusCode::OK
+    );
+}
+
 struct CountingDriver(Result<u64, ()>, Duration);
 
 #[async_trait::async_trait]

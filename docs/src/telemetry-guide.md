@@ -134,10 +134,18 @@ the development reload routes, so it exists only when all of these hold:
 Release builds, Staging, Production and an application started with
 `cargo run` never mount it. The endpoint answers only a direct loopback peer
 that addresses the server with a loopback `Host` (`localhost`, `127.0.0.0/8` or
-`[::1]`) and, when present, a loopback `Origin`; any other request receives an
+`[::1]`) and, when present, a loopback `Origin`, over HTTP/1.1 or newer and
+without a forwarding header (`Forwarded`, `X-Forwarded-For`,
+`X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-Server`, `X-Real-IP`,
+`Via`, `CF-Connecting-IP` or `True-Client-IP`); any other request receives an
 empty `404`. This rejects other machines, clients resolved through trusted
-proxies and DNS-rebinding pages; it is a local development boundary, not
-authentication. Responses carry `Cache-Control: no-store` and
+proxies, DNS-rebinding pages and the common same-host reverse proxies and
+tunnels (Apache `mod_proxy`, Caddy, Traefik, ngrok, cloudflared and nginx's
+default HTTP/1.0 upstream), which connect from loopback and may rewrite `Host`
+to a loopback address. A same-host proxy that speaks HTTP/1.1, rewrites `Host`
+and adds none of these headers is indistinguishable from a local client, so do
+not publish a development server through one. This is a local development
+boundary, not authentication. Responses carry `Cache-Control: no-store` and
 `X-Content-Type-Options: nosniff`. Like the reload poll, the dashboard's poll
 bypasses the rate limiter and Traffic Shield and is neither access-logged nor
 counted.
