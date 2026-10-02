@@ -23,9 +23,10 @@ fn rules() -> Option<&'static [(Regex, &'static str)]> {
                 // scheme://<long token>@host
                 (r"(?i)\b([a-z][a-z0-9+.\-]*://)([^\s:/@]{16,})@", "${1}***@"),
                 // NAME=value / name: value for secret-like names, including
-                // every `*_KEY` (`RULLST_ENCRYPTION_KEY`, `STRIPE_KEY`, ...).
+                // every `*_KEY` (`RULLST_ENCRYPTION_KEY`, `STRIPE_KEY`, ...),
+                // and quoted keys of JSON or `Debug` maps ("name": "value").
                 (
-                    r#"(?i)\b([a-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|app[_\-]?key|client[_\-]?secret|credential|[_\-]key)s?[a-z0-9_]*)(\s*(?:=|:\s)\s*)("[^"]*"|'[^']*'|[^\s&;,]+)"#,
+                    r#"(?i)\b([a-z0-9_.\-]*(?:password|passwd|secret|token|api[_\-]?key|access[_\-]?key|private[_\-]?key|app[_\-]?key|client[_\-]?secret|credential|[_\-]key)s?[a-z0-9_]*)((?:["']\s*[=:]|\s*(?:=|:\s))\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s&;,]+)"#,
                     "${1}${2}***",
                 ),
                 (r"(?i)\b(bearer|basic)\s+[a-z0-9._~+/=\-]{8,}", "${1} ***"),
@@ -154,6 +155,18 @@ mod tests {
         ] {
             assert_eq!(sanitize(kept), kept);
         }
+    }
+
+    #[test]
+    fn quoted_keys_of_json_and_debug_maps_are_masked() {
+        let json = sanitize(r#"{"client_secret":"abc123","access_token": "ya29.x","user":"me"}"#);
+        assert_eq!(
+            json,
+            r#"{"client_secret":***,"access_token": ***,"user":"me"}"#
+        );
+        let debug = sanitize(r#"{"API_KEY": "s3cr3t", "PASSWORD": "pa\"ss"}"#);
+        assert_eq!(debug, r#"{"API_KEY": ***, "PASSWORD": ***}"#);
+        assert_eq!(sanitize("{'token': 'abc'}"), "{'token': ***}");
     }
 
     #[test]
