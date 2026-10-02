@@ -117,12 +117,16 @@ fn repositories_without_commits_and_project_subdirectories_work() {
     run_git(root, &["init", "-q"]);
     fs::create_dir_all(root.join("apps/web/src")).unwrap();
     fs::write(root.join("apps/web/src/main.rs"), "fn main() {}\n").unwrap();
+    // A nested project's build output, with no `.gitignore` covering it.
+    fs::create_dir_all(root.join("apps/web/target/debug")).unwrap();
+    fs::write(root.join("apps/web/target/debug/app"), "binary").unwrap();
     let checkpoint = create(&root.join("apps/web"), "20261001T120001Z").unwrap();
     let files = run_git(
         root,
         &["ls-tree", "-r", "--name-only", &checkpoint.reference],
     );
     assert!(files.contains("apps/web/src/main.rs"));
+    assert!(!files.contains("target/"), "{files}");
 }
 
 #[test]

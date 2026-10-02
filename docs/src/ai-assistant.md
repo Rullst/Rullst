@@ -154,8 +154,9 @@ explains the order of the two commands.
 The first change of each session is preceded by a git checkpoint stored under
 `refs/rullst/ai-checkpoints/`. It is built in a temporary index, so your staged
 changes, stash and files are not touched, and it excludes `.env*` files and
-`target/`. To review or undo everything since the checkpoint, run the printed
-commands from the project root:
+every `target/` directory, also in a project nested in a larger repository. To
+review or undo everything since the checkpoint, run the printed commands from
+the project root:
 
 ```bash
 git diff refs/rullst/ai-checkpoints/<timestamp>

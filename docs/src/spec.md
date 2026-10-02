@@ -3519,7 +3519,8 @@ are flagged in the preview. Each action is previewed (diff or exact command)
 and confirmed; without an interactive terminal, under `CI` or `TERM=dumb`, or
 with `--dry-run`, actions are displayed and never executed. The first change of
 a session is preceded by a checkpoint commit built in a temporary index and
-stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and `target/`.
+stored under `refs/rullst/ai-checkpoints/`, excluding `.env*` and every `target/`
+directory.
 
 Project context (inventory names and paths, project `AGENTS.md`), shared files
 and command output are delimited untrusted data, size-capped and guardrail
