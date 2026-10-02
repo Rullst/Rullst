@@ -961,7 +961,11 @@ restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
 reviewed `curl`, systemd, and Caddy installation plus root or passwordless
 non-interactive `sudo`. Candidate files are staged under an application-specific
 `/opt/rullst/<app>` root, the Caddy configuration is validated, and `.previous`
-copies of replaced files are retained. The current command replaces the global
+copies of replaced files are retained. The application runs as a dedicated
+`rullst-<app>` system account (created with `useradd`) under a sandboxed unit
+(`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, no
+capabilities except `CAP_NET_BIND_SERVICE` for a port below 1024) and can write
+only under `/opt/rullst/<app>/data`. The current command replaces the global
 `/etc/caddy/Caddyfile`; it does not perform a separate remote checksum,
 migrations, data backup, external reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.

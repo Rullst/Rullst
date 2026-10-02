@@ -106,10 +106,13 @@ cargo rullst foundry:deploy
 ### What the current `foundry:deploy` does
 
 1. Builds the selected profile and optional target locally.
-2. Connects over SSH, checks the preinstalled `curl`, `systemctl`, and `caddy`
-   executables, creates `/opt/rullst/<app>/{bin,config,data}`, and fails if that
-   step fails. Foundry does not install operating-system packages and never pipes
-   an unpinned network script into a shell.
+2. Connects over SSH, checks the preinstalled `curl`, `systemctl`, `caddy` and
+   `useradd` executables, creates `/opt/rullst/<app>/{bin,config,data}` and a
+   dedicated system account (`rullst-<app>`, lowercase, with a digest suffix
+   when the name needs shortening), and fails if that step fails. Only `data/`
+   is owned by that account; earlier root-owned data is re-owned without
+   following symlinks. Foundry does not install operating-system packages and
+   never pipes an unpinned network script into a shell.
 3. Uploads the application binary with `scp` to a staging path. It does not
    currently upload static directories or perform a separate remote checksum
    comparison.
@@ -120,7 +123,12 @@ cargo rullst foundry:deploy
    `.previous`, but rollback is manual and the application restart is not
    zero-downtime. This version manages one global `/etc/caddy/Caddyfile`; review
    that replacement before using the server for multiple independently managed
-   sites.
+   sites. The unit runs the application as the dedicated account with
+   `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`,
+   `PrivateDevices` and no capabilities (only `CAP_NET_BIND_SERVICE` for an
+   application port below 1024). The application can write only under
+   `/opt/rullst/<app>/data`, so keep SQLite files, uploads and other state there;
+   binaries and the root-only `config/.env` stay read-only to it.
 5. Requires `GET /health` to succeed within ten bounded attempts before printing
    that the remote process answered locally. It does not prove public DNS, TLS,
    firewall, proxy, or external reachability.
