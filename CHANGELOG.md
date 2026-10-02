@@ -21,6 +21,19 @@ A prepared version section does not establish that its tag or crates exist.
   `inspect routes` and `audit`, a fuzzy "Search All Commands" palette in the
   home menu, and next-step hints after generators.
 
+### Live metrics in `cargo rullst dash`
+
+- `cargo rullst dash` shows live requests/s, p50/p95 latency with a
+  sparkline, 5xx errors, recent requests and, when the app reports them, ORM
+  query and queue figures. They come from a loopback-only
+  `/_rullst/dev-telemetry` endpoint that Rullst Core serves only in supervised
+  debug Development processes and that never records bodies, headers, cookies,
+  query strings or SQL; otherwise the dash shows a "telemetry not available"
+  panel with enabling steps.
+- `r` restarts the app, `?` opens help, `Server::with_dev_queue` reports queue
+  depth, `cargo rullst dev` prints a one-line dash hint, and the dash log panes
+  keep their newest wrapped lines visible.
+
 ### `cargo rullst ai` terminal assistant and `rullst-ai` usage and streaming
 
 - `cargo rullst ai` is a terminal assistant that knows Rullst and the current
