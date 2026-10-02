@@ -349,6 +349,26 @@ async fn compatible_stream_requests_and_reports_usage_when_declared() {
 }
 
 #[tokio::test]
+async fn compatible_stream_truncated_replies_are_errors_not_partial_answers() {
+    let (url, _request) = serve_once(
+        concat!(
+            "data: {\"choices\":[{\"delta\":{\"content\":\"first action\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}]}\n\n",
+            "data: [DONE]\n\n"
+        ),
+        SSE,
+    );
+    let provider = OpenAiCompatibleProvider::try_local(format!("{url}/v1"), "local")
+        .expect("loopback provider")
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_streaming());
+    let error = stream_text(provider).await.expect_err("truncated reply");
+    assert!(
+        error.to_string().contains("finish_reason length"),
+        "{error}"
+    );
+}
+
+#[tokio::test]
 async fn native_streams_are_offline_guarded_and_cancellable() {
     let (text, _) = stream_text(AnthropicProvider::new("mock_offline").with_base_url("not a URL"))
         .await

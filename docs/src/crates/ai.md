@@ -124,7 +124,8 @@ incremental providers. The OpenAI-compatible adapter implements the strict SSE
 path only when the exact endpoint/model configuration opts into
 `with_streaming()`. It checks the prompt before I/O, requires
 `text/event-stream` and `[DONE]`, bounds the raw response, chunk count, each
-chunk and aggregate output, and rejects malformed or truncated events.
+chunk and aggregate output, and rejects malformed or truncated events and a
+`finish_reason` of `length` or `content_filter` with `AiError::ApiError`.
 
 Anthropic and Gemini stream through their native SSE protocols (v13) with the
 same bounds and cancellation; a truncated or withheld reply fails in both the

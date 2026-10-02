@@ -4,10 +4,13 @@
 //! (<https://platform.openai.com/docs/api-reference/chat-streaming>): text in
 //! `choices[0].delta.content`, a terminal `data: [DONE]`, and, when
 //! `stream_options.include_usage` is requested, a final chunk with empty
-//! `choices` and a `usage` object.
+//! `choices` and a `usage` object. A `finish_reason` of `length` or
+//! `content_filter` fails the stream, as the non-streaming OpenAI transport
+//! does, so a truncated or withheld reply is never presented as complete.
 
 use super::*;
 use crate::ai::providers::sse::{self, Flow, SseFrame};
+use crate::ai::providers::support::reject_incomplete_choice;
 use crate::ai::{
     AiCancellation, AiStreamSink, StreamLimits, StreamingAiProvider, TokenUsage,
     guardrails::prepare_messages,
@@ -53,7 +56,7 @@ impl StreamingAiProvider for OpenAiCompatibleProvider {
             MAX_RESPONSE_BYTES,
             cancellation,
             |frame| {
-                let Some(chunk) = interpret(&frame)? else {
+                let Some(chunk) = interpret(&frame, self.provider_name())? else {
                     return Ok(Flow::Stop);
                 };
                 if chunk.usage.is_some() {
@@ -86,12 +89,13 @@ struct Chunk {
 }
 
 /// `None` for the `[DONE]` sentinel.
-fn interpret(frame: &SseFrame) -> Result<Option<Chunk>, AiError> {
+fn interpret(frame: &SseFrame, provider: &'static str) -> Result<Option<Chunk>, AiError> {
     if frame.data == "[DONE]" {
         return Ok(None);
     }
     let event: serde_json::Value = serde_json::from_str(&frame.data)
         .map_err(|_| AiError::StreamProtocol("server-sent event data is not valid JSON"))?;
+    reject_incomplete_choice(&event, provider)?;
     let usage = event
         .get("usage")
         .filter(|usage| usage.is_object())
@@ -120,6 +124,10 @@ fn interpret(frame: &SseFrame) -> Result<Option<Chunk>, AiError> {
 mod tests {
     use super::*;
 
+    fn interpret_test(frame: &SseFrame) -> Result<Option<Chunk>, AiError> {
+        interpret(frame, "fixture")
+    }
+
     fn frame(data: &str) -> SseFrame {
         SseFrame {
             event: None,
@@ -130,7 +138,7 @@ mod tests {
     #[test]
     fn chunks_carry_text_usage_or_the_sentinel() {
         assert_eq!(
-            interpret(&frame(
+            interpret_test(&frame(
                 r#"{"choices":[{"delta":{"content":"hi"}}],"usage":null}"#
             ))
             .expect("text"),
@@ -139,7 +147,7 @@ mod tests {
                 usage: None
             })
         );
-        let usage = interpret(&frame(
+        let usage = interpret_test(&frame(
             r#"{"choices":[],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}"#,
         ))
         .expect("usage chunk")
@@ -147,12 +155,28 @@ mod tests {
         .usage
         .expect("usage");
         assert_eq!(usage.total_tokens(), Some(5));
-        assert_eq!(interpret(&frame("[DONE]")).expect("done"), None);
+        assert_eq!(interpret_test(&frame("[DONE]")).expect("done"), None);
         assert!(
-            interpret(&frame(r#"{"choices":[{"delta":{"role":"assistant"}}]}"#))
+            interpret_test(&frame(r#"{"choices":[{"delta":{"role":"assistant"}}]}"#))
                 .expect("role")
                 .is_some()
         );
+    }
+
+    #[test]
+    fn truncated_or_filtered_replies_fail() {
+        for reason in ["length", "content_filter"] {
+            let data = format!(
+                r#"{{"choices":[{{"delta":{{"content":"part"}},"finish_reason":"{reason}"}}]}}"#
+            );
+            let error = interpret_test(&frame(&data)).expect_err("incomplete reply");
+            assert!(
+                matches!(&error, AiError::ApiError(message) if message.contains(reason)),
+                "{error}"
+            );
+        }
+        let stop = r#"{"choices":[{"delta":{},"finish_reason":"stop"}]}"#;
+        assert!(interpret_test(&frame(stop)).expect("stop").is_some());
     }
 
     #[test]
@@ -163,7 +187,10 @@ mod tests {
             r#"{"choices":[{"delta":{}}]}"#,
         ] {
             assert!(
-                matches!(interpret(&frame(data)), Err(AiError::StreamProtocol(_))),
+                matches!(
+                    interpret_test(&frame(data)),
+                    Err(AiError::StreamProtocol(_))
+                ),
                 "{data}"
             );
         }
