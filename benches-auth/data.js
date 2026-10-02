@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790927201081,
+  "lastUpdate": 1790931634397,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -14817,6 +14817,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4444,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b9be9e7b77bd23cdb1d71dee25ed2752122f4e45",
+          "message": "Merge pull request #405 from Rullst/fix/v13-new-cli-ai-review\n\nfix(cli,ai): review fixes for cargo rullst ai (inspect exfiltration, migrate gate, path policy, guardrail)",
+          "timestamp": "2026-10-02T05:34:36-03:00",
+          "tree_id": "5fe4b786194dad2bf714c573fb776b01289100ad",
+          "url": "https://github.com/Rullst/Rullst/commit/b9be9e7b77bd23cdb1d71dee25ed2752122f4e45"
+        },
+        "date": 1790931633275,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 991,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 821,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1870,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2886,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
