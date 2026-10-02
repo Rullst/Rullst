@@ -134,3 +134,25 @@ fn directories_outside_git_are_reported() {
         Err(CheckpointError::NotARepository | CheckpointError::GitMissing)
     ));
 }
+
+/// Every built project has an ignored `target/`; the checkpoint must not fail
+/// on it (git refuses an exclude pathspec that names an ignored path).
+#[test]
+fn checkpoint_succeeds_when_gitignore_already_ignores_target() {
+    let directory = repository();
+    let root = directory.path();
+    fs::write(root.join(".gitignore"), "/target\n.env\n").unwrap();
+    fs::create_dir_all(root.join("target/debug")).unwrap();
+    fs::write(root.join("target/debug/app"), "binary").unwrap();
+    fs::create_dir_all(root.join("member/target")).unwrap();
+    fs::write(root.join("member/target/out.bin"), "build").unwrap();
+    fs::write(root.join("member/lib.rs"), "pub fn member() {}\n").unwrap();
+
+    let checkpoint = create(root, "20261001T130000Z").unwrap();
+    let files = run_git(
+        root,
+        &["ls-tree", "-r", "--name-only", &checkpoint.reference],
+    );
+    assert!(files.lines().any(|file| file == "member/lib.rs"), "{files}");
+    assert!(!files.contains("target/"), "{files}");
+}

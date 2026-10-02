@@ -119,7 +119,9 @@ pub(super) fn create(root: &Path, timestamp: &str) -> Result<Checkpoint, Checkpo
                 ".",
                 ":(exclude,glob)**/.env",
                 ":(exclude,glob)**/.env.*",
-                ":(exclude)target",
+                // A literal `target` pathspec fails `git add` (exit 1) when
+                // `.gitignore` already ignores that existing directory.
+                ":(exclude,glob)**/target/**",
             ],
         )?,
         "add",

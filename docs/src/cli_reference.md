@@ -375,6 +375,22 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
+The v13 CLI's `rullst-upgrade-rules-v4` catalog parses Rust sources (with
+`syn`; comments, doc comments and strings never match an API rule), Cargo
+manifests and generated project files, and reports each finding as
+`MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
+behaviour of an API, feature or configuration in use) with a stable `V13-*`
+code, `file:line`, a one-line message and the title of its row in the
+[v13 migration guide](migration-v13.md#changes-from-the-published-1210-source).
+Findings do not stop the transaction; `update project verify`/`review`/`apply`
+refuse a preparation with must-change findings. In JSON, each
+`source_findings` element keeps `path`, `line`, `code`, `severity` (`BLOCKER`
+or `REVIEW`) and `message` and adds `kind`, `migration_row` and
+`migration_url`; the root adds `finding_counts`, `unscanned_sources` and
+`migration_guide`. `cargo rullst ai upgrade` proposes reviewed fixes for the
+findings. See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
+and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
+
 In 12.1, managed requirements use exact `=VERSION` pins. The final
 `cargo check --workspace --all-targets --locked` validates the lockfile produced
 by `cargo fix` without resolving a different version. Broader dependency ranges
@@ -597,8 +613,11 @@ the two copies can consume about 1 GiB before any build.
 
 The command rejects linked/special inputs, unsupported paths, unknown migration
 origins, ambiguous/unversioned managed dependencies and version/lockfile
-downgrades. It accepts source majors 12 and 13, which need no source-marker
-rules; older applications first upgrade to v12 with the v12 CLI. The
+downgrades. It accepts source majors 12 and 13 and records the
+`rullst-upgrade-rules-v4` source findings in the plan; verification, review and
+application refuse a preparation with must-change findings (fix them in the
+original project and prepare again), while review findings stay in the plan.
+Older applications first upgrade to v12 with the v12 CLI. The
 exact-version editor preserves TOML
 comments. Offline, locked, dependency-free Cargo metadata enumerates workspace
 members inside the copy. Rustup auto-installation is disabled using its
@@ -1259,6 +1278,7 @@ cargo rullst ai                        # streaming chat in the current project
 cargo rullst ai "add a posts page"     # one goal, then exit
 cargo rullst ai status [--json]        # provider, model and key source (never the key)
 cargo rullst ai disconnect             # delete the saved credentials file
+cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgrade findings
 ```
 
 * **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and
@@ -1320,6 +1340,17 @@ cargo rullst ai disconnect             # delete the saved credentials file
 * **Non-interactive use:** when standard input, output or error is not a
   terminal, or `CI`/`TERM=dumb` is set, actions are printed as a plan and never
   executed. `NO_COLOR` disables colour.
+* **Upgrade sessions:** `cargo rullst ai upgrade` (flags `--to`, `--provider`,
+  `--model`, `--dry-run`) prints the `cargo rullst upgrade --dry-run` plan and,
+  when it has source findings, starts one goal grounded in them: the trusted
+  instructions carry only the migration rows those findings reference; the
+  findings, each flagged line and the affected files (within the path policy)
+  are untrusted data. Fixes go through the same diff, confirmation, checkpoint
+  and `cargo check` flow; Rullst dependency versions stay with
+  `cargo rullst upgrade`. Without findings no session starts. Offline, the
+  demo rewrites one `render_page` call (`V13-RENDER-PAGE-LANGUAGE`) and
+  proposes `cargo check`. A one-word chat goal `upgrade` now runs this command.
+  See [assisted fixes](tutorials/36-assisted-framework-upgrades.md#assisted-fixes-with-cargo-rullst-ai-upgrade).
 * **Checkpoint:** before the first change of a session the CLI stores a
   snapshot of the work tree (tracked and untracked, non-ignored files, without
   `.env*` and `target/`) under `refs/rullst/ai-checkpoints/<UTC timestamp>`,

@@ -22,6 +22,8 @@ use std::time::Instant;
 
 #[path = "session_review.rs"]
 mod review;
+#[path = "session_upgrade.rs"]
+mod upgrade_turn;
 
 /// Model steps allowed for one user turn.
 const MAX_STEPS: usize = 8;

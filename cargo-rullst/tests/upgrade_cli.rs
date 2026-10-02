@@ -182,9 +182,68 @@ fn json_dry_run_is_versioned_and_machine_readable() {
     let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)
         .expect("stdout must contain only JSON");
     assert_eq!(report["schema_version"], "rullst.upgrade-plan.v1");
-    assert_eq!(report["rule_catalog"], "rullst-upgrade-rules-v3");
+    assert_eq!(report["rule_catalog"], "rullst-upgrade-rules-v4");
     assert_eq!(report["production_ready"], false);
     assert_eq!(report["source_findings"], serde_json::json!([]));
+    assert_eq!(
+        report["finding_counts"],
+        serde_json::json!({"must_change": 0, "review": 0})
+    );
+    assert_eq!(report["unscanned_sources"], serde_json::json!([]));
+}
+
+#[test]
+fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
+    let source = "// render_page(&htmx, \"comment\", body)\nfn page(htmx: &Htmx, x: &str) -> String {\n    let _ = html! { <a onclick={x}>\"Go\"</a> };\n    render_page(htmx, \"Home\", String::new())\n}\nfn main() {}\n";
+    let fixture = Fixture::new("json-findings", "12", "12.0.0", source);
+    std::fs::write(fixture.app().join("src/broken.rs"), "fn broken( {\n").expect("broken source");
+
+    let output = fixture.run(&["upgrade", "--dry-run", "--json"]);
+
+    assert!(output.status.success(), "{}", output_text(&output));
+    let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)
+        .expect("stdout must contain only JSON");
+    assert_eq!(report["schema_version"], "rullst.upgrade-plan.v1");
+    assert_eq!(
+        report["source_findings"],
+        serde_json::json!([
+            {
+                "path": "src/main.rs",
+                "line": 3,
+                "code": "V13-HTML-DYNAMIC-EVENT-HANDLER",
+                "severity": "BLOCKER",
+                "kind": "must-change",
+                "message": "a dynamic value in an `on*`/`hx-on*` attribute of `html!` no longer compiles",
+                "migration_row": "`html!` event handlers",
+                "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
+            },
+            {
+                "path": "src/main.rs",
+                "line": 4,
+                "code": "V13-RENDER-PAGE-LANGUAGE",
+                "severity": "REVIEW",
+                "kind": "review",
+                "message": "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
+                "migration_row": "Starter page language",
+                "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
+            }
+        ])
+    );
+    assert_eq!(
+        report["finding_counts"],
+        serde_json::json!({"must_change": 1, "review": 1})
+    );
+    assert_eq!(
+        report["unscanned_sources"],
+        serde_json::json!(["src/broken.rs"])
+    );
+
+    let human = output_text(&fixture.run(&["upgrade", "--dry-run"]));
+    assert!(human.contains("Source findings (rullst-upgrade-rules-v4): 1 must-change, 1 review"));
+    assert!(human.contains("MUST-CHANGE src/main.rs:3 [V13-HTML-DYNAMIC-EVENT-HANDLER]"));
+    assert!(human.contains("migration-v13 row: Starter page language"));
+    assert!(human.contains("NOT SCANNED src/broken.rs"));
+    assert!(human.contains("cargo rullst ai upgrade"));
 }
 
 #[test]

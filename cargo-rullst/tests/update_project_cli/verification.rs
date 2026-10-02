@@ -259,3 +259,32 @@ fn command_deadline_rejects_a_hanging_project_without_acceptance() {
         assert!(!entry.unwrap().path().join("verification.json").exists());
     }
 }
+
+#[test]
+fn must_change_findings_block_execution_and_review_findings_are_reported() {
+    let review =
+        fixture("fn main() {}\nfn page() -> String { render_page(&htmx, \"Home\", body) }\n");
+    let stage = prepare(&review);
+    let record: Value =
+        serde_json::from_slice(&fs::read(stage.join("preparation.json")).unwrap()).unwrap();
+    let findings = &record["plan"]["source_findings"];
+    assert_eq!(
+        findings[0]["code"], "V13-RENDER-PAGE-LANGUAGE",
+        "{findings}"
+    );
+    assert_eq!(findings[0]["severity"], "REVIEW");
+    let output = verify(&review, &stage, &["--dry-run"]);
+    assert!(output.status.success(), "{}", text(&output));
+
+    let blocked =
+        fixture("fn main() {}\nfn page(x: &str) -> String { html! { <a onclick={x}></a> } }\n");
+    let stage = prepare(&blocked);
+    let output = verify(&blocked, &stage, &["--dry-run"]);
+    assert!(!output.status.success());
+    assert!(
+        text(&output).contains("must-change migration findings"),
+        "{}",
+        text(&output)
+    );
+    assert!(!blocked.base.join("build-executed").exists());
+}

@@ -76,8 +76,10 @@ fn plan_manifests(
         .filter_map(|plan| plan.path.parent().map(Path::to_path_buf))
         .collect::<Vec<_>>();
     super::scan::reject_symlinked_sources(&roots)?;
-    let mut report: serde_json::Value =
-        serde_json::from_str(&super::render_json_report(&root, &version, &plans)?)?;
+    let scan = super::rules::scan_workspace(&root, &plans, version.major)?;
+    let mut report: serde_json::Value = serde_json::from_str(&super::report::render_json_report(
+        &root, &version, &plans, &scan,
+    )?)?;
     report["automatic_scope"] = serde_json::json!(["workspace dependency manifests in candidate/"]);
     if apply {
         super::manifest::apply_plans(&plans)?;

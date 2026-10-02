@@ -322,3 +322,74 @@ fn outside_a_project_the_plan_proposes_a_new_project_without_creating_it() {
     assert!(stdout.contains("Plan only"));
     assert!(!empty.join("rullst-ai-demo").exists());
 }
+
+/// A v12 application whose framework is a local stand-in, so the upgrade plan
+/// (and `cargo metadata`) works offline.
+fn upgrade_fixture(sandbox: &Sandbox, main: &str) -> PathBuf {
+    let framework = sandbox.home.join("framework");
+    fs::create_dir_all(framework.join("src")).unwrap();
+    fs::write(
+        framework.join("Cargo.toml"),
+        "[package]\nname = \"rullst\"\nversion = \"12.1.2\"\nedition = \"2024\"\n",
+    )
+    .unwrap();
+    fs::write(framework.join("src/lib.rs"), "pub mod htmx {}\n").unwrap();
+    fs::write(
+        sandbox.project.join("Cargo.toml"),
+        format!(
+            "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"12.1.2\", path = {:?} }}\n",
+            framework.to_string_lossy()
+        ),
+    )
+    .unwrap();
+    fs::write(sandbox.project.join("src/main.rs"), main).unwrap();
+    sandbox.project.clone()
+}
+
+#[test]
+fn ai_upgrade_without_a_terminal_shows_the_plan_and_a_fix_but_executes_nothing() {
+    let sandbox = Sandbox::new();
+    let main = "async fn home(htmx: HtmxRequest) -> Html<String> {\n    render_page(&htmx, \"Home\", body())\n}\nfn main() {}\n";
+    let project = upgrade_fixture(&sandbox, main);
+    let output = sandbox.run(&project, &["ai", "upgrade"], "y\ny\ny\n", &[]);
+    assert!(output.status.success(), "{}", text(&output));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("REVIEW src/main.rs:2 [V13-RENDER-PAGE-LANGUAGE]"));
+    assert!(stdout.contains("Plan only: not an interactive terminal"));
+    assert!(
+        stdout
+            .contains("+     rullst::htmx::render_page_with_lang(&htmx, \"en\", \"Home\", body())")
+    );
+    assert!(stdout.contains("$ cargo check"), "{stdout}");
+    assert_eq!(
+        fs::read_to_string(project.join("src/main.rs")).unwrap(),
+        main
+    );
+    assert!(!project.join("Cargo.lock").exists(), "nothing was resolved");
+}
+
+#[test]
+fn ai_upgrade_without_findings_needs_no_assistant() {
+    let sandbox = Sandbox::new();
+    let project = upgrade_fixture(&sandbox, "fn main() {}\n");
+    let output = sandbox.run(&project, &["ai", "upgrade"], "", &[]);
+    assert!(output.status.success(), "{}", text(&output));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("rullst (rullst) 12.1.2 -> ="), "{stdout}");
+    assert!(stdout.contains("No source findings need the assistant"));
+    assert!(!stdout.contains("offline mock"), "no session starts");
+
+    let outside = sandbox.home.join("empty");
+    fs::create_dir_all(&outside).unwrap();
+    let output = sandbox.run(&outside, &["ai", "upgrade"], "", &[]);
+    assert!(!output.status.success());
+    assert!(
+        text(&output).contains("inside a Rullst project"),
+        "{}",
+        text(&output)
+    );
+}
