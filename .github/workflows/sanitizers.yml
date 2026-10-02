@@ -43,6 +43,7 @@ jobs:
         env:
           RUSTFLAGS: "-Zsanitizer=thread"
           TSAN_OPTIONS: "second_deadlock_stack=1"
+          RULLST_TEST_TIME_SCALE: "30"
         run: |
           if [ "${{ matrix.package }}" = "rullst-messaging" ]; then
             cargo +"$SANITIZER_TOOLCHAIN" test -Zbuild-std --target x86_64-unknown-linux-gnu --tests -- --test-threads=4
@@ -73,6 +74,7 @@ jobs:
         env:
           RUSTFLAGS: "-Zsanitizer=address"
           ASAN_OPTIONS: "detect_leaks=1:detect_stack_use_after_return=1"
+          RULLST_TEST_TIME_SCALE: "30"
         run: |
           if [ "${{ matrix.package }}" = "rullst-messaging" ]; then
             cargo +"$SANITIZER_TOOLCHAIN" test -Zbuild-std --target x86_64-unknown-linux-gnu --tests -- --test-threads=2

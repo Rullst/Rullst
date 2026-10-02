@@ -201,7 +201,7 @@ mod tests {
         let result = mask_response_payload(input.as_bytes());
         let elapsed = started.elapsed();
         assert!(
-            elapsed < LARGE_INPUT_BUDGET,
+            elapsed < crate::test_timing::scaled(LARGE_INPUT_BUDGET),
             "{label} took {elapsed:?} for {} bytes",
             input.len()
         );
