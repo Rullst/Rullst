@@ -64,24 +64,26 @@ fn without_controls(text: &str) -> String {
 }
 
 /// `text` with secrets masked, control characters replaced and its length bounded.
+/// The whole message is redacted before it is cut: a secret split at the
+/// limit would no longer match its rule.
 pub(crate) fn sanitize(text: &str) -> String {
     let Some(rules) = rules() else {
         return UNREDACTABLE.to_string();
     };
-    let mut bounded: String = text.chars().take(MESSAGE_LIMIT).collect();
-    if text.chars().nth(MESSAGE_LIMIT).is_some() {
-        bounded.push('…');
-    }
-    let mut redacted = bounded;
+    let mut redacted = text.to_string();
     for (regex, replacement) in rules {
         redacted = regex.replace_all(&redacted, *replacement).into_owned();
     }
-    without_controls(&redacted)
+    let mut bounded: String = redacted.chars().take(MESSAGE_LIMIT).collect();
+    if redacted.chars().nth(MESSAGE_LIMIT).is_some() {
+        bounded.push('…');
+    }
+    without_controls(&bounded)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize;
+    use super::{MESSAGE_LIMIT, sanitize};
 
     #[test]
     fn connection_strings_keep_the_host_but_not_the_password() {
@@ -201,5 +203,22 @@ mod tests {
         let text = sanitize(&long);
         assert_eq!(text.chars().count(), 4097);
         assert!(text.ends_with('…'));
+    }
+
+    #[test]
+    fn a_secret_at_the_length_limit_is_redacted_before_the_cut() {
+        let url = "postgres://app:hunter2@db";
+        let before_at = url.find('@').unwrap_or_default();
+        // The cut would fall right before '@', where the URL rule needs it.
+        let message = format!("{}{url}", "-".repeat(MESSAGE_LIMIT - before_at));
+        let text = sanitize(&message);
+        assert!(!text.contains("hunter2"));
+        assert!(text.ends_with("postgres://app:***@db"));
+
+        let token = format!(
+            "{} sk-ABCDEFGHIJKLMNOPQRSTUV",
+            "-".repeat(MESSAGE_LIMIT - 12)
+        );
+        assert!(!sanitize(&token).contains("sk-ABCDEFGH"));
     }
 }

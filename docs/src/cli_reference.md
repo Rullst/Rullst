@@ -74,7 +74,8 @@ Connection-string passwords (up to the host, even when they contain an
 unencoded `@`), `*_KEY`/`*_SECRET`/`*_TOKEN`/`password` values (also under the
 quoted keys of JSON or `Debug` maps), bearer tokens and well-known credential
 formats (including Stripe `sk_live_`/`whsec_` secrets) are masked, and
-terminal control characters are replaced, in every line of the report.
+terminal control characters are replaced, in every line of the report. The
+whole message is redacted before a long one is cut to 4,096 characters.
 
 A command started from the home menu or the command palette prints its own
 report, and `cargo rullst` then exits with that command's status (for example
