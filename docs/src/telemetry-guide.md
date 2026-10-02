@@ -146,7 +146,12 @@ The `rullst.dev-telemetry.v1` document contains:
 
 - `http`: request, 4xx and 5xx counters since the process started and the
   newest 64 requests (sequence number, method, path without query string,
-  status, duration in microseconds), recorded by the access-log middleware;
+  status, duration in microseconds). They are recorded by the outermost layer,
+  so a handler panic that the development error console answers with `500` and
+  the responses of the security baseline (for example a CSRF `403`), lifecycle
+  admission, the rate limiter (`429`) and Traffic Shield are counted too.
+  Like the access log, it skips the development polls and the files served
+  from the framework's `/static` directory;
 - `database`: ORM operation counters and the newest 16 operations that took at
   least 100 ms, with their static model, table and operation labels, or
   `unavailable` with `subscriber_not_installed` or `orm_spans_filtered`;

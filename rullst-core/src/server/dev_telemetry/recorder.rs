@@ -33,7 +33,7 @@ pub(super) fn enable_global() -> Arc<Recorder> {
 
 /// Records one completed request when development telemetry is enabled; a
 /// single atomic load otherwise.
-pub(crate) fn record_request(method: &str, path: &str, status: u16, elapsed: Duration) {
+pub(super) fn record_request(method: &str, path: &str, status: u16, elapsed: Duration) {
     if let Some(recorder) = global() {
         recorder.record_request(method, path, status, elapsed);
     }

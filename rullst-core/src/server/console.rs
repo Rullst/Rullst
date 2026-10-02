@@ -36,20 +36,20 @@ const UNLOGGED_DEVELOPMENT_PATHS: [&str; 3] = [
     super::dev_telemetry::PATH,
 ];
 
-/// Records one completed request, except for the development HMR channel and
-/// the development polls. When the development telemetry endpoint is mounted
-/// the same method, path, status and duration also feed its bounded recorder.
+/// Prints one completed request, except for the development HMR channel and
+/// the development polls. The development telemetry recorder is fed by its
+/// own outermost layer (`dev_telemetry::record_responses`), not from here.
 pub(crate) fn log_request(method: &str, path: &str, status: u16, elapsed: std::time::Duration) {
     if is_logged(path) {
         let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
         stdout_line(format_args!(
             "[HTTP] {method} {path} -> {status} ({elapsed_ms:.2} ms)"
         ));
-        super::dev_telemetry::record_request(method, path, status, elapsed);
     }
 }
 
-fn is_logged(path: &str) -> bool {
+/// Whether `path` is access-logged (and counted by development telemetry).
+pub(super) fn is_logged(path: &str) -> bool {
     !path.starts_with("/_rullst_hmr") && !UNLOGGED_DEVELOPMENT_PATHS.contains(&path)
 }
 

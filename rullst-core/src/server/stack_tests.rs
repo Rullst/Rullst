@@ -257,3 +257,66 @@ async fn development_telemetry_is_mounted_only_for_a_supervised_development_proc
         assert_eq!(poll(app).await.unwrap().status(), StatusCode::NOT_FOUND);
     }
 }
+
+#[cfg(debug_assertions)]
+async fn panics() {
+    panic!("stack probe panic");
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn development_telemetry_counts_panics_and_responses_of_outer_layers() {
+    const GENERATION: &str = "fedcba9876543210fedcba9876543210";
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let previous = std::env::var_os("RULLST_DEV_GENERATION");
+    unsafe { std::env::set_var("RULLST_DEV_GENERATION", GENERATION) };
+    let app = Server::new(
+        application()
+            .route("/stack-probe-panic", axum::routing::get(panics))
+            .route("/stack-probe-limited", axum::routing::get(echo)),
+    )
+    .rate_limit(RateLimiter::new(RateLimitConfig::per_hour(1.0)))
+    .into_static_app(SecurityConfig::default(), Environment::Development)
+    .unwrap();
+    unsafe {
+        match previous {
+            Some(value) => std::env::set_var("RULLST_DEV_GENERATION", value),
+            None => std::env::remove_var("RULLST_DEV_GENERATION"),
+        }
+    }
+    let request = |path: &str| {
+        let mut request = Request::builder()
+            .uri(path)
+            .header("host", "127.0.0.1:3000")
+            .body(Body::empty())
+            .unwrap();
+        request.extensions_mut().insert(ConnectInfo(
+            "127.0.0.1:40001".parse::<SocketAddr>().unwrap(),
+        ));
+        app.clone().oneshot(request)
+    };
+    // The console turns the panic into a 500; the bucket is then exhausted.
+    let panicked = request("/stack-probe-panic").await.unwrap();
+    assert_eq!(panicked.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let limited = request("/stack-probe-limited").await.unwrap();
+    assert_eq!(limited.status(), StatusCode::TOO_MANY_REQUESTS);
+
+    let poll = request("/_rullst/dev-telemetry").await.unwrap();
+    assert_eq!(poll.status(), StatusCode::OK);
+    let body = to_bytes(poll.into_body(), 1024 * 1024).await.unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let recent = body["http"]["recent"].as_array().unwrap();
+    let status_of = |path: &str| {
+        recent
+            .iter()
+            .find(|sample| sample["path"] == path)
+            .map(|sample| sample["status"].clone())
+    };
+    assert_eq!(status_of("/stack-probe-panic"), Some(500.into()), "{body}");
+    assert_eq!(
+        status_of("/stack-probe-limited"),
+        Some(429.into()),
+        "{body}"
+    );
+    assert!(body["http"]["server_errors_total"].as_u64().unwrap() >= 1);
+}

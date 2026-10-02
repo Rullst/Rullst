@@ -372,25 +372,28 @@ async fn the_endpoint_exists_only_in_a_supervised_debug_development_process() {
 
 #[cfg(debug_assertions)]
 #[tokio::test]
-async fn the_access_log_feeds_the_recorder_without_query_strings_or_polls() {
+async fn the_recording_layer_feeds_the_recorder_without_query_strings_polls_or_static_files() {
     let telemetry = mount(Router::new(), true, Some(MARKER.into()), None);
-    let app = Router::new()
-        .route("/dash-probe-orders", get(|| async { "ok" }))
-        .merge(telemetry)
-        .layer(axum::middleware::from_fn(
-            crate::server::console::access_log_middleware,
-        ));
-    let mut probe = HttpRequest::builder()
-        .uri("/dash-probe-orders?token=query-secret")
-        .body(Body::empty())
-        .unwrap();
-    probe
-        .extensions_mut()
-        .insert(ConnectInfo("127.0.0.1:1".parse::<SocketAddr>().unwrap()));
-    assert_eq!(
-        app.clone().oneshot(probe).await.unwrap().status(),
-        StatusCode::OK
+    let app = record_responses(
+        Router::new()
+            .route("/dash-probe-orders", get(|| async { "ok" }))
+            .route("/static/dash-probe.css", get(|| async { "css" }))
+            .merge(telemetry),
+        true,
     );
+    for uri in [
+        "/dash-probe-orders?token=query-secret",
+        "/static/dash-probe.css",
+    ] {
+        let mut probe = HttpRequest::builder().uri(uri).body(Body::empty()).unwrap();
+        probe
+            .extensions_mut()
+            .insert(ConnectInfo("127.0.0.1:1".parse::<SocketAddr>().unwrap()));
+        assert_eq!(
+            app.clone().oneshot(probe).await.unwrap().status(),
+            StatusCode::OK
+        );
+    }
     let (status, body) = json(&app, local()).await;
     assert_eq!(status, StatusCode::OK);
 
@@ -402,4 +405,12 @@ async fn the_access_log_feeds_the_recorder_without_query_strings_or_polls() {
     );
     assert!(!body.to_string().contains("query-secret"));
     assert!(recent.iter().all(|sample| sample["path"] != PATH));
+    assert!(
+        recent
+            .iter()
+            .all(|sample| sample["path"] != "/static/dash-probe.css")
+    );
+    assert!(is_recorded("/static/app.css", false));
+    assert!(!is_recorded("/static/app.css", true));
+    assert!(is_recorded("/statics", true));
 }
