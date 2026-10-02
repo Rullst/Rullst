@@ -240,8 +240,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .push(", ")
         .push_bind("<script>unsafe</script>")
         .push(")");
-    insert_flag
-        .build()
+    fixture(&mut insert_flag, driver)
         .execute(pool)
         .await
         .expect("insert Studio matrix feature flag");
