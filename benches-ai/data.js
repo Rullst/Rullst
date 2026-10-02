@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790933191452,
+  "lastUpdate": 1790959477695,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12561,6 +12561,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 360,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "faa8106e4c20451b7c7fdd731b1b7dabd142dbb2",
+          "message": "Merge pull request #408 from Rullst/claude/lucid-ride-q7hc27\n\ndocs: align the documentation with the v13 source and fix main CI",
+          "timestamp": "2026-10-02T13:25:50-03:00",
+          "tree_id": "47ab2e985504a4b0182215bf898588bf498992c3",
+          "url": "https://github.com/Rullst/Rullst/commit/faa8106e4c20451b7c7fdd731b1b7dabd142dbb2"
+        },
+        "date": 1790959476848,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 983,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 200,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 202,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
