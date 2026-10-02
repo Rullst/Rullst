@@ -1329,7 +1329,9 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   build files, `.github/`, `tests/`, `benches/`, `examples/` and Rust code with
   tests or procedural macros are flagged in the review. Each action shows a
   coloured diff or the exact command and asks `[y]es / [n]o / [a]ll this turn
-  / [q]uit turn`. Command arguments may not name an absolute, drive (`C:`),
+  / [q]uit turn`. Files are replaced atomically; a replaced file keeps its
+  mode and a new one gets the mode your umask allows. Command arguments may
+  not name an absolute, drive (`C:`),
   home (`~`) or parent (`..`) path, also as `--flag=value`; the values of
   `--schema`, `--output` and `--privacy-source` follow the path rules above.
   Commands run without a shell, with standard input closed, bounded output and

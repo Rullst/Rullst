@@ -259,6 +259,8 @@ pub(super) fn plan(prepared: &Prepared, overlay: &mut Overlay) {
 
 /// Atomically writes `content`, creating missing parent directories. The
 /// path is resolved again first, so a link created since review is refused.
+/// A replaced file keeps its mode; a new one gets `0o666` minus the umask,
+/// like any file the user creates.
 fn write_file(root: &Path, target: &ProjectPath, content: &str) -> Result<(), String> {
     let fresh = paths::resolve(root, &target.display).map_err(|error| error.to_string())?;
     let parent = fresh
@@ -266,8 +268,15 @@ fn write_file(root: &Path, target: &ProjectPath, content: &str) -> Result<(), St
         .parent()
         .ok_or("the path has no parent directory")?;
     std::fs::create_dir_all(parent).map_err(|_| "the parent directory could not be created")?;
-    let mut temporary = tempfile::Builder::new()
-        .prefix(".rullst-ai-")
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(".rullst-ai-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Applied through `open`, so the umask still restricts it.
+        builder.permissions(std::fs::Permissions::from_mode(0o666));
+    }
+    let mut temporary = builder
         .tempfile_in(parent)
         .map_err(|_| "a temporary file could not be created")?;
     temporary
@@ -275,11 +284,9 @@ fn write_file(root: &Path, target: &ProjectPath, content: &str) -> Result<(), St
         .and_then(|()| temporary.as_file().sync_all())
         .map_err(|_| "the file could not be written")?;
     #[cfg(unix)]
-    {
+    if let Ok(metadata) = std::fs::metadata(&fresh.absolute) {
         use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(&fresh.absolute)
-            .map(|metadata| metadata.permissions().mode() & 0o777)
-            .unwrap_or(0o644);
+        let mode = metadata.permissions().mode() & 0o777;
         std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(mode))
             .map_err(|_| "file permissions could not be set")?;
     }

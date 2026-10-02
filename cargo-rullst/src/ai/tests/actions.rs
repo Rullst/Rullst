@@ -416,3 +416,67 @@ fn tests_and_proc_macros_are_flagged_in_the_review() {
         "Run #[test] functions with cargo test.\n"
     )));
 }
+
+/// Creates a file through the assistant and returns its mode.
+#[cfg(unix)]
+fn created_mode(root: &Path) -> u32 {
+    use std::os::unix::fs::PermissionsExt;
+    let overlay = Overlay::new();
+    let prepared = prepare(
+        &write("config/seed.toml", "key = 1\n"),
+        Some(root),
+        root,
+        &overlay,
+    )
+    .unwrap();
+    assert!(apply(&prepared, Some(root), &mut Vec::new(), PLAIN).success);
+    fs::metadata(root.join("config/seed.toml"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777
+}
+
+/// Run by [`new_files_follow_the_umask`] in a child process with umask 077.
+#[cfg(unix)]
+#[test]
+#[ignore = "run in a child process by new_files_follow_the_umask"]
+fn new_file_mode_under_umask_077() {
+    if std::env::var_os("RULLST_TEST_UMASK_CHILD").is_none() {
+        return;
+    }
+    let (_guard, root) = project();
+    assert_eq!(created_mode(&root), 0o600);
+}
+
+#[cfg(unix)]
+#[test]
+fn new_files_follow_the_umask() {
+    use std::os::unix::fs::PermissionsExt;
+    let (_guard, root) = project();
+    // A file created normally in this process gets the same mode.
+    fs::write(root.join("plain.toml"), "").unwrap();
+    let expected = fs::metadata(root.join("plain.toml"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(created_mode(&root), expected);
+
+    let output = std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg("umask 077 && exec \"$0\" \"$@\"")
+        .arg(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "ai::actions::tests::new_file_mode_under_umask_077",
+            "--ignored",
+            "--test-threads=1",
+        ])
+        .env("RULLST_TEST_UMASK_CHILD", "1")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "{stdout}");
+    assert!(stdout.contains("1 passed"), "{stdout}");
+}
