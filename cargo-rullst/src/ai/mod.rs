@@ -12,6 +12,8 @@
 //!   `cargo check`/`cargo test`. Each is previewed and confirmed; nothing runs
 //!   without an interactive terminal. A git checkpoint precedes the first
 //!   change of a session ([`checkpoint`]).
+//! - `cargo rullst ai upgrade` grounds a session in the findings of the
+//!   framework upgrade plan ([`upgrade`]).
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::path::PathBuf;
@@ -33,6 +35,7 @@ mod protocol;
 mod provider;
 mod session;
 mod term;
+mod upgrade;
 mod usage;
 
 use session::{Mode, Session, Settings};
@@ -50,6 +53,8 @@ pub(crate) enum AiCliError {
     Prompt(String),
     #[error("AI provider configuration failed: {0}")]
     Provider(String),
+    #[error("the upgrade plan failed: {0}")]
+    Upgrade(String),
     #[error("terminal I/O failed: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -151,6 +156,24 @@ pub(crate) fn command() -> Command {
                         .help("Your price per million output tokens, used only for a labelled cost estimate"),
                 ),
         )
+        .subcommand(
+            Command::new("upgrade")
+                .about("Plan the framework upgrade and review assistant-proposed fixes for its source findings")
+                .arg(
+                    Arg::new("to")
+                        .long("to")
+                        .value_name("VERSION")
+                        .help("Exact target version; defaults to the installed cargo-rullst version"),
+                )
+                .arg(provider_arg())
+                .arg(model_arg())
+                .arg(
+                    Arg::new("dry-run")
+                        .long("dry-run")
+                        .action(ArgAction::SetTrue)
+                        .help("Show proposed fixes without executing them"),
+                ),
+        )
         .subcommand(Command::new("disconnect").about("Delete the saved AI credentials file"))
         .subcommand(
             Command::new("status")
@@ -180,11 +203,43 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
     let env = TermEnv::detect();
     let style = Style { color: env.color() };
     match matches.subcommand() {
-        Some(("connect", connect)) => return connect::connect(connect, &env, style),
-        Some(("disconnect", _)) => return connect::disconnect(style),
-        Some(("status", status)) => return connect::status(status, style),
-        _ => {}
+        Some(("connect", connect)) => connect::connect(connect, &env, style),
+        Some(("disconnect", _)) => connect::disconnect(style),
+        Some(("status", status)) => connect::status(status, style),
+        Some(("upgrade", upgrade)) => run_upgrade(upgrade, &env, style),
+        _ => run_session(matches, &env, style, None),
     }
+}
+
+/// Plans the upgrade; a plan with findings continues as an assistant session.
+fn run_upgrade(matches: &ArgMatches, env: &TermEnv, style: Style) -> Result<(), AiCliError> {
+    let root = project_root().ok_or_else(|| {
+        AiCliError::Usage("run `cargo rullst ai upgrade` inside a Rullst project".to_string())
+    })?;
+    let plan = crate::generators::build::assist_plan(
+        &root,
+        matches.get_one::<String>("to").map(String::as_str),
+    )
+    .map_err(|error| AiCliError::Upgrade(sanitize(&error.to_string())))?;
+    if plan.findings.is_empty() {
+        println!("{}", sanitize(&plan.summary));
+        let next = if plan.pending_changes > 0 {
+            "No source findings need the assistant. Apply the dependency plan with `cargo rullst upgrade`."
+        } else {
+            "No source findings need the assistant and the dependencies already target this release."
+        };
+        println!("{}", style.green(next));
+        return Ok(());
+    }
+    run_session(matches, env, style, Some((root, plan)))
+}
+
+fn run_session(
+    matches: &ArgMatches,
+    env: &TermEnv,
+    style: Style,
+    upgrade: Option<(PathBuf, crate::generators::build::AssistPlan)>,
+) -> Result<(), AiCliError> {
     let root = project_root();
     let path = credentials::credentials_path().ok();
     let loaded = match &path {
@@ -236,9 +291,12 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
     } else {
         Mode::PlanOnly("not an interactive terminal")
     };
-    let goal = matches
-        .get_many::<String>("goal")
-        .map(|words| words.map(String::as_str).collect::<Vec<_>>().join(" "));
+    let goal = match &upgrade {
+        Some(_) => Some(upgrade::GOAL.to_string()),
+        None => matches
+            .get_many::<String>("goal")
+            .map(|words| words.map(String::as_str).collect::<Vec<_>>().join(" ")),
+    };
     let cwd = std::env::current_dir()?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -260,9 +318,13 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
             prices: resolved.prices,
         };
         let mut session = Session::new(&backend, settings, std::io::stdout(), input);
-        match goal {
-            Some(goal) => session.one_shot(&goal).await,
-            None => session.repl().await,
+        match (upgrade, goal) {
+            (Some((root, plan)), _) => {
+                let brief = upgrade::brief(&root, &plan);
+                session.upgrade(&plan.summary, brief).await;
+            }
+            (None, Some(goal)) => session.one_shot(&goal).await,
+            (None, None) => session.repl().await,
         }
     });
     Ok(())

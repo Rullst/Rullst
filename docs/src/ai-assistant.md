@@ -133,7 +133,23 @@ controllers and `routes!`, `html!` views, and tests, running `cargo check`
 between steps. Each step is a set of actions you review; send another message
 to continue when a turn reaches its step limit.
 
-## 6. Undo
+## 6. Upgrade the framework
+
+```bash
+cargo rullst ai upgrade
+```
+
+The command first prints the plan of `cargo rullst upgrade --dry-run`. When
+the plan reports source findings (for example a `render_page` call that now
+needs a page language, or a dynamic `onclick={...}` in `html!`), the assistant
+works through them, must-change findings first, with the same reviewed edits,
+checkpoint and `cargo check`. It receives only the migration rows of those
+findings and the affected files the path policy allows; it never edits Rullst
+dependency versions, which `cargo rullst upgrade` applies. The
+[assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md#assisted-fixes-with-cargo-rullst-ai-upgrade)
+explains the order of the two commands.
+
+## 7. Undo
 
 The first change of each session is preceded by a git checkpoint stored under
 `refs/rullst/ai-checkpoints/`. It is built in a temporary index, so your staged
@@ -151,7 +167,7 @@ status` lists them. Remove old checkpoints with
 `git update-ref -d refs/rullst/ai-checkpoints/<timestamp>`. Outside a git
 repository the CLI asks before changing anything without a checkpoint.
 
-## 7. Safety notes
+## 8. Safety notes
 
 - Everything that comes from the project, shared files or command output is
   sent as delimited, size-capped untrusted data and checked by the `rullst-ai`

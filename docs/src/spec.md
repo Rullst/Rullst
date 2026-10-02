@@ -436,8 +436,9 @@ actual major-version behavior; it is not a publication or stable-release claim.
 The privacy package joins the candidate inventory with explicit optional facade
 features; registry publication remains subject to package and ownership admission.
 
-The `rullst-upgrade-rules-v3` migration catalog recognizes source majors 12 and
-13; v5/v6 applications, including their v11-era ecosystem crates, first upgrade
+The `rullst-upgrade-rules-v4` migration catalog recognizes source majors 12 and
+13 and carries the v12 → v13 source rules (see the assisted upgrade contract);
+v5/v6 applications, including their v11-era ecosystem crates, first upgrade
 to v12 with the v12 CLI. It keeps
 exact target-major CLI selection and rejects downgrades. Preparations from a
 previous catalog require fresh preparation and verification. The [12.1-to-13 source inventory](migration-v13.md) adds opt-in privacy APIs,
@@ -3533,7 +3534,26 @@ assistant, not a claim that compilation proves production compatibility.
   from a versioned rule catalog using detected source majors and the exact
   target major. Every future major release must extend that catalog, migration
   documentation, negative tests and process-level fixtures for its supported
-  upgrade paths.
+  upgrade paths. The v13 catalog `rullst-upgrade-rules-v4` parses Rust sources
+  with `syn` (comments, doc comments and strings never match an API rule; macro
+  bodies are read as tokens), Cargo manifests and generated project files read
+  without following symlinks. Each finding has a stable `V13-*` code, a kind
+  (`must-change` for a compile-breaking or API-shape change, `review` for
+  changed behaviour of an API, feature or configuration in use), `file:line`, a
+  one-line message and the first-column title of its row in
+  `migration-v13.md`; the assisted-upgrade tutorial classifies every row.
+  `rullst.upgrade-plan.v1` is extended additively (`kind`, `migration_row`,
+  `migration_url`, `finding_counts`, `unscanned_sources`, `migration_guide`).
+  Findings never block `cargo rullst upgrade`; project preparations with
+  must-change findings are refused at verification, review and application.
+* 🟡 **`[Implemented / Preview]` Assisted fixes:** `cargo rullst ai upgrade`
+  computes the same dry-run plan and, when it has findings, runs one
+  `cargo rullst ai` goal grounded in them. Trusted instructions carry only the
+  referenced migration rows and their fix guidance; findings, flagged lines and
+  file excerpts are untrusted data within the assistant's path policy. Every
+  edit is previewed and confirmed after a git checkpoint, `cargo check` is
+  proposed afterwards, nothing executes without an interactive terminal, and
+  Rullst dependency versions remain owned by `cargo rullst upgrade`.
 * 🟢 **`[Implemented / Bounded]` Transaction:** the default target is the exact
   installed `cargo-rullst` version; `--to` accepts only the same major train as
   that CLI. Before writes, the command snapshots workspace manifests, the root
