@@ -384,3 +384,49 @@ async fn unreported_usage_is_never_invented() {
     assert!(output.contains("usage not reported"), "{output}");
     assert!(!output.contains("Session usage"));
 }
+
+/// A provider whose every request fails (nothing listens on the port).
+fn unreachable() -> Backend {
+    use rullst_ai::providers::openai_compatible::{
+        OpenAiCompatibleCapabilities, OpenAiCompatibleProvider,
+    };
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    drop(listener);
+    let provider = OpenAiCompatibleProvider::try_local(format!("http://{address}/v1"), "fixture")
+        .unwrap()
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_streaming());
+    Backend::Compatible(StreamingAiClient::new(crate::ai::coalesce::Coalesced(
+        provider,
+    )))
+}
+
+#[tokio::test]
+async fn failed_requests_keep_pending_context_without_their_goal() {
+    let backend = unreachable();
+    let results = format!("{RESULTS_MARKER}\n1. create notes.md: created");
+    for attachment in [
+        None,
+        Some("<untrusted-data label=\"file a.rs\">x</untrusted-data>"),
+    ] {
+        let mut session = Session::new(
+            &backend,
+            settings(Mode::PlanOnly("test"), None),
+            Vec::new(),
+            Input::script(&[]),
+        );
+        session.notes.push(results.clone());
+        session.attachments.extend(attachment.map(str::to_string));
+        session.turn("drop the posts migration").await;
+        session.turn("never mind, explain routing").await;
+        assert_eq!(
+            session.notes,
+            std::slice::from_ref(&results),
+            "{attachment:?}"
+        );
+        assert_eq!(session.attachments.len(), usize::from(attachment.is_some()));
+        assert!(session.history.is_empty());
+        let output = String::from_utf8(session.into_output()).unwrap();
+        assert_eq!(output.matches("[provider error").count(), 2, "{output}");
+    }
+}

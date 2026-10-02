@@ -291,13 +291,19 @@ impl<'a, W: Write + Send> Session<'a, W> {
         self.say(&message);
     }
 
-    /// The user's message with pending attachments and notes.
-    fn compose(&mut self, goal: &str) -> String {
+    /// The user's message with pending attachments and notes. They stay
+    /// pending until the message is answered, so a failed request loses
+    /// none of them and never carries its goal into the next message.
+    fn compose(&self, goal: &str) -> String {
         if self.attachments.is_empty() && self.notes.is_empty() {
             return goal.to_string();
         }
-        let mut parts: Vec<String> = std::mem::take(&mut self.attachments);
-        parts.append(&mut self.notes);
+        let parts: Vec<&str> = self
+            .attachments
+            .iter()
+            .chain(&self.notes)
+            .map(String::as_str)
+            .collect();
         format!("{}\n\nGoal:\n{goal}", parts.join("\n\n"))
     }
 
@@ -323,9 +329,14 @@ impl<'a, W: Write + Send> Session<'a, W> {
         let mut changed = false;
         let mut checked_after_change = false;
         for step in 0..MAX_STEPS {
-            let Some(response) = self.ask().await else {
+            let Some(response) = self.ask(step > 0).await else {
                 return;
             };
+            if step == 0 {
+                // The message that carried them has been answered.
+                self.attachments.clear();
+                self.notes.clear();
+            }
             let proposals = protocol::parse(&response);
             if proposals.is_empty() {
                 break;
@@ -351,8 +362,10 @@ impl<'a, W: Write + Send> Session<'a, W> {
     }
 
     /// Sends the conversation and records the answer. `None` when the step
-    /// failed or was cancelled (the unanswered message is removed).
-    async fn ask(&mut self) -> Option<String> {
+    /// failed or was cancelled: the unanswered message is removed, and when
+    /// it carried action results (`results`, a later step) they are kept as
+    /// a note for the next message.
+    async fn ask(&mut self, results: bool) -> Option<String> {
         self.trim_history();
         let mut messages = Vec::with_capacity(self.history.len() + 2);
         messages.push(self.system.clone());
@@ -411,6 +424,7 @@ impl<'a, W: Write + Send> Session<'a, W> {
                 let message = style.red(&message);
                 self.say(&message);
                 if let Some(unanswered) = self.history.pop()
+                    && results
                     && unanswered.content.starts_with(RESULTS_MARKER)
                 {
                     // Keep executed results for the next turn instead of losing them.
