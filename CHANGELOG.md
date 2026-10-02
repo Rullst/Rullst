@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Assisted v12 → v13 upgrade
+
+- `cargo rullst upgrade` reports v12 → v13 source findings
+  (`rullst-upgrade-rules-v4`, 88 `syn`-based rules over sources, manifests and
+  generated files) as MUST-CHANGE or REVIEW with `file:line` and the matching
+  [v13 migration guide](docs/src/migration-v13.md) row. The
+  `rullst.upgrade-plan.v1` JSON gains `kind`, `migration_row`,
+  `migration_url`, `finding_counts`, `unscanned_sources` and
+  `migration_guide`.
+- New `cargo rullst ai upgrade` proposes reviewed fixes for those findings
+  (diff, confirmation, git checkpoint, `cargo check`), grounded only in the
+  migration rows the findings reference.
+- `update project` refuses only must-change findings, and AI checkpoints no
+  longer fail when `target/` is gitignored.
+
 ### `cargo rullst new` wizard and `cargo rullst tour`
 
 - `cargo rullst new` runs an interactive wizard in a terminal: blueprint
