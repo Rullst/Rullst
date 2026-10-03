@@ -102,6 +102,9 @@ pub(crate) async fn render_console_html(
         .replace('$', "\\$");
 
     let file_display_js = file_display.replace('\\', "\\\\").replace('"', "\\\"");
+    // Visible text is HTML-escaped only; the script literals above also
+    // escape backslashes, which would show doubled in a Windows path.
+    let file_display_html = crate::html::escape_str(&file_display);
 
     format!(
         r#"<!DOCTYPE html>
@@ -125,7 +128,7 @@ pub(crate) async fn render_console_html(
 
         <div class="error-card">
             <div class="error-label">Application Panicked</div>
-            <h1 class="error-message">"{escaped_err}"</h1>
+            <h1 class="error-message">"{escaped_err_html}"</h1>
         </div>
 
         <div class="panel-grid">
@@ -135,7 +138,7 @@ pub(crate) async fn render_console_html(
                 </div>
                 <div class="code-container">
                     <div class="code-header">
-                        <span class="file-path">File: <span>{file_display}</span> (Line {line_display})</span>
+                        <span class="file-path">File: <span>{file_display_html}</span> (Line {line_display})</span>
                     </div>
                     <div class="code-body">
                         {code_frame_html}
@@ -268,7 +271,9 @@ pub(crate) async fn render_console_html(
 </body>
 </html>"#,
         escaped_err = escaped_err_js,
+        escaped_err_html = escaped_err,
         file_display = file_display_js,
+        file_display_html = file_display_html,
         line_display = line_display,
         code_frame_html = code_frame_html,
         trace_html = trace_html,

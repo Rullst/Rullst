@@ -153,7 +153,8 @@ async fn panic_console_reports_the_panic_site_not_the_middleware() {
     let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
         .await
         .unwrap();
-    let body = String::from_utf8_lossy(&body);
+    // Windows reports the path with backslashes, so compare with `/`.
+    let body = String::from_utf8_lossy(&body).replace('\\', "/");
     // The panic location, or with RUST_BACKTRACE the same frame read from
     // the backtrace (then relative to the working directory).
     let expected = format!("src/error_console/tests.rs</span> (Line {LOCATED_PANIC_LINE})");
@@ -205,5 +206,31 @@ async fn panic_console_matches_the_default_nonce_csp() {
     assert!(
         !body.contains(" style="),
         "inline style attributes need unsafe-inline"
+    );
+}
+
+#[tokio::test]
+async fn console_text_is_html_escaped_and_script_literals_are_js_escaped() {
+    let capture = capture::PanicCapture {
+        location: Some((r"C:\app\src\main.rs".to_string(), 7)),
+        backtrace: None,
+    };
+    let html = render_console_html(r"bad `path` C:\tmp <x>", &capture, None).await;
+
+    assert!(
+        html.contains(r"<span>C:\app\src\main.rs</span> (Line 7)"),
+        "{html}"
+    );
+    assert!(
+        html.contains(r#"<h1 class="error-message">"bad `path` C:\tmp &lt;x&gt;"</h1>"#),
+        "{html}"
+    );
+    assert!(
+        html.contains(r#"const file_path = "C:\\app\\src\\main.rs";"#),
+        "{html}"
+    );
+    assert!(
+        html.contains(r"const err_msg = `bad \`path\` C:\\tmp &lt;x&gt;`;"),
+        "{html}"
     );
 }
