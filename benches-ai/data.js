@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790975550468,
+  "lastUpdate": 1791001447261,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12657,6 +12657,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 406,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d2d312f39d3749c110941c4ec9e2494750b095ae",
+          "message": "Merge pull request #411 from Rullst/claude/lucid-ride-q7hc27\n\ndocs(v13): move mutation testing ahead of the release freeze",
+          "timestamp": "2026-10-03T00:59:49-03:00",
+          "tree_id": "176fb308ccf1b1ab2a20774db085c52333be9b14",
+          "url": "https://github.com/Rullst/Rullst/commit/d2d312f39d3749c110941c4ec9e2494750b095ae"
+        },
+        "date": 1791001446436,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1734,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 386,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 409,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
