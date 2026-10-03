@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790975433552,
+  "lastUpdate": 1791001321728,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -14343,6 +14343,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d2d312f39d3749c110941c4ec9e2494750b095ae",
+          "message": "Merge pull request #411 from Rullst/claude/lucid-ride-q7hc27\n\ndocs(v13): move mutation testing ahead of the release freeze",
+          "timestamp": "2026-10-03T00:59:49-03:00",
+          "tree_id": "176fb308ccf1b1ab2a20774db085c52333be9b14",
+          "url": "https://github.com/Rullst/Rullst/commit/d2d312f39d3749c110941c4ec9e2494750b095ae"
+        },
+        "date": 1791001320850,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5361,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 706,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
