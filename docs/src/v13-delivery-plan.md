@@ -42,6 +42,33 @@ still needs its own admission and a place in the release order before upload.
 `v13` maintenance branch can be cut from its release source, as `v12` was, and
 `main` moves on to the next major.
 
+**Verification order adopted on 3 October:** the 12.2.0 admission showed that
+mutation findings arrive too late once the release gates have started, because
+any correction then forces a new exact-source admission. For v13 releases,
+mutation testing moves ahead of the version freeze. It stays manual and
+informational:
+
+1. During development, a pull request that changes security-critical code gets
+   a manual targeted `mutants.yml` run for each changed production file before
+   merge. Critical code covers secret masking and redaction, authentication and
+   sessions, rate limiting, request, mail and upload inspection, webhook and
+   token verification, and access control. Meaningful survivors get tests in
+   the same pull request.
+2. Before the version freeze, a full campaign runs on the candidate source.
+   Each survivor is triaged as a defect to fix, a missing test in critical code
+   to add, or an equivalent or low-value mutant accepted with its reason.
+   Critical areas aim for at least 90% caught under the conservative count;
+   other areas must not fall below the previous release.
+3. Only then does the version change land, followed by one run of the
+   exact-source release gates, with fuzzing dispatched first because it takes
+   longest.
+
+Mutation testing stays out of the required pull request checks. Each mutant
+rebuilds and retests its crate, so a run takes from tens of minutes to hours,
+and it would compete with the release gates for the same hosted runners. A
+non-blocking run triggered by a pull request label can be reconsidered if
+runner capacity grows.
+
 ## Source-line transition approved on 21 September
 
 The owner approved development on `main`, stable maintenance on `v12`, and
