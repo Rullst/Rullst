@@ -362,7 +362,8 @@ async fn a_passed_deadline_does_not_consult_the_source() {
 fn millisecond_conversions_round_down() {
     let instant = UNIX_EPOCH + Duration::from_nanos(1_500_000);
     assert_eq!(to_millis(instant), 1);
-    assert_eq!(to_millis(UNIX_EPOCH - Duration::from_nanos(1)), -1);
+    // 1 µs, not 1 ns: Windows `SystemTime` has 100 ns resolution.
+    assert_eq!(to_millis(UNIX_EPOCH - Duration::from_micros(1)), -1);
     assert_eq!(from_millis(-5), UNIX_EPOCH);
     assert_eq!(DeferralReason::Intensity.as_str(), "intensity");
     assert_eq!(DeferralReason::Window.as_str(), "window");
