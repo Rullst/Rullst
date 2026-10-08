@@ -1,4 +1,4 @@
-# Migrating within 12.x: 12.0 to 12.1 and 12.2
+# Migrating within 12.x: 12.0 to 12.1, 12.2 and 12.3
 
 Version [12.1.1 is published](v12.md#1211-published-maintenance-release).
 Updating dependencies or the CLI does not rewrite generated application files, migrate
@@ -218,3 +218,16 @@ Existing applications may notice the following behaviour changes:
 | IoT | Committing an OTA update no longer changes `OtaManager::current_partition`. Constructors still assume `PartitionA`, so platform code must set `current_partition` to the bank its bootloader started before verifying an update. |
 | Nexus | Basic Auth counts only presented credentials that fail, per IPv4 address or IPv6 /64, and sets the `rullst_nexus_known_client` cookie after a success. Panel assets are served same-origin from `/nexus/assets/` without inline scripts, styles or handlers, so the default production CSP applies unchanged. Password fields are masked and an empty submission keeps the stored value. The edit form submits only changed fields; an emptied number, relation, date, date-time, enum or JSON field is stored as NULL. |
 | Studio | Responses use `Referrer-Policy: same-origin`, and `Origin: null` is accepted only with `Sec-Fetch-Site: same-origin`. A table whose key has a column outside the identifier boundary is read-only, and each row write commits only when exactly one row changed. Under the default `sqlx::Any` build, PostgreSQL table, search, row-action and ER queries work. Without an existing pool, Studio reads only the process `DATABASE_URL` or the parsed `[database].url` and never creates `db.sqlite`. |
+
+## Upgrading to 12.3
+
+12.3.0 keeps the 12.x API and the Rust 1.96 MSRV; the repository toolchain
+moves to Rust 1.99.0. No stored data changes. Existing applications may notice
+the following behaviour changes:
+
+| Area | Change |
+|---|---|
+| Core WAF | `waf_middleware`, which `Server` mounts in staging and production, refuses injection structure instead of SQL and shell keywords. Ordinary text such as "Please select an option", "Delete my account" or "curl the API with your token" in a query, `Referer`, cookie or body is no longer rejected with 403. A quote followed by `or`/`and` and a comparison or by a SQL comment, a `;` followed by a SQL statement, `union [all] select`, SQL probe functions (`sleep(`, `waitfor delay`, `information_schema`…) and a shell metacharacter (`;`, `\|`, `&&`, a backtick, `$(`) followed by a command name are still refused, also when `/* */` comments separate keywords; XSS and traversal signatures are unchanged. Each cookie pair is inspected on its own, and JSON bodies key by key and string by string after decoding, so a `<` escape no longer hides `<script`. The WAF remains a coarse baseline: keep parameterized SQL and shell-free process APIs. |
+| Security RASP | The `\| sh` signature needs a word boundary after `sh` and `; cat` a path-like argument (path, dotfile, `~`, `$`, option or glob), so "\| shopping" and "dogs; cat food" are no longer refused. |
+| CLI audit | In a workspace member without its own `Cargo.lock`, `cargo rullst audit` passes the workspace root's lockfile to `cargo audit --file` instead of failing, and `--sbom` reads the same lockfile. |
+| Generated Dockerfile | `cargo rullst new` writes a Dockerfile whose builder image is `rust:1.99.0-slim-bookworm`. Existing generated files are not rewritten. |
