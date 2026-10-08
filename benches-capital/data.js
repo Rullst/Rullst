@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791473674769,
+  "lastUpdate": 1791480016686,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11148,6 +11148,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "833048894d0b3d26d84f6a9df0b5fcc2b0390682",
+          "message": "Merge pull request #439 from Rullst/integration/v13-alpha-batch-2\n\nchore(v13): integrate the alpha.1 batch 2 (#435-#437)",
+          "timestamp": "2026-10-08T13:55:02-03:00",
+          "tree_id": "0dba935db03d126e22024b8cc825fd2c5c77f96e",
+          "url": "https://github.com/Rullst/Rullst/commit/833048894d0b3d26d84f6a9df0b5fcc2b0390682"
+        },
+        "date": 1791480015810,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 23,
             "range": "± 0",
             "unit": "ns/iter"
           },
