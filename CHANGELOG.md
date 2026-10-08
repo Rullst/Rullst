@@ -9,6 +9,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### AI error fixes and reviews
+
+- The development error page now shows a copyable `cargo rullst ai fix <error-id>`
+  command instead of a dead autofix button, and makes no network request. The
+  console keeps a bounded, expiring panic context (message, location, project
+  backtrace frames, method and path; no headers, cookies or bodies) that only
+  direct loopback requests can read at `GET /_rullst/errors/{id}`.
+  `POST /_rullst/autofix` now answers `410 Gone` with that command.
+- `cargo rullst ai fix` reads that context from loopback only and fixes the
+  panic through the reviewed session (diff, confirmation, git checkpoint,
+  `cargo check`).
+- The new read-only `cargo rullst ai review` reviews the working tree,
+  `--staged` or `--base <ref>` diff: protected and binary files are left out,
+  secrets are redacted with the audit report's patterns, and the size is
+  capped. It reports findings with file:line, severity and a suggested fix as
+  text or `rullst.ai-review.v1` JSON, with a deterministic offline review for CI.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
