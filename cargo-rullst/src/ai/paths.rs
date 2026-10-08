@@ -208,6 +208,14 @@ fn canonical_name_denied(path: &Path, last: bool) -> Result<bool, PathError> {
         .is_none_or(|name| denied(name, last)))
 }
 
+/// Why the assistant may never see `raw` (a relative path), judged on the
+/// name alone: the denied directories and secret, key, certificate-store,
+/// database and managed files of this policy, plus names a filesystem could
+/// map onto them. `None` for an ordinary project path.
+pub(super) fn protected(raw: &str) -> Option<PathError> {
+    components(raw).err()
+}
+
 /// Resolves `raw` below `root` (already canonical). Every existing prefix is
 /// checked with `symlink_metadata`, so no link is ever followed; missing
 /// components may be created later as plain directories.

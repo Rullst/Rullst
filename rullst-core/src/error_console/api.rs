@@ -1,4 +1,5 @@
-//! API endpoints for error explanation, self-healing autofix, and developer diagnostics.
+//! API endpoints for error explanation and developer diagnostics, and the
+//! retired autofix endpoint that now points to `cargo rullst ai fix`.
 
 use axum::{
     Json,
@@ -7,7 +8,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::net::SocketAddr;
-use std::path::Path;
 
 #[derive(Deserialize)]
 /// Query parameters for requests to fetch an AI-based explanation of an error.
@@ -39,7 +39,7 @@ pub async fn handle_explain(
         return "Access denied: endpoint only accessible from localhost.".to_string();
     }
 
-    // H-3: Apply the same path traversal guard as handle_autofix
+    // H-3: path traversal guard for the inspected file.
     let project_root = match std::env::current_dir() {
         Ok(cwd) => cwd.canonicalize().unwrap_or(cwd),
         Err(_) => return "Unable to determine project root directory.".to_string(),
@@ -75,92 +75,50 @@ pub async fn handle_explain(
 }
 
 #[derive(Deserialize)]
-/// POST request body payload containing data needed to perform an AI autofix operation.
+/// Body of the retired `POST /_rullst/autofix` request. It is still accepted
+/// so that an older console page receives the `410 Gone` pointer below.
 pub struct AutoFixPayload {
+    #[allow(dead_code)]
     file_path: String,
+    #[allow(dead_code)]
     line: u32,
+    #[allow(dead_code)]
     error_message: String,
 }
 
-/// POST endpoint that prompts the LLM to rewrite the file on disk to fix the panic.
+/// Command that replaces the retired autofix endpoint.
+pub(crate) const FIX_COMMAND: &str = "cargo rullst ai fix <error-id>";
+
+/// Retired `POST /_rullst/autofix` endpoint.
 ///
-/// **Security:** This endpoint validates that the target file resides within the
-/// project's working directory to prevent path-traversal attacks.
+/// The console never edits files. A loopback peer receives `410 Gone` with
+/// `success: false` and a pointer to `cargo rullst ai fix <error-id>`, which
+/// reviews every edit in the terminal (diff, confirmation, git checkpoint);
+/// any other peer receives `403`. The payload is ignored.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn handle_autofix(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Json(payload): Json<AutoFixPayload>,
+    Json(_payload): Json<AutoFixPayload>,
 ) -> impl IntoResponse {
     if !is_local_peer(addr) {
-        return Json(serde_json::json!({
-            "success": false,
-            "error": "Access denied: endpoint only accessible from localhost"
-        }));
-    }
-
-    // 1. Resolve the project root (current working directory)
-    let project_root = match std::env::current_dir() {
-        Ok(cwd) => match cwd.canonicalize() {
-            Ok(canonical) => canonical,
-            Err(_) => cwd,
-        },
-        Err(_) => {
-            return Json(serde_json::json!({
+        return (
+            axum::http::StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
                 "success": false,
-                "error": "Unable to determine project root directory"
-            }));
-        }
-    };
-
-    // 2. Resolve and verify the file is within the project root (prevents path traversal and existence oracles)
-    let target_path = Path::new(&payload.file_path);
-    if target_path
-        .components()
-        .any(|c| c == std::path::Component::ParentDir)
-    {
-        return Json(serde_json::json!({
+                "error": "Access denied: endpoint only accessible from localhost"
+            })),
+        );
+    }
+    (
+        axum::http::StatusCode::GONE,
+        Json(serde_json::json!({
             "success": false,
-            "error": "Access denied: Path traversal detected"
-        }));
-    }
-
-    let canonical_res = target_path.canonicalize();
-    let canonical_target = match canonical_res {
-        Ok(p) if p.starts_with(&project_root) => p,
-        _ => {
-            return Json(serde_json::json!({
-                "success": false,
-                "error": "File not found or access denied"
-            }));
-        }
-    };
-
-    // 4. Additionally restrict to Rust source files only
-    let extension = canonical_target
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
-    if extension != "rs" && extension != "toml" {
-        return Json(serde_json::json!({
-            "success": false,
-            "error": "Autofix is restricted to .rs and .toml files only"
-        }));
-    }
-
-    // Block sensitive files disclosure (e.g. .env*, Foundry.toml, Cargo.toml)
-    if let Some(filename) = canonical_target.file_name().and_then(|f| f.to_str()) {
-        if filename.starts_with(".env") || filename == "Foundry.toml" || filename == "Cargo.toml" {
-            return Json(serde_json::json!({
-                "success": false,
-                "error": "Access denied: sensitive configuration files cannot be modified"
-            }));
-        }
-    }
-
-    match perform_autofix(&payload.file_path, payload.line, &payload.error_message).await {
-        Ok(_) => Json(serde_json::json!({ "success": true })),
-        Err(e) => Json(serde_json::json!({ "success": false, "error": e.to_string() })),
-    }
+            "error": format!(
+                "The error console no longer edits files. Run `{FIX_COMMAND}` with the id shown on the error page; it previews each edit as a diff and applies it only after you confirm."
+            ),
+            "command": FIX_COMMAND,
+        })),
+    )
 }
 
 /// POST endpoint for the console's migration button.
@@ -191,19 +149,12 @@ pub async fn handle_run_migrations(
     )
 }
 
-#[cfg_attr(mutants, mutants::skip)]
-async fn perform_autofix(
-    _file_path: &str,
-    _line: u32,
-    _error_message: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    Err("AI Engine offline. Auto-fix is now available via the `rullst-ai` crate.".into())
-}
-
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
-    use super::{ExplainQuery, handle_explain, handle_run_migrations};
+    use super::{
+        AutoFixPayload, ExplainQuery, handle_autofix, handle_explain, handle_run_migrations,
+    };
     use axum::{
         body::to_bytes,
         extract::{ConnectInfo, Query},
@@ -261,6 +212,37 @@ mod tests {
             unsupported.contains("only .rs and .toml"),
             "unexpected response: {unsupported}"
         );
+    }
+
+    #[tokio::test]
+    async fn retired_autofix_points_to_the_cli_and_never_edits() {
+        let payload = || -> AutoFixPayload {
+            serde_json::from_value(serde_json::json!({
+                "file_path": "src/lib.rs",
+                "line": 1,
+                "error_message": "boom"
+            }))
+            .expect("payload")
+        };
+        for (peer, status) in [
+            ("127.0.0.1:43000", 410),
+            ("[::ffff:127.0.0.1]:43000", 410),
+            ("192.0.2.30:43000", 403),
+        ] {
+            let response = handle_autofix(
+                ConnectInfo(peer.parse::<SocketAddr>().expect("peer")),
+                axum::Json(payload()),
+            )
+            .await
+            .into_response();
+            assert_eq!(response.status().as_u16(), status, "{peer}");
+            let body = to_bytes(response.into_body(), 4096).await.expect("body");
+            let json: serde_json::Value = serde_json::from_slice(&body).expect("JSON body");
+            assert_eq!(json["success"], false, "{peer}");
+            if status == 410 {
+                assert_eq!(json["command"], "cargo rullst ai fix <error-id>");
+            }
+        }
     }
 
     #[tokio::test]

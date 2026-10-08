@@ -8,8 +8,9 @@ use std::time::Duration;
 /// Deliberately absent: deploy, foundry:*, upgrade, update, pkg, dev, dash,
 /// studio, build*, omni, eject, hook:install, db:rollback/seed, auth and
 /// generate:models (which would route a database connection string through
-/// the model). `new` is validated separately by [`validate_new`], and
-/// `db:migrate` is further limited to development projects by the caller.
+/// the model). `new` is validated separately by [`validate_new`],
+/// `db:migrate` is further limited to development projects by the caller, and
+/// `ai` is accepted only as the read-only `ai review` ([`validate_ai_review`]).
 pub(super) const RULLST_ALLOWLIST: &[&str] = &[
     "make:controller",
     "make:model",
@@ -205,9 +206,55 @@ fn arity(args: &[String]) -> Result<(), CommandError> {
     }
 }
 
+/// Flags of the read-only `ai review`, the only `ai` subcommand allowed.
+const AI_REVIEW_FLAGS: &[&str] = &["--staged", "--include-untracked", "--json"];
+
+/// A branch, tag or commit name such as `origin/main` or `HEAD~2`.
+fn revision(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_ARG_BYTES
+        && !value.starts_with('-')
+        && !value.contains("..")
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric()
+                || matches!(byte, b'/' | b'_' | b'-' | b'.' | b'~' | b'^' | b'@')
+        })
+}
+
+fn validate_ai_review(args: Vec<String>) -> Result<Invocation, CommandError> {
+    if args.get(1).map(String::as_str) != Some("review") {
+        return Err(CommandError::NotAllowed(format!(
+            "cargo rullst ai {}",
+            truncate(args.get(1).map_or("", String::as_str))
+        )));
+    }
+    let mut iter = args[2..].iter();
+    while let Some(argument) = iter.next() {
+        if AI_REVIEW_FLAGS.contains(&argument.as_str()) {
+            continue;
+        }
+        let base = match argument.strip_prefix("--base=") {
+            Some(value) => Some(value),
+            None if argument == "--base" => iter.next().map(String::as_str),
+            None => None,
+        };
+        match base {
+            Some(base) if revision(base) => continue,
+            _ => return Err(CommandError::Argument(truncate(argument))),
+        }
+    }
+    Ok(Invocation {
+        kind: CommandKind::Rullst,
+        args,
+    })
+}
+
 /// Validates `cargo rullst <args>`.
 pub(super) fn validate_rullst(args: Vec<String>) -> Result<Invocation, CommandError> {
     arity(&args)?;
+    if args[0] == "ai" {
+        return validate_ai_review(args);
+    }
     let subcommand = args[0].as_str();
     if !RULLST_ALLOWLIST.contains(&subcommand) {
         return Err(CommandError::NotAllowed(format!(
@@ -393,7 +440,7 @@ impl Invocation {
         match self.kind {
             CommandKind::Cargo => false,
             CommandKind::Rullst => match self.subcommand() {
-                Some("db:status" | "doctor" | "inspect" | "new" | "db:migrate") => false,
+                Some("db:status" | "doctor" | "inspect" | "new" | "db:migrate" | "ai") => false,
                 // Each writes a report file in the project root.
                 Some("audit") => self.args.iter().any(|arg| {
                     arg == "--compliance"

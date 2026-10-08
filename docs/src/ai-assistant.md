@@ -110,7 +110,7 @@ database migrations yourself with `cargo rullst db:migrate`.
 | --- | --- |
 | Create or replace a file below the project root | Paths outside the project, `..`, absolute paths, symlinks, Windows short names (`GIT~1`) or reserved device names |
 | Replace one exact text occurrence in a file | `.git/`, `target/`, `.cargo/`, `.env*` (except `.env.example`), keys, credentials, `Cargo.lock`, toolchain files |
-| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, shell commands |
+| `cargo rullst make:*`, `generate:*` (not `generate:models`), `db:status`, `doctor`, `audit`, `inspect routes`/`models`/`schema`, the read-only `ai review` | `deploy`, `foundry:*`, `upgrade`, `update`, `pkg`, `db:rollback`, `db:seed`, `doctor --fix`, `audit --network`, `inspect <file>`, other `ai` subcommands, shell commands |
 | `cargo rullst db:migrate` in a development or test project, confirmed on its own | `db:migrate` when the environment the application would use (process `RULLST_ENV`/`APP_ENV` first, then `.env`, then `[app].env`) is staging or production |
 | Outside a project: `cargo rullst new <name> --default [--blueprint …] [--database …]`, confirmed on its own | `new` inside a project or over an existing directory |
 | `cargo check`, `cargo test` (simple flags only) | `cargo run`, `cargo install`, `--manifest-path`, `--config`, `-Z` |
@@ -149,7 +149,60 @@ dependency versions, which `cargo rullst upgrade` applies. The
 [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md#assisted-fixes-with-cargo-rullst-ai-upgrade)
 explains the order of the two commands.
 
-## 7. Undo
+## 7. Fix a panic from the error page
+
+In a debug build running in Development, a handler panic shows the development
+error page to loopback clients. Its "Fix with cargo rullst ai" panel holds one
+command with a random id:
+
+```bash
+cargo rullst ai fix 3f2a9c0d6b1e4f7a8c5d2e9b0a1f3c4d
+```
+
+Copy it (the button works under the page's Content Security Policy; you can
+also select the text) and run it in the project directory. The page itself
+never runs the command, makes no network request and sends nothing to an AI
+provider.
+
+The command reads the error from the development server's
+`GET /_rullst/errors/{id}` (at `http://127.0.0.1:<PORT>`, using the port
+`cargo rullst dev` uses, or `--url http://127.0.0.1:<PORT>`). Only a loopback
+address is accepted. The server answers only direct loopback requests and
+keeps the message, location, project backtrace frames and request method and
+path (no query string, headers, cookies or body) of at most 32 errors for 30
+minutes; a restart forgets them. With an unknown or expired id the command
+stops and asks you to reproduce the error.
+
+Secrets matching the audit report's patterns are redacted. The error and the
+source around its location are sent as untrusted data, and the assistant
+proposes a fix through the usual diff, confirmation, checkpoint and
+`cargo check`. The old `POST /_rullst/autofix` endpoint now answers `410 Gone`
+with this command.
+
+## 8. Review your changes
+
+```bash
+cargo rullst ai review                 # staged and unstaged changes against HEAD
+cargo rullst ai review --staged        # only what you staged
+cargo rullst ai review --base main     # the commits of this branch (main...HEAD)
+cargo rullst ai review --include-untracked --json
+```
+
+The review is read-only: it never edits a file or runs a command. Before
+anything is sent, it omits protected files (`.env*`, keys and certificate
+stores, credentials, databases, `Cargo.lock`, `.git/`, `target/`) and binary
+files, redacts high-signal secrets and caps the diff at 24 KiB per file and
+96 KiB in total. It prints which files were omitted or truncated and how many
+values were redacted. Untracked files are included only with
+`--include-untracked`, and `.gitignore` is respected.
+
+Each finding has `file:line`, a severity (`high`, `medium`, `low` or `info`)
+and a suggested fix. `--json` prints the stable `rullst.ai-review.v1` document
+for scripts and CI. The offline assistant gives a deterministic review that
+flags `unwrap()`, `expect()` and `panic!` on added lines outside tests and
+redacted secrets, so the command runs in CI without a key.
+
+## 9. Undo
 
 The first change of each session is preceded by a git checkpoint stored under
 `refs/rullst/ai-checkpoints/`. It is built in a temporary index, so your staged
@@ -168,7 +221,7 @@ status` lists them. Remove old checkpoints with
 `git update-ref -d refs/rullst/ai-checkpoints/<timestamp>`. Outside a git
 repository the CLI asks before changing anything without a checkpoint.
 
-## 8. Safety notes
+## 10. Safety notes
 
 - Everything that comes from the project, shared files or command output is
   sent as delimited, size-capped untrusted data and checked by the `rullst-ai`

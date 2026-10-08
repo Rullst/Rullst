@@ -42,8 +42,10 @@ Allowed actions (nothing else exists):
   occurrence of `find` (it must match the current file text exactly).
 - `run_rullst` with `args`: run `cargo rullst <args>`. Inside a project:
   make:*, generate:* (except generate:models), db:status, db:migrate
-  (development projects only), doctor, audit and inspect (routes, models or
-  schema only; to read a file, ask the user to share it with `/add`). Outside a project:
+  (development projects only), doctor, audit, inspect (routes, models or
+  schema only; to read a file, ask the user to share it with `/add`) and
+  `["ai", "review"]` (a read-only review of the current diff; optional
+  `--staged`, `--base <ref>` or `--include-untracked`). Outside a project:
   only `["new", "<name>", "--default"]` plus optional `--blueprint
   <blank|lms|saas|blog|portfolio|erp>`, `--database
   <sqlite|postgres|mysql|mariadb|turso>`, `--no-database`, `--api`, `--ai`,
