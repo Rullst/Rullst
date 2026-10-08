@@ -582,8 +582,10 @@ certification.
 against every publishable crate, packages before the first publish, and creates
 a tag-bound evidence bundle containing the lockfile, Cargo metadata, CycloneDX
 1.5, Cargo Audit JSON, dependency policy, bounded compliance evidence, advisory
-exceptions, commit context, checksums, and release notes extracted from the
-exact matching changelog section. The `.crate` archives and evidence receive
+exceptions, commit context, checksums, and release notes rendered from the
+exact matching changelog section: the section's introduction and "Known
+limitations", plus a link to the full section at the tag (the whole section
+when it has no introduction). The `.crate` archives and evidence receive
 GitHub's SHA-pinned build-provenance attestation. This does **not** by itself
 establish a project-wide SLSA level, Sigstore Cosign binary signing, independent
 review, or regulatory compliance.
