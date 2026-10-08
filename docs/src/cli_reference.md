@@ -1777,6 +1777,11 @@ route and listener scans skip each top-level `#[cfg(test)]` item (such as
 `mod tests;` or an inline test module) on its own; code after it is still
 scanned.
 
+`cargo audit` and the SBOM read the project's own `Cargo.lock`. In a workspace
+member, which has none, they read the lockfile of the workspace root that
+`cargo metadata` reports, and `cargo audit` receives it as `--file`; the SBOM
+then lists every package of that workspace lockfile.
+
 SBOM components come from `Cargo.lock`. Only crates.io packages receive the
 plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a
 `repository_url` qualifier, a git package adds a `vcs_url` qualifier with the
