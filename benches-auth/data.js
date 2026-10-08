@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791484012466,
+  "lastUpdate": 1791488086118,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15391,6 +15391,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3131,
             "range": "± 137",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c9bf035d1c15913b1eb2317b74f64b8de2e0b4bc",
+          "message": "Merge pull request #443 from Rullst/fix/v13-windows-review-deferral\n\ntest: make the ai review and deferral tests portable to Windows",
+          "timestamp": "2026-10-08T16:09:41-03:00",
+          "tree_id": "b9a9d8e89ea2024bfaca2155c10a894369b6f713",
+          "url": "https://github.com/Rullst/Rullst/commit/c9bf035d1c15913b1eb2317b74f64b8de2e0b4bc"
+        },
+        "date": 1791488085327,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 598,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 478,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1111,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3119,
+            "range": "± 141",
             "unit": "ns/iter"
           }
         ]
