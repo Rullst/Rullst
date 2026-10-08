@@ -9,9 +9,11 @@ use crate::generators::audit_evidence::inspect_local_network_surface;
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
 use crate::generators::audit_idor::collect_rust_source_files;
 pub use crate::generators::audit_idor::scan_idor_vulnerabilities;
+#[cfg(test)]
+use crate::generators::audit_scope::cargo_audit_arguments;
 pub use crate::generators::audit_scope::scan_unsafe_code;
 use crate::generators::audit_scope::{
-    cargo_audit_arguments, package_source_roots, scan_each, validate_audit_ignores,
+    cargo_audit_status, package_source_roots, scan_each, validate_audit_ignores,
 };
 
 /// A scan whose source walk hit a bound is reported as a finding, not as clean.
@@ -164,62 +166,34 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
         "  {} Checking dependency vulnerabilities...",
         "[AUDIT]".magenta()
     );
-    let audit_tool = std::process::Command::new("cargo")
-        .arg("audit")
-        .arg("--version")
-        .output();
-    let dependency_audit = match audit_tool {
-        Ok(tool) if tool.status.success() => {
-            let mut command = std::process::Command::new("cargo");
-            command.args(cargo_audit_arguments(audit_ignores));
-            match command.output() {
-                Ok(out) if out.status.success() => {
-                    if audit_ignores.is_empty() {
-                        say!(
-                            json,
-                            "  {} No advisories reported by cargo-audit.",
-                            "[OK]".green()
-                        );
-                        EvidenceStatus::NoFindings
-                    } else {
-                        say!(
-                            json,
-                            "  {} No findings outside the governed exceptions; exceptions remain unresolved: {}.",
-                            "[OK]".green(),
-                            audit_ignores.join(", ")
-                        );
-                        EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
-                    }
-                }
-                Ok(out) => {
-                    say!(
-                        json,
-                        "  {} cargo-audit did not complete successfully; inspect its output directly.",
-                        "[ERROR]".red().bold()
-                    );
-                    issues_found += 1;
-                    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-                    EvidenceStatus::Error(if stderr.is_empty() {
-                        format!("cargo-audit exited with status {}", out.status)
-                    } else {
-                        stderr
-                    })
-                }
-                Err(error) => {
-                    issues_found += 1;
-                    EvidenceStatus::Error(error.to_string())
-                }
-            }
-        }
-        Ok(_) | Err(_) => {
+    let dependency_audit =
+        cargo_audit_status(std::ffi::OsStr::new("cargo"), Path::new("."), audit_ignores);
+    match &dependency_audit {
+        EvidenceStatus::NoFindings => say!(
+            json,
+            "  {} No advisories reported by cargo-audit.",
+            "[OK]".green()
+        ),
+        EvidenceStatus::NoFindingsOutsideExceptions(exceptions) => say!(
+            json,
+            "  {} No findings outside the governed exceptions; exceptions remain unresolved: {}.",
+            "[OK]".green(),
+            exceptions.join(", ")
+        ),
+        EvidenceStatus::NotChecked(_) => say!(
+            json,
+            "  {} cargo-audit not installed. Run 'cargo install cargo-audit' for deep dependency scanning.",
+            "[NOTE]".yellow()
+        ),
+        _ => {
             say!(
                 json,
-                "  {} cargo-audit not installed. Run 'cargo install cargo-audit' for deep dependency scanning.",
-                "[NOTE]".yellow()
+                "  {} cargo-audit did not complete successfully; inspect its output directly.",
+                "[ERROR]".red().bold()
             );
-            EvidenceStatus::NotChecked("cargo-audit is unavailable")
+            issues_found += 1;
         }
-    };
+    }
 
     // 3. Memory Safety & Unsafe Code (Cargo Geiger)
     say!(

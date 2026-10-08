@@ -1373,7 +1373,9 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
 * **Actions:** the model may only propose `write_file`, `edit_file` (one exact
   replacement), an allowlisted `cargo rullst` command (`make:*`, `generate:*`
   except `generate:models` and its `make:models-from-db` alias, `db:status`,
-  `db:migrate`, `doctor` without `--fix`, `audit` without `--network`,
+  `db:migrate`, `doctor` without `--fix`, `audit` without `--network` or
+  `--output` (`--compliance`, `--sbom` and `--report` write a file in the
+  project, so they take the checkpoint first),
   `inspect` with no target or `routes`, `models` or `schema`, never a file path) or `cargo check`/`cargo test`. `db:migrate` is refused when the project environment, resolved as the
   application server resolves it (the process `RULLST_ENV`, then the process
   `APP_ENV`, then `RULLST_ENV` or `APP_ENV` from the project `.env`, then
@@ -1442,6 +1444,7 @@ compliance certification.
   * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
   * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and does not confer SOC 2 or ISO 27001 certification.
   * `--idor`: Fails on parameterized routes without an adjacent `// rullst-access: public|owner|role|admin — reason` classification and the recognized guard required by non-public classifications. `public` is accepted only for recognized GET routes. This bounded heuristic cannot prove domain authorization correctness.
+  * `--report [md|html|json]` (13.0): Writes an evidence report mapped to OWASP ASVS 5.0.0 Level 1, with a personal-data inventory and accessibility heuristics; see [the security report guide](security-report.md) and the flag details [below](#cargo-rullst-audit).
 
 ### `cargo rullst eject [--force] [--output <path>]`
 Writes a reviewable Axum/Tokio entry-point template (`src/ejected_main.rs`). It
@@ -1728,6 +1731,13 @@ route, dependency, and local network patterns.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) from `Cargo.lock`, with the SHA-256 checksums the lockfile records. It contains no license metadata.
   * `--audit-ignore RUSTSEC-YYYY-NNNN`: Passes one explicit, repeatable advisory exception to `cargo audit`. A successful run is reported as **NO FINDINGS OUTSIDE EXCEPTIONS**, not “no findings”; the caller must separately version, own, review, and expire every exception.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan. The TCP listener inventory runs `ss -ltnH` (Linux iproute2). Where it cannot run, as on macOS, Windows or a Linux image without iproute2, the check is reported as `ERROR` and the command exits non-zero instead of reporting a clean scan.
+  * `--report [md|html|json]` (new in 13.0): Runs the static report checks
+    below and writes `SECURITY_REPORT.md` (the default), `SECURITY_REPORT.html`
+    or `SECURITY_REPORT.json` in the current directory; `--output <path>`
+    chooses another file (its directory must exist). It reuses the `cargo audit`
+    step with its `--audit-ignore` exceptions and the `--idor` scanner, and
+    cannot be combined with `--json`, `--compliance`, `--sbom`, `--network`,
+    `--geiger` or `--ai`. See [the security report guide](security-report.md).
   * `--json`: Moves the progress lines to standard error and prints one
     `rullst.cli-audit.v1` summary on standard output; the exit status is
     unchanged (non-zero for findings or incomplete requested checks):
@@ -1771,6 +1781,73 @@ no purl. Every component that is not from crates.io carries a
 `SECURITY_COMPLIANCE.md` and `sbom-cyclonedx.json` are written in the current
 directory and replace a previous regular file. Because an audit may run on an
 untrusted checkout, the command refuses to write either file through a symlink.
+
+#### Security report (`--report`)
+
+The report maps each check to [OWASP ASVS 5.0.0](https://github.com/OWASP/ASVS/releases/tag/v5.0.0_release)
+(release `v5.0.0_release`) Level 1 requirement IDs and section names, and
+lists the Level 1 requirements no check relates to as `NOT EVALUATED`, by
+chapter. A header states that it does not replace a manual review or a
+penetration test; it never reports `PASS` or a certification.
+
+| Check id | What it reads | ASVS 5.0.0 |
+| :--- | :--- | :--- |
+| `security_headers` | `Server::new` or a header layer in `src`; `[security] csp`/`coep` in `Rullst.toml` | V3.4.1 (L1); V3.4.3, V3.4.4, V3.4.6 (L2) |
+| `csrf` | Single-line write routes; `Server`, `csrf_middleware`, `csrf_signed_webhook_paths` | V3.5.1 (L1) |
+| `cookies` | `Set-Cookie`-shaped string literals, cookie builders, `csrf_same_site` | V3.3.1 (L1); V3.3.2, V3.3.4 (L2) |
+| `auth_rate_limit` | Authentication write routes; a rate limiter or `LoginGuard` | V6.3.1 (L1) |
+| `committed_secrets` | Files from `git ls-files` (not `target/`, binaries, symlinks or files over 2 MiB) | V13.3.1 (L2), chapter V13 |
+| `dependency_audit` | `cargo audit` with the `--audit-ignore` exceptions | V15.2.1 (L1) |
+| `idor` | The `--idor` route-classification scan | V8.2.1, V8.2.2 (L1) |
+| `a11y_img_alt`, `a11y_form_labels`, `a11y_html_lang` | `html!` bodies and templates under `src/` and `templates/` | WCAG 2.2 1.1.1; 1.3.1, 3.3.2, 4.1.2; 3.1.1 |
+
+Each check reports `no_findings`, `no_findings_outside_exceptions`,
+`findings`, `not_checked` or `error` (shown as `NO FINDINGS`, `FINDINGS`, ...
+in Markdown and HTML) with a one-line fix and a link to the guide. A
+committed-secret finding shows only the file, the line and the first four
+characters of the value followed by `…`. The personal-data inventory
+(`#[privacy]`, `#[orm(encrypted)]`, `SecretString`, `#[orm(masked)]`, and
+`review` for unclassified fields named like email, phone, cpf, cnpj, ssn,
+birth, address, document or ip) is `observed` and never changes the exit
+status.
+
+**Exit status:** 1 when any check reports `findings` or `error`; 0 otherwise,
+including when checks are `not_checked` (no `src/`, no Git work tree, no
+`cargo-audit`). The terminal prints a grouped ✓/!/✗ summary, plain under
+`NO_COLOR`, `CI`, `TERM=dumb` or a non-terminal stdout.
+
+**Formats:** Markdown has one GitHub table per section; HTML is one
+self-contained file (inline CSS with light and dark schemes, no script, no
+external asset, every value escaped); JSON is the `rullst.cli-audit-report.v1`
+document below, without ANSI sequences:
+
+```json
+{
+  "schema_version": "rullst.cli-audit-report.v1",
+  "generated_at": "2026-10-08T12:00:00+00:00",
+  "tool": { "name": "cargo-rullst", "version": "13.0.0" },
+  "notice": "This report records bounded static checks for a reviewer. ...",
+  "standard": { "name": "OWASP Application Security Verification Standard", "version": "5.0.0", "level": 1, "source": "https://github.com/OWASP/ASVS/releases/tag/v5.0.0_release", "level1_requirements": 70, "level1_mapped": 7, "mapping_note": "..." },
+  "accessibility_standard": "WCAG 2.2",
+  "exit_non_zero": true,
+  "checks": [
+    { "id": "csrf", "group": "security", "title": "CSRF", "status": "findings", "count": 1, "exceptions": [], "detail": "...", "fix": "...", "docs": "https://rullst.github.io/Rullst/book/security-report.html#csrf", "asvs": [{ "id": "V3.5.1", "section": "V3.5 Browser Origin Separation", "level": 1 }], "asvs_chapter": null, "wcag": [], "findings": [{ "file": "src/lib.rs", "line": 12, "message": "...", "preview": null }] }
+  ],
+  "personal_data": { "status": "observed", "count": 2, "review": 1, "detail": "...", "docs": "...", "asvs_chapter": "V14 Data Protection", "fields": [{ "model": "User", "field": "email", "file": "src/models/user.rs", "line": 8, "classification": "review", "encrypted": false }] },
+  "not_evaluated": [{ "chapter": "V1", "name": "Encoding and Sanitization", "status": "not_evaluated", "whole_chapter": true, "requirements": ["V1.2.1", "..."] }]
+}
+```
+
+`checks` always holds the ten ids of the table above, in that order. A new
+key or a changed meaning needs a new `schema_version`.
+
+**Limits:** every check is a bounded static heuristic. Routes are recognized
+only when declared on one line; limiter, guard and header evidence is
+project-wide and does not prove a route is mounted behind it; untracked files
+and Git history are not scanned for secrets; templates are not rendered and
+includes are not followed. The source walks share the `audit` bounds (no
+symlinks, 64 levels, 250,000 entries) and an incomplete walk turns the source
+checks into `error`. Files over 2 MiB are not read.
 
 ### `cargo rullst hook:install`
 Installs managed `pre-commit` and `commit-msg` wrappers. The first runs

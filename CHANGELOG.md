@@ -41,6 +41,21 @@ A prepared version section does not establish that its tag or crates exist.
   `custom_provider` example. `cargo rullst upgrade` reports removed names as
   `V13-CAPITAL-REMOVED`.
 
+### Security report: `cargo rullst audit --report`
+
+- `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
+  `SECURITY_REPORT.md`, `.html` or `.json` (or `--output <path>`). The checks
+  are static and bounded: security headers and CSP, CSRF, cookie attributes,
+  rate limiting on credential routes, committed secrets in Git-tracked files
+  (shown only as redacted previews), the existing `cargo audit` step with its
+  exceptions, and the IDOR scanner.
+- The report adds a personal-data inventory and WCAG-related accessibility
+  heuristics. Each check reports an evidence status mapped to OWASP ASVS 5.0.0
+  Level 1, and the remaining Level 1 requirements are listed as `NOT EVALUATED`.
+- The JSON schema is `rullst.cli-audit-report.v1`. The command exits 1 on
+  `FINDINGS` or `ERROR`. It is evidence for a reviewer, not a certification.
+  Existing `audit` flags are unchanged.
+
 ### Dependency security: hickory 0.26.3
 
 - Lock `hickory-resolver`, `hickory-net` and `hickory-proto` 0.26.3 (from

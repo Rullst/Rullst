@@ -12,6 +12,7 @@ mod audit_compliance;
 mod audit_evidence;
 mod audit_idor;
 mod audit_purl;
+pub(crate) mod audit_report;
 mod audit_scope;
 mod audit_source;
 pub mod auth;
