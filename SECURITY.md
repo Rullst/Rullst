@@ -48,6 +48,12 @@ If you discover a potential security vulnerability within the Rullst framework, 
 Please send a private disclosure report to the Rullst Core Security Team at:
 👉 **`officialrullst@gmail.com`**
 
+You can also use GitHub's private vulnerability reporting: the **Report a
+vulnerability** button on the repository's
+[Security tab](https://github.com/Rullst/Rullst/security/advisories/new).
+Third-party reviewers will find the scope, threat models, sample application
+and tooling in the [external audit kit](docs/src/external-audit-kit.md).
+
 If an encrypted channel is needed, first request and verify the team's key or
 agreed channel through that contact. This policy does not publish an encryption key.
 
