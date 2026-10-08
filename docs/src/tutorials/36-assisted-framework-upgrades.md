@@ -358,7 +358,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (91 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (47 rows).
+  of inputs that previously failed) (48 rows).
 
 The catalog has 98 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
