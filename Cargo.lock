@@ -6682,6 +6682,7 @@ dependencies = [
  "libc",
  "oxixml-schema",
  "p12-keystore",
+ "pkcs1",
  "printpdf",
  "rcgen",
  "reqwest",
