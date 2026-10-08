@@ -101,14 +101,14 @@ each crate implements.
 
 The matrix omits `rullst-orm-macros`, which ships the ORM derives described in
 section 5, and the unpublished v13 candidates `rullst-privacy`,
-`rullst-supervision`, `rullst-media` (all three in the release inventory) and
-`rullst-labs` (`publish = false`); the v13 sections below specify their
-boundaries.
+`rullst-supervision`, `rullst-media` and `rullst-labs` (all four in the release
+inventory); the v13 sections below specify their boundaries.
 
 ### v13 roadmap package boundaries
 
 The [`rullst-labs`](rullst-labs-roadmap.md) library is an unpublished
-implementation candidate; final release admission remains outstanding. It is a
+implementation candidate in the 13.0 release inventory (`13.0.0-alpha.1`);
+registry publication and final release acceptance remain outstanding. It is a
 **bring-your-own-runner** library: it owns trusted, versioned orchestration and
 grading contracts and never executes learner code. The separately deployed
 `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi executor that passed

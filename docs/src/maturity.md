@@ -99,7 +99,7 @@ what your application needs.
 | `rullst-privacy` | Experimental | Unpublished v13 package. No live age providers or verified guardianship; see the [privacy roadmap](privacy-age-assurance-roadmap.md). |
 | `rullst-supervision` | Experimental | The host owns capture, models and reviewer workflow. Read [Responsible use](supervision.md#responsible-use) first. |
 | `rullst-media` | Experimental | Interoperability with real Bunny Stream accounts, transcoding and CDN delivery is unvalidated; see the [managed-video candidate](managed-video.md). |
-| `rullst-labs` | Experimental | `publish = false`, so it is not released to crates.io. Bring your own runner; see the [runner contract](labs-runner-contract.md). |
+| `rullst-labs` | Experimental | In the 13.0 release inventory as `13.0.0-alpha.1`. Contracts only; it never executes learner code. Bring your own runner; see the [runner contract](labs-runner-contract.md). |
 
 ## CLI generators
 

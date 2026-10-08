@@ -249,11 +249,10 @@ crate is labelled Core, Extension or Experimental; see the
 The v13 workspace on `main` also contains unpublished candidates, all in the
 Experimental tier:
 [rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy),
-[rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision)
-and [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) are
-in the v13 release order, while
-[rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) has
-`publish = false`.
+[rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision),
+[rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) and
+[rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) are in
+the v13 release order.
 
 **Tiers (v13):** *Core* packages are needed by every application. *Extensions*
 are optional and supported. *Experimental* packages are optional, may change

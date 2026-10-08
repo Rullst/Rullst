@@ -476,6 +476,7 @@ the rule together.
 | Mail plain-text fallback | (b) review | `V13-MAIL-TEXT-FALLBACK` |  |
 | Labs runner | (a) must-change | `V13-LABS-RUNNER-REMOVED` |  |
 | Education candidates | (c) none | — | Unpublished v13 candidates |
+| Labs package | (c) none | — | New package in the release inventory |
 | Generated billing settings | (b) review | `V13-BILLING-PROJECT-SETTINGS` |  |
 | Application templates | (c) none | — | Generator output |
 | Starter migrations | (b) review | `V13-SQLITE-ONLY-SEED-TIME` |  |

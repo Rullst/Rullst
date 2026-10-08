@@ -8,7 +8,12 @@ description = "Explicit exercise, authorization and durable grading contracts fo
 license = "MIT"
 repository = "https://github.com/Rullst/Rullst"
 readme = "README.md"
-publish = false
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-labs"
+keywords = ["education", "grading", "exercises", "learning", "rullst"]
+categories = ["web-programming"]
+# Runtime databases and local environment files never belong in the archive.
+exclude = ["*.db", "*.db-*", "*.sqlite", "*.sqlite-*", "*.sqlite3", ".env*"]
 
 [features]
 default = []

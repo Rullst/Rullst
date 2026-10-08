@@ -14,7 +14,7 @@ archives, version, temporary, repository = sys.argv[1:]
 archives, temporary, repository = map(Path, (archives, temporary, repository))
 inventory = json.loads((repository / '.github/release-order.json').read_text())
 for package in ('rullst-labs',):
-    assert package not in inventory
+    assert package in inventory
     name = f'{package}-{version}'
     archive_path = archives / f'{name}.crate'
     assert 0 < archive_path.stat().st_size <= 10 * 1024 * 1024
@@ -35,7 +35,8 @@ for package in ('rullst-labs',):
             os.utime(path, None)
     manifest = tomllib.loads((source / 'Cargo.toml').read_text())
     assert manifest['package']['name'] == package
-    assert manifest['package']['version'] == version and manifest['package']['publish'] is False
+    assert manifest['package']['version'] == version
+    assert manifest['package'].get('publish') in (None, True, ['crates-io'])
     assert (source / 'LICENSE').read_bytes() == (repository / 'LICENSE').read_bytes()
 labs = temporary / f'rullst-labs-{version}'
 consumer = temporary / 'consumer'

@@ -362,6 +362,9 @@ candidate was removed from the 13.0 workspace on 30 September 2026; see the
 M40 row below.) The publication changes
 require their own hosted campaign and actual archive acceptance; previous-source
 results above do not admit them. Bunny account/CDN acceptance remains unvalidated.
+(Update: on 8 October 2026 the maintainer admitted `rullst-labs` to the release
+inventory as `13.0.0-alpha.1`; it packages contracts only, and the removed runner
+is not published.)
 
 This candidate also incorporates the newly opened Dependabot PRs
 [#253](https://github.com/Rullst/Rullst/pull/253) and
