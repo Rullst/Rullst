@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791488086118,
+  "lastUpdate": 1791489337395,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15439,6 +15439,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3119,
             "range": "± 141",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a390de92ccd77646b97429c4fba667edcf48539",
+          "message": "Merge pull request #442 from Rullst/chore/untrack-generated-evidence\n\nchore(security): stop committing generated audit evidence",
+          "timestamp": "2026-10-08T16:34:45-03:00",
+          "tree_id": "86fceae9d1763cc1ccd044e9e3f60a43f7722021",
+          "url": "https://github.com/Rullst/Rullst/commit/0a390de92ccd77646b97429c4fba667edcf48539"
+        },
+        "date": 1791489336587,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1024,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 791,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1849,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2996,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
