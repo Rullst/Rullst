@@ -292,12 +292,14 @@ mod tests {
         write(&root.join("Cargo.lock"), "version = 4\n");
 
         let cargo = OsStr::new("cargo");
+        // Compare canonical paths: on Windows `root` carries the `\\?\` prefix
+        // and `cargo metadata` reports the plain path.
+        let lockfile = |dir: &Path| {
+            audit_lockfile(cargo, dir).map(|path| path.canonicalize().expect("lockfile exists"))
+        };
         // The member has no `Cargo.lock`; `cargo audit` there used to fail.
-        assert_eq!(
-            audit_lockfile(cargo, &root.join("blog")),
-            Some(root.join("Cargo.lock"))
-        );
-        assert_eq!(audit_lockfile(cargo, &root), Some(root.join("Cargo.lock")));
+        assert_eq!(lockfile(&root.join("blog")), Some(root.join("Cargo.lock")));
+        assert_eq!(lockfile(&root), Some(root.join("Cargo.lock")));
         let outside = tempfile::tempdir().expect("temporary directory");
         assert_eq!(audit_lockfile(cargo, outside.path()), None);
     }
