@@ -469,7 +469,7 @@ pub fn generate_docker_files(
     };
 
     let dockerfile = format!(
-        r#"FROM rust:1.98.1-slim-bookworm AS builder
+        r#"FROM rust:1.99.0-slim-bookworm AS builder
 WORKDIR /app
 COPY . .
 # Generate and commit Cargo.lock before building this application image.
@@ -566,7 +566,7 @@ mod tests {
             .expect("Docker files");
         let dockerfile =
             fs::read_to_string(root.path().join("Dockerfile")).expect("generated Dockerfile");
-        assert!(dockerfile.contains("FROM rust:1.98.1-slim-bookworm AS builder"));
+        assert!(dockerfile.contains("FROM rust:1.99.0-slim-bookworm AS builder"));
         assert!(dockerfile.contains("ENV RULLST_ENV=production"));
         assert!(dockerfile.contains("ENV HOST=0.0.0.0"));
         assert!(dockerfile.contains("USER 10001:10001"));
