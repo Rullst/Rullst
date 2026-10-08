@@ -148,7 +148,7 @@ async fn machine_clients_still_require_csrf_and_pass_bounded_payload_inspection(
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/healthz?q=DROP+TABLE+users")
+                .uri("/healthz?q=1%3B+DROP+TABLE+users")
                 .header(header::USER_AGENT, "Go-http-client/1.1")
                 .body(Body::empty())
                 .unwrap(),

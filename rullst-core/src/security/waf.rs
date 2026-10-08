@@ -1,4 +1,9 @@
 //! WebAssembly-compatible WAF (Web Application Firewall) middleware.
+//!
+//! A coarse baseline: it refuses common injection *structures* (see the
+//! `detect` submodule) and path traversal in the query, `Referer`, cookies
+//! and bounded textual bodies. Parameterized SQL, output encoding and typed
+//! validation remain the actual defenses.
 
 use axum::{
     body::Body,
@@ -8,32 +13,16 @@ use axum::{
     response::Response,
 };
 
+mod detect;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;
+
 const MAX_INSPECTED_REQUEST_BYTES: usize = 1024 * 1024;
 
-static MALICIOUS_PATTERNS: &[&str] = &[
-    "select ",
-    "union ",
-    "insert ",
-    "delete ",
-    "drop table",
-    "alter table", // SQLi
-    "<script",
-    "javascript:",
-    "onload=",
-    "onerror=",
-    "document.cookie", // XSS
-    "../",
-    "..\\",
-    "/etc/passwd",
-    "win.ini", // Path Traversal
-    "; ls",
-    "&& cat",
-    "| bash",
-    "| sh",
-    "wget ",
-    "curl ",
-    "ping -c", // Command Injection
-];
+/// Path-traversal signatures, checked in the query, headers and bodies.
+static PATH_TRAVERSAL_PATTERNS: &[&str] = &["../", "..\\", "/etc/passwd", "win.ini"];
 
 fn plain_response(status: StatusCode, message: &'static str) -> Response {
     let mut response = Response::new(Body::from(message));
@@ -116,9 +105,44 @@ fn url_decode(s: &str) -> String {
 fn contains_malicious_pattern(payload: &str) -> bool {
     let payload_decoded = url_decode(payload);
     let payload_lower = payload_decoded.to_lowercase();
-    MALICIOUS_PATTERNS
+    PATH_TRAVERSAL_PATTERNS
         .iter()
         .any(|pattern| payload_lower.contains(pattern))
+        || detect::is_injection(&payload_lower)
+}
+
+/// Inspects every key and string of a JSON document on its own, so JSON
+/// syntax (`"`, `:`) never joins a signature. Text that is not valid JSON is
+/// inspected as a whole.
+fn json_contains_malicious_pattern(payload: &str) -> bool {
+    let Ok(document) = serde_json::from_str::<serde_json::Value>(payload) else {
+        return contains_malicious_pattern(payload);
+    };
+    let mut pending = vec![&document];
+    while let Some(value) = pending.pop() {
+        match value {
+            serde_json::Value::String(text) if contains_malicious_pattern(text) => return true,
+            serde_json::Value::Array(items) => pending.extend(items),
+            serde_json::Value::Object(fields) => {
+                for (key, field) in fields {
+                    if contains_malicious_pattern(key) {
+                        return true;
+                    }
+                    pending.push(field);
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+fn body_is_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(super::media_type::essence)
+        .is_some_and(super::media_type::is_json)
 }
 
 async fn inspect_and_restore_body(req: Request) -> Result<Request, Box<Response>> {
@@ -156,7 +180,12 @@ async fn inspect_and_restore_body(req: Request) -> Result<Request, Box<Response>
             "Declared textual request body is not valid UTF-8.",
         ))
     })?;
-    if contains_malicious_pattern(payload) {
+    let malicious = if body_is_json(&parts.headers) {
+        json_contains_malicious_pattern(payload)
+    } else {
+        contains_malicious_pattern(payload)
+    };
+    if malicious {
         return Err(Box::new(forbidden_response()));
     }
 
@@ -200,15 +229,27 @@ pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
         }
     }
 
-    for header_name in [header::REFERER, header::COOKIE] {
-        if let Some(payload) = req
-            .headers()
-            .get(header_name)
-            .and_then(|value| value.to_str().ok())
-            && contains_malicious_pattern(payload)
-        {
-            return forbidden_response();
-        }
+    if let Some(referer) = req
+        .headers()
+        .get(header::REFERER)
+        .and_then(|value| value.to_str().ok())
+        && contains_malicious_pattern(referer)
+    {
+        return forbidden_response();
+    }
+
+    // Each cookie pair is inspected on its own: the `; ` pair separator is
+    // header syntax, so a later cookie named like a command (`ls`, `id`) or a
+    // statement verb (`exec`) must not read as a chained command.
+    if let Some(cookies) = req
+        .headers()
+        .get(header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        && cookies
+            .split(';')
+            .any(|pair| contains_malicious_pattern(pair.trim()))
+    {
+        return forbidden_response();
     }
 
     // 3. Inspect bounded textual/JSON/form bodies, then reconstruct the exact request for
@@ -219,44 +260,4 @@ pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
     };
 
     next.run(req).await
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use axum::{Router, body::Bytes, http::Request, routing::post};
-    use tower::ServiceExt;
-
-    #[tokio::test]
-    async fn case_and_suffix_variants_cannot_skip_body_inspection() {
-        let app = Router::new()
-            .route("/items", post(|body: Bytes| async move { body }))
-            .route_layer(axum::middleware::from_fn(waf_middleware));
-        for (media_type, body) in [
-            (
-                "application/vnd.api+JSON",
-                r#"{"bio":"<script>document.cookie</script>"}"#,
-            ),
-            (
-                "Application/problem+json",
-                r#"{"q":"x' union select pw from users--"}"#,
-            ),
-            ("application/json+patch", r#"{"path":"../../etc/passwd"}"#),
-            (
-                "application/x-www-form-urlencodedX",
-                "q=x%27%20union%20select%20pw%20from%20users--",
-            ),
-        ] {
-            let request = Request::post("/items")
-                .header(header::CONTENT_TYPE, media_type)
-                .body(Body::from(body))
-                .unwrap();
-            assert_eq!(
-                app.clone().oneshot(request).await.unwrap().status(),
-                StatusCode::FORBIDDEN,
-                "{media_type} body was not inspected"
-            );
-        }
-    }
 }
