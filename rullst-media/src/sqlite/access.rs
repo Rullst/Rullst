@@ -5,8 +5,8 @@ use super::{
     transaction::Operation,
 };
 use crate::{
-    Action, Authorization, Clock, MediaError as Error, Processing, Reference, Scope, UploadGrant,
-    VideoProvider,
+    Action, Authorization, Clock, MediaError as Error, Processing, Reference, Scope,
+    UploadDeclaration, UploadGrant, VideoProvider,
 };
 
 impl<P: VideoProvider, C: Clock> MediaService<P, C> {
@@ -131,6 +131,35 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         id: &Reference,
         ttl: u32,
     ) -> Result<UploadGrant, Error> {
+        self.upload_with(auth, actor, scope, id, ttl, None).await
+    }
+
+    /// v13: like [`MediaService::upload`], but the grant is bound to a
+    /// host-validated content type and exact length. Validate the declaration
+    /// against the application's own policy before calling; the adapter also
+    /// applies its configured type allowlist and size limit.
+    pub async fn upload_declared<A: Authorization>(
+        &self,
+        auth: &A,
+        actor: &Reference,
+        scope: &Scope,
+        id: &Reference,
+        ttl: u32,
+        declaration: &UploadDeclaration,
+    ) -> Result<UploadGrant, Error> {
+        self.upload_with(auth, actor, scope, id, ttl, Some(declaration))
+            .await
+    }
+
+    async fn upload_with<A: Authorization>(
+        &self,
+        auth: &A,
+        actor: &Reference,
+        scope: &Scope,
+        id: &Reference,
+        ttl: u32,
+        declaration: Option<&UploadDeclaration>,
+    ) -> Result<UploadGrant, Error> {
         bounded(async {
             let permit = self.permit(auth, actor, scope, Action::Manage).await?;
             let before = self.load(scope, id).await?;
@@ -172,15 +201,21 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
                 return Err(Error::Conflict);
             }
             let ttl = bounded_ttl(tx.now, permission.expires_at(), ttl, 3600)?;
-            let grant = self.provider.upload(
-                asset.video.as_ref().ok_or(Error::Configuration)?,
-                tx.now,
-                ttl,
-            )?;
+            let video = asset.video.as_ref().ok_or(Error::Configuration)?;
+            let grant = match declaration {
+                None => self.provider.upload(video, tx.now, ttl)?,
+                Some(declared) => self
+                    .provider
+                    .upload_declared(video, tx.now, ttl, declared)?,
+            };
             if grant.mode != self.store.config.binding.mode
                 || grant.library != self.store.config.binding.library
                 || Some(&grant.video) != asset.video.as_ref()
                 || grant.expires_at > permission.expires_at()
+                || declaration.is_some_and(|declared| {
+                    grant.content_type.as_deref() != Some(declared.content_type())
+                        || grant.content_length != Some(declared.length())
+                })
             {
                 return Err(Error::Protocol);
             }

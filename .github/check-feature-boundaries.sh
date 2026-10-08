@@ -158,6 +158,8 @@ rullst-media|
 rullst-media|bunny
 rullst-media|sqlite
 rullst-media|bunny,sqlite
+rullst-media|s3
+rullst-media|s3,sqlite
 # Labs orchestration never depends on an executor; runners are application-owned.
 rullst-labs|
 rullst-labs|sqlite
