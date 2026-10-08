@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 
 const STDERR_TAIL_BYTES: usize = 4096;
 const READY_TIMEOUT: Duration = Duration::from_secs(60);
+#[cfg(unix)]
 const STOP_GRACE: Duration = Duration::from_secs(5);
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
