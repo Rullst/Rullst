@@ -48,46 +48,6 @@ fn stripe_event_validates_identity_quantity_time_and_redacts_debug() {
 }
 
 #[test]
-fn lemon_record_validates_provider_relationship_and_application_key() {
-    let record = LemonSqueezyUsageRecord::new(
-        "42",
-        "ai_exercises",
-        5,
-        LemonSqueezyUsageAction::Increment,
-        "school-7:usage-99",
-    )
-    .expect("valid Lemon Squeezy usage record");
-    assert_eq!(record.subscription_item_id(), "42");
-    assert_eq!(record.application_metric(), "ai_exercises");
-    assert_eq!(record.quantity(), 5);
-    assert_eq!(record.action().as_str(), "increment");
-    assert_eq!(record.event_key(), "school-7:usage-99");
-    let debug = format!("{record:?}");
-    assert!(!debug.contains("school-7:usage-99"));
-
-    for invalid in [
-        LemonSqueezyUsageRecord::new(
-            "sub_42",
-            "metric",
-            1,
-            LemonSqueezyUsageAction::Increment,
-            "key",
-        ),
-        LemonSqueezyUsageRecord::new(
-            "42",
-            "bad metric",
-            1,
-            LemonSqueezyUsageAction::Increment,
-            "key",
-        ),
-        LemonSqueezyUsageRecord::new("42", "metric", 0, LemonSqueezyUsageAction::Increment, "key"),
-        LemonSqueezyUsageRecord::new("42", "metric", 1, LemonSqueezyUsageAction::Set, "bad key"),
-    ] {
-        assert!(matches!(invalid, Err(CapitalError::InvalidUsage(_))));
-    }
-}
-
-#[test]
 fn receipt_and_mock_keep_status_deduplication_and_secrets_explicit() {
     let first = mock_usage_receipt("stripe", "event-key", 3, &["cus_1", "metric"])
         .expect("mock usage receipt");
@@ -126,4 +86,20 @@ fn receipt_and_mock_keep_status_deduplication_and_secrets_explicit() {
         ),
         Err(CapitalError::ProviderRequestFailed(_))
     ));
+
+    // Custom adapters without a provider deduplication key keep the outbox contract.
+    let outbox = UsageReceipt::from_verified_provider_response(
+        "custom-gateway",
+        "usage_1",
+        "tenant-7:usage-99",
+        5,
+        UsageStatus::Accepted,
+        UsageDeduplication::ApplicationOutboxRequired,
+    )
+    .expect("custom outbox receipt");
+    assert!(outbox.is_live_accepted());
+    assert_eq!(
+        outbox.deduplication(),
+        UsageDeduplication::ApplicationOutboxRequired
+    );
 }

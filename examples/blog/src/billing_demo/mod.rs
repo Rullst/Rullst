@@ -1,5 +1,5 @@
-//! Billing & Fiscal Monetization demonstration for Rullst Capital.
-//! Includes SaaS tier quotas, offline provider fixtures, and an unsigned DPS XML preview.
+//! Billing and monetization demonstration for Rullst Capital.
+//! Includes SaaS tier quotas and offline Stripe/InfinitePay provider fixtures.
 
 pub mod gateways;
 pub mod handlers;

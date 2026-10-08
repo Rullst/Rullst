@@ -84,7 +84,7 @@ fn test_url_encode_helper() {
 }
 
 #[test]
-fn test_invoice_html_and_dps_generation() {
+fn test_invoice_html_generation() {
     let invoice = Invoice {
         invoice_id: "INV-2026-001".to_string(),
         customer_email: "alice@example.com".to_string(),
@@ -108,10 +108,6 @@ fn test_invoice_html_and_dps_generation() {
     assert!(html.contains("alice@example.com"));
     assert!(html.contains("Pro Subscription"));
     assert!(html.contains("39.00 USD"));
-
-    let dps = invoice.to_dps("01.07.01", "3550308", 0.05);
-    assert_eq!(dps.amount, 39.00);
-    assert_eq!(dps.service_code, "01.07.01");
 }
 
 #[tokio::test]
@@ -121,46 +117,10 @@ async fn test_provider_initialization_and_portals() {
     let headers = HashMap::new();
     assert!(stripe.handle_webhook(b"{}", &headers).is_err());
 
-    let mp = MercadoPagoProvider::new("test_token".to_string(), "test_secret".to_string());
-    assert_eq!(mp.name(), "mercadopago");
-    assert!(matches!(
-        mp.create_customer_portal("alice@example.com", "http://return")
-            .await,
-        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
-    ));
-    assert!(mp.verify_signature(b"payload", "invalid_format").is_err());
-
-    let ls = LemonSqueezyProvider::new("test_key".to_string(), "test_wh".to_string());
-    assert_eq!(ls.name(), "lemonsqueezy");
-    assert!(matches!(
-        ls.create_customer_portal("bob@example.com", "http://return")
-            .await,
-        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
-    ));
-
-    let uninteresting = serde_json::json!({
-        "meta": { "event_name": "order_created" },
-        "data": {}
-    });
-    let mut ls_headers = HashMap::new();
-    ls_headers.insert("x-signature".to_string(), "invalid_hex".to_string());
-    assert!(
-        ls.handle_webhook(&serde_json::to_vec(&uninteresting).unwrap(), &ls_headers)
-            .is_err()
-    );
-
     let ip = InfinitePayProvider::new("test_ip".to_string(), "test_secret".to_string());
     assert_eq!(ip.name(), "infinitepay");
     assert!(matches!(
         ip.create_customer_portal("carol@example.com", "http://return")
-            .await,
-        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
-    ));
-
-    let cb = CoinbaseCommerceProvider::new("test_cb".to_string(), "wh_secret".to_string());
-    assert_eq!(cb.name(), "coinbase");
-    assert!(matches!(
-        cb.create_customer_portal("dan@example.com", "http://return")
             .await,
         Err(rullst_capital::CapitalError::UnsupportedOperation(_))
     ));

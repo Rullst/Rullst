@@ -52,7 +52,7 @@ than claiming a new independent expert audit.
 | `cargo-rullst` | 95 | A | Production deployment, provider accounts and real-application acceptance |
 | `rullst-ai` | 95 | A | Exact live-model results, non-compatible streaming/provider loops, durable audit receiver operations and external retrievers |
 | `rullst-studio` | 94 | A | Durable/OTLP storage, key operations and shared operator authorization |
-| `rullst-capital` | 93 | A | Live authorization, authoritative outbox/reconciliation and homologation |
+| `rullst-capital` | 93 | A | Live provider-account acceptance, InfinitePay live validation and authoritative outbox/reconciliation |
 | `rullst-orm-macros` | 95 | A | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 95 | A | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operations |
 | `rullst-macros` | 94 | A | Real browser/network ecosystems and host identity policy remain external |
@@ -114,8 +114,8 @@ For every relevant change, retain the commit and workflow result, identify
 which gates and evidence changed, and report capability progress separately.
 New source does not inherit the stable release's score automatically.
 
-Provider acceptance, physical devices, store publication, fiscal authorization,
-independent review and production operations remain separately scoped evidence.
+Provider acceptance, physical devices, store publication, independent review
+and production operations remain separately scoped evidence.
 Use the [capability status](capability-status.md),
 [capability ledger](capability-ledger.md), and
 [release audit](v12-release-audit.md) for those boundaries.

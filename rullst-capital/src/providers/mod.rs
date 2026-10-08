@@ -4,31 +4,10 @@ use std::collections::HashMap;
 use std::time::Duration;
 use subtle::ConstantTimeEq;
 
-pub mod alipay;
-pub mod coinbase;
 mod fixture;
 mod global;
 mod http;
 pub mod infinitepay;
-pub mod lemonsqueezy;
-mod lemonsqueezy_subscription;
-mod lemonsqueezy_usage;
-pub mod mercadopago;
-pub mod paddle;
-mod paddle_checkout;
-mod paddle_portal;
-mod paddle_subscription;
-#[cfg(test)]
-mod paddle_test_support;
-mod paddle_webhook;
-pub mod picpay;
-pub mod polar;
-mod polar_checkout;
-mod polar_subscription_event;
-mod polar_webhook;
-pub mod razorpay;
-mod razorpay_subscription;
-mod razorpay_webhook;
 pub mod stripe;
 mod stripe_charge;
 mod stripe_checkout;
@@ -42,28 +21,13 @@ mod stripe_snapshot;
 mod stripe_subscription;
 mod stripe_usage;
 mod stripe_webhook;
-pub mod wise;
-mod wise_webhook;
 
-pub use alipay::AlipayProvider;
-pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
-pub use global::{
-    init_payout_provider, init_provider, payout_provider, provider, try_init_payout_provider,
-    try_init_provider,
-};
+pub use global::{init_provider, provider, try_init_provider};
 pub(crate) use http::validate_checkout_url;
 pub(crate) use http::{execute as execute_http, read_json as read_http_json};
 pub(crate) use http::{send as send_http, send_json as send_http_json};
 pub use infinitepay::InfinitePayProvider;
-pub use lemonsqueezy::LemonSqueezyProvider;
-pub use mercadopago::MercadoPagoProvider;
-pub use paddle::PaddleProvider;
-pub use picpay::PicPayProvider;
-pub use polar::PolarProvider;
-pub use razorpay::RazorpayProvider;
 pub use stripe::StripeProvider;
-pub use wise::WiseProvider;
-pub use wise_webhook::{WiseTransferState, WiseTransferStateChange};
 
 /// Maximum clock drift accepted by timestamped webhook protocols by default.
 pub const DEFAULT_WEBHOOK_TOLERANCE: Duration = Duration::from_secs(5 * 60);
@@ -230,7 +194,7 @@ use crate::{ChargeReceipt, ChargeRequest};
 /// Dynamic trait to handle billing provider interactions.
 #[async_trait]
 pub trait BillingProvider: Send + Sync {
-    /// Return the name of the billing provider (e.g. "stripe", "infinitepay", "polar").
+    /// Return the name of the billing provider (e.g. "stripe" or "infinitepay").
     fn name(&self) -> &'static str;
 
     /// Returns the explicitly selected webhook verification mode.
@@ -305,44 +269,6 @@ pub trait BillingProvider: Send + Sync {
         subscription_id: &str,
         trial_ends_at: i64,
     ) -> Result<(), CapitalError>;
-}
-
-/// The status of an outbound payout/disbursement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PayoutStatus {
-    Processing,
-    OutgoingPaymentSent,
-    FundsRefunded,
-    Cancelled,
-}
-
-/// Unified model representing an outbound payout event.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PayoutEvent {
-    pub transfer_id: String,
-    pub recipient_email: String,
-    pub amount_cents: u64,
-    pub currency: String,
-    pub status: PayoutStatus,
-}
-
-/// Dynamic trait for international B2B payouts (e.g. Wise).
-#[async_trait]
-pub trait PayoutProvider: Send + Sync {
-    /// Return the name of the payout provider (e.g. "wise").
-    fn name(&self) -> &'static str;
-
-    /// Create a transfer or payout to an international recipient.
-    async fn create_transfer(
-        &self,
-        recipient_email: &str,
-        amount_cents: u64,
-        currency: &str,
-    ) -> Result<String, CapitalError>;
-
-    /// Check transfer status.
-    async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError>;
 }
 
 /// Helper to url-encode string values without external dependencies.
@@ -476,21 +402,12 @@ mod tests {
         assert!(provider().is_some());
         assert_eq!(provider().unwrap().name(), "stripe");
 
-        let wise = WiseProvider::new("mock_token", "sec_wise");
-        init_payout_provider(Box::new(wise));
-        assert!(payout_provider().is_some());
-        assert_eq!(payout_provider().unwrap().name(), "wise");
-
         // A second initialization is reported and never replaces the first.
         assert!(matches!(
-            try_init_provider(Box::new(PaddleProvider::new("pdl_live", "secret"))),
+            try_init_provider(Box::new(InfinitePayProvider::new("live", "secret"))),
             Err(CapitalError::ConfigurationError(_))
         ));
-        init_provider(Box::new(PaddleProvider::new("pdl_live", "secret")));
+        init_provider(Box::new(InfinitePayProvider::new("live", "secret")));
         assert_eq!(provider().unwrap().name(), "stripe");
-        assert!(matches!(
-            try_init_payout_provider(Box::new(WiseProvider::new("live", "profile"))),
-            Err(CapitalError::ConfigurationError(_))
-        ));
     }
 }
