@@ -56,5 +56,9 @@ testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", 
 name = "capital_bench"
 harness = false
 
+[[example]]
+name = "custom_provider"
+required-features = ["axum"]
+
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
