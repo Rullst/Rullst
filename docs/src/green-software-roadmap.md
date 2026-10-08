@@ -1,7 +1,8 @@
 # Green Software Roadmap
 
-Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
-this page is a shipped capability unless it links to existing documentation.
+Status: **planned (recorded 2026-10-01)** for the v13 feature line; item 1 is
+in the v13 development source. Nothing on this page is a shipped capability
+unless it links to existing documentation.
 
 ## Goal
 
@@ -38,7 +39,7 @@ can choose to publish.
 
 | # | Item | Notes |
 | :--- | :--- | :--- |
-| 1 | **`cargo rullst footprint` report** | Load-tests the running app with a fixed scenario and reports CPU time, peak and idle memory, requests per second, energy per request where the hardware exposes it (Linux powercap/RAPL), binary and container image size, and an estimated carbon intensity following the Software Carbon Intensity (SCI) specification (ISO/IEC 21031:2024). The report states the method, hardware, region grid intensity used and its uncertainty. |
+| 1 | **`cargo rullst footprint` report** | **In the v13 development source:** [`cargo rullst footprint`](footprint.md) builds and starts the release binary (or measures a loopback `--url`), runs a bounded closed-loop load and reports requests per second, latency p50/p95/p99, errors, process CPU time, peak and idle memory, binary and container image size, energy from Linux powercap/RAPL when readable (or a labelled `--cpu-watts` estimate) and a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) from a user-provided grid intensity. Each value states its method; the report records the machine and inputs. Still planned: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the grid-intensity input. |
 | 2 | **Reproducible public benchmark** | The same reference application implemented idiomatically in Rullst and in other frameworks, with published code, scenario, hardware and dates, so comparisons are verifiable instead of claimed. |
 | 3 | **Efficient release defaults** | Generated projects get a tuned `[profile.release]` (LTO, single codegen unit, stripped symbols, abort on panic where safe), smaller container images (static or distroless runtime) and fast start-up suitable for scale-to-zero hosting. |
 | 4 | **Efficient HTTP defaults** | Long-lived `Cache-Control: immutable` for fingerprinted static assets, ETag/conditional requests, and modern image formats in the asset pipeline. Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves. |

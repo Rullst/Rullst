@@ -399,8 +399,11 @@ findings to `cargo rullst upgrade`; and `cargo rullst audit --report`, a
 Markdown, HTML or JSON security evidence report mapped to OWASP ASVS 5.0
 Level 1, with a personal-data inventory and accessibility checks
 ([guide](https://rullst.github.io/Rullst/book/security-report.html)). It is
-evidence for a reviewer, not a certification. Until v13 is released, these are
-development candidates, not shipped features.
+evidence for a reviewer, not a certification. `cargo rullst footprint` runs a
+bounded local load and reports requests/s, latency, CPU time, memory, sizes and
+energy where the machine exposes it, each with its method
+([guide](https://rullst.github.io/Rullst/book/footprint.html)). Until v13 is
+released, these are development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)
 · [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
