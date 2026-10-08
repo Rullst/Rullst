@@ -300,6 +300,11 @@ cargo rullst new operations-portal --default --blueprint erp \
   --ai --redis --skip-initial-migration
 ```
 
+Every generated manifest also declares `validator` 0.21 with its `derive`
+feature. `#[derive(rullst::Validate)]` expands to `::validator::…` paths that
+only a direct dependency resolves, so `ValidatedForm`/`ValidatedJson` DTOs
+compile without adding it by hand; Rullst Core already builds that version.
+
 Generated SQLx applications disable the default features of both the umbrella
 `rullst` dependency and the direct `rullst-orm` dependency, and select exactly
 one strict primary profile (`strict-sqlite`, `strict-postgres`, or

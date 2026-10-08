@@ -373,3 +373,33 @@ fn orm_without_a_strict_profile_keeps_its_any_drivers() {
         );
     }
 }
+
+#[test]
+fn every_profile_declares_validator_for_validate_derives() {
+    for (hot_reload, blueprint) in [
+        (false, BLANK_BLUEPRINT_ID),
+        (true, BLANK_BLUEPRINT_ID),
+        (false, SAAS_BLUEPRINT_ID),
+    ] {
+        let manifest = build_cargo_toml(
+            "forms",
+            hot_reload,
+            false,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            blueprint,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("generated manifest");
+        let parsed: toml::Value = toml::from_str(&manifest).expect("valid TOML");
+        let validator = &parsed["dependencies"]["validator"];
+        assert_eq!(validator["version"].as_str(), Some("0.21"));
+        assert_eq!(
+            validator["features"].as_array().map(Vec::as_slice),
+            Some(&[toml::Value::String("derive".into())][..])
+        );
+    }
+}
