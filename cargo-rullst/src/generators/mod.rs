@@ -358,6 +358,12 @@ pub fn middleware_to_snake_case(s: &str) -> String {
     clean_result.trim_matches('_').to_string()
 }
 
+/// `path` with `/` separators, so messages and findings name a file the same
+/// way on every OS (Windows displays `k8s\deployment.yaml`).
+pub(crate) fn slash_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
 /// Locates a TOML parse failure as `line L, column C`, without its message.
 /// The `toml` error text quotes the offending source line, which can hold a
 /// secret such as `app_key` or a database URL, so it is never reported.

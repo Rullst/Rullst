@@ -122,3 +122,15 @@ fn embedded_runtime_templates_have_no_panicking_calls() {
         violations.join("\n")
     );
 }
+
+#[test]
+fn slash_path_names_windows_paths_with_forward_slashes() {
+    assert_eq!(
+        slash_path(Path::new("crates\\http\\src\\lib.rs")),
+        "crates/http/src/lib.rs"
+    );
+    assert_eq!(
+        slash_path(&Path::new("k8s").join("deployment.yaml")),
+        "k8s/deployment.yaml"
+    );
+}
