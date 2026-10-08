@@ -1,6 +1,9 @@
 //! Evidence-aware fiscal and payment-recovery mailable templates.
 
 pub(super) const FISCAL_INVOICE_TEMPLATE: &str = r##"//! Evidence-aware NFS-e and international receipt mailable.
+// Deprecated in Rullst 12.3 and removed in 13.0 (v13 migration guide row
+// "Capital providers and NFS-e removed").
+#[allow(deprecated)]
 use rullst::capital::fiscal::{FiscalResponse, FiscalResponseKind};
 use rullst::mail::{
     DeliveryPipeline, Mail, MailError, Message, escape_html, validate_action_url,
@@ -26,6 +29,9 @@ pub struct __NAME__ {
 
 impl __NAME__ {
     /// Builds an NFS-e notification from the typed fiscal provenance returned by Capital.
+    // NFS-e is deprecated in Rullst 12.3 and removed in 13.0 (v13 migration guide
+    // row "Capital providers and NFS-e removed").
+    #[allow(deprecated)]
     pub fn from_nfse_response(
         to: impl Into<String>,
         customer_name: impl Into<String>,
