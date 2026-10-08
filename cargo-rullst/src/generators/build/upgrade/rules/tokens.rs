@@ -54,7 +54,6 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("has_encrypted_data", &PERSONAL_DATA_REPORT),
     ("basic_from_env", &NEXUS_DOTENV),
     ("local_development_or_basic_from_env", &NEXUS_DOTENV),
-    ("parse_webhook_payload", &WISE_WEBHOOK),
     ("SqlQuotaStore", &QUOTA_KEYS),
     ("SqlQuotaBackend", &QUOTA_KEYS),
     ("quota_request", &ZERO_TIER),
@@ -300,6 +299,9 @@ impl Scanner<'_, '_> {
             if *ident == name {
                 self.hit(rule, at);
             }
+        }
+        if REMOVED_CAPITAL_IDENTS.contains(&name) {
+            self.hit(&CAPITAL_REMOVED, at);
         }
         match name {
             "health_router" | "health_router_with_lifecycle" => self.facts.mounts_health = true,

@@ -196,9 +196,9 @@ rules! {
     MFA_CLIENT_SECRET: "V13-MFA-CLIENT-SECRET", Review, "CLI generators",
         "an MFA handler generated before v13 verified a client-supplied `secret`",
         "Replace it with the server-side factor store that `cargo rullst make:mfa` now generates.";
-    WISE_WEBHOOK: "V13-CAPITAL-WEBHOOKS", Review, "Capital provider webhooks",
-        "Wise `parse_webhook_payload` accepts only `mock_*` tokens; live deliveries need signature verification",
-        "Configure `with_webhook_public_key_pem` and use `verify_transfer_state_change` for live Wise deliveries.";
+    CAPITAL_REMOVED: "V13-CAPITAL-REMOVED", Review, "Capital providers and NFS-e removed",
+        "this names a payment provider, payout or NFS-e API that v13 removed from `rullst-capital`",
+        "Use Stripe or InfinitePay, or implement `BillingProvider` for the gateway in application code (see the custom provider guide); remove NFS-e and payout code, which are no longer part of Rullst.";
     QUOTA_KEYS: "V13-CAPITAL-QUOTA-KEYS", Review, "Capital quota keys on MySQL/MariaDB",
         "`SqlQuotaStore` keys are case-sensitive; older MySQL/MariaDB tables need an `ALTER TABLE`",
         "On MySQL/MariaDB run the `ascii_bin` migration from the Capital README before serving quota calls.";
@@ -317,3 +317,59 @@ rules! {
         "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
         "Call `rullst::htmx::render_page_with_lang(&htmx, \"en\", title, content)` with the page's language.";
 }
+
+/// Public `rullst-capital` names removed in v13 (`V13-CAPITAL-REMOVED`):
+/// the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase
+/// Commerce and PicPay providers, the Wise payout adapter with its payout
+/// contracts, and the NFS-e fiscal module. Only distinctive names are listed;
+/// generic ones such as `TaxRegime` could name an application's own type.
+pub(crate) const REMOVED_CAPITAL_IDENTS: &[&str] = &[
+    "PaddleProvider",
+    "PaddleCustomerRequest",
+    "PaddleCustomerReceipt",
+    "PaddleCheckoutRequest",
+    "PaddleCheckoutSession",
+    "PaddleSubscriptionEvent",
+    "PaddleSubscriptionSnapshot",
+    "PaddlePortalSession",
+    "LemonSqueezyProvider",
+    "LemonSqueezyUsageRecord",
+    "LemonSqueezyUsageAction",
+    "PolarProvider",
+    "PolarCheckoutRequest",
+    "PolarCheckoutSession",
+    "RazorpayProvider",
+    "MercadoPagoProvider",
+    "AlipayProvider",
+    "CoinbaseCommerceProvider",
+    "CoinbaseProvider",
+    "PicPayProvider",
+    "WiseProvider",
+    "WiseTransferState",
+    "WiseTransferStateChange",
+    "PayoutProvider",
+    "PayoutStatus",
+    "PayoutEvent",
+    "init_payout_provider",
+    "try_init_payout_provider",
+    "FiscalEngine",
+    "FiscalCertificate",
+    "FiscalCommandJournal",
+    "FiscalCustomer",
+    "FiscalEmitter",
+    "FiscalError",
+    "FiscalResponse",
+    "FiscalResponseKind",
+    "NfseDps",
+    "NfseDpsV101",
+    "NfseEnvironment",
+    "NfseNationalClient",
+    "NfseIssueRequest",
+    "NfseIssueResponse",
+    "NfseDpsSchemaValidator",
+    "build_dps_xml",
+    "build_dps_xml_v1_01",
+    "sign_dps_xml",
+    "issue_nfse_direct",
+    "to_dps",
+];
