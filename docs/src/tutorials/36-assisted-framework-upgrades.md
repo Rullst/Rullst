@@ -358,7 +358,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (91 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (44 rows).
+  of inputs that previously failed) (45 rows).
 
 The catalog has 98 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
@@ -386,6 +386,7 @@ the rule together.
 | Memory feature-flag splits | (b) review | `V13-MEMORY-FEATURE-SPLITS` |  |
 | Database feature-flag splits | (b) review | `V13-DB-FEATURE-SPLITS` |  |
 | Security headers | (b) review | `V13-REFERRER-NO-REFERRER` |  |
+| Core WAF signatures | (c) none | — | Only requests that previously failed with 403 change |
 | AI provider streaming and stop reasons | (b) review | `V13-AI-GEMINI-STOP-REASONS` |  |
 | AI image-beacon guardrail | (c) none | — | Guardrail hardening without an application API change |
 | AI RAG tenant tags | (b) review | `V13-AI-RAG-TENANT-TAGS` |  |
