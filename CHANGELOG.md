@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Capital: provider-neutral base, Stripe and InfinitePay
+
+- `rullst-capital` now ships a provider-neutral base with Stripe (supported) and
+  InfinitePay (experimental). The Paddle, Lemon Squeezy, Polar, Razorpay,
+  Mercado Pago, Alipay, Coinbase Commerce, PicPay and Wise adapters, the payout
+  contracts, and the NFS-e module (`nfse`/`capital-nfse` features,
+  `Invoice::to_dps`, `CapitalError::FiscalError`) were removed. NFS-e may
+  return as a separate product.
+- `make:billing` generates Stripe only and `make:mail-invoice` generates a
+  receipt-only `PaymentReceiptEmail`.
+- Other gateways implement `BillingProvider`; see "Writing your own payment
+  provider" (`docs/src/capital-custom-provider.md`) and the offline
+  `custom_provider` example. `cargo rullst upgrade` reports removed names as
+  `V13-CAPITAL-REMOVED`.
+
 ### Maturity tiers and security layer guide
 
 - New [maturity page](docs/src/maturity.md): every crate is Core, Extension or
