@@ -50,6 +50,23 @@ limit outside this layer as well.
 
 ---
 
+## 🚧 What RASP does not inspect
+
+- `Cookie` and `Authorization` headers, `multipart/form-data` uploads and
+  binary bodies.
+- Payloads hidden by double percent-encoding, HTML entities, SQL comments
+  between keywords, alternative syntax or splitting across several fields.
+- Anything without a listed signature.
+
+It also refuses ordinary text that contains a signature, such as a forum post
+that quotes `../` or `/bin/sh`. Test your own forms and API payloads with the
+layer mounted.
+
+In staging and production, `Server` already runs the Core WAF, which overlaps
+with RASP and buffers the same body. See
+[which security layer to use, and when](../security-layers.md#request-inspection-core-waf-vs-rasp)
+before adding both.
+
 ## 💡 Key Takeaways
 - Inspection has runtime cost and uses bounded pattern heuristics, with possible
   false positives and false negatives.

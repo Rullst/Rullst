@@ -1,3 +1,22 @@
+//! JSON request-body guards: transport checks and route-scoped JSON Schema.
+//!
+//! **Risk reduced:** oversized or deeply nested JSON (parser resource
+//! exhaustion), duplicate keys that different parsers resolve differently,
+//! and, with a [`JsonSchemaPolicy`], fields or shapes a route does not expect.
+//!
+//! **How:** an allowlist. [`inspect_json_payload`] rejects malformed JSON,
+//! duplicate object keys, bodies over 2 MiB and nesting deeper than 32 levels.
+//! [`json_schema_guard_middleware`] then validates one compiled JSON Schema
+//! 2020-12 document with only local references and no filesystem or network
+//! retrieval.
+//!
+//! **Known limits:** [`schema_guard_middleware`] inspects only requests with a
+//! JSON `Content-Type`; other media types pass through. A schema checks shape,
+//! not business rules, authorization or the meaning of values.
+//!
+//! **Operator duties:** keep domain validation and ownership checks in the
+//! handler, and keep the schema in step with the handler's types.
+
 use crate::telemetry::SecurityStore;
 use axum::{
     body::Body,

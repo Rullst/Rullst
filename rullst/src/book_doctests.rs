@@ -258,6 +258,7 @@ tutorial!(
     "../../docs/src/polyglot-persistence.md"
 );
 tutorial!(redis_guide, "../../docs/src/redis-guide.md");
+tutorial!(security_layers, "../../docs/src/security-layers.md");
 tutorial!(session_management, "../../docs/src/session-management.md");
 tutorial!(redis_messaging, "../../docs/src/redis-messaging.md");
 tutorial!(

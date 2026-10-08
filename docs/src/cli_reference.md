@@ -7,6 +7,11 @@ The CLI's `--help` output is authoritative for the installed version. This page
 documents the principal commands of the unreleased version 13 CLI and their
 security boundaries.
 
+`cargo-rullst` is a Core package. A few generators depend on outside toolchains
+or platforms and carry their own **Maturity** label below the command name:
+*Supported* or *Experimental*. The [maturity tiers](maturity.md#cli-generators) page
+explains what each label promises.
+
 ---
 
 ## 🏗️ 1. Project Initialization & Maintenance
@@ -245,8 +250,8 @@ The choices that materially change the generated application:
   * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.
   * `--qdrant`: Enables bounded dense-vector Qdrant operations and generates empty/`mock_*`-compatible environment fields; it is additive, not the SQL primary.
-  * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
-  * `--buildah`: Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
+  * `--nix` (**Experimental**): Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
+  * `--buildah` (**Experimental**): Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects the blueprint; the wizard skips that question.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend; the wizard skips that question. Network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
@@ -1049,6 +1054,9 @@ into their source tree and must be reviewed manually. Follow the
 origin reflection/wildcards and migrate to the current fail-closed allowlist.
 
 ### `cargo rullst make:omni`
+**Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
+Experimental for `ios` · [tiers](maturity.md#cli-generators)
+
 Generates a Tauri/Omni shell and development configuration for desktop, Android
 or iOS. Interactive use prompts for platforms. Automation can select one or
 more targets deterministically:
@@ -1092,6 +1100,8 @@ targets; those runs are packaging evidence, not store, physical-device or
 universal behavior guarantees.
 
 ### `cargo rullst make:iot <DeviceName>`
+**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+
 Scaffolds and registers a telemetry-only IoT module in `src/iot/` using the
 public `rullst::iot::SensorTelemetry` facade, and enables the `iot` feature in
 the application manifest. Unsafe identifiers/path traversal and existing target
@@ -1124,6 +1134,8 @@ identifier (for example `../notes`, `self` or `Bad.Name`) is rejected before
 anything is written.
 
 ### `cargo rullst make:grpc <ServiceName>`
+**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+
 Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
 
 ### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
@@ -1621,6 +1633,9 @@ kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
+**Maturity:** `nixify` and `generate:buildah` are Experimental; `dockerize`
+follows the CLI's Core tier · [tiers](maturity.md#cli-generators)
+
 Injects infrastructure files into a pre-existing project (similar to the flags
 used in `new`): `dockerize` writes a `Dockerfile` (plus `.dockerignore` when
 absent), `nixify` writes `flake.nix` and `.envrc`, and `generate:buildah`
@@ -1631,6 +1646,8 @@ and the Buildah image are named after `[package].name`, read with a TOML parser
 (`app` when `Cargo.toml` has no package name).
 
 ### `cargo rullst foundry:init`
+**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+
 Generates the `Foundry.toml` deployment manifest at the project root containing
 SSH access settings and environment variables for a compatible systemd-based
 Linux VPS. Before writing it, the command creates `.gitignore` when missing and
@@ -1639,6 +1656,8 @@ ignores it. The manifest is created owner-readable only (`0600` on Unix);
 operators must still verify that secrets were never committed.
 
 ### `cargo rullst foundry:deploy`
+**Maturity:** Experimental · [tiers](maturity.md#cli-generators)
+
 Executes an SSH deployment pipeline: local release build, remote directory and
 systemd provisioning, `scp` transfer, environment/Caddy configuration, service
 restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
@@ -1667,6 +1686,9 @@ reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
 
 ### `cargo rullst omni`
+**Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
+Experimental for `ios` · [tiers](maturity.md#cli-generators)
+
 The 12.1.0 executable added `cargo rullst omni android --release` for
 an explicit Android release build using application-owned signing inputs. It
 does not change the existing Rust `Commands::Omni` variant or start a backend.
@@ -1917,6 +1939,6 @@ cargo rullst studio
 # Ask the terminal AI assistant (offline demo until `cargo rullst ai connect`)
 cargo rullst ai "add a posts page"
 
-# Run the reviewed Foundry pipeline on a compatible, prepared VPS
+# Run the reviewed Foundry pipeline on a compatible, prepared VPS (experimental)
 cargo rullst foundry:deploy
 ```

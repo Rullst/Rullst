@@ -12,6 +12,10 @@ but was removed from the workspace for 13.0; its source remains in git history.
 Final release admission for this crate remains outstanding. Neither the
 candidate name nor a signed receipt establishes production readiness.
 
+**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
+the API may change between 13.x releases, and the crate has `publish = false`,
+so it is not released to crates.io. Experimental does not mean broken.
+
 The default feature provides bounded, versioned contracts with no executor or
 network/runtime dependency. `sqlite` adds a dedicated encrypted shared-local job
 plane; `receipt-signing` belongs to the runner's trusted controller.

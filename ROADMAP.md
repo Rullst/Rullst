@@ -127,7 +127,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v13 research |
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback. The separate v13 `cargo rullst ai` terminal assistant already applies only confirmed, diff-previewed writes inside the project, after a git checkpoint or an explicit confirmation to continue without one; the error console does not use it)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
-| **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
+| **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented — abandoned` *(decided on 8 October 2026: not worth building. A Rullst-owned `rullst-gateway` crate/binary will not be developed. Self-hosted deployments use an established reverse proxy configured by generated files instead: `deploy --platform vps` already writes a Caddyfile, `foundry:deploy` installs a validated Caddy configuration and the [two-replica deployment contract](docs/src/deployment-acceptance.md) exercises Caddy; generated nginx configuration is planned. Readiness/drain signals stay in `rullst-core` for any proxy to consume. Parity with a managed global cloud load balancer remains external infrastructure. The idea stays recorded here and in the `[ ]` count.)* | Abandoned (replaced by generated proxy configuration) |
 | **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation — bring your own runner` *(unpublished `rullst-labs` contracts provide durable submissions, exact grading, cancellation, recovery and retention, plus a documented [controller contract](docs/src/labs-runner-contract.md) and a non-executing example controller. The separately deployed Linux Rust/Wasmi `rullst-labs-runner` candidate passed 26 isolated checks and source admission in PRs #228 and #239, but was removed from the 13.0 workspace on 30 September 2026; its source remains in git history. Applications deploy and review their own runner; final release acceptance of `rullst-labs` remains pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
 | **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS preference/profile-export journeys have focused evidence (the LMS consumers were retired with the complete Academy scaffold). The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; initial package registration, final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
@@ -151,6 +151,9 @@ decompose these canonical milestones, so a raw sum would double-count work.
 | `[~]` useful but incomplete foundation | **28** | **70.0%** |
 | `[ ]` not implemented | **7** | **17.5%** |
 | **Total in the framework programme** | **40** | **100%** |
+
+M39 stays in the `[ ]` row: it was abandoned on 8 October 2026 rather than
+implemented, and the roadmap keeps abandoned ideas recorded.
 
 There are **35 milestones without strict closure (87.5% of the labels)**. A
 partial milestone can contain substantial published functionality and years of
@@ -231,12 +234,15 @@ contains the more detailed evidence and acceptance boundaries.
   feature-specific transport inventory are all worth maintaining).*
 - **Framework-wide “production-ready” badge** *(`[!] Do not promise as one
   boolean` — worth publishing stability per crate/capability because routing can
-  be stable while live payment and hardware integrations remain unavailable).*
+  be stable while live payment and hardware integrations remain unavailable. The
+  v13 [maturity tiers](docs/src/maturity.md) now label every crate Core,
+  Extension or Experimental and define each promise).*
 - **A first-party load balancer embedded in every application** *(`[!] Do not
-  make the default` — an opt-in `rullst-gateway` process is worth researching
-  for self-hosted deployments, but application serving and edge proxying need
-  independent failure, upgrade and privilege boundaries. Matching a managed
-  cloud load balancer's global infrastructure or SLA is not a repository-code
+  make the default` — application serving and edge proxying need independent
+  failure, upgrade and privilege boundaries. The opt-in `rullst-gateway`
+  research (M39) was abandoned on 8 October 2026 in favour of generated
+  Caddy/nginx configuration for established proxies. Matching a managed cloud
+  load balancer's global infrastructure or SLA is not a repository-code
   claim).*
 - **Static competitor matrix claiming other frameworks lack capabilities**
   *(`[!] Do not maintain without dated sources` — comparative research and a
@@ -471,7 +477,7 @@ and publication dates.
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
 | **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS starter, which replaced the complete Academy scaffold; version grading rules, persist idempotent results and prove tenant isolation. Use the `rullst-labs` contracts with an application-owned runner (the `rullst-labs-runner` candidate was removed from 13.0); untrusted execution stays outside the web process. |
 | **First conditional extension — transparent supervision** | Unpublished optional `rullst-supervision` now implements bounded exam/learner and parental contracts and transparent observations; PRs #222/#226 and the repaired archive gate provide source evidence. Its generated LMS journey (`make:supervision`) was removed with the complete Academy scaffold | Deliver a generated LMS journey with independently authorized guardians/reviewers, visible sessions, explicit permissions, revocation, bounded events/retention and application-side restrictions. Automated client observations do not prove misconduct or justify automatic penalties. Device-wide controls and camera inference require separate platform contracts; see the [delivery plan](docs/src/v13-delivery-plan.md) and [SST boundary](docs/src/spec.md#conditional-v13-supervision-crate). |
-| **P3 — selected integrations** | One complete real-provider or broker journey at a time | Add an adapter only with a concrete product need, protocol/failure tests, documented limits and an available acceptance environment. Gateway/load-balancer research remains opt-in rather than blocking the core release. |
+| **P3 — selected integrations** | One complete real-provider or broker journey at a time | Add an adapter only with a concrete product need, protocol/failure tests, documented limits and an available acceptance environment. The self-hosted gateway (M39) is abandoned; proxy support means generated configuration for established proxies. |
 
 This is an execution order, not a promise that the entire historical backlog
 fits one month. Prefer completed user journeys and measured acceptance criteria
@@ -657,6 +663,28 @@ compilation alone cannot prove the documented result. Check rendered book links
 as well as repository-local links. Record which API surfaces
 were reviewed; do not infer complete reference coverage from a green book build
 or label unimplemented v13 contracts as available in v12.
+
+### Ideas recorded for after 13.0
+
+Recorded on 8 October 2026. These are ideas, not commitments or shipped
+features, and they add no milestone to the counts above.
+
+- **Offline IoT/health example application.** Sensor readings flow to a Rullst
+  server, are stored in SQLite and appear on a dashboard, with no internet
+  connection required. It would build on `SensorTelemetry`, `AnomalyDetector`
+  and the snapshot card from the experimental `rullst-iot`, with a maintained
+  transport crate (for example `rumqttc`) rather than a new Rullst transport.
+  A health-oriented variant must treat readings as sensitive personal data and
+  must not present itself as a medical device.
+- **Multiplayer quiz example.** Core realtime and presence (`BroadcastManager`,
+  `PresenceTracker`) for live rounds, with `rullst-labs` grading contracts for
+  server-authoritative, idempotent scoring. Answers are graded on the server,
+  never trusted from the client.
+- **Reverse-proxy configuration instead of a gateway.** The self-hosted
+  `rullst-gateway` (M39) is abandoned. Deployment work goes into generated,
+  reviewable configuration for established proxies: extend the existing Caddy
+  output and add nginx, with the readiness/drain and trusted-proxy contracts
+  that `rullst-core` already exposes.
 
 ### Published and planned release lines
 

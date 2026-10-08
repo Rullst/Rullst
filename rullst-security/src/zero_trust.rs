@@ -1,4 +1,23 @@
 //! Bounded HMAC session binding for application-supplied client observations.
+//!
+//! The module name is historical: this is one session-binding helper, not a
+//! zero-trust architecture.
+//!
+//! **Risk reduced:** a stolen session token being replayed from a visibly
+//! different client. At login, store [`try_generate_fingerprint`]; on later
+//! requests, [`verify_fingerprint`] compares it in constant time.
+//!
+//! **How:** HMAC-SHA256 (key of at least 32 bytes) over the `User-Agent`, the
+//! `Accept-Language` and the client's IPv4 /24 or IPv6 /64.
+//!
+//! **Known limits:** every observation is client-controlled or shared. An
+//! attacker who copies the headers and uses the same network prefix passes,
+//! and legitimate users fail after a browser update, a language change or a
+//! network change (mobile networks, VPNs, IPv6 privacy addresses).
+//!
+//! **Operator duties:** decide what a mismatch means (step-up authentication
+//! is usually better than a silent logout), keep the HMAC key secret, and take
+//! the client IP from the socket or a trusted proxy, never from a raw header.
 
 use crate::{SecurityError, telemetry::SecurityStore};
 use hmac::{Hmac, KeyInit, Mac};

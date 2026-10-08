@@ -75,7 +75,7 @@ jobs:
           toolchain: 1.98.1
           cache: false
       - name: Install cargo-semver-checks
-        uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
         with:
           tool: cargo-semver-checks
       - name: Check published Rust API for SemVer regressions

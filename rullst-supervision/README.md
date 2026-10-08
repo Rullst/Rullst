@@ -24,6 +24,26 @@ Run the deterministic, explicitly simulated adapter example without credentials:
 cargo run -p rullst-supervision --example observation_adapter --features sqlite,analysis
 ```
 
+## Responsible use
+
+**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+This crate is designed for consented, transparent scenarios such as online
+exams and parental controls over a learning application.
+
+- Collection starts only after the learner acknowledges the exact policy,
+  notice and selected categories, and only typed observations are stored.
+- There is no covert capture mode, and the project will not add one.
+- It is not designed for general security or CCTV surveillance, or for
+  monitoring people who have not been told.
+- Operators must comply with local law, especially data-protection and
+  children's-privacy rules when minors are supervised. The crate provides no
+  legal-compliance certification.
+
+Read the full [Responsible use](https://rullst.github.io/Rullst/book/supervision.html#responsible-use)
+section before you integrate it.
+
+## Integration
+
 The [observation integration guide](https://rullst.github.io/Rullst/book/supervision-observations.html)
 explains selection, permission boundaries, adapter contracts and schema v2.
 Unpublished schema v1 requires a separately reviewed transition to a fresh store;

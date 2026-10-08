@@ -1,3 +1,19 @@
+//! Process-wide decoy routes that refuse and record probes, without bans.
+//!
+//! **Risk reduced:** reconnaissance of well-known sensitive paths going
+//! unnoticed.
+//!
+//! **How:** [`deception_trap_middleware`] compares the exact request path with
+//! a global registry (default decoys plus at most [`MAX_DECEPTION_TRAPS`]
+//! paths you register), answers `403` and records a telemetry event.
+//!
+//! **Known limits:** it does not ban the peer, so a scanner keeps probing
+//! other paths; use [`crate::HoneypotLayer`] when you want bans. The registry
+//! is global to the process and not shared between instances.
+//!
+//! **Operator duties:** register only paths your application never serves and
+//! review the recorded events.
+
 use crate::{SecurityError, telemetry::SecurityStore};
 use axum::{
     extract::{ConnectInfo, Request},
@@ -13,6 +29,7 @@ static DECEPTION_ROUTES: OnceLock<DashSet<String>> = OnceLock::new();
 /// Maximum dynamic trap paths retained by the process-local registry.
 pub const MAX_DECEPTION_TRAPS: usize = 1_024;
 
+/// Returns a new set holding the default decoy paths.
 pub fn default_deception_traps() -> DashSet<String> {
     let set = DashSet::new();
     for route in &[
@@ -33,6 +50,7 @@ pub fn default_deception_traps() -> DashSet<String> {
     set
 }
 
+/// Returns the process-wide decoy registry, initialized with the defaults.
 pub fn global_deception_routes() -> &'static DashSet<String> {
     DECEPTION_ROUTES.get_or_init(default_deception_traps)
 }
