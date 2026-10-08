@@ -9,6 +9,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### `cargo rullst add`, HTML snapshots and generator fixes
+
+- New `cargo rullst add <mail|auth|ai|nexus|studio>` enables a facade capability
+  in an existing project: it turns on the `rullst` feature with a
+  comment-preserving `Cargo.toml` edit, appends placeholder or `mock_*`
+  variables to `.env.example`, prints the wiring code instead of editing
+  source, changes nothing on a second run and previews its diff with
+  `--dry-run`.
+- `cargo rullst new` now initializes a Git repository like `cargo new`
+  (`--vcs none` skips it). Generated projects declare `validator` 0.21 so
+  `#[derive(rullst::Validate)]` DTOs compile, and `make:model` no longer emits
+  unused `RullstModel`/`sqlx` imports.
+- `rullst::testing::assert_html_snapshot!` adds file-backed snapshots of
+  rendered HTML with whitespace normalisation, optional `{NONCE}`/`{CSRF_TOKEN}`
+  masking, `RULLST_UPDATE_SNAPSHOTS=1` updates and compact line diffs.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
