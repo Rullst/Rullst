@@ -69,6 +69,12 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
         &["make:mail", "CustomNotice"][..],
         &["make:mail-invoice"][..],
         &["make:mail-dunning"][..],
+        // Generic generator output shares this compiled project, so the
+        // Clippy `-D warnings` gate below also covers it without a second
+        // cold build: a model, the `add` capability flow and (further down) a
+        // `Validate` DTO relying on the generated `validator` dependency.
+        &["make:model", "Post"][..],
+        &["add", "auth"][..],
     ] {
         let scaffolded = run(
             Command::new(cli).current_dir(&project).args(arguments),
@@ -292,6 +298,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 "##,
     )
     .expect("write generated mail contract");
+    fs::write(
+        project.join("src/bin/validate_contract.rs"),
+        r#"use rullst::Validate;
+
+#[derive(Debug, serde::Deserialize, Validate)]
+struct Signup {
+    #[validate(email)]
+    email: String,
+}
+
+fn main() {
+    let signup = Signup { email: "user@example.com".into() };
+    println!("{:?}", signup.validate().is_ok());
+}
+"#,
+    )
+    .expect("write generated validation contract");
+    let model = fs::read_to_string(project.join("src/models/post.rs")).expect("generated model");
+    assert!(
+        model.starts_with("use rullst::db::{FromRow, Orm};\n"),
+        "{model}"
+    );
     install_workspace_lock(&project, workspace);
 
     let checked = run(
