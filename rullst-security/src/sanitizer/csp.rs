@@ -8,10 +8,17 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
+/// Generates a fresh 128-bit base64 CSP nonce.
 pub fn generate_nonce() -> String {
     CspNonce::generate().to_string()
 }
 
+/// Minimal Tower layer that sets the default nonce-based CSP,
+/// `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and
+/// `Referrer-Policy`.
+///
+/// Prefer the Core baseline or [`crate::SecureHeadersLayer`] when you need the
+/// full header set or a custom policy.
 #[derive(Clone, Debug, Default)]
 pub struct CspSecurityLayer;
 

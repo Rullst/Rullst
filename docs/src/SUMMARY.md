@@ -7,6 +7,7 @@
 - [Why Rullst?](why-Rullst.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
+- [Maturity Tiers: Core, Extensions, Experimental](maturity.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 
@@ -128,6 +129,7 @@
 - [AI Provider Capability Matrix](ai-provider-capabilities.md)
 - [Guarded Local AI Tools](ai-tool-security.md)
 - [🛡️ Security Architecture](security-architecture.md)
+- [Which Security Layer to Use, and When](security-layers.md)
 - [🎯 Rullst Threat Models](threat-models.md)
 - [v12 Security Claims & Evidence](v12-security-claims.md)
 - [Security Event Schema v1](security-event-schema.md)

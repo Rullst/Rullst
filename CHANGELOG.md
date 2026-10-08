@@ -16,6 +16,23 @@ A prepared version section does not establish that its tag or crates exist.
   GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5. Lockfile-only change; no
   manifest or API change.
 
+### Maturity tiers and security layer guide
+
+- New [maturity page](docs/src/maturity.md): every crate is Core, Extension or
+  Experimental, with what each tier promises; the README and `AGENTS.md` crate
+  tables and the CLI reference show the tier, and CLI generators are labelled
+  supported (Omni desktop/Android) or experimental (Omni iOS, Foundry, Nix,
+  Buildah, gRPC, IoT).
+- New [security layer guide](docs/src/security-layers.md): what each Core and
+  `rullst-security` layer inspects, the recommended production stack, what each
+  layer does not protect against, and what blueprints mount by default.
+  `rullst-security` docs now state risk, mechanism and limits instead of
+  guarantees the code does not give.
+- `rullst-supervision` documents responsible use (consented, transparent
+  scenarios; no covert mode), `rullst-iot` documents which modules are working
+  implementations and which are models or fixtures, and the self-hosted
+  gateway (M39) is abandoned in favour of generated Caddy/nginx configuration.
+
 ### Documentation and CLI help review
 
 - The book, crate READMEs, `AGENTS.md`, the spec and the `cargo rullst ai`

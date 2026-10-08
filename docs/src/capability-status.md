@@ -4,7 +4,9 @@ This is the compact view of Rullst's canonical M1–M41 programme. It is derived
 from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
-features.
+features. Package stability is a separate question: the
+[maturity tiers](maturity.md) classify every crate as Core, Extension or
+Experimental and state what each tier promises within 13.x.
 
 ## v12 stable snapshot — 15 September 2026
 
@@ -94,7 +96,7 @@ homologated.
 | M36 | Read-only explainable natural-language SQL assistant | ⏳ Still to implement — not started |
 | M37 | Reviewable one-click error-console patch workflow | 🟡 Still to implement — partial |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
-| M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
+| M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Not implemented — abandoned on 8 October 2026 in favour of generated Caddy/nginx configuration; kept in the not-started count |
 | M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 Unpublished foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
 | M41 | Privacy controls and proportional age assurance | 🟡 Unpublished foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 

@@ -10,6 +10,12 @@
 data structures and packet encoders, and a cryptographically verified
 Over-The-Air (OTA) firmware update state machine.
 
+> **Maturity: Experimental.** The API may change between 13.x releases, and
+> nothing in this crate has been validated on physical hardware or against a
+> live broker. Experimental does not mean broken: the [module status](#module-status)
+> below separates working implementations from data models and contracts. See
+> the [maturity tiers](../maturity.md).
+
 ---
 
 ## ⚡ Capability & Lifecycle Matrix
@@ -19,9 +25,68 @@ Over-The-Air (OTA) firmware update state machine.
 | **Ed25519 OTA Manifest Gate** | 🟢 `[Implemented / Bounded]` | Verifies a domain-separated signed manifest, target, firmware length/hash, and monotonic counter. A `no_std` store trait adds durable compare-and-set coordination; its concrete persistence, flashing, bootloader handoff, and hardware validation remain external. |
 | **`no_std` Telemetry Models** | 🟢 `[Implemented / Bounded]` | Allocation-conscious telemetry, digital-twin, and sensor models are available without `std`; board- and toolchain-specific builds must still be validated in the release matrix. |
 | **Protocol Frame Helpers** | 🟢 `[Implemented / Bounded]` | MQTT 5 PUBLISH, RFC 7252 CoAP base requests, Modbus CRC, I2C frame packing, BLE GATT data models, and power-policy abstractions; these are bounded packet/state helpers, not network, bus, or radio drivers. |
-| **Experimental Fixtures** | 🟡 `[Simulador Dev]` | The opt-in feature exposes explicitly named deterministic MQTT formatting, HSM-byte, and PQC-byte fixtures. GPIO/I2C/BLE types are always-available state/frame helpers, not hardware simulators. |
+| **Experimental Fixtures** | 🟡 `[Simulated fixtures]` | The opt-in feature exposes explicitly named deterministic MQTT formatting, HSM-byte, and PQC-byte fixtures. GPIO/I2C/BLE types are always-available state/frame helpers, not hardware simulators. |
 | **Native MQTT/CoAP Transport** | 🔵 `[Roadmap]` | Connections, TLS/DTLS, broker negotiation, acknowledgement/retransmission state, subscriptions, block-wise transfer, and interoperability. |
 | **Hardware Security Module (HSM)** | 🔵 `[Roadmap]` | Native secure-element driver interfaces (ATECC608A, TPM 2.0, STSAFE). |
+
+---
+
+## Module status
+
+Each module falls into one of four kinds:
+
+- **Working**: complete for its stated, bounded scope and covered by tests.
+- **Contract**: a trait your platform code implements; the crate supplies no
+  implementation.
+- **Model only**: data structures that hold state in memory. They drive no
+  hardware, radio or network and act as placeholders for a platform adapter.
+- **Fixture**: deterministic test data behind the `experimental-simulators`
+  feature. Never use it in production.
+
+| Module | Kind | What it does | What it does not do |
+| :--- | :--- | :--- | :--- |
+| `ota` | Working + Contract | `OtaManager` verifies an Ed25519 signature over a domain-separated manifest that binds target, version, rollback counter, firmware length and SHA-256, then names the inactive A/B partition. `RollbackCounterStore` is the contract for durable compare-and-set of the counter. | No download, flash writes, bootloader handoff or concrete counter storage. The deprecated `new`, `verify_signature` and `commit_update` always fail. |
+| `mqtt` | Working (encoder) | `MqttPublish` encodes one MQTT 5 PUBLISH packet: QoS 0/1/2, retain, DUP, topic validation and a 1 MiB ceiling. | No CONNECT, SUBSCRIBE, acknowledgement state, socket, TLS or retry. |
+| `coap` | Working (encoder) | `CoapRequest` encodes an RFC 7252 GET/POST/PUT/DELETE request with Uri-Path and Content-Format options under a 1152-byte ceiling. | No UDP/DTLS, retransmission, block-wise transfer or response decoding. |
+| `modbus` | Working (narrow) | Modbus CRC-16 and a Read Holding Registers (`0x03`) RTU request frame. | No response parsing and no write-request builder (`WriteSingleRegister` is only an enum value). It does not check the protocol's register-count limit and has no serial or TCP transport. |
+| `i2c` | Working (narrow) | Builds the byte layout of a register-read transaction, rejecting reserved or non-7-bit addresses and reads above 8,192 bytes. | No bus access. |
+| `anomaly` | Working | Classifies a reading against a fixed mean and tolerance (normal, warning beyond 1×, critical beyond 2×); non-finite values fail closed as critical. | No learned baseline or time-series analysis. |
+| `twin` | Working (in memory) | `DigitalTwin` stores readings, returns the latest per metric and serializes a JSON snapshot, refusing non-finite values. | No synchronization or transport. It keeps every ingested reading, so trim `readings` on long-running hosts. |
+| `ui` | Working | Renders an HTML-escaped sensor snapshot card. | No live updates or connectivity status. |
+| `power` | Working (policy) | Recommends a power mode and harvester state from hard-coded millivolt thresholds. | Does not control sleep, wake, charging or solar hardware. |
+| `mesh` | Model only | In-memory node list; `best_relay` picks the online node with the strongest recorded RSSI. | No discovery, routing, failure detection or mesh transport. |
+| `ble` | Model only | GATT service and characteristic structs. | No radio and no GATT server. |
+| `gpio` | Model only | In-memory pin mode and state. | No register or pin access. |
+| `hsm` | Fixture | `SimulatedHsmDevice` derives deterministic SHA-256 bytes. | Not an HSM: no key protection, signatures or MACs. |
+| `pqc` | Fixture | `SimulatedPqcFixture` derives deterministic hash bytes. | No ML-KEM/Kyber, no encapsulation and no quantum resistance. |
+
+`SensorTelemetry` (crate root) is the shared telemetry data model. The `ota`,
+`modbus` and `anomaly` modules also have fuzz targets, and CI builds the crate
+for Cortex-M and RISC-V targets. Those builds are compile evidence, not hardware
+tests.
+
+### Transports and hardware: use maintained ecosystem crates
+
+For anything that touches a network, bus or radio, use a mature ecosystem crate
+and pass Rullst's models or encoded bytes to it. Some starting points:
+
+- **MQTT on a host or gateway with `std`:** [`rumqttc`](https://crates.io/crates/rumqttc).
+  A full client encodes packets itself, so give it the topic and a serialized
+  `SensorTelemetry` payload. Use `MqttPublish` only when you own the socket and
+  need the raw PUBLISH bytes.
+- **Async embedded firmware:** [Embassy](https://embassy.dev/) for executors,
+  timers and networking (`embassy-net`).
+- **GPIO, I2C and SPI drivers:** the [`embedded-hal`](https://crates.io/crates/embedded-hal)
+  traits with your chip's HAL. A HAL's `write_read` takes the address and
+  register directly, so `I2cHelper` frames are mostly useful for logging, tests
+  and adapters that expect a raw byte layout.
+- **Modbus RTU/TCP on a host:** [`tokio-modbus`](https://crates.io/crates/tokio-modbus).
+- **BLE from a desktop or gateway:** [`btleplug`](https://crates.io/crates/btleplug).
+
+Rullst ships no adapter for these crates and does not test them together with
+`rullst-iot`. They are suggestions; check each one against your target and
+security requirements. Embassy integration (roadmap milestone M25) has not
+started.
 
 ---
 

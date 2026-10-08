@@ -3,6 +3,34 @@
 `rullst-iot` provides `no_std`-compatible telemetry models, protocol frame
 builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 
+**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+The API may change between 13.x releases, and nothing here has been validated
+on physical hardware or against a live broker. Experimental does not mean
+broken; the table below shows which modules are working implementations.
+
+## Module status
+
+**Working** means complete for a bounded scope and tested. **Contract** is a
+trait your platform implements. **Model only** holds in-memory state and drives
+no hardware or network. **Fixture** is deterministic test data behind
+`experimental-simulators`, never for production.
+
+| Module | Kind | Scope |
+| :--- | :--- | :--- |
+| `ota` | Working + Contract | Ed25519 manifest verification and A/B partition selection; `RollbackCounterStore` is the durable-counter contract. No download, flashing, bootloader or concrete store. |
+| `mqtt` | Working (encoder) | One MQTT 5 PUBLISH packet. No connection, acknowledgements or TLS. |
+| `coap` | Working (encoder) | RFC 7252 base requests. No UDP/DTLS, retransmission or response decoding. |
+| `modbus` | Working (narrow) | CRC-16 and a Read Holding Registers RTU request. No response parsing, write builder or transport. |
+| `i2c` | Working (narrow) | Register-read transaction bytes with address/length checks. No bus access. |
+| `anomaly` | Working | Fixed mean/tolerance classification; non-finite values fail closed. |
+| `twin` | Working (in memory) | Readings, latest per metric, JSON snapshot. No sync; readings grow until you trim them. |
+| `ui` | Working | Escaped HTML snapshot card. |
+| `power` | Working (policy) | Hard-coded voltage thresholds to a recommended mode. Controls no hardware. |
+| `mesh` | Model only | Node list and strongest-RSSI relay pick. No routing or transport. |
+| `ble` | Model only | GATT data structs. No radio. |
+| `gpio` | Model only | In-memory pin state. No register access. |
+| `hsm`, `pqc` | Fixture | Deterministic hash bytes. Not an HSM and not post-quantum cryptography. |
+
 ## Implemented scope
 
 - `SensorTelemetry` and `DigitalTwin` in-memory state models.
@@ -173,6 +201,19 @@ confidentiality, quantum resistance, or broker transport. The MQTT encoder
 above is independent of the simulated numeric-value formatter and remains only
 a packet helper. There are intentionally no aliases named `HsmDevice`,
 `PqcKeyPair`, or `MqttDriver`.
+
+## Transports and hardware
+
+Use mature ecosystem crates for anything that touches a network, bus or radio:
+[`rumqttc`](https://crates.io/crates/rumqttc) for MQTT on a `std` host or
+gateway (it encodes packets itself; send it a serialized `SensorTelemetry`),
+[Embassy](https://embassy.dev/) for async embedded firmware,
+[`embedded-hal`](https://crates.io/crates/embedded-hal) with your chip's HAL for
+GPIO/I2C/SPI, [`tokio-modbus`](https://crates.io/crates/tokio-modbus) for
+Modbus RTU/TCP on a host and [`btleplug`](https://crates.io/crates/btleplug) for
+BLE from a desktop or gateway. Rullst ships no adapter for these crates and does
+not test them with `rullst-iot`; verify each against your target. Embassy
+integration has not started.
 
 ## Not implemented
 

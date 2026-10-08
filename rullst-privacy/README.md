@@ -5,6 +5,10 @@ consent. The source package joins the v13 distribution inventory, subject to
 package validation, initial registration and publication configuration. It is
 not part of v12 or the default `rullst` dependency graph.
 
+**Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
+the API may change between 13.x releases and not every real-world scenario is
+validated yet. Experimental does not mean broken.
+
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
 choices. No feature is enabled by default. Broader rights-request, retention and regional-policy support
 is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/main/docs/src/privacy-age-assurance-roadmap.md).

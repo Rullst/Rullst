@@ -53,6 +53,7 @@ versioned Rust documentation.
 | How do requests reach my handlers? | [Routes and middleware](tutorials/08-routing-and-middlewares.md) |
 | Who is allowed to access a record? | [Ownership, RBAC and IDOR](tutorials/13-rbac-authorization.md) |
 | How do I update the framework later? | [Assisted upgrades](tutorials/36-assisted-framework-upgrades.md) |
+| Which crates are stable, and which are experimental? | [Maturity tiers](maturity.md) |
 
 You can use an AI assistant while learning. Ask it to explain the generated
 files, point to the exact APIs and show a failing test before a bug fix. Treat
@@ -83,6 +84,8 @@ A generated app is a foundation, not a deployment approval. Review
 authentication, ownership, secrets, database backups and migrations, external
 provider setup and release status. Start with the
 [security architecture](security-architecture.md), choose features using the
-[capability status](capability-status.md), and measure your own workload.
+[capability status](capability-status.md), check each crate's
+[maturity tier](maturity.md) (Core, Extension or Experimental), and measure your
+own workload.
 
 **Ready? [Create your first application →](1-getting-started.md)**

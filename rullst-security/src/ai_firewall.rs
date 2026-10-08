@@ -1,16 +1,29 @@
-//! LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`).
+//! Heuristic prompt-injection filter for LLM endpoints (`rullst-security::ai_firewall`).
 //!
-//! Autonomous runtime defense protecting AI endpoints and LLM pipelines from:
-//! 1. Direct Jailbreaks & Overrides ("Ignore previous instructions", "DAN Mode")
-//! 2. System Prompt & Context Leaking ("Repeat your initial instructions")
-//! 3. Delimiter & Role Collisions (`<|im_start|>`, `[INST]`, `<<SYS>>`)
-//! 4. Markdown Exfiltration Beacons & Script Injections
-//! 5. Invisible Zero-Width Unicode Character Poisoning (zero-width and bidi
-//!    controls, word joiners, fillers and Unicode tag characters)
+//! **Risk reduced:** the most common, literal prompt-injection attempts in
+//! user input sent to an LLM:
+//! 1. direct override phrases ("ignore previous instructions", "DAN mode");
+//! 2. requests to reveal the system prompt ("repeat your initial instructions");
+//! 3. chat-template control tokens (`<|im_start|>`, `[INST]`, `<<SYS>>`);
+//! 4. Markdown image links to `http(s)` URLs, a common exfiltration beacon;
+//! 5. invisible characters (zero-width and bidi controls, word joiners,
+//!    fillers and Unicode tag characters).
 //!
-//! Phrase checks run on lowercased text after removing soft hyphens, bidi
-//! marks and variation selectors and collapsing whitespace runs. These are
-//! heuristics: a rephrased instruction still passes.
+//! **How:** a fixed list of English phrases and tokens, matched after
+//! lowercasing, removing soft hyphens, bidi marks and variation selectors and
+//! collapsing whitespace. It is a heuristic, not a model or a safety proof.
+//!
+//! **Known limits:** a rephrased, translated, misspelled or encoded (for
+//! example Base64) instruction passes. Homoglyphs are not detected. Indirect
+//! injection through retrieved documents, tool results or files is not
+//! inspected unless you pass that text in yourself. Legitimate text can be
+//! refused, such as a question about prompt injection or any Markdown image
+//! with a web URL. [`ai_firewall_middleware`] reads at most 1 MiB and only
+//! the JSON fields named `prompt`, `content` or `message`.
+//!
+//! **Operator duties:** treat model output as untrusted, give tools and
+//! retrieval the least privilege, keep secrets out of prompts, require human
+//! approval for consequential actions and log blocked requests for review.
 
 use crate::telemetry::SecurityStore;
 use axum::{
@@ -34,7 +47,7 @@ pub enum PromptThreatCategory {
     DelimiterHijacking,
     /// Out-of-band data exfiltration (e.g. Markdown image callbacks `![leak](...)`).
     DataExfiltration,
-    /// Hidden zero-width or homoglyph unicode poisoning.
+    /// Hidden zero-width, bidi or tag characters (homoglyphs are not detected).
     InvisibleUnicode,
 }
 
@@ -59,7 +72,7 @@ pub struct PromptSafetyReport {
     pub sanitized_prompt: String,
 }
 
-/// The core LLM Security Firewall inspection engine.
+/// Heuristic prompt inspector; see the module documentation for its limits.
 pub struct LlmFirewall;
 
 impl LlmFirewall {
@@ -248,8 +261,13 @@ fn inspect_prompt_value(value: &serde_json::Value, client_ip: &str) -> Option<Pr
     }
 }
 
-/// Axum middleware intercepting JSON requests to AI endpoints (`/ai/*`, `/api/chat`),
-/// inspecting payload `"prompt"`, `"content"`, or `"message"` fields.
+/// Axum middleware that inspects the `"prompt"`, `"content"` and `"message"`
+/// fields of a JSON request body with [`LlmFirewall`].
+///
+/// It inspects every request it wraps, so mount it only on your AI routes. A
+/// body over 1 MiB is refused with `413`, a declared JSON body that does not
+/// parse with `400`, and a blocked prompt with `400`. A body that is not JSON
+/// passes through uninspected.
 ///
 /// A blocked prompt is attributed in telemetry to the request's
 /// `ConnectInfo<SocketAddr>` peer (the resolved client behind Core's trusted
