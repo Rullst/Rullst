@@ -1,5 +1,8 @@
-use rullst::{routes, Server, response::IntoResponse};
-use serde::Serialize;
+use rullst::{routes, Router, Server, response::IntoResponse};
+use rullst::http::{Method, StatusCode};
+use rullst::security::{MachineEndpoint, MachineEndpointError, MachineEndpointPolicy};
+use rullst::server::Json;
+use serde::{Deserialize, Serialize};
 
 __MIGRATIONS_MOD_DECLARATION__
 
@@ -14,10 +17,40 @@ struct HomeResponse {
 async fn home() -> impl IntoResponse {
     let name = "Rullst";
 __DB_STATUS_CODE__
-    rullst::server::Json(HomeResponse {
+    Json(HomeResponse {
         message: format!("Welcome to Rullst REST API: {}", name),
         database_status: db_status,
     })
+}
+
+#[derive(Deserialize, Serialize)]
+struct Message {
+    text: String,
+}
+
+/// Example JSON write route; clients authenticate with the API token.
+async fn create_message(Json(message): Json<Message>) -> impl IntoResponse {
+    (StatusCode::CREATED, Json(message))
+}
+
+fn router() -> Router {
+    routes![
+        get("/" => home),
+        post("/api/messages" => create_message),
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+}
+
+/// Write routes that API clients call with `Authorization: Bearer <API_TOKEN>`.
+/// In staging and production every other write route requires the browser
+/// CSRF token, so register each new JSON write route here. Requests that
+/// carry cookies are refused, so a browser session cannot use these routes.
+fn machine_endpoints(api_token: &str) -> Result<MachineEndpointPolicy, MachineEndpointError> {
+    MachineEndpointPolicy::new(vec![
+        MachineEndpoint::bearer(Method::POST, "/api/messages", api_token)?,
+    ])
 }
 
 #[rullst::runtime::main]
@@ -33,14 +66,12 @@ __ARTISAN_CALL__
         println!("Rullst Studio running on http://127.0.0.1:5555");
     }
 
-    let router = routes![
-        get("/" => home),
-    ]
-    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
-    .merge_axum(rullst::health::health_router())
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware));
+    // Read from the environment, then `.env`: 32 to 200 random characters.
+    let api_token = rullst::config::project_setting("API_TOKEN")?
+        .ok_or("set API_TOKEN: JSON clients send it as a bearer token")?;
 
-    Server::new(router)
+    Server::new(router())
+        .with_machine_endpoints(machine_endpoints(&api_token)?)
         .run(3000)
         .await?;
 

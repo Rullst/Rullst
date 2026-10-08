@@ -164,3 +164,28 @@ fn buildah_image_name_cannot_inject_shell_commands() {
     assert!(!root.join("build_buildah.sh").exists());
     fs::remove_dir_all(root).expect("temporary project cleanup");
 }
+
+#[test]
+fn the_json_api_token_is_random_in_env_and_empty_in_the_example() {
+    let root = tempfile::tempdir().expect("temporary project");
+    generate_env_and_configs(
+        root.path(),
+        false,
+        "Sqlite",
+        &[],
+        BLANK_BLUEPRINT_ID,
+        "0123456789abcdef0123456789abcdef",
+    )
+    .expect("environment scaffold");
+    append_api_token(root.path()).expect("API token");
+
+    let read = |file: &str| fs::read_to_string(root.path().join(file)).expect("environment file");
+    let token = read(".env")
+        .lines()
+        .find_map(|line| line.strip_prefix("API_TOKEN=").map(str::to_owned))
+        .expect("API_TOKEN entry");
+    // `MachineEndpoint::bearer` accepts 32 to 200 graphic ASCII bytes.
+    assert_eq!(token.len(), 48);
+    assert!(token.bytes().all(|byte| byte.is_ascii_alphanumeric()));
+    assert!(read(".env.example").ends_with("\nAPI_TOKEN=\n"));
+}
