@@ -3,6 +3,8 @@ mod metrics;
 mod metrics_render_tests;
 #[cfg(test)]
 mod metrics_tests;
+#[cfg(test)]
+mod n_plus_one_tests;
 mod profile;
 mod render;
 #[cfg(test)]

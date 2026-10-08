@@ -11,6 +11,8 @@ use std::time::Duration;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
+pub use crate::queue::{ScheduleDeferral, TimeWindow};
+
 /// Strongly-typed error domain for scheduler operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -84,6 +86,7 @@ pub struct ScheduledTask {
     label: String,
     schedule: CronSchedule,
     handler: ScheduledHandler,
+    deferral: Option<ScheduleDeferral>,
 }
 
 /// A declarative scheduler for recurring asynchronous jobs.
@@ -150,8 +153,36 @@ impl Scheduler {
             label: cron_expr.to_string(),
             schedule,
             handler: boxed,
+            deferral: None,
         });
         Ok(self)
+    }
+
+    /// Registers a recurring task, like [`Self::task`], whose runs may start
+    /// up to the deferral's `max_delay` after each tick, at the start of the
+    /// next allowed [`TimeWindow`] (immediately when a window is open, at the
+    /// deadline when none opens in time). Unpublished v13 API.
+    ///
+    /// Ticks that pass while a deferred run waits or executes are skipped, as
+    /// for a slow run. Each placement is logged at debug level with its reason.
+    ///
+    /// # Errors
+    /// Returns [`SchedulerError::InvalidCron`] like [`Self::task`].
+    pub fn deferrable_task<F, Fut>(
+        self,
+        cron_expr: &str,
+        deferral: ScheduleDeferral,
+        handler: F,
+    ) -> Result<Self, SchedulerError>
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let mut scheduler = self.task(cron_expr, handler)?;
+        if let Some(task) = scheduler.tasks.last_mut() {
+            task.deferral = Some(deferral);
+        }
+        Ok(scheduler)
     }
 
     /// Starts every registered task and returns its lifecycle handle.
@@ -293,22 +324,15 @@ async fn run_task_loop(
             break;
         };
 
-        // The sleep is monotonic, but the schedule is wall-clock time: if the
-        // wall clock was stepped back during the sleep, wait again until it
-        // actually reaches `next` instead of firing early.
-        loop {
-            let wait = (next - chrono::Utc::now())
-                .to_std()
-                .unwrap_or(Duration::ZERO);
-            if wait.is_zero() {
-                break;
-            }
-            tokio::select! {
-                _ = tokio::time::sleep(wait) => {}
-                _ = wait_for_shutdown(&mut shutdown) => return,
-            }
+        if !wait_until(next, &mut shutdown).await {
+            return;
         }
         last_fired = Some(next);
+        if let Some(start) = deferred_start(&task, next)
+            && !wait_until(start, &mut shutdown).await
+        {
+            return;
+        }
 
         match execute_handler(&task, timeout, &mut shutdown).await {
             Ok(ExecutionStatus::Completed) => {}
@@ -321,6 +345,48 @@ async fn run_task_loop(
             }
         }
     }
+}
+
+/// Sleeps until the wall clock reaches `target`; false on shutdown.
+///
+/// The sleep is monotonic, but the schedule is wall-clock time: if the wall
+/// clock was stepped back during the sleep, wait again until it actually
+/// reaches `target` instead of firing early.
+async fn wait_until(
+    target: chrono::DateTime<chrono::Utc>,
+    shutdown: &mut watch::Receiver<bool>,
+) -> bool {
+    loop {
+        let wait = (target - chrono::Utc::now())
+            .to_std()
+            .unwrap_or(Duration::ZERO);
+        if wait.is_zero() {
+            return true;
+        }
+        tokio::select! {
+            _ = tokio::time::sleep(wait) => {}
+            _ = wait_for_shutdown(shutdown) => return false,
+        }
+    }
+}
+
+/// Start of a deferrable task's run due at `tick`, or `None` when the task
+/// is not deferrable.
+fn deferred_start(
+    task: &ScheduledTask,
+    tick: chrono::DateTime<chrono::Utc>,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    let deferral = task.deferral.as_ref()?;
+    let (start_ms, reason) = deferral.start_for(tick.timestamp_millis());
+    let start = chrono::DateTime::from_timestamp_millis(start_ms).unwrap_or(tick);
+    tracing::debug!(
+        target: "rullst::scheduler",
+        task = %task.label,
+        deferral.run_at_unix_ms = start_ms,
+        deferral.reason = reason.as_str(),
+        "deferred scheduled run"
+    );
+    Some(start)
 }
 
 /// The first occurrence strictly after both `now` and the occurrence that

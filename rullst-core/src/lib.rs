@@ -63,6 +63,7 @@ pub mod offline_sync;
 #[cfg(not(target_arch = "wasm32"))]
 /// Canonical production middleware ordering contract.
 pub mod production;
+pub mod query_patterns;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]

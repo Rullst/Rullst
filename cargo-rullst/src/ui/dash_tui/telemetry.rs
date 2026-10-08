@@ -16,6 +16,8 @@ const SCHEMA: &str = "rullst.dev-telemetry.v1";
 pub(super) const MAX_BODY_BYTES: usize = 256 * 1024;
 pub(super) const MAX_REQUESTS: usize = 64;
 pub(super) const MAX_SLOW_QUERIES: usize = 16;
+pub(super) const MAX_REPEATED: usize = 16;
+const MAX_FINGERPRINT_CHARS: usize = 96;
 const MAX_PATH_CHARS: usize = 160;
 const MAX_METHOD_CHARS: usize = 10;
 const MAX_LABEL_CHARS: usize = 48;
@@ -40,6 +42,31 @@ pub(super) struct SlowQuery {
     pub model: Option<String>,
     pub table: Option<String>,
     pub duration_us: u64,
+}
+
+/// One ORM operation fingerprint the application saw repeated within a
+/// single request (a possible N+1 query).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct RepeatedQuery {
+    pub seq: u64,
+    pub method: String,
+    pub route: String,
+    pub fingerprint: String,
+    pub occurrences: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum RepeatedReport {
+    Observed {
+        /// Repetitions within one request at which the app reports.
+        threshold: u64,
+        total: u64,
+        /// Oldest first, at most [`MAX_REPEATED`].
+        recent: Vec<RepeatedQuery>,
+    },
+    /// The telemetry has no request-correlated ORM operations: an older
+    /// Rullst Core, or ORM spans that are not observed.
+    NotReported,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +109,7 @@ pub(super) struct TelemetrySnapshot {
     pub generation: String,
     pub http: HttpReport,
     pub database: DatabaseReport,
+    pub repeated: RepeatedReport,
     pub queue: QueueReport,
 }
 
@@ -140,6 +168,21 @@ struct RawState {
     slow_threshold_ms: Option<u64>,
     #[serde(default)]
     recent_slow: Vec<RawSlow>,
+    #[serde(default)]
+    repeated_threshold: Option<u64>,
+    #[serde(default)]
+    repeated_queries_total: Option<u64>,
+    #[serde(default)]
+    recent_repeated: Vec<RawRepeated>,
+}
+
+#[derive(Deserialize)]
+struct RawRepeated {
+    seq: u64,
+    method: String,
+    route: String,
+    fingerprint: String,
+    occurrences: u64,
 }
 
 #[derive(Deserialize)]
@@ -158,7 +201,7 @@ pub(super) fn parse_payload(body: &[u8]) -> Result<TelemetrySnapshot, &'static s
     if body.len() > MAX_BODY_BYTES {
         return Err("response too large");
     }
-    let raw: RawPayload = serde_json::from_slice(body).map_err(|_| "malformed JSON")?;
+    let mut raw: RawPayload = serde_json::from_slice(body).map_err(|_| "malformed JSON")?;
     if raw.schema != SCHEMA {
         return Err("unsupported schema");
     }
@@ -191,6 +234,10 @@ pub(super) fn parse_payload(body: &[u8]) -> Result<TelemetrySnapshot, &'static s
             server_errors_total: http.server_errors_total,
             recent,
         },
+        repeated: raw
+            .database
+            .as_mut()
+            .map_or(RepeatedReport::NotReported, repeated),
         database: raw.database.map_or(DatabaseReport::Unknown, database),
         queue: raw.queue.map_or(QueueReport::Unknown, queue),
     })
@@ -229,6 +276,34 @@ fn database(raw: RawState) -> DatabaseReport {
         ("unavailable", Some("subscriber_not_installed")) => DatabaseReport::SubscriberNotInstalled,
         ("unavailable", Some("orm_spans_filtered")) => DatabaseReport::SpansFiltered,
         _ => DatabaseReport::Unknown,
+    }
+}
+
+/// Possible N+1 findings of an observed database. A finding below the
+/// reported threshold or outside the counter's range is dropped.
+fn repeated(raw: &mut RawState) -> RepeatedReport {
+    let (Some(threshold), Some(total)) = (raw.repeated_threshold, raw.repeated_queries_total)
+    else {
+        return RepeatedReport::NotReported;
+    };
+    if raw.state != "observed" || threshold < 2 {
+        return RepeatedReport::NotReported;
+    }
+    let recent = newest(std::mem::take(&mut raw.recent_repeated), MAX_REPEATED)
+        .filter(|finding| finding.seq > 0 && finding.seq <= total)
+        .filter(|finding| finding.occurrences >= threshold)
+        .map(|finding| RepeatedQuery {
+            seq: finding.seq,
+            method: clean(&finding.method, MAX_METHOD_CHARS),
+            route: clean(&finding.route, MAX_PATH_CHARS),
+            fingerprint: clean(&finding.fingerprint, MAX_FINGERPRINT_CHARS),
+            occurrences: finding.occurrences,
+        })
+        .collect();
+    RepeatedReport::Observed {
+        threshold,
+        total,
+        recent,
     }
 }
 

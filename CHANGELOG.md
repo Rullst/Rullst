@@ -109,6 +109,25 @@ A prepared version section does not establish that its tag or crates exist.
   values are `NOT MEASURED` with the reason, and `--json` emits
   `rullst.cli-footprint.v1`. See `docs/src/footprint.md`.
 
+### Carbon-aware deferrable jobs and dash N+1 warnings (opt-in)
+
+- `Queue::dispatch_deferred` places deferrable work (reports, exports,
+  re-indexing) at the start of the next allowed daily `TimeWindow`, never after
+  its `run_by` deadline, and at the deadline when no window opens in time.
+  `Queue::dispatch_deferred_with` uses a `CarbonAwarePlanner` to place it in the
+  lowest-value slot reported by an application-provided `CarbonIntensitySource`,
+  falling back to the window rule when the source fails or times out.
+  `Scheduler::deferrable_task` defers cron ticks into windows. Placement reuses
+  `dispatch_at`, so there is no schema change and 12.x rows keep working. Core
+  ships no network source; `FixedIntensitySource` is a deterministic one for
+  tests. Rullst measures nothing here and makes no emissions claim.
+- `cargo rullst dash` shows a POSSIBLE N+1 QUERIES panel when one request
+  repeats the same ORM operation at least three times (the Studio threshold,
+  now shared through `rullst_core::query_patterns`), with the route, operation
+  fingerprint, count, a hint and a docs link. The development telemetry gains
+  request-correlated repetition fields; older applications show which
+  telemetry is missing.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
