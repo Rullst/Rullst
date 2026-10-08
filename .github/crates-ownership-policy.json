@@ -1,4 +1,4 @@
 {
   "expected_owner": "venelouis",
-  "bootstrap_unregistered": ["rullst-privacy", "rullst-supervision", "rullst-media"]
+  "bootstrap_unregistered": ["rullst-privacy", "rullst-supervision", "rullst-media", "rullst-labs"]
 }

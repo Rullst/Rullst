@@ -182,6 +182,17 @@
       "evidence": ["rullst-media/README.md", "rullst-media/tests", "rullst-media/examples/private_course_video.rs", ".github/test-media-package.sh", "docs/src/managed-video-roadmap.md"]
     },
     {
+      "name": "rullst-labs",
+      "api_architecture": 19,
+      "verification": 23,
+      "security_failure_design": 19,
+      "documentation_dx": 14,
+      "operations_release": 10,
+      "specialist_gate": "none",
+      "finding": "Trusted exercise, authorization and grading contracts plus encrypted shared-local SQLite jobs have lease, cancellation, recovery, retention and extracted-consumer evidence. The crate never executes learner code: an application-owned, separately deployed runner implements the documented controller contract. The initial 85-point ceiling withholds operations credit for pending ordinary-release archive acceptance, first registry registration and deployment recovery. Runner isolation is host-owned and not verified by Rullst.",
+      "evidence": ["rullst-labs/README.md", "rullst-labs/tests", "rullst-labs/examples/byo_runner_controller.rs", ".github/test-labs-package.sh", ".github/check-labs-boundary.py", "docs/src/labs-runner-contract.md"]
+    },
+    {
       "name": "rullst-nexus",
       "api_architecture": 19,
       "verification": 24,

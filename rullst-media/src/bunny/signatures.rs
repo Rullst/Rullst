@@ -1,6 +1,6 @@
 use super::BunnyStream;
 use crate::{
-    MediaError as Error, PlaybackGrant, PlaybackKind, ProviderMode, UploadGrant,
+    MediaError as Error, PlaybackGrant, PlaybackKind, ProviderMode, UploadGrant, UploadProtocol,
     VerifiedNotification, VideoId, WebhookHeaders, contracts::checked_time,
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -57,6 +57,9 @@ impl BunnyStream {
             expires_at,
             signature,
             mode,
+            protocol: UploadProtocol::Tus,
+            content_type: None,
+            content_length: None,
         })
     }
 
@@ -67,6 +70,10 @@ impl BunnyStream {
         ttl: u32,
         kind: PlaybackKind,
     ) -> Result<PlaybackGrant, Error> {
+        if kind == PlaybackKind::Original {
+            // Bunny serves transcoded renditions, never the uploaded original.
+            return Err(Error::Unsupported);
+        }
         let expires_at = expiration(now, ttl, 900)?;
         let expires = expires_at.to_string();
         let mode = self.config.credentials.mode;
@@ -121,6 +128,7 @@ impl BunnyStream {
                     };
                     format!("{origin}{path}?token=HS256-{token}&expires={expires}")
                 }
+                PlaybackKind::Original => return Err(Error::Unsupported),
             }
         };
         Ok(PlaybackGrant {

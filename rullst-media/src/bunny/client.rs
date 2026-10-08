@@ -2,6 +2,7 @@ use super::{BunnyConfig, signatures::sha, wire};
 use crate::{
     MediaError as Error, Metadata, PlaybackGrant, PlaybackKind, Processing, ProviderBinding,
     ProviderMode, Reference, RemoteVideo, UploadGrant, VideoId, VideoProvider,
+    provider::marker_valid,
 };
 use reqwest::{
     Client, Method, Url,
@@ -182,14 +183,6 @@ impl BunnyStream {
         found.processing = processing;
         Ok(())
     }
-}
-
-fn marker_valid(marker: &str) -> bool {
-    marker.len() == 45
-        && marker.starts_with("rullst-video-")
-        && marker[13..]
-            .bytes()
-            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 impl VideoProvider for BunnyStream {

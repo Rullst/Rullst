@@ -235,7 +235,7 @@ requirements.
 - [ ] Add native Rust/Rullst application, general Cargo, test and lint language packs; the pure-function profile does not provide them.
 - [ ] Reconsider offensive CTF infrastructure only through its separately governed experimental deployment and review.
 
-`rullst-labs` belongs to the Cargo workspace but remains `publish = false` and
-outside the release-order manifest until its separate admission requirements
-pass. The versioned protocol keeps applications independent of any particular
+`rullst-labs` is in the release-order manifest and ships as
+`13.0.0-alpha.1` (maintainer decision, 8 October 2026). It packages contracts
+only; no runner or execution engine is published with it. The versioned protocol keeps applications independent of any particular
 runner implementation.

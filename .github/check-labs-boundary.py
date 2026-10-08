@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the unpublished Labs bring-your-own-runner boundary, not release admission.
+"""Validate the Labs bring-your-own-runner boundary of the admitted package.
 
 `rullst-labs` holds trusted contracts and the job plane only. Execution belongs
 to an application-owned, separately deployed runner outside this workspace.
@@ -11,7 +11,9 @@ import sys
 metadata = json.loads(Path(sys.argv[1]).read_text())
 packages = {package['name']: package for package in metadata['packages']}
 labs = packages['rullst-labs']
-assert labs['publish'] == [], 'release admission needs explicit policy review'
+release_order = json.loads((Path(__file__).resolve().parent / 'release-order.json').read_text())
+assert labs['publish'] is None, 'Labs is admitted to the crates.io release inventory'
+assert 'rullst-labs' in release_order, 'publishable Labs must follow the reviewed release order'
 assert labs['features']['default'] == [], 'Labs must remain opt-in'
 allowed = {'thiserror', 'serde', 'serde_json', 'sha2', 'hex', 'zeroize', 'sqlx', 'ring', 'tokio'}
 for dependency in labs['dependencies']:

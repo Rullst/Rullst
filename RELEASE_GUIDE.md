@@ -131,11 +131,11 @@ Before releasing, make sure:
   schema version instead of silently changing v1.
 - [ ] Every package in [the release order](.github/release-order.json) has
   synchronized manifest versions and internal requirements at the selected
-  release version. The current v13 candidate inventory has 19 packages, including
-  `rullst-privacy`, `rullst-supervision` and `rullst-media`. `rullst-labs`
-  (`publish = false`) remains outside that inventory until its separate
-  package/release admission (the Labs runner candidate was removed from 13.0);
-  a successful experimental archive rehearsal does not authorize its publication.
+  release version. The current v13 candidate inventory has 20 packages, including
+  `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`.
+  Labs ships its contracts only; the Labs runner candidate was removed from
+  13.0 and is not packaged. A successful archive rehearsal does not by itself
+  authorize publication.
 - [ ] Review the README extracted from each `.crate`, installation examples and
   public demo links before creating the tag. The facade and CLI package the root
   README. Run both `rullst --version` and `cargo rullst --version` from the staged

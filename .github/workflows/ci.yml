@@ -793,14 +793,13 @@ jobs:
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
         run: |
-          # Rehearse unpublished candidates without release-order admission.
-          bash .github/package-release.sh --no-verify --v13-candidates
-          bash .github/audit-packages.sh "$CANDIDATE_VERSION" target/package --v13-candidates
+          bash .github/package-release.sh --no-verify
+          bash .github/audit-packages.sh "$CANDIDATE_VERSION" target/package
 
       - name: Compile archive-only consumer and test the isolated installed CLI
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
-        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package --v13-candidates
+        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)

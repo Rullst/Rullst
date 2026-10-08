@@ -17,6 +17,7 @@
     { "name": "rullst-privacy", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-supervision", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-media", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-labs", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-nexus", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-studio", "rc_floor": 90, "local_target": 94 },
     { "name": "rullst", "rc_floor": 90, "local_target": 96 },
