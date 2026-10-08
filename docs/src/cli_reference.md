@@ -1811,7 +1811,8 @@ protected CI remains authoritative.
 ### `cargo rullst doctor`
 Runs grouped health checks and shows each one as ✓ (pass), ! (warning),
 ✗ (failed) or · (information, optional or not applicable). Every warning and
-failure carries a one-line fix and a link to its group below. The command
+failure carries a fix (one line, or a short configuration snippet) and a link
+to its group below. The command
 exits with status `1` when any check failed; warnings do not fail it.
 `--fix` installs missing rustfmt/clippy components with
 `rustup component add rustfmt clippy`, then checks again. Outside a project
@@ -1829,6 +1830,26 @@ never printed.
 clippy (fixable with `--fix`), Git, the `wasm32-unknown-unknown` target when
 the project has `src/islands`, and one informational line for the optional
 tools (cargo-deny, cargo-geiger, cargo-mutants, Kani, cargo-llvm-cov, Docker).
+
+On Linux, `toolchain.linker` (v13) is a `!` hint, never a failure, when no
+fast linker is selected: no `-fuse-ld=mold`, `-fuse-ld=lld` (or
+`--ld-path=` naming one of them) and no `linker` entry in `[build]`, the host's
+`[target.<triple>]` or a `[target.'cfg(..)']` table of any `.cargo/config.toml`
+(or legacy `.cargo/config`) from the working directory up, or of
+`$CARGO_HOME/config.toml` (`~/.cargo` by default), and none in `RUSTFLAGS`,
+`CARGO_ENCODED_RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS` or the host's
+`CARGO_TARGET_<TRIPLE>_RUSTFLAGS`/`_LINKER`. It says whether `mold` or `ld.lld`
+is on `PATH` and shows the snippet to add, for example:
+
+```toml
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+```
+
+If the file already has that table, add the two flags to its `rustflags`
+instead of repeating the table. The check is skipped on other operating systems
+and on x86_64-unknown-linux-gnu with Rust 1.90 or newer, where rustc already
+links with its bundled LLD by default.
 
 #### Doctor: project
 The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its
