@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### llms.txt and a "Zero to a complete app" tutorial
+
+- The Pages build now publishes `llms.txt` and `llms-full.txt` at the site root,
+  generated from `docs/src/SUMMARY.md` by `.github/generate-llms-txt.py` and
+  checked by `.github/test-llms-txt.py` (order, links to built pages, no raw
+  includes or comments, size, determinism).
+- A new "Zero to a complete app" tutorial takes a SaaS-starter app from install
+  through a model and migration, HTMX CRUD with validation, owner-only routes,
+  tests, `cargo rullst audit --report` (new in 13.0), `dev` and a production
+  build. Its code is the code that was run, and a cargo-rullst unit test parses
+  every command it shows against the CLI.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
