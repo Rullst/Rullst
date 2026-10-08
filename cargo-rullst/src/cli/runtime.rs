@@ -37,15 +37,52 @@ pub(crate) fn extend(command: Command) -> Command {
             ))
         })
         .mut_subcommand("audit", |audit| {
-            audit.arg(json_flag(
-                "Print a versioned JSON summary (rullst.cli-audit.v1); progress moves to stderr",
-            ))
+            audit
+                .arg(json_flag(
+                    "Print a versioned JSON summary (rullst.cli-audit.v1); progress moves to stderr",
+                ))
+                .arg(
+                    Arg::new("report")
+                        .long("report")
+                        .value_name("FORMAT")
+                        .num_args(0..=1)
+                        .default_missing_value("md")
+                        .value_parser(["md", "html", "json"])
+                        .conflicts_with_all(["json", "compliance", "sbom", "network", "geiger", "ai"])
+                        .help("Write an evidence report mapped to OWASP ASVS 5.0 Level 1 (md, html or json; default md) to SECURITY_REPORT.<format>; exit status 1 on FINDINGS or ERROR"),
+                )
+                .arg(
+                    Arg::new("output")
+                        .long("output")
+                        .value_name("PATH")
+                        .value_parser(clap::value_parser!(std::path::PathBuf))
+                        .requires("report")
+                        .help("Write the --report file to PATH instead of the project root"),
+                )
         })
         .mut_subcommand("inspect", |inspect| {
             inspect.arg(json_flag(
                 "Print `inspect routes` as versioned JSON (rullst.cli-routes.v1)",
             ))
         })
+}
+
+/// The `audit --report` format, when the flag was given.
+fn report_format(matches: &ArgMatches) -> Option<crate::generators::audit_report::ReportFormat> {
+    matches
+        .try_get_one::<String>("report")
+        .ok()
+        .flatten()
+        .and_then(|value| crate::generators::audit_report::ReportFormat::parse(value))
+}
+
+fn audit_ignores(matches: &ArgMatches) -> Vec<String> {
+    matches
+        .try_get_many::<String>("audit_ignore")
+        .ok()
+        .flatten()
+        .map(|values| values.cloned().collect())
+        .unwrap_or_default()
 }
 
 fn flag(matches: &ArgMatches, id: &str) -> bool {
@@ -190,13 +227,23 @@ pub(crate) fn run_extension(matches: &ArgMatches) -> Result<bool, Box<dyn Error>
                 json: flag(sub, "json"),
             })?
         }
+        Some(("audit", sub)) if report_format(sub).is_some() => {
+            let ignores = audit_ignores(sub);
+            crate::generators::audit_report::run_report(
+                crate::generators::audit_report::ReportOptions {
+                    format: report_format(sub)
+                        .unwrap_or(crate::generators::audit_report::ReportFormat::Markdown),
+                    output: sub
+                        .try_get_one::<std::path::PathBuf>("output")
+                        .ok()
+                        .flatten()
+                        .cloned(),
+                    ignores: &ignores,
+                },
+            )?;
+        }
         Some(("audit", sub)) if flag(sub, "json") => {
-            let ignores: Vec<String> = sub
-                .try_get_many::<String>("audit_ignore")
-                .ok()
-                .flatten()
-                .map(|values| values.cloned().collect())
-                .unwrap_or_default();
+            let ignores = audit_ignores(sub);
             crate::generators::audit::run_audit(crate::generators::audit::AuditOptions {
                 ai: flag(sub, "ai"),
                 compliance: flag(sub, "compliance"),
@@ -295,6 +342,41 @@ mod tests {
                 .map(|values| values.cloned().collect::<Vec<_>>()),
             Some(vec!["RUSTSEC-2099-0001".to_string()])
         );
+    }
+
+    #[test]
+    fn audit_report_parses_its_format_output_and_conflicts() {
+        let command = crate::command();
+        let parse = |arguments: &[&str]| command.clone().try_get_matches_from(arguments);
+        let matches = parse(&["rullst", "audit", "--report"]).expect("bare --report");
+        let (_, audit) = matches.subcommand().expect("audit");
+        assert_eq!(
+            report_format(audit),
+            Some(crate::generators::audit_report::ReportFormat::Markdown)
+        );
+        let matches = parse(&[
+            "rullst",
+            "audit",
+            "--report",
+            "json",
+            "--output",
+            "out/report.json",
+            "--audit-ignore",
+            "RUSTSEC-2099-0001",
+        ])
+        .expect("--report json --output");
+        let (_, audit) = matches.subcommand().expect("audit");
+        assert_eq!(
+            report_format(audit),
+            Some(crate::generators::audit_report::ReportFormat::Json)
+        );
+        assert_eq!(audit_ignores(audit), ["RUSTSEC-2099-0001"]);
+        assert!(parse(&["rullst", "audit", "--report", "pdf"]).is_err());
+        assert!(parse(&["rullst", "audit", "--report", "--json"]).is_err());
+        assert!(parse(&["rullst", "audit", "--report", "html", "--compliance"]).is_err());
+        assert!(parse(&["rullst", "audit", "--output", "x.md"]).is_err());
+        let plain = parse(&["rullst", "audit", "--json"]).expect("audit --json");
+        assert_eq!(report_format(plain.subcommand().expect("audit").1), None);
     }
 
     #[test]

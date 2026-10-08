@@ -60,6 +60,13 @@ fn allowlisted_scaffolds_and_diagnostics_validate() {
             .unwrap()
             .mutates()
     );
+    // `--report` writes SECURITY_REPORT.<format> like `--compliance`.
+    for report in [
+        &["audit", "--report", "json"][..],
+        &["audit", "--report=md"],
+    ] {
+        assert!(validate_rullst(args(report)).unwrap().mutates());
+    }
 }
 
 #[test]
@@ -174,6 +181,8 @@ fn hostile_arguments_are_refused() {
         &["doctor", "--fix"][..],
         &["audit", "--network"],
         &["audit", "--network=yes"],
+        &["audit", "--report", "json", "--output", "report.json"],
+        &["audit", "--report", "--output=report.md"],
         // `inspect` prints any other target as a file.
         &["inspect", ".env"],
         &["inspect", "Cargo.toml"],
