@@ -260,6 +260,7 @@ The choices that materially change the generated application:
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
+  * `--vcs <git|none>` (v13, default `git`): Like `cargo new`, initializes a Git repository in the new project when `git` is installed and the destination is not already inside a Git work tree; `none` skips it. The generated `.gitignore` keeps `.env`, `.env.*` (except `.env.example`) and `/target` out. Without Git, `new` prints a warning and keeps the project; `cargo rullst audit` checks committed secrets through Git.
 
 Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
 no longer require `--default`: in a terminal they answer their questions and

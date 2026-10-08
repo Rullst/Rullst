@@ -57,12 +57,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             update::run(update)?;
         } else if let Some(tour) = matches.subcommand_matches("tour") {
             tour::run(tour)?;
-        } else if matches
-            .subcommand_matches("new")
-            .is_some_and(|new| new.get_flag("dry_run"))
-        {
+        } else if let Some(new) = matches.subcommand_matches("new") {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
-            generators::project::run_dry_run(&cli.command)?;
+            generators::project::run_new_command(&cli.command, new)?;
         } else if let Some(omni) = matches
             .subcommand_matches("omni")
             .filter(|m| m.get_flag("release"))
