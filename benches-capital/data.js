@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791484328931,
+  "lastUpdate": 1791489745055,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11238,6 +11238,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a390de92ccd77646b97429c4fba667edcf48539",
+          "message": "Merge pull request #442 from Rullst/chore/untrack-generated-evidence\n\nchore(security): stop committing generated audit evidence",
+          "timestamp": "2026-10-08T16:34:45-03:00",
+          "tree_id": "86fceae9d1763cc1ccd044e9e3f60a43f7722021",
+          "url": "https://github.com/Rullst/Rullst/commit/0a390de92ccd77646b97429c4fba667edcf48539"
+        },
+        "date": 1791489744105,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
