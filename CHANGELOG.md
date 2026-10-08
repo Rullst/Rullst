@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Generated evidence no longer committed
+
+- The stale repository copies of `SECURITY_COMPLIANCE.md` and
+  `sbom-cyclonedx.json` (generated on 2026-09-08 at the repository root, where the
+  unsafe-code scan could not run) are removed and ignored. Each release still
+  generates both from its exact source and attaches them as release evidence;
+  `AUDIT.md` now points there.
+
 ### AI error fixes and reviews
 
 - The development error page now shows a copyable `cargo rullst ai fix <error-id>`
