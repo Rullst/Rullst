@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791479921815,
+  "lastUpdate": 1791484260793,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -12990,6 +12990,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 403,
+            "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8a8e756d8a2b78e4c29666126db60c5c0f87b940",
+          "message": "Merge pull request #441 from Rullst/docs/governance-continuity\n\ndocs(governance): record the successor maintainer arrangement",
+          "timestamp": "2026-10-08T15:08:58-03:00",
+          "tree_id": "f5fed3845f18edf24839201f5f17650e9a958518",
+          "url": "https://github.com/Rullst/Rullst/commit/8a8e756d8a2b78e4c29666126db60c5c0f87b940"
+        },
+        "date": 1791484259868,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1007,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 161,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 213,
             "range": "± 4",
             "unit": "ns/iter"
           }
