@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791436486452,
+  "lastUpdate": 1791445769281,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9403,6 +9403,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 553,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa3e651e59ab0ba6517986d44c422e739edef1cf",
+          "message": "Merge pull request #413 from Rullst/dependabot/cargo/main/safe-updates-63560d553a\n\nchore(deps): Bump the safe-updates group with 6 updates",
+          "timestamp": "2026-10-08T03:54:55-03:00",
+          "tree_id": "6fa7c3681a66c66e402e70b52163ad16429a199d",
+          "url": "https://github.com/Rullst/Rullst/commit/fa3e651e59ab0ba6517986d44c422e739edef1cf"
+        },
+        "date": 1791445768605,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 352,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
