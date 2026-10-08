@@ -1,5 +1,17 @@
 # Rullst Mail 📬
 
+> [!WARNING]
+> **Deprecated in 12.3.** `SendGridDriver`, `PostmarkDriver` (with
+> `with_message_stream`), `MailjetDriver`, `MailtrapDriver` and the Azure
+> Communication Services transport (`AzureCommunicationDriver`,
+> `AzureMailCredential`, `AzureMailAccessToken`, `AzureManagedIdentity`,
+> `StaticAzureMailCredential`) carry `#[deprecated]` and are removed in Rullst
+> 13.0. Selecting `sendgrid`, `postmark`, `mailjet`, `mailjet-sandbox`,
+> `mailtrap`, `mailtrap-sandbox` or `azure-acs` through `MAIL_DRIVER` or
+> `[mail] driver` still delivers on 12.x but logs a deprecation warning. Resend,
+> AWS SES, SendPulse, SMTP and the in-memory `MailTrap` test helper remain. See
+> the row "Mail providers removed" in the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+
 `rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
 Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the explicit

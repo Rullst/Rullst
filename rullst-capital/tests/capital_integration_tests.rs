@@ -83,6 +83,7 @@ fn test_url_encode_helper() {
     assert_eq!(url_encode("abc-123_.~"), "abc-123_.~");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_invoice_html_and_dps_generation() {
     let invoice = Invoice {
@@ -114,6 +115,7 @@ fn test_invoice_html_and_dps_generation() {
     assert_eq!(dps.service_code, "01.07.01");
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_provider_initialization_and_portals() {
     let stripe = StripeProvider::new("sk_test_123".to_string(), "whsec_test".to_string());

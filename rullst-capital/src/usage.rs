@@ -114,6 +114,10 @@ impl std::fmt::Debug for StripeMeterEvent {
 }
 
 /// Aggregation action configured for one Lemon Squeezy usage record.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LemonSqueezyUsageAction {
@@ -123,6 +127,7 @@ pub enum LemonSqueezyUsageAction {
     Set,
 }
 
+#[allow(deprecated)]
 impl LemonSqueezyUsageAction {
     /// Exact action token accepted by Lemon Squeezy.
     pub fn as_str(self) -> &'static str {
@@ -134,16 +139,26 @@ impl LemonSqueezyUsageAction {
 }
 
 /// One provider-specific Lemon Squeezy usage record.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
 #[non_exhaustive]
 #[derive(Clone, PartialEq, Eq)]
 pub struct LemonSqueezyUsageRecord {
     subscription_item_id: String,
     application_metric: String,
     quantity: u64,
-    action: LemonSqueezyUsageAction,
+    action: UsageAction,
     event_key: String,
 }
 
+// Private alias: the derived `Eq` names the field type outside any item that
+// an allow could reach.
+#[allow(deprecated)]
+type UsageAction = LemonSqueezyUsageAction;
+
+#[allow(deprecated)]
 impl LemonSqueezyUsageRecord {
     /// Creates a record with an application-owned durable deduplication key.
     pub fn new(
@@ -207,6 +222,7 @@ impl LemonSqueezyUsageRecord {
     }
 }
 
+#[allow(deprecated)]
 impl std::fmt::Debug for LemonSqueezyUsageRecord {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter

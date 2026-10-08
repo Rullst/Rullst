@@ -1,3 +1,4 @@
+#[allow(deprecated)]
 use rullst_capital::{
     BillingProvider, CapitalError, CouponCode, LemonSqueezyProvider, MercadoPagoProvider,
     PaddleProvider, PolarProvider, RazorpayProvider, TrialExtension,
@@ -12,6 +13,7 @@ fn public_coupon_and_relative_trial_contract_is_bounded() {
     assert_eq!(extension.ends_at(), 1_801_296_000);
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn unreviewed_live_provider_operations_fail_explicitly() {
     let providers: Vec<Box<dyn BillingProvider>> = vec![

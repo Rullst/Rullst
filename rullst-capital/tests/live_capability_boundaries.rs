@@ -43,6 +43,7 @@ fn authenticated_incomplete_events_cannot_grant_active_access() {
     );
 }
 
+#[allow(deprecated)]
 #[test]
 fn unrecognized_authenticated_payment_events_are_not_entitlements() {
     use ring::hmac;
@@ -117,6 +118,7 @@ async fn plan_only_checkout_rejects_adapters_without_authoritative_pricing() {
     );
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn wise_email_transfer_cannot_fabricate_recipient_quote_or_funding() {
     for key in ["live-fixture-key", "fixture\ninvalid-header"] {
@@ -139,6 +141,7 @@ async fn wise_email_transfer_cannot_fabricate_recipient_quote_or_funding() {
     }
 }
 
+#[allow(deprecated)]
 #[test]
 fn unauthenticated_wise_webhook_parser_is_limited_to_explicit_mock_fixtures() {
     // A forged body must never become a payout event outside an offline fixture.
@@ -162,6 +165,7 @@ fn unauthenticated_wise_webhook_parser_is_limited_to_explicit_mock_fixtures() {
     );
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn placeholder_credentials_do_not_silently_enable_mock_checkout() {
     let providers: Vec<Box<dyn BillingProvider>> = vec![
@@ -185,6 +189,7 @@ async fn placeholder_credentials_do_not_silently_enable_mock_checkout() {
     );
 }
 
+#[allow(deprecated)]
 fn providers(key: &str) -> Vec<Box<dyn BillingProvider>> {
     vec![
         Box::new(StripeProvider::new(key, "secret")),
@@ -228,6 +233,7 @@ async fn live_portal_creation_requires_a_reviewed_provider_session_contract() {
     }
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn live_subscription_noops_fail_closed() {
     let mut incorrectly_successful = Vec::new();

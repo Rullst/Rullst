@@ -1,5 +1,6 @@
 #![cfg(feature = "mailer")]
 
+#[allow(deprecated)]
 use rullst::mail::{Mail, MailDriver, MailError, Message, ResendDriver, SendGridDriver};
 
 #[tokio::test]
@@ -88,6 +89,7 @@ async fn test_resend_driver_send_mock() {
     assert!(res.is_err());
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
 async fn test_sendgrid_driver_send_mock() {

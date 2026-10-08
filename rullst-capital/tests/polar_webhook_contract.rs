@@ -1,4 +1,7 @@
 //! Header-authenticated real HMAC fixtures; no provider network calls.
+// Exercises an API deprecated in 12.3 and removed in 13.0 (v13 migration
+// guide row "Capital providers and NFS-e removed").
+#![allow(deprecated)]
 use base64::{Engine, engine::general_purpose::STANDARD};
 use ring::hmac;
 use rullst_capital::{

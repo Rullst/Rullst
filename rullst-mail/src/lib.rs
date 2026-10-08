@@ -10,6 +10,10 @@
 //! - **Resilient Circuit Breaker & Automatic Failover** (`FailoverDriver`)
 //! - Opt-in attachment inspection, recipient suppression, and minimized observations
 
+// The test harness registers the unit tests of the driver modules deprecated in
+// 12.3 from the crate root, where no item-level allow can reach them.
+#![cfg_attr(test, allow(deprecated))]
+
 pub mod account;
 pub mod action;
 pub mod attachment;

@@ -1,4 +1,7 @@
 //! Signed Paddle deliveries: only subscription lifecycle events become state.
+// Exercises an API deprecated in 12.3 and removed in 13.0 (v13 migration
+// guide row "Capital providers and NFS-e removed").
+#![allow(deprecated)]
 use ring::hmac;
 use rullst_capital::{
     BillingProvider, CapitalError, PaddleProvider, SubscriptionStatus, WebhookEvent,
