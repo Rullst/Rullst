@@ -65,6 +65,12 @@ fn dependency_line(
     Ok(format!("{crate_name} = {{ {source} }}\n"))
 }
 
+/// `#[derive(rullst::Validate)]` expands to `::validator::…` paths, which
+/// only a direct dependency resolves, so `ValidatedForm`/`ValidatedJson` DTOs
+/// compile without the user adding it. Rullst Core already builds this
+/// version, so it adds no compile work.
+pub(crate) const VALIDATOR_DEPENDENCY: &str = "# Used by #[derive(rullst::Validate)] DTOs (the derive expands to ::validator paths).\nvalidator = { version = \"0.21\", features = [\"derive\"] }\n";
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_cargo_toml(
     package_name: &str,
@@ -158,6 +164,7 @@ rust-version = "1.96.0"
     cargo_toml.push_str("tokio = { version = \"1.0\", features = [\"full\"] }\n");
     cargo_toml.push_str("tracing = \"0.1\"\n");
     cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
+    cargo_toml.push_str(VALIDATOR_DEPENDENCY);
 
     if db_needed || wants_redis || !polyglot_integrations.is_empty() {
         let mut orm_features = polyglot_integrations

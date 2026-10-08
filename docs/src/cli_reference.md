@@ -267,6 +267,7 @@ The choices that materially change the generated application:
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
+  * `--vcs <git|none>` (v13, default `git`): Like `cargo new`, initializes a Git repository in the new project when `git` is installed and the destination is not already inside a Git work tree; `none` skips it. The generated `.gitignore` keeps `.env`, `.env.*` (except `.env.example`) and `/target` out. Without Git, `new` prints a warning and keeps the project; `cargo rullst audit` checks committed secrets through Git.
 
 Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
 no longer require `--default`: in a terminal they answer their questions and
@@ -313,6 +314,11 @@ cargo rullst new operations-portal --default --blueprint erp \
   --database mariadb \
   --ai --redis --skip-initial-migration
 ```
+
+Every generated manifest also declares `validator` 0.21 with its `derive`
+feature. `#[derive(rullst::Validate)]` expands to `::validator::…` paths that
+only a direct dependency resolves, so `ValidatedForm`/`ValidatedJson` DTOs
+compile without adding it by hand; Rullst Core already builds that version.
 
 Generated SQLx applications disable the default features of both the umbrella
 `rullst` dependency and the direct `rullst-orm` dependency, and select exactly
@@ -790,6 +796,47 @@ application routing; Cargo resolves the crate on the next build.
 An unknown action, or `add` without a package name, fails with a non-zero exit
 status.
 
+### `cargo rullst add`
+`cargo rullst add <capability> [--dry-run]` (v13) enables a facade capability
+in an existing project. Capabilities: `mail`, `auth`, `ai`, `nexus` and
+`studio`.
+
+It runs only at the root of a Rullst project (a `Cargo.toml` whose
+`[dependencies]` declare `rullst`), asks nothing and:
+
+1. enables the capability's `rullst` feature in `Cargo.toml`. The edit keeps
+   comments, formatting and the other features; a feature that already
+   implies it (for example `mailer` or `auth-sqlite`) counts as enabled;
+2. appends the capability's variables to `.env.example` under a
+   `# ── <Capability> (added by cargo rullst add …) ──` heading, creating the
+   file when it is missing. Values are placeholders, empty or `mock_*` (the
+   offline mocks of AGENTS.md 3.5), never real secrets; a variable that is
+   already assigned or commented out is not repeated. `.env` is changed only
+   when it lacks a variable the application needs to start in development,
+   and then receives the same mock value and is reported; none of the current
+   capabilities needs one, so `.env` stays as it is;
+3. prints the wiring code to paste and where it goes. Generated projects have
+   no marked insertion points, so `add` never edits application source;
+4. prints one to three next steps.
+
+| Capability | `rullst` feature | `.env.example` | Next steps |
+| :--- | :--- | :--- | :--- |
+| `mail` | `mail` | `MAIL_FROM`, `# MAIL_DRIVER`, `# RESEND_API_KEY` | `make:mail Welcome`, `dev` |
+| `auth` | `auth` | `APP_KEY` placeholder | `auth`, `make:mfa` |
+| `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `ai connect` |
+| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds) | `dev`, then `/nexus` |
+| `studio` | `studio` | none | `dev`, then `http://127.0.0.1:5555` |
+
+Running it again changes nothing and reports that the capability is already
+enabled. `--dry-run` prints the planned diff of every file and writes nothing.
+Outside a project it fails with the shared error report (exit status 1); an
+unknown capability is a usage error (exit status 2).
+
+```bash
+cargo rullst add mail --dry-run
+cargo rullst add mail
+```
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
@@ -836,7 +883,9 @@ automatically.
 
 ### `cargo rullst make:model <name>`
 Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
-receive `FromRow` plus `Orm`; Turso-primary projects receive
+receive `FromRow` plus `Orm` and import only those two derives (`use
+rullst::db::{FromRow, Orm};`), so the new file compiles without warnings;
+Turso-primary projects receive
 `#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
 key. Backend detection reads the generated manifest and does not treat an
 additive `--turso` integration as the primary ORM. Like `make:resource`, it

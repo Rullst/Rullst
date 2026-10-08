@@ -402,8 +402,12 @@ Level 1, with a personal-data inventory and accessibility checks
 evidence for a reviewer, not a certification. `cargo rullst footprint` runs a
 bounded local load and reports requests/s, latency, CPU time, memory, sizes and
 energy where the machine exposes it, each with its method
-([guide](https://rullst.github.io/Rullst/book/footprint.html)). Until v13 is
-released, these are development candidates, not shipped features.
+([guide](https://rullst.github.io/Rullst/book/footprint.html)).
+`cargo rullst add <capability>` enables mail, auth, AI, Nexus or Studio in an
+existing project (feature, `.env.example` placeholders and the code to paste;
+`--dry-run` shows the diff), and `cargo rullst new` initializes a Git
+repository (`--vcs none` skips it). Until v13 is released, these are
+development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)
 · [v13 adoption guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)

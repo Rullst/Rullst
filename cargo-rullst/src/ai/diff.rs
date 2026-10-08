@@ -84,13 +84,13 @@ fn lcs<'a>(old: &[&'a str], new: &[&'a str]) -> Vec<(Op, &'a str)> {
 
 /// Counts of added and removed lines.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) struct Stats {
+pub(crate) struct Stats {
     pub added: usize,
     pub removed: usize,
 }
 
 /// Renders a unified-style diff with hunk headers and context lines.
-pub(super) fn render(old: &str, new: &str, style: Style) -> (String, Stats) {
+pub(crate) fn render(old: &str, new: &str, style: Style) -> (String, Stats) {
     let old_lines: Vec<&str> = old.lines().collect();
     let new_lines: Vec<&str> = new.lines().collect();
     let ops = operations(&old_lines, &new_lines);
