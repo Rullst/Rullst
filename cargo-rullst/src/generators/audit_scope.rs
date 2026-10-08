@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::generators::audit_compliance::EvidenceStatus;
 use crate::generators::source_walk::rust_sources;
 
 /// `src` of the package at `root` plus the `src` of every workspace member
@@ -127,6 +128,43 @@ pub(super) fn validate_audit_ignores(
         }
     }
     Ok(())
+}
+
+/// Runs `cargo audit` (through `program`, normally `cargo`) in `root` with the
+/// governed exceptions. An unavailable tool is `NOT CHECKED`; a run that
+/// exits non-zero, including one that reports advisories, is `ERROR`.
+pub(super) fn cargo_audit_status(
+    program: &std::ffi::OsStr,
+    root: &Path,
+    audit_ignores: &[String],
+) -> EvidenceStatus {
+    let available = Command::new(program)
+        .args(["audit", "--version"])
+        .current_dir(root)
+        .output()
+        .is_ok_and(|tool| tool.status.success());
+    if !available {
+        return EvidenceStatus::NotChecked("cargo-audit is unavailable");
+    }
+    match Command::new(program)
+        .args(cargo_audit_arguments(audit_ignores))
+        .current_dir(root)
+        .output()
+    {
+        Ok(out) if out.status.success() && audit_ignores.is_empty() => EvidenceStatus::NoFindings,
+        Ok(out) if out.status.success() => {
+            EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
+        }
+        Ok(out) => {
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            EvidenceStatus::Error(if stderr.is_empty() {
+                format!("cargo-audit exited with status {}", out.status)
+            } else {
+                stderr
+            })
+        }
+        Err(error) => EvidenceStatus::Error(error.to_string()),
+    }
 }
 
 pub(super) fn cargo_audit_arguments(audit_ignores: &[String]) -> Vec<String> {

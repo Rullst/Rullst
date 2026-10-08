@@ -250,6 +250,11 @@ in the first place.
 - **Certification.** Mounting these layers does not make an application
   OWASP-, PCI- or SOC 2-compliant.
 
+To collect static evidence of which of these layers a project mounts (headers
+and CSP, CSRF, cookie attributes, rate limiting on credential routes), run
+`cargo rullst audit --report`; the [security report guide](security-report.md)
+explains each check and its OWASP ASVS 5.0 Level 1 mapping.
+
 See the [`rullst-security` crate page](crates/security.md) for module details
 and the [security architecture](security-architecture.md) for the deployment
 checklist.
