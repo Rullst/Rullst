@@ -21,7 +21,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 default = ["axum"]
 axum = ["dep:axum"]
 actix = ["dep:actix-web", "dep:futures-util"]
-nfse = ["dep:flate2", "dep:libc", "dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
+nfse = ["dep:flate2", "dep:libc", "dep:oxixml-schema", "dep:p12-keystore", "dep:pkcs1", "dep:roxmltree", "dep:xml-sec"]
 invoice-pdf = ["dep:printpdf"]
 quota-sql = ["dep:rullst-orm"]
 webhook-sql = ["dep:rullst-orm"]
@@ -45,6 +45,9 @@ flate2 = { workspace = true, optional = true }
 oxixml-schema = { version = "=0.1.2", optional = true }
 xml-sec = { version = "=0.1.17", default-features = false, features = ["xmldsig", "c14n", "xml-backend-xmloxide"], optional = true }
 p12-keystore = { version = "=0.3.2", optional = true }
+# xml-sec -> sad-rsa 0.10.2 accepts `pkcs1 ^0.8.0-rc.4`, but rc.5 (2026-10-05)
+# breaks its build. Pin rc.4 so fresh `nfse` resolutions compile.
+pkcs1 = { version = "=0.8.0-rc.4", optional = true, default-features = false }
 roxmltree = { version = "=0.21.1", optional = true }
 axum = { workspace = true, optional = true }
 actix-web = { version = "4", optional = true, default-features = false }
