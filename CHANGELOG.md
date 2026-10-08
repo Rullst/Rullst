@@ -9,6 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Generated security tests, Blank JSON API machine endpoint and external audit kit
+
+- `cargo rullst new` writes `src/security_tests.rs` for every starter: `cargo test`
+  checks offline, against the project's own `router()` behind the staging/production
+  baseline, the security headers, CSRF (refused without the token, accepted with it)
+  and the WAF (an injection probe refused, ordinary prose accepted); SaaS and LMS add
+  the sign-in rate limit, LMS its lesson owner check. Generated `main.rs` files now
+  build their router in `fn router()`.
+- The Blank JSON API starter ships `POST /api/messages` as a bearer machine endpoint
+  (`Server::with_machine_endpoints`, `API_TOKEN` generated in `.env`), so JSON clients
+  no longer hit the baseline's CSRF 403 in staging and production; CSRF stays on for
+  every other route.
+- `cargo rullst audit`, `audit --report` and `audit --sbom` use the workspace root's
+  `Cargo.lock` in a workspace member instead of failing the dependency check.
+- `RaspSecurityLayer` matches `| sh` only at a word boundary and `; cat` only before a
+  path-like argument, so "| shopping" and "dogs; cat food" are no longer refused.
+- New external audit kit (`docs/src/external-audit-kit.md`) for third-party reviewers;
+  the blog showcase labels its two placeholder-only inputs.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
