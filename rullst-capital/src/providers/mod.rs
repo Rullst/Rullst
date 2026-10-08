@@ -5,27 +5,8 @@ use std::time::Duration;
 use subtle::ConstantTimeEq;
 use tokio::sync::OnceCell;
 
-pub mod alipay;
-pub mod coinbase;
 mod http;
 pub mod infinitepay;
-pub mod lemonsqueezy;
-mod lemonsqueezy_subscription;
-mod lemonsqueezy_usage;
-pub mod mercadopago;
-pub mod paddle;
-mod paddle_checkout;
-mod paddle_subscription;
-#[cfg(test)]
-mod paddle_test_support;
-mod paddle_webhook;
-pub mod picpay;
-pub mod polar;
-mod polar_checkout;
-mod polar_subscription_event;
-mod polar_webhook;
-pub mod razorpay;
-mod razorpay_webhook;
 pub mod stripe;
 mod stripe_charge;
 mod stripe_checkout;
@@ -39,22 +20,103 @@ mod stripe_snapshot;
 mod stripe_subscription;
 mod stripe_usage;
 mod stripe_webhook;
-pub mod wise;
 
-pub use alipay::AlipayProvider;
-pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
 pub(crate) use http::validate_checkout_url;
 pub(crate) use http::{execute as execute_http, read_json as read_http_json};
 pub(crate) use http::{send as send_http, send_json as send_http_json};
 pub use infinitepay::InfinitePayProvider;
-pub use lemonsqueezy::LemonSqueezyProvider;
-pub use mercadopago::MercadoPagoProvider;
-pub use paddle::PaddleProvider;
-pub use picpay::PicPayProvider;
-pub use polar::PolarProvider;
-pub use razorpay::RazorpayProvider;
 pub use stripe::StripeProvider;
-pub use wise::WiseProvider;
+
+// Providers deprecated in 12.3 and removed in 13.0 (v13 migration guide row
+// "Capital providers and NFS-e removed"). The allows cover their own impl
+// blocks, tests and re-exports; behaviour is unchanged.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod alipay;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod coinbase;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod lemonsqueezy;
+#[allow(deprecated)]
+mod lemonsqueezy_subscription;
+#[allow(deprecated)]
+mod lemonsqueezy_usage;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod mercadopago;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod paddle;
+#[allow(deprecated)]
+mod paddle_checkout;
+#[allow(deprecated)]
+mod paddle_subscription;
+#[cfg(test)]
+#[allow(deprecated)]
+mod paddle_test_support;
+#[allow(deprecated)]
+mod paddle_webhook;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod picpay;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod polar;
+#[allow(deprecated)]
+mod polar_checkout;
+#[allow(deprecated)]
+mod polar_subscription_event;
+#[allow(deprecated)]
+mod polar_webhook;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod razorpay;
+#[allow(deprecated)]
+mod razorpay_webhook;
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
+pub mod wise;
+#[allow(deprecated)]
+pub use self::{
+    alipay::AlipayProvider,
+    coinbase::{CoinbaseCommerceProvider, CoinbaseProvider},
+    lemonsqueezy::LemonSqueezyProvider,
+    mercadopago::MercadoPagoProvider,
+    paddle::PaddleProvider,
+    picpay::PicPayProvider,
+    polar::PolarProvider,
+    razorpay::RazorpayProvider,
+    wise::WiseProvider,
+};
 
 /// Maximum clock drift accepted by timestamped webhook protocols by default.
 pub const DEFAULT_WEBHOOK_TOLERANCE: Duration = Duration::from_secs(5 * 60);
@@ -148,6 +210,7 @@ pub(crate) fn ensure_fresh_timestamp(
 }
 
 static BILLING_PROVIDER: OnceCell<Box<dyn BillingProvider>> = OnceCell::const_new();
+#[allow(deprecated)]
 static PAYOUT_PROVIDER: OnceCell<Box<dyn PayoutProvider>> = OnceCell::const_new();
 /// Returns the fail-closed shared client used by reviewed live provider adapters.
 pub(crate) fn http_client() -> Result<&'static reqwest::Client, crate::error::CapitalError> {
@@ -165,11 +228,21 @@ pub fn provider() -> Option<&'static dyn BillingProvider> {
 }
 
 /// Initializes the global payout provider.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
 pub fn init_payout_provider(provider: Box<dyn PayoutProvider>) {
     let _ = PAYOUT_PROVIDER.set(provider);
 }
 
 /// Retrieves the active payout provider, or `None` if not initialized.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
+#[allow(deprecated)]
 pub fn payout_provider() -> Option<&'static dyn PayoutProvider> {
     PAYOUT_PROVIDER.get().map(|p| p.as_ref())
 }
@@ -321,6 +394,10 @@ pub trait BillingProvider: Send + Sync {
 }
 
 /// The status of an outbound payout/disbursement.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PayoutStatus {
@@ -331,16 +408,25 @@ pub enum PayoutStatus {
 }
 
 /// Unified model representing an outbound payout event.
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PayoutEvent {
     pub transfer_id: String,
     pub recipient_email: String,
     pub amount_cents: u64,
     pub currency: String,
+    #[allow(deprecated)]
     pub status: PayoutStatus,
 }
 
 /// Dynamic trait for international B2B payouts (e.g. Wise).
+#[deprecated(
+    since = "12.3.0",
+    note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+)]
 #[async_trait]
 pub trait PayoutProvider: Send + Sync {
     /// Return the name of the payout provider (e.g. "wise").
@@ -355,6 +441,7 @@ pub trait PayoutProvider: Send + Sync {
     ) -> Result<String, CapitalError>;
 
     /// Check transfer status.
+    #[allow(deprecated)]
     async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError>;
 }
 
@@ -375,123 +462,5 @@ pub fn url_encode(s: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_subscription_status_variants() {
-        assert_eq!(SubscriptionStatus::Active.as_str(), "active");
-        assert_eq!(SubscriptionStatus::Canceled.as_str(), "canceled");
-        assert_eq!(SubscriptionStatus::PastDue.as_str(), "past_due");
-        assert_eq!(SubscriptionStatus::Unpaid.as_str(), "unpaid");
-        assert_eq!(SubscriptionStatus::Trialing.as_str(), "trialing");
-        assert_eq!(SubscriptionStatus::Paused.as_str(), "paused");
-
-        assert_eq!(
-            SubscriptionStatus::parse_status("active"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("paid"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("completed"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("approved"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("resolved"),
-            SubscriptionStatus::Active
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("canceled"),
-            SubscriptionStatus::Canceled
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("cancelled"),
-            SubscriptionStatus::Canceled
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("past_due"),
-            SubscriptionStatus::PastDue
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("unpaid"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("failed"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("rejected"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("expired"),
-            SubscriptionStatus::Unpaid
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("trialing"),
-            SubscriptionStatus::Trialing
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("paused"),
-            SubscriptionStatus::Paused
-        );
-        assert_eq!(
-            SubscriptionStatus::parse_status("unknown_xyz"),
-            SubscriptionStatus::Unpaid
-        );
-    }
-
-    #[test]
-    fn test_url_encoding_characters() {
-        assert_eq!(url_encode("hello world"), "hello%20world");
-        assert_eq!(url_encode("foo/bar?baz=1"), "foo%2Fbar%3Fbaz%3D1");
-        assert_eq!(url_encode("user@domain.com"), "user%40domain.com");
-        assert_eq!(url_encode("simple_word-123.test~"), "simple_word-123.test~");
-    }
-
-    #[test]
-    fn explicit_mock_webhook_mode_still_requires_its_secret() {
-        let provider = StripeProvider::new("mock_api_key", "mock_webhook_secret");
-        assert_eq!(
-            provider.webhook_verification_mode().unwrap(),
-            WebhookVerificationMode::Mock
-        );
-        assert!(
-            provider
-                .verify_signature(b"{}", "mock_webhook_secret")
-                .is_ok()
-        );
-        assert!(provider.verify_signature(b"{}", "wrong").is_err());
-
-        let empty = StripeProvider::new("mock_api_key", "");
-        assert!(matches!(
-            empty.webhook_verification_mode(),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-        assert!(matches!(
-            empty.handle_webhook(b"{}", &HashMap::new()),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-    }
-
-    #[test]
-    fn test_global_providers_initialization() {
-        let stripe = StripeProvider::new("mock_key", "sec_stripe");
-        init_provider(Box::new(stripe));
-        assert!(provider().is_some());
-        assert_eq!(provider().unwrap().name(), "stripe");
-
-        let wise = WiseProvider::new("mock_token", "sec_wise");
-        init_payout_provider(Box::new(wise));
-        assert!(payout_provider().is_some());
-        assert_eq!(payout_provider().unwrap().name(), "wise");
-    }
-}
+#[path = "mod_tests.rs"]
+mod tests;

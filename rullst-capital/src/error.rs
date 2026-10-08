@@ -219,6 +219,11 @@ impl std::fmt::Display for ProviderFailure {
 
 impl std::error::Error for ProviderFailure {}
 
+// Private alias: the derived `Eq` and `From` impls name the field type outside
+// any item that an allow could reach. Rustdoc shows the aliased type.
+#[allow(deprecated)]
+type DeprecatedFiscalError = crate::fiscal::models::FiscalError;
+
 /// Strongly-typed error domain for Rullst Capital and SaaS billing operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -300,8 +305,12 @@ pub enum CapitalError {
     Quota(#[from] crate::quota::QuotaError),
 
     /// Digital invoice or tax authority operation error.
+    #[deprecated(
+        since = "12.3.0",
+        note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+    )]
     #[error("Fiscal error: {0}")]
-    FiscalError(#[from] crate::fiscal::models::FiscalError),
+    FiscalError(#[from] DeprecatedFiscalError),
 
     /// General billing error.
     #[error("Billing error: {0}")]

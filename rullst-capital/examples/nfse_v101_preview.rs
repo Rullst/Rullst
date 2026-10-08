@@ -1,4 +1,7 @@
 //! Emits an unsigned, non-authorized DPS 1.01 fixture for offline inspection.
+// Exercises an API deprecated in 12.3 and removed in 13.0 (v13 migration
+// guide row "Capital providers and NFS-e removed").
+#![allow(deprecated)]
 
 use chrono::{DateTime, NaiveDate};
 use rullst_capital::fiscal::{
