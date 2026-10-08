@@ -1432,7 +1432,11 @@ the same server-authoritative controls.
 * **Default Dynamic Cache Boundary:** `headers_middleware` supplies
   `Cache-Control: no-store` only when the handler has not already selected an
   explicit cache policy. Versioned public/static responses can therefore opt
-  into reviewed caching without weakening the default for dynamic data.
+  into reviewed caching without weakening the default for dynamic data. The
+  standard `/static` mount does so (v13): `2xx`/`304` responses for a
+  content-hashed file name get `public, max-age=31536000, immutable`, other
+  static files `no-cache` with `ServeDir`'s `ETag`/`Last-Modified` validators;
+  see [static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers).
 * **Double-Submit Form Contract:** `csrf_middleware` installs the exact
   request-scoped `CsrfToken` used by the CSRF cookie on eligible `GET` and
   `HEAD` requests (HEAD mirrors GET's headers, including a new cookie, so a

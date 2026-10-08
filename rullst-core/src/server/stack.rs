@@ -4,7 +4,6 @@ use super::builder::{Server, ServerError, development_console_enabled};
 use crate::config::{Environment, SecurityConfig};
 use crate::lifecycle::apply_lifecycle;
 use crate::security::{TrustedProxyConfig, TrustedProxyLayer};
-use crate::server::server_middleware::zstd_static_middleware;
 
 impl Server {
     /// Selects the effective trusted-proxy policy. An explicit
@@ -56,12 +55,7 @@ impl Server {
 
         let static_mounted = std::path::Path::new("static").exists();
         if static_mounted {
-            app = app
-                .nest_service(
-                    "/static",
-                    tower_http::services::ServeDir::new("static").precompressed_br(),
-                )
-                .layer(axum::middleware::from_fn(zstd_static_middleware));
+            app = super::static_cache::mount_static_assets(app);
         }
 
         if development_console_enabled(cfg!(debug_assertions), environment) {
