@@ -12,6 +12,7 @@
 # 🍳 Rullst Cookbook & Tutorials
 
 ## 🟢 Level 1: Basic (Foundations & CRUD)
+- [Zero to a Complete App (one-hour path)](tutorials/zero-to-complete-app.md)
 - [01. Hello Rullst!](tutorials/01-hello-world.md)
 - [REST API Quickstart](tutorials/rest-api-quickstart.md)
 - [02. CLI Automation & Generators](tutorials/02-cli-generators.md)

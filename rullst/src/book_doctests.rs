@@ -32,6 +32,10 @@ tutorial!(live_recovery, "../../docs/src/live-recovery.md");
 tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
 
 tutorial!(
+    tutorial_zero_to_complete_app,
+    "../../docs/src/tutorials/zero-to-complete-app.md"
+);
+tutorial!(
     tutorial_01_hello_world,
     "../../docs/src/tutorials/01-hello-world.md"
 );
