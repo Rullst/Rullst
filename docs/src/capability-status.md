@@ -96,7 +96,7 @@ homologated.
 | M36 | Read-only explainable natural-language SQL assistant | ⏳ Still to implement — not started |
 | M37 | Reviewable one-click error-console patch workflow | 🟡 Still to implement — partial |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
-| M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
+| M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Not implemented — abandoned on 8 October 2026 in favour of generated Caddy/nginx configuration; kept in the not-started count |
 | M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 Unpublished foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
 | M41 | Privacy controls and proportional age assurance | 🟡 Unpublished foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
