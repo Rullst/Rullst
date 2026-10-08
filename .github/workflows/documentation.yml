@@ -53,6 +53,11 @@ jobs:
       - name: Build the documentation book
         run: mdbook build docs
 
+      - name: Check the generated llms.txt and llms-full.txt
+        env:
+          RULLST_LLMS_REQUIRE_BOOK: "1"
+        run: python3 .github/test-llms-txt.py
+
       - name: Setup Node for dependency-free browser checks
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
