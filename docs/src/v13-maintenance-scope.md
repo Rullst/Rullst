@@ -171,11 +171,10 @@ In v13 each removed name has a migration row and an assisted-upgrade finding,
 and the replacement is an application-owned adapter on the retained contracts.
 The [deprecation policy](compatibility-policy.md#deprecation-and-removal) also
 expects `#[deprecated]` markers in a released 12.x minor before a stable API is
-removed; adding them on `v12` (for example in 12.2.0) is a separate change. The
-Mail transport removal below is recorded as a v13-only exception to that policy:
-by owner decision on 8 October 2026 it ships in 13.0 without `#[deprecated]`
-markers on `v12`, relying on its migration row, assisted-upgrade finding and
-fail-closed configuration error instead. Tests with deterministic mocks establish local
+removed. By owner decision on 8 October 2026, the 12.3.0 minor release marks
+the Capital and Mail APIs removed here `#[deprecated]`, pointing to their
+migration rows, before 13.0.0 ships. The assisted-upgrade findings and the
+fail-closed configuration errors apply in addition. Tests with deterministic mocks establish local
 contracts, not actual provider interoperability. The prohibition on real-account
 tests remains in force; outstanding external evidence stays explicitly pending.
 
@@ -204,9 +203,9 @@ queued by 12.x carry no provider name and are delivered by the upgraded
 worker's configured driver, or fail visibly and stay retryable. Suppression
 rows and delivery observations keep their provider labels and stay readable.
 Applications integrate other providers by implementing `MailDriver`, as shown
-in [Writing your own mail transport](mail-custom-transport.md). This removal is
-the exception to the deprecation policy recorded with the Capital decision
-above. Tests with deterministic mocks establish local contracts, not provider
+in [Writing your own mail transport](mail-custom-transport.md). Like the
+Capital removal, these transports are marked `#[deprecated]` in 12.3.0 before
+13.0.0 ships. Tests with deterministic mocks establish local contracts, not provider
 interoperability.
 
 ## Turso: assess a complete application journey before universal parity
