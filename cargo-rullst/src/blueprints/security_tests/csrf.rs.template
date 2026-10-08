@@ -1,0 +1,9 @@
+
+#[tokio::test]
+async fn csrf_refuses_a_write_without_the_token() {
+    // A cross-site form cannot read the CSRF cookie, so its write is refused.
+    assert_eq!(send(post("__PATH__", None)).await.status(), StatusCode::FORBIDDEN);
+    let token = csrf_token().await;
+    // __REASON__
+    assert_eq!(send(post("__PATH__", Some(&token))).await.status(), StatusCode::__ACCEPTED__);
+}

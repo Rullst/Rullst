@@ -77,3 +77,7 @@ __ARTISAN_CALL__
 
     Ok(())
 }
+
+// Security checks against `router()`; run them with `cargo test`.
+#[cfg(test)]
+mod security_tests;

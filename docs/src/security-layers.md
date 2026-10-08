@@ -48,6 +48,16 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 Every generated `Cargo.toml` already lists `rullst-security`, so adding a layer
 needs no new dependency.
 
+Since 13.0 every generated project also has `src/security_tests.rs`, which
+`cargo test` runs offline against the project's own `router()` wrapped in the
+staging/production baseline (`apply_security_baseline`, as `Server` composes
+it). It checks the security headers, that a write without the CSRF token is
+refused and one with it passes, and that the WAF refuses an injection probe
+but accepts the prose "Please select an option". SaaS and LMS add the sign-in
+rate limit, LMS the owner check of its lesson routes, and the Blank JSON API
+the bearer token of its machine endpoint. Keep these tests passing as you
+change routes; they do not replace your own authorization tests.
+
 ## Recommended production composition
 
 From the outermost layer to your handler:

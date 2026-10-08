@@ -1,4 +1,4 @@
-use rullst::{html, routes, Server, response::{Html, IntoResponse}, server::Extension};
+use rullst::{html, routes, Router, Server, response::{Html, IntoResponse}, server::Extension};
 use rullst::htmx::{HtmxRequest, render_page_with_lang};
 
 __MIGRATIONS_MOD_DECLARATION____RPC_MODULE__
@@ -69,6 +69,18 @@ async fn clicked(
     })
 }
 
+fn router() -> Router {
+    routes![
+        get("/" => home),
+        post("/clicked" => clicked),
+    ]
+    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+}
+
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 __ARTISAN_CALL__
@@ -82,19 +94,13 @@ __ARTISAN_CALL__
         println!("Rullst Studio running on http://127.0.0.1:5555");
     }
 
-    let router = routes![
-        get("/" => home),
-        post("/clicked" => clicked),
-    ]
-    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
-    .merge_axum(rullst::health::health_router())
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware));
-
-    Server::new(router)
+    Server::new(router())
         .run(3000)
         .await?;
 
     Ok(())
 }
+
+// Security checks against `router()`; run them with `cargo test`.
+#[cfg(test)]
+mod security_tests;

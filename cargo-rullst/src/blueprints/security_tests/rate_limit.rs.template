@@ -1,0 +1,14 @@
+
+#[tokio::test]
+async fn repeated_sign_in_attempts_are_rate_limited() {
+    let token = csrf_token().await;
+    let mut limited = false;
+    for _ in 0..100 {
+        if send(post("/login", Some(&token))).await.status() == StatusCode::TOO_MANY_REQUESTS {
+            limited = true;
+            break;
+        }
+    }
+    // A per-client budget refuses sign-in floods before Argon2 runs.
+    assert!(limited);
+}
