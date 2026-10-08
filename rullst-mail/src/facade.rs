@@ -207,7 +207,9 @@ impl Mail {
 
         let driver_name = driver_name_opt.unwrap_or_else(|| "log".to_string());
         if let Some(notice) = deprecated_driver_notice(&driver_name) {
-            tracing::warn!(driver = %driver_name, "{notice}");
+            // Resolution runs for every send and queued job; warn once per process.
+            static DEPRECATION_LOGGED: std::sync::Once = std::sync::Once::new();
+            DEPRECATION_LOGGED.call_once(|| tracing::warn!(driver = %driver_name, "{notice}"));
         }
 
         match driver_name.as_str() {
