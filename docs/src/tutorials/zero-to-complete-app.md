@@ -39,12 +39,13 @@ cargo rullst new notes --default --blueprint saas --database sqlite
 cd notes
 ```
 
-The first build compiles every dependency and takes several minutes (3 min 48 s
+The first build compiles every dependency and takes several minutes (3 min 31 s
 on the recording machine). It ends with:
 
 ```text
 📦 Bootstrapping Database...
   ✅ Database tables created successfully.
+  ✅ Initialized a Git repository (.gitignore keeps .env and target/ out).
 ✨ Project 'notes' created successfully!
   Application profile: Zero-Bundle HTMX (html! SSR)
   ORM profile: Active Record
@@ -56,13 +57,12 @@ Next steps
   Prefer a live dashboard? cargo rullst dash · new to Rullst? cargo rullst tour
 ```
 
-The 12.x CLI prints a shorter summary; the generated project works the same
-way. Put the project under version control now. The security report in step 7
-reads the files Git tracks, and the generated `.gitignore` already leaves out
-`.env` and the SQLite database:
+The 12.x CLI prints a shorter summary and does not create the Git repository;
+there, run `git init` first. Commit the generated files now. The security
+report in step 7 reads the files Git tracks, and the generated `.gitignore`
+already leaves out `.env` and the SQLite database:
 
 ```bash
-git init
 git add -A
 git commit -m "Generated SaaS starter"
 ```
@@ -116,12 +116,12 @@ More on models and schema changes:
 
 ## 4. CRUD pages with HTMX and validation
 
-Generate the controller, and add the `validator` crate, whose derive macro
-checks form fields. Use the version Rullst uses, 0.21:
+Generate the controller. Its form checks use the derive macro of the
+`validator` crate, which the starter already declares at the version Rullst
+uses, 0.21:
 
 ```bash
 cargo rullst make:controller Notes
-cargo add validator@0.21 --features derive
 ```
 
 Replace the generated placeholder in `src/controllers/notes_controller.rs`
@@ -145,12 +145,12 @@ What it does:
 - `html!` escapes the values it interpolates: a note titled `Buy <milk>` is
   rendered as `Buy &lt;milk&gt;`.
 
-Now mount the routes in `src/main.rs`. Add them **before** the
-`csrf_middleware` layer, so every form post needs the CSRF token the pages
-include, and wrap each one in the starter's `auth_middleware`:
+Now mount the routes in the `router()` function of `src/main.rs`. Add them
+**before** the `csrf_middleware` layer, so every form post needs the CSRF token
+the pages include, and wrap each one in the starter's `auth_middleware`:
 
 ```rust,ignore
-{{#include zero-to-complete-app/main.rs:43:54}}
+{{#include zero-to-complete-app/main.rs:41:52}}
 ```
 
 The whole file is in [`zero-to-complete-app/main.rs`](zero-to-complete-app/main.rs).
@@ -191,23 +191,39 @@ More on [authentication](11-authentication-system.md) and
 
 ## 6. Run the tests
 
-The controller ends with two unit tests: one proves that only the owner passes
-`authorize`, the other that an empty title fails validation. Neither needs a
-database. Run them with the starter's own tests:
+**New in 13.0:** every new project ships `src/security_tests.rs`. Its tests
+build the app from `router()`, wrap it in the baseline that `Server` adds in
+production, and check offline that responses carry the security headers, that
+a write is refused without the CSRF token and accepted with it, and that the
+WAF refuses an injection probe but accepts ordinary prose. The SaaS starter
+also checks that repeated sign-in attempts are rate limited. The tests request
+`/health`, `/logout` and `/login`; your notes routes sit behind the same
+baseline because they are part of `router()`.
+
+The controller adds two unit tests of its own: one proves that only the owner
+passes `authorize`, the other that an empty title fails validation. None of
+these tests needs a database or the network:
 
 ```bash
 cargo test
 ```
 
 ```text
-running 4 tests
-test controllers::auth_controller::tests::registration_timestamps_use_the_current_timestamp_text ... ok
-test controllers::notes_controller::tests::an_empty_title_is_rejected ... ok
+running 8 tests
 test controllers::auth_controller::tests::length_limits_count_what_the_form_counts ... ok
+test controllers::auth_controller::tests::registration_timestamps_use_the_current_timestamp_text ... ok
 test controllers::notes_controller::tests::only_the_owner_may_open_a_note ... ok
+test controllers::notes_controller::tests::an_empty_title_is_rejected ... ok
+test security_tests::production_responses_carry_the_security_headers ... ok
+test security_tests::the_waf_refuses_injection_and_accepts_prose ... ok
+test security_tests::csrf_refuses_a_write_without_the_token ... ok
+test security_tests::repeated_sign_in_attempts_are_rate_limited ... ok
 
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 ```
+
+**On 12.x**, the starter has no `src/security_tests.rs`, so `cargo test` runs
+only the four unit tests.
 
 ## 7. Check the app with the security report (New in 13.0)
 
@@ -257,18 +273,23 @@ Tip: run `cargo rullst dash` for live requests/s, latency, errors and database m
 Building the application...
 Running initial db:migrate...
 Nothing to migrate.
-Auto-reload: watching source, assets and configuration; successful builds restart the application.
 📊 Rullst Studio running on http://127.0.0.1:5555
 🚀 SaaS server starting on port 3000...
 …
 Rullst framework serving on http://127.0.0.1:3000
+…
+Auto-reload: watching source, assets and configuration; successful builds restart the application.
 ```
 
 Open `http://127.0.0.1:3000/register`, create an account, then go to
 `http://127.0.0.1:3000/notes`. Saving a source file rebuilds and restarts the
 app; a failed build keeps the previous one running. `cargo rullst dash` runs
 the same loop inside a terminal dashboard with live requests, latency, errors
-and database metrics. Stop either with `Ctrl+C`. See
+and database metrics. **New in 13.0:** when one request repeats the same ORM
+operation three or more times, the dashboard adds a **POSSIBLE N+1 QUERIES**
+panel with the route, the operation and the count; see the
+[N+1 query warning](../cli_reference.md#n1-query-warning). Stop either with
+`Ctrl+C`. See
 [supervised auto-reload](51-authenticated-hot-reload.md) and the
 [`dash` reference](../cli_reference.md#cargo-rullst-dash).
 
@@ -281,18 +302,77 @@ cargo rullst build
 ```text
 🚀 Starting Rullst production build pipeline (Release Mode: true)...
 ⚙️ Executing cargo build --release...
-    Finished `release` profile [optimized] target(s) in 7m 14s
+    Finished `release` profile [optimized] target(s) in 5m 48s
 📦 Pre-compressing static assets in static/ directory...
 …
 ✨ Pre-compression finished: processed 2 files, generated 2 .br files and 2 .zst files.
 🎉 Rullst production build completed successfully!
 ```
 
-The release binary is `target/release/notes` (25 MiB in the recorded run).
+The release binary is `target/release/notes` (15.3 MiB in the recorded run).
+**New in 13.0:** Cargo builds it with the `[profile.release]` that
+`cargo rullst new` wrote into `Cargo.toml`: thin LTO, one codegen unit and
+stripped symbols. `panic` stays `unwind`, so one panicking handler cannot stop
+the server.
+
 The build also writes Brotli and Zstandard copies of the files in `static/`,
-which the server prefers; run it again after changing an asset. Started with
-the development `.env`, the binary answered `200` on `/health` and redirected
-`/notes` to `/login`.
+which the server prefers; run it again after changing an asset. **New in
+13.0:** the `/static` mount also sets cache headers. A file name with a content
+hash, such as `app.3f9a2c1b.css`, is cached for a year as `immutable`; other
+files, such as the starter's `rullst.css`, get `Cache-Control: no-cache` and
+are revalidated with their `ETag`. Started with the development `.env`, the
+binary answered `200` on `/health`, redirected `/notes` to `/login`, and served
+`/static/rullst.css` Brotli-compressed with `no-cache` and an `ETag`.
+
+**New in 13.0:** measure the build with `cargo rullst footprint`. On its own,
+`cargo rullst footprint --path /health` starts the release binary with
+`RULLST_ENV=production`, which the SaaS starter refuses until the production
+billing settings exist:
+
+```text
+error: App could not be started
+  What happened  the app exited during start-up (exit status: 1).
+                 Last stderr lines:
+                 Error: BillingConfigError("production billing requires real credentials, a strong webhook secret, an HTTPS redirect URL, and an explicit plan allowlist")
+```
+
+Until then, start `./target/release/notes` with the development `.env` and
+measure it from a second terminal:
+
+```bash
+cargo rullst footprint --url http://127.0.0.1:3000 --path /health
+```
+
+```text
+Measuring GET /health for 10 s with 4 connections...
+Rullst footprint · v13.0.0-alpha.1
+…
+Load
+  Requests/s    8261.8 req/s                        82638 responses / 10.002 s wall time
+  Latency p50   0.442 ms                            nearest rank over all completed requests, 82638 samples
+  Latency p95   0.785 ms                            nearest rank over all completed requests, 82638 samples
+  Latency p99   1.010 ms                            nearest rank over all completed requests, 82638 samples
+  Errors        0                                   0 transport, 0 HTTP status >= 400
+
+Process
+  CPU time      5.110 s                             utime + stime of the app process during the load window (/proc/<pid>/stat)
+  Peak RSS      12.2 MiB                            VmHWM, peak resident memory since the process started (/proc/<pid>/status)
+  Idle RSS      11.6 MiB                            VmRSS just before the load (/proc/<pid>/status)
+
+Artifacts
+  Binary size   15.3 MiB                            file size of the running executable (/proc/<pid>/exe)
+  Docker image  NOT MEASURED                        docker image inspect found no local image `notes` or the daemon is unreachable
+
+Energy
+  Energy        NOT MEASURED                        RAPL counters exist but are not readable; …
+…
+```
+
+The figures describe one run on one machine (here a laptop with 8 logical
+CPUs), with the load generator on the same machine; compare runs only on the
+same setup. Energy needs readable RAPL counters or `--cpu-watts`, and a carbon
+figure needs your own `--grid-intensity`. See
+[measuring an app's footprint](../footprint.md).
 
 Before it serves real users:
 
@@ -316,5 +396,7 @@ Before it serves real users:
   app, and see [the CLI reference](../cli_reference.md) for every command.
 - Add [background jobs](20-background-jobs-queues.md),
   [email](../crates/mail.md) or [real billing](19-saas-billing-capital.md).
+  **New in 13.0:** work that can wait, such as reports and exports, can be
+  [deferred to an allowed time window](../crates/core.md#deferrable-jobs-and-time-windows).
 - Before launch, read the [security architecture](../security-architecture.md)
   and check each crate's [maturity tier](../maturity.md).
