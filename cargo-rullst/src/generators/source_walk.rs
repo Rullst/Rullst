@@ -38,9 +38,20 @@ pub(crate) fn rust_sources(root: &Path) -> RustSources {
     rust_sources_with(root, WalkLimits::DEFAULT)
 }
 
+/// Lists regular files under `root` whose extension is one of `extensions`,
+/// with the same bounds and link policy as [`rust_sources`].
+pub(crate) fn files_with_extensions(root: &Path, extensions: &[&str]) -> RustSources {
+    walk_with(root, WalkLimits::DEFAULT, extensions)
+}
+
 fn rust_sources_with(root: &Path, limits: WalkLimits) -> RustSources {
+    walk_with(root, limits, &["rs"])
+}
+
+fn walk_with(root: &Path, limits: WalkLimits, extensions: &[&str]) -> RustSources {
     let mut walk = Walk {
         limits,
+        extensions,
         entries: 0,
         sources: RustSources::default(),
     };
@@ -49,13 +60,14 @@ fn rust_sources_with(root: &Path, limits: WalkLimits) -> RustSources {
     walk.sources
 }
 
-struct Walk {
+struct Walk<'a> {
     limits: WalkLimits,
+    extensions: &'a [&'a str],
     entries: usize,
     sources: RustSources,
 }
 
-impl Walk {
+impl Walk<'_> {
     /// Returns `false` once the entry bound stops the whole walk.
     fn visit(&mut self, directory: &Path, depth: usize) -> bool {
         let Ok(entries) = fs::read_dir(directory) else {
@@ -97,7 +109,10 @@ impl Walk {
                     return false;
                 }
             } else if file_type.is_file()
-                && path.extension().and_then(|extension| extension.to_str()) == Some("rs")
+                && path
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| self.extensions.contains(&extension))
             {
                 self.sources.files.push(path);
             }

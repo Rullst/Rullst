@@ -49,8 +49,13 @@ pub(super) const RULLST_ALLOWLIST: &[&str] = &[
 ];
 
 /// Flags refused even on allowlisted commands: `doctor --fix` installs
-/// software and `audit --network` scans local listeners.
-const FORBIDDEN_FLAGS: &[(&str, &str)] = &[("doctor", "--fix"), ("audit", "--network")];
+/// software, `audit --network` scans local listeners and `audit --output`
+/// would write the report to a file path outside the directory policy.
+const FORBIDDEN_FLAGS: &[(&str, &str)] = &[
+    ("doctor", "--fix"),
+    ("audit", "--network"),
+    ("audit", "--output"),
+];
 
 /// The only `inspect` targets: any other target is read as a file path and
 /// printed, which would bypass the path policy (`.env`, keys, symlinks).
@@ -389,10 +394,13 @@ impl Invocation {
             CommandKind::Cargo => false,
             CommandKind::Rullst => match self.subcommand() {
                 Some("db:status" | "doctor" | "inspect" | "new" | "db:migrate") => false,
-                Some("audit") => self
-                    .args
-                    .iter()
-                    .any(|arg| arg == "--compliance" || arg == "--sbom"),
+                // Each writes a report file in the project root.
+                Some("audit") => self.args.iter().any(|arg| {
+                    arg == "--compliance"
+                        || arg == "--sbom"
+                        || arg == "--report"
+                        || arg.starts_with("--report=")
+                }),
                 _ => true,
             },
         }
