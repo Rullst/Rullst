@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791200173419,
+  "lastUpdate": 1791436414087,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15103,6 +15103,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3020,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "594a75c506b4c78634ced6d412bc8629ea3f2b97",
+          "message": "Merge pull request #416 from Rullst/docs/v13-maturity-tiers\n\ndocs: maturity tiers, security layer guide and rullst-security claims review",
+          "timestamp": "2026-10-08T01:41:25-03:00",
+          "tree_id": "3e55c90fd6a0ce8ec88ac1732c45094152f771f6",
+          "url": "https://github.com/Rullst/Rullst/commit/594a75c506b4c78634ced6d412bc8629ea3f2b97"
+        },
+        "date": 1791436413557,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 998,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 798,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1824,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4451,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
