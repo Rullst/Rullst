@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791452788749,
+  "lastUpdate": 1791473278322,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15247,6 +15247,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4466,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5104dac7bb5fd271e656f4e469e8d1a76e30f000",
+          "message": "Merge pull request #434 from Rullst/integration/v13-alpha-batch-1\n\nchore(v13): integrate the alpha.1 batch (#420-#433)",
+          "timestamp": "2026-10-08T12:08:17-03:00",
+          "tree_id": "1903783c411ba897158f9e2f8b22beb659f346cb",
+          "url": "https://github.com/Rullst/Rullst/commit/5104dac7bb5fd271e656f4e469e8d1a76e30f000"
+        },
+        "date": 1791473277653,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 972,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 773,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1772,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4370,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
