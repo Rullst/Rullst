@@ -68,8 +68,8 @@ impl Server {
                     "/_rullst/autofix",
                     axum::routing::post(crate::error_console::handle_autofix),
                 )
-                // rullst-access: public — development-only loopback console route; the id is a random capability shown only on the loopback error page.
                 .route(
+                    // rullst-access: public — development-only loopback console route; the id is a random capability shown only on the loopback error page.
                     "/_rullst/errors/{id}",
                     axum::routing::get(super::dev_errors::serve),
                 )
