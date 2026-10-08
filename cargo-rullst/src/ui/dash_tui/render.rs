@@ -1,5 +1,6 @@
 mod help;
 mod metrics;
+mod n_plus_one;
 mod wrap;
 
 use super::state::{App, FocusPane, LogLevel, ServerStatus, scroll_position};
@@ -12,6 +13,8 @@ use ratatui::{
 use std::time::Instant;
 
 pub(super) use metrics::DOCS_URL;
+#[cfg(test)]
+pub(super) use n_plus_one::N_PLUS_ONE_DOCS_URL;
 
 #[derive(Clone, Copy)]
 struct Palette {
@@ -199,6 +202,17 @@ fn render_header(
 }
 
 fn render_workspace(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Palette) {
+    let area = match n_plus_one::panel(&app.metrics, palette, area.width) {
+        Some(panel) if area.height > n_plus_one::HEIGHT + 6 => {
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(6), Constraint::Length(n_plus_one::HEIGHT)])
+                .split(area);
+            frame.render_widget(panel, rows[1]);
+            rows[0]
+        }
+        _ => area,
+    };
     if area.width >= 105 {
         let columns = Layout::default()
             .direction(Direction::Horizontal)
@@ -309,6 +323,7 @@ fn render_inspector(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: 
             palette,
         ),
         status_line("Database", app.database_profile.as_str(), palette),
+        status_line("N+1 check", n_plus_one::status(&app.metrics), palette),
         Line::from(vec![
             Span::styled("  Migration     ", Style::default().fg(palette.muted)),
             Span::styled(migration.0, Style::default().fg(migration.1)),

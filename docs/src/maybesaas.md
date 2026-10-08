@@ -61,9 +61,10 @@ The names below are working descriptions, not announced product names.
 **Best initial form:** a dedicated fiscal program, followed by a managed SaaS
 and a self-hostable/private deployment if the operating model proves viable.
 
-The current Rullst capability now includes a bounded local DPS 1.01 builder,
-checksum-pinned official XSD validation, PKCS#12 XMLDSig and mTLS client
-preparation, while live transmission remains disabled. A live product would be
+Rullst v13 removed its bounded local NFS-e preparation module (DPS 1.01
+builder, checksum-pinned XSD validation, PKCS#12 XMLDSig and mTLS client
+preparation), which was never validated with a real municipality; its source
+remains in git history as a starting point. A live product would be
 responsible for substantially more:
 
 - official schemas, municipality/national variations, rejection codes, and
@@ -75,10 +76,9 @@ responsible for substantially more:
 - official homologation environments, operational monitoring, and specialized
   support.
 
-`rullst-capital` should retain the typed fiscal contract, request/response
-models, offline preview, and an explicit remote adapter. The live fiscal engine
-should have its own lifecycle because protocol and legal maintenance must not
-be coupled to releases of the framework suite. It must not advertise legal or tax
+The fiscal engine should be a separate product with its own lifecycle, because
+protocol and legal maintenance must not be coupled to releases of the framework
+suite; `rullst-capital` no longer ships fiscal types. It must not advertise legal or tax
 compliance without qualified review and current official evidence.
 
 **Why it is attractive:** it solves a difficult Brazilian SaaS problem and

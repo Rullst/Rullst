@@ -8,7 +8,6 @@ pub fn render_pricing_page(
     nav: String,
     head_assets: String,
     free_can_post: bool,
-    xml_snippet: String,
     csrf_token: &str,
     simulated_checkout_url: Option<(String, String)>, // (provider_id, url)
 ) -> String {
@@ -55,7 +54,7 @@ pub fn render_pricing_page(
                                 "🧪 Every action on this page stays offline"
                             </span>
                             <span class="stat-badge">
-                                "🇨🇳 Alipay offline mock; live RSA2 is disabled"
+                                "🇧🇷 InfinitePay is experimental until validated live"
                             </span>
                             <span class="stat-badge">
                                 "🧾 Provider tax features vary by contract"
@@ -89,7 +88,7 @@ pub fn render_pricing_page(
                                         <li>"AI Assistant & Semantic RAG"</li>
                                     </ul>
                                 </div>
-                                <a href="#checkout-simulator" class="btn btn-block">"Run an Offline Fixture (11 Adapters)"</a>
+                                <a href="#checkout-simulator" class="btn btn-block">"Run an Offline Fixture (2 Adapters)"</a>
                             </div>
 
                             <div class="tier">
@@ -99,7 +98,7 @@ pub fn render_pricing_page(
                                     <ul class="tier-features">
                                         <li>"Unlimited Stories & Multi-tenant"</li>
                                         <li>"Full Studio & Nexus CMS Control Room"</li>
-                                        <li>"Offline DPS XML preview (not an issued NFS-e)"</li>
+                                        <li>"Bring-your-own gateway adapter contracts"</li>
                                     </ul>
                                 </div>
                                 <a href="#checkout-simulator" class="btn btn-emerald btn-block">"Inspect Adapter Boundaries"</a>
@@ -118,19 +117,10 @@ pub fn render_pricing_page(
                         <form method="POST" action="/checkout" class="checkout-form">
                             <input type="hidden" name="_token" value={csrf_token} />
                             <div>
-                                <label for="checkout-provider" class="field-label">"Payment or Payout Adapter Fixture:"</label>
+                                <label for="checkout-provider" class="field-label">"Payment Adapter Fixture:"</label>
                                 <select id="checkout-provider" name="provider" class="field-control">
-                                    <option value="infinitepay">"🇧🇷 InfinitePay (offline billing fixture)"</option>
-                                    <option value="alipay">"🇨🇳 Alipay (offline fixture; live RSA2 disabled)"</option>
+                                    <option value="infinitepay">"🇧🇷 InfinitePay (experimental offline fixture)"</option>
                                     <option value="stripe">"🌐 Stripe (offline billing fixture)"</option>
-                                    <option value="lemonsqueezy">"🍋 Lemon Squeezy (MoR adapter)"</option>
-                                    <option value="polar">"⚡ Polar.sh (MoR adapter)"</option>
-                                    <option value="paddle">"🛡️ Paddle (MoR adapter)"</option>
-                                    <option value="mercadopago">"🌎 Mercado Pago (offline billing fixture)"</option>
-                                    <option value="razorpay">"🇮🇳 Razorpay (offline billing fixture)"</option>
-                                    <option value="coinbase">"₿ Coinbase Commerce (offline commerce fixture)"</option>
-                                    <option value="picpay">"📱 PicPay (offline billing fixture)"</option>
-                                    <option value="wise">"💸 Wise (offline payout fixture—not checkout)"</option>
                                 </select>
                             </div>
 
@@ -191,23 +181,13 @@ pub fn render_pricing_page(
                         </div>
                     </div>
 
-                    <div class="card card-spaced">
-                        <h2 class="card-title">"🇧🇷 Fiscal Module: Contained Offline DPS Preview"</h2>
-                        <p class="muted small-text">
-                            "This fixture demonstrates escaped DPS XML construction only. It is not signed, transmitted, homologated, or authorized. Homologation and production fail closed until the complete official integration is independently verified."
-                        </p>
-                        <div class="code-box spaced">
-                            { xml_snippet }
-                        </div>
-                    </div>
-
                 </div>
             </body>
         </html>
     }
 }
 
-/// Renders all 11 gateway cards.
+/// Renders every gateway card.
 fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
     gateways
         .iter()
@@ -347,7 +327,7 @@ mod tests {
     #[test]
     fn offline_fixture_url_is_escaped_exactly_once() {
         let html = render_checkout_result(Some((
-            "wise".to_string(),
+            "stripe".to_string(),
             "https://example.invalid/pay?recipient=a&plan=pro_plan".to_string(),
         )));
         assert!(html.contains("recipient=a&amp;plan=pro_plan"));

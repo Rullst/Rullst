@@ -30,6 +30,10 @@ fn count_files(root: &Path) -> usize {
     for entry in fs::read_dir(root).unwrap() {
         let entry = entry.unwrap();
         let kind = entry.file_type().unwrap();
+        if entry.file_name() == ".git" {
+            // `--vcs git` (the default) metadata, not generated project files.
+            continue;
+        }
         if kind.is_dir() {
             count += count_files(&entry.path());
         } else if kind.is_file() {

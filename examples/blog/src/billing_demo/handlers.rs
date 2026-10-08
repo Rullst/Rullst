@@ -3,12 +3,9 @@
 use async_trait::async_trait;
 use axum::extract::{Extension, Query};
 use axum::response::{Html, IntoResponse};
-use chrono::Utc;
 use serde::Deserialize;
 
 use rullst_capital::billable::Billable;
-use rullst_capital::fiscal::dps::build_dps_xml;
-use rullst_capital::fiscal::models::{FiscalCustomer, FiscalEmitter, NfseDps, TaxRegime};
 
 use super::gateways::simulate_provider_checkout;
 use super::views::render_pricing_page;
@@ -55,16 +52,9 @@ pub async fn pricing_page(
     let nav = render_showcase_nav("/pricing");
     let head_assets = render_head_assets();
 
-    let (free_can_post, xml_snippet) = compute_demo_data();
+    let free_can_post = compute_demo_data();
 
-    let body = render_pricing_page(
-        nav,
-        head_assets,
-        free_can_post,
-        xml_snippet,
-        csrf_token.as_str(),
-        None,
-    );
+    let body = render_pricing_page(nav, head_assets, free_can_post, csrf_token.as_str(), None);
     Html(body)
 }
 
@@ -102,7 +92,7 @@ async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) 
         .email
         .unwrap_or_else(|| "user@rullst.com".to_string());
 
-    let (free_can_post, xml_snippet) = compute_demo_data();
+    let free_can_post = compute_demo_data();
 
     let return_url = format!(
         "{}/pricing?status=success",
@@ -115,63 +105,16 @@ async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) 
         Err(e) => Some((provider, format!("Error generating session: {}", e))),
     };
 
-    let body = render_pricing_page(
-        nav,
-        head_assets,
-        free_can_post,
-        xml_snippet,
-        &csrf_token,
-        simulated,
-    );
+    let body = render_pricing_page(nav, head_assets, free_can_post, &csrf_token, simulated);
     Html(body)
 }
 
-/// Generates a real quota result and a clearly labelled offline DPS preview.
-fn compute_demo_data() -> (bool, String) {
+/// Generates a real quota result for the community tier.
+fn compute_demo_data() -> bool {
     let free_user = Subscriber {
         email_address: "author@community.dev".to_string(),
         plan_tier: "Community".to_string(),
         published_posts_count: 2,
     };
-    let free_can_post = free_user.check_quota("posts", free_user.published_posts_count as usize);
-
-    let emitter = FiscalEmitter {
-        cnpj: "12345678000190".to_string(),
-        inscricao_municipal: "12345".to_string(),
-        legal_name: "Rullst SaaS Publisher Inc".to_string(),
-        trade_name: Some("Rullst Publisher".to_string()),
-        ibge_code: "3550308".to_string(),
-        tax_regime: TaxRegime::SimplesNacional,
-    };
-
-    let customer = FiscalCustomer {
-        doc_number: "98765432000188".to_string(),
-        name: "Acme Corp Brazil".to_string(),
-        email: "billing@acme.com.br".to_string(),
-        zip_code: Some("01310-100".to_string()),
-        address: Some("Av Paulista, 1000".to_string()),
-        ibge_code: Some("3550308".to_string()),
-    };
-
-    let dps = NfseDps {
-        id: "DPS355030800010000000000000000000000000000001".to_string(),
-        series: "1".to_string(),
-        number: 1042,
-        issued_at: Utc::now(),
-        service_code: "1.03.01".to_string(),
-        description: "Rullst Sovereign Publisher - Enterprise Plan Subscription".to_string(),
-        amount: 499.00,
-        iss_rate: 2.0,
-        iss_retained: false,
-        service_city_ibge: "3550308".to_string(),
-    };
-
-    let unsigned_xml = build_dps_xml(&emitter, &customer, &dps);
-    let mut preview: String = unsigned_xml.chars().take(250).collect();
-    if unsigned_xml.chars().count() > 250 {
-        preview.push_str("...");
-    }
-    preview.push_str(" [OFFLINE DPS PREVIEW — NOT AUTHORIZED OR SIGNED]");
-
-    (free_can_post, preview)
+    free_user.check_quota("posts", free_user.published_posts_count as usize)
 }

@@ -2,8 +2,7 @@
 
 `rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
-Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the explicit
-SES bearer-proxy adapter share a
+Resend, SendPulse and the explicit SES bearer-proxy adapter share a
 pooled REST client with redirects and ambient proxy settings disabled, a
 five-second connection deadline and a 30-second request deadline, including
 error-body reads. Error-body reads remain capped at four KiB; errors retain only status and
@@ -19,6 +18,22 @@ reconciliation. This protects local atomicity; provider authentication and the
 application's recipient/tenant policy remain separate responsibilities.
 
 ---
+
+## Delivery providers in v13
+
+`rullst-mail` 13 ships four delivery transports: **Resend**, **AWS SES**,
+**SendPulse** and **SMTP**, plus the `log`, `memory` and offline `mock_*`
+drivers for development and tests. The SendGrid, Postmark, Mailjet, Mailtrap
+and Azure Communication Services transports were removed in 13.0; they remain
+in the 12.x line. A `MAIL_DRIVER` (or `[mail] driver`) that names one of them
+fails with `MailError::ConfigError` instead of falling back, and
+`cargo rullst upgrade` reports their names as `V13-MAIL-REMOVED`; see the
+[migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
+row "Mail providers removed". Other providers implement `MailDriver` in the
+application, as shown in
+[Writing your own mail transport](https://github.com/Rullst/Rullst/blob/main/docs/src/mail-custom-transport.md)
+and the offline `examples/custom_transport.rs`
+(`cargo run -p rullst-mail --example custom_transport`).
 
 ## Shared suppression candidate (v13)
 
@@ -38,28 +53,26 @@ larger backwards clock step fails closed as `SuppressionUnavailable`.
 - **🛡️ Typed failures:** production delivery paths return `MailError`; malformed messages and provider configuration fail closed.
 - **⚡ Delivery and Test Drivers:**
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
-  - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
-  - **SendPulse**, **Mailjet**, **Mailtrap** — Native transactional REST adapters; see the configuration and bounded contracts below.
-  - **Azure Communication Services** — Native Email REST with Container Apps Managed Identity.
-  - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
+  - **SendPulse** (`SendPulseDriver`) — Native transactional REST adapter; see the configuration and bounded contract below.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus deterministic offline fixture and an explicit legacy proxy boundary.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
-  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness with fluent assertions, distinct from the hosted Mailtrap service (`MailtrapDriver`).
+  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness with fluent assertions; it is not the hosted Mailtrap service, whose transport v13 removed.
+  - **Your own transport** — implement `MailDriver`; see [Writing your own mail transport](https://github.com/Rullst/Rullst/blob/main/docs/src/mail-custom-transport.md).
   - **Log** (`LogDriver`) — Metadata-only terminal and file logging (`storage/logs/mail.log`): a timestamp, attachment count and scheduling flag, never recipients, subject or body.
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. `SuppressionUnavailable` and `AttachmentInspectionUnavailable` are `Transient` (retry later) but never failover-eligible. A fallback that returns such an error ends the chain with it; when every driver fails transiently, the result is a `Transient` error, or `RateLimited` with the bounded `Retry-After` when the last driver was rate limited. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
-- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
+- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model, and SendPulse its non-inline attachments; transports copy or Base64-encode as required.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
-- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling, and direct SendGrid and Resend reject a schedule beyond their documented provider limits (72 hours and 30 days ahead) with `ConfigError` before any request. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
+- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend delivery uses provider scheduling and rejects a schedule beyond its documented limit (30 days ahead) with `ConfigError` before any request. Real SMTP, SendPulse, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe`, plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click` only for an HTTPS unsubscribe URL, as RFC 8058 requires). The unsubscribe email must be one bare address and the URL may not contain whitespace, `<`, `>` or `"`, so neither value can add another header entry.
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication; an absolute HTTP(S) link keeps its target as `label <URL>` unless the label already is the URL.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (whole-token `AKIA`/`ASIA` AWS access key IDs, passwords, API tokens, bearer tokens and PEM private-key blocks of any `<label>PRIVATE KEY` type, including OpenSSH, EC and encrypted keys) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ Safe CLI Scaffolding:** Generates registered, facade-based mailables for Welcome, Password Reset, OTP, Invoice, custom, evidence-aware NFS-e/international receipts, and explicit D+1/D+3/D+7 dunning; validates names, refuses collisions and escapes dynamic HTML.
+- **🛠️ Safe CLI Scaffolding:** Generates registered, facade-based mailables for Welcome, Password Reset, OTP, Invoice, custom, bounded payment receipts, and explicit D+1/D+3/D+7 dunning; validates names, refuses collisions and escapes dynamic HTML.
 - **🧾 Payment-Bound PDF Delivery:** The opt-in `capital-invoice` bridge accepts
   only Capital's final evidence-bound `PaidInvoice`, attaches bounded HTML/PDF,
   applies pre-flight and preserves a stable key for the application outbox.
@@ -152,11 +165,11 @@ base64 form, so upgrade workers before producers during a rolling deployment.
 ### 2. Resilient Multi-Driver Failover (Circuit Breaker)
 
 ```rust
-use rullst_mail::drivers::{FailoverDriver, PostmarkDriver, ResendDriver};
+use rullst_mail::drivers::{FailoverDriver, ResendDriver, SendPulseDriver};
 use std::time::Duration;
 
 let primary = ResendDriver::try_new("re_...")?;
-let fallback_1 = PostmarkDriver::try_new("pm_token_...")?;
+let fallback_1 = SendPulseDriver::try_new("sendpulse_api_key...")?;
 
 let failover_driver = FailoverDriver::new(primary)
     .with_fallback(fallback_1)
@@ -237,17 +250,18 @@ cargo rullst make:mail OtpVerification --otp
 # Generate SaaS Invoice receipt email
 cargo rullst make:mail InvoiceReceipt --invoice
 
-# Generate an NFS-e/international receipt whose mock provenance stays visible
+# Generate a bounded commercial payment receipt (PaymentReceiptEmail)
 cargo rullst make:mail-invoice
 
 # Generate the explicit D+1/D+3/D+7 payment-recovery sequence
 cargo rullst make:mail-dunning
 ```
 
-`make:mail-invoice` enables `mailer` and `capital`. Its generated
-`from_nfse_response` constructor accepts the typed Capital response and renders
-`OfflineMock` only as `[PREVIEW — NOT AUTHORIZED]`; it never converts local DPS
-or XMLDSig validity into tax authorization. `make:mail-dunning` exposes three
+`make:mail-invoice` enables only `mailer`. Its generated
+`international_receipt` constructor records an application-confirmed payment
+and labels the message as a commercial receipt, not a tax authorization; v13
+removed the former NFS-e branch together with Capital's fiscal module.
+`make:mail-dunning` exposes three
 explicit stages, while due-date calculation, scheduling, entitlement changes,
 and account state remain application responsibilities. Both templates execute
 the mandatory pre-flight while building and fail on unsafe links.
@@ -256,7 +270,7 @@ Generated mailables set no `from`; configure the default sender with
 `MAIL_FROM` (or `from` under `[mail]` in `Rullst.toml`), which new projects
 list in `.env.example`. Staging and production must also select a driver.
 
-For a payment-bound native PDF rather than the scaffolded fiscal template,
+For a payment-bound native PDF rather than the scaffolded receipt template,
 enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
 `PaidInvoiceDelivery::prepare`, then set the verified sender with
 `.from(sender)?` (13.0), which re-runs pre-flight. It rejects non-final/mock
@@ -315,7 +329,7 @@ let store = SqliteSuppressionStore::connect(
 // Only record events after the provider-specific signature was authenticated.
 let observed_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 store.record(SuppressionEvent::try_new(
-    "postmark",
+    "resend",
     "verified-event-id",
     "blocked@example.com",
     SuppressionReason::HardBounce,
@@ -480,22 +494,19 @@ delta-seconds `Retry-After` for failover/retry policy.
 
 ---
 
-## Native providers added in 12.1
+## SendPulse
 
 | Provider | Constructor | `MAIL_DRIVER` | Credentials |
 |---|---|---|---|
 | SendPulse | `SendPulseDriver::try_new(api_key)` | `sendpulse` | `SENDPULSE_API_KEY` |
-| Mailjet | `MailjetDriver::try_new(api_key, secret_key)` | `mailjet` | `MAILJET_API_KEY`, `MAILJET_SECRET_KEY` |
-| Mailjet remote validation | Same constructor plus `.with_sandbox()` | `mailjet-sandbox` | Same credential pair |
-| Mailtrap sending | `MailtrapDriver::try_new(token)` | `mailtrap` | `MAILTRAP_API_TOKEN` |
-| Mailtrap hosted capture | `MailtrapDriver::sandbox(token, id)` | `mailtrap-sandbox` | Token plus positive `MAILTRAP_SANDBOX_ID` |
 
-No additional feature is required beyond Mail. All three reuse the mandatory
-pipeline, bounded HTTPS client, typed failure/retry classification and empty or
-`mock_*` offline fallback. Mailjet rejects a mixed real/offline credential pair.
-Real delivery requires an explicit verified sender (`Message::from`). Direct
-future delivery is rejected; use a durable queue for scheduling. Provider
-acceptance is not inbox delivery and retries remain at-least-once.
+SendPulse shipped in 12.1.0 alongside the Mailjet and Mailtrap transports, which
+v13 removed. No additional feature is required beyond Mail. It reuses the
+mandatory pipeline, bounded HTTPS client, typed failure/retry classification and
+empty or `mock_*` offline fallback. Real delivery requires an explicit verified
+sender (`Message::from`). Direct future delivery is rejected; use a durable
+queue for scheduling. Provider acceptance is not inbox delivery and retries
+remain at-least-once.
 
 SendPulse uses its current static Bearer API-key authentication; an OAuth client
 ID/secret is not an API key. The SMTP service must be activated in the account.
@@ -505,19 +516,7 @@ silently omitted; use SMTP for those message shapes. Disable security-mail
 tracking in the provider account. See [authentication](https://sendpulse.com/integrations/api)
 and the [transactional API](https://sendpulse.com/integrations/api/smtp).
 
-Mailjet uses [Send API v3.1](https://dev.mailjet.com/docs/email-api/send-api-v31/send-basic-email),
-HTTP Basic credentials, per-message success validation, attachments and inline
-CID. It sets open/click tracking to `disabled`. Remote sandbox mode validates
-with the provider without sending; it is distinct from the no-network mock.
-
-Mailtrap supports the [Sending API](https://docs.mailtrap.io/developers/email-sending)
-and a separately selected [Sandbox API](https://docs.mailtrap.io/developers/email-sandbox/send-test-emails).
-It includes attachments, inline CID and unsubscribe headers. Sending never
-silently falls back to sandbox. Disable tracking at the domain/account level
-for security notices. The older `MailTrap` type remains only Rullst's local test
-harness; `MailtrapDriver` is the hosted provider integration.
-
-Protocol/offline tests cover these contracts. Actual account/domain activation,
+Protocol/offline tests cover this contract. Actual account/domain activation,
 deliverability, limits and live acceptance remain deployment work. Free-plan
 quotas can change; consult the providers rather than relying on SDK constants.
 
@@ -525,7 +524,7 @@ quotas can change; consult the providers rather than relying on SDK constants.
 
 ```toml
 [mail]
-driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid" | "postmark" | "ses"
+driver = "resend" # "log" | "memory" | "smtp" | "resend" | "ses" | "sendpulse"
 from = "Acme <no-reply@acme.example>" # default sender for messages without `from`
 ```
 
@@ -539,15 +538,18 @@ malformed `.env` fails with `MailError::ConfigError` without echoing its
 content.
 
 The settings are read on every facade call, but the driver built from them is
-reused while they stay the same, so its connection pools, native SES client
-and Azure managed-identity token (reused until five minutes before it expires)
+reused while they stay the same, so its connection pools and native SES client
 survive across messages and queue jobs. A changed setting builds a new driver
 for the next message, `Mail::reset_driver()` drops the reused one, and
 `MAIL_DRIVER=memory` still builds a fresh store per message. (v13)
 
 Environment variables:
-- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`, `azure-acs`, `sendpulse`, `mailjet`, `mailjet-sandbox`,
-  `mailtrap`, `mailtrap-sandbox`). When neither it nor `[mail] driver` is set,
+- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`,
+  `ses` or its alias `aws_ses`, `sendpulse`). The values of the transports v13
+  removed (`sendgrid`, `postmark`, `mailjet`, `mailjet-sandbox`, `mailtrap`,
+  `mailtrap-sandbox`, `azure-acs`) fail with `MailError::ConfigError`, which
+  names the driver and the migration row, and never fall back to another
+  driver. When neither it nor `[mail] driver` is set,
   development and test fall back to `log`, while staging and production
   (`RULLST_ENV`, `APP_ENV` or `[app] env`, as above) return `MailError::ConfigError`
   instead of logging mail that is never delivered. Select `log` explicitly to
@@ -561,14 +563,7 @@ Environment variables:
   not read it; the other settings below are read by the facade when it builds
   a driver, and `MAIL_LOG_PATH` by `LogDriver` itself.
 - `RESEND_API_KEY`: API key for Resend.
-- `SENDGRID_API_KEY`: API key for SendGrid.
-- `POSTMARK_SERVER_TOKEN`: Server API token for Postmark (`POSTMARK_API_KEY`
-  is read when it is unset); `POSTMARK_MESSAGE_STREAM` optionally selects the
-  Message Stream.
-- `AZURE_COMMUNICATION_EMAIL_ENDPOINT`: ACS resource endpoint for `azure-acs`.
-  An empty or `mock_*` value selects the offline fixture; otherwise the driver
-  authenticates with the Managed Identity variables `IDENTITY_ENDPOINT`,
-  `IDENTITY_HEADER` and optional `AZURE_CLIENT_ID` from the process environment.
+- `SENDPULSE_API_KEY`: Static API key for SendPulse.
 - `AWS_REGION`: Region used by native SigV4 signing or SES proxy/mock metadata.
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: Select native SES when the
   `aws-ses` feature is enabled; both must be present.
@@ -582,8 +577,7 @@ Environment variables:
   an integer from 1 to 65535, or the facade returns `MailError::ConfigError`.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the SES
-fixture/proxy,
+For Resend, SendPulse and the SES fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests. The
@@ -641,9 +635,8 @@ case-insensitively and key an internationalized domain by its IDNA A-label
 (`bücher.de` and `xn--bcher-kva.de` share one entry); a non-ASCII local part
 cannot be keyed, so `SuppressionGuard` rejects it with `ValidationError` rather
 than reporting `SuppressionUnavailable`. The optional `from` sender is parsed
-with it as well and keeps its display name: Resend, Postmark, SES and SMTP send
-it as written, SendGrid, Mailjet, Mailtrap and SendPulse receive the address
-and name as separate fields, and ACS receives only the bare address.
+with it as well and keeps its display name: Resend, SES and SMTP send it as
+written, and SendPulse receives the address and name as separate fields.
 
 The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
 body over 2 MiB each, with `MailError::ValidationError` before any content scan.

@@ -103,6 +103,7 @@ async fn task_loop_never_overlaps_slow_executions() {
         label: "every second".to_string(),
         schedule: CronSchedule::every_second(),
         handler,
+        deferral: None,
     };
     let (shutdown_tx, shutdown) = watch::channel(false);
     let (errors_tx, mut errors) = error_buffer(ERROR_BUFFER_CAPACITY, "test");
@@ -161,4 +162,37 @@ async fn aborting_execution_drops_the_handler_future() {
     })
     .await
     .unwrap();
+}
+
+#[test]
+fn deferrable_tasks_start_at_the_next_window_and_plain_tasks_at_the_tick() {
+    let deferral = ScheduleDeferral::within(Duration::from_secs(12 * 3_600))
+        .unwrap()
+        .window(TimeWindow::daily(0, 0, 6, 0).unwrap())
+        .unwrap();
+    let mut scheduler = Scheduler::new()
+        .task("0 * * * *", || async {})
+        .unwrap()
+        .deferrable_task("0 18 * * *", deferral, || async {})
+        .unwrap();
+    let deferred = scheduler.tasks.remove(1);
+    let plain = scheduler.tasks.remove(0);
+    assert!(
+        Scheduler::new()
+            .deferrable_task(
+                "bad",
+                ScheduleDeferral::within(Duration::ZERO).unwrap(),
+                || async {}
+            )
+            .is_err()
+    );
+
+    let tick = chrono::DateTime::parse_from_rfc3339("2026-10-08T18:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let midnight = chrono::DateTime::parse_from_rfc3339("2026-10-09T00:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    assert_eq!(deferred_start(&deferred, tick), Some(midnight));
+    assert_eq!(deferred_start(&plain, tick), None);
 }

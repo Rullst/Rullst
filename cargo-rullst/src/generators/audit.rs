@@ -13,7 +13,7 @@ pub use crate::generators::audit_idor::scan_idor_vulnerabilities;
 use crate::generators::audit_scope::cargo_audit_arguments;
 pub use crate::generators::audit_scope::scan_unsafe_code;
 use crate::generators::audit_scope::{
-    cargo_audit_status, package_source_roots, scan_each, validate_audit_ignores,
+    audit_lockfile, cargo_audit_status, package_source_roots, scan_each, validate_audit_ignores,
 };
 
 /// A scan whose source walk hit a bound is reported as a finding, not as clean.
@@ -316,7 +316,10 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
             "  {} Generating CycloneDX 1.5 Software Bill of Materials (SBOM)...",
             "[SBOM]".bright_blue()
         );
-        match generate_cyclonedx_sbom(Path::new("Cargo.lock")) {
+        // A workspace member reads the workspace root's lockfile.
+        let lockfile = audit_lockfile(std::ffi::OsStr::new("cargo"), Path::new("."))
+            .unwrap_or_else(|| PathBuf::from("Cargo.lock"));
+        match generate_cyclonedx_sbom(&lockfile) {
             Ok((count, file_name)) => {
                 say!(
                     json,

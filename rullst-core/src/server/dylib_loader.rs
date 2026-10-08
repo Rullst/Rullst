@@ -1,7 +1,5 @@
 use crate::Router;
-use crate::server::server_middleware::{
-    hmr_client_script, inject_hmr_script, zstd_static_middleware,
-};
+use crate::server::server_middleware::{hmr_client_script, inject_hmr_script};
 
 #[cfg(target_os = "windows")]
 fn is_expected_loaded_library_removal_error(error: &std::io::Error) -> bool {
@@ -136,12 +134,7 @@ pub fn load_dylib_router(
 
     // Serve static files from "static" directory if it exists
     if std::path::Path::new("static").exists() {
-        axum_router = axum_router
-            .nest_service(
-                "/static",
-                tower_http::services::ServeDir::new("static").precompressed_br(),
-            )
-            .layer(axum::middleware::from_fn(zstd_static_middleware));
+        axum_router = super::static_cache::mount_static_assets(axum_router);
     }
 
     // Attach development explain / console routes

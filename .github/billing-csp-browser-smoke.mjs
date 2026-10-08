@@ -21,7 +21,7 @@ const cases = [
   {name: "strict-default", destination: approved, allowed: false, strict: true},
   {name: "stripe", destination: approved, allowed: true},
   {name: "lookalike", destination: "https://checkout.stripe.com.example.invalid/c/pay/test", allowed: false},
-  {name: "other-provider", destination: "https://checkout.lemonsqueezy.com/checkout/test", allowed: false},
+  {name: "other-provider", destination: "https://checkout.other-gateway.example.invalid/checkout/test", allowed: false},
   {name: "cleartext", destination: "http://checkout.stripe.com/c/pay/test", allowed: false},
   {name: "other-port", destination: "https://checkout.stripe.com:444/c/pay/test", allowed: false},
   {name: "second-redirect", destination: approved + "/redirect-again", allowed: false},

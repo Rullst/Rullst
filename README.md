@@ -236,8 +236,8 @@ crate is labelled Core, Extension or Experimental; see the
 | [rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security) | Defense-in-depth middleware, guards and audit helpers | Core |
 | [rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect) | OAuth2/OIDC identity integrations | Extension |
 | [rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval | Extension |
-| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Payment/payout adapters, webhooks and bounded billing helpers | Extension |
-| [rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail) | Transactional email and delivery controls | Extension |
+| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Billing contracts, Stripe and experimental InfinitePay adapters, webhooks | Extension |
+| [rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail) | Transactional email with Resend, AWS SES, SendPulse and SMTP transports, and delivery controls | Extension |
 | [rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging) | Broker-neutral contracts and durable local messaging | Extension |
 | [rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio) | Local developer control room | Extension |
 | [rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus) | Registered-model admin with explicit access policy | Extension |
@@ -398,7 +398,14 @@ findings to `cargo rullst upgrade`; and `cargo rullst audit --report`, a
 Markdown, HTML or JSON security evidence report mapped to OWASP ASVS 5.0
 Level 1, with a personal-data inventory and accessibility checks
 ([guide](https://rullst.github.io/Rullst/book/security-report.html)). It is
-evidence for a reviewer, not a certification. Until v13 is released, these are
+evidence for a reviewer, not a certification. `cargo rullst footprint` runs a
+bounded local load and reports requests/s, latency, CPU time, memory, sizes and
+energy where the machine exposes it, each with its method
+([guide](https://rullst.github.io/Rullst/book/footprint.html)).
+`cargo rullst add <capability>` enables mail, auth, AI, Nexus or Studio in an
+existing project (feature, `.env.example` placeholders and the code to paste;
+`--dry-run` shows the diff), and `cargo rullst new` initializes a Git
+repository (`--vcs none` skips it). Until v13 is released, these are
 development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)

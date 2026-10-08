@@ -39,8 +39,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         if cli::runtime::run_extension(&matches)? {
             return Ok(());
         }
-        if let Some(assistant) = matches.subcommand_matches("ai") {
+        if let Some(add) = matches.subcommand_matches("add") {
+            generators::add::run(add)?;
+        } else if let Some(assistant) = matches.subcommand_matches("ai") {
             ai::run(assistant)?;
+        } else if let Some(footprint) = matches.subcommand_matches("footprint") {
+            generators::footprint::run(footprint)?;
         } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
         } else if let Some(api) = matches.subcommand_matches("generate:api") {
@@ -57,12 +61,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             update::run(update)?;
         } else if let Some(tour) = matches.subcommand_matches("tour") {
             tour::run(tour)?;
-        } else if matches
-            .subcommand_matches("new")
-            .is_some_and(|new| new.get_flag("dry_run"))
-        {
+        } else if let Some(new) = matches.subcommand_matches("new") {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
-            generators::project::run_dry_run(&cli.command)?;
+            generators::project::run_new_command(&cli.command, new)?;
         } else if let Some(omni) = matches
             .subcommand_matches("omni")
             .filter(|m| m.get_flag("release"))
@@ -87,10 +88,12 @@ pub(crate) fn command() -> clap::Command {
     // Commands enum, which downstream Rust callers may exhaustively match.
     let command = <cli::Cli as clap::CommandFactory>::command()
         .subcommand(update::command())
+        .subcommand(generators::add::command())
         .subcommand(generators::age_gate::command())
         .subcommand(generators::privacy::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
+        .subcommand(generators::footprint::command())
         .subcommand(ai::command())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.

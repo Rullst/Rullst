@@ -13,6 +13,7 @@ as your product needs it.
 
 | What you want to do | Start here | Your first visible result |
 | --- | --- | --- |
+| “Take me from an empty folder to a complete app.” | [Zero to a complete app](tutorials/zero-to-complete-app.md), about an hour | Sign-in, owner-only CRUD pages, tests, a security report and a production build |
 | “Give me an application I can explore.” | [CLI installation and blueprints](1-getting-started.md) | Generated Rust, a local web page and a development loop |
 | “Show me how the framework actually works.” | [Zero to Hello Rullst](tutorials/01-hello-world.md) | One complete typed route you write yourself |
 | “I need a backend for another client.” | [Your first JSON REST API](tutorials/rest-api-quickstart.md) | A real HTTP response you can inspect with curl |

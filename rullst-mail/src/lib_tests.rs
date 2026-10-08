@@ -244,19 +244,19 @@ async fn test_resend_driver() {
 
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
-async fn test_sendgrid_driver() {
-    let driver = SendGridDriver::try_new("").unwrap();
+async fn test_sendpulse_driver_with_an_empty_key() {
+    let driver = SendPulseDriver::try_new("").unwrap();
     let msg = Message::new()
         .to("test@rullst.dev")
-        .subject("offline-sendgrid");
+        .from("team@rullst.dev")
+        .subject("offline-sendpulse")
+        .text("offline body");
     let res = driver.send(&msg).await;
     assert!(res.is_ok());
     assert_eq!(driver.delivery_mode(), DeliveryMode::OfflineMock);
-    assert!(
-        OfflineMailMock::deliveries().unwrap().iter().any(|item| {
-            item.provider == "sendgrid" && item.message.subject == "offline-sendgrid"
-        })
-    );
+    assert!(OfflineMailMock::deliveries().unwrap().iter().any(|item| {
+        item.provider == "sendpulse" && item.message.subject == "offline-sendpulse"
+    }));
 }
 
 #[cfg(feature = "mail-smtp")]
@@ -283,29 +283,6 @@ async fn test_smtp_driver_disabled() {
     let msg = Message::new().to("test@rullst.dev").subject("Test");
     let res = driver.send(&msg).await;
     assert!(res.is_err());
-}
-
-#[tokio::test]
-#[cfg_attr(miri, ignore)]
-async fn test_postmark_driver() {
-    let driver = PostmarkDriver::try_new("mock_postmark")
-        .unwrap()
-        .with_message_stream("outbound");
-    assert_eq!(driver.server_token, "mock_postmark");
-    assert_eq!(driver.message_stream.as_deref(), Some("outbound"));
-
-    let msg = Message::new()
-        .to("test@rullst.dev")
-        .subject("Hello Postmark")
-        .html("<p>Postmark Test</p>")
-        .unsubscribe_url("https://rullst.dev/unsub");
-    let res = driver.send(&msg).await;
-    assert!(res.is_ok());
-    assert!(
-        OfflineMailMock::deliveries().unwrap().iter().any(|item| {
-            item.provider == "postmark" && item.message.subject == "Hello Postmark"
-        })
-    );
 }
 
 #[tokio::test]

@@ -135,7 +135,9 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
 
                         <form method="get" action="/ai-assistant" class="search-form">
                             <div class="inline-form">
+                                <label for="semantic-query" class="visually-hidden">"Semantic search query"</label>
                                 <input
+                                    id="semantic-query"
                                     type="text"
                                     name="q"
                                     value={&user_query}

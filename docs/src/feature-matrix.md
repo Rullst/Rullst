@@ -146,11 +146,10 @@ for example, adds only SQLite).
 | `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
-| `capital` | no | Payment, payout, analytics, DPS builder, and offline fiscal APIs from `rullst-capital` |
+| `capital` | no | Provider-neutral billing contracts, the Stripe and experimental InfinitePay adapters, webhooks and analytics from `rullst-capital` |
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-quota-sql` | no | `capital` and `orm` plus atomic shared resource quotas for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital-webhook-sql` | no | `capital` and `orm` plus bounded durable webhook replay/event claims for SQLite, PostgreSQL, MySQL, and MariaDB |
-| `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, signed-environment protocol binding, authenticated local command journal, and rustls mTLS preparation |
 | `capital-pdf` | no | `capital` plus bounded validated native invoice PDF rendering |
 | `capital-mail` | no | `capital-pdf` plus Mail's payment-bound HTML/PDF attachment delivery bridge |
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
@@ -338,7 +337,6 @@ Default feature: `axum`.
 | `actix` | Actix Web middleware for the same verifier; it does not enable Axum when selected directly |
 | `quota-sql` | Durable idempotent shared quota accounting over SQLite, PostgreSQL, MySQL, and MariaDB; schema setup/migrations and authoritative membership/tier state remain application-owned |
 | `webhook-sql` | Bounded durable provider-scoped payload/event claims over SQLite, PostgreSQL, MySQL, and MariaDB, including a caller-owned transaction path; cross-system effects and reconciliation remain application-owned |
-| `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, signed-`tpAmb` binding, deterministic GZip/Base64 issuance JSON, bounded signed-authorization/rejection parsing, a HMAC-chained single-writer local command journal, and rustls mTLS preparation; it does not enable live SEFIN transmission, provide a distributed outbox/retry engine, or establish certificate trust/homologation |
 | `invoice-pdf` | Bounded paginated A4 invoice PDF with embedded WinAnsi or a validated caller-supplied TTF/OTF; payment/mail orchestration is separate |
 
 ### `rullst-mail`

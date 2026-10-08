@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use rullst_capital::{Billable, CapitalError, ChargeStatus, LemonSqueezyProvider, StripeProvider};
+use rullst_capital::{Billable, CapitalError, ChargeStatus, InfinitePayProvider, StripeProvider};
 
 struct Account;
 
@@ -43,9 +43,9 @@ async fn invalid_requests_and_unreviewed_provider_operations_fail_closed() {
         .await;
     assert!(matches!(invalid, Err(CapitalError::InvalidCharge(_))));
 
-    let lemon = LemonSqueezyProvider::new("mock_lemon", "mock_webhook");
+    let infinitepay = InfinitePayProvider::new("mock_infinitepay", "mock_webhook");
     let unsupported = account
-        .charge_with(&lemon, 4_990, "BRL", "cus_1", "pm_1", "order_1")
+        .charge_with(&infinitepay, 4_990, "BRL", "cus_1", "pm_1", "order_1")
         .await;
     assert!(matches!(
         unsupported,

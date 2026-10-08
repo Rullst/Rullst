@@ -5,7 +5,8 @@
 //! - **Automatic Plain-Text Fallback** derivation
 //! - **In-Memory MailTrap & Fluent Assertions**
 //! - **Outbound DLP Secret Scanner** (AWS keys, passwords, bearer tokens)
-//! - Multiple delivery drivers (**SMTP**, **Resend**, **SendGrid**, **Postmark**, **AWS SES**, **ACS**, **SendPulse**, **Mailjet**, **Mailtrap**, **Log**, **Memory**, **Failover**)
+//! - Delivery drivers for **Resend**, **AWS SES**, **SendPulse** and **SMTP**, plus
+//!   **Log**, **Memory** and **Failover**; other providers implement [`MailDriver`]
 //! - **Dynamic Multi-Tenancy Resolver** (`TenantMailResolver`)
 //! - **Resilient Circuit Breaker & Automatic Failover** (`FailoverDriver`)
 //! - Opt-in attachment inspection, recipient suppression, and minimized observations

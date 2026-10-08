@@ -229,8 +229,11 @@ parameters, a `json`/`xml` subtype or `+json`/`+xml` suffix, and any type that
 starts with `application/x-www-form-urlencoded`. Core's WAF checks the
 percent-decoded request path for traversal signatures only (`../`, `..\`,
 `/etc/passwd`, `win.ini`), since routers decode path parameters; its SQL, XSS
-and command patterns apply to the query, the `Referer`, each cookie pair and
-bounded bodies.
+and command signatures apply to the query, the `Referer`, each cookie pair and
+bounded bodies (JSON key by key and string by string). SQL and shell signatures
+match injection structure, such as a quote breakout, a chained statement,
+`union select` or a metacharacter before a command name, never a keyword alone,
+so ordinary text like "select an option" passes.
 
 DLP modifies only supported textual responses whose body can be safely buffered
 within configured limits. Applications must test JSON, HTML, binary, compressed,

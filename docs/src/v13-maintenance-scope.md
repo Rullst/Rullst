@@ -74,8 +74,8 @@ in force throughout that transition.
 | `rullst-orm`, `rullst-orm-macros` | High: transactions, schema changes, database differences and native dependencies. | Prioritize dependable relational persistence and migrations. Treat specialized stores as explicit adapters; do not promise universal parity or generic replication. |
 | `rullst-auth`, `rullst-security`, `rullst-connect` | High and necessary: failures affect application identity, secrets and tenant boundaries. | Maintain narrow, coherent contracts using established primitives. Reduce duplicated responsibilities and close documented gaps before expanding providers or security-product ambitions. |
 | `rullst-messaging` | High: leases, retries, duplicates, outbox consistency and backend recovery. | Maintain bounded durable delivery and supported backends. Additional brokers need a demonstrated application requirement and their own recovery evidence. |
-| `rullst-capital` | High: provider-specific money/state semantics, reconciliation, subscriptions and fiscal expansion. | Preserve reusable SaaS billing. Separate common contracts, provider adapters and fiscal responsibilities as described below; do not discard the entire crate. |
-| `rullst-mail`, `rullst-ai`, `rullst-media` | Medium to high: external services, feedback/events, transport changes and provider-specific behavior. | Maintain common contracts and adapters justified by actual use. Prefer interoperable protocols where appropriate, while retaining provider-specific assertions and explicit unsupported operations. |
+| `rullst-capital` | High: provider-specific money/state semantics, reconciliation, subscriptions and fiscal expansion. | Preserve reusable SaaS billing: the provider-neutral base plus Stripe and an experimental InfinitePay adapter. The other adapters, payouts and NFS-e preparation were removed from 13.0 as described below. |
+| `rullst-mail`, `rullst-ai`, `rullst-media` | Medium to high: external services, feedback/events, transport changes and provider-specific behavior. | Maintain common contracts and adapters justified by actual use. Prefer interoperable protocols where appropriate, while retaining provider-specific assertions and explicit unsupported operations. Mail keeps Resend, AWS SES, SendPulse and SMTP in 13.0, as described below. |
 | `rullst-privacy` | Bounded current foundations; broader legal or biometric promises would create high continuing cost. | Keep reusable consent, minimal-data and proportional age-policy mechanisms. Provider attestations remain separate from native declarations; global legal certification and a first-party facial model are not part of this direction. |
 | `rullst-supervision` | Specialized, sensitive application state; models, capture and operational expansion raise the cost. | Keep transparent observation contracts as an optional education/parental extension. Product workflows, verified relationships, media models and human review belong to the application or separately governed integration. |
 | `rullst-labs` | Bounded trusted orchestration with sensitive authorization, leases and grading contracts. | Keep separate from execution: bring your own runner through the documented [controller contract](labs-runner-contract.md). Retain one useful Academy profile without making broader language or exercise support a framework release prerequisite. |
@@ -90,25 +90,30 @@ capability dispensable merely because it is expensive.
 
 ## Capital: retain billing, contain the responsibility
 
-**Owner-selected v13 scope, 24 September 2026:** the official billing-provider
-set is Stripe and Paddle. Crypto integrations are excluded from this release.
-Stripe already serves the maintainer's SaaS journey; Paddle's
-merchant-of-record subscription offering addresses another requested product
-need. Keep useful checkout, subscription and authenticated-event behavior
-alongside the common billing contracts, within their supported and validated
-scope. Cost control must not leave every developer to implement payment
-protocols.
-
-This is the target release scope, not a claim that the existing adapters have
-already been removed. Plan the compatibility transition for other providers
-before changing APIs, facade features, CLI choices, generated applications or
-dependencies. Preserve the published v12 support commitments. Do not silently
-redirect existing customers/subscriptions to another provider.
+**Owner-selected v13 scope, 8 October 2026** (superseding the 24 September
+selection of Stripe and Paddle): `rullst-capital` keeps a maintainable
+provider-neutral base and two adapters. The base is the billing traits,
+checkout/subscription/entitlement/quota/usage contracts, billing analytics,
+invoices, canonical webhook verification with replay protection, the Axum and
+Actix adapters and the offline mocks. Crypto integrations are excluded from
+this release.
 
 | v13 provider | Reason and current boundary |
 | :--- | :--- |
-| Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
-| Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Typed checkout, signed subscription contracts, a bound portal and a generated durable candidate cover the limited recurring flow. Live provider interoperability remains unvalidated. |
+| Stripe | Supported. Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
+| InfinitePay | Experimental until validated against a live account. Offline fixtures only; live checkout and callbacks fail closed until a reviewed authoritative pricing and callback-authentication contract exists. |
+
+Removed from the 13.0 workspace (8 October 2026; the source remains in git
+history and in the 12.x line): the Paddle, Lemon Squeezy, Polar, Razorpay,
+Mercado Pago, Alipay, Coinbase Commerce and PicPay adapters, the Wise payout
+adapter with the payout contracts, the generated Paddle billing candidate and
+the NFS-e preparation module (`nfse` feature). NFS-e was never validated with a
+real municipality; it may return as a separate product outside Rullst.
+Applications integrate other gateways by implementing the provider traits, as
+shown in [Writing your own payment provider](capital-custom-provider.md); the
+[migration guide](migration-v13.md#changes-from-the-published-1210-source)
+lists the removed names. Do not silently redirect existing customers or
+subscriptions to another provider.
 
 Keeping these two adapters still incurs upstream API and security maintenance.
 The framework owns bounded protocol validation and reference lifecycle tests;
@@ -119,17 +124,11 @@ foundations and retain explicit limits, without growing into a full billing
 platform. Capital remains an optional feature. An application-specific need
 does not automatically justify another official adapter.
 
-[Paddle's SaaS documentation](https://developer.paddle.com/get-started/how-paddle-works/saas/)
-describes subscription lifecycle, customer self-service and sales-tax handling
-under its merchant-of-record model. These provider capabilities are not a claim
-that every operation is implemented in Rullst or that the application inherits
-universal legal compliance.
-
 Crypto research is deferred beyond v13. Preserve applicable billing extension
 contracts, but do not add a crypto adapter, universal blockchain API, custody
-service or new crypto-specific release gate. The existing Commerce code still
-requires the same reviewed compatibility transition as other excluded
-providers. Two findings remain relevant if a future application requests this:
+service or new crypto-specific release gate. The former Coinbase Commerce
+adapter was removed with the other excluded providers. Two findings remain
+relevant if a future application requests this:
 
 - Coinbase's [Commerce transition notice](https://help.coinbase.com/en/transitioning-from-coinbase-commerce-to-coinbase-business)
   sets 31 March 2026 as the Commerce shutdown deadline. Its
@@ -158,20 +157,24 @@ starting point rather than rewriting it:
    ambiguous outcomes and reconciliation. Select the actively supported
    expansion scope from real product demand and available validation. A common
    trait must not imply that every provider supports the same operations.
-3. **Fiscal and specialized finance:** prepare a separate optional domain and
-   maintenance lifecycle for fiscal preparation and other specialized work.
-   Existing NFS-e preparation is bounded; live transmission and fiscal
-   authorization remain disabled pending their required external validation.
+3. **Fiscal and specialized finance:** outside the framework. The bounded NFS-e
+   preparation was removed from 13.0 without live validation; fiscal work may
+   return as a separately maintained product with its own lifecycle.
 
 These responsibilities need not produce one crate per provider. Decide whether
 modules, features, packages or repositories provide a measurable benefit after
 checking dependencies, downstream consumers and release costs. Independent
 versioning is a future migration decision, not a property already implemented.
 
-No gateway is retired by this document. Existing supported behavior keeps its
-maintenance obligations under the published support policy. Before narrowing
-support, identify affected users, a replacement, a responsible maintainer and
-the compatibility/migration path. Tests with deterministic mocks establish local
+The 12.x line keeps its published support obligations for the removed adapters.
+In v13 each removed name has a migration row and an assisted-upgrade finding,
+and the replacement is an application-owned adapter on the retained contracts.
+The [deprecation policy](compatibility-policy.md#deprecation-and-removal) also
+expects `#[deprecated]` markers in a released 12.x minor before a stable API is
+removed. By owner decision on 8 October 2026, the 12.3.0 minor release marks
+the Capital and Mail APIs removed here `#[deprecated]`, pointing to their
+migration rows, before 13.0.0 ships. The assisted-upgrade findings and the
+fail-closed configuration errors apply in addition. Tests with deterministic mocks establish local
 contracts, not actual provider interoperability. The prohibition on real-account
 tests remains in force; outstanding external evidence stays explicitly pending.
 
@@ -179,6 +182,31 @@ The recurring obligations are concrete: Stripe documents duplicate events,
 delivery ordering and retries in its [webhook guide](https://docs.stripe.com/webhooks),
 and version transitions in its [API upgrade guide](https://docs.stripe.com/upgrades).
 Other providers require their own evidence rather than inferred equivalence.
+
+## Mail: four delivery transports
+
+**Owner-selected v13 scope, 8 October 2026:** `rullst-mail` keeps the Resend,
+AWS SES, SendPulse and SMTP transports, the `log`, `memory` and offline `mock_*`
+development drivers, and the shared infrastructure they use: failover, the
+REST helpers, the pre-flight pipeline, attachment inspection, suppression,
+observations, verified Resend feedback and queued delivery. Removed from the
+13.0 workspace (the source remains in Git history and in the 12.x line): the
+SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
+transports with their `MAIL_DRIVER` values and settings.
+
+Upgrades must not lose mail or data silently. A configuration that still names
+a removed driver fails facade resolution with a typed `MailError::ConfigError`
+that names the driver and the
+[migration guide](migration-v13.md#changes-from-the-published-1210-source) row
+"Mail providers removed"; it never falls back to a development driver. Jobs
+queued by 12.x carry no provider name and are delivered by the upgraded
+worker's configured driver, or fail visibly and stay retryable. Suppression
+rows and delivery observations keep their provider labels and stay readable.
+Applications integrate other providers by implementing `MailDriver`, as shown
+in [Writing your own mail transport](mail-custom-transport.md). Like the
+Capital removal, these transports are marked `#[deprecated]` in 12.3.0 before
+13.0.0 ships. Tests with deterministic mocks establish local contracts, not provider
+interoperability.
 
 ## Turso: assess a complete application journey before universal parity
 
@@ -309,14 +337,16 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
 2. **Make support scope observable.** For each proposed expansion or extraction,
    record the product user, maintained operations/platforms, dependencies,
    evidence gaps, responsible reviewer and estimated recurring work. Start with
-   current SaaS and Academy journeys. The selected v13 billing-provider set is
-   Stripe and Paddle, with crypto excluded. Other current providers need a
-   reviewed compatibility transition; the selection does not remove code or
-   waive current validation requirements.
+   current SaaS and Academy journeys. The v13 billing-provider set is Stripe
+   (supported) and InfinitePay (experimental), with crypto excluded; the other
+   adapters and NFS-e were removed with migration guidance. The v13 mail
+   transports are Resend, AWS SES, SendPulse and SMTP; the other transports
+   were removed the same way.
 3. **Prioritize separation and expansion freezes.** The Labs runner's
    assessment concluded with its removal from 13.0 in favor of a
-   bring-your-own-runner contract. Next assess IoT hardware expansion,
-   specialized educational monitoring and Capital's fiscal domain. Keep their existing
+   bring-your-own-runner contract, and Capital's fiscal domain was removed
+   from 13.0. Next assess IoT hardware expansion and specialized educational
+   monitoring. Keep their existing
    bounded implementations and security duties visible. Reuse existing package
    boundaries where they already solve the problem.
 4. **Review one bounded migration at a time.** Demonstrate the benefit before

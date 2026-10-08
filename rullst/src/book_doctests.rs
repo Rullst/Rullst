@@ -32,6 +32,10 @@ tutorial!(live_recovery, "../../docs/src/live-recovery.md");
 tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
 
 tutorial!(
+    tutorial_zero_to_complete_app,
+    "../../docs/src/tutorials/zero-to-complete-app.md"
+);
+tutorial!(
     tutorial_01_hello_world,
     "../../docs/src/tutorials/01-hello-world.md"
 );
@@ -184,10 +188,6 @@ tutorial!(
     "../../docs/src/tutorials/39-scout-search.md"
 );
 tutorial!(
-    tutorial_40_nfse_homologation_preparation,
-    "../../docs/src/tutorials/40-nfse-homologation-preparation.md"
-);
-tutorial!(
     tutorial_41_tenant_bound_rag,
     "../../docs/src/tutorials/41-tenant-bound-rag.md"
 );
@@ -240,6 +240,14 @@ tutorial!(getting_started, "../../docs/src/1-getting-started.md");
 tutorial!(studio_guide, "../../docs/src/3-rullst-studio.md");
 tutorial!(nexus_guide, "../../docs/src/4-rullst-nexus.md");
 tutorial!(capital_guide, "../../docs/src/5-rullst-capital.md");
+tutorial!(
+    capital_custom_provider,
+    "../../docs/src/capital-custom-provider.md"
+);
+tutorial!(
+    mail_custom_transport,
+    "../../docs/src/mail-custom-transport.md"
+);
 tutorial!(
     ai_integration_guide,
     "../../docs/src/6-ai-integration-tutorial.md"

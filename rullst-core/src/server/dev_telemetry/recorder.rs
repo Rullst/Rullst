@@ -13,11 +13,14 @@ use std::time::{Duration, Instant};
 pub(super) const RECENT_REQUESTS: usize = 64;
 /// Newest slow ORM operations returned per snapshot.
 pub(super) const RECENT_SLOW_QUERIES: usize = 16;
+/// Newest possible N+1 findings returned per snapshot.
+pub(super) const RECENT_REPEATED: usize = 16;
 /// ORM operations taking at least this long are reported as slow.
 pub(super) const SLOW_QUERY_THRESHOLD: Duration = Duration::from_millis(100);
 const MAX_PATH_BYTES: usize = 256;
 const MAX_METHOD_BYTES: usize = 16;
 const MAX_LABEL_BYTES: usize = 64;
+const MAX_FINGERPRINT_BYTES: usize = 128;
 
 static GLOBAL: OnceLock<Arc<Recorder>> = OnceLock::new();
 
@@ -36,6 +39,21 @@ pub(super) fn enable_global() -> Arc<Recorder> {
 pub(super) fn record_request(method: &str, path: &str, status: u16, elapsed: Duration) {
     if let Some(recorder) = global() {
         recorder.record_request(method, path, status, elapsed);
+    }
+}
+
+/// Records the operations of one completed request that repeated at least
+/// [`crate::query_patterns::N_PLUS_ONE_THRESHOLD`] times.
+pub(super) fn record_repeated(method: &str, route: &str, operations: &[String]) {
+    let Some(recorder) = global() else {
+        return;
+    };
+    let repeated = crate::query_patterns::repeated_operations(
+        operations,
+        crate::query_patterns::N_PLUS_ONE_THRESHOLD,
+    );
+    if !repeated.is_empty() {
+        recorder.record_repeated(method, route, repeated);
     }
 }
 
@@ -69,6 +87,17 @@ pub(super) struct SlowQuery {
     pub(super) duration_us: u64,
 }
 
+/// One ORM operation fingerprint repeated within a single request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(super) struct RepeatedQuery {
+    pub(super) seq: u64,
+    pub(super) method: String,
+    /// The matched route template, or the path without its query string.
+    pub(super) route: String,
+    pub(super) fingerprint: String,
+    pub(super) occurrences: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(super) struct HttpSnapshot {
     pub(super) requests_total: u64,
@@ -85,6 +114,12 @@ pub(super) struct QuerySnapshot {
     pub(super) slow_threshold_ms: u64,
     /// Oldest first; `seq` equals `slow_queries_total` for the newest entry.
     pub(super) recent_slow: Vec<SlowQuery>,
+    /// Repetitions within one request at which a finding is recorded.
+    pub(super) repeated_threshold: u64,
+    /// Possible N+1 findings since start (one per fingerprint and request).
+    pub(super) repeated_queries_total: u64,
+    /// Oldest first; `seq` equals `repeated_queries_total` for the newest.
+    pub(super) recent_repeated: Vec<RepeatedQuery>,
 }
 
 #[derive(Debug, Default)]
@@ -96,6 +131,8 @@ struct State {
     queries_total: u64,
     slow_queries_total: u64,
     slow: VecDeque<SlowQuery>,
+    repeated_total: u64,
+    repeated: VecDeque<RepeatedQuery>,
 }
 
 /// Process-local counters and bounded recent lists.
@@ -154,6 +191,26 @@ impl Recorder {
         push_bounded(&mut state.slow, slow, RECENT_SLOW_QUERIES);
     }
 
+    pub(super) fn record_repeated(
+        &self,
+        method: &str,
+        route: &str,
+        repeated: Vec<crate::query_patterns::RepeatedOperation>,
+    ) {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        for operation in repeated {
+            state.repeated_total = state.repeated_total.saturating_add(1);
+            let finding = RepeatedQuery {
+                seq: state.repeated_total,
+                method: bounded_text(method, MAX_METHOD_BYTES),
+                route: bounded_text(route, MAX_PATH_BYTES),
+                fingerprint: bounded_text(&operation.fingerprint, MAX_FINGERPRINT_BYTES),
+                occurrences: u64::try_from(operation.occurrences).unwrap_or(u64::MAX),
+            };
+            push_bounded(&mut state.repeated, finding, RECENT_REPEATED);
+        }
+    }
+
     pub(super) fn http_snapshot(&self) -> HttpSnapshot {
         let state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
         HttpSnapshot {
@@ -171,6 +228,10 @@ impl Recorder {
             slow_queries_total: state.slow_queries_total,
             slow_threshold_ms: u64::try_from(SLOW_QUERY_THRESHOLD.as_millis()).unwrap_or(u64::MAX),
             recent_slow: state.slow.iter().cloned().collect(),
+            repeated_threshold: u64::try_from(crate::query_patterns::N_PLUS_ONE_THRESHOLD)
+                .unwrap_or(u64::MAX),
+            repeated_queries_total: state.repeated_total,
+            recent_repeated: state.repeated.iter().cloned().collect(),
         }
     }
 }

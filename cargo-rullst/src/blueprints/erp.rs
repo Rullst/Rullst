@@ -67,6 +67,10 @@ pub fn file_manifest(
             "src/main.rs",
             include_str!("erp/src/main.rs.template").replace("__REPO_MOD_DECL__", repo_mod_decl),
         ));
+        manifest.push((
+            super::security_tests::PATH,
+            super::security_tests::source(super::security_tests::Starter::Erp),
+        ));
     }
 
     manifest.extend(

@@ -130,9 +130,39 @@ pub(super) fn validate_audit_ignores(
     Ok(())
 }
 
+/// The lockfile `cargo audit` must read for `root`: its own `Cargo.lock`, or
+/// for a workspace member the one in the workspace root that `cargo metadata`
+/// (through `program`) reports. `None` leaves the choice to `cargo audit`.
+pub(super) fn audit_lockfile(program: &std::ffi::OsStr, root: &Path) -> Option<PathBuf> {
+    #[derive(serde::Deserialize)]
+    struct Workspace {
+        workspace_root: PathBuf,
+    }
+
+    let local = root.join("Cargo.lock");
+    if local.is_file() {
+        return Some(local);
+    }
+    let output = Command::new(program)
+        .args([
+            "metadata",
+            "--no-deps",
+            "--offline",
+            "--format-version",
+            "1",
+        ])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())?;
+    let workspace = serde_json::from_slice::<Workspace>(&output.stdout).ok()?;
+    Some(workspace.workspace_root.join("Cargo.lock")).filter(|lockfile| lockfile.is_file())
+}
+
 /// Runs `cargo audit` (through `program`, normally `cargo`) in `root` with the
-/// governed exceptions. An unavailable tool is `NOT CHECKED`; a run that
-/// exits non-zero, including one that reports advisories, is `ERROR`.
+/// governed exceptions, on the lockfile [`audit_lockfile`] finds. An
+/// unavailable tool is `NOT CHECKED`; a run that exits non-zero, including
+/// one that reports advisories, is `ERROR`.
 pub(super) fn cargo_audit_status(
     program: &std::ffi::OsStr,
     root: &Path,
@@ -146,11 +176,15 @@ pub(super) fn cargo_audit_status(
     if !available {
         return EvidenceStatus::NotChecked("cargo-audit is unavailable");
     }
-    match Command::new(program)
+    let mut audit = Command::new(program);
+    audit
         .args(cargo_audit_arguments(audit_ignores))
-        .current_dir(root)
-        .output()
-    {
+        .current_dir(root);
+    // A workspace member has no `Cargo.lock` of its own.
+    if let Some(lockfile) = audit_lockfile(program, root) {
+        audit.arg("--file").arg(lockfile);
+    }
+    match audit.output() {
         Ok(out) if out.status.success() && audit_ignores.is_empty() => EvidenceStatus::NoFindings,
         Ok(out) if out.status.success() => {
             EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
@@ -255,6 +289,57 @@ mod tests {
             scan_each(&roots, crate::generators::audit::scan_idor_vulnerabilities);
         assert_eq!(count, 1, "{warnings:?}");
         assert!(warnings[0].contains("crates/http/src/lib.rs"));
+    }
+
+    #[test]
+    fn a_workspace_member_audits_the_workspace_lockfile() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path().canonicalize().unwrap();
+        write(
+            &root.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"blog\"]\nresolver = \"3\"\n",
+        );
+        write(
+            &root.join("blog/Cargo.toml"),
+            "[package]\nname = \"blog\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+        );
+        write(&root.join("blog/src/main.rs"), "fn main() {}\n");
+        write(&root.join("Cargo.lock"), "version = 4\n");
+
+        let cargo = std::ffi::OsStr::new("cargo");
+        // Compare canonical paths: on Windows `root` carries the `\\?\` prefix
+        // and `cargo metadata` reports the plain path.
+        let lockfile =
+            |dir: &Path| audit_lockfile(cargo, dir).map(|path| path.canonicalize().unwrap());
+        // The member has no `Cargo.lock`; `cargo audit` there used to fail.
+        assert_eq!(lockfile(&root.join("blog")), Some(root.join("Cargo.lock")));
+        assert_eq!(lockfile(&root), Some(root.join("Cargo.lock")));
+        let outside = tempfile::tempdir().unwrap();
+        assert_eq!(audit_lockfile(cargo, outside.path()), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cargo_audit_receives_the_workspace_lockfile() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        write(&root.join("Cargo.lock"), "version = 4\n");
+        let member = root.join("blog");
+        fs::create_dir_all(&member).unwrap();
+        let lockfile = root.join("Cargo.lock");
+        // Succeeds only when `--file <workspace>/Cargo.lock` is passed.
+        let script = format!(
+            "#!/bin/sh\nif [ \"$1\" = metadata ]; then printf '{{\"workspace_root\":\"%s\"}}' '{root}'; exit 0; fi\nif [ \"$2\" = --version ]; then exit 0; fi\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --file ] && [ \"$argument\" = '{lock}' ]; then exit 0; fi\n  previous=$argument\ndone\necho 'error: Cargo.lock not found' >&2\nexit 1\n",
+            root = root.display(),
+            lock = lockfile.display(),
+        );
+        let cargo = project.path().join("fake-cargo");
+        fs::write(&cargo, script).unwrap();
+        fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755)).unwrap();
+
+        let status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
+        assert_eq!(status, EvidenceStatus::NoFindings);
     }
 
     #[test]

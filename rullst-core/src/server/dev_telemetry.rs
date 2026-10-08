@@ -10,19 +10,25 @@
 //!
 //! The payload holds counters and bounded recent lists: request method, path
 //! without query string, status and duration; ORM operation labels and
-//! durations; a configured queue's pending count. Request and response bodies,
+//! durations; ORM operation fingerprints (static labels) that one request
+//! repeated at least [`crate::query_patterns::N_PLUS_ONE_THRESHOLD`] times,
+//! with the request's matched route; a configured queue's pending count.
+//! Request and response bodies,
 //! headers, cookies, query strings, SQL text, bindings and error messages are
 //! never recorded. Requests are recorded by [`record_responses`], the
 //! outermost layer, so a panic answered by the development console and the
 //! responses of the security, lifecycle and traffic layers are counted too.
 
+#[cfg(test)]
+mod n_plus_one_tests;
 mod orm_layer;
 mod recorder;
+mod request_scope;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use orm_layer::{debug_layer, mark_installed};
-use recorder::record_request;
+use recorder::{record_repeated, record_request};
 
 use crate::queue::Queue;
 use axum::{
@@ -98,14 +104,23 @@ pub(super) fn record_responses(router: Router, static_mounted: bool) -> Router {
 async fn record(request: Request, next: Next, static_mounted: bool) -> Response {
     let method = request.method().clone();
     let path = request.uri().path().to_string();
+    let route = request
+        .extensions()
+        .get::<axum::extract::MatchedPath>()
+        .map(|route| route.as_str().to_string());
     let started = std::time::Instant::now();
-    let response = next.run(request).await;
+    let (response, operations) = request_scope::observe(next.run(request)).await;
     if is_recorded(&path, static_mounted) {
         record_request(
             method.as_str(),
             &path,
             response.status().as_u16(),
             started.elapsed(),
+        );
+        record_repeated(
+            method.as_str(),
+            route.as_deref().unwrap_or(&path),
+            &operations,
         );
     }
     response

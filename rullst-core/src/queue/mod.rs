@@ -35,6 +35,7 @@ pub mod sqlite;
 pub mod worker;
 
 mod bounds;
+mod deferral;
 mod error;
 mod preview;
 #[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
@@ -55,6 +56,11 @@ mod tests;
 #[cfg(test)]
 mod worker_tests;
 
+pub use deferral::{
+    CarbonAwarePlanner, CarbonIntensitySource, DEFAULT_SOURCE_TIMEOUT, Deferral, DeferralError,
+    DeferralPlan, DeferralReason, DeferredJob, FixedIntensitySource, IntensityForecast,
+    IntensitySlot, IntensitySourceError, MAX_DEFERRAL_WINDOWS, ScheduleDeferral, TimeWindow,
+};
 pub use error::QueueError;
 pub use preview::QueuedJobPreview;
 #[cfg(feature = "queue-redis")]

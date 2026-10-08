@@ -66,6 +66,13 @@ pub(crate) fn hints(name: &str, matches: &ArgMatches) -> Vec<Hint> {
                 "serve the model over HTTP",
             ),
         ],
+        "add" if flag(matches, "dry_run") => Vec::new(),
+        "add" => value(matches, "capability")
+            .map(|name| crate::generators::add::hints(&name))
+            .unwrap_or_default()
+            .iter()
+            .map(|(command, purpose)| hint(*command, purpose))
+            .collect(),
         "make:resource" => vec![
             hint(MIGRATE, "create the resource table"),
             hint("cargo rullst inspect routes", "list the routes to register"),

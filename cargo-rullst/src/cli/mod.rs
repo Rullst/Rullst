@@ -17,6 +17,8 @@ pub(crate) mod runtime;
 pub(crate) mod suggest;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tutorial_tests;
 
 pub use choices::{BlueprintChoice, DatabaseChoice, OmniPlatformChoice};
 pub use commands::Commands;
