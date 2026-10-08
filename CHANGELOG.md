@@ -9,6 +9,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Core security baseline: fewer WAF false positives, inner header layers win
+
+- The Core WAF (`waf_middleware`, mounted by `Server` in staging and production)
+  now matches injection structure instead of SQL and shell keywords, so ordinary
+  text such as "Please select an option", "Delete my account" or "curl the API
+  with your token" is no longer rejected with 403. Quote breakouts, chained
+  statements, `union select`, SQL probe functions and shell metacharacters
+  before a command name are still refused, also across `/* */` comments, and
+  JSON bodies are inspected key by key after decoding.
+- `headers_middleware` now adds each security header only when the response
+  has none, and leaves every security header to an inner `SecureHeadersLayer`,
+  which marks its responses with the new `rullst::security::SecurityHeadersApplied`.
+  Explicit application values and `SecureHeadersConfig` omissions therefore win
+  over the baseline; `Cache-Control: no-store` and the shared CSP nonce are
+  unchanged.
+
 ### Maturity tiers and security layer guide
 
 - New [maturity page](docs/src/maturity.md): every crate is Core, Extension or
