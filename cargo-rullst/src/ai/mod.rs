@@ -25,7 +25,7 @@ mod coalesce;
 mod commands;
 mod connect;
 mod credentials;
-mod diff;
+pub(crate) mod diff;
 mod environment;
 mod input;
 mod masked;
@@ -36,7 +36,7 @@ mod prompt;
 mod protocol;
 mod provider;
 mod session;
-mod term;
+pub(crate) mod term;
 mod upgrade;
 mod usage;
 

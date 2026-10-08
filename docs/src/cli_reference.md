@@ -782,6 +782,47 @@ application routing; Cargo resolves the crate on the next build.
 An unknown action, or `add` without a package name, fails with a non-zero exit
 status.
 
+### `cargo rullst add`
+`cargo rullst add <capability> [--dry-run]` (v13) enables a facade capability
+in an existing project. Capabilities: `mail`, `auth`, `ai`, `nexus` and
+`studio`.
+
+It runs only at the root of a Rullst project (a `Cargo.toml` whose
+`[dependencies]` declare `rullst`), asks nothing and:
+
+1. enables the capability's `rullst` feature in `Cargo.toml`. The edit keeps
+   comments, formatting and the other features; a feature that already
+   implies it (for example `mailer` or `auth-sqlite`) counts as enabled;
+2. appends the capability's variables to `.env.example` under a
+   `# ── <Capability> (added by cargo rullst add …) ──` heading, creating the
+   file when it is missing. Values are placeholders, empty or `mock_*` (the
+   offline mocks of AGENTS.md 3.5), never real secrets; a variable that is
+   already assigned or commented out is not repeated. `.env` is changed only
+   when it lacks a variable the application needs to start in development,
+   and then receives the same mock value and is reported; none of the current
+   capabilities needs one, so `.env` stays as it is;
+3. prints the wiring code to paste and where it goes. Generated projects have
+   no marked insertion points, so `add` never edits application source;
+4. prints one to three next steps.
+
+| Capability | `rullst` feature | `.env.example` | Next steps |
+| :--- | :--- | :--- | :--- |
+| `mail` | `mail` | `MAIL_FROM`, `# MAIL_DRIVER`, `# RESEND_API_KEY` | `make:mail Welcome`, `dev` |
+| `auth` | `auth` | `APP_KEY` placeholder | `auth`, `make:mfa` |
+| `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `ai connect` |
+| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds) | `dev`, then `/nexus` |
+| `studio` | `studio` | none | `dev`, then `http://127.0.0.1:5555` |
+
+Running it again changes nothing and reports that the capability is already
+enabled. `--dry-run` prints the planned diff of every file and writes nothing.
+Outside a project it fails with the shared error report (exit status 1); an
+unknown capability is a usage error (exit status 2).
+
+```bash
+cargo rullst add mail --dry-run
+cargo rullst add mail
+```
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)

@@ -39,7 +39,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         if cli::runtime::run_extension(&matches)? {
             return Ok(());
         }
-        if let Some(assistant) = matches.subcommand_matches("ai") {
+        if let Some(add) = matches.subcommand_matches("add") {
+            generators::add::run(add)?;
+        } else if let Some(assistant) = matches.subcommand_matches("ai") {
             ai::run(assistant)?;
         } else if let Some(doctor) = matches.subcommand_matches("deploy:doctor") {
             generators::deploy_doctor::run(doctor)?;
@@ -84,6 +86,7 @@ pub(crate) fn command() -> clap::Command {
     // Commands enum, which downstream Rust callers may exhaustively match.
     let command = <cli::Cli as clap::CommandFactory>::command()
         .subcommand(update::command())
+        .subcommand(generators::add::command())
         .subcommand(generators::age_gate::command())
         .subcommand(generators::privacy::command())
         .subcommand(generators::api_contract::command())
