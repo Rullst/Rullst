@@ -233,10 +233,17 @@ The choices that materially change the generated application:
     shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
-    `.dockerignore` is kept unchanged. The runtime
-    image installs CA certificates, runs as UID/GID 10001, sets the production
-    bind address and copies local static/config assets when present. An explicit
-    SQLite selection uses the writable `/app/data` directory. Secrets are never
+    `.dockerignore` is kept unchanged. Since v13 the runtime
+    stage is `gcr.io/distroless/cc-debian12:nonroot` (glibc, libgcc, libstdc++,
+    CA certificates and tzdata; no shell or package manager). It runs as
+    UID/GID 10001 with `HOME=/app`, sets the production bind address and copies
+    local static/config assets when present. The builder stage prepares the
+    `/app` tree, so an explicit SQLite selection still uses the writable
+    `/app/data` directory. Without a shell the image has no `HEALTHCHECK`;
+    let the platform probe `/health` and `/ready` over HTTP. The migration job
+    runs the binary directly (`/app/<name> db:migrate`). The image size of this
+    template has not been measured yet; measure it with `docker image ls` in CI
+    or on a machine with Docker. Secrets are never
     embedded and no anonymous volume is declared. Run schema migrations as one
     deployment job before starting or rolling multiple replicas; the generated
     image deliberately does not race migrations from every application process.
@@ -272,6 +279,13 @@ When the generating Linux host has `mold` or `lld`, the project's
 the generating machine only: the generated `.gitignore` and `.dockerignore`
 exclude it, so CI runners, teammates and the container builder (which has
 neither linker) build with the toolchain default.
+
+Since v13 the generated `Cargo.toml` also has a `[profile.release]` with
+`lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`. Debug builds keep
+Cargo's defaults, and `panic` stays `unwind` so one panicking handler cannot
+stop the server. Release builds take longer and their backtraces lose symbol
+names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
+state the size and build-time effect on one starter.
 
 Without `--skip-initial-migration`, project creation performs the first Cargo
 build before applying migrations. A clean first build can take several minutes,
@@ -1873,7 +1887,8 @@ protected CI remains authoritative.
 ### `cargo rullst doctor`
 Runs grouped health checks and shows each one as ✓ (pass), ! (warning),
 ✗ (failed) or · (information, optional or not applicable). Every warning and
-failure carries a one-line fix and a link to its group below. The command
+failure carries a fix (one line, or a short configuration snippet) and a link
+to its group below. The command
 exits with status `1` when any check failed; warnings do not fail it.
 `--fix` installs missing rustfmt/clippy components with
 `rustup component add rustfmt clippy`, then checks again. Outside a project
@@ -1891,6 +1906,26 @@ never printed.
 clippy (fixable with `--fix`), Git, the `wasm32-unknown-unknown` target when
 the project has `src/islands`, and one informational line for the optional
 tools (cargo-deny, cargo-geiger, cargo-mutants, Kani, cargo-llvm-cov, Docker).
+
+On Linux, `toolchain.linker` (v13) is a `!` hint, never a failure, when no
+fast linker is selected: no `-fuse-ld=mold`, `-fuse-ld=lld` (or
+`--ld-path=` naming one of them) and no `linker` entry in `[build]`, the host's
+`[target.<triple>]` or a `[target.'cfg(..)']` table of any `.cargo/config.toml`
+(or legacy `.cargo/config`) from the working directory up, or of
+`$CARGO_HOME/config.toml` (`~/.cargo` by default), and none in `RUSTFLAGS`,
+`CARGO_ENCODED_RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS` or the host's
+`CARGO_TARGET_<TRIPLE>_RUSTFLAGS`/`_LINKER`. It says whether `mold` or `ld.lld`
+is on `PATH` and shows the snippet to add, for example:
+
+```toml
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+```
+
+If the file already has that table, add the two flags to its `rustflags`
+instead of repeating the table. The check is skipped on other operating systems
+and on x86_64-unknown-linux-gnu with Rust 1.90 or newer, where rustc already
+links with its bundled LLD by default.
 
 #### Doctor: project
 The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its

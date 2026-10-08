@@ -75,6 +75,24 @@ A prepared version section does not establish that its tag or crates exist.
 - New external audit kit (`docs/src/external-audit-kit.md`) for third-party reviewers;
   the blog showcase labels its two placeholder-only inputs.
 
+### Green defaults: static caching, release profile, smaller runtime image
+
+- The standard `/static` mount now sets its own `Cache-Control`: content-hashed
+  file names (`app.3f9a2c1b.css`) get `public, max-age=31536000, immutable`,
+  other static files get `no-cache` with `ETag`/`Last-Modified` revalidation
+  (`304`), and errors and dynamic responses keep `no-store`.
+- `cargo rullst new` writes `[profile.release]` with `lto = "thin"`,
+  `codegen-units = 1` and `strip = "symbols"` (`panic` stays `unwind`). On the
+  Blank starter (Rust 1.98.1, two cold builds per profile, 2 build jobs) the
+  release binary went from 13,966,600 to 7,776,880 bytes and the build from
+  6:17 to about 5:19; see "Measured release defaults" in the green roadmap.
+- Generated Dockerfiles use a `gcr.io/distroless/cc-debian12:nonroot` runtime
+  stage (no shell; still UID/GID 10001 and a writable `/app/data`). Existing
+  Dockerfiles are not replaced; image size is not yet measured.
+- `cargo rullst doctor` adds a `toolchain.linker` warning on Linux targets
+  without a fast linker configured (x86_64 already links with rustc's LLD),
+  with the `.cargo/config.toml` snippet.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
