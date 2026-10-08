@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791489745055,
+  "lastUpdate": 1791491332092,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11280,6 +11280,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f9fda7edc692647c8408add5881fa7701f7f4b7",
+          "message": "Merge pull request #444 from Rullst/docs/v13-alpha1-prep\n\ndocs: prepare the 13.0.0-alpha.1 notes, tutorial and README image",
+          "timestamp": "2026-10-08T17:07:12-03:00",
+          "tree_id": "cb56ff942c2543bf1948d13b3d3b096f4d86eced",
+          "url": "https://github.com/Rullst/Rullst/commit/9f9fda7edc692647c8408add5881fa7701f7f4b7"
+        },
+        "date": 1791491330769,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 4,
             "range": "± 0",
             "unit": "ns/iter"
           }
