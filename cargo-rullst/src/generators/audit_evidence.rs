@@ -1,5 +1,52 @@
+use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+
+/// The lockfile `cargo audit` must read for `root`: its own `Cargo.lock`, or
+/// for a workspace member the one in the workspace root that `cargo metadata`
+/// (through `program`) reports. `None` leaves the choice to `cargo audit`.
+pub(crate) fn audit_lockfile(program: &OsStr, root: &Path) -> Option<PathBuf> {
+    #[derive(serde::Deserialize)]
+    struct Workspace {
+        workspace_root: PathBuf,
+    }
+
+    let local = root.join("Cargo.lock");
+    if local.is_file() {
+        return Some(local);
+    }
+    let output = Command::new(program)
+        .args([
+            "metadata",
+            "--no-deps",
+            "--offline",
+            "--format-version",
+            "1",
+        ])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())?;
+    let workspace = serde_json::from_slice::<Workspace>(&output.stdout).ok()?;
+    Some(workspace.workspace_root.join("Cargo.lock")).filter(|lockfile| lockfile.is_file())
+}
+
+/// Runs `cargo audit` (through `program`) in `root` with `arguments`, on the
+/// lockfile [`audit_lockfile`] finds.
+pub(crate) fn run_cargo_audit(
+    program: &OsStr,
+    root: &Path,
+    arguments: &[String],
+) -> std::io::Result<Output> {
+    let mut audit = Command::new(program);
+    audit.args(arguments).current_dir(root);
+    // A workspace member has no `Cargo.lock` of its own.
+    if let Some(lockfile) = audit_lockfile(program, root) {
+        audit.arg("--file").arg(lockfile);
+    }
+    audit.output()
+}
 
 /// Generates a CycloneDX 1.5 SBOM from the packages recorded in Cargo.lock.
 pub fn generate_cyclonedx_sbom(
@@ -221,6 +268,66 @@ fn inspect_system_listeners(warnings: &mut Vec<String>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn write(path: &Path, contents: &str) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("parent directory");
+        }
+        fs::write(path, contents).expect("fixture file");
+    }
+
+    #[test]
+    fn a_workspace_member_audits_the_workspace_lockfile() {
+        let project = tempfile::tempdir().expect("temporary project");
+        let root = project.path().canonicalize().expect("canonical root");
+        write(
+            &root.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"blog\"]\nresolver = \"3\"\n",
+        );
+        write(
+            &root.join("blog/Cargo.toml"),
+            "[package]\nname = \"blog\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+        );
+        write(&root.join("blog/src/main.rs"), "fn main() {}\n");
+        write(&root.join("Cargo.lock"), "version = 4\n");
+
+        let cargo = OsStr::new("cargo");
+        // Compare canonical paths: on Windows `root` carries the `\\?\` prefix
+        // and `cargo metadata` reports the plain path.
+        let lockfile = |dir: &Path| {
+            audit_lockfile(cargo, dir).map(|path| path.canonicalize().expect("lockfile exists"))
+        };
+        // The member has no `Cargo.lock`; `cargo audit` there used to fail.
+        assert_eq!(lockfile(&root.join("blog")), Some(root.join("Cargo.lock")));
+        assert_eq!(lockfile(&root), Some(root.join("Cargo.lock")));
+        let outside = tempfile::tempdir().expect("temporary directory");
+        assert_eq!(audit_lockfile(cargo, outside.path()), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cargo_audit_receives_the_workspace_lockfile() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let project = tempfile::tempdir().expect("temporary project");
+        let root = project.path();
+        write(&root.join("Cargo.lock"), "version = 4\n");
+        let member = root.join("blog");
+        fs::create_dir_all(&member).expect("member directory");
+        let lockfile = root.join("Cargo.lock");
+        // Succeeds only when `--file <workspace>/Cargo.lock` is passed.
+        let script = format!(
+            "#!/bin/sh\nif [ \"$1\" = metadata ]; then printf '{{\"workspace_root\":\"%s\"}}' '{root}'; exit 0; fi\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --file ] && [ \"$argument\" = '{lock}' ]; then exit 0; fi\n  previous=$argument\ndone\necho 'error: Cargo.lock not found' >&2\nexit 1\n",
+            root = root.display(),
+            lock = lockfile.display(),
+        );
+        let cargo = project.path().join("fake-cargo");
+        fs::write(&cargo, script).expect("fake cargo");
+        fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755)).expect("executable");
+
+        let output = run_cargo_audit(cargo.as_os_str(), &member, &["audit".to_string()])
+            .expect("fake cargo runs");
+        assert!(output.status.success());
+    }
 
     #[test]
     fn generated_sbom_has_parseable_cyclonedx_identity_and_components() {

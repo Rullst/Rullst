@@ -1,6 +1,6 @@
 [package]
 name = "rullst-capital"
-version = "12.2.0"
+version = "12.3.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
@@ -74,4 +74,6 @@ name = "nfse_v101_preview"
 required-features = ["nfse"]
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+# `pkcs1` is never imported: the `nfse` feature pins it so fresh resolutions
+# keep the `sad-rsa`-compatible rc.4 (see the dependency comment above).
+ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth", "pkcs1"]

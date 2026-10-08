@@ -1,4 +1,4 @@
-# Migrating within 12.x: 12.0 to 12.1 and 12.2
+# Migrating within 12.x: 12.0 to 12.1, 12.2 and 12.3
 
 Version [12.1.1 is published](v12.md#1211-published-maintenance-release).
 Updating dependencies or the CLI does not rewrite generated application files, migrate
@@ -218,3 +218,66 @@ Existing applications may notice the following behaviour changes:
 | IoT | Committing an OTA update no longer changes `OtaManager::current_partition`. Constructors still assume `PartitionA`, so platform code must set `current_partition` to the bank its bootloader started before verifying an update. |
 | Nexus | Basic Auth counts only presented credentials that fail, per IPv4 address or IPv6 /64, and sets the `rullst_nexus_known_client` cookie after a success. Panel assets are served same-origin from `/nexus/assets/` without inline scripts, styles or handlers, so the default production CSP applies unchanged. Password fields are masked and an empty submission keeps the stored value. The edit form submits only changed fields; an emptied number, relation, date, date-time, enum or JSON field is stored as NULL. |
 | Studio | Responses use `Referrer-Policy: same-origin`, and `Origin: null` is accepted only with `Sec-Fetch-Site: same-origin`. A table whose key has a column outside the identifier boundary is read-only, and each row write commits only when exactly one row changed. Under the default `sqlx::Any` build, PostgreSQL table, search, row-action and ER queries work. Without an existing pool, Studio reads only the process `DATABASE_URL` or the parsed `[database].url` and never creates `db.sqlite`. |
+
+## Upgrading to 12.3
+
+12.3.0 keeps the 12.x API and the Rust 1.96 MSRV; the repository toolchain
+moves to Rust 1.99.0. No stored data changes, and updating dependencies does
+not rewrite generated files. It deprecates the APIs that 13.0 removes: code
+that names them builds and behaves as before but compiles with `deprecated`
+warnings, which a build that denies warnings turns into errors; see
+[deprecation warnings](#deprecation-warnings-and-denied-warnings) below. The
+[12.3.0 release review](v12-3-0-review.md) records the verification
+requirements and a 12.2.0 to 12.3.0 upgrade rehearsal. Existing applications
+may notice the following changes:
+
+| Area | Change |
+|---|---|
+| Deprecations | `rullst-capital` marks the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase Commerce, PicPay and Wise adapters, the payout contracts (`PayoutProvider`, `PayoutStatus`, `PayoutEvent`, `init_payout_provider`, `payout_provider`), the Lemon Squeezy usage types, the NFS-e `fiscal` module, `Invoice::to_dps` and `CapitalError::FiscalError` with `#[deprecated(since = "12.3.0")]`; `rullst-mail` marks `SendGridDriver`, `PostmarkDriver`, `MailjetDriver`, `MailtrapDriver` and the Azure Communication Services transport. Behaviour, signatures and defaults are unchanged. The `Mail` facade logs one warning per process when `MAIL_DRIVER` or `[mail] driver` selects one of those transports. `make:billing` and `make:mail-invoice` print a notice. |
+| Capital `nfse` | The `nfse` feature (and the facade `capital-nfse`) pins `pkcs1 = "=0.8.0-rc.4"`. `pkcs1` 0.8.0-rc.5 breaks `sad-rsa` 0.10.2, which `xml-sec` uses, so a project resolving `nfse` without a lockfile failed to compile; it compiles again. A lockfile that already holds rc.4 is unaffected; one holding rc.5 moves to rc.4 when it updates to 12.3.0. Without `nfse` nothing changes. The feature is deprecated in documentation and removed in 13.0. |
+| Core WAF | `waf_middleware`, which `Server` mounts in staging and production, refuses injection structure instead of SQL and shell keywords. Ordinary text such as "Please select an option", "Delete my account" or "curl the API with your token" in a query, `Referer`, cookie or body is no longer rejected with 403. A quote followed by `or`/`and` and a comparison or by a SQL comment, a `;` followed by a SQL statement, `union [all] select`, SQL probe functions (`sleep(`, `waitfor delay`, `information_schema`…) and a shell metacharacter (`;`, `\|`, `&&`, a backtick, `$(`) followed by a command name are still refused, also when `/* */` comments separate keywords; XSS and traversal signatures are unchanged. Each cookie pair is inspected on its own, and JSON bodies key by key and string by string after decoding, so a `<` escape no longer hides `<script`. The WAF remains a coarse baseline: keep parameterized SQL and shell-free process APIs. |
+| Security RASP | The `\| sh` signature needs a word boundary after `sh` and `; cat` a path-like argument (path, dotfile, `~`, `$`, option or glob), so "\| shopping" and "dogs; cat food" are no longer refused. |
+| CLI audit | In a workspace member without its own `Cargo.lock`, `cargo rullst audit` passes the workspace root's lockfile to `cargo audit --file` instead of failing, and `--sbom` reads the same lockfile. |
+| Toolchain | The repository's `rust-toolchain.toml` and its stable-pinned workflows use Rust 1.99.0. Every published crate still declares `rust-version = "1.96.0"` and CI keeps building it with 1.96.0, so applications keep their own toolchain. |
+| Generated Dockerfile | `cargo rullst new` writes a Dockerfile whose builder image is `rust:1.99.0-slim-bookworm`. Existing generated files are not rewritten. |
+
+### Deprecation warnings and denied warnings
+
+Each use of a deprecated item (an import, type, constructor, method or enum
+variant) produces a `use of deprecated ...` warning. A mail transport chosen
+only by configuration produces no compile warning, only the runtime log line.
+Applications generated by 12.3 allow the deprecated items their generated
+billing and fiscal-mail code uses. Code generated by 12.2 has no such allow:
+the SaaS starter and `make:billing` reference `LemonSqueezyProvider` in
+`src/controllers/billing_controller.rs`, and the
+[upgrade rehearsal](v12-3-0-review.md#upgrade-rehearsal-1220-to-1230) lists the
+exact warnings.
+
+A build that passes `-D warnings` (in `RUSTFLAGS` or to `cargo clippy`) or
+declares `#![deny(warnings)]` fails on those warnings. To keep it building:
+
+- Prefer a scoped allow on the code that uses the provider, as 12.3 generators
+  do. An inner `#[allow(deprecated)]` overrides `#![deny(warnings)]` and
+  `-D warnings` for that item only, so new deprecations elsewhere stay visible:
+
+  ```rust,ignore
+  // Lemon Squeezy is removed in 13.0; see the v13 migration guide.
+  #[allow(deprecated)]
+  use rullst::capital::LemonSqueezyProvider;
+
+  #[allow(deprecated)]
+  fn lemon_provider(api_key: String, secret: String) -> LemonSqueezyProvider {
+      LemonSqueezyProvider::new(api_key, secret)
+  }
+  ```
+
+- As a temporary measure, add `-A deprecated` after `-D warnings`, for example
+  `cargo clippy --all-targets -- -D warnings -A deprecated` or
+  `RUSTFLAGS="-D warnings -A deprecated"`. This hides every deprecation,
+  including later ones, so remove it once the code has moved.
+
+Then plan the move: the rows "Capital providers and NFS-e removed" and "Mail
+providers removed" of the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
+name the replacement for each item. The deprecated items keep working for the
+whole 12.x line.

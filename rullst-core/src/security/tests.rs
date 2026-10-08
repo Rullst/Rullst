@@ -156,19 +156,22 @@ async fn test_waf_middleware_blocks_malicious_query() {
         .route_layer(axum::middleware::from_fn(waf_middleware));
 
     // Use reqwest or tower::ServiceExt to call the app
-    let req = Request::builder()
-        .uri("/?q=select%20")
-        .body(axum::body::Body::empty())
-        .unwrap();
-    let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::FORBIDDEN);
-
-    let req2 = Request::builder()
-        .uri("/?q=hello")
-        .body(axum::body::Body::empty())
-        .unwrap();
-    let res2 = tower::ServiceExt::oneshot(app, req2).await.unwrap();
-    assert_eq!(res2.status(), StatusCode::OK);
+    for (uri, expected) in [
+        (
+            "/?q=1%20union%20select%20pw%20from%20users",
+            StatusCode::FORBIDDEN,
+        ),
+        ("/?q=hello", StatusCode::OK),
+        // A SQL keyword in ordinary text is not an injection.
+        ("/?q=select%20", StatusCode::OK),
+    ] {
+        let req = Request::builder()
+            .uri(uri)
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
+        assert_eq!(res.status(), expected, "{uri}");
+    }
 }
 
 #[tokio::test]

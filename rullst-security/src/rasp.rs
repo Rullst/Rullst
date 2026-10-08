@@ -42,9 +42,7 @@ static ATTACK_PATTERNS: &[&str] = &[
     "169.254.169.254",
     "metadata.google.internal",
     "127.0.0.1:2375",
-    // RCE & Shell Injection
-    "; cat ",
-    "| sh",
+    // RCE & Shell Injection (`| sh` and `; cat` are in `has_shell_command`)
     "; rm -rf",
     "powershell",
     "cmd.exe",
@@ -82,6 +80,60 @@ const fn fold_ascii_byte(byte: u8) -> u8 {
     } else {
         byte
     }
+}
+
+/// Start offsets of every ASCII-case-insensitive occurrence of `needle`.
+fn match_offsets<'a>(haystack: &'a [u8], needle: &'a [u8]) -> impl Iterator<Item = usize> + 'a {
+    haystack
+        .windows(needle.len().max(1))
+        .enumerate()
+        .filter(move |(_, window)| {
+            window
+                .iter()
+                .zip(needle)
+                .all(|(&h, &n)| fold_ascii_byte(h) == fold_ascii_byte(n))
+        })
+        .map(|(offset, _)| offset)
+}
+
+/// Piping into `sh` or chaining `cat` onto a file. The command name must end
+/// at a word boundary (`| shopping` passes), and `cat` must name a path-like
+/// argument (`dogs; cat food` passes, `; cat /etc/passwd` does not).
+fn has_shell_command(payload: &str) -> bool {
+    let bytes = payload.as_bytes();
+    let pipes_to_sh = match_offsets(bytes, b"| sh").any(|offset| {
+        bytes
+            .get(offset + 4)
+            .is_none_or(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_')
+    });
+    pipes_to_sh || match_offsets(bytes, b"; cat ").any(|offset| reads_a_path(&bytes[offset + 6..]))
+}
+
+/// Whether the first word of `rest` names a file the way an injected command
+/// does: a path, a dotfile, a home or variable expansion, an option or a glob.
+fn reads_a_path(rest: &[u8]) -> bool {
+    let start = rest
+        .iter()
+        .position(|byte| *byte != b' ')
+        .unwrap_or(rest.len());
+    let argument = &rest[start..];
+    let end = argument
+        .iter()
+        .position(u8::is_ascii_whitespace)
+        .unwrap_or(argument.len());
+    let argument = &argument[..end];
+    argument
+        .first()
+        .is_some_and(|first| b"/.~-$*'\"`<\\".contains(first))
+        || argument.contains(&b'/')
+}
+
+/// Whether `payload` contains a signature.
+fn has_attack_pattern(payload: &str) -> bool {
+    has_shell_command(payload)
+        || ATTACK_PATTERNS
+            .iter()
+            .any(|pattern| contains_ignore_ascii_case(payload, pattern))
 }
 
 fn decode_percent_once(payload: &str) -> String {
@@ -183,18 +235,12 @@ pub struct RaspInspector;
 impl RaspInspector {
     /// Inspects text for known attack signatures, including one layer of URL encoding.
     pub fn inspect_text(payload: &str) -> bool {
-        if ATTACK_PATTERNS
-            .iter()
-            .any(|pattern| contains_ignore_ascii_case(payload, pattern))
-        {
+        if has_attack_pattern(payload) {
             return true;
         }
 
         let decoded = decode_percent_once(payload);
-        decoded != payload
-            && ATTACK_PATTERNS
-                .iter()
-                .any(|pattern| contains_ignore_ascii_case(&decoded, pattern))
+        decoded != payload && has_attack_pattern(&decoded)
     }
 
     /// Inspects an incoming request target URI and query string for attack patterns.
