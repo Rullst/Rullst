@@ -1,5 +1,27 @@
-//! Data Loss Prevention (DLP) Response Interceptor.
-//! Intercepts HTTP response streams to prevent accidental leaks of private keys, AWS credentials, and database secrets.
+//! Response secret masking ("DLP") for bounded textual responses.
+//!
+//! **Risk reduced:** an application accidentally returning a private key, an
+//! AWS access-key ID or a database URL password in an HTTP response, for
+//! example from a debug endpoint or an error page.
+//!
+//! **How:** linear-time pattern matching (a heuristic) over complete PEM
+//! private-key blocks (PKCS#8, RSA, EC, DSA, OpenSSH and OpenPGP), 20-character
+//! `AKIA` access-key IDs and the password in `postgres`, `postgresql`,
+//! `mysql`, `redis` and `rediss` URLs. [`DlpResponseLayer`] buffers only
+//! fixed-size, identity-encoded responses of at most 2 MiB whose media type
+//! is `text/*` (except `text/event-stream`), JSON, XML, YAML or
+//! `application/javascript`, and skips `HEAD`, `204` and `304`.
+//!
+//! **Known limits:** streamed, unknown-size, compressed, binary and larger
+//! responses pass through unchanged. Other secret formats (temporary `ASIA`
+//! keys, AWS secret keys, API tokens, JWTs, passwords outside a database URL)
+//! are not recognized, nor is a value split across separately requested
+//! ranges. A `206` range or `multipart/byteranges` body that would need
+//! masking is withheld with `502` instead of being rewritten.
+//!
+//! **Operator duties:** keep secrets out of responses in the first place,
+//! redact logs separately with [`crate::redact_secrets`], and test your
+//! JSON, HTML, streaming and range responses with the layer mounted.
 
 use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use axum::{

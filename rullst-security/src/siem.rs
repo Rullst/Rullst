@@ -1,3 +1,23 @@
+//! Local security-event formatting and spools for a SIEM pipeline.
+//!
+//! **Risk reduced:** losing or silently altering security events before an
+//! external SIEM collects them.
+//!
+//! **How:** [`format_cef_event`] serializes a normalized event in Common Event
+//! Format. [`DurableSiemSpool`] appends events to one bounded local file with
+//! SHA-256 framing (detects accidental damage, not forgery).
+//! [`AuthenticatedSiemSpool`] adds an HMAC-SHA256 chain with named rotation
+//! keys, which detects forged, reordered or removed interior frames.
+//!
+//! **Known limits:** nothing in this module sends events anywhere.
+//! [`dispatch_siem_alert`] only records a local in-memory event. Both spools
+//! are single-writer local files, and removing a complete valid tail is
+//! detected only against an external checkpoint.
+//!
+//! **Operator duties:** deliver, retry, acknowledge, rotate and retain the
+//! spool files; protect the HMAC keys separately from the logs; and keep an
+//! external checkpoint of the last sequence.
+
 use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use serde::{Deserialize, Serialize};
 

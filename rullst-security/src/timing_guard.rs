@@ -67,8 +67,8 @@ impl TimingScope {
         SecurityStore::global().inc_timing_guard_protected();
     }
 
-    /// Performs synthetic CPU hashing work (simulating Argon2 / Bcrypt CPU heat)
-    /// and then applies constant-time duration padding.
+    /// Runs [`synthetic_argon2_cpu_work`] when enabled, then pads to the
+    /// configured minimum duration like [`Self::finish`].
     pub async fn finish_with_synthetic_work(self) {
         if self.config.enable_synthetic_cpu_cycles {
             synthetic_argon2_cpu_work();
@@ -77,8 +77,13 @@ impl TimingScope {
     }
 }
 
-/// Executes a calibrated synthetic hashing loop so that early returns (e.g., user not found)
-/// produce identical CPU instruction cache footprints and CPU consumption as real user lookups.
+/// Runs 1,500 SHA-256 iterations so that an early return (for example, user
+/// not found) still spends some CPU time.
+///
+/// This does not reproduce the time, memory or cache profile of a real
+/// Argon2 or bcrypt verification, and it runs synchronously on the calling
+/// thread. To hide whether an account exists, verify the submitted password
+/// against a dummy hash with the same password hasher instead.
 pub fn synthetic_argon2_cpu_work() {
     use sha2::{Digest, Sha256};
     let mut state = [0x5au8; 32];
@@ -92,7 +97,8 @@ pub fn synthetic_argon2_cpu_work() {
     std::hint::black_box(state);
 }
 
-/// Async helper wrapping any closure with constant-time execution padding.
+/// Runs `action` and pads its completion to the configured minimum duration
+/// plus random jitter. Slower executions are not padded.
 pub async fn equalize_response_time<F, Fut, T>(config: TimingGuardConfig, action: F) -> T
 where
     F: FnOnce() -> Fut,
@@ -104,8 +110,12 @@ where
     result
 }
 
-/// Axum middleware layer enforcing constant-time response normalization
-/// on sensitive routes (e.g. `/login`, `/register`, `/forgot-password`, `/auth/*`).
+/// Axum middleware that pads every response it wraps to at least 250 ms plus
+/// up to 20 ms of jitter (the default [`TimingGuardConfig`]).
+///
+/// Mount it on sensitive routes such as login, registration and password
+/// reset. Responses slower than the target are not padded, so a slow code path
+/// can still be distinguished; this reduces coarse timing differences only.
 pub async fn timing_guard_middleware(req: Request, next: Next) -> Response {
     let scope = TimingScope::start(TimingGuardConfig::default());
     let response = next.run(req).await;

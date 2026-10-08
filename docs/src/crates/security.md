@@ -24,6 +24,12 @@ production stack.
 | **Local SIEM Journals** | 🟢 `[Implemented: bounded local]` | `DurableSiemSpool` preserves synchronized unsigned SHA-256 frames. The opt-in `AuthenticatedSiemSpool` adds HMAC-SHA256 sequence/predecessor integrity, one active plus seven historical zeroized keys, byte/record quotas and fail-closed restart/forgery/ordering/external-change behavior. Whole-tail checkpoints, multi-writer coordination, retention, delivery, retry, acknowledgement and external adapters remain operator work. |
 | **TOTP Multi-Factor Auth** | 🟢 `[Implemented: foundation]` | Six-digit SHA-1 TOTP generation/verification with a ±1 time-step window, percent-encoded `otpauth` URI builder, and subject-bound single-use recovery-code verifiers. Enrollment, transactional persistence, rate limits, and account policy remain application concerns. |
 | **CSWSH Guard** | 🟢 `[Implemented]` | Exact normalized scheme/host/port validation for WebSocket origins, with a fail-closed default for missing origins. Without an allowlist, the Origin must match the `Host` (or HTTP/2 `:authority`) and, when known from a trusted proxy or HTTP/2 `:scheme`, the request scheme. |
+| **HTML Sanitizer** | 🟢 `[Implemented: allowlist]` | `ammonia`'s default allowlist for user-supplied HTML; `sanitize_text` escapes for HTML text and quoted attributes only. Allowed links and images can still reference external sites. |
+| **JSON Schema Guard** | 🟢 `[Implemented: bounded]` | Rejects malformed, duplicate-key, over-2 MiB and over-32-level JSON; a route-scoped JSON Schema 2020-12 policy checks shape, not business rules. The global guard passes non-JSON media types through. |
+| **Honeypot and Decoy Routes** | 🟢 `[Implemented: local]` | Exact trap paths are refused; `HoneypotLayer` bans the direct peer's exact IP for 15 minutes by default, `deception_trap_middleware` only records. Bans are per process and avoided by address rotation. |
+| **LLM Prompt Filter** | 🟡 `[Implemented: heuristic]` | Fixed English phrase, chat-token, Markdown-beacon and invisible-character checks on `prompt`/`content`/`message` JSON fields. Rephrased, translated or encoded instructions and indirect injection pass; legitimate text can be refused. |
+| **Session Fingerprint (`zero_trust`)** | 🟡 `[Implemented: helper]` | HMAC of `User-Agent`, `Accept-Language` and the client /24 or /64. All inputs are client-controlled or shared; expect false mismatches after browser or network changes. Not a zero-trust architecture. |
+| **Timing Guard** | 🟡 `[Implemented: coarse]` | Pads responses to a minimum duration with jitter. Slower paths are not padded and the synthetic CPU work does not match a real password hash. |
 | **Canonical Server security stack** | 🟡 `[Partial]` | CSP nonce identity is shared across Core and extended layers, but Core still owns the default Server CSRF/WAF/header/PII stack. Explicit composition is required. |
 | **Distributed Rate Limiting Evidence** | 🟡 `[Partial]` | The Redis adapter is implemented, and the two-process [deployment acceptance](../deployment-acceptance.md) behind a Caddy proxy shares one Redis budget; eviction, failover and trusted-proxy deployment evidence remain required. The legacy no-argument `RateLimiter::try_with_distributed` still returns `DistributedBackendUnsupported` rather than guessing configuration. |
 
@@ -85,6 +91,14 @@ assert!(is_traversal);
 Mount `RaspSecurityLayer` explicitly when the extended inspector is desired.
 The default `rullst-core::Server` currently mounts the smaller Core WAF rather
 than this layer; consolidation remains roadmap work.
+
+The inspector matches case-insensitive signatures, raw and after one
+percent-decoding pass, in the request target, every header except `Cookie`
+and `Authorization`, and identity-encoded textual bodies up to 1 MiB. It does
+not inspect multipart or binary bodies, does not undo double encoding, HTML
+entities or SQL comments, and refuses ordinary text that contains a signature
+(`../`, `sleep(`, `/bin/sh`). It reduces exposure to known payloads; it is not
+an injection defense on its own.
 
 ---
 

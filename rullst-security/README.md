@@ -2,27 +2,36 @@
 
 `rullst-security` is the dedicated security suite for the **Rullst Framework**. It uses bounded in-memory state, established cryptographic primitives, and defense-in-depth middleware. Its WAF/RASP rules are heuristic controls and must be combined with secure application design, authentication, authorization, TLS, monitoring, and timely dependency updates.
 
+Every control here is opt-in: `rullst-core`'s `Server` already mounts the
+runtime baseline (headers, CORS, a small WAF and CSRF) in staging and
+production, and nothing in this crate protects traffic until you mount the
+layer or call the helper. Read
+[which security layer to use, and when](https://rullst.github.io/Rullst/book/security-layers.html)
+before combining the two. Each module's rustdoc states the risk it reduces,
+how, its known limits and what you must still do.
+
 ---
 
 ## 🌟 Modules & Features
 
 ### 🍯 1. Rullst Honey (`rullst_security::honey`)
-*Deception Security & Botnet Mitigation Engine*
-- **Synthetic Honeypot Traps:** Intercepts reconnaissance bots attempting to scan paths like `/.env`, `/admin.php`, `/wp-login.php`, `/.git/config`.
+*Trap-path detection and local peer bans*
+- **Synthetic Honeypot Traps:** Refuses requests for exact trap paths that scanners probe, such as `/.env`, `/admin.php`, `/wp-login.php` and `/.git/config`. Scanners that never request a trap path are not detected.
 - **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit. A request checks only its own peer; expired bans are pruned in expiry order when bans are added or counted, and a full list evicts the ban that expires soonest.
 - **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
+- **Local, per-address bans:** A ban covers one exact IP address in one process. Rotating addresses (an IPv6 prefix, a botnet) avoids it, other instances do not see it, and a shared NAT address can be banned by one scanner behind it.
 - **Lure-Resistant Bans:** Every trap hit is refused, but only a direct request bans its peer. A load that a page initiated (`Sec-Fetch-Site` of `same-origin`, `same-site` or `cross-site`, or `Origin`/`Referer` from a browser without fetch metadata) is recorded without a ban, so an `<img src="/.env">` on another site or in user content cannot ban visitors or a shared NAT address. These headers are client-controlled: a scanner can avoid the ban, not the refusal, by sending them.
 
 ### 🧹 2. Rullst Sanitizer (`rullst_security::sanitizer`)
-*XSS Prevention & Dynamic CSP Nonces*
-- **Allowlisted HTML Sanitization:** Uses `ammonia` to strip scripts, inline event handlers, unsafe attributes, and unsupported SVG/HTML instead of trying to make arbitrary markup safe.
+*XSS risk reduction for user-supplied HTML, and CSP nonces*
+- **Allowlisted HTML Sanitization:** Uses `ammonia`'s default allowlist to strip scripts, inline event handlers, unsafe attributes, and unsupported SVG/HTML instead of trying to make arbitrary markup safe. Allowed links and images can still point to external sites, and `sanitize_text` escaping is correct only for HTML text and quoted attributes.
 - **Dynamic Content Security Policy (CSP):** Generates cryptographically secure base64 nonces (`nonce-<random>`) per HTTP request.
 - **Clickjacking & Security Headers:** Enforces `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and strict `Referrer-Policy`.
 
 ### 🛡️ 3. Rullst RBAC Guard (`rullst_security::rbac`)
 *Role-Based Access Control & BOLA/IDOR Defense*
 - **Declarative Authorization:** Inspects `UserContext` roles and fine-grained capabilities (`RbacGuard::authorize`).
-- **BOLA / IDOR Prevention:** Provides `RbacGuard::authorize_owner_or_role` to enforce resource ownership boundaries dynamically.
+- **BOLA / IDOR checks:** `RbacGuard::authorize_owner_or_role` compares the resource owner with the authenticated subject. It protects only the handlers that call it, with an owner taken from your database rather than from the request.
 
 ### 📜 4. Rullst Audit Log (`rullst_security::audit`)
 *HMAC-SHA256 Tamper-Evident Trail*
@@ -123,6 +132,30 @@
 - **SRI:** Generate escaped SHA-384 tags from bytes or bounded local JS/CSS
   files with `sri_script_tag_from_file` and `sri_link_tag_from_file`.
 
+### 🧱 Request inspection (RASP) and prompt heuristics
+
+- **RASP:** `RaspSecurityLayer` refuses requests whose target, non-credential
+  headers or bounded textual body (at most 1 MiB, identity-encoded) contain
+  SQL injection, traversal, SSRF, shell or JNDI signatures, checked raw and
+  after one percent-decoding pass. Cookies, `Authorization`, multipart and
+  binary bodies are not inspected; double encoding and alternative syntax
+  bypass it, and free text containing a signature is refused. `Server`
+  already runs the overlapping Core WAF in staging and production.
+- **LLM prompt filter:** `LlmFirewall` and `ai_firewall_middleware` match a
+  fixed list of English override phrases, prompt-leak requests, chat-template
+  tokens, Markdown image beacons and invisible characters. Rephrased,
+  translated or encoded instructions and indirect injection through retrieved
+  content pass; treat model output as untrusted regardless.
+- **Session fingerprint (`zero_trust`):** an HMAC of `User-Agent`,
+  `Accept-Language` and the client's /24 or /64. All three are
+  client-controlled or shared, so a copying attacker on the same network
+  passes and real users can fail after a browser or network change. The
+  module name is historical; it is not a zero-trust architecture.
+- **Timing guard:** pads responses to a minimum duration with jitter. Slower
+  paths are not padded, and the synthetic CPU work does not match a real
+  password hash; verify against a dummy hash to hide whether an account
+  exists.
+
 ### 🧩 8. Deterministic Threat Sentinel
 
 - **Explainable assessment:** Classifies caller-supplied aggregate windows
@@ -136,6 +169,9 @@
 - **One-shot verification:** Exactly one concurrent verifier consumes an active
   challenge in the current process. Distributed replay state and traffic
   identity remain application/deployment responsibilities.
+- **Limits:** the classifier sees only the counts you supply, and proof of
+  work slows automation without stopping an attacker with spare compute. Offer
+  an accessible alternative for low-power devices.
 
 ### 💾 9. Durable Local SIEM Spool
 
