@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791446067272,
+  "lastUpdate": 1791453202367,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11070,6 +11070,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a772bc89a231cd922397e305389d2ac02ad3ad14",
+          "message": "Merge pull request #426 from Rullst/feat/v13-audit-report\n\nfeat(cli): audit --report with an ASVS 5.0 Level 1 evidence report",
+          "timestamp": "2026-10-08T05:56:17-03:00",
+          "tree_id": "e6176cd1fea30ddb484b8a9b109b6c581883d3dd",
+          "url": "https://github.com/Rullst/Rullst/commit/a772bc89a231cd922397e305389d2ac02ad3ad14"
+        },
+        "date": 1791453201798,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
