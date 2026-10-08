@@ -1,4 +1,23 @@
 //! Deterministic anomaly assessment and an opt-in one-shot proof-of-work gate.
+//!
+//! **Risk reduced:** credential stuffing, API scraping and distributed
+//! automation, by recognizing them in aggregate counts and making further
+//! requests cost client CPU time.
+//!
+//! **How:** [`ThreatClassifier`] compares one caller-supplied aggregate window
+//! against explicit thresholds (no machine learning and no attacker
+//! attribution). [`ProofOfWorkGate`] issues HMAC-authenticated, subject-bound,
+//! expiring challenges and consumes each one once in this process.
+//!
+//! **Known limits:** the result is only as good as the counts you collect; the
+//! module observes no traffic itself. Proof of work slows automation but does
+//! not stop an attacker with spare compute, and it burdens low-power devices.
+//! Challenge state is process-local, so replay protection does not span
+//! instances.
+//!
+//! **Operator duties:** derive the subject and counts from trusted state,
+//! offer an accessible alternative to the challenge, limit issuance, and call
+//! [`ThreatSentinel::verify`] before admitting the protected operation.
 
 mod classifier;
 mod pow;

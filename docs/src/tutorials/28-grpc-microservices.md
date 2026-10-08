@@ -4,6 +4,10 @@ Generate a Tonic/Protobuf starting point using `cargo rullst make:grpc`. The
 command does not start a gRPC server, edit `Cargo.toml`, create a `build.rs`, or
 define production transport/authentication policy for the application.
 
+> **Experimental.** `make:grpc` is an experimental CLI generator: its generated
+> files may change between 13.x releases. See the
+> [maturity tiers](../maturity.md#cli-generators).
+
 ---
 
 ## 🛠️ Step 1: Generate a gRPC Service

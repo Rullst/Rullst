@@ -1,3 +1,31 @@
+//! Signature-based request inspection ("RASP") for bounded HTTP input.
+//!
+//! **Risk reduced:** common SQL injection, path traversal, SSRF to cloud
+//! metadata hosts, shell execution and JNDI lookup payloads reaching a
+//! handler.
+//!
+//! **How:** case-insensitive substring signatures (a heuristic, not a parser)
+//! applied to the request target, every header except `Cookie` and
+//! `Authorization`, and identity-encoded UTF-8 bodies of at most 1 MiB with a
+//! `text/*`, JSON, XML or URL-encoded form media type. Each value is checked
+//! raw and after one percent-decoding pass; JSON keys and strings are also
+//! checked after JSON decoding. Matches return `403`; bodies with a
+//! non-identity `Content-Encoding` return `415`, oversized bodies `413` and
+//! invalid UTF-8 `400`.
+//!
+//! **Known limits:** `multipart/form-data` and binary bodies, cookies and
+//! credentials are not inspected. Double encoding, HTML entities, SQL
+//! comments between keywords, alternative syntax and payloads split across
+//! fields are not normalized, so they bypass the signatures. Ordinary text
+//! containing a signature (`../`, `sleep(`, `/bin/sh`) is refused, so expect
+//! false positives on free-text fields. Body inspection buffers the body.
+//!
+//! **Operator duties:** keep parameterized SQL, typed validation, URL
+//! allowlists for outgoing requests and shell-free process APIs. Put a request
+//! body limit outside this layer, test your own routes for false positives,
+//! and note that `Server` already runs the overlapping Core WAF in staging and
+//! production.
+
 use axum::{
     body::Body,
     http::{HeaderMap, HeaderValue, Request, Response, StatusCode, header},
@@ -202,6 +230,8 @@ fn forbidden_response(uri_bad: bool, headers_bad: bool, body_bad: bool) -> Respo
         .into_response()
 }
 
+/// Stateless signature checks used by [`RaspSecurityLayer`]; see the module
+/// documentation for coverage and limits.
 pub struct RaspInspector;
 
 impl RaspInspector {
@@ -250,7 +280,9 @@ impl RaspInspector {
     }
 }
 
-/// Tower Layer for RASP Runtime Application Self-Protection middleware.
+/// Tower layer that refuses requests matching the RASP signatures.
+///
+/// See the module documentation for what is inspected and what is not.
 #[derive(Clone, Default)]
 pub struct RaspSecurityLayer;
 

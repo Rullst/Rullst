@@ -65,6 +65,16 @@ packaged-distribution tests. Undocumented internals, exact dashboard HTML/CSS,
 test fixtures, deterministic mocks, and third-party provider behavior are not
 stable interfaces.
 
+### Maturity tiers (v13)
+
+From `13.0.0`, each package has a [maturity tier](maturity.md). Core and
+Extension packages are supported and follow the contract above for the whole
+13.x line. Experimental packages, experimental CLI generators and facade
+features that re-export an experimental crate are the exception: their public
+APIs, features, schemas and generated output may change between 13.x releases.
+Every such break is still listed in the changelog and migration guide. Security
+handling is the same for every tier.
+
 ## Minimum Supported Rust Version
 
 The v12 release line and the unpublished v13 source both declare **Rust 1.96.0**

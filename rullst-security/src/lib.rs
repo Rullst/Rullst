@@ -1,3 +1,33 @@
+//! Opt-in security layers and helpers for Rullst applications.
+//!
+//! `rullst-core` already mounts the runtime baseline (secure headers, CORS, a
+//! small WAF and CSRF) through `Server` in staging and production. This crate
+//! adds controls you choose explicitly; none of them protects traffic until you
+//! mount the layer or call the helper. Each module documents the risk it
+//! reduces, how (signature heuristics, allowlists or cryptography), its known
+//! limits and what the operator must still do.
+//!
+//! - Heuristic filters reduce known attack patterns but have false positives
+//!   and can be bypassed by encodings and inputs they do not inspect:
+//!   [`RaspSecurityLayer`], [`DlpResponseLayer`], [`LlmFirewall`],
+//!   [`redact_secrets`] and the `sentinel` classifier.
+//! - Allowlists and exact matching enforce a policy you configure:
+//!   [`HtmlSanitizer`], [`CswsPolicy`], [`JsonSchemaPolicy`], the honeypot and
+//!   deception trap paths, and [`RbacGuard`].
+//! - Cryptographic helpers rely on established primitives and on your key
+//!   management: [`FieldEncryptor`], [`AuditChain`], [`AuthenticatedSiemSpool`],
+//!   TOTP and recovery codes, SRI hashes and the `zero_trust` fingerprint.
+//! - Local abuse controls keep bounded in-process state: [`RateLimiter`],
+//!   [`LoginGuard`], [`HoneypotState`] and the proof-of-work gate. Use
+//!   `RedisRateLimiter` (feature `redis-rate-limit`) for a budget shared by
+//!   several instances.
+//!
+//! Nothing here replaces parameterized SQL, server-side authorization on every
+//! object, TLS, secret management or an independent security review. The
+//! guide at <https://rullst.github.io/Rullst/book/security-layers.html> compares
+//! these layers with the Core baseline and gives one recommended production
+//! stack.
+
 pub mod error;
 pub use error::*;
 

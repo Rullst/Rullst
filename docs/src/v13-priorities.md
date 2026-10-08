@@ -125,7 +125,7 @@ existing counts, not delivered APIs or additional top-level milestones.
 | M36 | Natural-language database copilot | Concrete operator demand and a read-only, bounded, explainable contract; production writes remain separate. |
 | M37 | AI autofix workflow | A confined local patch/review/test/rollback journey with demonstrated value over existing development tools. |
 | M38 | Generic local read replicas and background replication | A named database's supported semantics and recovery guarantees; no generic transparent-replication claim. |
-| M39 | Rullst's own gateway/load balancer | A measured limitation in an established proxy and resources to maintain a separate networking product. |
+| M39 | Rullst's own gateway/load balancer | Abandoned on 8 October 2026: generated Caddy/nginx configuration for established proxies replaces it. Revisiting it would need a new maintainer decision. |
 
 “Deferred” means lower expected return under the current product, budget and
 validation constraints, not that the idea is intrinsically bad. An explicit

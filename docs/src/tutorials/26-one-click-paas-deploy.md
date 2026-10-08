@@ -92,6 +92,10 @@ Linux servers. Its current provisioning commands require root or passwordless
 non-interactive `sudo`; it is not portable to every SSH host and does not
 support IPv6 SCP targets.
 
+> **Experimental.** `foundry:init` and `foundry:deploy` are experimental CLI
+> generators: their manifest, generated scripts and flags may change between
+> 13.x releases. See the [maturity tiers](../maturity.md#cli-generators).
+
 ### Step 1: Initialize `Foundry.toml`
 
 ```bash

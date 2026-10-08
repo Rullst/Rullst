@@ -9,6 +9,12 @@ It also provides bounded MQTT 5 PUBLISH (`MqttPublish`) and CoAP request
 or provide MQTT/CoAP network transport, OPC-UA, Sparkplug B, HSM, or
 post-quantum implementations.
 
+> **Experimental.** `rullst-iot` and the `make:iot` generator are in the
+> Experimental [maturity tier](../maturity.md): the API may change between 13.x
+> releases and nothing has been validated on physical hardware. The
+> [module status](../crates/iot.md#module-status) lists which modules are working
+> implementations and which are only data models or contracts.
+
 ## Build a telemetry model and Modbus request
 
 ```rust

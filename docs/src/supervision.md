@@ -4,7 +4,39 @@
 observation extension passed combined source/archive acceptance in PR #239. The
 package is included in the release inventory, pending initial registration and
 final release acceptance. It supplies no verified guardianship, device-wide
-control or legal-compliance certification.
+control or legal-compliance certification. Its
+[maturity tier](maturity.md) is **Experimental**.
+
+## Responsible use
+
+`rullst-supervision` is designed for **consented, transparent** supervision:
+online exams and assessments, and parental controls over a learning
+application. Read this section before you integrate it.
+
+- **The person supervised knows and agrees.** Collection starts only after the
+  learner acknowledges the exact policy and notice versions and the selected
+  collection categories. The session state stays visible, and the learner can
+  pause or end collection. Re-enabling a removed category needs a new session
+  and a new acknowledgement.
+- **Only typed observations.** The store accepts the selected categories as
+  typed events: page visibility, window focus, clipboard occurrences (never
+  contents), fullscreen changes, capture status and optional camera-presence or
+  audio-activity findings. Camera and audio findings come only from adapters
+  your application supplies, for sessions whose acknowledged collection
+  includes them. The crate captures no media itself and accepts no arbitrary
+  payloads.
+- **No covert mode.** There is no hidden or silent capture mode, and the project
+  will not add one. A request for covert collection is out of scope.
+- **Not for general surveillance.** The crate is not designed for security
+  cameras, CCTV, workplace monitoring or watching people who have not been
+  told. Observations are incomplete and forgeable; they never prove
+  misconduct, identity or attendance, and they must not trigger automatic
+  penalties.
+- **You are responsible for the law.** Operators must comply with the law where
+  they and the people supervised are, including data-protection and
+  children's-privacy rules. Take particular care with minors: confirm who may
+  consent for them and verify guardian relationships independently. The crate
+  provides no legal-compliance certification.
 
 ## Package and integration boundary
 

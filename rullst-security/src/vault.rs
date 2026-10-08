@@ -1,4 +1,9 @@
-//! Zero-Trust Secret Management & In-Memory Zeroization (Rullst Vault).
+//! Field-level authenticated encryption and in-memory zeroization (Rullst Vault).
+//!
+//! [`FieldEncryptor`] protects stored values with AES-256-GCM; it does not
+//! manage keys. [`VaultSecret`] shortens how long one allocation holds a
+//! secret. Key generation, custody, rotation and access control remain
+//! operator responsibilities.
 
 use aes_gcm::{
     Aes256Gcm,
@@ -19,7 +24,7 @@ const TAG_LENGTH: usize = 16;
 const MAX_KEY_ID_LENGTH: usize = 128;
 const AAD_DOMAIN: &[u8] = b"rullst-security:field-encryption:aes-256-gcm";
 
-/// Zero-Trust wrapper for sensitive in-memory secrets (API keys, DB passwords, private tokens).
+/// Wrapper for sensitive in-memory secrets (API keys, DB passwords, private tokens).
 /// Zeroizes the wrapped value on drop, reducing how long that allocation keeps
 /// the secret. It cannot erase prior copies or prevent process-memory capture.
 pub struct VaultSecret<T: Zeroize> {
