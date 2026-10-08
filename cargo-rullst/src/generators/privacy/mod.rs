@@ -101,6 +101,8 @@ fn plan(
         return Err(invalid("invalid consent validity").into());
     }
     let source = consumer_support::privacy_source(source, "src/consent/mod.rs")?;
+    // Links above the project are the developer's; links beneath it are refused.
+    let root = &files::project_root(root)?;
     consumer_support::recognized_auth(root, consumer)?;
     let manifest_path = root.join("Cargo.toml");
     let original = files::read(&manifest_path)?;
@@ -193,7 +195,8 @@ mod tests {
     #[test]
     fn generated_routes_bind_only_the_fixed_tenant_and_refuse_scope_hints() {
         let temporary = tempfile::tempdir().unwrap();
-        let root = temporary.path();
+        // A symlinked parent, as macOS spells its temporary directory.
+        let root = &files::symlinked_project(temporary.path());
         std::fs::write(
             root.join("Cargo.toml"),
             "[package]\nname = \"consumer\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
@@ -213,6 +216,17 @@ mod tests {
         .unwrap();
         for tenant in ["", "tenant/other", "tenant?school=x"] {
             assert!(plan(root, None, "saas", "greeting-v1", 3600, tenant).is_err());
+        }
+        // A link beneath the project is still refused, and nothing is written through it.
+        #[cfg(unix)]
+        {
+            let outside = temporary.path().join("outside");
+            std::fs::create_dir(&outside).unwrap();
+            let linked = root.join("src/controllers/privacy");
+            std::os::unix::fs::symlink(&outside, &linked).unwrap();
+            assert!(plan(root, None, "saas", "greeting-v1", 3600, "tenant-alpha").is_err());
+            std::fs::remove_file(&linked).unwrap();
+            assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
         }
         files::apply(&plan(root, None, "saas", "greeting-v1", 3600, "tenant-alpha").unwrap())
             .unwrap();

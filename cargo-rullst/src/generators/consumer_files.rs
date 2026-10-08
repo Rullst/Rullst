@@ -35,6 +35,14 @@ impl Edit {
     }
 }
 
+/// The project root with the symlinks in its own spelling resolved: macOS
+/// spells temporary directories `/var` -> `/private/var`, and a Windows
+/// project may sit behind a junction. Every path joined to the result then
+/// has no link above the root, so the guard refuses only links beneath it.
+pub(super) fn project_root(root: &Path) -> io::Result<PathBuf> {
+    fs::canonicalize(root)
+}
+
 pub(super) fn read(path: &Path) -> io::Result<String> {
     reject_links(path)?;
     fs::read_to_string(path)
@@ -132,6 +140,22 @@ fn apply_with(
         }
     }
     Ok(())
+}
+
+/// A project directory reached through a symlinked parent, like macOS's
+/// temporary directory, for the consumer generator tests.
+#[cfg(test)]
+pub(super) fn symlinked_project(temporary: &Path) -> PathBuf {
+    let real = temporary.join("real");
+    fs::create_dir(&real).expect("real project directory");
+    #[cfg(unix)]
+    {
+        let link = temporary.join("link");
+        std::os::unix::fs::symlink(&real, &link).expect("symlinked project parent");
+        link
+    }
+    #[cfg(not(unix))]
+    real
 }
 
 #[cfg(test)]
