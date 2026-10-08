@@ -1012,6 +1012,11 @@ The IDOR route and listener-binding scans skip each top-level `#[cfg(test)]`
 item (such as `mod tests;` or an inline test module) on its own; code after it
 is still scanned.
 
+`cargo audit` and the SBOM read the project's own `Cargo.lock`. In a workspace
+member, which has none, they read the lockfile of the workspace root that
+`cargo metadata` reports, and `cargo audit` receives it as `--file`; the SBOM
+then lists every package of that workspace lockfile.
+
 ### `cargo rullst hook:install`
 Installs managed `pre-commit` and `commit-msg` wrappers. The first runs
 `cargo fmt --all -- --check`, strict workspace Clippy, and

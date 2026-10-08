@@ -6,6 +6,7 @@ use std::path::Path;
 use crate::generators::audit_compliance::{
     ComplianceEvidence, EvidenceStatus, write_compliance_report,
 };
+use crate::generators::audit_evidence::{audit_lockfile, run_cargo_audit};
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
 use crate::generators::audit_source::production_source;
 
@@ -408,9 +409,11 @@ pub fn run_security_audit_with_exceptions(
         .output();
     let dependency_audit = match audit_tool {
         Ok(tool) if tool.status.success() => {
-            let mut command = std::process::Command::new("cargo");
-            command.args(cargo_audit_arguments(audit_ignores));
-            match command.output() {
+            match run_cargo_audit(
+                std::ffi::OsStr::new("cargo"),
+                Path::new("."),
+                &cargo_audit_arguments(audit_ignores),
+            ) {
                 Ok(out) if out.status.success() => {
                     if audit_ignores.is_empty() {
                         println!(
@@ -557,7 +560,10 @@ pub fn run_security_audit_with_exceptions(
             "  {} Generating CycloneDX 1.5 Software Bill of Materials (SBOM)...",
             "[SBOM]".bright_blue()
         );
-        match generate_cyclonedx_sbom(Path::new("Cargo.lock")) {
+        // A workspace member reads the workspace root's lockfile.
+        let lockfile = audit_lockfile(std::ffi::OsStr::new("cargo"), Path::new("."))
+            .unwrap_or_else(|| std::path::PathBuf::from("Cargo.lock"));
+        match generate_cyclonedx_sbom(&lockfile) {
             Ok((count, file_name)) => {
                 println!(
                     "  {} Generated CycloneDX SBOM with {} components at '{}'",
