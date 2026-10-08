@@ -6490,6 +6490,8 @@ name = "rullst-media"
 version = "13.0.0-alpha.1"
 dependencies = [
  "async-trait",
+ "aws-credential-types",
+ "aws-sigv4",
  "axum",
  "base64 0.23.1",
  "reqwest",
@@ -6502,6 +6504,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
  "zeroize",
 ]
 

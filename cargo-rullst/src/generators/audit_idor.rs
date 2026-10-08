@@ -173,7 +173,7 @@ fn scan_idor_source_with_evidence(
             for route in routes {
                 findings.push(format!(
                     "File '{}:{}': parameterized route `{route}` {reason}",
-                    path.display(),
+                    super::slash_path(path),
                     index + 1
                 ));
             }

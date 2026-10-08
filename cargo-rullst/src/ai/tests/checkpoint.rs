@@ -23,6 +23,9 @@ fn repository() -> tempfile::TempDir {
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path();
     run_git(root, &["init", "-q"]);
+    // Independent of a global `core.autocrlf=true` (Git for Windows' default),
+    // which would check the restored file out with CRLF.
+    run_git(root, &["config", "core.autocrlf", "false"]);
     fs::write(root.join("tracked.rs"), "fn original() {}\n").unwrap();
     fs::write(root.join(".gitignore"), "ignored.log\n").unwrap();
     run_git(root, &["add", "."]);
@@ -107,6 +110,37 @@ fn checkpoint_captures_the_work_tree_without_touching_index_or_files() {
     assert_eq!(
         fs::read_to_string(root.join("tracked.rs")).unwrap(),
         "fn edited() {}\n"
+    );
+}
+
+/// The checkpoint uses the repository's own line-ending conversion, as the
+/// user's `git add` does, so the documented `git diff`/`git restore` commands
+/// (run with that configuration) round-trip without line-ending noise.
+#[test]
+fn checkpoint_follows_the_repository_autocrlf_conversion() {
+    let directory = repository();
+    let root = directory.path();
+    run_git(root, &["config", "core.autocrlf", "true"]);
+    // A Windows checkout holds CRLF in the work tree.
+    fs::write(root.join("tracked.rs"), "fn edited() {}\r\n").unwrap();
+
+    let checkpoint = create(root, "20261001T140000Z").unwrap();
+    let stored = format!("{}:tracked.rs", checkpoint.reference);
+    assert_eq!(run_git(root, &["show", &stored]), "fn edited() {}\n");
+    assert_eq!(
+        run_git(root, &["diff", &checkpoint.reference, "--", "tracked.rs"]),
+        ""
+    );
+
+    fs::write(root.join("tracked.rs"), "fn broken() {}\r\n").unwrap();
+    let source = format!("--source={}", checkpoint.reference);
+    run_git(
+        root,
+        &["restore", &source, "--worktree", "--", "tracked.rs"],
+    );
+    assert_eq!(
+        fs::read_to_string(root.join("tracked.rs")).unwrap(),
+        "fn edited() {}\r\n"
     );
 }
 

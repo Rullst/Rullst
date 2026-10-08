@@ -1,13 +1,14 @@
-//! The `cargo rullst ai upgrade` turn: the plan, then one reviewed goal.
+//! A grounded turn (`cargo rullst ai upgrade` and `cargo rullst ai fix`): a
+//! summary, then one reviewed goal.
 
-use super::super::upgrade::{Brief, GOAL};
+use super::super::upgrade::Brief;
 use super::*;
 
 impl<W: Write + Send> Session<'_, W> {
-    /// Shows the dry-run plan and works on its findings. The trusted
-    /// instructions extend the system prompt; the findings and file excerpts
-    /// travel as untrusted data with the goal.
-    pub(in crate::ai) async fn upgrade(&mut self, summary: &str, brief: Brief) {
+    /// Shows the summary (the dry-run plan or the recorded error) and works on
+    /// `goal`. The trusted instructions extend the system prompt; findings,
+    /// error contexts and file excerpts travel as untrusted data with the goal.
+    pub(in crate::ai) async fn briefed(&mut self, summary: &str, brief: Brief, goal: &str) {
         let Brief {
             instructions,
             attachments,
@@ -24,7 +25,7 @@ impl<W: Write + Send> Session<'_, W> {
             self.say(&note);
         }
         self.attachments.extend(attachments);
-        self.turn(GOAL).await;
+        self.turn(goal).await;
         self.finish();
     }
 }

@@ -18,14 +18,35 @@ use std::os::unix::fs::PermissionsExt as _;
 
 struct Fixture {
     root: PathBuf,
+    /// Keeps a symlinked parent directory alive (see `under_symlinked_parent`).
+    _parent: Option<tempfile::TempDir>,
 }
 
 impl Fixture {
     fn new(label: &str) -> Self {
-        let root = std::env::temp_dir().join(format!(
+        Self::create_in(&std::env::temp_dir(), label, None)
+    }
+
+    /// A fixture reached through a symlinked parent, as macOS spells its
+    /// temporary directory (`/var` -> `/private/var`): the CLI and its child
+    /// processes observe the resolved path.
+    #[cfg(unix)]
+    fn under_symlinked_parent(label: &str) -> Self {
+        let parent = tempfile::tempdir().expect("fixture parent");
+        let real = parent.path().join("real");
+        fs::create_dir(&real).expect("real fixture parent");
+        let link = parent.path().join("link");
+        std::os::unix::fs::symlink(&real, &link).expect("symlinked fixture parent");
+        Self::create_in(&link, label, Some(parent))
+    }
+
+    fn create_in(base: &Path, label: &str, parent: Option<tempfile::TempDir>) -> Self {
+        let root = base.join(format!(
             "rullst-cli-behavior-{label}-{}",
             rand::random::<u64>()
         ));
+        // HOME lives beside, not inside, the project the CLI inspects.
+        fs::create_dir_all(root.with_extension("home")).expect("isolated home directory");
         fs::create_dir_all(root.join("src/controllers")).expect("controllers directory");
         fs::create_dir_all(root.join("src/models")).expect("models directory");
         fs::create_dir_all(root.join("static")).expect("static directory");
@@ -103,7 +124,16 @@ pub async fn head() {}
             "version = 4\n\n[[package]]\nname = \"cli-fixture\"\nversion = \"0.1.0\"\n",
         )
         .expect("fixture lockfile");
-        Self { root }
+        Self {
+            root,
+            _parent: parent,
+        }
+    }
+
+    /// The isolated HOME: commands never read the developer's or runner's
+    /// `~/.ssh`, `~/.cargo` or caches, so recorded arguments are deterministic.
+    fn home(&self) -> PathBuf {
+        self.root.with_extension("home")
     }
 
     fn command(&self, arguments: &[&str]) -> Output {
@@ -119,6 +149,10 @@ pub async fn head() {}
             // Deployment helpers must exercise their documented offline/manual
             // fallback even if a developer happens to have provider CLIs.
             .env("PATH", path)
+            .env("HOME", self.home())
+            .env("USERPROFILE", self.home())
+            .env_remove("SSH_AUTH_SOCK")
+            .env_remove("SSH_AGENT_PID")
             .output()
             .unwrap_or_else(|error| panic!("run {arguments:?}: {error}"))
     }
@@ -193,6 +227,7 @@ pub async fn head() {}
 impl Drop for Fixture {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.root);
+        let _ = fs::remove_dir_all(self.home());
     }
 }
 
@@ -547,7 +582,8 @@ fn unknown_commands_completions_info_and_json_views_are_scriptable() {
 #[cfg(unix)]
 #[test]
 fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
-    let fixture = Fixture::new("diagnostics");
+    // The symlinked parent reproduces the macOS runner's temporary directory.
+    let fixture = Fixture::under_symlinked_parent("diagnostics");
 
     // A missing compiler is a failed check: the doctor exits with status 1.
     let missing = fixture.command(&["doctor"]);
@@ -642,11 +678,19 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
     }
     fixture.succeeds_with_path(&["foundry:deploy"], &tools);
     let uploaded = fs::read_to_string(tools.join("scp-arguments")).expect("scp arguments");
+    // Cargo (here `$PWD`) reports the resolved path, not the symlinked spelling.
     let reported = format!(
         "{}/custom-target/release/cli-fixture",
-        fixture.root.display()
+        fixture
+            .root
+            .canonicalize()
+            .expect("resolved fixture root")
+            .display()
     );
     assert!(uploaded.lines().any(|line| line == reported), "{uploaded}");
+    // The configured `~/.ssh/id_rsa` expands under the isolated HOME only.
+    let key = format!("{}/.ssh/id_rsa", fixture.home().display());
+    assert!(uploaded.lines().any(|line| line == key), "{uploaded}");
 
     assert_files(
         &fixture.root,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:?usage: test-packaged-distribution.sh VERSION [PACKAGE_DIR] [--supervision-candidate|--v13-candidates]}"
+version="${1:?usage: test-packaged-distribution.sh VERSION [PACKAGE_DIR] [--supervision-candidate]}"
 package_dir="${2:-target/package}"
 cargo_bin="${CARGO:-cargo}"
 
@@ -35,7 +35,6 @@ cleanup() {
 trap cleanup EXIT
 
 candidate=false
-labs_candidate=false
 supervision_included=false
 case "${3:-}" in
   "") ;;
@@ -45,13 +44,6 @@ case "${3:-}" in
       exit 1
     fi
     candidate=true
-    ;;
-  --v13-candidates)
-    if jq -e 'index("rullst-labs") != null' "$repository_root/.github/release-order.json" > /dev/null; then
-      echo "Remove Labs candidate mode after release admission." >&2
-      exit 1
-    fi
-    labs_candidate=true
     ;;
   *) echo "Unknown packaged-distribution mode." >&2; exit 1 ;;
 esac
@@ -104,7 +96,7 @@ fi
 if jq -e 'index("rullst-media") != null' "$repository_root/.github/release-order.json" > /dev/null; then
   bash "$repository_root/.github/test-media-package.sh" "$version" "$package_dir"
 fi
-if [ "$labs_candidate" = true ]; then
+if jq -e 'index("rullst-labs") != null' "$repository_root/.github/release-order.json" > /dev/null; then
   bash "$repository_root/.github/test-labs-package.sh" "$version" "$package_dir"
 fi
 

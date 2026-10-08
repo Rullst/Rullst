@@ -225,11 +225,21 @@ async fn transiently_busy_snapshot_is_retried_for_migrations() {
     release.join().unwrap();
 }
 
+/// Whether the orphaned descendant `pid` is running. It is a grandchild, so
+/// `waitid` (the group probe on macOS and the BSDs) cannot observe it and
+/// fails with `ECHILD`; `ps` sees any process on every Unix. A zombie awaiting
+/// its new parent's reap is not running.
 #[cfg(unix)]
 fn active_process(pid: u32) -> bool {
-    ProcessGroup::new(pid)
-        .exit_observed()
-        .is_ok_and(|exited| !exited)
+    Command::new("ps")
+        .args(["-o", "stat=", "-p", &pid.to_string()])
+        .stderr(Stdio::null())
+        .output()
+        .is_ok_and(|output| {
+            let state = String::from_utf8_lossy(&output.stdout);
+            let state = state.trim();
+            output.status.success() && !state.is_empty() && !state.starts_with('Z')
+        })
 }
 
 #[cfg(unix)]
@@ -264,6 +274,14 @@ async fn parent_first_exit_cleans_descendants_before_reaping_and_disarms_the_gro
         .read_to_string(&mut output)
         .unwrap();
     let descendant: u32 = output.parse().unwrap();
+    // The macOS failure: `waitid` observes only our own children.
+    #[cfg(not(any(
+        target_os = "cygwin",
+        target_os = "horizon",
+        target_os = "openbsd",
+        target_os = "redox"
+    )))]
+    assert!(group::exited_without_reaping(descendant).is_err());
     let mut app = Application {
         group: Some(ProcessGroup::new(child.id())),
         child: Some(child),

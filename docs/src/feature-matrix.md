@@ -5,10 +5,10 @@
 > for publication status and commit Cargo.lock for reproducible builds.
 > Use path dependencies only when intentionally testing checkout-local changes.
 
-This page is the public feature contract for the 19 packages in the v13
+This page is the public feature contract for the 20 packages in the v13
 [release inventory](../../.github/release-order.json): the 16 published 12.x
-packages plus the unpublished `rullst-privacy`, `rullst-supervision` and
-`rullst-media` candidates. The package manifests remain the machine-readable
+packages plus the unpublished `rullst-privacy`, `rullst-supervision`,
+`rullst-media` and `rullst-labs` candidates. The package manifests remain the machine-readable
 source of truth. The matrix explains the behavior those names select in this
 v13 source and makes the default build visible before an application adopts
 optional integrations.
@@ -419,9 +419,9 @@ Use the same single-selection rule described for `rullst-orm`.
 
 ## Unpublished v13 candidate packages
 
-`rullst-supervision` and `rullst-media` are in the v13 release inventory but
-have no umbrella features; depend on them directly. Neither has default
-features.
+`rullst-supervision`, `rullst-media` and `rullst-labs` are in the v13 release
+inventory but have no umbrella features; depend on them directly. None has
+default features.
 
 | Crate | Feature | Enables |
 | --- | --- | --- |
@@ -431,10 +431,9 @@ features.
 | `rullst-supervision` | `sqlite` | `exam` and `parental` plus the shared-local SQLite store |
 | `rullst-media` | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and the browser upload module |
 | `rullst-media` | `sqlite` | Shared-local durable assets, leased operations and the application service |
-
-`rullst-labs` (`publish = false`) is outside the release inventory. Its
-`sqlite` feature adds encrypted shared-local job storage and
-`receipt-signing` the runner controller's receipt signing.
+| `rullst-media` | `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload and playback of the original, no transcoding |
+| `rullst-labs` | `sqlite` | Encrypted shared-local exercise and job storage with leases, cancellation and retention |
+| `rullst-labs` | `receipt-signing` | Receipt signing for the application-owned runner controller |
 
 ## Packages without optional features
 

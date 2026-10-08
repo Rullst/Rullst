@@ -358,7 +358,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (92 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (50 rows).
+  of inputs that previously failed) (52 rows).
 
 The catalog has 99 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
@@ -479,6 +479,8 @@ the rule together.
 | Mail plain-text fallback | (b) review | `V13-MAIL-TEXT-FALLBACK` |  |
 | Labs runner | (a) must-change | `V13-LABS-RUNNER-REMOVED` |  |
 | Education candidates | (c) none | — | Unpublished v13 candidates |
+| Labs package | (c) none | — | New package in the release inventory |
+| Media S3 storage | (c) none | — | New opt-in feature of an unpublished candidate |
 | Generated billing settings | (b) review | `V13-BILLING-PROJECT-SETTINGS` |  |
 | Application templates | (c) none | — | Generator output |
 | Starter migrations | (b) review | `V13-SQLITE-ONLY-SEED-TIME` |  |

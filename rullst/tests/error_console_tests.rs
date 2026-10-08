@@ -121,23 +121,30 @@ async fn test_handle_autofix_non_loopback() {
     assert!(body_str.contains("Access denied"));
 }
 
-#[tokio::test]
-async fn test_handle_autofix_path_traversal() {
+/// The retired autofix endpoint never touches files: every loopback request,
+/// whatever its path, answers `410 Gone` with the CLI command.
+async fn retired_autofix(file_path: &str) -> (u16, String) {
     let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
     let payload: AutoFixPayload = serde_json::from_value(serde_json::json!({
-        "file_path": "../../../etc/passwd",
+        "file_path": file_path,
         "line": 10,
         "error_message": "some error"
     }))
     .unwrap();
-
     let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
-    let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+    let response = axum::response::IntoResponse::into_response(res);
+    let status = response.status().as_u16();
+    let bytes = axum::body::to_bytes(response.into_body(), 4096)
         .await
         .unwrap();
-    let body_str = String::from_utf8_lossy(&bytes);
-    assert!(body_str.contains("Access denied"));
+    (status, String::from_utf8_lossy(&bytes).into_owned())
+}
+
+#[tokio::test]
+async fn test_handle_autofix_path_traversal() {
+    let (status, body) = retired_autofix("../../../etc/passwd").await;
+    assert_eq!(status, 410);
+    assert!(body.contains("cargo rullst ai fix"), "{body}");
 }
 
 #[tokio::test]
@@ -226,48 +233,21 @@ async fn test_handle_explain_valid_file_ai_offline() {
 
 #[tokio::test]
 async fn test_handle_autofix_sensitive_file() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
-    let payload: AutoFixPayload = serde_json::from_value(serde_json::json!({
-        "file_path": "Cargo.toml",
-        "line": 10,
-        "error_message": "some error"
-    }))
-    .unwrap();
-
-    let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
-    let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
-        .await
-        .unwrap();
-    let body_str = String::from_utf8_lossy(&bytes);
-    assert!(body_str.contains("Access denied"));
+    let (status, body) = retired_autofix("Cargo.toml").await;
+    assert_eq!(status, 410);
+    assert!(body.contains("\"success\":false"), "{body}");
 }
 
 #[tokio::test]
 async fn test_handle_autofix_wrong_extension() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
     let unique_file = format!("test_autofix_{}.txt", uuid::Uuid::new_v4().as_simple());
     let _ = std::fs::write(&unique_file, "SECRET=1");
-    let payload: AutoFixPayload = serde_json::from_value(serde_json::json!({
-        "file_path": unique_file,
-        "line": 10,
-        "error_message": "some error"
-    }))
-    .unwrap();
-
-    let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
-    let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
-        .await
-        .unwrap();
-    let body_str = String::from_utf8_lossy(&bytes);
-
+    let (status, body) = retired_autofix(&unique_file).await;
+    let unchanged = std::fs::read_to_string(&unique_file).unwrap_or_default();
     let _ = std::fs::remove_file(&unique_file);
-    assert!(
-        body_str.contains("Autofix is restricted"),
-        "Found body: {}",
-        body_str
-    );
+    assert_eq!(status, 410);
+    assert!(body.contains("cargo rullst ai fix"), "{body}");
+    assert_eq!(unchanged, "SECRET=1", "the endpoint never writes files");
 }
 
 #[tokio::test]

@@ -268,6 +268,8 @@ pub enum PlaybackKind {
     Embed,
     Hls,
     Mp4_720p,
+    /// The stored original object, without transcoding (v13; object storage).
+    Original,
 }
 
 /// Explicitly exposed bearer data; its Debug representation is redacted.
@@ -292,7 +294,63 @@ impl std::fmt::Debug for PlaybackGrant {
     }
 }
 
+/// How the browser uses an [`UploadGrant`] (v13).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum UploadProtocol {
+    /// Bunny Stream resumable TUS upload to `endpoint`.
+    Tus,
+    /// One `PUT {endpoint}?{signature}` whose `Content-Type` header equals
+    /// `content_type` and whose body is exactly `content_length` bytes.
+    PresignedPut,
+}
+
+/// Content type and exact byte length the host accepts for one upload (v13).
+/// The type is a lower-case `type/subtype` without parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UploadDeclaration {
+    content_type: String,
+    length: u64,
+}
+impl UploadDeclaration {
+    /// Single-request object uploads are bounded at 5 GiB.
+    pub const MAX_LENGTH: u64 = 5 * 1024 * 1024 * 1024;
+    pub fn new(content_type: impl Into<String>, length: u64) -> Result<Self, Error> {
+        let content_type = content_type.into().to_ascii_lowercase();
+        if !media_type_valid(&content_type) || length == 0 || length > Self::MAX_LENGTH {
+            return Err(Error::InvalidInput);
+        }
+        Ok(Self {
+            content_type,
+            length,
+        })
+    }
+    pub fn content_type(&self) -> &str {
+        &self.content_type
+    }
+    pub fn length(&self) -> u64 {
+        self.length
+    }
+}
+
+/// RFC 9110 token `type/subtype`, lower case, no parameters, at most 127 bytes.
+pub(crate) fn media_type_valid(value: &str) -> bool {
+    let token = |part: &str| {
+        !part.is_empty()
+            && part.len() <= 63
+            && part
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"!#$&^_.+-".contains(&b))
+    };
+    value.len() <= 127
+        && value
+            .split_once('/')
+            .is_some_and(|(t, s)| token(t) && token(s))
+}
+
 /// Expiring upload capability, not a proof of a byte cap or single use at Bunny.
+/// A `PresignedPut` grant binds the declared content type and exact length in
+/// its signature; the storage provider enforces them, not this crate.
 #[derive(Clone, Serialize)]
 pub struct UploadGrant {
     pub endpoint: String,
@@ -301,6 +359,14 @@ pub struct UploadGrant {
     pub expires_at: i64,
     pub(crate) signature: String,
     pub mode: ProviderMode,
+    /// v13: how to use this grant.
+    pub protocol: UploadProtocol,
+    /// v13: the signed `Content-Type` of a declared upload.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+    /// v13: the signed exact `Content-Length` of a declared upload.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_length: Option<u64>,
 }
 impl UploadGrant {
     pub fn expose_signature(&self) -> &str {
@@ -313,6 +379,7 @@ impl std::fmt::Debug for UploadGrant {
             .field("signature", &"[REDACTED]")
             .field("expires_at", &self.expires_at)
             .field("mode", &self.mode)
+            .field("protocol", &self.protocol)
             .finish()
     }
 }

@@ -168,6 +168,39 @@ fn upgrade_reply(message: &str) -> String {
     )
 }
 
+fn system_contains(messages: &[Message], heading: &str) -> bool {
+    messages
+        .iter()
+        .any(|message| message.role == "system" && message.content.contains(heading))
+}
+
+/// The value of `key: ` inside the error-context data block, bounded and
+/// on one line.
+fn context_value(message: &str, key: &str) -> String {
+    let value = message
+        .lines()
+        .skip_while(|line| !line.contains(super::fix::CONTEXT_SOURCE))
+        .find_map(|line| line.strip_prefix(key))
+        .unwrap_or("unknown");
+    let value: String = value.chars().take(160).collect();
+    super::term::sanitize(&value).replace('`', "'")
+}
+
+fn fix_reply(message: &str) -> String {
+    let check = serde_json::json!({"action": "cargo", "args": ["check"]});
+    format!(
+        "Offline mock assistant: no AI provider is connected, so this deterministic demo shows \
+how `cargo rullst ai fix` works. I received the recorded error as quoted data:\n\n\
+- panic: `{}`\n- location: `{}`\n- request: `{}`\n\n\
+A connected model would explain the cause and propose a reviewed `edit_file` change for that \
+location. Run `cargo rullst ai connect` to use one. The demo only checks the project.\n\n\
+```rullst-action\n{check}\n```\n",
+        context_value(message, "message: "),
+        context_value(message, "location: "),
+        context_value(message, "request: "),
+    )
+}
+
 /// The deterministic reply for a conversation.
 pub(super) fn reply(messages: &[Message]) -> String {
     let users: Vec<&str> = messages
@@ -176,6 +209,17 @@ pub(super) fn reply(messages: &[Message]) -> String {
         .map(|message| message.content.as_str())
         .collect();
     let last = users.last().copied().unwrap_or("");
+    if system_contains(messages, super::review::REVIEW_HEADING) {
+        return super::review::mock_review(last);
+    }
+    if system_contains(messages, super::fix::FIX_HEADING) {
+        if is_results(last) {
+            return "Offline mock assistant: the check ran. A connected model would continue \
+until the panic is fixed and summarize the change.\n"
+                .to_string();
+        }
+        return fix_reply(last);
+    }
     if upgrade_session(messages) {
         if is_results(last) {
             return "Offline mock assistant: the reviewed upgrade step ran. A connected model \

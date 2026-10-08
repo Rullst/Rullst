@@ -40,7 +40,7 @@ changes.
 | **`rullst-macros`** | Core | Procedural macros (`html!`, `#[route]`, `#[server_function]`, `#[require_role]`, `#[island]`, `#[live_component]`, `#[memoize]`, `#[derive(Billable)]`); `#[rullst::runtime::main]` is Tokio's macro re-exported by Core. |
 | **`rullst-orm-macros`** | Core | `#[derive(Orm)]`, `Enum`, `Nexus` and `PersonalData` derives and the `#[rullst_orm::test]` sandbox attribute. |
 | **`cargo-rullst`** | Core | Developer CLI: `new` wizard and `make:*` generators, `dev`/`dash`, `doctor`, assisted `upgrade` and `ai`, AST IDOR scanner and guided deployment helpers. |
-| **`rullst-labs`** *(unpublished v13 candidate)* | Experimental | Bring your own runner: trusted bounded exercise/authorization/grading contracts, optional encrypted shared-local SQLite jobs, fenced leases/cancellation/retention and pinned controller receipts. It never executes learner code; an application-owned, separately deployed runner implements the documented controller contract (`docs/src/labs-runner-contract.md`, non-executing `byo_runner_controller` example). The `rullst-labs-runner` candidate was removed from the 13.0 workspace and remains in git history. Final release admission remains outstanding. |
+| **`rullst-labs`** *(unpublished v13 package candidate)* | Experimental | Bring your own runner: trusted bounded exercise/authorization/grading contracts, optional encrypted shared-local SQLite jobs, fenced leases/cancellation/retention and pinned controller receipts. It never executes learner code; an application-owned, separately deployed runner implements the documented controller contract (`docs/src/labs-runner-contract.md`, non-executing `byo_runner_controller` example). The `rullst-labs-runner` candidate was removed from the 13.0 workspace and remains in git history. Labs is in the 13.0 release inventory; registry publication and final release acceptance remain outstanding. |
 | **`rullst-media`** *(unpublished v13 candidate)* | Experimental | Optional Bunny Stream lifecycle, scoped upload/playback grants, exact-body notifications, shared-local SQLite reconciliation and browser upload module. PR #227 passed hosted/platform and installed-archive source admission. Actual provider/CDN interoperability remains unvalidated; no release admission or blueprint/facade default is implied. |
 | **`rullst-supervision`** *(unpublished v13 implementation candidate)* | Experimental | Optional exam/parental contracts, exact collection acknowledgement, typed browser/capture observations, bounded camera-presence/audio-activity adapter orchestration and shared-local SQLite authority/session/retention state. The host owns authenticated membership, capture permission, models, reviewer workflow and verified relationships. No media model, automatic grading or device-wide control is included. PR #226 is merged; hosted checks and retrospective installed-archive validation passed. Final release admission remains separate. |
 
@@ -149,6 +149,7 @@ cargo publish -p rullst-auth
 cargo publish -p rullst-privacy
 cargo publish -p rullst-supervision
 cargo publish -p rullst-media
+cargo publish -p rullst-labs
 
 # Step 4: Visual Dashboards & Admin Interfaces
 cargo publish -p rullst-nexus

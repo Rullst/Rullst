@@ -420,3 +420,29 @@ fn ctrl_c_reaches_the_command_group() {
     assert!(output.status.success(), "{stdout}");
     assert!(stdout.contains("1 passed"), "{stdout}");
 }
+
+#[test]
+fn only_the_read_only_ai_review_is_allowed() {
+    for command in [
+        &["ai", "review"][..],
+        &["ai", "review", "--staged", "--json"],
+        &["ai", "review", "--base", "origin/main"],
+        &["ai", "review", "--base=HEAD~2", "--include-untracked"],
+    ] {
+        let invocation = validate_rullst(args(command)).unwrap();
+        assert!(!invocation.mutates() && !invocation.always_confirm());
+    }
+    for refused in [
+        &["ai"][..],
+        &["ai", "fix", "0123456789abcdef0123456789abcdef"],
+        &["ai", "connect"],
+        &["ai", "upgrade"],
+        &["ai", "add a page"],
+        &["ai", "review", "--base", "--output"],
+        &["ai", "review", "--base", "main..dev"],
+        &["ai", "review", "--provider", "openai"],
+        &["ai", "review", "--dry-run"],
+    ] {
+        assert!(validate_rullst(args(refused)).is_err(), "{refused:?}");
+    }
+}

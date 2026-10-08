@@ -15,5 +15,7 @@ pub mod bunny;
 /// under the host's CSP; never interpolate this source or credentials into HTML.
 #[cfg(feature = "bunny")]
 pub const BUNNY_UPLOAD_MODULE: &str = include_str!("../web/bunny-upload.mjs");
+#[cfg(feature = "s3")]
+pub mod s3;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;

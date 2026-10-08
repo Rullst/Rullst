@@ -1390,6 +1390,8 @@ cargo rullst ai "add a posts page"     # one goal, then exit
 cargo rullst ai status [--json]        # provider, model and key source (never the key)
 cargo rullst ai disconnect             # delete the saved credentials file
 cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgrade findings
+cargo rullst ai fix <ERROR_ID> [--url <URL>] [--dry-run]  # reviewed fix for a panic on the error page
+cargo rullst ai review [--staged | --base <REF> | --include-untracked] [--json]  # read-only diff review
 ```
 
 * **Providers:** OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Ollama and
@@ -1481,6 +1483,43 @@ cargo rullst ai upgrade [--to <VERSION>] [--dry-run]  # reviewed fixes for upgra
   demo rewrites one `render_page` call (`V13-RENDER-PAGE-LANGUAGE`) and
   proposes `cargo check`. A one-word chat goal `upgrade` now runs this command.
   See [assisted fixes](tutorials/36-assisted-framework-upgrades.md#assisted-fixes-with-cargo-rullst-ai-upgrade).
+* **Error fixes:** in a debug build running in Development, the error page
+  for a panic shows `cargo rullst ai fix <ERROR_ID>`. The command reads that
+  error (message, location, project backtrace frames, request method and path)
+  from `GET /_rullst/errors/{id}` of the development server: by default
+  `http://127.0.0.1:<PORT>` with the port `cargo rullst dev` uses, or
+  `--url`, which must be plain HTTP on a loopback address (`127.0.0.1`,
+  `[::1]` or `localhost`, pinned to `127.0.0.1`); any other source is refused
+  before a connection. The server keeps at most 32 errors for 30 minutes and
+  forgets them when it restarts, so an unknown or expired id is an error.
+  High-signal secrets are redacted, the context and the source around the
+  location (within the path policy) are sent as untrusted data, and the goal
+  runs as a normal session: diff, confirmation, checkpoint and `cargo check`.
+  Offline, the demo repeats the location it received and proposes
+  `cargo check`.
+* **Reviews:** `cargo rullst ai review` reviews the staged and unstaged
+  changes against `HEAD` (`--staged`: staged only; `--base <REF>`:
+  `git diff <REF>...HEAD`; `--include-untracked`: also untracked files that
+  `.gitignore` does not exclude). It needs a git work tree and is read-only:
+  it never edits files or runs commands, and action blocks in the answer are
+  counted and ignored. Before anything is sent, files under the path policy
+  (`.env*`, keys and certificate stores, credentials, databases,
+  `Cargo.lock`, `.git/`, `target/`) and binary files are omitted and listed,
+  the audit report's high-signal secret patterns are redacted, each file's
+  diff is capped at 24 KiB and the whole review at 96 KiB (truncated and
+  unsent files are listed). The model checks correctness, security (SQLx
+  parameters, CSRF, ownership checks and `rullst-access` classifications,
+  constant-time signature checks), panics in production paths, missing tests
+  and Rullst rules such as quoted `html!` boolean attributes. Findings print
+  with `file:line`, severity and a suggested fix, or as the
+  `rullst.ai-review.v1` JSON document with `--json` (`files.reviewed`,
+  `files.omitted`, `files.truncated`, `redactions`, `findings[]` with `file`,
+  `line`, `severity`, `title`, `detail`, `suggestion`, `summary`,
+  `ignored_actions`, `format_error`, `raw_answer` and `usage`). The offline
+  assistant flags `unwrap()`, `expect()` and `panic!` on added lines outside
+  tests and redacted secrets deterministically. The assistant itself may
+  propose the read-only `cargo rullst ai review` (with `--staged`,
+  `--base <ref>`, `--include-untracked` or `--json`).
 * **Checkpoint:** before the first change of a session the CLI stores a
   snapshot of the work tree (tracked and untracked, non-ignored files, without
   `.env*` and `target/`) under `refs/rullst/ai-checkpoints/<UTC timestamp>`,

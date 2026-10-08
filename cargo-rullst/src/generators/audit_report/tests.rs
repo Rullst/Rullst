@@ -226,6 +226,7 @@ fn no_format_contains_the_secret_or_a_pass_or_certification_claim() {
 }
 
 #[test]
+#[cfg_attr(windows, ignore = "Windows file names cannot contain <, > or \"")]
 fn html_is_self_contained_and_escapes_hostile_names_and_values() {
     let hostile = "x\"><script>alert(1)</script>.html";
     let root = project(&[

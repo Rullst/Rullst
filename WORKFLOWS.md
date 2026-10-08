@@ -98,8 +98,8 @@ selections, automatic runs and ready PRs retain those jobs. Strict workspace
 Clippy/format still runs for every diagnostic; release admission continues to
 require every job from the full `all`/`all` matrix.
 
-The manual `all`/`all` matrix additionally packages the 19 release-inventory
-crates plus the unpublished `rullst-labs` candidate, audits their contents and
+The manual `all`/`all` matrix additionally packages the 20 release-inventory
+crates, including `rullst-labs`, audits their contents and
 uses the release pipeline's archive-only consumer and isolated CLI
 installation/blueprint checks. `Packaged distribution and
 installed CLI` is a required exact-SHA release-admission job. It runs without

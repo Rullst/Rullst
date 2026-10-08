@@ -69,7 +69,9 @@ and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishin
 The unpublished packaging candidate adds `rullst-privacy`, `rullst-supervision`
 and `rullst-media` to the release inventory. All three owner endpoints returned
 404 on September 22, 2026, while the other sixteen names retained the expected
-owner. They are the only names in the reviewed initial-registration allowlist.
+owner. `rullst-labs` joined the inventory on October 8, 2026; its owner endpoint
+also returned 404 that day. These four are the only names in the reviewed
+initial-registration allowlist.
 This enables ownership diagnostics, not publication: the ordinary release
 workflow still refuses unregistered names. The current
 [crates.io documentation](https://crates.io/docs/trusted-publishing) still requires

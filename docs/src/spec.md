@@ -101,14 +101,14 @@ each crate implements.
 
 The matrix omits `rullst-orm-macros`, which ships the ORM derives described in
 section 5, and the unpublished v13 candidates `rullst-privacy`,
-`rullst-supervision`, `rullst-media` (all three in the release inventory) and
-`rullst-labs` (`publish = false`); the v13 sections below specify their
-boundaries.
+`rullst-supervision`, `rullst-media` and `rullst-labs` (all four in the release
+inventory); the v13 sections below specify their boundaries.
 
 ### v13 roadmap package boundaries
 
 The [`rullst-labs`](rullst-labs-roadmap.md) library is an unpublished
-implementation candidate; final release admission remains outstanding. It is a
+implementation candidate in the 13.0 release inventory (`13.0.0-alpha.1`);
+registry publication and final release acceptance remain outstanding. It is a
 **bring-your-own-runner** library: it owns trusted, versioned orchestration and
 grading contracts and never executes learner code. The separately deployed
 `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi executor that passed
@@ -233,6 +233,17 @@ Automated protocol/browser/disposable-state evidence is required. The owner's
 no-live-account-testing instruction remains in force: actual Bunny account,
 transcoding/CDN interoperability and paid DRM are not validated or implied.
 See the [supported delivery target](managed-video-roadmap.md).
+
+The experimental `s3` feature adds S3-compatible object storage (AWS S3,
+Cloudflare R2, MinIO) behind the same provider, grant and SQLite contracts. It
+stores and serves the original object without transcoding. Keys are
+server-generated; uploads use host-authorized presigned `PUT` grants bound to a
+declared content type and exact length, playback uses presigned `GET`
+(`PlaybackKind::Original`), both expire within 900 seconds, and `HEAD` confirms
+size and type before an asset becomes ready. Signing reuses Core's `aws-sigv4`
+signer, not a second S3 SDK. It is validated against the offline mock and a
+loopback protocol fixture only; provider interoperability is not yet validated.
+See [S3-compatible object storage](managed-video.md#s3-compatible-object-storage-s3-r2-minio).
 
 ### v13 privacy and age-assurance boundary
 

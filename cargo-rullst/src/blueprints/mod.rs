@@ -152,6 +152,21 @@ mod tests {
     }
 
     #[test]
+    fn embedded_templates_keep_lf_line_endings() {
+        // `include_str!` embeds the checked-out bytes. A CRLF checkout (Git
+        // for Windows' `core.autocrlf=true`) would emit CRLF projects and break
+        // every multi-line source assertion; `.gitattributes` forces LF.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            for (path, source) in manifest {
+                assert!(
+                    !source.contains('\r'),
+                    "{blueprint}:{path} contains CR; check out templates with LF (.gitattributes)"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn sqlx_blueprints_avoid_sqlite_only_seed_functions() {
         // `datetime('now')` exists only in SQLite and fails `db:migrate` on
         // PostgreSQL/MySQL/MariaDB; `timestamps()` columns already default to

@@ -206,4 +206,45 @@ async fn panic_console_matches_the_default_nonce_csp() {
         !body.contains(" style="),
         "inline style attributes need unsafe-inline"
     );
+
+    // The fix panel offers one copyable command and makes no request.
+    let id = body
+        .split("cargo rullst ai fix ")
+        .nth(1)
+        .map(|rest| {
+            rest.chars()
+                .take_while(char::is_ascii_hexdigit)
+                .collect::<String>()
+        })
+        .expect("fix command on the page");
+    assert!(super::store::valid_id(&id), "{id}");
+    assert!(body.contains("<code id=\"fix-command\" class=\"fix-command\">"));
+    assert!(body.contains("<button id=\"btn-copy\" type=\"button\""));
+    for request in [
+        "fetch(",
+        "XMLHttpRequest",
+        "/_rullst/autofix",
+        "/_rullst/explain",
+    ] {
+        assert!(!body.contains(request), "the page must not call {request}");
+    }
+    let context = super::store::lookup(&id).expect("recorded context");
+    assert_eq!(context.method, "GET");
+    assert_eq!(context.path, "/panic");
+    assert_eq!(context.message, "located panic");
+}
+
+/// Windows reports panic locations as `src\error_console\tests.rs`; the page
+/// shows the same `/` path on every OS.
+#[tokio::test]
+async fn backslash_panic_locations_display_with_forward_slashes() {
+    let capture = capture::PanicCapture {
+        location: Some(("rullst-core\\src\\error_console\\tests.rs".to_string(), 7)),
+        backtrace: None,
+    };
+    let body = renderer::render_console_html("boom", &capture, None, None).await;
+    assert!(
+        body.contains("File: <span>rullst-core/src/error_console/tests.rs</span> (Line 7)"),
+        "the location must use forward slashes"
+    );
 }

@@ -9,6 +9,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### AI error fixes and reviews
+
+- The development error page now shows a copyable `cargo rullst ai fix <error-id>`
+  command instead of a dead autofix button, and makes no network request. The
+  console keeps a bounded, expiring panic context (message, location, project
+  backtrace frames, method and path; no headers, cookies or bodies) that only
+  direct loopback requests can read at `GET /_rullst/errors/{id}`.
+  `POST /_rullst/autofix` now answers `410 Gone` with that command.
+- `cargo rullst ai fix` reads that context from loopback only and fixes the
+  panic through the reviewed session (diff, confirmation, git checkpoint,
+  `cargo check`).
+- The new read-only `cargo rullst ai review` reviews the working tree,
+  `--staged` or `--base <ref>` diff: protected and binary files are left out,
+  secrets are redacted with the audit report's patterns, and the size is
+  capped. It reports findings with file:line, severity and a suggested fix as
+  text or `rullst.ai-review.v1` JSON, with a deterministic offline review for CI.
+
+### Cross-platform fixes (Windows and macOS)
+
+- Text files are now checked out with LF on every platform (`.gitattributes`),
+  so Windows checkouts no longer embed CRLF into generated projects.
+- On Windows, the development panic console, `audit` findings (and the
+  compliance report built from them) and generator refusals (`make:k8s`,
+  `dockerize` and the other overwrite guards) name files with `/` separators.
+- `make:age-gate` and `make:privacy` resolve the project directory before their
+  symlink guard, so projects behind a symlinked parent (macOS `/var`) or a
+  Windows junction are accepted; a symlink inside the project is still refused.
+- Test isolation: the AI-checkpoint test no longer depends on a global
+  `core.autocrlf`, the CLI behaviour tests use an isolated HOME, and the
+  `cargo rullst dev` cleanup tests check orphaned processes with `ps`, which
+  also works on macOS.
+
+### Labs and Media candidates
+
+- `rullst-labs` is now in the 13.0 release inventory and ships as
+  `13.0.0-alpha.1`. It contains only exercise, authorization, job and grading
+  contracts; applications still bring their own runner, and Labs never
+  executes learner code.
+- `rullst-media` gains an experimental opt-in `s3` feature for AWS S3,
+  Cloudflare R2 and MinIO. It stores and serves the original video without
+  transcoding. Uploads are presigned PUTs from `MediaService::upload_declared`,
+  bound to a server-generated key, the declared content type and the exact
+  size; playback is a presigned GET via `PlaybackKind::Original`. Both expire
+  within 900 seconds and are issued only after the host's scoped
+  authorization, and a HEAD confirms size and type before an asset becomes
+  ready. Signing reuses the `aws-sigv4` signer that core uses. Bunny upload
+  grants now also serialize `"protocol": "Tus"`. Validated against the offline
+  mock only; provider interoperability is not yet validated.
+
 ### Successor maintainer checklist
 
 - Add `docs/successor.md`: the access a successor maintainer needs (organization

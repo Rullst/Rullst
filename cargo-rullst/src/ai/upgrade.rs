@@ -119,7 +119,7 @@ fn findings_block(root: &Path, plan: &AssistPlan, findings: &[&AssistFinding]) -
 }
 
 /// A whole file when small, otherwise the lines around its findings.
-fn excerpt(text: &str, lines: &[usize]) -> String {
+pub(super) fn excerpt(text: &str, lines: &[usize]) -> String {
     if text.len() <= MAX_EXCERPT_BYTES {
         return text.to_string();
     }

@@ -248,6 +248,7 @@ tutorial!(
     mail_custom_transport,
     "../../docs/src/mail-custom-transport.md"
 );
+tutorial!(managed_video, "../../docs/src/managed-video.md");
 tutorial!(
     ai_integration_guide,
     "../../docs/src/6-ai-integration-tutorial.md"

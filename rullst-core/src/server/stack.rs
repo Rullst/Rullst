@@ -59,6 +59,8 @@ impl Server {
         }
 
         if development_console_enabled(cfg!(debug_assertions), environment) {
+            // Bound here so the read-only route stays on one line for `audit --idor`.
+            let error_context = super::dev_errors::serve;
             app = app
                 .route(
                     "/_rullst/explain",
@@ -68,6 +70,8 @@ impl Server {
                     "/_rullst/autofix",
                     axum::routing::post(crate::error_console::handle_autofix),
                 )
+                // rullst-access: public — development-only loopback console route; the id is a random capability shown only on the loopback error page.
+                .route("/_rullst/errors/{id}", axum::routing::get(error_context))
                 .layer(axum::middleware::from_fn(
                     crate::error_console::catch_panic_middleware,
                 ));

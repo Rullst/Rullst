@@ -13,6 +13,7 @@ pub(super) const RULLST_PACKAGES: &[&str] = &[
     "rullst-connect",
     "rullst-core",
     "rullst-iot",
+    "rullst-labs",
     "rullst-macros",
     "rullst-mail",
     "rullst-media",

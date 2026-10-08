@@ -9,12 +9,13 @@ runner claims leased jobs and returns signed receipts through the documented
 The experimental `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi
 executor) passed source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228)
 but was removed from the workspace for 13.0; its source remains in git history.
-Final release admission for this crate remains outstanding. Neither the
+Registry publication and final release acceptance of this crate remain outstanding. Neither the
 candidate name nor a signed receipt establishes production readiness.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
-the API may change between 13.x releases, and the crate has `publish = false`,
-so it is not released to crates.io. Experimental does not mean broken.
+the API may change between 13.x releases. The crate is in the 13.0 release
+inventory and ships as `13.0.0-alpha.1`; it contains contracts only and never
+executes learner code. Experimental does not mean broken.
 
 The default feature provides bounded, versioned contracts with no executor or
 network/runtime dependency. `sqlite` adds a dedicated encrypted shared-local job
