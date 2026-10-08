@@ -7,7 +7,9 @@
 `rullst-security` contains composable controls for HTTP applications. The crate
 does not install every control automatically and does not replace secure domain
 logic, a trusted reverse proxy, operating-system hardening, or independent
-security testing.
+security testing. To choose between overlapping Core and `rullst-security`
+layers, and for one recommended production stack, see
+[which security layer to use, and when](security-layers.md).
 
 ## Defense in depth
 

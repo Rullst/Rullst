@@ -5,7 +5,9 @@
 middleware, local abuse controls, and security telemetry. Its RASP/DLP rules are
 defense-in-depth heuristics: they reduce specific risks but do not establish
 complete OWASP coverage, replace parameterized SQL/authorization, or certify the
-application that mounts them.
+application that mounts them. [Which security layer to use, and when](../security-layers.md)
+compares these layers with the Core baseline and gives one recommended
+production stack.
 
 ---
 

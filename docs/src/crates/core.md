@@ -378,6 +378,16 @@ let axum_app: axum::Router = router.into();
 let rullst_app: Router = axum_app.into();
 ```
 
+## 🛡️ Security baseline
+
+In staging and production, `Server` mounts the runtime security baseline from
+`rullst_core::security`: secure headers with a per-request CSP nonce, an exact
+CORS allowlist, a bounded WAF, double-submit CSRF and, when
+`enable_pii_masking` is set, response PII masking. `rullst-security` adds
+opt-in layers that overlap some of these. See
+[which security layer to use, and when](../security-layers.md) before you
+combine them.
+
 ## 🔐 Security Audit & Reliability
 
 Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.

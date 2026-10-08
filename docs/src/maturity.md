@@ -138,4 +138,5 @@ regenerate.
   release. Any such change appears in the changelog and migration guide.
 
 The [v13 maintenance scope](v13-maintenance-scope.md) explains the investment
-decisions behind these tiers.
+decisions behind these tiers. For the two Core security crates, see
+[which security layer to use, and when](security-layers.md).
