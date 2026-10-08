@@ -102,6 +102,8 @@ fn plan(
         }
     }
     let source = consumer_support::privacy_source(source, "src/age_assurance/challenge_tokens.rs")?;
+    // Links above the project are the developer's; links beneath it are refused.
+    let root = &writes::project_root(root)?;
     let manifest_path = root.join("Cargo.toml");
     let manifest = writes::read(&manifest_path)?;
     let mut parsed = manifest.parse::<DocumentMut>()?;
@@ -200,7 +202,8 @@ mod tests {
     #[test]
     fn generated_dashboard_binds_only_the_fixed_tenant() {
         let temporary = tempfile::tempdir().unwrap();
-        let root = temporary.path();
+        // A symlinked parent, as macOS spells its temporary directory.
+        let root = &writes::symlinked_project(temporary.path());
         std::fs::write(
             root.join("Cargo.toml"),
             "[package]\nname = \"consumer\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
@@ -220,6 +223,28 @@ mod tests {
         .unwrap();
         for tenant in ["", "tenant/other", "tenant?school=x"] {
             assert!(plan(root, None, 18, "dashboard-v1", tenant, "sqlite", "saas").is_err());
+        }
+        // A link beneath the project is still refused, and nothing is written through it.
+        #[cfg(unix)]
+        {
+            let outside = temporary.path().join("outside");
+            std::fs::create_dir(&outside).unwrap();
+            let linked = root.join("src/controllers/age_gate");
+            std::os::unix::fs::symlink(&outside, &linked).unwrap();
+            assert!(
+                plan(
+                    root,
+                    None,
+                    18,
+                    "dashboard-v1",
+                    "tenant-alpha",
+                    "sqlite",
+                    "saas"
+                )
+                .is_err()
+            );
+            std::fs::remove_file(&linked).unwrap();
+            assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0);
         }
         let edits = plan(
             root,

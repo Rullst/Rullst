@@ -26,6 +26,21 @@ A prepared version section does not establish that its tag or crates exist.
   capped. It reports findings with file:line, severity and a suggested fix as
   text or `rullst.ai-review.v1` JSON, with a deterministic offline review for CI.
 
+### Cross-platform fixes (Windows and macOS)
+
+- Text files are now checked out with LF on every platform (`.gitattributes`),
+  so Windows checkouts no longer embed CRLF into generated projects.
+- On Windows, the development panic console, `audit` findings (and the
+  compliance report built from them) and generator refusals (`make:k8s`,
+  `dockerize` and the other overwrite guards) name files with `/` separators.
+- `make:age-gate` and `make:privacy` resolve the project directory before their
+  symlink guard, so projects behind a symlinked parent (macOS `/var`) or a
+  Windows junction are accepted; a symlink inside the project is still refused.
+- Test isolation: the AI-checkpoint test no longer depends on a global
+  `core.autocrlf`, the CLI behaviour tests use an isolated HOME, and the
+  `cargo rullst dev` cleanup tests check orphaned processes with `ps`, which
+  also works on macOS.
+
 ### Successor maintainer checklist
 
 - Add `docs/successor.md`: the access a successor maintainer needs (organization

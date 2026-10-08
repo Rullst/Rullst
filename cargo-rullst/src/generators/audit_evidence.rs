@@ -211,7 +211,7 @@ fn inspect_bindings(directory: &Path, warnings: &mut Vec<String>, incomplete: &m
         {
             warnings.push(format!(
                 "File '{}': source contains an unspecified-address listener; review whether it should be '127.0.0.1'",
-                path.display()
+                super::slash_path(&path)
             ));
         }
     }

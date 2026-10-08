@@ -240,7 +240,7 @@ pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
             {
                 let msg = format!(
                     "File '{}:{}': Unsafe Rust detected: `{}`",
-                    path.display(),
+                    super::slash_path(&path),
                     line_idx + 1,
                     trimmed
                 );
