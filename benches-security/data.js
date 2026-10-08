@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791473475349,
+  "lastUpdate": 1791479801032,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -14665,6 +14665,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "833048894d0b3d26d84f6a9df0b5fcc2b0390682",
+          "message": "Merge pull request #439 from Rullst/integration/v13-alpha-batch-2\n\nchore(v13): integrate the alpha.1 batch 2 (#435-#437)",
+          "timestamp": "2026-10-08T13:55:02-03:00",
+          "tree_id": "0dba935db03d126e22024b8cc825fd2c5c77f96e",
+          "url": "https://github.com/Rullst/Rullst/commit/833048894d0b3d26d84f6a9df0b5fcc2b0390682"
+        },
+        "date": 1791479800106,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5370,
+            "range": "± 132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 566,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
