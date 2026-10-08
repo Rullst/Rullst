@@ -39,16 +39,8 @@ fn test_driver_constructors() {
     };
     assert_eq!(resend.api_key, "re_123456789");
 
-    let sendgrid = SendGridDriver {
-        api_key: "SG.123456".to_string(),
-    };
-    assert_eq!(sendgrid.api_key, "SG.123456");
-
-    let postmark = PostmarkDriver {
-        server_token: "pm_tok_123".to_string(),
-        message_stream: Some("outbound".to_string()),
-    };
-    assert_eq!(postmark.server_token, "pm_tok_123");
+    let sendpulse = SendPulseDriver::try_new("mock_sendpulse").unwrap();
+    assert_eq!(sendpulse.delivery_mode(), DeliveryMode::OfflineMock);
 
     let ses = AwsSesDriver::try_new("us-east-1", "mock_ses_token").unwrap();
     assert_eq!(ses.region(), "us-east-1");

@@ -165,12 +165,12 @@ base64 form, so upgrade workers before producers during a rolling deployment.
 ### 2. Resilient Multi-Driver Failover (Circuit Breaker)
 
 ```rust
-use rullst_mail::drivers::{FailoverDriver, PostmarkDriver, ResendDriver};
+use rullst_mail::drivers::{FailoverDriver, ResendDriver, SendPulseDriver};
 use std::time::Duration;
 
 # fn build_failover() -> Result<FailoverDriver, rullst_mail::MailError> {
 let primary = ResendDriver::try_new("re_...")?;
-let fallback_1 = PostmarkDriver::try_new("pm_token_...")?;
+let fallback_1 = SendPulseDriver::try_new("sendpulse_api_key...")?;
 
 let failover_driver = FailoverDriver::new(primary)
     .with_fallback(fallback_1)

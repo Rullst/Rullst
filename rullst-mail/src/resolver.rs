@@ -12,7 +12,7 @@ use std::sync::{Arc, RwLock};
 ///
 /// In multi-tenant B2B SaaS applications, each tenant or organization may use
 /// their own SMTP credentials, custom domain sender addresses, or dedicated REST API keys
-/// (e.g. Resend, SendGrid, Postmark, AWS SES).
+/// (e.g. Resend, AWS SES, SendPulse).
 ///
 /// `TenantMailResolver` dynamically routes outbound emails to the driver configured
 /// for the specified tenant, falling back to a global default driver if configured.

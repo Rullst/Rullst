@@ -18,7 +18,7 @@ struct CircuitState {
 /// Dispatches outgoing emails via a designated primary driver (e.g. `ResendDriver`).
 /// If the primary driver fails or is tripped by repeated consecutive failures,
 /// the failover engine automatically routes messages across configured fallback drivers
-/// (e.g. `SendGridDriver`, `SmtpDriver`) with structured telemetry warnings.
+/// (e.g. `AwsSesDriver`, `SmtpDriver`) with structured telemetry warnings.
 pub struct FailoverDriver {
     primary: Arc<dyn MailDriver>,
     fallbacks: Vec<Arc<dyn MailDriver>>,

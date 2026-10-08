@@ -1,6 +1,6 @@
 #![cfg(feature = "mailer")]
 
-use rullst::mail::{Mail, MailDriver, MailError, Message, ResendDriver, SendGridDriver};
+use rullst::mail::{Mail, MailDriver, MailError, Message, ResendDriver, SendPulseDriver};
 
 #[tokio::test]
 async fn test_mail_resolution_flow() {
@@ -40,13 +40,15 @@ async fn test_mail_resolution_flow() {
     let resend_res = Mail::send(Message::new()).await;
     assert!(resend_res.is_err());
 
-    // 5. Test SendGrid driver config error (missing env var)
+    // 5. A driver removed in v13 fails and names the migration row
     unsafe {
         std::env::set_var("MAIL_DRIVER", "sendgrid");
-        std::env::remove_var("SENDGRID_API_KEY");
     }
-    let sendgrid_res = Mail::send(Message::new()).await;
-    assert!(sendgrid_res.is_err());
+    let removed = Mail::send(msg.clone()).await;
+    assert!(matches!(
+        removed,
+        Err(MailError::ConfigError(e)) if e.contains("was removed") && e.contains("Mail providers removed")
+    ));
 
     // 6. Test resolve driver from TOML
     unsafe {
@@ -90,17 +92,15 @@ async fn test_resend_driver_send_mock() {
 
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
-async fn test_sendgrid_driver_send_mock() {
-    let driver = SendGridDriver {
-        api_key: "dummy_key".to_string(),
-    };
+async fn test_sendpulse_driver_requires_a_sender() {
+    let driver = SendPulseDriver::try_new("dummy_key").unwrap();
     let msg = Message::new()
         .to("recipient@example.com")
         .subject("Hi")
         .text("plain text")
         .html("<p>html</p>");
 
-    // This should fail due to invalid key, but it will execute the request logic
+    // A real key without a sender fails before any request.
     let res = driver.send(&msg).await;
-    assert!(res.is_err());
+    assert!(matches!(res, Err(MailError::ConfigError(_))));
 }

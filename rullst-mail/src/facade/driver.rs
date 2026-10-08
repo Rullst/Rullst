@@ -2,9 +2,9 @@
 //! messages while those settings stay the same.
 //!
 //! Rebuilding the driver for every message discarded per-driver state such
-//! as the `AzureManagedIdentity` token cache, the native SES SDK client and
-//! HTTP connection pools. The facade still reads its settings on every call,
-//! so a changed setting takes effect on the next message.
+//! as the native SES SDK client and HTTP connection pools. The facade still
+//! reads its settings on every call, so a changed setting takes effect on the
+//! next message.
 
 use super::settings::MailSettings;
 use crate::drivers::*;
@@ -35,25 +35,6 @@ pub(super) enum DriverSpec {
     Smtp,
     Resend(String),
     SendPulse(String),
-    Mailjet {
-        api_key: String,
-        secret_key: String,
-        sandbox: bool,
-    },
-    Mailtrap {
-        api_token: String,
-        sandbox_id: Option<u64>,
-    },
-    SendGrid(String),
-    Postmark {
-        server_token: String,
-        message_stream: Option<String>,
-    },
-    /// `identity` holds the managed-identity environment for a real endpoint.
-    AzureAcs {
-        endpoint: String,
-        identity: Option<[Option<String>; 3]>,
-    },
     Ses {
         region: String,
         endpoint: Option<String>,
@@ -91,6 +72,9 @@ impl DriverSpec {
     /// Reads the settings of the selected driver, failing closed on invalid ones.
     pub(super) fn from_settings(settings: &MailSettings) -> Result<Self, MailError> {
         let driver_name = settings.driver_name()?;
+        if let Some(error) = removed_driver_error(&driver_name) {
+            return Err(error);
+        }
         let value = |name: &str| settings.value(name);
         let required = |name: &str| -> Result<String, MailError> {
             Ok(settings.value(name)?.unwrap_or_default())
@@ -109,47 +93,6 @@ impl DriverSpec {
             "smtp" => Self::Smtp,
             "resend" => Self::Resend(required("RESEND_API_KEY")?),
             "sendpulse" => Self::SendPulse(required("SENDPULSE_API_KEY")?),
-            "mailjet" | "mailjet-sandbox" => Self::Mailjet {
-                api_key: required("MAILJET_API_KEY")?,
-                secret_key: required("MAILJET_SECRET_KEY")?,
-                sandbox: driver_name == "mailjet-sandbox",
-            },
-            "mailtrap" => Self::Mailtrap {
-                api_token: required("MAILTRAP_API_TOKEN")?,
-                sandbox_id: None,
-            },
-            "mailtrap-sandbox" => {
-                let id = value("MAILTRAP_SANDBOX_ID")?
-                    .and_then(|v| v.parse::<u64>().ok())
-                    .ok_or_else(|| {
-                        MailError::ConfigError(
-                            "MAILTRAP_SANDBOX_ID must be a positive integer".into(),
-                        )
-                    })?;
-                Self::Mailtrap {
-                    api_token: required("MAILTRAP_API_TOKEN")?,
-                    sandbox_id: Some(id),
-                }
-            }
-            "sendgrid" => Self::SendGrid(required("SENDGRID_API_KEY")?),
-            "postmark" => Self::Postmark {
-                server_token: match value("POSTMARK_SERVER_TOKEN")? {
-                    Some(token) => token,
-                    None => required("POSTMARK_API_KEY")?,
-                },
-                message_stream: value("POSTMARK_MESSAGE_STREAM")?,
-            },
-            "azure-acs" => {
-                let endpoint = required("AZURE_COMMUNICATION_EMAIL_ENDPOINT")?;
-                // `AzureManagedIdentity::from_environment` reads these from
-                // the process environment, so they are part of the key.
-                let identity =
-                    (!endpoint.is_empty() && !endpoint.starts_with("mock_")).then(|| {
-                        ["IDENTITY_ENDPOINT", "IDENTITY_HEADER", "AZURE_CLIENT_ID"]
-                            .map(|name| std::env::var(name).ok())
-                    });
-                Self::AzureAcs { endpoint, identity }
-            }
             "ses" | "aws_ses" => Self::Ses {
                 region: value("AWS_REGION")?.unwrap_or_else(|| "us-east-1".to_string()),
                 endpoint: value("AWS_SES_ENDPOINT")?,
@@ -181,51 +124,6 @@ impl DriverSpec {
             Self::Smtp => Box::new(SmtpDriver),
             Self::Resend(api_key) => Box::new(ResendDriver::try_new(api_key)?),
             Self::SendPulse(api_key) => Box::new(SendPulseDriver::try_new(api_key)?),
-            Self::Mailjet {
-                api_key,
-                secret_key,
-                sandbox,
-            } => {
-                let driver = MailjetDriver::try_new(api_key, secret_key)?;
-                Box::new(if sandbox {
-                    driver.with_sandbox()
-                } else {
-                    driver
-                })
-            }
-            Self::Mailtrap {
-                api_token,
-                sandbox_id: None,
-            } => Box::new(MailtrapDriver::try_new(api_token)?),
-            Self::Mailtrap {
-                api_token,
-                sandbox_id: Some(id),
-            } => Box::new(MailtrapDriver::sandbox(api_token, id)?),
-            Self::SendGrid(api_key) => Box::new(SendGridDriver::try_new(api_key)?),
-            Self::Postmark {
-                server_token,
-                message_stream,
-            } => {
-                let mut driver = PostmarkDriver::try_new(server_token)?;
-                if let Some(stream) = message_stream {
-                    driver = driver.with_message_stream(stream);
-                }
-                Box::new(driver)
-            }
-            Self::AzureAcs {
-                endpoint,
-                identity: None,
-            } => Box::new(AzureCommunicationDriver::new(
-                endpoint,
-                StaticAzureMailCredential::new("mock_azure", 0)?,
-            )?),
-            Self::AzureAcs {
-                endpoint,
-                identity: Some(_),
-            } => Box::new(AzureCommunicationDriver::new(
-                endpoint,
-                AzureManagedIdentity::from_environment()?,
-            )?),
             Self::Ses {
                 region,
                 endpoint,
@@ -258,6 +156,32 @@ impl DriverSpec {
         self.hash(&mut hasher);
         hasher.0.finalize().into()
     }
+}
+
+/// `MAIL_DRIVER` values of the providers removed in v13, with their names.
+const REMOVED_DRIVERS: [(&str, &str); 7] = [
+    ("sendgrid", "SendGrid"),
+    ("postmark", "Postmark"),
+    ("mailjet", "Mailjet"),
+    ("mailjet-sandbox", "Mailjet"),
+    ("mailtrap", "Mailtrap"),
+    ("mailtrap-sandbox", "Mailtrap"),
+    ("azure-acs", "Azure Communication Services"),
+];
+
+/// A configuration error for a driver that v13 removed. It never falls back
+/// to another driver: a worker fails the job instead of dropping its mail.
+fn removed_driver_error(driver_name: &str) -> Option<MailError> {
+    let name = driver_name.trim();
+    let (value, provider) = REMOVED_DRIVERS
+        .into_iter()
+        .find(|(value, _)| value.eq_ignore_ascii_case(name))?;
+    Some(MailError::ConfigError(format!(
+        "mail driver `{value}` ({provider}) was removed in Rullst 13; set MAIL_DRIVER or \
+         [mail] driver to resend, ses, sendpulse or smtp, or install your own transport with \
+         Mail::set_driver. See \"Mail providers removed\" in the v13 migration guide: \
+         https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
+    )))
 }
 
 /// Port 25 only when `MAIL_PORT` is absent or empty; a malformed or
