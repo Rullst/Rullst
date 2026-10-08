@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency security: hickory-resolver 0.26.2
+
+- Lock `hickory-resolver` 0.26.2 (from 0.26.1), reached only through the
+  optional MongoDB driver of `rullst-orm`. It resolves GHSA-5j98-2g5x-46v6,
+  GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5. Lockfile-only change; no
+  manifest or API change.
+
 ### Documentation and CLI help review
 
 - The book, crate READMEs, `AGENTS.md`, the spec and the `cargo rullst ai`
