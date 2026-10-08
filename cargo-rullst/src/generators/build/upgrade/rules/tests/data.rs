@@ -151,3 +151,46 @@ fn boot() {
         &[],
     );
 }
+
+/// Removed mail transports, their builder and their settings point to their
+/// row; the kept transports and the in-memory `MailTrap` do not.
+#[test]
+fn removed_mail_transports_are_reviewed() {
+    let source = r#"
+use rullst::mail::{MailDriver, MailError, PostmarkDriver, ResendDriver, SendGridDriver};
+fn boot() -> Result<Box<dyn MailDriver>, MailError> {
+    Ok(Box::new(SendGridDriver::try_new("key")?))
+}
+"#;
+    // A review rule reports its first location in each file.
+    assert_eq!(
+        scan_with(source, "mail.rs", &WorkspaceFacts::default()),
+        vec![("V13-MAIL-REMOVED", 2), ("V13-MAIL-RESEND-SCHEDULE", 2)]
+    );
+    for removed in [
+        "use rullst::mail::drivers::azure::AzureManagedIdentity;",
+        "fn a() { let _ = PostmarkDriver::new(token).with_message_stream(\"outbound\"); }",
+        "fn b() -> Result<MailjetDriver, Error> { MailjetDriver::try_new(key, secret) }",
+        "fn c() { let _ = rullst::mail::MailtrapDriver::sandbox(token, 42); }",
+        "fn d(credential: impl AzureMailCredential) {}",
+        "fn e() { unsafe { std::env::set_var(\"MAIL_DRIVER\", \"azure-acs\") } }",
+        "fn f() { let _ = std::env::var(\"SENDGRID_API_KEY\"); }",
+        "const ENV: &str = \"MAIL_FROM=ops@example.com\\nMAIL_DRIVER=mailjet-sandbox\\n\";",
+    ] {
+        assert_only(removed, &["V13-MAIL-REMOVED"]);
+    }
+
+    assert_only(
+        r#"
+use rullst::mail::{AwsSesDriver, MailTrap, SendPulseDriver, SmtpDriver, SuppressionEvent};
+fn boot() {
+    unsafe { std::env::set_var("MAIL_DRIVER", "sendpulse") };
+    let ses = AwsSesDriver::try_new("us-east-1", "token");
+    MailTrap::assert_nothing_sent();
+    // A provider label of a stored event is data, not a driver selection.
+    let event = SuppressionEvent::try_new("postmark", "evt", "a@example.com", reason, now);
+}
+"#,
+        &[],
+    );
+}
