@@ -207,3 +207,19 @@ async fn panic_console_matches_the_default_nonce_csp() {
         "inline style attributes need unsafe-inline"
     );
 }
+
+/// Windows reports panic locations as `src\error_console\tests.rs`; the page
+/// shows the same `/` path on every OS while scripts keep the native path.
+#[tokio::test]
+async fn backslash_panic_locations_display_with_forward_slashes() {
+    let capture = capture::PanicCapture {
+        location: Some(("rullst-core\\src\\error_console\\tests.rs".to_string(), 7)),
+        backtrace: None,
+    };
+    let body = renderer::render_console_html("boom", &capture, None).await;
+    assert!(
+        body.contains("File: <span>rullst-core/src/error_console/tests.rs</span> (Line 7)"),
+        "the location must use forward slashes"
+    );
+    assert!(body.contains(r#"const file_path = "rullst-core\\src\\error_console\\tests.rs";"#));
+}

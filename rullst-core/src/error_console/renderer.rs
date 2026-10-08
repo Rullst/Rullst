@@ -15,6 +15,12 @@ fn panic_source_location(capture: &PanicCapture, backtrace: &str) -> Option<(Str
         .or(location)
 }
 
+/// The location shown on the page, with `/` separators on every OS: Windows
+/// panic locations read `src\main.rs`. Scripts keep the native path.
+fn display_path(file: &str) -> String {
+    crate::html::escape_str(&file.replace('\\', "/")).into_owned()
+}
+
 /// Stylesheet inlined in a `<style>` element that carries the CSP nonce.
 const CONSOLE_STYLE: &str = include_str!("console.css");
 
@@ -101,6 +107,7 @@ pub(crate) async fn render_console_html(
         .replace('`', "\\`")
         .replace('$', "\\$");
 
+    let file_html = display_path(&file_display);
     let file_display_js = file_display.replace('\\', "\\\\").replace('"', "\\\"");
 
     format!(
@@ -135,7 +142,7 @@ pub(crate) async fn render_console_html(
                 </div>
                 <div class="code-container">
                     <div class="code-header">
-                        <span class="file-path">File: <span>{file_display}</span> (Line {line_display})</span>
+                        <span class="file-path">File: <span>{file_html}</span> (Line {line_display})</span>
                     </div>
                     <div class="code-body">
                         {code_frame_html}
@@ -268,6 +275,7 @@ pub(crate) async fn render_console_html(
 </body>
 </html>"#,
         escaped_err = escaped_err_js,
+        file_html = file_html,
         file_display = file_display_js,
         line_display = line_display,
         code_frame_html = code_frame_html,
