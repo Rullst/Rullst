@@ -6,7 +6,7 @@ use axum::{
     http::{HeaderMap, HeaderName, HeaderValue, Request, Response, header},
 };
 pub use rullst_core::security::CspNonce;
-use rullst_core::security::{apply_referrer_policy, render_csp_policy};
+use rullst_core::security::{SecurityHeadersApplied, apply_referrer_policy, render_csp_policy};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -85,6 +85,12 @@ fn insert_configured_header(
 }
 
 /// Tower Layer that applies the OWASP Secure Headers suite to all outgoing responses.
+///
+/// Configured values replace what the handler set, except an exact
+/// `Referrer-Policy: no-referrer`. Responses are marked with
+/// [`SecurityHeadersApplied`], so the Core baseline that `Server` mounts
+/// outside this layer keeps these values and does not add the headers the
+/// configuration omits.
 #[derive(Clone, Debug, Default)]
 pub struct SecureHeadersLayer {
     config: SecureHeadersConfig,
@@ -204,6 +210,7 @@ where
                     .unwrap_or_else(|_| HeaderValue::from_static("default-src 'none'"))
             });
             headers.insert(header::CONTENT_SECURITY_POLICY, csp_value);
+            res.extensions_mut().insert(SecurityHeadersApplied);
 
             SecurityStore::global().inc_secure_headers();
 
@@ -305,6 +312,55 @@ mod tests {
             ))
             .layer(SecureHeadersLayer::default());
         assert_composed_layers_share_nonce(extended_outside).await;
+    }
+
+    #[tokio::test]
+    async fn configured_values_and_omissions_survive_the_core_baseline() {
+        use axum::{Extension, Router, middleware, routing::get};
+        use tower::ServiceExt;
+
+        let config = SecureHeadersConfig {
+            frame_options: Some("SAMEORIGIN".to_string()),
+            coep: Some("credentialless".to_string()),
+            hsts: None,
+            permissions_policy: None,
+            ..SecureHeadersConfig::default()
+        };
+        let app = Router::new()
+            .route(
+                "/",
+                get(|Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() }),
+            )
+            .layer(SecureHeadersLayer::with_config(config))
+            .layer(middleware::from_fn(
+                rullst_core::security::headers_middleware,
+            ));
+        let response = app
+            .oneshot(Request::new(Body::empty()))
+            .await
+            .expect("request should complete");
+        let headers = response.headers();
+        assert_eq!(headers[header::X_FRAME_OPTIONS], "SAMEORIGIN");
+        assert_eq!(headers["cross-origin-embedder-policy"], "credentialless");
+        assert!(!headers.contains_key(header::STRICT_TRANSPORT_SECURITY));
+        assert!(!headers.contains_key("permissions-policy"));
+        assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert!(
+            response
+                .extensions()
+                .get::<SecurityHeadersApplied>()
+                .is_some()
+        );
+        let csp = headers[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .expect("CSP should be ASCII")
+            .to_owned();
+        let body = axum::body::to_bytes(response.into_body(), 1_024)
+            .await
+            .expect("body should be readable");
+        let nonce = std::str::from_utf8(&body).expect("nonce should be UTF-8");
+        assert!(csp.contains(&format!("'nonce-{nonce}'")));
     }
 
     #[tokio::test]

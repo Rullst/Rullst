@@ -156,14 +156,6 @@ deterministic offline behavior when configured with their documented empty or
 `mock_*` credentials. This lets generated projects, tests, examples, and local
 sandboxes run without silently contacting a third party.
 
-The Brazilian fiscal boundary applies the same evidence-first approach: its
-bounded DPS 1.01 builder, checksum-pinned official XSD catalogue, local
-PKCS#12 XMLDSig verification, deterministic issuance JSON, strict
-signed-authorization and structured-rejection codec, and mTLS client
-preparation are testable without
-calling SEFIN, while tax authorization remains explicitly disabled until the
-external trust and homologation gates pass.
-
 Mail scheduling follows the same bounded approach: SQLite and Redis persist a
 due time and never claim it early, while unsupported real direct transports
 reject a future message instead of delivering it immediately. Offline fixtures
@@ -281,8 +273,8 @@ members stop at the configured limit; membership and tier reconciliation remain
 visible host responsibilities.
 Coupon and trial management follows the same evidence boundary: coupon IDs are
 bounded/redacted, Stripe binds the expanded applied discount, and 1–730-day
-relative trial updates have stable explicit-clock retries plus bound Stripe and
-Lemon Squeezy protocol fixtures. Providers without a reviewed live operation
+relative trial updates have stable explicit-clock retries plus bound Stripe
+protocol fixtures. Providers without a reviewed live operation
 fail explicitly instead of presenting a local no-op as remote success.
 
 The same CLI includes inspection, toolchain diagnostics, migration assistance,

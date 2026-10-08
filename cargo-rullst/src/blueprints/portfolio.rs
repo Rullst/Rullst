@@ -103,6 +103,10 @@ pub fn file_manifest(
             "src/main.rs",
             fill(include_str!("portfolio/src/main.rs.template")),
         ));
+        manifest.push((
+            super::security_tests::PATH,
+            super::security_tests::source(super::security_tests::Starter::Portfolio),
+        ));
     }
     manifest.extend(
         COMMON_FILES

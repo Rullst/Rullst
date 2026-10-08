@@ -67,10 +67,10 @@ contains the evidence boundary and recommendation for the highest-risk claims.
 | :--- | :--- | :--- |
 | [`rullst-ai`](rullst-ai/ROADMAP.md) | Guarded provider clients, deterministic mocks/eval corpus, bounded RAG, opt-in OpenAI-compatible SSE/cancellation, SQL conversational memory, guarded tools, authenticated audit export and adaptive evaluation orchestration. | Provider-native tool loops, first-party external retrievers, non-compatible streaming adapters and hosted-model conformance remain partial or application work. Local eval orchestration is not live-model validation. |
 | [`rullst-auth`](rullst-auth/ROADMAP.md) | Argon2, encrypted sessions, RBAC/policies, OAuth/OIDC re-exports, bounded application JWTs, opt-in SQLite revocation/passkey-device state, a custom ES256 passkey foundation and the 12.1 PostgreSQL/SQLite account-recovery and transactional-notice contracts. PR #223 admitted an optional v13 PostgreSQL ceremony manager with bound single-use challenges and database/process/browser evidence. | Bounded opaque-session inventory and sibling logout passed v13 source/package admission in PR #236; final release admission remains separate. Broader refresh/device-session workflows and normative WebAuthn conformance remain incomplete; applications own identity, roles, credential-owner/revocation/counter checks and deployed session policy. |
-| [`rullst-capital`](rullst-capital/ROADMAP.md) | Provider trait/adapters, explicit offline mocks, canonical fail-closed webhook verification with Axum/Actix adapters, shared bounded webhook replay claims and team/workspace quotas over four relational protocols, provider-specific coupon/trial contracts, billing scaffolding, analytics, and bounded NFS-e preparation. | Live method coverage varies by gateway; cross-system exactly-once/reconciliation, Alipay RSA2, full tax/proration contracts, and homologated live NFS-e are not implemented. NFS-e is extraordinary and worthwhile only as a dedicated homologation program. |
+| [`rullst-capital`](rullst-capital/ROADMAP.md) | Provider-neutral billing traits, Stripe and an experimental InfinitePay adapter, explicit offline mocks, canonical fail-closed webhook verification with Axum/Actix adapters, shared bounded webhook replay claims and team/workspace quotas over four relational protocols, Stripe coupon/trial contracts, billing scaffolding and analytics. | InfinitePay live validation, cross-system exactly-once/reconciliation and full tax/proration contracts are not implemented. v13 removed the other adapters, payouts and NFS-e; other gateways are application-owned adapters. |
 | [`rullst-connect`](rullst-connect/ROADMAP.md) | OAuth2/OIDC/social adapters, state/PKCE/nonce lifecycle, guarded refresh/revocation contracts, encrypted account-bound tokens and opt-in shared-local SQLite token persistence with generation CAS. | Live provider conformance, remote refresh leases/reconciliation, multi-host replication, SAML/SCIM/DPoP/JWE/mTLS and risk ML remain application or roadmap work. Broker adapters belong to Messaging. |
 | [`rullst-iot`](rullst-iot/ROADMAP.md) | `no_std` frames/telemetry, bounded MQTT 5 PUBLISH and CoAP request encoders, the Ed25519 OTA manifest gate, and a typed durable-counter CAS boundary with restart/retry/conflict proof. | Download, a concrete hardware-backed counter, flash/boot/rollback, MQTT/CoAP/LoRaWAN transports and session state, real hardware, HSM and PQC are not implemented; deterministic `Simulated*` types are experimental fixtures only. Keep the vision, but require target hardware and interoperability programs. |
-| [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, bounded attachment/CID serialization, scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories, background worker integration, opt-in bounded attachment inspection, shared-local SQLite suppression and minimized delivery observations. Version 12.1 adds Resend/Svix feedback verification and ACS Managed Identity, SendPulse, Mailjet and Mailtrap transports with explicit protocol boundaries. | A checked item does not prove provider acceptance or inbox delivery; provider limits may be tighter, the local inspector is not antivirus/CDR, and other provider feedback adapters plus multi-host suppression remain open. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME and Studio Mail Radar are not implemented; additional providers require a shared contract suite. |
+| [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, bounded attachment/CID serialization, scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories, background worker integration, opt-in bounded attachment inspection, shared-local SQLite suppression and minimized delivery observations. Version 12.1 adds Resend/Svix feedback verification and ACS Managed Identity, SendPulse, Mailjet and Mailtrap transports with explicit protocol boundaries. Version 13 keeps Resend, AWS SES, SendPulse and SMTP and removes the SendGrid, Postmark, Mailjet, Mailtrap and ACS transports (kept in 12.x); other providers are application-owned `MailDriver` transports. | A checked item does not prove provider acceptance or inbox delivery; provider limits may be tighter, the local inspector is not antivirus/CDR, and other provider feedback adapters plus multi-host suppression remain open. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME and Studio Mail Radar are not implemented; additional providers require a shared contract suite. |
 | [`rullst-messaging`](rullst-messaging/ROADMAP.md) | Bounded envelopes and wire/trace codec, idempotent publication, competing consumers, leases/retry/DLQ, deterministic local broker, encrypted-content SQLite state and opt-in ORM outbox relay. | The standalone Redis Streams candidate has TLS/restart/fault/outbox evidence and passed hosted source/package admission in PR #236; see [its contract](docs/src/redis-messaging.md). Other remote brokers and replication/failover remain roadmap work. Local durability does not provide cross-system exactly-once delivery. |
 | [`rullst-nexus`](rullst-nexus/ROADMAP.md) | Fail-closed admin construction, generated metadata/forms, CRUD/search/pagination/batch actions, opt-in trusted-context tenant scope and transaction-coupled mutation audit. | Host authentication/tenant resolution, global-model/custom-route policy, immutable external audit, custom dashboards and a visual SQL builder remain application or roadmap work. |
 | [`rullst-orm`](rullst-orm/ROADMAP.md) | SQLx pools/dialects, Active Record/repository/query/schema foundations, fail-closed tenant scopes, strict DB modes, transactions, relations/soft deletes, audit/privacy, typed Turso primary, bounded MongoDB/DuckDB/SurrealDB adapters, Qdrant vectors and Redis native structures. | The [transactional partial-update candidate](docs/src/transactional-partial-updates.md) passed native/archive-consumer and full hosted source admission in PRs #236 and #239. Several historical `[x]` entries remain partial or absent: transparent edge replication, universal external-search durability, autonomous schema/index changes, automatic graph traversal, Wasm drivers and PQC. The 45 historical claims are preserved in the [immutable v12 audit](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md); the current capability ledger owns their boundaries. |
@@ -234,7 +234,7 @@ contains the more detailed evidence and acceptance boundaries.
   feature-specific transport inventory are all worth maintaining).*
 - **Framework-wide “production-ready” badge** *(`[!] Do not promise as one
   boolean` — worth publishing stability per crate/capability because routing can
-  be stable while live fiscal and hardware integrations remain unavailable. The
+  be stable while live payment and hardware integrations remain unavailable. The
   v13 [maturity tiers](docs/src/maturity.md) now label every crate Core,
   Extension or Experimental and define each promise).*
 - **A first-party load balancer embedded in every application** *(`[!] Do not
@@ -295,15 +295,14 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### Fiscal, payments, messaging, storage, and mail
 
-- **Live NFS-e Nacional with PKCS#12, XML C14N/XMLDSig, XSD validation, mTLS,
-  official rejection parsing, and SEFIN homologation** *(not implemented — an
-  extraordinary and worthwhile Brazilian-market program, but only as a dedicated
-  maintained fiscal workstream with official homologation and independent crypto
-  validation).*
-- **Alipay RSA2 and uniform live support across every advertised gateway** *(not
-  implemented/partial — worth only with provider sandbox access, demand, and a
-  method-by-method capability matrix; adapter names must not imply every payment,
-  subscription, payout, portal, tax, and webhook method exists).*
+- **Live NFS-e Nacional** *(removed from the framework in v13 — the local
+  preparation module was never validated with a real municipality; fiscal work
+  may return only as a separate, dedicated product with official homologation and
+  independent crypto validation).*
+- **Uniform live support across many gateways** *(`[!] Do not promise` — v13
+  keeps Stripe and an experimental InfinitePay adapter; other gateways are
+  application-owned adapters on the provider traits, and adapter names must not
+  imply every payment, subscription, portal, tax, and webhook method exists).*
 - **Static fee/settlement/tax tables and “zero-cost invoicing”** *(`[!] Do not
   promise` — transparent links to current provider terms are worthwhile, but
   framework docs cannot erase certificate, accounting, infrastructure, support,
@@ -367,7 +366,7 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### Phase 0 — containment and truthful boundaries
 
-- Keep live Fiscal, unfinished IoT integrations, unconfigured S3/R2, Alipay, and
+- Keep unfinished IoT integrations, unconfigured S3/R2, live InfinitePay and
   other absent provider paths fail-closed with typed `Unsupported` results.
 - Keep Nexus fail-closed, generated credentials absent, production configuration
   validated, webhook secrets mandatory, local storage confined, and the release

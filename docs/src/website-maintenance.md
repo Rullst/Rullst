@@ -21,9 +21,16 @@ From the framework checkout, using Node 24 and a locally installed Chromium
 ```bash
 mdbook build docs
 python3 .github/validate-site.py
+python3 .github/test-llms-txt.py
 node --check docs/site.js
 node .github/site-browser-smoke.mjs
 ```
+
+The Pages build also writes `llms.txt` (an index of every book page in
+`SUMMARY.md` order) and `llms-full.txt` (their Markdown, with mdBook include
+directives expanded) to the site root with `.github/generate-llms-txt.py`.
+They are generated on every deployment and never edited by hand; preview them
+with `python3 .github/generate-llms-txt.py --out <directory>`.
 
 The browser test checks desktop and 390/320-pixel layouts, keyboard and mobile
 navigation, clipboard success/denial, privacy disclosure, reduced motion,

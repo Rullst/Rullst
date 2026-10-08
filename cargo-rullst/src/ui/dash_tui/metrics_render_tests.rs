@@ -3,7 +3,7 @@
 use super::metrics::Source;
 use super::state::{App, ServerStatus};
 use super::telemetry::{
-    DatabaseReport, HttpReport, PollOutcome, QueueReport, RequestSample, SlowQuery,
+    DatabaseReport, HttpReport, PollOutcome, QueueReport, RepeatedReport, RequestSample, SlowQuery,
     TelemetrySnapshot,
 };
 use super::{handle_key, ingest_telemetry, render};
@@ -43,6 +43,7 @@ fn snapshot(
             recent,
         },
         database,
+        repeated: RepeatedReport::NotReported,
         queue,
     })
 }

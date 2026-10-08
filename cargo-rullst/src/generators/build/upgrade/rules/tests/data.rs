@@ -111,3 +111,86 @@ pub struct Holder {
         &[],
     );
 }
+
+/// Removed Capital providers, payouts and NFS-e types point to their row; the
+/// providers that v13 keeps do not.
+#[test]
+fn removed_capital_providers_and_nfse_are_reviewed() {
+    let source = r#"
+use rullst::capital::{PaddleProvider, StripeProvider, WiseProvider, init_payout_provider};
+use rullst::capital::fiscal::{FiscalEmitter, NfseNationalClient};
+fn boot() {
+    rullst::capital::init_provider(Box::new(PaddleProvider::new("key", "secret")));
+    init_payout_provider(Box::new(WiseProvider::new("token", "profile")));
+    let dps = invoice.to_dps("01.07.01", "3550308", 0.05);
+}
+"#;
+    // A review rule reports its first location in each file.
+    assert_eq!(
+        scan_with(source, "billing.rs", &WorkspaceFacts::default()),
+        vec![("V13-CAPITAL-REMOVED", 2)]
+    );
+    for removed in [
+        "use rullst::capital::fiscal::NfseNationalClient;",
+        "fn a() { init_payout_provider(Box::new(payouts)); }",
+        "fn b(invoice: Invoice) { let _ = invoice.to_dps(\"01.07.01\", \"3550308\", 0.05); }",
+        "fn c(event: rullst::capital::PaddleSubscriptionEvent) {}",
+        "fn d() -> Result<(), FiscalError> { Ok(()) }",
+    ] {
+        assert_only(removed, &["V13-CAPITAL-REMOVED"]);
+    }
+
+    assert_only(
+        r#"
+use rullst::capital::{InfinitePayProvider, StripeProvider};
+fn boot() {
+    rullst::capital::init_provider(Box::new(StripeProvider::new("key", "secret")));
+    let experimental = InfinitePayProvider::new("key", "secret");
+}
+"#,
+        &[],
+    );
+}
+
+/// Removed mail transports, their builder and their settings point to their
+/// row; the kept transports and the in-memory `MailTrap` do not.
+#[test]
+fn removed_mail_transports_are_reviewed() {
+    let source = r#"
+use rullst::mail::{MailDriver, MailError, PostmarkDriver, ResendDriver, SendGridDriver};
+fn boot() -> Result<Box<dyn MailDriver>, MailError> {
+    Ok(Box::new(SendGridDriver::try_new("key")?))
+}
+"#;
+    // A review rule reports its first location in each file.
+    assert_eq!(
+        scan_with(source, "mail.rs", &WorkspaceFacts::default()),
+        vec![("V13-MAIL-REMOVED", 2), ("V13-MAIL-RESEND-SCHEDULE", 2)]
+    );
+    for removed in [
+        "use rullst::mail::drivers::azure::AzureManagedIdentity;",
+        "fn a() { let _ = PostmarkDriver::new(token).with_message_stream(\"outbound\"); }",
+        "fn b() -> Result<MailjetDriver, Error> { MailjetDriver::try_new(key, secret) }",
+        "fn c() { let _ = rullst::mail::MailtrapDriver::sandbox(token, 42); }",
+        "fn d(credential: impl AzureMailCredential) {}",
+        "fn e() { unsafe { std::env::set_var(\"MAIL_DRIVER\", \"azure-acs\") } }",
+        "fn f() { let _ = std::env::var(\"SENDGRID_API_KEY\"); }",
+        "const ENV: &str = \"MAIL_FROM=ops@example.com\\nMAIL_DRIVER=mailjet-sandbox\\n\";",
+    ] {
+        assert_only(removed, &["V13-MAIL-REMOVED"]);
+    }
+
+    assert_only(
+        r#"
+use rullst::mail::{AwsSesDriver, MailTrap, SendPulseDriver, SmtpDriver, SuppressionEvent};
+fn boot() {
+    unsafe { std::env::set_var("MAIL_DRIVER", "sendpulse") };
+    let ses = AwsSesDriver::try_new("us-east-1", "token");
+    MailTrap::assert_nothing_sent();
+    // A provider label of a stored event is data, not a driver selection.
+    let event = SuppressionEvent::try_new("postmark", "evt", "a@example.com", reason, now);
+}
+"#,
+        &[],
+    );
+}

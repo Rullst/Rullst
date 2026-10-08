@@ -67,3 +67,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::new(router()?).run(3000).await?;
     Ok(())
 }
+
+// Security checks against `router()`; run them with `cargo test`. A release
+// build needs the NEXUS_ADMIN_* credentials before the router can be built.
+#[cfg(all(test, debug_assertions))]
+mod security_tests;

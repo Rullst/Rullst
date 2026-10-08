@@ -11,7 +11,7 @@ The repository examples and CLI blueprints serve different purposes:
 
 No example is expected to exercise 100% of workspace behavior. External provider
 paths use deterministic mock credentials so CI and local development do not make
-live purchases, send email, call cloud LLMs, or issue fiscal documents.
+live purchases, send email, or call cloud LLMs.
 
 ## Blog showcase
 
@@ -24,9 +24,7 @@ The blog package demonstrates:
   not by this showcase);
 - Pico CSS and a small embedded file-template fixture (`include_str!` plus
   fixed placeholder replacement; not Tera or another template engine);
-- `Billable` quota evaluation and payment-adapter mock fixtures;
-- an escaped, unsigned DPS XML preview that is explicitly not an NFS-e
-  authorization;
+- `Billable` quota evaluation and offline Stripe/InfinitePay adapter fixtures;
 - bounded security-helper demonstrations and a local AI/vector fixture;
 - pages that render under the unrelaxed production Content Security Policy,
   with same-origin stylesheets, scripts and vendored HTMX/Pico.css files;
@@ -83,11 +81,10 @@ In a real application, authentication middleware must derive membership from a
 verified session or token. Never construct membership from the same client header
 used to select a tenant.
 
-## Fiscal and provider fixtures
+## Provider fixtures
 
-The `/pricing` page uses `mock_*` credentials and performs no live checkout. The
-DPS snippet is not XMLDSig-signed, transmitted, homologated, or authorized.
-`Homologation` and `Production` NFS-e modes remain fail-closed.
+The `/pricing` page uses `mock_*` credentials and performs no live checkout. It
+lists only the built-in Stripe and InfinitePay (experimental) adapters.
 
 Mock URLs and sample provider metadata are test fixtures, not a promise of live
 capability, pricing, tax treatment, or regional availability.

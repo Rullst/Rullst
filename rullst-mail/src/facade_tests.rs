@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use super::*;
+use crate::MailFailureClass;
 use async_trait::async_trait;
 use rullst_core::queue::{QueueDriver, QueueError, QueuedJob};
 
@@ -56,15 +57,6 @@ pub(super) fn clear_provider_environment(environment: &mut EnvironmentGuard) {
         "MAIL_PASSWORD",
         "RESEND_API_KEY",
         "SENDPULSE_API_KEY",
-        "MAILJET_API_KEY",
-        "MAILJET_SECRET_KEY",
-        "MAILTRAP_API_TOKEN",
-        "MAILTRAP_SANDBOX_ID",
-        "AZURE_COMMUNICATION_EMAIL_ENDPOINT",
-        "SENDGRID_API_KEY",
-        "POSTMARK_SERVER_TOKEN",
-        "POSTMARK_API_KEY",
-        "POSTMARK_MESSAGE_STREAM",
         "AWS_REGION",
         "AWS_SES_ENDPOINT",
         "AWS_ACCESS_KEY_ID",
@@ -88,38 +80,11 @@ async fn resolves_every_offline_provider_and_rejects_unknown_drivers() {
         .subject("resolved provider")
         .text("offline fixture");
 
-    for name in [
-        "log",
-        "memory",
-        "resend",
-        "sendgrid",
-        "postmark",
-        "ses",
-        "aws_ses",
-        "sendpulse",
-        "mailjet",
-        "mailjet-sandbox",
-        "mailtrap",
-        "azure-acs",
-    ] {
+    for name in ["log", "memory", "resend", "ses", "aws_ses", "sendpulse"] {
         environment.set("MAIL_DRIVER", name);
         let driver = Mail::resolve_driver().await.unwrap();
         driver.send(&message).await.unwrap();
     }
-
-    environment.set("MAIL_DRIVER", "mailtrap-sandbox");
-    assert!(Mail::resolve_driver().await.is_err());
-    environment.set("MAILTRAP_SANDBOX_ID", "42");
-    Mail::resolve_driver()
-        .await
-        .unwrap()
-        .send(&message)
-        .await
-        .unwrap();
-    environment.set("MAIL_DRIVER", "mailjet");
-    environment.set("MAILJET_API_KEY", "real_fixture");
-    assert!(Mail::resolve_driver().await.is_err());
-    environment.clear("MAILJET_API_KEY");
 
     environment.set("MAIL_DRIVER", "smtp");
     environment.set("MAIL_HOST", "mock_smtp");
@@ -181,15 +146,79 @@ async fn provider_resolution_fails_closed_for_partial_or_unsafe_ses_configuratio
     assert!(Mail::resolve_driver().await.is_err());
 }
 
+/// A driver that v13 removed fails resolution with an error that names it and
+/// the migration row, whatever its credentials say, and never falls back to
+/// a development driver that would report success without delivering.
+#[tokio::test]
+async fn removed_drivers_fail_resolution_without_falling_back() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    Mail::reset_driver();
+    environment.set("SENDGRID_API_KEY", "mock_sendgrid");
+    environment.set("RESEND_API_KEY", "mock_resend");
+    let message = Message::new()
+        .to("member@example.com")
+        .from("team@rullst.dev")
+        .subject("removed provider fixture")
+        .text("must not be delivered");
+
+    for (value, provider) in [
+        ("sendgrid", "SendGrid"),
+        ("postmark", "Postmark"),
+        ("mailjet", "Mailjet"),
+        ("mailjet-sandbox", "Mailjet"),
+        ("mailtrap", "Mailtrap"),
+        ("mailtrap-sandbox", "Mailtrap"),
+        ("azure-acs", "Azure Communication Services"),
+        ("SendGrid", "SendGrid"),
+    ] {
+        environment.set("MAIL_DRIVER", value);
+        for outcome in [
+            Mail::resolve_driver().await.map(|_| ()),
+            Mail::send_now(message.clone()).await,
+            Mail::send_now_for_tenant("tenant_acme", message.clone()).await,
+        ] {
+            let error = outcome.unwrap_err();
+            assert_eq!(error.failure_class(), MailFailureClass::Permanent);
+            assert!(
+                matches!(&error, MailError::ConfigError(text)
+                    if text.contains(&format!("`{}` ({provider}) was removed", value.to_ascii_lowercase()))
+                        && text.contains("Mail providers removed")
+                        && text.contains("migration-v13.html")),
+                "{error}"
+            );
+        }
+    }
+    // Other tests share the process-wide stores, so look for this message.
+    let delivered = |subject: &str| subject == "removed provider fixture";
+    assert!(
+        !MailTrap::sent_messages()
+            .iter()
+            .any(|m| delivered(&m.subject))
+    );
+    assert!(
+        !OfflineMailMock::deliveries()
+            .unwrap()
+            .iter()
+            .any(|d| delivered(&d.message.subject))
+    );
+
+    // The `[mail] driver` key of `Rullst.toml` resolves the same way.
+    environment.clear("MAIL_DRIVER");
+    let mut settings = MailSettings::default();
+    settings.fill_from_rullst_toml("[mail]\ndriver = \"postmark\"\n");
+    assert!(matches!(
+        Mail::resolve_driver_from(&settings),
+        Err(MailError::ConfigError(text)) if text.contains("`postmark` (Postmark) was removed")
+    ));
+}
+
 #[tokio::test]
 async fn optional_provider_settings_are_consumed_without_live_requests() {
     let _lock = MAIL_ENV_LOCK.lock().await;
     let mut environment = EnvironmentGuard::new();
     clear_provider_environment(&mut environment);
-
-    environment.set("MAIL_DRIVER", "postmark");
-    environment.set("POSTMARK_MESSAGE_STREAM", "broadcast");
-    assert!(Mail::resolve_driver().await.is_ok());
 
     environment.set("MAIL_DRIVER", "ses");
     environment.set("AWS_REGION", "sa-east-1");

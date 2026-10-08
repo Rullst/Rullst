@@ -2,6 +2,8 @@
 
 Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
 this page is a shipped capability unless it links to existing documentation.
+Item 1 and parts of items 3 and 4 exist in the v13 development source
+(`13.0.0-alpha.1`); see [measured release defaults](#measured-release-defaults).
 
 ## Goal
 
@@ -38,16 +40,84 @@ can choose to publish.
 
 | # | Item | Notes |
 | :--- | :--- | :--- |
-| 1 | **`cargo rullst footprint` report** | Load-tests the running app with a fixed scenario and reports CPU time, peak and idle memory, requests per second, energy per request where the hardware exposes it (Linux powercap/RAPL), binary and container image size, and an estimated carbon intensity following the Software Carbon Intensity (SCI) specification (ISO/IEC 21031:2024). The report states the method, hardware, region grid intensity used and its uncertainty. |
+| 1 | **`cargo rullst footprint` report** | **In the v13 development source:** [`cargo rullst footprint`](footprint.md) builds and starts the release binary (or measures a loopback `--url`), runs a bounded closed-loop load and reports requests per second, latency p50/p95/p99, errors, process CPU time, peak and idle memory, binary and container image size, energy from Linux powercap/RAPL when readable (or a labelled `--cpu-watts` estimate) and a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) from a user-provided grid intensity. Each value states its method; the report records the machine and inputs. Still planned: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the grid-intensity input. |
 | 2 | **Reproducible public benchmark** | The same reference application implemented idiomatically in Rullst and in other frameworks, with published code, scenario, hardware and dates, so comparisons are verifiable instead of claimed. |
-| 3 | **Efficient release defaults** | Generated projects get a tuned `[profile.release]` (LTO, single codegen unit, stripped symbols, abort on panic where safe), smaller container images (static or distroless runtime) and fast start-up suitable for scale-to-zero hosting. |
-| 4 | **Efficient HTTP defaults** | Long-lived `Cache-Control: immutable` for fingerprinted static assets, ETag/conditional requests, and modern image formats in the asset pipeline. Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves. |
+| 3 | **Efficient release defaults** | v13 source: generated projects get a tuned `[profile.release]` (thin LTO, one codegen unit, stripped symbols; `panic` stays `unwind` so one panicking handler cannot stop the server) and a distroless runtime image ([CLI reference](cli_reference.md#cargo-rullst-new-name)). Remaining: measured image sizes and fast start-up suitable for scale-to-zero hosting. |
+| 4 | **Efficient HTTP defaults** | v13 source: the standard `/static` mount sends `Cache-Control: public, max-age=31536000, immutable` for content-hashed file names and `no-cache` with `ETag`/`Last-Modified` revalidation (`304`) for other files ([static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers)). Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves. Remaining: fingerprinted names written by the asset pipeline itself and modern image formats. |
 | 5 | **Lean pages** | Keep zero-bundle HTMX rendering the default, report page weight in `cargo rullst dash`, and warn on oversized assets. |
-| 6 | **Database efficiency** | Development-time N+1 query detection, slow-query hints (already visible in the live dash), default pagination and index suggestions. |
-| 7 | **Carbon-aware jobs** | Optional scheduling of deferrable queue jobs (reports, exports, re-indexing) for times or regions with lower grid carbon intensity, using a pluggable intensity source with an offline fallback. |
+| 6 | **Database efficiency** | Development-time N+1 query warnings are in the v13 dash ([N+1 query warning](cli_reference.md#n1-query-warning)); slow-query hints are already visible there. Default pagination and index suggestions remain planned. |
+| 7 | **Carbon-aware jobs** | Started in v13: see [carbon-aware deferrable jobs](#carbon-aware-deferrable-jobs-v13). Region selection remains planned. |
 | 8 | **AI efficiency** | Token usage is already reported by `rullst-ai` and `cargo rullst ai`; add response caching, prompt-size budgets and guidance for choosing smaller or local models when they are sufficient. |
 | 9 | **Resource view in the dash** | Show the app process's CPU and memory next to the request metrics so developers see the cost of a change while they work. |
 | 10 | **Green hosting guidance** | Document how to choose lower-carbon regions and providers, and show region information during `cargo rullst deploy` when it is available. |
+
+## Measured release defaults
+
+Measured on 2026-10-08 with the `13.0.0-alpha.1` development source. The
+numbers describe this one starter on this one machine; they are not a
+prediction for other applications or hardware.
+
+- **Application:** `cargo rullst new green_probe --default --skip-initial-migration`
+  (Blank starter, SQLite; `rullst` features `orm`, `strict-sqlite`, `studio`),
+  dependency versions from the repository `Cargo.lock`, built `--offline`.
+- **Toolchain:** Rust 1.98.1 (`RUSTUP_TOOLCHAIN=1.98.1`),
+  `x86_64-unknown-linux-gnu`, rustc's default linker (the generated
+  `.cargo/config.toml` selected neither mold nor lld).
+- **Machine:** AMD Ryzen 5 7520U (8 logical CPUs), 3.4 GiB RAM, NVMe disk,
+  Ubuntu with GCC 15.2, `CARGO_BUILD_JOBS=2`, a shared developer workstation.
+- **Command:** `/usr/bin/time -v cargo build --release --offline --target-dir <new empty directory>`;
+  size from `ls -l <target-dir>/release/green_probe`.
+- **Samples:** two cold builds per profile, in alternating order
+  (default then generated, then generated then default).
+
+| `[profile.release]` | Binary size (bytes) | Wall-clock build (run 1 / run 2) | User CPU time (run 1 / run 2) | Largest process RSS (run 1 / run 2) |
+| :--- | ---: | :--- | :--- | :--- |
+| Cargo's default (section absent) | 13,966,600 | 6:17 / 6:17 | 648 s / 648 s | 723 MiB / 726 MiB |
+| Generated: `lto = "thin"`, `codegen-units = 1`, `strip = "symbols"` | 7,776,880 (−44.3 %) | 5:20 / 5:18 | 517 s / 516 s | 923 MiB / 970 MiB |
+
+Each profile produced the same size in both runs. For comparison,
+`strip --strip-all` applied to the default binary alone gives 10,031,552 bytes
+(−28.2 %); thin LTO and one codegen unit account for the rest.
+
+Limits of this measurement:
+
+- With only two parallel jobs, a single codegen unit costs little
+  parallelism; the lower CPU time is consistent with skipping the per-crate
+  local ThinLTO across 16 units, but that cause was not isolated. With more
+  parallel jobs the wall-clock result may reverse; that was not measured.
+- `lto = true` (fat LTO) was not measured: it needs more memory than this
+  machine could spare alongside other work.
+- Runtime behaviour (requests per second, CPU time per request, memory) and
+  energy were not measured.
+- Container image size was not measured: Docker is not available on this
+  machine. Measure the generated distroless image with `docker image ls` in CI
+  or on a machine with Docker before publishing a number.
+
+## Carbon-aware deferrable jobs (v13)
+
+Opt-in and unpublished. A queue job or scheduled task can be marked
+deferrable with a deadline and daily time windows; see
+[deferrable jobs and time windows](crates/core.md#deferrable-jobs-and-time-windows).
+The mechanism:
+
+- **Time windows.** The job becomes claimable at the start of the next allowed
+  window (immediately inside an open one), never after its deadline; when no
+  window opens in time, at the deadline.
+- **Optional intensity source.** An application-provided
+  `CarbonIntensitySource` returns forecast slots with their unit. A
+  `CarbonAwarePlanner` places the job at the lowest-value slot inside its
+  windows before the deadline. Core ships no network source; if the source
+  fails or times out, the window rule applies and one warning is logged per
+  outage.
+- **Persistence.** Placement uses the queue's existing scheduled-job
+  timestamp, so no schema changes and 12.x rows keep working.
+- **Observability.** The chosen time, the reason (`window`, `intensity` or
+  `deadline`) and the source name are returned in `DeferredJob` and recorded on
+  a `rullst.queue.deferral` tracing span.
+
+The planner only shifts when a job runs, using the values the source
+reports. Whether that changes an application's emissions depends on the grid,
+the workload and the data; Rullst does not measure or claim it.
 
 ## Principles
 

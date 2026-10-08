@@ -1,10 +1,8 @@
 #[path = "billing_live.rs"]
 mod live;
-#[path = "billing_paddle.rs"]
-mod paddle;
 use crate::models::{billing_customer::BillingCustomer, subscription::Subscription};
 use crate::pages::billing;
-use rullst::capital::{BillingProvider, LemonSqueezyProvider, PaddleProvider, StripeProvider, WebhookEvent};
+use rullst::capital::{BillingProvider, StripeProvider, WebhookEvent};
 use rullst::server::{
     Extension, Form, IntoResponse, Next, Redirect, Request, Response, StatusCode,
 };
@@ -30,7 +28,6 @@ struct BillingConfig {
     api_key: String,
     webhook_secret: String,
     redirect_url: String,
-    store_id: Option<String>,
     allowed_plan_ids: HashSet<String>,
 }
 
@@ -89,23 +86,13 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
         .unwrap_or_else(|| "stripe".to_string())
         .trim()
         .to_ascii_lowercase();
-    if !matches!(provider.as_str(), "stripe" | "lemonsqueezy" | "paddle") {
-        return Err(BillingConfigError(
-            "BILLING_PROVIDER must be stripe, paddle or lemonsqueezy",
-        ));
+    // Stripe is the generated provider; other gateways implement the Capital
+    // provider traits in application code.
+    if provider != "stripe" {
+        return Err(BillingConfigError("BILLING_PROVIDER must be stripe"));
     }
     let api_key = setting("BILLING_API_KEY")?.unwrap_or_default();
     let webhook_secret = setting("BILLING_WEBHOOK_SECRET")?.unwrap_or_default();
-    let store_id = setting("BILLING_STORE_ID")?.filter(|value| !value.is_empty());
-    if provider == "lemonsqueezy" && !api_key.is_empty() && !api_key.starts_with("mock_")
-        && !store_id.as_deref().is_some_and(|value| {
-            value.parse::<u64>().is_ok_and(|id| id > 0 && id.to_string() == value)
-        })
-    {
-        return Err(BillingConfigError(
-            "live Lemon Squeezy billing requires a positive numeric BILLING_STORE_ID",
-        ));
-    }
     let redirect_url = setting("BILLING_REDIRECT_URL")?
         .unwrap_or_else(|| "http://localhost:3000/dashboard".to_string());
     let configured_plans = setting("BILLING_ALLOWED_PLAN_IDS")?;
@@ -143,17 +130,8 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
         api_key,
         webhook_secret,
         redirect_url,
-        store_id,
         allowed_plan_ids,
     })
-}
-
-fn lemon_provider(config: &BillingConfig) -> Result<LemonSqueezyProvider, rullst::capital::CapitalError> {
-    let provider = LemonSqueezyProvider::new(config.api_key.clone(), config.webhook_secret.clone());
-    match &config.store_id {
-        Some(store_id) => provider.with_store_id(store_id),
-        None => Ok(provider),
-    }
 }
 
 // Email-based mock fixtures are isolated from the durable provider paths.
@@ -167,13 +145,8 @@ fn local_billing_fixture(config: &BillingConfig) -> bool {
 /// Configures the provider used by the mandatory signed-webhook middleware.
 pub fn initialize_billing_provider() -> Result<(), BillingConfigError> {
     let config = billing_config()?;
-    let provider: Box<dyn BillingProvider> = match config.provider.as_str() {
-        "paddle" => Box::new(PaddleProvider::new(config.api_key, config.webhook_secret)
-            .with_sandbox(setting("BILLING_PADDLE_ENVIRONMENT")?.as_deref() != Some("live"))),
-        "lemonsqueezy" => Box::new(lemon_provider(&config)
-            .map_err(|_| BillingConfigError("invalid Lemon Squeezy store configuration"))?),
-        _ => Box::new(StripeProvider::new(config.api_key, config.webhook_secret)),
-    };
+    let provider: Box<dyn BillingProvider> =
+        Box::new(StripeProvider::new(config.api_key, config.webhook_secret));
     rullst::capital::init_provider(provider);
     Ok(())
 }
@@ -186,8 +159,7 @@ pub async fn verify_billing_webhook(
 ) -> Result<Response, StatusCode> {
     let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     if !local_billing_fixture(&config) {
-        return if config.provider == "paddle" { paddle::webhook(&config, request).await }
-            else { live::webhook(&config, request).await };
+        return live::webhook(&config, request).await;
     }
     if let Err(error) = initialize_billing_provider() {
         eprintln!("Billing webhook configuration error: {error}");
@@ -303,29 +275,16 @@ pub async fn checkout_redirect(
         return (StatusCode::BAD_REQUEST, "Plan is not enabled").into_response();
     }
     if !local_billing_fixture(&config) {
-        return if config.provider == "paddle" { paddle::checkout(&config, &identity, &form.plan).await }
-            else { live::checkout(&config, &identity, &form.plan).await };
+        return live::checkout(&config, &identity, &form.plan).await;
     }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
         Err(error) => return error.into_response(),
     };
 
-    let result = match config.provider.as_str() {
-        "paddle" => PaddleProvider::new(config.api_key, config.webhook_secret)
-            .create_checkout_session(&customer.email, &form.plan, &config.redirect_url).await,
-        "lemonsqueezy" => match lemon_provider(&config) {
-            Ok(provider) => provider
-                .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
-                .await,
-            Err(error) => Err(error),
-        },
-        _ => {
-            StripeProvider::new(config.api_key, config.webhook_secret)
-                .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
-                .await
-        }
-    };
+    let result = StripeProvider::new(config.api_key, config.webhook_secret)
+        .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
+        .await;
     match result {
         Ok(url) => Redirect::to(&url).into_response(),
         Err(error) => {
@@ -343,28 +302,16 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
         }
     };
     if !local_billing_fixture(&config) {
-        return if config.provider == "paddle" { paddle::portal(&config, &identity).await }
-            else { live::portal(&config, &identity).await };
+        return live::portal(&config, &identity).await;
     }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
         Err(error) => return error.into_response(),
     };
 
-    let result = match config.provider.as_str() {
-        "paddle" => PaddleProvider::new(config.api_key, config.webhook_secret)
-            .create_customer_portal(&customer.email, &config.redirect_url).await,
-        "lemonsqueezy" => {
-            LemonSqueezyProvider::new(config.api_key, config.webhook_secret)
-                .create_customer_portal(&customer.email, &config.redirect_url)
-                .await
-        }
-        _ => {
-            StripeProvider::new(config.api_key, config.webhook_secret)
-                .create_customer_portal(&customer.email, &config.redirect_url)
-                .await
-        }
-    };
+    let result = StripeProvider::new(config.api_key, config.webhook_secret)
+        .create_customer_portal(&customer.email, &config.redirect_url)
+        .await;
     match result {
         Ok(url) => Redirect::to(&url).into_response(),
         Err(error) => {
@@ -476,19 +423,5 @@ pub async fn billing_report(Extension(identity): Extension<BillingIdentity>) -> 
         Ok(config) => config,
         Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    if config.provider == "paddle" { paddle::report(&config, &identity).await }
-    else { live::report(&config, &identity).await }
-}
-
-/// Operator-only recovery of an already dispatched Paddle customer creation.
-/// Authorize the identity and independently locate the provider ID first.
-pub async fn recover_paddle_customer(identity: &BillingIdentity, customer_id: &str) -> Result<(), StatusCode> {
-    let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-    paddle::recover(&config, identity, customer_id, false).await
-}
-
-/// Operator-only recovery of an already dispatched Paddle transaction creation.
-pub async fn recover_paddle_transaction(identity: &BillingIdentity, transaction_id: &str) -> Result<(), StatusCode> {
-    let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-    paddle::recover(&config, identity, transaction_id, true).await
+    live::report(&config, &identity).await
 }

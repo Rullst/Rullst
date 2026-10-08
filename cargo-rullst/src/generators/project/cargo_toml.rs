@@ -65,6 +65,12 @@ fn dependency_line(
     Ok(format!("{crate_name} = {{ {source} }}\n"))
 }
 
+/// `#[derive(rullst::Validate)]` expands to `::validator::…` paths, which
+/// only a direct dependency resolves, so `ValidatedForm`/`ValidatedJson` DTOs
+/// compile without the user adding it. Rullst Core already builds this
+/// version, so it adds no compile work.
+pub(crate) const VALIDATOR_DEPENDENCY: &str = "# Used by #[derive(rullst::Validate)] DTOs (the derive expands to ::validator paths).\nvalidator = { version = \"0.21\", features = [\"derive\"] }\n";
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_cargo_toml(
     package_name: &str,
@@ -158,6 +164,7 @@ rust-version = "1.96.0"
     cargo_toml.push_str("tokio = { version = \"1.0\", features = [\"full\"] }\n");
     cargo_toml.push_str("tracing = \"0.1\"\n");
     cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
+    cargo_toml.push_str(VALIDATOR_DEPENDENCY);
 
     if db_needed || wants_redis || !polyglot_integrations.is_empty() {
         let mut orm_features = polyglot_integrations
@@ -237,13 +244,25 @@ web-sys = { version = "0.3", features = ["Document", "Element", "EventTarget", "
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
-
-[workspace]
 "#,
     );
+    cargo_toml.push_str(RELEASE_PROFILE);
+    cargo_toml.push_str("\n[workspace]\n");
 
     Ok(cargo_toml)
 }
+
+/// The `[profile.release]` of every generated manifest (see its comments).
+pub(crate) const RELEASE_PROFILE: &str = r#"
+# Smaller release binaries. Debug builds keep Cargo's defaults. `panic` stays
+# "unwind" on purpose: a panicking handler must not take the server down.
+# `strip = "symbols"` removes symbol names from release backtraces; use
+# `strip = "debuginfo"` when you need symbolized production backtraces.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+"#;
 
 fn relational_profile(db_provider: &str) -> Option<&'static str> {
     match db_provider {

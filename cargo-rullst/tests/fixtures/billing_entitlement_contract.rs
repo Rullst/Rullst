@@ -44,7 +44,7 @@ impl Gateway for Provider {
 fn config() -> BillingConfig {
     BillingConfig { provider: "stripe".into(), api_key: "sk_test_contract".into(),
         webhook_secret: "whsec_contract_abcdefghijklmnopqrstuvwxyz0123456789".into(),
-        redirect_url: "https://app.example/return".into(), store_id: None,
+        redirect_url: "https://app.example/return".into(),
         allowed_plan_ids: ["price_pro".into(), "price_basic".into()].into_iter().collect() }
 }
 async fn handler(Extension(identity): Extension<BillingIdentity>, Extension(provider): Extension<Provider>) -> Response {

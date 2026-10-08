@@ -82,9 +82,38 @@ does not eliminate file I/O or network latency.
 
 ---
 
+## Step 3: Cache headers
+
+Since v13 the standard static mount sets `Cache-Control` itself (Rullst does
+not rename files; your asset tool does):
+
+| Request path below `/static/` | `Cache-Control` |
+| :--- | :--- |
+| Fingerprinted name: a `.`- or `-`-separated segment of 8–64 lowercase hex characters, with at least one digit and one letter, after the first part and before the extension (`app.3f9a2c1b.css`, `chunk-3f9a2c1b.js`, `app.3f9a2c1b.js.map`) | `public, max-age=31536000, immutable` |
+| Any other file (`app.css`, `report-20261008.pdf`) | `no-cache` |
+
+`no-cache` lets browsers and caches store the file but revalidate it before
+each use. `ServeDir` sends `ETag` and `Last-Modified` and answers a matching
+`If-None-Match` or `If-Modified-Since` with `304 Not Modified` and no body.
+The policy is set on `2xx` and `304` responses only, for every encoding
+(`br`, `zstd` or none). A missing file and every dynamic response keep the
+production security baseline's `Cache-Control: no-store`.
+
+An immutable file is never asked for again until it expires, so give an asset
+a new hashed name whenever its content changes, and do not hand-name a mutable
+file with a hash-like segment. Check the headers through your proxy or CDN:
+
+```bash
+curl -sI http://127.0.0.1:3000/static/css/app.css | grep -i -E 'cache-control|etag'
+curl -sI -H 'If-None-Match: "<etag from above>"' \
+  http://127.0.0.1:3000/static/css/app.css   # HTTP/1.1 304 Not Modified
+```
+
+---
+
 ## Key takeaways
 
 - Use `static/` for the framework's standard asset path and build integration.
 - Keep source files alongside generated sidecars in the deployed artifact.
-- Fingerprint immutable asset names and configure cache policy at the
-  application/CDN boundary.
+- Content-hashed names are cached for a year as `immutable`; other static files
+  are revalidated with `ETag`/`Last-Modified`.

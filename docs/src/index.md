@@ -32,6 +32,14 @@ the code behind it, then explore the tools that fit your next idea.
 - [🛡️ Audit Report](https://github.com/Rullst/Rullst/blob/main/AUDIT.md)
 - [📦 View on Crates.io](https://crates.io/crates/rullst)
 
+## For AI assistants
+
+The site publishes [`llms.txt`](https://rullst.github.io/Rullst/llms.txt), an
+index of every page of this book in reading order, and
+[`llms-full.txt`](https://rullst.github.io/Rullst/llms-full.txt), the full
+Markdown of those pages in one file. Both are generated from this book's
+sources each time it is published, so they describe the same `main` branch.
+
 ## Learn the foundations, then explore
 - 🚀 **Measured performance:** Criterion suites and CI track regressions;
   application latency must be measured on the target workload.

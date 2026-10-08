@@ -40,6 +40,7 @@ fn healthy_probes() -> Probes {
         cargo_audit: ok("cargo-audit 0.21.0"),
         optional: vec![Probe::default(); 6],
         targets: None,
+        linker: None,
     }
 }
 

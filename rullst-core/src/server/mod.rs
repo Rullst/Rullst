@@ -16,6 +16,7 @@ mod scheduler_supervision;
 /// Server-level HTTP middlewares (HMR script injection, static asset compression).
 pub mod server_middleware;
 mod stack;
+mod static_cache;
 mod traffic;
 
 #[cfg(test)]

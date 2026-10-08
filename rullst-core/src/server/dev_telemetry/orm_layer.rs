@@ -11,6 +11,7 @@
 //! the handler runs is counted as an outermost operation.
 
 use super::recorder::{self, QueryLabels, Recorder};
+use super::request_scope::RequestOperations;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -68,6 +69,8 @@ impl OrmQueryLayer {
 struct Started {
     at: Instant,
     labels: QueryLabels,
+    /// The request whose task created the span, if any.
+    request: Option<RequestOperations>,
 }
 
 /// Marks a traversal span, which neither counts nor encloses operations.
@@ -108,6 +111,7 @@ where
         span.extensions_mut().insert(Started {
             at: Instant::now(),
             labels: labels.0,
+            request: RequestOperations::current(),
         });
     }
 
@@ -118,8 +122,20 @@ where
         let Some(started) = span.extensions_mut().remove::<Started>() else {
             return;
         };
+        let elapsed = started.at.elapsed();
+        if let Some(request) = &started.request {
+            let labels = &started.labels;
+            let fingerprint = crate::query_patterns::orm_fingerprint(
+                labels.operation.as_deref().unwrap_or("unknown"),
+                labels.model.as_deref(),
+                labels.table.as_deref(),
+            );
+            if let Some(fingerprint) = fingerprint {
+                request.record(fingerprint);
+            }
+        }
         if let Some(recorder) = self.recorder() {
-            recorder.record_query(started.labels, started.at.elapsed());
+            recorder.record_query(started.labels, elapsed);
         }
     }
 }

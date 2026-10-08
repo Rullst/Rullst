@@ -5,6 +5,7 @@ use clap::builder::Resettable;
 use clap::{Arg, ArgAction, Command};
 
 use super::create;
+use super::vcs::Vcs;
 use super::wizard::NewProjectRequest;
 use crate::cli::{Commands, DatabaseChoice};
 
@@ -40,6 +41,16 @@ pub(crate) fn new_command(command: Command) -> Command {
                     "Prints the plan, the file tree and the commands it would run, then exits without creating anything",
                 ),
         )
+        .arg(
+            Arg::new("vcs")
+                .long("vcs")
+                .value_name("VCS")
+                .value_parser(Vcs::VALUES)
+                .default_value("git")
+                .help(
+                    "Initializes a Git repository (git) unless the destination is already inside one, or none",
+                ),
+        )
 }
 
 const fn provider(choice: DatabaseChoice) -> &'static str {
@@ -52,8 +63,24 @@ const fn provider(choice: DatabaseChoice) -> &'static str {
     }
 }
 
-/// `cargo rullst new … --dry-run`: the same plan as a real run, printed.
-pub(crate) fn run_dry_run(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
+/// `cargo rullst new` with its runtime flags: `--dry-run` prints the same
+/// plan as a real run; `--vcs` selects the repository set up afterwards.
+pub(crate) fn run_new_command(
+    command: &Commands,
+    matches: &clap::ArgMatches,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let dry_run = matches
+        .try_get_one::<bool>("dry_run")
+        .ok()
+        .flatten()
+        .copied()
+        .unwrap_or(false);
+    let vcs = matches
+        .try_get_one::<String>("vcs")
+        .ok()
+        .flatten()
+        .and_then(|value| Vcs::parse(value))
+        .unwrap_or_default();
     let Commands::New {
         name,
         api,
@@ -75,9 +102,9 @@ pub(crate) fn run_dry_run(command: &Commands) -> Result<(), Box<dyn std::error::
         qdrant,
     } = command
     else {
-        return Err("--dry-run applies only to `cargo rullst new`".into());
+        return Err("--dry-run and --vcs apply only to `cargo rullst new`".into());
     };
-    create::run_new(&NewProjectRequest {
+    let request = NewProjectRequest {
         name: name.as_deref(),
         options: super::ProjectScaffoldOptions {
             api: *api,
@@ -98,8 +125,9 @@ pub(crate) fn run_dry_run(command: &Commands) -> Result<(), Box<dyn std::error::
         },
         blueprint: blueprint.map(|choice| choice.id()),
         skip_initial_migration: *skip_initial_migration,
-        dry_run: true,
-    })
+        dry_run,
+    };
+    create::run_new_with_vcs(&request, vcs)
 }
 
 #[cfg(test)]
@@ -146,6 +174,20 @@ mod tests {
         ));
 
         assert!(parse(&["rullst", "new", "lean", "--no-database"]).is_ok());
+        let new = parse(&["rullst", "new", "lean"]).expect("default vcs");
+        assert_eq!(
+            new.subcommand_matches("new")
+                .and_then(|new| new.get_one::<String>("vcs"))
+                .map(String::as_str),
+            Some("git")
+        );
+        assert!(parse(&["rullst", "new", "lean", "--vcs", "none"]).is_ok());
+        assert_eq!(
+            parse(&["rullst", "new", "lean", "--vcs", "hg"])
+                .expect_err("unknown vcs")
+                .kind(),
+            clap::error::ErrorKind::InvalidValue
+        );
         let conflict = parse(&[
             "rullst",
             "new",

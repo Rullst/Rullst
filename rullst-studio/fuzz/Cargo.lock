@@ -2206,7 +2206,6 @@ version = "13.0.0-alpha.1"
 dependencies = [
  "async-trait",
  "axum",
- "base64 0.23.1",
  "chrono",
  "hex",
  "reqwest",
@@ -2217,7 +2216,6 @@ dependencies = [
  "subtle",
  "thiserror",
  "tokio",
- "zeroize",
 ]
 
 [[package]]

@@ -6,7 +6,8 @@
 //! not report.
 
 use super::telemetry::{
-    DatabaseReport, PollOutcome, QueueReport, RequestSample, SlowQuery, TelemetrySnapshot,
+    DatabaseReport, PollOutcome, QueueReport, RepeatedQuery, RepeatedReport, RequestSample,
+    SlowQuery, TelemetrySnapshot,
 };
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
@@ -92,6 +93,8 @@ pub(super) struct Metrics {
     pub source: Source,
     pub totals: Option<Totals>,
     pub database: Option<DatabaseReport>,
+    /// Possible N+1 findings of the current process, as last reported.
+    pub repeated: Option<RepeatedReport>,
     pub queue: Option<QueueReport>,
     baseline: Option<Baseline>,
     rates: VecDeque<RateSample>,
@@ -116,6 +119,7 @@ impl Metrics {
             source: Source::Waiting,
             totals: None,
             database: None,
+            repeated: None,
             queue: None,
             baseline: None,
             rates: VecDeque::new(),
@@ -198,6 +202,7 @@ impl Metrics {
             server_errors: snapshot.http.server_errors_total,
         });
         self.database = Some(snapshot.database);
+        self.repeated = Some(snapshot.repeated);
         self.queue = Some(snapshot.queue);
         if restarted {
             Some(Notice::Restarted)
@@ -340,6 +345,15 @@ impl Metrics {
     /// Observed requests, newest first.
     pub fn recent(&self) -> impl Iterator<Item = &RequestSample> {
         self.recent.iter().rev()
+    }
+
+    /// Possible N+1 findings the current process reported, newest first.
+    pub fn repeated_queries(&self) -> impl Iterator<Item = &RepeatedQuery> {
+        let recent = match &self.repeated {
+            Some(RepeatedReport::Observed { recent, .. }) => recent.as_slice(),
+            _ => &[],
+        };
+        recent.iter().rev()
     }
 
     /// Observed slow ORM operations, newest first.

@@ -162,7 +162,12 @@ The `rullst.dev-telemetry.v1` document contains:
   from the framework's `/static` directory;
 - `database`: ORM operation counters and the newest 16 operations that took at
   least 100 ms, with their static model, table and operation labels, or
-  `unavailable` with `subscriber_not_installed` or `orm_spans_filtered`;
+  `unavailable` with `subscriber_not_installed` or `orm_spans_filtered`. An
+  observed database also reports possible N+1 queries (v13):
+  `repeated_threshold` (3), `repeated_queries_total` and the newest 16
+  `recent_repeated` findings, each one ORM operation fingerprint that a single
+  request ran at least that many times, with the request's method and matched
+  route template (or its path when no route matched);
 - `queue`: the pending count of the queue passed to `Server::with_dev_queue`,
   `not_configured`, or `unavailable` with `timeout` (250 ms) or `driver_error`.
 
@@ -187,6 +192,11 @@ The `rullst.dev-telemetry.v1` document contains:
     "slow_threshold_ms": 100,
     "recent_slow": [
       {"seq": 1, "operation": "select_many", "model": "Order", "table": "orders", "duration_us": 152004}
+    ],
+    "repeated_threshold": 3,
+    "repeated_queries_total": 1,
+    "recent_repeated": [
+      {"seq": 1, "method": "GET", "route": "/orders/{id}", "fingerprint": "LineItem.find (line_items)", "occurrences": 12}
     ]
   },
   "queue": {"state": "observed", "pending": 4}
@@ -211,6 +221,18 @@ application that installs its own global subscriber first, or a `RUST_LOG` that
 disables `rullst_orm` INFO spans, receives the `unavailable` state instead of
 misleading zeros. Statements executed directly
 through SQLx are not observed.
+
+N+1 findings use the shared rule in `rullst_core::query_patterns`, which
+Studio's trace view also applies: the same fingerprint at least
+`N_PLUS_ONE_THRESHOLD` (3) times within one request. The recording layer runs
+each request in a task-local scope; an outermost ORM operation created on that
+task adds its fingerprint (`Model.operation (table)`, built from the static
+span labels, so no SQL text or literal value is involved). Operations without
+a model or table label, such as `Orm::raw` statements, are not fingerprinted
+because different statements share one label, and operations started on
+another task (for example inside `tokio::spawn`) are not attributed to the
+request. Both cases can only hide a repetition, never invent one. A finding is
+a heuristic: repetition can be intentional.
 
 Report a queue's pending count, read with a 250 ms limit on each poll:
 

@@ -1,8 +1,12 @@
 //! Toolchain checks: Rust (MSRV), Cargo, rustfmt/clippy, Git, the Wasm
-//! target when the project has islands, and the optional analysis tools.
+//! target when the project has islands, the Linux fast-linker hint and the
+//! optional analysis tools.
 
+use super::context::ProcessVars;
+use super::linker::{self, LinkerFacts};
 use super::probe::{self, Probe};
 use super::report::Check;
+use std::path::Path;
 
 pub(crate) const RULLST_MSRV: RustVersion = RustVersion(1, 96, 0);
 pub(crate) const WASM_TARGET: &str = "wasm32-unknown-unknown";
@@ -78,10 +82,12 @@ pub(crate) struct Probes {
     pub optional: Vec<Probe>,
     /// `rustup target list --installed`, only when the project has islands.
     pub targets: Option<Probe>,
+    /// Linker configuration and installed fast linkers, on Linux only.
+    pub linker: Option<LinkerFacts>,
 }
 
 impl Probes {
-    pub(crate) fn collect(needs_wasm: bool) -> Self {
+    pub(crate) fn collect(needs_wasm: bool, cwd: &Path) -> Self {
         let mut list: Vec<(&str, Vec<&str>)> = vec![
             ("rustc", vec!["--version"]),
             ("cargo", vec!["--version"]),
@@ -113,6 +119,7 @@ impl Probes {
             })
             .collect();
         let targets = needs_wasm.then(&mut next);
+        let linker = linker::detect(cwd, &rustc, &ProcessVars);
         Self {
             rustc,
             cargo,
@@ -122,6 +129,7 @@ impl Probes {
             cargo_audit,
             optional,
             targets,
+            linker,
         }
     }
 }
@@ -296,6 +304,7 @@ pub(crate) fn checks(probes: &Probes) -> Vec<Check> {
     if let Some(targets) = &probes.targets {
         checks.push(wasm_check(targets));
     }
+    checks.extend(probes.linker.as_ref().and_then(linker::check));
     checks.push(optional_check(&probes.optional));
     checks
 }

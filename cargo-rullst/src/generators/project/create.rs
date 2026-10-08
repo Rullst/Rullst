@@ -6,6 +6,7 @@ use std::fs;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
 
+use super::vcs::{self, Vcs};
 use super::wizard::plan::ProjectPlan;
 use super::wizard::{self, NewProjectRequest, Planned, ProjectWizardOptions};
 use super::{ProjectIdentity, cargo_toml, docker, env_config, generate_secure_app_key};
@@ -53,6 +54,9 @@ pub(crate) fn write_project_files(
         options.blueprint_selection,
         &app_key,
     )?;
+    if options.api && options.blueprint_selection == BLANK_BLUEPRINT_ID {
+        env_config::append_api_token(path)?;
+    }
 
     crate::blueprints::apply(
         options.blueprint_selection,
@@ -153,6 +157,7 @@ fn print_dry_run(
     terminal: &Terminal,
     plan: &ProjectPlan,
     reviewed: bool,
+    vcs: Vcs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut lines = Vec::new();
     if !reviewed {
@@ -169,6 +174,12 @@ fn print_dry_run(
         lines.extend(wizard::summary::summary(plan, files.as_deref(), port).lines());
         lines.push(Line::new());
     }
+    if vcs == Vcs::Git {
+        lines.push(Line::new().push(
+            Tone::Muted,
+            "Then: git init, unless the destination is inside a Git work tree (--vcs none skips it).",
+        ));
+    }
     lines.push(Line::new().push(
         Tone::Muted,
         "Dry run: nothing was created. Run the same command without --dry-run to create it.",
@@ -178,8 +189,17 @@ fn print_dry_run(
 }
 
 /// `cargo rullst new`: plan (flags or wizard), then write, bootstrap and
-/// print the next steps. `--dry-run` stops after the plan.
+/// print the next steps. `--dry-run` stops after the plan. A Git repository
+/// is initialised as with `--vcs git`.
 pub(crate) fn run_new(request: &NewProjectRequest<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    run_new_with_vcs(request, Vcs::Git)
+}
+
+/// [`run_new`] with an explicit `--vcs` choice.
+pub(crate) fn run_new_with_vcs(
+    request: &NewProjectRequest<'_>,
+    vcs: Vcs,
+) -> Result<(), Box<dyn std::error::Error>> {
     let terminal = Terminal::detect();
     let requested = wizard::requested_integrations(&request.options);
     let (plan, reviewed) = match wizard::plan_project(request, &requested, &terminal, true)? {
@@ -213,7 +233,7 @@ pub(crate) fn run_new(request: &NewProjectRequest<'_>) -> Result<(), Box<dyn std
         .into());
     }
     if request.dry_run {
-        return print_dry_run(&terminal, &plan, reviewed);
+        return print_dry_run(&terminal, &plan, reviewed, vcs);
     }
 
     fs::create_dir_all(path)?;
@@ -230,6 +250,15 @@ pub(crate) fn run_new(request: &NewProjectRequest<'_>) -> Result<(), Box<dyn std
         bootstrap_database(path);
     }
     write_late_files(path, &plan, &identity, Report::Print)?;
+    if vcs == Vcs::Git && vcs::ensure_gitignore(path)? {
+        println!(
+            "{}",
+            "  ✅ .gitignore (keeps .env and target/ out of Git)".green()
+        );
+    }
+    if let Some(message) = vcs::initialize(path, vcs).message() {
+        println!("{message}");
+    }
 
     println!(
         "{}",

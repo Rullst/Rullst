@@ -74,7 +74,7 @@ impl Gateway for Fake {
 fn config() -> BillingConfig {
     BillingConfig { provider: "stripe".into(), api_key: "sk_test_contract".into(),
         webhook_secret: "whsec_contract_abcdefghijklmnopqrstuvwxyz0123456789".into(),
-        redirect_url: "https://app.example/return".into(), store_id: None,
+        redirect_url: "https://app.example/return".into(),
         allowed_plan_ids: ["price_pro".into(), "price_other".into()].into_iter().collect() }
 }
 fn notice(state: &State, id: &str, checkout: bool) -> events::Notice {

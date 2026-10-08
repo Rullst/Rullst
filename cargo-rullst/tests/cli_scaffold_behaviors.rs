@@ -140,7 +140,7 @@ fn auth_resource_and_service_scaffolds_compose_in_one_project() {
     project.succeeds(&["make:mail", "PasswordRecovery", "--reset"]);
     project.succeeds(&["make:mail", "LoginCode", "--otp"]);
     project.succeeds(&["make:mail", "BillingReceipt", "--invoice"]);
-    project.succeeds(&["make:mail-invoice", "FiscalReceipt"]);
+    project.succeeds(&["make:mail-invoice", "CustomerReceipt"]);
     project.succeeds(&["make:mail-dunning", "PaymentRecovery"]);
     assert!(
         !project
@@ -179,7 +179,7 @@ fn auth_resource_and_service_scaffolds_compose_in_one_project() {
         "src/mail/password_recovery.rs",
         "src/mail/login_code.rs",
         "src/mail/billing_receipt.rs",
-        "src/mail/fiscal_receipt.rs",
+        "src/mail/customer_receipt.rs",
         "src/mail/payment_recovery.rs",
         "src/models/product.rs",
         "src/controllers/product_controller.rs",

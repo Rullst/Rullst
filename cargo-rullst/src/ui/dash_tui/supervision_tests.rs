@@ -6,7 +6,9 @@
 use super::metrics::Source;
 use super::metrics_render_tests::{GENERATION, live_app, screen};
 use super::state::{App, ServerStatus};
-use super::telemetry::{DatabaseReport, HttpReport, PollOutcome, QueueReport, TelemetrySnapshot};
+use super::telemetry::{
+    DatabaseReport, HttpReport, PollOutcome, QueueReport, RepeatedReport, TelemetrySnapshot,
+};
 use super::{handle_key, ingest_telemetry};
 use crate::generators::dev::{DevCommand, DevState, DevStatus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -161,6 +163,7 @@ fn another_process_on_the_port_is_named_instead_of_showing_its_metrics() {
             recent: Vec::new(),
         },
         database: DatabaseReport::Unknown,
+        repeated: RepeatedReport::NotReported,
         queue: QueueReport::Unknown,
     });
     ingest_telemetry(&mut app, foreign, now);
@@ -187,6 +190,7 @@ fn another_process_on_the_port_is_named_instead_of_showing_its_metrics() {
             recent: Vec::new(),
         },
         database: DatabaseReport::Unknown,
+        repeated: RepeatedReport::NotReported,
         queue: QueueReport::Unknown,
     });
     ingest_telemetry(&mut app, own, now);

@@ -322,6 +322,19 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
             case.name,
             output_text(&tested)
         );
+        if case.run_tests {
+            // `src/security_tests.rs` checks the starter's router behind the
+            // production baseline; it must run, not only compile.
+            let output = output_text(&tested);
+            assert!(
+                output.contains(
+                    "security_tests::production_responses_carry_the_security_headers ... ok"
+                ) && output
+                    .contains("security_tests::the_waf_refuses_injection_and_accepts_prose ... ok"),
+                "{}: generated security tests did not run\n{output}",
+                case.name
+            );
+        }
         clean_generated_package(&project.path, &target_root);
     }
 

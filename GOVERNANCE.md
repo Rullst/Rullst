@@ -53,6 +53,8 @@ access and authority, plus verified recovery of issue/PR administration, release
 registry ownership and required domains. A Silver badge application is deferred
 until this operational dependency is resolved.
 Keep credentials and recovery instructions outside the public repository.
+The operational steps are listed in the
+[successor maintainer checklist](docs/successor.md).
 
 Record only the existence, scope and last verification date of an established
 arrangement publicly. Until it exists and is verified, continuity remains an

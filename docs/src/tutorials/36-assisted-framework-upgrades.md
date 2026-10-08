@@ -355,12 +355,12 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (8 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (91 rows);
+  the affected API, feature or configuration, which the rules locate (92 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (44 rows).
+  of inputs that previously failed) (50 rows).
 
-The catalog has 98 rules. A row can map to several rules and a rule to
+The catalog has 99 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -386,6 +386,8 @@ the rule together.
 | Memory feature-flag splits | (b) review | `V13-MEMORY-FEATURE-SPLITS` |  |
 | Database feature-flag splits | (b) review | `V13-DB-FEATURE-SPLITS` |  |
 | Security headers | (b) review | `V13-REFERRER-NO-REFERRER` |  |
+| Core WAF signatures | (c) none | — | Only requests that previously failed with 403 change |
+| Core security header precedence | (c) none | — | Explicit header values in handlers and inner layers are not located |
 | AI provider streaming and stop reasons | (b) review | `V13-AI-GEMINI-STOP-REASONS` |  |
 | AI image-beacon guardrail | (c) none | — | Guardrail hardening without an application API change |
 | AI RAG tenant tags | (b) review | `V13-AI-RAG-TENANT-TAGS` |  |
@@ -457,13 +459,14 @@ the rule together.
 | CLI `doctor` | (c) none | — | CLI |
 | CLI output additions | (c) none | — | CLI |
 | SaaS plan gates | (c) none | — | Opt-in generated module |
-| Capital provider webhooks | (b) review | `V13-CAPITAL-WEBHOOKS` |  |
+| Capital providers and NFS-e removed | (b) review | `V13-CAPITAL-REMOVED` | Compile-breaking; reported for review because a name such as `FiscalError` can also be an application type |
 | Capital quota keys on MySQL/MariaDB | (b) review | `V13-CAPITAL-QUOTA-KEYS` | `SqlQuotaStore`/`SqlQuotaBackend`; the database backend is not located |
 | Capital zero tier limit | (b) review | `V13-CAPITAL-ZERO-TIER` |  |
 | Capital provider subscription IDs | (c) none | — | Rejects dot-only identifiers before a request |
 | Messaging outbox relay key | (b) review | `V13-OUTBOX-RELAY-KEY` |  |
 | Messaging encrypted SQLite startup | (c) none | — | Correct keyrings are unaffected |
 | Messaging Redis Streams candidate | (c) none | — | No 12.x release contains the adapter |
+| Mail providers removed | (b) review | `V13-MAIL-REMOVED` | Compile-breaking; also locates removed `MAIL_DRIVER` values and settings in Rust strings, `.env`, `.env.example` and `Rullst.toml` |
 | Mail driver default | (b) review | `V13-MAIL-FACADE-CONFIG` |  |
 | Mail sender | (b) review | `V13-MAIL-FACADE-CONFIG` |  |
 | Mail attachment inspection | (b) review | `V13-MAIL-ATTACHMENT-INSPECTION` |  |
@@ -503,6 +506,9 @@ the rule together.
 | Starter health probes | (b) review | `V13-HEALTH-PROBES` |  |
 | Kubernetes and Buildah names | (b) review | `V13-K8S-NAMES` |  |
 | Pre-compressed static assets | (c) none | — | CLI |
+| Static asset caching | (c) none | — | Runtime default; not detectable in source |
+| Generated release profile | (c) none | — | Generator output for new projects |
+| Generated container runtime | (c) none | — | Generator output for new projects |
 | Interactive `new --api` | (c) none | — | CLI |
 | CLI `new` wizard | (c) none | — | CLI |
 | Generated `rullst-orm` dependency | (b) review | `V13-ORM-DEFAULT-FEATURES` |  |

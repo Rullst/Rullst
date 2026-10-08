@@ -29,7 +29,6 @@ tracing = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
 axum = { workspace = true, features = ["form", "ws"] }
-chrono = { workspace = true, features = ["serde"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
