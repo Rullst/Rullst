@@ -233,10 +233,17 @@ The choices that materially change the generated application:
     shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
-    `.dockerignore` is kept unchanged. The runtime
-    image installs CA certificates, runs as UID/GID 10001, sets the production
-    bind address and copies local static/config assets when present. An explicit
-    SQLite selection uses the writable `/app/data` directory. Secrets are never
+    `.dockerignore` is kept unchanged. Since v13 the runtime
+    stage is `gcr.io/distroless/cc-debian12:nonroot` (glibc, libgcc, libstdc++,
+    CA certificates and tzdata; no shell or package manager). It runs as
+    UID/GID 10001 with `HOME=/app`, sets the production bind address and copies
+    local static/config assets when present. The builder stage prepares the
+    `/app` tree, so an explicit SQLite selection still uses the writable
+    `/app/data` directory. Without a shell the image has no `HEALTHCHECK`;
+    let the platform probe `/health` and `/ready` over HTTP. The migration job
+    runs the binary directly (`/app/<name> db:migrate`). The image size of this
+    template has not been measured yet; measure it with `docker image ls` in CI
+    or on a machine with Docker. Secrets are never
     embedded and no anonymous volume is declared. Run schema migrations as one
     deployment job before starting or rolling multiple replicas; the generated
     image deliberately does not race migrations from every application process.
