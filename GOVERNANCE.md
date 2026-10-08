@@ -2,11 +2,16 @@
 
 ## Roles and decisions
 
-As of 27 September 2026, [venelouis](https://github.com/venelouis) is the sole
+As of 8 October 2026, [venelouis](https://github.com/venelouis) is the
 maintainer and release decision maker. The maintainer sets compatibility and
 maintenance scope, accepts contributions, administers repository protections,
-coordinates vulnerability reports and authorizes releases. No independent
-reviewer or succession maintainer is currently appointed.
+coordinates vulnerability reports and authorizes releases.
+
+[stevi001](https://github.com/stevi001) is the successor maintainer. They hold
+organization ownership, release approval and registry ownership so the project
+can continue if the maintainer becomes unavailable (see [Continuity](#continuity)).
+They are not a day-to-day maintainer, and they count as an independent reviewer
+only for changes they actually review and approve.
 
 Contributors propose changes through issues and pull requests under
 [CONTRIBUTING.md](CONTRIBUTING.md) and the
@@ -33,7 +38,7 @@ deletion. It has no bypass actors. The classic protections remain enabled;
 future policy changes must keep both representations synchronized until a
 separately reviewed migration removes the duplication.
 
-The approval count is explicitly zero while there is only one maintainer.
+The approval count is explicitly zero while there is only one active maintainer.
 Introducing a mandatory independent approval requires an available, authorized
 reviewer and a documented transition; it must not silently block maintenance.
 
@@ -44,19 +49,27 @@ badge substitutes for those controls. Security handling and support obligations
 remain defined in SECURITY.md; workflow and package records retain release
 evidence.
 
-## Continuity: outstanding operational requirement
+## Continuity
 
-The project does not yet claim continuity if the sole maintainer becomes
-unavailable. Establishing continuity needs an actual arrangement approved by
-the maintainer. A trusted successor or recovery custodian needs appropriate
-access and authority, plus verified recovery of issue/PR administration, releases,
-registry ownership and required domains. A Silver badge application is deferred
-until this operational dependency is resolved.
+A succession arrangement was established on 8 October 2026 with
+[stevi001](https://github.com/stevi001) as successor maintainer. Its scope:
+
+- owner of the `Rullst` GitHub organization, with two-factor authentication,
+  covering issue and pull-request administration, repository settings,
+  GitHub Pages and private vulnerability reports;
+- required reviewer of the `crates-io` release environment, so either person
+  can approve a publication;
+- owner of every published crate on crates.io;
+- recovery access to the security inbox named in SECURITY.md and to a private
+  recovery document kept outside this repository (confirmed by the maintainer).
+
+Last verified: 8 October 2026. GitHub and crates.io access was checked through
+their APIs, and the successor opened and closed a test issue
+([#440](https://github.com/Rullst/Rullst/issues/440)). The arrangement is
+re-verified every year and after any account change, following the
+[successor maintainer checklist](docs/successor.md). The project has no
+registered domains; the book is served from `rullst.github.io`.
+
 Keep credentials and recovery instructions outside the public repository.
-The operational steps are listed in the
-[successor maintainer checklist](docs/successor.md).
-
-Record only the existence, scope and last verification date of an established
-arrangement publicly. Until it exists and is verified, continuity remains an
-open requirement. Additional maintainers and independent review are welcome,
-but no role or credential access is granted by contributing a pull request.
+Additional maintainers and independent review are welcome, but no role or
+credential access is granted by contributing a pull request.
