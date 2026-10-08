@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Governance: successor maintainer
+
+- `GOVERNANCE.md` records the continuity arrangement established and verified on
+  8 October 2026: [stevi001](https://github.com/stevi001) is the successor
+  maintainer, with organization ownership (2FA), release approval in the
+  `crates-io` environment, ownership of every published crate and recovery of
+  the security inbox. `docs/successor.md` and the OpenSSF Scorecard notes are
+  updated; a Silver badge is not claimed until granted.
+
 ### AI error fixes and reviews
 
 - The development error page now shows a copyable `cargo rullst ai fix <error-id>`

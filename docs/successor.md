@@ -6,10 +6,10 @@ maintainer becomes unavailable, a trusted successor can still create and close
 issues, accept changes and publish releases within a week. OpenSSF Best
 Practices Silver asks for the same capability.
 
-**Status:** in progress. The organization Owner invitation was sent on
-8 October 2026 and awaits acceptance; the other steps are pending. Change this
-line to "established", and update GOVERNANCE.md, only after the verification
-drill in section 8 passes.
+**Status:** established on 8 October 2026 with
+[stevi001](https://github.com/stevi001) as successor; last verified
+8 October 2026 (see the [Continuity](../GOVERNANCE.md#continuity) record).
+Re-run the drill in section 8 every year and after any account change.
 
 This file is public. Never add passwords, recovery codes, tokens, phone
 numbers or personal contact details to it, or to any issue, pull request or
@@ -57,13 +57,13 @@ State recorded on 8 October 2026.
 
 | Asset | Today | Action | How to check |
 | --- | --- | --- | --- |
-| GitHub organization `Rullst` | Owner invitation sent on 8 October 2026, awaiting acceptance | Invite the successor as **Owner** (3.1) | The successor sees the organization Settings tab |
+| GitHub organization `Rullst` | Done: the successor is an Owner with 2FA | Invite the successor as **Owner** (3.1) | The successor sees the organization Settings tab |
 | Repository `Rullst/Rullst`, Pages, security advisories | Administered by organization owners | Covered by the Owner role | The successor opens repository Settings → Rules and Security → Advisories |
-| `crates-io` release environment | Only the maintainer is a required reviewer | Add the successor as a required reviewer (3.2) | Both names appear under required reviewers |
-| crates.io ownership | The maintainer is the only owner of all 16 published crates | Add the successor as an owner of each crate (3.3) | `cargo owner --list <crate>` shows both owners |
+| `crates-io` release environment | Done: the maintainer and the successor are required reviewers | Add the successor as a required reviewer (3.2) | Both names appear under required reviewers |
+| crates.io ownership | Done: the maintainer and the successor own all 16 published crates | Add the successor as an owner of each crate (3.3) | `cargo owner --list <crate>` shows both owners |
 | crates.io Trusted Publishing | Releases publish from `release.yml` through Trusted Publishing; no registry token is stored in the repository | Nothing extra: crate owners can view and change this setting | The successor sees the Trusted Publishing settings of a crate |
 | Private vulnerability reports on GitHub | Enabled | Covered by the Owner role | The successor sees Security → Advisories |
-| Security inbox `officialrullst@gmail.com` (named in SECURITY.md) | Only the maintainer can sign in | Set up recovery (3.4) | Depends on the option chosen |
+| Security inbox `officialrullst@gmail.com` (named in SECURITY.md) | Done: recovery set up (confirmed by the maintainer) | Set up recovery (3.4) | Depends on the option chosen |
 | OpenSSF Best Practices entry | Edited by the maintainer | Grant the successor edit rights on the project page | The successor can open the edit form |
 | Maintainer's personal GitHub account | No successor set | Optional (3.5) | The successor accepts the invitation |
 | Domains | None; the book is served from `rullst.github.io` | Add a row here if a domain is ever registered | — |

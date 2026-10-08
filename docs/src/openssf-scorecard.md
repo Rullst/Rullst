@@ -14,7 +14,7 @@ live report; this dated snapshot is not a promised future score or certification
 | Code-Review | 0/10 | The scanner found no approved changesets among 17 sampled changesets. Arrange independent human review, especially for authentication, tenant boundaries and release infrastructure. AI analysis is additional evidence, not a second human reviewer. |
 | Branch-Protection | Unavailable (-1) | The workflow token cannot read classic branch-protection settings. Protected `main` and `v12` do exist. A public ruleset now mirrors both branches’ existing requirements without adding a token or removing classic protections. Anonymous REST checks confirmed visibility and all 46 application-bound checks. The follow-up scanner recognized the rules and assigned 4/10; required human approvals remain absent. |
 | SAST | 8/10 | The scanner detected CodeQL but credited only 12 of 30 commits. Both language analyses and GitHub's CodeQL findings check are required for merge. A historical first-page detection limitation is documented in the [delivery record](v13-delivery-plan.md); a fresh review of this snapshot found successful CodeQL suites on the heads of all 17 merged PRs associated with its 30 commits. All suites appeared within the first 30 results in the maintainer’s query, so the earlier pagination explanation does not establish the cause of this discrepancy. Scanner-token visibility/caching remains unconfirmed. |
-| CII-Best-Practices | 5/10 | The project has the Passing badge. Silver is deferred while operational continuity is unresolved; it is not a v12.1.2 release objective. The [governance policy](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md) records current roles and the unresolved continuity requirement. A Silver badge is not claimed. |
+| CII-Best-Practices | 5/10 | The project has the Passing badge. The continuity requirement that blocked Silver is now met: a successor maintainer holds organization ownership, release approval and crate ownership, verified on 8 October 2026 (see the [governance policy](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md#continuity)). The Silver application is being prepared; a Silver badge is not claimed until it is granted. |
 | Binary-Artifacts | 9/10 | The finding identified the Labs runner's trusted Rust/Wasm compatibility fixture (`rullst-labs-runner/tests/fixtures/checked_sum.wasm`), which Labs CI reproduced byte-for-byte with pinned Rust. The fixture, its reproduction job and the Scorecard annotation were removed with the runner candidate for 13.0, leaving no checked-in executable; a later scan must confirm the new score. |
 
 The other eleven checks scored 10 in this snapshot. No check is disabled and no
@@ -92,12 +92,14 @@ source commit. Final end-to-end acceptance requires a separately authorized tag
 release, an attached bundle and successful consumer verification. Only a later
 public Scorecard report can establish a score increase.
 
-Independent human review is unavailable under the present sole-maintainer model.
+Independent human review is still rare: there is one active maintainer, and the
+successor maintainer's approvals count only for changes they actually review.
 Badge declarations and actual continuity arrangements remain maintainer
 decisions. The [official check definitions](https://github.com/ossf/scorecard/blob/main/docs/checks.md)
 and [restricted authentication guidance](https://github.com/ossf/scorecard-action/blob/main/docs/authentication/fine-grained-auth-token.md)
 describe their criteria. Do not fabricate approvals or weaken protections to
 improve a numerical score.
 
-A Silver application is deferred. Retain the current Passing badge and revisit
-that programme only when an actual continuity arrangement is available.
+A Silver application is in preparation now that continuity is established.
+Keep the Passing badge until the Silver criteria are answered with evidence and
+the badge is granted; the score above changes only after that.
