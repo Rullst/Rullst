@@ -144,7 +144,7 @@ async fn run(root: &Path, mode: Mode, answers: &[&str]) -> String {
     let mut session = Session::new(&backend, settings, Vec::new(), Input::script(answers));
     let plan = plan(findings());
     let brief = brief(root, &plan);
-    session.upgrade(&plan.summary, brief).await;
+    session.briefed(&plan.summary, brief, GOAL).await;
     String::from_utf8(session.into_output()).unwrap()
 }
 
@@ -208,7 +208,9 @@ async fn without_a_supported_finding_the_offline_assistant_only_explains() {
     };
     let mut session = Session::new(&backend, settings, Vec::new(), Input::script(&[]));
     let plan = plan(vec![finding("V13-MODEL-ALL", false, "src/main.rs", 4)]);
-    session.upgrade(&plan.summary, brief(&root, &plan)).await;
+    session
+        .briefed(&plan.summary, brief(&root, &plan), GOAL)
+        .await;
     let output = String::from_utf8(session.into_output()).unwrap();
     assert!(
         output.contains("only rewrites `render_page` calls"),

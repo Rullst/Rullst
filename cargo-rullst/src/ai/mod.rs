@@ -14,6 +14,10 @@
 //!   change of a session ([`checkpoint`]).
 //! - `cargo rullst ai upgrade` grounds a session in the findings of the
 //!   framework upgrade plan ([`upgrade`]).
+//! - `cargo rullst ai fix <error-id>` grounds a session in a panic recorded
+//!   by the development error console ([`fix`]).
+//! - `cargo rullst ai review` reviews the current diff read-only
+//!   ([`review`]): no actions, secrets dropped or redacted first.
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::path::PathBuf;
@@ -27,6 +31,7 @@ mod connect;
 mod credentials;
 mod diff;
 mod environment;
+mod fix;
 mod input;
 mod masked;
 mod mock;
@@ -35,6 +40,7 @@ mod process;
 mod prompt;
 mod protocol;
 mod provider;
+mod review;
 mod session;
 mod term;
 mod upgrade;
@@ -57,6 +63,10 @@ pub(crate) enum AiCliError {
     Provider(String),
     #[error("the upgrade plan failed: {0}")]
     Upgrade(String),
+    #[error("{0}")]
+    Fix(String),
+    #[error("{0}")]
+    Review(String),
     #[error("terminal I/O failed: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -176,6 +186,8 @@ pub(crate) fn command() -> Command {
                         .help("Show proposed fixes without executing them"),
                 ),
         )
+        .subcommand(fix::command(provider_arg(), model_arg()))
+        .subcommand(review::command(provider_arg(), model_arg()))
         .subcommand(Command::new("disconnect").about("Delete the saved AI credentials file"))
         .subcommand(
             Command::new("status")
@@ -209,6 +221,8 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
         Some(("disconnect", _)) => connect::disconnect(style),
         Some(("status", status)) => connect::status(status, style),
         Some(("upgrade", upgrade)) => run_upgrade(upgrade, &env, style),
+        Some(("fix", fix)) => run_fix(fix, &env, style),
+        Some(("review", review)) => review::run(review, style),
         _ => run_session(matches, &env, style, None),
     }
 }
@@ -233,20 +247,42 @@ fn run_upgrade(matches: &ArgMatches, env: &TermEnv, style: Style) -> Result<(), 
         println!("{}", style.green(next));
         return Ok(());
     }
-    run_session(matches, env, style, Some((root, plan)))
+    run_session(matches, env, style, Some(Grounding::Upgrade(root, plan)))
 }
 
-fn run_session(
+/// A session grounded in prepared data: the upgrade plan or a recorded error.
+enum Grounding {
+    Upgrade(PathBuf, crate::generators::build::AssistPlan),
+    Fix(fix::Prepared),
+}
+
+/// Fetches the recorded error and continues as an assistant session.
+fn run_fix(matches: &ArgMatches, env: &TermEnv, style: Style) -> Result<(), AiCliError> {
+    let root = project_root().ok_or_else(|| {
+        AiCliError::Usage("run `cargo rullst ai fix` inside a Rullst project".to_string())
+    })?;
+    let prepared = fix::prepare(matches, &root)?;
+    run_session(matches, env, style, Some(Grounding::Fix(prepared)))
+}
+
+/// The guarded backend for the configured provider (or the offline
+/// assistant), its description and the user's prices.
+fn connect_backend(
     matches: &ArgMatches,
-    env: &TermEnv,
+    root: Option<&std::path::Path>,
     style: Style,
-    upgrade: Option<(PathBuf, crate::generators::build::AssistPlan)>,
-) -> Result<(), AiCliError> {
-    let root = project_root();
+) -> Result<
+    (
+        backend::Backend,
+        backend::Description,
+        Option<credentials::Prices>,
+    ),
+    AiCliError,
+> {
     let path = credentials::credentials_path().ok();
     let loaded = match &path {
         Some(path) => {
-            credentials::check_location(path, root.as_deref(), false)?;
+            credentials::check_location(path, root, false)?;
             credentials::load(path)?
         }
         None => None,
@@ -273,6 +309,17 @@ fn run_session(
     )?;
     let (backend, description) = backend::Backend::build(&resolved)
         .map_err(|error| AiCliError::Provider(sanitize(&error.to_string())))?;
+    Ok((backend, description, resolved.prices))
+}
+
+fn run_session(
+    matches: &ArgMatches,
+    env: &TermEnv,
+    style: Style,
+    grounding: Option<Grounding>,
+) -> Result<(), AiCliError> {
+    let root = project_root();
+    let (backend, description, prices) = connect_backend(matches, root.as_deref(), style)?;
     let notice = if description.offline {
         Some(
             "No provider is connected: a deterministic offline assistant answers. Run `cargo rullst ai connect` to use a model."
@@ -293,8 +340,9 @@ fn run_session(
     } else {
         Mode::PlanOnly("not an interactive terminal")
     };
-    let goal = match &upgrade {
-        Some(_) => Some(upgrade::GOAL.to_string()),
+    let goal = match &grounding {
+        Some(Grounding::Upgrade(..)) => Some(upgrade::GOAL.to_string()),
+        Some(Grounding::Fix(_)) => Some(fix::GOAL.to_string()),
         None => matches
             .get_many::<String>("goal")
             .map(|words| words.map(String::as_str).collect::<Vec<_>>().join(" ")),
@@ -317,13 +365,18 @@ fn run_session(
             mode,
             root,
             cwd,
-            prices: resolved.prices,
+            prices,
         };
         let mut session = Session::new(&backend, settings, std::io::stdout(), input);
-        match (upgrade, goal) {
-            (Some((root, plan)), _) => {
+        match (grounding, goal) {
+            (Some(Grounding::Upgrade(root, plan)), _) => {
                 let brief = upgrade::brief(&root, &plan);
-                session.upgrade(&plan.summary, brief).await;
+                session.briefed(&plan.summary, brief, upgrade::GOAL).await;
+            }
+            (Some(Grounding::Fix(prepared)), _) => {
+                session
+                    .briefed(&prepared.summary, prepared.brief, fix::GOAL)
+                    .await;
             }
             (None, Some(goal)) => session.one_shot(&goal).await,
             (None, None) => session.repl().await,

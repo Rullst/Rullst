@@ -364,7 +364,9 @@ pub(super) fn report(logs: &mpsc::Sender<LogMsg>, dashboard: bool, message: Stri
     }
 }
 
-fn configured_port() -> io::Result<u16> {
+/// The application port `dev` waits for: `PORT`, then `.env`, then
+/// `Rullst.toml` in the current directory, else the default.
+pub(crate) fn configured_port() -> io::Result<u16> {
     let dotenv = if Path::new(".env").is_file() {
         parse_dotenv(&std::fs::read(".env")?)?
     } else {
