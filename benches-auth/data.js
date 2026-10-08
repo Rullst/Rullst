@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791479599038,
+  "lastUpdate": 1791484012466,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15343,6 +15343,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4459,
             "range": "± 45",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8a8e756d8a2b78e4c29666126db60c5c0f87b940",
+          "message": "Merge pull request #441 from Rullst/docs/governance-continuity\n\ndocs(governance): record the successor maintainer arrangement",
+          "timestamp": "2026-10-08T15:08:58-03:00",
+          "tree_id": "f5fed3845f18edf24839201f5f17650e9a958518",
+          "url": "https://github.com/Rullst/Rullst/commit/8a8e756d8a2b78e4c29666126db60c5c0f87b940"
+        },
+        "date": 1791484011579,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 596,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 516,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1143,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3131,
+            "range": "± 137",
             "unit": "ns/iter"
           }
         ]
