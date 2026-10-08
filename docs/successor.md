@@ -6,8 +6,10 @@ maintainer becomes unavailable, a trusted successor can still create and close
 issues, accept changes and publish releases within a week. OpenSSF Best
 Practices Silver asks for the same capability.
 
-**Status:** not established. Update this line and GOVERNANCE.md only after the
-verification drill in section 8 passes.
+**Status:** in progress. The organization Owner invitation was sent on
+8 October 2026 and awaits acceptance; the other steps are pending. Change this
+line to "established", and update GOVERNANCE.md, only after the verification
+drill in section 8 passes.
 
 This file is public. Never add passwords, recovery codes, tokens, phone
 numbers or personal contact details to it, or to any issue, pull request or
@@ -55,7 +57,7 @@ State recorded on 8 October 2026.
 
 | Asset | Today | Action | How to check |
 | --- | --- | --- | --- |
-| GitHub organization `Rullst` | No owner outside the maintainer | Invite the successor as **Owner** (3.1) | The successor sees the organization Settings tab |
+| GitHub organization `Rullst` | Owner invitation sent on 8 October 2026, awaiting acceptance | Invite the successor as **Owner** (3.1) | The successor sees the organization Settings tab |
 | Repository `Rullst/Rullst`, Pages, security advisories | Administered by organization owners | Covered by the Owner role | The successor opens repository Settings → Rules and Security → Advisories |
 | `crates-io` release environment | Only the maintainer is a required reviewer | Add the successor as a required reviewer (3.2) | Both names appear under required reviewers |
 | crates.io ownership | The maintainer is the only owner of all 16 published crates | Add the successor as an owner of each crate (3.3) | `cargo owner --list <crate>` shows both owners |

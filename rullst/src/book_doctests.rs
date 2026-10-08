@@ -241,6 +241,14 @@ tutorial!(studio_guide, "../../docs/src/3-rullst-studio.md");
 tutorial!(nexus_guide, "../../docs/src/4-rullst-nexus.md");
 tutorial!(capital_guide, "../../docs/src/5-rullst-capital.md");
 tutorial!(
+    capital_custom_provider,
+    "../../docs/src/capital-custom-provider.md"
+);
+tutorial!(
+    mail_custom_transport,
+    "../../docs/src/mail-custom-transport.md"
+);
+tutorial!(
     ai_integration_guide,
     "../../docs/src/6-ai-integration-tutorial.md"
 );
