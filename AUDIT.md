@@ -58,7 +58,11 @@ a run; it does not turn an informational workflow into a formal assurance.
 The repository is not, by itself, SOC 2, ISO 27001, PCI DSS, or FedRAMP
 certification. Those programs assess a complete system and organization, including
 people, processes, infrastructure, configuration, monitoring, vendors, and
-retained evidence. See `SECURITY_COMPLIANCE.md` for the control inventory.
+retained evidence. Each GitHub release attaches the evidence generated from its
+exact source (`security-evidence.md` from `cargo rullst audit --compliance`, the
+CycloneDX SBOM, `cargo audit` JSON and the lock file); the repository keeps no
+stale copy. For an application, `cargo rullst audit --report` (new in 13.0)
+maps its checks to OWASP ASVS 5.0 Level 1.
 
 ## Evidence requirements
 

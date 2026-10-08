@@ -63,6 +63,14 @@ with the other Capital adapters.
   raw statements or spawned work. The distroless image size is not yet measured.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 
+### Generated evidence no longer committed
+
+- The stale repository copies of `SECURITY_COMPLIANCE.md` and
+  `sbom-cyclonedx.json` (generated on 2026-09-08 at the repository root, where the
+  unsafe-code scan could not run) are removed and ignored. Each release still
+  generates both from its exact source and attaches them as release evidence;
+  `AUDIT.md` now points there.
+
 ### Governance: successor maintainer
 
 - `GOVERNANCE.md` records the continuity arrangement established and verified on
