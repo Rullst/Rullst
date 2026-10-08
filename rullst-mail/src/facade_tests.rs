@@ -327,3 +327,33 @@ async fn synchronous_tenant_facade_uses_custom_and_resolved_offline_drivers() {
             .is_err()
     );
 }
+
+#[test]
+fn deprecated_driver_notice_names_the_v13_migration_row() {
+    for driver in [
+        "sendgrid",
+        "postmark",
+        "mailjet",
+        "mailjet-sandbox",
+        "mailtrap",
+        "mailtrap-sandbox",
+        "azure-acs",
+    ] {
+        let notice = deprecated_driver_notice(driver).expect("deprecated driver notice");
+        assert!(notice.contains(&format!("`{driver}`")));
+        assert!(notice.contains("deprecated since Rullst 12.3 and removed in 13.0"));
+        assert!(notice.contains("\"Mail providers removed\""));
+    }
+    for driver in [
+        "log",
+        "memory",
+        "smtp",
+        "resend",
+        "sendpulse",
+        "ses",
+        "aws_ses",
+        "SendGrid",
+    ] {
+        assert_eq!(deprecated_driver_notice(driver), None);
+    }
+}
