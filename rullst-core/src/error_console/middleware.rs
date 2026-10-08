@@ -13,6 +13,10 @@ use std::net::SocketAddr;
 
 /// Middleware that catches panic unwinds in dev mode and presents the Self-Healing Console.
 ///
+/// Each rendered panic is also recorded under a random id (see
+/// `store`) that `cargo rullst ai fix <error-id>` reads from the
+/// loopback-only `GET /_rullst/errors/{id}` endpoint.
+///
 /// Panic details are rendered only when the request's [`ConnectInfo`] peer is a
 /// loopback address, or when no peer metadata exists (in-process dispatch such
 /// as [`crate::testing::TestApp`]). Any other peer receives a plain `500` with no
@@ -25,6 +29,8 @@ pub async fn catch_panic_middleware(mut req: Request<Body>, next: Next) -> Respo
     // is already present, so the console's inline style and script match the
     // emitted CSP.
     let nonce = crate::security::CspNonce::get_or_insert(req.extensions_mut());
+    let method = req.method().to_string();
+    let path = req.uri().path().to_string();
     let (handle, panic_slot) = spawn_capturing(async move { next.run(req).await });
 
     match handle.await {
@@ -40,8 +46,19 @@ pub async fn catch_panic_middleware(mut req: Request<Body>, next: Next) -> Respo
                     "Unhandled application panic".to_string()
                 };
 
+                let capture = panic_slot.take();
+                // Only the console's own view of the panic is kept: no query
+                // string, headers, cookies or body.
+                let error_id = crate::error_console::store::record(
+                    &message,
+                    capture.location.clone(),
+                    capture.backtrace.as_deref(),
+                    &method,
+                    &path,
+                );
                 let html_content =
-                    render_console_html(&message, &panic_slot.take(), Some(nonce.as_str())).await;
+                    render_console_html(&message, &capture, Some(nonce.as_str()), Some(&error_id))
+                        .await;
 
                 match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)

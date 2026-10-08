@@ -237,7 +237,7 @@ async fn queue_depth(queue: Option<&Queue>) -> QueueDepth {
 /// proxy or tunnel connects from loopback and may rewrite `Host`, so requests
 /// with a forwarding header, or over HTTP/1.0 (nginx's default upstream
 /// protocol), are refused as well.
-fn is_local(request: &Request) -> bool {
+pub(crate) fn is_local(request: &Request) -> bool {
     if matches!(
         request.version(),
         axum::http::Version::HTTP_09 | axum::http::Version::HTTP_10

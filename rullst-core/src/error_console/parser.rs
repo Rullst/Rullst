@@ -16,7 +16,7 @@ pub struct StackFrame {
 }
 
 /// Path fragments of standard-library and Cargo dependency frames.
-const DEPENDENCY_FRAME_MARKERS: [&str; 6] = [
+pub(crate) const DEPENDENCY_FRAME_MARKERS: [&str; 6] = [
     "/rustc/",
     "\\rustc\\",
     ".cargo/registry",

@@ -100,8 +100,10 @@ impl HotSwapService {
             "Request task was cancelled or aborted".to_string()
         };
 
+        // The dylib router does not serve `/_rullst/errors/{id}`, so no id is
+        // recorded and the page suggests a plain `cargo rullst ai` goal.
         let html_content =
-            crate::error_console::render_console_html(&message, &capture, None).await;
+            crate::error_console::render_console_html(&message, &capture, None, None).await;
 
         match axum::response::Response::builder()
             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
