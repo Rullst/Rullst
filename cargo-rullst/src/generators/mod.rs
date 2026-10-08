@@ -31,6 +31,7 @@ pub mod dev;
 pub mod diagram;
 pub mod doctor;
 pub mod eject;
+pub(crate) mod footprint;
 pub mod foundry;
 pub mod grpc;
 pub mod hook;

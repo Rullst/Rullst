@@ -2,8 +2,8 @@
 
 Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
 this page is a shipped capability unless it links to existing documentation.
-Parts of items 3 and 4 exist in the v13 development source (`13.0.0-alpha.1`);
-see [measured release defaults](#measured-release-defaults).
+Item 1 and parts of items 3 and 4 exist in the v13 development source
+(`13.0.0-alpha.1`); see [measured release defaults](#measured-release-defaults).
 
 ## Goal
 
@@ -40,7 +40,7 @@ can choose to publish.
 
 | # | Item | Notes |
 | :--- | :--- | :--- |
-| 1 | **`cargo rullst footprint` report** | Load-tests the running app with a fixed scenario and reports CPU time, peak and idle memory, requests per second, energy per request where the hardware exposes it (Linux powercap/RAPL), binary and container image size, and an estimated carbon intensity following the Software Carbon Intensity (SCI) specification (ISO/IEC 21031:2024). The report states the method, hardware, region grid intensity used and its uncertainty. |
+| 1 | **`cargo rullst footprint` report** | **In the v13 development source:** [`cargo rullst footprint`](footprint.md) builds and starts the release binary (or measures a loopback `--url`), runs a bounded closed-loop load and reports requests per second, latency p50/p95/p99, errors, process CPU time, peak and idle memory, binary and container image size, energy from Linux powercap/RAPL when readable (or a labelled `--cpu-watts` estimate) and a Software Carbon Intensity figure (SCI, ISO/IEC 21031:2024) from a user-provided grid intensity. Each value states its method; the report records the machine and inputs. Still planned: a fixed multi-route reference scenario, repeated runs with a reported spread, and stated uncertainty for the grid-intensity input. |
 | 2 | **Reproducible public benchmark** | The same reference application implemented idiomatically in Rullst and in other frameworks, with published code, scenario, hardware and dates, so comparisons are verifiable instead of claimed. |
 | 3 | **Efficient release defaults** | v13 source: generated projects get a tuned `[profile.release]` (thin LTO, one codegen unit, stripped symbols; `panic` stays `unwind` so one panicking handler cannot stop the server) and a distroless runtime image ([CLI reference](cli_reference.md#cargo-rullst-new-name)). Remaining: measured image sizes and fast start-up suitable for scale-to-zero hosting. |
 | 4 | **Efficient HTTP defaults** | v13 source: the standard `/static` mount sends `Cache-Control: public, max-age=31536000, immutable` for content-hashed file names and `no-cache` with `ETag`/`Last-Modified` revalidation (`304`) for other files ([static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers)). Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves. Remaining: fingerprinted names written by the asset pipeline itself and modern image formats. |

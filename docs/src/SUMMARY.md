@@ -169,6 +169,7 @@
 - [AI Maintainability & Project-Building Roadmap](ai-maintainability-roadmap.md)
 - [Legal & Regulatory Compliance Roadmap](legal-compliance-roadmap.md)
 - [Green Software Roadmap](green-software-roadmap.md)
+  - [Measuring an App's Footprint (`footprint`)](footprint.md)
 - [Rullst Labs Roadmap](rullst-labs-roadmap.md)
 - [Labs Runner Contract: Bring Your Own Runner](labs-runner-contract.md)
 - [Labs First Profile Decision & Threat Model (Removed Runner)](labs-first-profile.md)

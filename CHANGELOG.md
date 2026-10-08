@@ -93,6 +93,22 @@ A prepared version section does not establish that its tag or crates exist.
   without a fast linker configured (x86_64 already links with rustc's LLD),
   with the `.cargo/config.toml` snippet.
 
+### `cargo rullst footprint`
+
+- New in 13.0: `cargo rullst footprint` builds and starts the release binary in
+  production mode on a free loopback port, or measures an already running
+  loopback `--url`. It runs a bounded closed-loop load (`--path`, `--duration`,
+  `--concurrency`) and reports requests/s, latency p50/p95/p99, errors, process
+  CPU time and peak/idle RSS from Linux `/proc`, binary size, and the local
+  Docker image size.
+- Energy is measured from readable RAPL package counters (whole package,
+  includes other processes) or estimated as CPU time × `--cpu-watts` and
+  labelled as an estimate. A Software Carbon Intensity figure (ISO/IEC
+  21031:2024) is computed only from a user-provided `--grid-intensity` and
+  optional `--embodied`; nothing is fetched from the network. Unavailable
+  values are `NOT MEASURED` with the reason, and `--json` emits
+  `rullst.cli-footprint.v1`. See `docs/src/footprint.md`.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes

@@ -1,0 +1,12 @@
+Name:	my-app
+Umask:	0022
+State:	S (sleeping)
+Tgid:	4242
+Pid:	4242
+VmPeak:	  250000 kB
+VmSize:	  240000 kB
+VmLck:	       0 kB
+VmHWM:	   18432 kB
+VmRSS:	   16384 kB
+RssAnon:	    8192 kB
+Threads:	9

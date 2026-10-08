@@ -1649,6 +1649,40 @@ their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
 
+### `cargo rullst footprint` (v13)
+Runs a bounded closed-loop load against the app and reports requests per
+second, latency p50/p95/p99, errors, the app process's CPU time (Linux
+`/proc/<pid>/stat`), peak and idle RSS (`VmHWM`/`VmRSS`), the binary size, the
+Docker image size when a local daemon has an image named after the package,
+energy and a Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure. Every
+value shows its method; anything unavailable is `NOT MEASURED` with the reason.
+
+Without `--url` it builds the release binary (reusing an existing build),
+starts it with `RULLST_ENV=production` on a free `127.0.0.1` port, measures it
+and stops it. With `--url` it measures an app already running on loopback and
+refuses any other host; it makes no network calls beyond loopback and never
+fetches grid intensity. Energy is measured from readable RAPL package counters
+(whole package, includes other processes), otherwise estimated as CPU time ×
+`--cpu-watts` and labelled `estimate`, otherwise `NOT MEASURED`. SCI is
+computed only when energy is known and `--grid-intensity` is given.
+
+```bash
+cargo rullst footprint --duration 5s
+cargo rullst footprint --url http://127.0.0.1:3000 --path /health --json
+```
+
+* **Flags:** `--url <http://127.0.0.1:PORT>`, `--path <PATH>` (default `/`),
+  `--duration <10s|1m|1500ms>` (default `10s`, 1 s to 10 min),
+  `--concurrency <N>` (default 4, at most 256), `--grid-intensity <gCO2e/kWh>`,
+  `--cpu-watts <W>`, `--embodied <gCO2e>`, `--json` (versioned
+  `rullst.cli-footprint.v1`).
+* **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
+  fields; `1` when the build failed or the app could not be started or reached;
+  `2` for invalid arguments.
+
+See the [footprint guide](footprint.md) for what each number means, the RAPL
+permission note and how to choose a grid intensity.
+
 ### `cargo rullst dockerize` / `cargo rullst nixify`
 **Maturity:** `nixify` and `generate:buildah` are Experimental; `dockerize`
 follows the CLI's Core tier · [tiers](maturity.md#cli-generators)
