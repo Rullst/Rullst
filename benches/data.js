@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791487488338,
+  "lastUpdate": 1791488581125,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -25471,6 +25471,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1202,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a390de92ccd77646b97429c4fba667edcf48539",
+          "message": "Merge pull request #442 from Rullst/chore/untrack-generated-evidence\n\nchore(security): stop committing generated audit evidence",
+          "timestamp": "2026-10-08T16:34:45-03:00",
+          "tree_id": "86fceae9d1763cc1ccd044e9e3f60a43f7722021",
+          "url": "https://github.com/Rullst/Rullst/commit/0a390de92ccd77646b97429c4fba667edcf48539"
+        },
+        "date": 1791488577166,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 630,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 881,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 670,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1961,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
