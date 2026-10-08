@@ -9,6 +9,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [13.0.0-alpha.1] - 2026-10-10
+
+First v13 prerelease, for evaluation. Stable applications should stay on 12.x.
+Every v13 package is a prerelease and may change in any alpha, beta or release
+candidate; the [maturity tiers](https://github.com/Rullst/Rullst/blob/main/docs/src/maturity.md)
+apply from `13.0.0`. Breaking changes and upgrade steps are in the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+
+**New in 13.0:** `cargo rullst audit --report` (static OWASP ASVS 5.0.0 Level 1
+evidence), offline security tests in every generated starter, fewer WAF false
+positives, `cargo rullst footprint`, cached static assets and an optimized
+release profile in new projects, opt-in deferrable jobs, a possible-N+1 panel in
+`cargo rullst dash`, `cargo rullst add`, `ai fix` and `ai review`, HTML
+snapshots, `llms.txt` and the "Zero to a complete app" tutorial. The toolchain
+is Rust 1.99.0; the MSRV stays 1.96.
+
+**Breaking:** `rullst-mail` keeps Resend, AWS SES, SendPulse and SMTP;
+`rullst-capital` keeps Stripe and InfinitePay. The other transports, gateways,
+payouts and NFS-e were removed and remain in 12.x; `cargo rullst upgrade`
+reports them as `V13-MAIL-REMOVED` and `V13-CAPITAL-REMOVED`.
+
+**Experimental:** `rullst-iot`, `rullst-privacy`, `rullst-supervision`,
+`rullst-media`, `rullst-labs`, the InfinitePay adapter and the Omni iOS,
+Foundry, Nix, Buildah, gRPC and IoT generators.
+
+The sections below are grouped by change, roughly newest first. Where they
+differ, the later change wins: for example, the Paddle candidates were removed
+with the other Capital adapters.
+
+### Known limitations
+
+- No security-support commitment for v13 prereleases yet; see `SECURITY.md`.
+  Pin an exact version (`=13.0.0-alpha.1`) and read the changelog before you
+  upgrade.
+- Experimental packages have documented gaps: IoT is not validated on physical
+  hardware and has no network transport; Privacy has no live age provider or
+  verified guardianship; Media is not validated against real Bunny Stream, CDN
+  or S3-compatible accounts (the `s3` adapter only against the offline mock).
+  Labs never executes learner code; you bring your own runner.
+- `audit --report` is a bounded static check, not a certification: most ASVS
+  Level 1 requirements are reported as `NOT EVALUATED`.
+- `footprint` reads Linux `/proc`; energy comes from RAPL or is a labelled
+  estimate, and anything else is `NOT MEASURED`. Deferrable jobs ship no network
+  carbon source and make no emissions claim. The N+1 panel does not attribute
+  raw statements or spawned work. The distroless image size is not yet measured.
+- Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
+
 ### Governance: successor maintainer
 
 - `GOVERNANCE.md` records the continuity arrangement established and verified on
@@ -244,22 +291,6 @@ A prepared version section does not establish that its tag or crates exist.
   Explicit application values and `SecureHeadersConfig` omissions therefore win
   over the baseline; `Cache-Control: no-store` and the shared CSP nonce are
   unchanged.
-
-### Security report: `cargo rullst audit --report`
-
-- `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
-  `SECURITY_REPORT.md`, `.html` or `.json` (or `--output <path>`). The checks
-  are static and bounded: security headers and CSP, CSRF, cookie attributes,
-  rate limiting on credential routes, committed secrets in Git-tracked files
-  (shown only as redacted previews), the existing `cargo audit` step with its
-  exceptions, and the IDOR scanner.
-- The report adds a personal-data inventory and WCAG-related accessibility
-  heuristics. Each check reports an evidence status mapped to OWASP ASVS 5.0.0
-  Level 1, and the remaining Level 1 requirements are listed as `NOT EVALUATED`.
-- The JSON schema is `rullst.cli-audit-report.v1`. The command exits 1 on
-  `FINDINGS` or `ERROR`. It is evidence for a reviewer, not a certification.
-  Existing `audit` flags are unchanged.
-
 
 ### Dependency security: hickory 0.26.3
 
@@ -2025,14 +2056,10 @@ A prepared version section does not establish that its tag or crates exist.
 - Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
   eight shards still use Cargo's test runner.
 
-## [13.0.0-alpha.1] - 2026-09-20 (unpublished development checkpoint)
+### Development checkpoint of 20 September 2026
 
-This section describes the v13 source train. It does not announce a crates.io
-publication or admit a stable v13 release. See the
-[delivery plan](docs/src/v13-delivery-plan.md) and
-[adoption guide](docs/src/migration-v13.md) for current evidence and boundaries.
-The inventory includes subsequent source increments through September 21;
-the development version remains unpublished.
+Recorded as an unpublished source checkpoint; later sections supersede it
+(the separate Labs runner was removed, see "Labs: bring your own runner").
 
 - Set the existing sixteen release packages and internal requirements to the
   explicit development version. Migration catalog v2 admits reviewed 12.1→13
