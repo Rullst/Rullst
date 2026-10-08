@@ -92,6 +92,7 @@
 - [📜 Framework Spec](spec.md)
 - [🧭 Capability Status & Vision Decisions](capability-ledger.md)
 - [🚦 Rullst v12 Stable Release Record](v12.md)
+  - [12.3.0 Release Review](v12-3-0-review.md)
   - [12.2.0 Release Review](v12-2-0-review.md)
   - [12.1.2 Maintenance Review](v12-1-2-review.md)
   - [12.1.1 Candidate and Defensive Review](v12-1-1-review.md)

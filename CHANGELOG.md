@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [12.3.0] - 2026-10-08
+
+Compatible minor release on `v12`. It deprecates the public APIs that Rullst
+13.0 removes, fixes fresh builds of the Capital `nfse` feature, removes WAF and
+RASP false positives on ordinary text, lets `cargo rullst audit` use the
+workspace lockfile from a member, and moves the repository toolchain to Rust
+1.99.0. It keeps the 12.x public API and the Rust 1.96.0 MSRV. Code that uses a
+deprecated item and denies warnings needs a scoped `#[allow(deprecated)]` or
+`-A deprecated`: read the
+[12.3 upgrade notes](docs/src/migration-v12-1.md#upgrading-to-123) before
+deploying. The [release review](docs/src/v12-3-0-review.md) lists the
+verification requirements; publication evidence is recorded separately in the
+[release record](docs/src/v12.md).
+
 ### Rust 1.99.0 toolchain
 
 - The repository toolchain and the stable-pinned workflows move from Rust 1.98.1
@@ -31,7 +45,7 @@ A prepared version section does not establish that its tag or crates exist.
   `Cargo.lock` in a workspace member that has none, instead of failing.
   See [Upgrading to 12.3](docs/src/migration-v12-1.md#upgrading-to-123).
 
-### Deprecated ahead of 13.0 (planned 12.3.0)
+### Deprecated ahead of 13.0
 
 - Public APIs that Rullst 13.0 removes now carry
   `#[deprecated(since = "12.3.0")]` and keep working unchanged.
@@ -66,6 +80,14 @@ A prepared version section does not establish that its tag or crates exist.
   `hickory-resolver` 0.26.2 does not compile against `hickory-net` 0.26.1 even
   though its manifest allows it; 0.26.3 requires matching versions, so the
   three move together. Lockfile-only change; no manifest or API change.
+
+### Maintenance
+
+- Prepare all sixteen packages and internal requirements as 12.3.0, with
+  synchronized workspace and fuzz locks and absolute versioned README links.
+- `rullst-orm` pins `sea-orm` `=2.0.4` (from `=2.0.3`) and `rullst-capital`
+  pins `xml-sec` `=0.1.17` (from `=0.1.16`); `duckdb` is locked at
+  1.10506.0.
 
 ## [12.2.0] - 2026-10-02
 
