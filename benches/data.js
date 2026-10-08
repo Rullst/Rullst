@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791199482258,
+  "lastUpdate": 1791435682938,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -25093,6 +25093,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1952,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "594a75c506b4c78634ced6d412bc8629ea3f2b97",
+          "message": "Merge pull request #416 from Rullst/docs/v13-maturity-tiers\n\ndocs: maturity tiers, security layer guide and rullst-security claims review",
+          "timestamp": "2026-10-08T01:41:25-03:00",
+          "tree_id": "3e55c90fd6a0ce8ec88ac1732c45094152f771f6",
+          "url": "https://github.com/Rullst/Rullst/commit/594a75c506b4c78634ced6d412bc8629ea3f2b97"
+        },
+        "date": 1791435680886,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1009,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 637,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2388,
+            "range": "± 102",
             "unit": "ns/iter"
           }
         ]
