@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791200390469,
+  "lastUpdate": 1791436617517,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -14454,6 +14454,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "594a75c506b4c78634ced6d412bc8629ea3f2b97",
+          "message": "Merge pull request #416 from Rullst/docs/v13-maturity-tiers\n\ndocs: maturity tiers, security layer guide and rullst-security claims review",
+          "timestamp": "2026-10-08T01:41:25-03:00",
+          "tree_id": "3e55c90fd6a0ce8ec88ac1732c45094152f771f6",
+          "url": "https://github.com/Rullst/Rullst/commit/594a75c506b4c78634ced6d412bc8629ea3f2b97"
+        },
+        "date": 1791436616988,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5381,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 700,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
             "range": "± 0",
             "unit": "ns/iter"
           }
