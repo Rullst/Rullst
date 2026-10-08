@@ -23,7 +23,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-auth`** | Argon2 password hashing, encrypted session management, passkeys and an optional v13 shared PostgreSQL ceremony candidate, RBAC helpers, and OAuth2/OIDC re-exports. |
 | **`rullst-security`** | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
-| **`rullst-capital`** | Multi-provider payment and payout adapters, webhook verification, SaaS analytics, an offline NFS-e preview and bounded local fiscal preparation; live transmission and fiscal authorization remain disabled pending external validation. |
+| **`rullst-capital`** | Provider-neutral billing contracts, Stripe and an experimental InfinitePay adapter, webhook verification and replay protection, quotas, entitlements and SaaS analytics. Other gateways are application-owned adapters on the provider traits; v13 removed the other providers, payouts and NFS-e. |
 | **`rullst-connect`** | OAuth2/OIDC and social-login providers; brokered messaging is deliberately outside this identity-focused crate. |
 | **`rullst-messaging`** | Bounded broker-neutral envelopes, idempotent publication, consumer groups, leases, retry/DLQ, canonical wire/trace contracts, a deterministic process-local broker, opt-in durable local SQLite state with explicit encrypted content, and an opt-in ORM outbox relay, and a standalone Redis Streams candidate with Rullst-owned fenced delivery indexes admitted in PR #236; final release admission and other remote adapters remain outstanding. |
 | **`rullst-iot`** | `no_std` telemetry/frame helpers, bounded MQTT 5 PUBLISH and CoAP request encoders, Ed25519-signed OTA manifest verification, and a caller-provided durable rollback-counter CAS contract. Concrete counter storage, network transports/session state, HSM, PQC, flashing, and bootloader integration are roadmap work. |
@@ -44,7 +44,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 
 ### 3.1. Zero-Panic Policy in Production Code
 - Never use `panic!()`, `unwrap()`, or `expect()` in non-test production paths.
-- Always use typed error enums (`AppError`, `CapitalError`, `OrmError`, `FiscalError`, etc.) for graceful degradation and structured error responses.
+- Always use typed error enums (`AppError`, `CapitalError`, `OrmError`, `QuotaError`, etc.) for graceful degradation and structured error responses.
 - In `#[test]` modules, `unwrap()` and `expect()` are fully allowed and encouraged for concise assertions.
 
 ### 3.2. Static Dispatch & Constructor Ergonomics

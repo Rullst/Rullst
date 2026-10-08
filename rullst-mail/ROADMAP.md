@@ -16,7 +16,7 @@ While traditional email libraries in Rust (e.g. `lettre`) focus purely on low-le
 - `rullst-core`: Non-blocking async background job queues (`rullst::queue`) & OpenTelemetry telemetry.
 - `rullst-security`: Data Loss Prevention (DLP) secret scanner, homograph link filter & Login Jail tarpit.
 - `rullst-ai`: Smart AI dunning, localized translation, and tone optimization.
-- `rullst-capital`: Automated billing receipts, SaaS subscription renewals, and Receita Federal NFS-e DPS invoices.
+- `rullst-capital`: Automated billing receipts, SaaS subscription renewals, and payment-bound invoice PDFs.
 - `rullst-studio`: Live visual template previews, DMARC forensic audit, and dead-letter queue inspect/retry controls.
 
 ```mermaid
@@ -130,7 +130,7 @@ flowchart TD
 
 ---
 
-### Phase 6: Multi-Tenant SaaS & Fiscal Blueprints 🏢
+### Phase 6: Multi-Tenant SaaS & Billing Blueprints 🏢
 - [x] **Auth-Bound Multi-Tenancy Resolver (`TenantMailResolver`)**: Routes a trusted Core `TenantContext` to a validated in-memory driver registry, rejects invalid registration and fails closed when the registry is unavailable. The context stays explicit to avoid ambient cross-request identity; durable encrypted credentials, rotation and distributed updates remain application/deployment work.
 - [ ] **Smart Domain Warm-Up Scheduler & Provider Rate Limiter**: Automated throttling and graduated daily sending schedules (e.g. Day 1: 50 emails/day, Day 7: 2,000 emails/day) for newly provisioned domains to build sender reputation safely.
 - [x] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
@@ -138,14 +138,15 @@ flowchart TD
   - `cargo rullst make:mail <Name> --reset`: Secure time-limited password reset.
   - `cargo rullst make:mail <Name> --otp`: High-visibility OTP token delivery.
   - `cargo rullst make:mail <Name> --invoice`: SaaS billing and payment receipt.
-  - `make:mail-invoice [Name]`: Evidence-aware National NFS-e and international SaaS receipt template.
+  - `make:mail-invoice [Name]`: Bounded commercial payment-receipt template (`PaymentReceiptEmail`).
   - `make:mail-dunning [Name]`: Progressive payment recovery sequence (D+1 gentle, D+3 action required, D+7 service paused).
   - **v12 bounded implementation:** all seven exposed variants validate
     identifiers, reject traversal/collisions, enable the required umbrella
     features, register modules, escape dynamic HTML and pass a materialized
-    Clippy/runtime contract. The fiscal variant consumes typed
-    `FiscalResponse` provenance and cannot label `OfflineMock` as authorized;
-    the dunning stages do not infer account state or schedule themselves.
+    Clippy/runtime contract. The receipt variant needs only the `mailer`
+    feature and never presents itself as a tax authorization (v13 removed its
+    NFS-e branch); the dunning stages do not infer account state or schedule
+    themselves.
 
 ---
 

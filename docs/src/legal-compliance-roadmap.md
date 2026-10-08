@@ -52,8 +52,8 @@ These are building blocks, not compliance claims; see each page for limits:
   ([security architecture](security-architecture.md)).
 - Mail: List-Unsubscribe (RFC 8058), recipient suppression, minimized delivery
   observations ([mail crate](crates/mail.md)).
-- Capital: provider-hosted checkout, webhook verification and a local NFS-e
-  preview (live fiscal transmission remains disabled).
+- Capital: provider-hosted checkout and webhook verification. Fiscal documents
+  such as NFS-e are outside the framework since v13.
 - Supervision: no media models or biometric identification are included; the
   host owns capture permission and reviewer workflow.
 - Supply chain: SBOM generation, license policy (`deny.toml`) and coordinated

@@ -72,7 +72,7 @@ enabled automatically. See the
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (whole-token `AKIA`/`ASIA` AWS access key IDs, passwords, API tokens, bearer tokens and PEM private-key blocks of any `<label>PRIVATE KEY` type, including OpenSSH, EC and encrypted keys) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ Safe CLI Scaffolding:** Generates registered facade-based Welcome, Password Reset, OTP, Invoice, custom, evidence-aware NFS-e/international receipt, and explicit D+1/D+3/D+7 dunning mailables, refusing unsafe names/collisions and escaping dynamic HTML.
+- **🛠️ Safe CLI Scaffolding:** Generates registered facade-based Welcome, Password Reset, OTP, Invoice, custom, bounded payment-receipt, and explicit D+1/D+3/D+7 dunning mailables, refusing unsafe names/collisions and escaping dynamic HTML.
 - **🧾 Payment-Bound PDF Delivery:** The opt-in `capital-invoice` bridge accepts
   only Capital's final evidence-bound `PaidInvoice`, attaches bounded HTML/PDF,
   applies pre-flight and preserves a stable key for the application outbox.
@@ -258,19 +258,20 @@ cargo rullst make:mail OtpVerification --otp
 # Generate SaaS Invoice receipt email
 cargo rullst make:mail InvoiceReceipt --invoice
 
-# Generate an evidence-aware NFS-e/international receipt
+# Generate a bounded commercial payment receipt (PaymentReceiptEmail)
 cargo rullst make:mail-invoice
 
 # Generate explicit D+1/D+3/D+7 payment-recovery stages
 cargo rullst make:mail-dunning
 ```
 
-The fiscal template enables the umbrella `capital` feature and accepts a typed
-`FiscalResponse`: an `OfflineMock` always renders as `[PREVIEW — NOT
-AUTHORIZED]`. The dunning template does not infer due dates, schedule itself,
-or mutate access. Both generated `build` paths run the mandatory mail pre-flight
-and reject unsafe links; tax provenance, billing state, scheduling, and policy
-remain application-owned.
+The receipt template enables only the `mailer` feature. Its
+`international_receipt` constructor records an application-confirmed payment
+and states that it is not a tax authorization; it has no NFS-e branch (v13
+removed NFS-e from Rullst). The dunning template does not infer due dates,
+schedule itself, or mutate access. Both generated `build` paths run the
+mandatory mail pre-flight and reject unsafe links; payment evidence, billing
+state, scheduling, and policy remain application-owned.
 
 For native payment-bound PDF delivery, enable `rullst-mail/capital-invoice` (or
 umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`, then

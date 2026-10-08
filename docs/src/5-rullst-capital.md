@@ -1,13 +1,23 @@
-# Rullst Capital: billing and fiscal boundaries
+# Rullst Capital: billing boundaries
 
 > **Vision preserved:** capabilities removed from the usable-today contract are
-> still evaluated item by item in the [capability ledger](capability-ledger.md#capital-billing-and-fiscal-vision),
+> still evaluated item by item in the [capability ledger](capability-ledger.md#capital-and-billing-vision),
 > including whether each one is worth implementing and why.
 
-`rullst-capital` provides billing abstractions, revenue metrics, payment-provider
-adapters, payout helpers, and verified webhook plumbing. Provider capabilities
-are not uniform: consult the adapter API and its tests before depending on a
-particular checkout, refund, payout, or webhook operation.
+`rullst-capital` provides provider-neutral billing abstractions, revenue
+metrics, verified webhook plumbing and two payment-provider adapters: Stripe
+(supported) and InfinitePay (experimental until validated against a live
+account). Provider capabilities are not uniform: consult the adapter API and its
+tests before depending on a particular checkout, refund or webhook operation.
+Other gateways are integrated in application code by implementing the provider
+traits; see [Writing your own payment provider](capital-custom-provider.md).
+
+v13 removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay,
+Coinbase Commerce, PicPay and Wise (payout) adapters and the NFS-e fiscal
+preparation module. NFS-e was never validated with a real municipality and may
+return as a separate product outside Rullst. See the
+[v13 migration guide](migration-v13.md) row "Capital providers and NFS-e
+removed".
 
 `RevenueDashboardManager` is a bounded process-local presentation source.
 Applications call `update_metrics` with values reconciled from their durable
@@ -20,9 +30,8 @@ count from its event name.
 Initialize only the provider required by the application and treat credentials
 as deployment secrets. An empty or `mock_*` API credential selects the
 adapter's deterministic offline behavior instead of a live request where that
-adapter documents support for it (Alipay requires every credential to be an
-explicit `mock_*` value and rejects empty ones), so verify that production
-credentials are present. An empty webhook secret is a configuration error; a
+adapter documents support for it, so verify that production credentials are
+present. An empty webhook secret is a configuration error; a
 `mock_*` webhook secret selects mock verification, which the production webhook
 middleware rejects.
 
@@ -84,34 +93,33 @@ Use the static-dispatch `MeteredBillingProvider` boundary for new code.
 `StripeMeterEvent` requires the authoritative `cus_*` customer, configured
 meter event name, positive quantity, timestamp and a unique visible identifier;
 the adapter sends the default `stripe_customer_id`/`value` payload and binds all
-of those fields in the accepted response. `LemonSqueezyUsageRecord` requires
-the provider's numeric subscription-item ID plus the explicit `Increment` or
-`Set` action and binds item/quantity/action from the JSON:API response.
+of those fields in the accepted response.
 
-Both responses are capped at one MiB and offline credentials return a
+The response is capped at one MiB and offline credentials return a
 deterministic `UsageStatus::Mock`. Stripe provides only rolling identifier
-deduplication. The reviewed Lemon request has no provider event-key field, so
-the application must atomically claim `event_key()` in a durable outbox before
-sending. It must also configure the matching aggregation, reconcile invoices
-and derive quotas/entitlements from authoritative state. The old uniform
-`BillingProvider::report_usage` remains source-compatible for mocks but fails
-closed in live Stripe/Lemon configurations instead of guessing required fields.
+deduplication. A custom adapter whose provider has no event-key field reports
+`UsageDeduplication::ApplicationOutboxRequired`; the application must then
+atomically claim `event_key()` in a durable outbox before sending. It must also
+reconcile invoices and derive quotas/entitlements from authoritative state. The
+old uniform `BillingProvider::report_usage` remains source-compatible for mocks
+but fails closed in live Stripe configurations instead of guessing required
+fields.
 
 ## Coupons and relative trial extensions
 
 `CouponCode` validates/redacts the provider coupon identifier, while a
 statically dispatched `SubscriptionHandle` applies it. Stripe uses the current
 expanded `discounts[0][coupon]` update and binds the response to the requested
-subscription/coupon. Lemon Squeezy codes are checkout-only; Lemon and adapters
-without reviewed subscription-discount contracts return `UnsupportedOperation`
-for live credentials instead of silently succeeding.
+subscription/coupon. Adapters without reviewed subscription-discount contracts,
+including InfinitePay, return `UnsupportedOperation` instead of silently
+succeeding.
 
 `handle.extend_trial(15)` resolves a bounded 15-day expiration from the current
 UTC clock. Retryable workers should persist the command creation time and call
 `extend_trial_days_at(15, command_created_at)`; this emits the same absolute
 expiration on every attempt. `set_trial_end` is available for explicit
-reconciliation. Stripe and Lemon Squeezy have bounded protocol/response-binding
-tests for trial updates. Authorization, command serialization, billing-cycle
+reconciliation. Stripe has bounded protocol/response-binding tests for trial
+updates. Authorization, command serialization, billing-cycle
 policy, webhook reconciliation and live account acceptance remain host/release
 responsibilities. See the [billing tutorial](tutorials/19-saas-billing-capital.md#7-use-a-bounded-subscription-handle-and-grace-period).
 
@@ -154,7 +162,7 @@ delivery. See the [SaaS billing tutorial](tutorials/19-saas-billing-capital.md#4
 Webhook endpoints must use the Capital verification middleware. Its Axum and
 opt-in Actix adapters call the same canonical verifier. For supported protocols
 it performs cryptographic verification, timestamp freshness checks where the
-protocol signs a timestamp (Stripe, Paddle, Polar), a two-megabyte body
+protocol signs a timestamp (Stripe), a two-megabyte body
 limit, and bounded replay protection before the application receives a
 normalized event. A webhook route may receive a narrowly scoped CSRF exemption
 only when this verifier remains mandatory on that exact route. See the
@@ -181,88 +189,6 @@ let router: Router = Router::new()
     .route("/webhooks/billing", post(billing_webhook))
     .layer(axum::middleware::from_fn(verify_webhook));
 ```
-
-## NFS-e Nacional: bounded homologation preparation
-
-The fiscal module can construct a strict ordinary-service DPS 1.01 subset,
-validate it against checksum-pinned official schema sources with the one
-documented production regex normalization, sign its `infDPS/@Id` with a
-matching RSA key/certificate from PKCS#12, independently verify the local
-XMLDSig, and construct the bounded rustls mTLS client. These local properties
-do not constitute an authorization from the Brazilian National NFS-e service.
-
-- `NfseEnvironment::Mock` returns `FiscalResponseKind::OfflineMock`, status
-  `MOCK_NOT_AUTHORIZED`, and `is_officially_authorized() == false`.
-- `NfseEnvironment::Homologation` and `NfseEnvironment::Production` fail closed
-  with `FiscalError::Unsupported`.
-- `sign_dps_xml` rejects malformed, duplicate-ID, already-signed, non-RSA, and
-  mismatched key/certificate inputs instead of returning partial signature XML.
-- `NfseIssueRequest` verifies the embedded DPS signature, produces the exact
-  deterministic `dpsXmlGZipB64` JSON object and parses bounded signed success or
-  structured rejection material without performing network I/O.
-- transmission and the external homologation gates remain deliberately
-  disconnected from the network path.
-
-```rust,no_run
-use rullst_capital::fiscal::{
-    issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
-    FiscalResponseKind, NfseDps, NfseEnvironment,
-};
-
-async fn offline_preview(
-    emitter: &FiscalEmitter,
-    customer: &FiscalCustomer,
-    dps: &NfseDps,
-) -> Result<(), rullst_capital::fiscal::FiscalError> {
-    let unused_certificate = FiscalCertificate::offline_mock();
-    let response = issue_nfse_direct(
-        emitter,
-        customer,
-        dps,
-        &unused_certificate,
-        NfseEnvironment::Mock,
-    )
-    .await?;
-
-    assert_eq!(response.kind, FiscalResponseKind::OfflineMock);
-    assert!(!response.is_officially_authorized());
-    Ok(())
-}
-```
-
-The offline protocol boundary is intentionally separate from transport:
-
-```rust,no_run
-use rullst_capital::fiscal::NfseIssueRequest;
-
-# fn prepare(signed_dps: &str) -> Result<Vec<u8>, rullst_capital::fiscal::FiscalError> {
-let request = NfseIssueRequest::try_from_signed_dps(signed_dps)?;
-let exact_json_body = request.to_json()?;
-# Ok(exact_json_body)
-# }
-```
-
-An application may retain this material for a reviewed homologation fixture,
-but the Rullst client does not send it. `parse_response` accepts only the
-documented 201/400/403/500 issuance outcomes, applies four-MiB/cardinality/text
-limits, binds the selected environment to the signed `infDPS/tpAmb`, and never
-turns a rejection or unsigned/tampered XML into authorization.
-
-The same `nfse` feature exposes `FiscalCommandJournal`: a bounded,
-single-active-writer HMAC-chained file that synchronizes a prepared command
-before a caller-owned transport, records one bound terminal response, suppresses
-exact replay, and recovers minimized pending descriptors after restart. It
-stores no XML, access key, processing message, provider body, or certificate.
-The host must retain the actual request/outbox and the journal checkpoint
-separately, protect and rotate the 32-byte key, enforce an exclusive writer,
-and own reconciliation, retry, retention, and backup.
-
-Live issuance remains disabled until full certificate/emitter and ICP-Brasil
-policy, deployment of the local journal and authoritative request/outbox,
-retained official fixtures, real A1 restricted-environment tests, independent
-review, and official end-to-end homologation are complete. Follow the
-[NFS-e homologation-preparation tutorial](tutorials/40-nfse-homologation-preparation.md)
-and never account an offline fixture as an issued invoice.
 
 ## Operational checklist
 

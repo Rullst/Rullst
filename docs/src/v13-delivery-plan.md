@@ -914,7 +914,7 @@ when its dependencies and verification capacity are ready.
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | The compatible updater is carried forward. `cargo rullst upgrade` reports v12 → v13 source findings from `rullst-upgrade-rules-v4`, each tied to a [migration-guide](migration-v13.md) row, and `cargo rullst ai upgrade` proposes reviewed fixes. Next: improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 
-Gateway/load-balancer implementation, fiscal homologation, physical IoT/Embassy,
+Gateway/load-balancer implementation, physical IoT/Embassy,
 PQC protocols, local facial inference and broad database replication retain
 their dedicated roadmap scope. They are not counted as completed by a proposal,
 an empty crate or a mock. Reconsider them through their own dependency and

@@ -39,8 +39,8 @@ a run; it does not turn an informational workflow into a formal assurance.
 
 ## Explicit product boundaries
 
-- NFS-e homologation and production issuance are disabled. Mock output is an
-  offline fixture, never an official authorization.
+- NFS-e preparation was removed from the framework in v13; Rullst issues no
+  fiscal documents. InfinitePay live checkout and callbacks fail closed.
 - IoT currently provides `no_std` data/frame helpers and Ed25519-signed OTA
   manifest verification. MQTT transport, HSM, PQC, flashing, and bootloader
   integration remain roadmap items.
