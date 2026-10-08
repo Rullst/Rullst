@@ -9,6 +9,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Labs and Media candidates
+
+- `rullst-labs` is now in the 13.0 release inventory and ships as
+  `13.0.0-alpha.1`. It contains only exercise, authorization, job and grading
+  contracts; applications still bring their own runner, and Labs never
+  executes learner code.
+- `rullst-media` gains an experimental opt-in `s3` feature for AWS S3,
+  Cloudflare R2 and MinIO. It stores and serves the original video without
+  transcoding. Uploads are presigned PUTs from `MediaService::upload_declared`,
+  bound to a server-generated key, the declared content type and the exact
+  size; playback is a presigned GET via `PlaybackKind::Original`. Both expire
+  within 900 seconds and are issued only after the host's scoped
+  authorization, and a HEAD confirms size and type before an asset becomes
+  ready. Signing reuses the `aws-sigv4` signer that core uses. Bunny upload
+  grants now also serialize `"protocol": "Tus"`. Validated against the offline
+  mock only; provider interoperability is not yet validated.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
