@@ -16,7 +16,7 @@ While traditional email libraries in Rust (e.g. `lettre`) focus purely on low-le
 - `rullst-core`: Non-blocking async background job queues (`rullst::queue`) & OpenTelemetry telemetry.
 - `rullst-security`: Data Loss Prevention (DLP) secret scanner, homograph link filter & Login Jail tarpit.
 - `rullst-ai`: Smart AI dunning, localized translation, and tone optimization.
-- `rullst-capital`: Automated billing receipts, SaaS subscription renewals, and Receita Federal NFS-e DPS invoices.
+- `rullst-capital`: Automated billing receipts, SaaS subscription renewals, and payment-bound invoice PDFs.
 - `rullst-studio`: Live visual template previews, DMARC forensic audit, and dead-letter queue inspect/retry controls.
 
 ```mermaid
@@ -28,8 +28,8 @@ flowchart TD
     Homograph --> Queue["Tokio Background Worker Queue"]
     Queue --> Engine{"Tenant Mail Resolver"}
     Engine -->|"Tenant A"| Resend["Resend REST API"]
-    Engine -->|"Tenant B"| SendGrid["SendGrid REST API"]
-    Engine -->|"Tenant C"| Postmark["Postmark REST API"]
+    Engine -->|"Tenant B"| SendPulse["SendPulse REST API"]
+    Engine -->|"Tenant C"| Custom["Application MailDriver"]
     Engine -->|"Tenant D / On-Prem"| SMTP["Native SMTP (TLS 1.3 / DANE)"]
     Engine -->|"Failover"| AWS["AWS SES API"]
     Queue --> Studio["Rullst Studio (:5555/studio/mail)"]
@@ -37,19 +37,27 @@ flowchart TD
 
 ---
 
+> **v13 provider scope (8 October 2026):** `rullst-mail` 13 keeps Resend, AWS
+> SES, SendPulse and SMTP plus the log, memory and offline mock drivers. The
+> SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
+> transports were removed from 13.0 and remain in the 12.x line; applications
+> integrate other providers through `MailDriver`
+> ([guide](https://github.com/Rullst/Rullst/blob/main/docs/src/mail-custom-transport.md)).
+> Checked items below that name a removed transport record 12.x work.
+
 ## 📅 Roadmap Execution Phases
 
 ### Phase 1: Core Sending, Resilient Drivers & Background Queues 🚀 *(Completed / In Progress)*
-- [x] **Unified `MailDriver` Trait**: Decoupled async interface supporting `LogDriver`, `SmtpDriver`, `ResendDriver`, and `SendGridDriver`.
+- [x] **Unified `MailDriver` Trait**: Decoupled async interface supporting `LogDriver`, `SmtpDriver`, `ResendDriver`, `SendPulseDriver`, `AwsSesDriver` and application-owned transports.
 - [x] **Fluent `Message` Builder**: Zero-cost API for constructing recipients, subjects, HTML bodies, and plain-text fallback variants.
 - [~] **Scoped Panic Checks**: A small Kani harness and ordinary tests exist;
   they do not prove panic-freedom across every driver, parser, dependency, or
   generated application.
 - [x] **Async Background Job Integration**: Automatic non-blocking dispatch through `rullst-core::queue::Queue` with configurable retry backoff.
 - [x] **Typed In-Process Circuit Breaker & Automatic Failover (`FailoverDriver`)**: HTTP 5xx, 429 plus bounded `Retry-After`, transport errors, permanent provider responses, validation and configuration have explicit dispositions. Only transient/rate-limit failures open the circuit or reach a fallback; structured low-cardinality tracing records the decision without response bodies. SMTP distinguishes transient 4xx from permanent 5xx. Circuit state is fail-closed and poison-aware. Durable/distributed breaker state and an independently operated alert sink remain deployment concerns.
-- [x] **Postmark REST plus bounded native AWS SES v2**: Postmark uses its live HTTP API. With `aws-ses`, `AwsSesDriver` uses the official AWS SDK and SigV4, supports temporary or caller-owned rotating credentials, attachments/CID and RFC 8058, and binds success to `MessageId`. Its loopback protocol contract is not live-account acceptance or inbox delivery. The legacy constructor remains only an offline mock or explicit bearer proxy.
-- [x] **Bounded Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: SQLite and Redis persist schedules up to 366 days and do not claim early; Redis has a digest-pinned live contract. A queue worker consumes the due timestamp before transport, while direct Resend/SendGrid use provider fields. Unsupported real direct transports fail closed; offline fixtures retain metadata for assertions. Execution remains poll-dependent and at-least-once.
-- [x] **Bounded Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: The mandatory pipeline caps messages at 32 attachments, 20 MiB per item and 25 MiB in aggregate; validates basename, parameter-free MIME type and unique referenced CID metadata; redacts bytes from `Debug`; and feeds provider-native Resend, SendGrid, Postmark, native SES and correctly nested SMTP MIME serialization. Bytes are owned and transports copy/Base64-encode them where required. The opt-in static `AttachmentInspectionGuard` adds a strict bounded local signature/active-content/secret/link heuristic and an adapter contract for an external scanner. Provider limits can be tighter, and the local inspector is not antivirus, sandboxing, recursive archive inspection or CDR.
+- [x] **Bounded native AWS SES v2** (the 12.x Postmark REST transport was removed in 13.0): With `aws-ses`, `AwsSesDriver` uses the official AWS SDK and SigV4, supports temporary or caller-owned rotating credentials, attachments/CID and RFC 8058, and binds success to `MessageId`. Its loopback protocol contract is not live-account acceptance or inbox delivery. The legacy constructor remains only an offline mock or explicit bearer proxy.
+- [x] **Bounded Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: SQLite and Redis persist schedules up to 366 days and do not claim early; Redis has a digest-pinned live contract. A queue worker consumes the due timestamp before transport, while direct Resend uses its provider field. Unsupported real direct transports fail closed; offline fixtures retain metadata for assertions. Execution remains poll-dependent and at-least-once.
+- [x] **Bounded Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: The mandatory pipeline caps messages at 32 attachments, 20 MiB per item and 25 MiB in aggregate; validates basename, parameter-free MIME type and unique referenced CID metadata; redacts bytes from `Debug`; and feeds provider-native Resend, SendPulse (non-inline), native SES and correctly nested SMTP MIME serialization. Bytes are owned and transports copy/Base64-encode them where required. The opt-in static `AttachmentInspectionGuard` adds a strict bounded local signature/active-content/secret/link heuristic and an adapter contract for an external scanner. Provider limits can be tighter, and the local inspector is not antivirus, sandboxing, recursive archive inspection or CDR.
 - [~] **Pre-Flight Syntax & Disposable Email Filter**: A bounded local syntax check and static list of 150+ domains run before dispatch. This is not DNS/MX verification or a deliverability guarantee.
 - [x] **Mandatory Dispatch Pipeline**: Facade, queue worker, tenant resolver, failover, and official drivers consistently enforce CRLF, deliverability, content-security, and DLP checks.
 - [x] **Deterministic Provider Mocks**: Empty and `mock_*` credentials select an explicit, inspectable offline transport without HTTP or SMTP I/O.
@@ -130,7 +138,7 @@ flowchart TD
 
 ---
 
-### Phase 6: Multi-Tenant SaaS & Fiscal Blueprints 🏢
+### Phase 6: Multi-Tenant SaaS & Billing Blueprints 🏢
 - [x] **Auth-Bound Multi-Tenancy Resolver (`TenantMailResolver`)**: Routes a trusted Core `TenantContext` to a validated in-memory driver registry, rejects invalid registration and fails closed when the registry is unavailable. The context stays explicit to avoid ambient cross-request identity; durable encrypted credentials, rotation and distributed updates remain application/deployment work.
 - [ ] **Smart Domain Warm-Up Scheduler & Provider Rate Limiter**: Automated throttling and graduated daily sending schedules (e.g. Day 1: 50 emails/day, Day 7: 2,000 emails/day) for newly provisioned domains to build sender reputation safely.
 - [x] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
@@ -138,14 +146,15 @@ flowchart TD
   - `cargo rullst make:mail <Name> --reset`: Secure time-limited password reset.
   - `cargo rullst make:mail <Name> --otp`: High-visibility OTP token delivery.
   - `cargo rullst make:mail <Name> --invoice`: SaaS billing and payment receipt.
-  - `make:mail-invoice [Name]`: Evidence-aware National NFS-e and international SaaS receipt template.
+  - `make:mail-invoice [Name]`: Bounded commercial payment-receipt template (`PaymentReceiptEmail`).
   - `make:mail-dunning [Name]`: Progressive payment recovery sequence (D+1 gentle, D+3 action required, D+7 service paused).
   - **v12 bounded implementation:** all seven exposed variants validate
     identifiers, reject traversal/collisions, enable the required umbrella
     features, register modules, escape dynamic HTML and pass a materialized
-    Clippy/runtime contract. The fiscal variant consumes typed
-    `FiscalResponse` provenance and cannot label `OfflineMock` as authorized;
-    the dunning stages do not infer account state or schedule themselves.
+    Clippy/runtime contract. The receipt variant needs only the `mailer`
+    feature and never presents itself as a tax authorization (v13 removed its
+    NFS-e branch); the dunning stages do not infer account state or schedule
+    themselves.
 
 ---
 
@@ -169,7 +178,8 @@ The current Rullst-only status is:
 | Capability | Current status |
 | :--- | :--- |
 | Message API, mandatory pipeline, queue envelope, offline mocks, MailTrap and factories | Implemented in the bounded scopes above |
-| Resend, SendGrid and Postmark REST; optional SMTP | Implemented per provider, without universal method parity |
+| Resend and SendPulse REST; optional SMTP | Implemented per provider, without universal method parity |
+| SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services | Removed in 13.0 (kept in 12.x); application-owned `MailDriver` adapters replace them |
 | Bounded attachments/CID across the named REST, SES and SMTP paths | Implemented in the owned-byte contract above; opt-in bounded local inspection exists, but provider acceptance and authoritative malware/CDR scanning are not implied |
 | Failover, scheduling, tenant routing, URL/DLP checks, tracking and minimized delivery observations | Useful partial foundations with the named limits above |
 | Native AWS SES v2/SigV4 | Implemented behind `aws-ses`; protocol-tested, without live-account/inbox claim |

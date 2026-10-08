@@ -34,7 +34,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
         (
             "/pricing",
             "💳 Capital Billing",
-            "Billing adapters, offline checkout fixtures, and an unsigned NFS-e DPS preview",
+            "Billing adapters, quota checks and offline checkout fixtures",
         ),
         (
             "/security-demo",

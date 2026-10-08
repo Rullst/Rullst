@@ -122,7 +122,7 @@ pub enum Commands {
     MakeMigrationAuto,
     /// Scaffolds authentication (login, registration, User model, migrations, middlewares, and HTML views)
     Auth,
-    /// Scaffolds SaaS Billing (Stripe and Paddle checkout, webhooks and migrations; Lemon Squeezy as an offline fixture)
+    /// Scaffolds SaaS Billing (Stripe checkout, portal, signed webhooks and migrations)
     #[command(name = "make:billing")]
     MakeBilling {
         /// The primary Billable model (e.g. User, Team, Workspace)
@@ -172,11 +172,11 @@ pub enum Commands {
         #[arg(long)]
         invoice: bool,
     },
-    /// Scaffolds the bounded NFS-e/international receipt mailable
+    /// Scaffolds the bounded commercial payment-receipt mailable
     #[command(name = "make:mail-invoice")]
     MakeMailInvoice {
         /// Name of the generated mailable struct
-        #[arg(default_value = "FiscalInvoiceEmail")]
+        #[arg(default_value = "PaymentReceiptEmail")]
         name: String,
     },
     /// Scaffolds the explicit D+1/D+3/D+7 payment-recovery mailable

@@ -77,22 +77,23 @@ pub(crate) fn write_docker_files(
     };
 
     let dockerfile = format!(
-        r#"FROM rust:1.98.1-slim-bookworm AS builder
+        r#"FROM rust:1.99.0-slim-bookworm AS builder
 WORKDIR /app
 COPY . .
 # Generate and commit Cargo.lock before building this application image.
 RUN cargo build --release --locked
+# The runtime image has no shell, so its directory tree is prepared here.
+RUN install --directory --owner=10001 --group=10001 /runtime/app /runtime/app/data
 
-FROM docker.io/library/debian:bookworm-slim
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system --gid 10001 rullst \
-    && useradd --system --uid 10001 --gid 10001 --home-dir /app --shell /usr/sbin/nologin rullst \
-    && install --directory --owner=10001 --group=10001 /app /app/data
+# Debian 12 glibc runtime (libgcc, libstdc++, CA certificates, tzdata) without
+# a shell or package manager: probe `/health` and `/ready` over HTTP from the
+# platform instead of a shell HEALTHCHECK.
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=builder --chown=10001:10001 /runtime/app /app
 WORKDIR /app
 COPY --from=builder --chown=10001:10001 /app/target/release/{project_name} /app/{project_name}
-{copy_static}{copy_config}ENV RULLST_ENV=production
+{copy_static}{copy_config}ENV HOME=/app
+ENV RULLST_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 {sqlite_environment}USER 10001:10001
@@ -123,7 +124,22 @@ mod tests {
             .expect("Docker files");
         let dockerfile =
             fs::read_to_string(root.path().join("Dockerfile")).expect("generated Dockerfile");
-        assert!(dockerfile.contains("FROM rust:1.98.1-slim-bookworm AS builder"));
+        assert!(dockerfile.contains("FROM rust:1.99.0-slim-bookworm AS builder"));
+        // The runtime stage is distroless: no shell, no package manager, and
+        // the writable `/app/data` tree comes from the builder stage.
+        let runtime = dockerfile
+            .split_once("FROM gcr.io/distroless/cc-debian12:nonroot\n")
+            .expect("distroless runtime stage")
+            .1;
+        assert!(!runtime.contains("RUN "), "{runtime}");
+        assert!(!dockerfile.contains("apt-get"));
+        assert!(dockerfile.contains(
+            "install --directory --owner=10001 --group=10001 /runtime/app /runtime/app/data"
+        ));
+        assert!(runtime.contains("COPY --from=builder --chown=10001:10001 /runtime/app /app\n"));
+        assert!(runtime.contains("/app/target/release/demo /app/demo"));
+        assert!(runtime.contains("ENV HOME=/app"));
+        assert!(runtime.contains("CMD [\"/app/demo\"]"));
         assert!(dockerfile.contains("ENV RULLST_ENV=production"));
         assert!(dockerfile.contains("ENV HOST=0.0.0.0"));
         assert!(dockerfile.contains("USER 10001:10001"));

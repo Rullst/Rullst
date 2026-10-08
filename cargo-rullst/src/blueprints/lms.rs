@@ -127,6 +127,10 @@ pub fn file_manifest(
             "src/main.rs",
             include_str!("lms/src/main.rs.template").to_string(),
         ));
+        manifest.push((
+            super::security_tests::PATH,
+            super::security_tests::source(super::security_tests::Starter::Lms),
+        ));
     }
     manifest.extend(
         COMMON_FILES

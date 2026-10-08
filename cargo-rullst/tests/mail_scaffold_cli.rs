@@ -69,6 +69,12 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
         &["make:mail", "CustomNotice"][..],
         &["make:mail-invoice"][..],
         &["make:mail-dunning"][..],
+        // Generic generator output shares this compiled project, so the
+        // Clippy `-D warnings` gate below also covers it without a second
+        // cold build: a model, the `add` capability flow and (further down) a
+        // `Validate` DTO relying on the generated `validator` dependency.
+        &["make:model", "Post"][..],
+        &["add", "auth"][..],
     ] {
         let scaffolded = run(
             Command::new(cli).current_dir(&project).args(arguments),
@@ -94,13 +100,11 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
         1,
         "mailer feature must be enabled exactly once"
     );
-    assert_eq!(
-        features
+    assert!(
+        !features
             .iter()
-            .filter(|feature| feature.as_str() == Some("capital"))
-            .count(),
-        1,
-        "capital feature must be enabled exactly once for the fiscal template"
+            .any(|feature| feature.as_str() == Some("capital")),
+        "the payment-receipt template must not enable capital"
     );
 
     let registry = fs::read_to_string(project.join("src/mail/mod.rs")).expect("mail registry");
@@ -110,7 +114,7 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
         "otp_verification",
         "invoice_receipt",
         "custom_notice",
-        "fiscal_invoice_email",
+        "payment_receipt_email",
         "payment_dunning_email",
     ] {
         assert!(registry.contains(&format!("pub mod {module};")));
@@ -129,14 +133,10 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
 mod mail;
 
 use mail::{
-    CustomNotice, FiscalInvoiceEmail, InvoiceReceipt, OtpVerification, PasswordReset,
-    PaymentDunningEmail, WelcomeEmail,
+    CustomNotice, InvoiceReceipt, OtpVerification, PasswordReset, PaymentDunningEmail,
+    PaymentReceiptEmail, WelcomeEmail,
 };
 use mail::payment_dunning_email::DunningStage;
-use rullst::capital::fiscal::{
-    FiscalCertificate, FiscalEmitter, FiscalResponseKind, NfseEnvironment, NfseNationalClient,
-    TaxRegime,
-};
 
 fn assert_escaped(html: &str) {
     assert!(!html.contains("<script>"));
@@ -182,66 +182,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let custom = CustomNotice::new("user@example.com", hostile, hostile);
     assert_escaped(custom.build().body_html.as_deref().expect("custom HTML"));
 
-    let emitter = FiscalEmitter {
-        cnpj: "11.222.333/0001-81".to_string(),
-        inscricao_municipal: "12345".to_string(),
-        legal_name: "Rullst Serviços Ltda".to_string(),
-        trade_name: None,
-        ibge_code: "3550308".to_string(),
-        tax_regime: TaxRegime::SimplesNacional,
-    };
-    let fiscal_client = NfseNationalClient::new(
-        emitter,
-        FiscalCertificate::offline_mock(),
-        NfseEnvironment::Mock,
-    );
-    let offline_response = fiscal_client.transmit_dps("<DPS/>").await?;
-    let fiscal = FiscalInvoiceEmail::from_nfse_response(
-        "user@example.com",
-        hostile,
-        hostile,
-        &offline_response,
-    )?
-    .with_document_url("https://example.com/preview")?;
-    let fiscal_message = fiscal.build()?;
-    assert!(fiscal_message.subject.contains("NOT AUTHORIZED"));
-    assert_escaped(
-        fiscal_message
-            .body_html
-            .as_deref()
-            .expect("fiscal preview HTML"),
-    );
-
-    let mut contradictory_response = offline_response.clone();
-    contradictory_response.kind = FiscalResponseKind::OfficialAuthorization;
-    assert!(FiscalInvoiceEmail::from_nfse_response(
-        "user@example.com",
-        "Customer",
-        "BRL 10.00",
-        &contradictory_response,
-    )
-    .is_err());
-
-    let mut official_response = offline_response.clone();
-    official_response.kind = FiscalResponseKind::OfficialAuthorization;
-    official_response.nfse_number = 42;
-    official_response.access_key = "35260811222333000181000000000000000000000000000000".to_string();
-    let official = FiscalInvoiceEmail::from_nfse_response(
-        "user@example.com",
-        "Customer",
-        "BRL 10.00",
-        &official_response,
-    )?;
-    let official_message = official.build()?;
-    assert_eq!(official_message.subject, "NFS-e #42 issued");
-    assert!(!official_message.subject.contains("NOT AUTHORIZED"));
-
-    let international = FiscalInvoiceEmail::international_receipt(
+    let international = PaymentReceiptEmail::international_receipt(
         "user@example.com",
         hostile,
         "receipt-42",
         hostile,
-    )?;
+    )?
+    .with_document_url("https://example.com/receipts/42")?;
     let international_message = international.build()?;
     assert!(international_message.subject.contains("receipt-42"));
     assert_escaped(
@@ -292,6 +239,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 "##,
     )
     .expect("write generated mail contract");
+    fs::write(
+        project.join("src/bin/validate_contract.rs"),
+        r#"use rullst::Validate;
+
+#[derive(Debug, serde::Deserialize, Validate)]
+struct Signup {
+    #[validate(email)]
+    email: String,
+}
+
+fn main() {
+    let signup = Signup { email: "user@example.com".into() };
+    println!("{:?}", signup.validate().is_ok());
+}
+"#,
+    )
+    .expect("write generated validation contract");
+    let model = fs::read_to_string(project.join("src/models/post.rs")).expect("generated model");
+    assert!(
+        model.starts_with("use rullst::db::{FromRow, Orm};\n"),
+        "{model}"
+    );
     install_workspace_lock(&project, workspace);
 
     let checked = run(
@@ -328,21 +297,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         welcome_before
     );
 
-    let fiscal_path = project.join("src/mail/fiscal_invoice_email.rs");
-    let fiscal_before = fs::read_to_string(&fiscal_path).expect("fiscal mailable");
-    let duplicate_fiscal = run(
+    let receipt_path = project.join("src/mail/payment_receipt_email.rs");
+    let receipt_before = fs::read_to_string(&receipt_path).expect("receipt mailable");
+    let duplicate_receipt = run(
         Command::new(cli)
             .current_dir(&project)
             .arg("make:mail-invoice"),
-        "rerun fiscal mail generator",
+        "rerun receipt mail generator",
     );
     assert!(
-        !duplicate_fiscal.status.success(),
-        "fiscal rerun must fail closed"
+        !duplicate_receipt.status.success(),
+        "receipt rerun must fail closed"
     );
     assert_eq!(
-        fs::read_to_string(&fiscal_path).expect("preserved fiscal mailable"),
-        fiscal_before
+        fs::read_to_string(&receipt_path).expect("preserved receipt mailable"),
+        receipt_before
     );
 
     let traversal = run(

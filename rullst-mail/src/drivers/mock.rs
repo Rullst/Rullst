@@ -65,7 +65,7 @@ pub enum DeliveryMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct OfflineMockDelivery {
-    /// Stable provider identifier such as `resend` or `sendgrid`.
+    /// Stable provider identifier such as `resend` or `sendpulse`.
     pub provider: String,
     /// Deterministic SHA-256 identifier derived from provider and sanitized message.
     pub delivery_id: String,

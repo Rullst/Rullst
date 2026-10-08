@@ -9,6 +9,16 @@ pub(super) async fn compile() -> io::Result<PathBuf> {
 }
 
 pub(super) async fn compile_in(root: &std::path::Path) -> io::Result<PathBuf> {
+    compile_profile(root, false).await
+}
+
+/// `cargo build --release` of the application binary; Cargo reuses an
+/// up-to-date build.
+pub(crate) async fn compile_release_in(root: &std::path::Path) -> io::Result<PathBuf> {
+    compile_profile(root, true).await
+}
+
+async fn compile_profile(root: &std::path::Path, release: bool) -> io::Result<PathBuf> {
     let manifest: toml::Value = toml::from_str(&std::fs::read_to_string(root.join("Cargo.toml"))?)
         .map_err(io::Error::other)?;
     let package = manifest
@@ -26,6 +36,9 @@ pub(super) async fn compile_in(root: &std::path::Path) -> io::Result<PathBuf> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    if release {
+        command.arg("--release");
+    }
     if let Some(binary) = default_run {
         command.args(["--bin", binary]);
     }

@@ -3,6 +3,7 @@ mod build;
 mod process;
 mod watcher;
 
+pub(crate) use build::compile_release_in;
 pub(crate) use process::{BuildChild, configure_group};
 
 use crate::ui::dash_tui::LogMsg;

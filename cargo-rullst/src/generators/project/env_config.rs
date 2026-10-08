@@ -221,10 +221,8 @@ BILLING_PROVIDER=stripe
 BILLING_ACCOUNT_ID=
 # Live keys require this explicit acknowledgement after reviewing BILLING.md.
 # BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES
-# When changing providers, review Rullst.toml security.csp form-action too.
-# Lemon Squeezy needs your exact reviewed store/custom checkout origin, no wildcard.
-# Required for live Lemon Squeezy checkout; use your merchant's numeric store ID.
-BILLING_STORE_ID=
+# Stripe is the generated provider; review Rullst.toml security.csp form-action
+# before replacing it with an application-owned gateway adapter.
 BILLING_API_KEY=
 BILLING_WEBHOOK_SECRET=
 BILLING_REDIRECT_URL=http://localhost:3000/dashboard
@@ -243,6 +241,20 @@ BILLING_REPORT_PLAN_IDS=
         fs::write(path.join("rullst.db"), "")?;
     }
 
+    Ok(())
+}
+
+/// Appends the bearer token of the Blank JSON API starter's machine endpoints:
+/// a random value to `.env` and an empty entry to `.env.example`.
+pub(crate) fn append_api_token(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    const SECTION: &str = "\n# ── JSON API ──────────────────────────────────────────────────\n# Bearer token for the JSON write routes: `Authorization: Bearer <API_TOKEN>`.\n# Use 32 to 200 random characters; rotate it before deployment.\n";
+    let token = Alphanumeric.sample_string(&mut rand::rng(), 48);
+    for (file, value) in [(".env", token.as_str()), (".env.example", "")] {
+        let mut content = fs::read_to_string(path.join(file))?;
+        content.push_str(SECTION);
+        content.push_str(&format!("API_TOKEN={value}\n"));
+        fs::write(path.join(file), content)?;
+    }
     Ok(())
 }
 

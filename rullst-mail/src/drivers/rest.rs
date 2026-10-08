@@ -58,20 +58,6 @@ pub(super) fn encode(value: &Value) -> Result<Vec<u8>, MailError> {
     Ok(body)
 }
 
-pub(super) fn headers(message: &Message) -> Value {
-    let mut headers = serde_json::Map::new();
-    if let Some(value) = message.list_unsubscribe_header() {
-        headers.insert("List-Unsubscribe".into(), Value::String(value));
-        if message.has_one_click_unsubscribe() {
-            headers.insert(
-                "List-Unsubscribe-Post".into(),
-                Value::String("List-Unsubscribe=One-Click".into()),
-            );
-        }
-    }
-    Value::Object(headers)
-}
-
 pub(super) fn contract() -> MailError {
     MailError::SendError("mail provider returned an invalid or rejected delivery receipt".into())
 }

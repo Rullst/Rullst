@@ -12,7 +12,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Rullst itself remains pinned to stable Rust 1.98.1 and declares Rust 1.96
+  # Rullst itself remains pinned to stable Rust 1.99.0 and declares Rust 1.96
   # as its MSRV. Kani is a separate formal-verification tool that carries its
   # own compiler: the latest stable Kani bundle uses rustc 1.93 and cannot
   # compile Rullst, so this reviewed upstream snapshot uses the isolated

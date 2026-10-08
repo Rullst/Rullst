@@ -4,7 +4,7 @@ use super::metrics::{
     HISTORY_POINTS, Metrics, Notice, Source, format_duration, percentile, sparkline, sparkline_rows,
 };
 use super::telemetry::{
-    DatabaseReport, HttpReport, PollOutcome, QueueReport, RequestSample, SlowQuery,
+    DatabaseReport, HttpReport, PollOutcome, QueueReport, RepeatedReport, RequestSample, SlowQuery,
     TelemetrySnapshot,
 };
 use std::time::{Duration, Instant};
@@ -60,6 +60,7 @@ fn snapshot(generation: &str, total: u64, server_errors: u64, limit: u64) -> Pol
                 duration_us: 150_000,
             }],
         },
+        repeated: RepeatedReport::NotReported,
         queue: QueueReport::Observed { pending: 2 },
     })
 }

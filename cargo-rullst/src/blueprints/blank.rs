@@ -117,6 +117,15 @@ pub fn file_manifest(
             fill(include_str!("blank/src/main.rs.template"))
         };
         manifest.push(("src/main.rs", main_rs));
+        let starter = if api {
+            super::security_tests::Starter::BlankApi
+        } else {
+            super::security_tests::Starter::Blank
+        };
+        manifest.push((
+            super::security_tests::PATH,
+            super::security_tests::source(starter),
+        ));
     }
 
     if !api {

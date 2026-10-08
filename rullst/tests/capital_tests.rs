@@ -138,83 +138,6 @@ async fn test_stripe_provider_webhook_uninteresting() {
 }
 
 #[tokio::test]
-async fn test_lemonsqueezy_provider_mock_checkout() {
-    use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "secret".to_string());
-    assert_eq!(provider.name(), "lemonsqueezy");
-
-    let url = provider
-        .create_checkout_session(
-            "test@test.com",
-            "variant_1",
-            "https://app.rullst.test/success",
-        )
-        .await
-        .unwrap();
-    assert!(url.contains("mock_session"));
-    assert!(!url.contains("test%40test.com"));
-    assert!(url.contains("variant_1"));
-}
-
-#[tokio::test]
-async fn test_lemonsqueezy_provider_webhook_parsing() {
-    use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
-
-    let payload = serde_json::json!({
-        "meta": {
-            "event_name": "subscription_created"
-        },
-        "data": {
-            "type": "subscriptions",
-            "id": "456",
-            "attributes": {
-                "customer_id": 999,
-                "store_id": 42,
-                "test_mode": true,
-                "user_email": "lemon@test.com",
-                "variant_id": 123,
-                "status": "past_due",
-                "ends_at": "2023-10-01T10:00:00Z"
-            }
-        }
-    })
-    .to_string();
-
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("x-signature".to_string(), "mock_secret".to_string());
-    let event = provider
-        .handle_webhook(payload.as_bytes(), &headers)
-        .unwrap();
-    assert_eq!(event.subscription_id, "456");
-    assert_eq!(event.customer_id, "999");
-    assert_eq!(event.customer_email, "lemon@test.com");
-    assert_eq!(event.plan_id, "123");
-    assert_eq!(event.status, SubscriptionStatus::PastDue);
-}
-
-#[tokio::test]
-async fn test_lemonsqueezy_webhook_uninteresting() {
-    use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
-    let payload = serde_json::json!({
-        "meta": {
-            "event_name": "order_created"
-        }
-    })
-    .to_string();
-
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("x-signature".to_string(), "mock_secret".to_string());
-    let res = provider.handle_webhook(payload.as_bytes(), &headers);
-    assert!(res.is_err());
-    assert!(matches!(
-        res,
-        Err(rullst::capital::CapitalError::PayloadParseError(_))
-    ));
-}
-
-#[tokio::test]
 async fn test_stripe_signature_verification_failure() {
     let provider = StripeProvider::new("mock_key".to_string(), "my_secret".to_string());
     let payload = b"dummy payload";
@@ -232,41 +155,60 @@ async fn test_stripe_signature_verification_failure() {
 }
 
 #[tokio::test]
-async fn test_lemonsqueezy_signature_verification_failure() {
-    use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "my_secret".to_string());
-    let payload = b"dummy payload";
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("x-signature".to_string(), "badhex".to_string());
+async fn test_infinitepay_provider_mock_checkout() {
+    use rullst::capital::InfinitePayProvider;
+    let provider = InfinitePayProvider::new("mock_key".to_string(), "mock_secret".to_string());
+    assert_eq!(provider.name(), "infinitepay");
 
-    let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(
-        err.to_string().contains("Invalid")
-            || matches!(err, rullst::capital::CapitalError::InvalidSignature(_))
-    );
+    let url = provider
+        .create_checkout_session(
+            "test@test.com",
+            "plan_pro",
+            "https://app.rullst.test/success",
+        )
+        .await
+        .unwrap();
+    assert!(url.starts_with("https://mock.infinitepay.invalid/"));
+    assert!(!url.contains("test%40test.com"));
+    assert!(url.contains("plan_pro"));
 }
 
 #[tokio::test]
-async fn test_invoice_to_dps_conversion() {
-    use chrono::Utc;
-    use rullst::capital::{Invoice, InvoiceItem};
+async fn test_infinitepay_provider_mock_webhook_parsing() {
+    use rullst::capital::InfinitePayProvider;
+    let provider = InfinitePayProvider::new("mock_key".to_string(), "mock_secret".to_string());
+    let payload = serde_json::json!({
+        "id": "txn_456",
+        "customer": { "id": "cus_999", "email": "cliente@test.com" },
+        "plan_id": "plan_pro",
+        "status": "past_due"
+    })
+    .to_string();
 
-    let invoice = Invoice {
-        invoice_id: "inv_123456".to_string(),
-        customer_email: "cliente@empresa.com.br".to_string(),
-        date: Utc::now(),
-        items: vec![InvoiceItem {
-            description: "Assinatura Pro Mensal".to_string(),
-            amount: 99.00,
-        }],
-        total: 99.00,
-        currency: "BRL".to_string(),
-    };
+    let mut headers = std::collections::HashMap::new();
+    headers.insert("x-signature".to_string(), "mock_secret".to_string());
+    let event = provider
+        .handle_webhook(payload.as_bytes(), &headers)
+        .unwrap();
+    assert_eq!(event.subscription_id, "txn_456");
+    assert_eq!(event.customer_id, "cus_999");
+    assert_eq!(event.customer_email, "cliente@test.com");
+    assert_eq!(event.plan_id, "plan_pro");
+    assert_eq!(event.status, SubscriptionStatus::PastDue);
+}
 
-    let dps = invoice.to_dps("1.03.01", "3550308", 2.0);
-    assert_eq!(dps.id, "DPSinv123456");
-    assert_eq!(dps.amount, 99.00);
-    assert_eq!(dps.service_code, "1.03.01");
-    assert_eq!(dps.service_city_ibge, "3550308");
-    assert_eq!(dps.description, "Assinatura Pro Mensal");
+#[tokio::test]
+async fn test_infinitepay_live_webhooks_fail_closed() {
+    use rullst::capital::InfinitePayProvider;
+    let provider = InfinitePayProvider::new("live_key".to_string(), "real_secret".to_string());
+    let mut headers = std::collections::HashMap::new();
+    headers.insert("x-signature".to_string(), "real_secret".to_string());
+
+    let err = provider
+        .handle_webhook(b"{\"status\":\"paid\"}", &headers)
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        rullst::capital::CapitalError::UnsupportedOperation(_)
+    ));
 }

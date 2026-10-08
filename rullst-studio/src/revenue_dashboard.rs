@@ -224,9 +224,9 @@ mod tests {
             timestamp: 1700000000,
         });
         mgr.record_event(rullst_capital::WebhookEventRecord {
-            id: "evt_lemon_2".to_string(),
-            provider: "lemonsqueezy".to_string(),
-            event_type: "order_created".to_string(),
+            id: "evt_infinitepay_2".to_string(),
+            provider: "infinitepay".to_string(),
+            event_type: "charge.failed".to_string(),
             status: "failed".to_string(),
             payload_snippet: "{}".to_string(),
             timestamp: 1700000000,
@@ -236,7 +236,7 @@ mod tests {
         assert!(html.contains("Rullst Capital Dashboard"));
         assert!(html.contains("evt_stripe_1"));
         assert!(html.contains("PROCESSED"));
-        assert!(html.contains("evt_lemon_2"));
+        assert!(html.contains("evt_infinitepay_2"));
         assert!(html.contains("FAILED"));
     }
 }

@@ -1,8 +1,8 @@
 //! Driver regressions that need only the public API.
 
 use rullst_mail::{
-    FailoverDriver, MailDriver, MailError, MemoryDriver, Message, PostmarkDriver, ResendDriver,
-    SendGridDriver,
+    AwsSesDriver, FailoverDriver, MailDriver, MailError, MemoryDriver, Message, ResendDriver,
+    SendPulseDriver,
 };
 
 /// Always returns the configured error.
@@ -23,8 +23,13 @@ async fn real_transports_require_an_explicit_sender_before_network() {
         .text("body");
     let drivers: Vec<Box<dyn MailDriver>> = vec![
         Box::new(ResendDriver::try_new("re_live_fixture").unwrap()),
-        Box::new(SendGridDriver::try_new("SG.live_fixture").unwrap()),
-        Box::new(PostmarkDriver::try_new("live-fixture-token").unwrap()),
+        Box::new(SendPulseDriver::try_new("live-fixture-key").unwrap()),
+        Box::new(
+            AwsSesDriver::try_new("us-east-1", "live-fixture-token")
+                .unwrap()
+                .try_with_endpoint("http://127.0.0.1:9/v2/email/outbound-emails")
+                .unwrap(),
+        ),
     ];
     for driver in drivers {
         let error = driver.send(&message).await.expect_err("no sender");
@@ -52,27 +57,6 @@ async fn guard_outages_do_not_fail_over_to_an_unguarded_provider() {
         assert_eq!(outcome, Err(error));
         assert!(fallback_store.lock().unwrap().is_empty());
     }
-}
-
-#[tokio::test]
-async fn sendgrid_rejects_schedules_beyond_its_window_before_network() {
-    let message = Message::new()
-        .to("user@example.com")
-        .from("sender@example.com")
-        .subject("Later")
-        .text("body")
-        .send_in(std::time::Duration::from_secs(5 * 86_400));
-    let outcome = SendGridDriver::try_new("SG.live_fixture")
-        .unwrap()
-        .send(&message)
-        .await;
-    assert!(matches!(outcome, Err(MailError::ConfigError(_))));
-    // The offline fixture keeps longer schedules for assertions.
-    SendGridDriver::try_new("mock_sendgrid")
-        .unwrap()
-        .send(&message)
-        .await
-        .unwrap();
 }
 
 #[tokio::test]

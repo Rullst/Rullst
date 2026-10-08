@@ -29,12 +29,12 @@ changes.
 | **`rullst-auth`** | Extension | Argon2 password hashing, encrypted session management, passkeys and an optional v13 shared PostgreSQL ceremony candidate, RBAC helpers, and OAuth2/OIDC re-exports. |
 | **`rullst-security`** | Core | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
 | **`rullst-ai`** | Extension | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
-| **`rullst-capital`** | Extension | Multi-provider payment and payout adapters, webhook verification, SaaS analytics, an offline NFS-e preview and bounded local fiscal preparation; live transmission and fiscal authorization remain disabled pending external validation. |
+| **`rullst-capital`** | Extension | Provider-neutral billing contracts, Stripe and an experimental InfinitePay adapter, webhook verification and replay protection, quotas, entitlements and SaaS analytics. Other gateways are application-owned adapters on the provider traits; v13 removed the other providers, payouts and NFS-e. |
 | **`rullst-connect`** | Extension | OAuth2/OIDC and social-login providers; brokered messaging is deliberately outside this identity-focused crate. |
 | **`rullst-messaging`** | Extension | Bounded broker-neutral envelopes, idempotent publication, consumer groups, leases, retry/DLQ, canonical wire/trace contracts, a deterministic process-local broker, opt-in durable local SQLite state with explicit encrypted content, and an opt-in ORM outbox relay, and a standalone Redis Streams candidate with Rullst-owned fenced delivery indexes admitted in PR #236; final release admission and other remote adapters remain outstanding. |
 | **`rullst-iot`** | Experimental | `no_std` telemetry/frame helpers, bounded MQTT 5 PUBLISH and CoAP request encoders, Ed25519-signed OTA manifest verification, and a caller-provided durable rollback-counter CAS contract. Concrete counter storage, network transports/session state, HSM, PQC, flashing, and bootloader integration are roadmap work. |
 | **`rullst-privacy`** *(unpublished v13 package candidate)* | Experimental | Optional proportional age policies, native declarations, authenticated challenge transport, signed threshold attestations and trusted-clock decisions. Replay storage supports shared-local SQLite or an authoritative PostgreSQL database; independent versioned optional consent/withdrawal has shared-local SQLite and PostgreSQL adapters. Opt-in CLI consumers (`make:age-gate`, `make:privacy`) compose SaaS authentication, optional processing and a bounded own-account profile export. Live age providers, facial models, verified guardianship, deployment-specific failover and broader privacy workflows remain roadmap work. |
-| **`rullst-mail`** | Extension | Templated transactional email engine (Resend, SendGrid, Postmark, SES, Azure Communication Services, SendPulse, Mailjet, Mailtrap, SMTP) with background delivery, opt-in attachment inspection, recipient suppression, and minimized delivery observations. |
+| **`rullst-mail`** | Extension | Templated transactional email engine (Resend, AWS SES, SendPulse, SMTP) with background delivery, opt-in attachment inspection, recipient suppression, and minimized delivery observations. Other providers are application-owned `MailDriver` transports; v13 removed SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services. |
 | **`rullst-studio`** | Extension | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
 | **`rullst-nexus`** | Extension | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |
 | **`rullst-macros`** | Core | Procedural macros (`html!`, `#[route]`, `#[server_function]`, `#[require_role]`, `#[island]`, `#[live_component]`, `#[memoize]`, `#[derive(Billable)]`); `#[rullst::runtime::main]` is Tokio's macro re-exported by Core. |
@@ -50,7 +50,7 @@ changes.
 
 ### 3.1. Zero-Panic Policy in Production Code
 - Never use `panic!()`, `unwrap()`, or `expect()` in non-test production paths.
-- Always use typed error enums (`AppError`, `CapitalError`, `OrmError`, `FiscalError`, etc.) for graceful degradation and structured error responses.
+- Always use typed error enums (`AppError`, `CapitalError`, `OrmError`, `QuotaError`, etc.) for graceful degradation and structured error responses.
 - In `#[test]` modules, `unwrap()` and `expect()` are fully allowed and encouraged for concise assertions.
 
 ### 3.2. Static Dispatch & Constructor Ergonomics
