@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791483390032,
+  "lastUpdate": 1791487488338,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -25417,6 +25417,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1235,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c9bf035d1c15913b1eb2317b74f64b8de2e0b4bc",
+          "message": "Merge pull request #443 from Rullst/fix/v13-windows-review-deferral\n\ntest: make the ai review and deferral tests portable to Windows",
+          "timestamp": "2026-10-08T16:09:41-03:00",
+          "tree_id": "b9a9d8e89ea2024bfaca2155c10a894369b6f713",
+          "url": "https://github.com/Rullst/Rullst/commit/c9bf035d1c15913b1eb2317b74f64b8de2e0b4bc"
+        },
+        "date": 1791487486071,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 438,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 619,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 440,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1202,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
