@@ -25,6 +25,8 @@ campaign and provider interoperability remain separate requirements.
 | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and browser upload module |
 | `sqlite` | Shared-local durable assets, leased operations and application service |
 | `bunny,sqlite` | Complete supported private-video service composition |
+| `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload/playback of the original, no transcoding |
+| `s3,sqlite` | Object-storage service composition; see [the guide](https://rullst.github.io/Rullst/book/managed-video.html#s3-compatible-object-storage-s3-r2-minio) |
 
 Run `cargo run -p rullst-media --example private_course_video --all-features`
 from this checkout. [The example](https://github.com/Rullst/Rullst/blob/main/rullst-media/examples/private_course_video.rs) uses a real
@@ -225,6 +227,18 @@ value. Until purge, `create` with that ID returns `Conflict`.
 This is not proof of physical disk, provider backup or CDN erasure. Restore
 policy must address stale permissions, keys, retired IDs and provider
 reconciliation.
+
+## S3-compatible object storage
+
+The experimental `s3` feature stores and serves the uploaded original in a
+private bucket; it never transcodes. Upload grants come from
+`MediaService::upload_declared` with an `UploadDeclaration` (content type and
+exact length) and are presigned `PUT` requests; `PlaybackKind::Original` grants
+are presigned `GET` requests. Both expire within 900 seconds. `refresh` or
+`publish` confirms the object with `HEAD` before it becomes ready.
+**Status: Experimental; validated against the offline mock only; provider
+interoperability not yet validated.** Configuration, bucket CORS and limits are
+in the [private video guide](https://rullst.github.io/Rullst/book/managed-video.html#s3-compatible-object-storage-s3-r2-minio).
 
 ## Acceptance and limits
 

@@ -433,6 +433,7 @@ default features.
 | `rullst-supervision` | `sqlite` | `exam` and `parental` plus the shared-local SQLite store |
 | `rullst-media` | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and the browser upload module |
 | `rullst-media` | `sqlite` | Shared-local durable assets, leased operations and the application service |
+| `rullst-media` | `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload and playback of the original, no transcoding |
 | `rullst-labs` | `sqlite` | Encrypted shared-local exercise and job storage with leases, cancellation and retention |
 | `rullst-labs` | `receipt-signing` | Receipt signing for the application-owned runner controller |
 

@@ -477,6 +477,7 @@ the rule together.
 | Labs runner | (a) must-change | `V13-LABS-RUNNER-REMOVED` |  |
 | Education candidates | (c) none | — | Unpublished v13 candidates |
 | Labs package | (c) none | — | New package in the release inventory |
+| Media S3 storage | (c) none | — | New opt-in feature of an unpublished candidate |
 | Generated billing settings | (b) review | `V13-BILLING-PROJECT-SETTINGS` |  |
 | Application templates | (c) none | — | Generator output |
 | Starter migrations | (b) review | `V13-SQLITE-ONLY-SEED-TIME` |  |
