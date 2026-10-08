@@ -63,7 +63,7 @@ rules! {
         "Gate A/B code on `variant` instead of `enabled`; a negative `rollout_percentage` means 0%.";
     REFERRER_POLICY: "V13-REFERRER-NO-REFERRER", Review, "Security headers",
         "header layers now preserve an endpoint's exact `Referrer-Policy: no-referrer`",
-        "Confirm the endpoint intends the more restrictive policy; other endpoint values still yield to the baseline.";
+        "Confirm the endpoint intends the more restrictive policy; other endpoint values still yield to `SecureHeadersLayer`, while Core now keeps them.";
     GEMINI_STOP_REASONS: "V13-AI-GEMINI-STOP-REASONS", Review, "AI provider streaming and stop reasons",
         "Gemini now streams and fails with `AiError::ApiError` on `MAX_TOKENS` or safety stop reasons",
         "Handle `AiError::ApiError` for truncated or blocked answers and raise the output limit where needed.";

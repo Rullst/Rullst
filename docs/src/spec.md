@@ -239,9 +239,14 @@ See the [supported delivery target](managed-video-roadmap.md).
 Core and Security header layers share `apply_referrer_policy`: a response that
 explicitly supplies a canonical `no-referrer` value retains that restriction
 through composition, normalized to one header even if duplicate values exist.
-Other values are replaced by the layer's configured policy; missing/invalid
-optional Security configuration retains its existing behavior. This narrow rule
-does not attempt to order every Referrer-Policy value or weaken other headers.
+The Security layers replace other values with their configured policy;
+missing/invalid optional Security configuration retains its existing behavior.
+The Core baseline adds each security header, including `Referrer-Policy`, only
+when the response has none, so an explicit application value wins over it, and
+it leaves every security header alone on a response that an inner
+`SecureHeadersLayer` marked with `SecurityHeadersApplied` (omitted headers stay
+absent; `Cache-Control: no-store` and the shared `CspNonce` are unchanged).
+This narrow rule does not attempt to order every Referrer-Policy value.
 
 `rullst-privacy` is an opt-in, unpublished v13 release candidate. Its initial
 `age-assurance` feature owns bounded risk policies, server-issued challenges,
