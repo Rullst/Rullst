@@ -272,8 +272,22 @@ fn resolved(path: &Path) -> Result<PathBuf, Error> {
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    Ok(parent
-        .canonicalize()
-        .map_err(|_| Error::Storage)?
-        .join(name))
+    Ok(without_verbatim_prefix(parent.canonicalize().map_err(|_| Error::Storage)?).join(name))
+}
+
+/// On Windows `canonicalize` returns `\\?\C:\…` verbatim paths, and the `?`
+/// breaks the SQLite open. Use the equivalent plain drive path instead.
+fn without_verbatim_prefix(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let plain = path
+            .to_str()
+            .and_then(|text| text.strip_prefix(r"\\?\"))
+            .filter(|rest| rest.as_bytes().get(1) == Some(&b':'))
+            .map(PathBuf::from);
+        if let Some(plain) = plain {
+            return plain;
+        }
+    }
+    path
 }
