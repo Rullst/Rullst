@@ -7,6 +7,7 @@
 - [Why Rullst?](why-Rullst.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
+- [Maturity Tiers: Core, Extensions, Experimental](maturity.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 

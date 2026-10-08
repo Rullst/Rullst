@@ -4,7 +4,9 @@ This is the compact view of Rullst's canonical M1–M41 programme. It is derived
 from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
-features.
+features. Package stability is a separate question: the
+[maturity tiers](maturity.md) classify every crate as Core, Extension or
+Experimental and state what each tier promises within 13.x.
 
 ## v12 stable snapshot — 15 September 2026
 

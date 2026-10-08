@@ -175,8 +175,9 @@ tracked here so they are not lost; they are plans, not shipped capabilities,
 unless marked as delivered.
 
 - **Documentation for humans and assistants:** a "start here" page, short
-  per-crate quickstarts, a task-oriented cookbook, an `llms.txt` index of the
-  book, and visible maturity tiers per crate.
+  per-crate quickstarts, a task-oriented cookbook, and an `llms.txt` index of the
+  book. Visible maturity tiers per crate and per CLI generator were delivered on
+  `main` on 8 October 2026; see [maturity tiers](maturity.md).
 - **Code-level clarity:** every public item documented with a compiling
   example (enforced with `missing_docs` and doctests), consistent constructor
   and error patterns across crates, and actionable error messages (the v13 CLI
