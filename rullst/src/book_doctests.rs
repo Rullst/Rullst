@@ -243,6 +243,7 @@ tutorial!(
     "../../docs/src/cors-scaffold-security-advisory.md"
 );
 tutorial!(migration_v5_to_v12, "../../docs/src/migration-v5-to-v12.md");
+tutorial!(migration_v12_1, "../../docs/src/migration-v12-1.md");
 tutorial!(packages_spec, "../../docs/src/packages-spec.md");
 tutorial!(payment_gateways, "../../docs/src/payment-gateways-guide.md");
 tutorial!(
