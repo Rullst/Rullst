@@ -1,67 +1,23 @@
-//! Evidence-aware fiscal and payment-recovery mailable templates.
+//! Payment-receipt and payment-recovery mailable templates.
 
-pub(super) const FISCAL_INVOICE_TEMPLATE: &str = r##"//! Evidence-aware NFS-e and international receipt mailable.
-use rullst::capital::fiscal::{FiscalResponse, FiscalResponseKind};
+pub(super) const PAYMENT_RECEIPT_TEMPLATE: &str = r##"//! Bounded commercial payment-receipt mailable.
 use rullst::mail::{
     DeliveryPipeline, Mail, MailError, Message, escape_html, validate_action_url,
 };
 
-#[derive(Debug, Clone)]
-enum InvoiceEvidence {
-    NfseOfficial { number: u64, access_key: String },
-    NfseOfflinePreview,
-    InternationalReceipt { receipt_id: String },
-}
-
-/// Fiscal/receipt notification which keeps typed offline or contradictory markers unauthorized.
+/// Payment receipt that never presents itself as a tax authorization.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct __NAME__ {
     to: String,
     customer_name: String,
     amount: String,
+    receipt_id: String,
     document_url: Option<String>,
-    evidence: InvoiceEvidence,
 }
 
 impl __NAME__ {
-    /// Builds an NFS-e notification from the typed fiscal provenance returned by Capital.
-    pub fn from_nfse_response(
-        to: impl Into<String>,
-        customer_name: impl Into<String>,
-        amount: impl Into<String>,
-        response: &FiscalResponse,
-    ) -> Result<Self, MailError> {
-        let evidence = if response.is_officially_authorized() {
-            if response.nfse_number == 0
-                || response.access_key.trim().is_empty()
-                || response.access_key.starts_with("MOCK-")
-            {
-                return Err(validation("official NFS-e evidence is incomplete"));
-            }
-            InvoiceEvidence::NfseOfficial {
-                number: response.nfse_number,
-                access_key: bounded("NFS-e access key", &response.access_key, 128)?,
-            }
-        } else if response.kind == FiscalResponseKind::OfflineMock
-            && response.nfse_number == 0
-            && response.access_key.starts_with("MOCK-NOT-AUTHORIZED-")
-        {
-            InvoiceEvidence::NfseOfflinePreview
-        } else {
-            return Err(validation("unrecognized or contradictory NFS-e provenance"));
-        };
-
-        Ok(Self {
-            to: bounded("recipient", to, 320)?,
-            customer_name: bounded("customer name", customer_name, 150)?,
-            amount: bounded("amount", amount, 64)?,
-            document_url: None,
-            evidence,
-        })
-    }
-
-    /// Builds a commercial cross-border receipt without presenting it as a tax authorization.
+    /// Builds a commercial receipt for a payment the application already confirmed.
     pub fn international_receipt(
         to: impl Into<String>,
         customer_name: impl Into<String>,
@@ -72,10 +28,8 @@ impl __NAME__ {
             to: bounded("recipient", to, 320)?,
             customer_name: bounded("customer name", customer_name, 150)?,
             amount: bounded("amount", amount, 64)?,
+            receipt_id: bounded("receipt ID", receipt_id, 128)?,
             document_url: None,
-            evidence: InvoiceEvidence::InternationalReceipt {
-                receipt_id: bounded("receipt ID", receipt_id, 128)?,
-            },
         })
     }
 
@@ -91,29 +45,8 @@ impl __NAME__ {
     pub fn build(&self) -> Result<Message, MailError> {
         let customer_name = escape_html(&self.customer_name);
         let amount = escape_html(&self.amount);
-        let (subject, heading, badge, explanation, identifier) = match &self.evidence {
-            InvoiceEvidence::NfseOfficial { number, access_key } => (
-                format!("NFS-e #{number} issued"),
-                "NFS-e issued",
-                "OFFICIALLY AUTHORIZED",
-                "The application supplied a response marked as an official tax-authority authorization.",
-                format!("NFS-e #{number} · access key {}", escape_html(access_key)),
-            ),
-            InvoiceEvidence::NfseOfflinePreview => (
-                "[PREVIEW — NOT AUTHORIZED] NFS-e DPS".to_string(),
-                "NFS-e preview",
-                "NOT AUTHORIZED",
-                "This is an offline development preview. No tax authority received or authorized it.",
-                "DPS preview only".to_string(),
-            ),
-            InvoiceEvidence::InternationalReceipt { receipt_id } => (
-                format!("Payment receipt {}", receipt_id),
-                "Payment receipt",
-                "COMMERCIAL RECEIPT",
-                "This receipt records an application payment and is not a tax authorization.",
-                format!("Receipt {}", escape_html(receipt_id)),
-            ),
-        };
+        let subject = format!("Payment receipt {}", self.receipt_id);
+        let identifier = format!("Receipt {}", escape_html(&self.receipt_id));
         let document_link = match self.document_url.as_deref() {
             Some(url) => format!(
                 r#"<p><a href="{}" style="color:#93c5fd">Open the application document</a></p>"#,
@@ -126,18 +59,17 @@ impl __NAME__ {
 <html><head><meta charset="utf-8"><title>{}</title></head>
 <body style="font-family:sans-serif;background:#030712;color:#f8fafc;padding:32px 16px">
   <main style="max-width:600px;margin:auto;background:#111827;border:1px solid #334155;border-radius:12px;padding:28px">
-    <p style="color:#fbbf24;font-weight:800;letter-spacing:.08em">{}</p>
-    <h1 style="font-size:24px">{}</h1>
+    <p style="color:#fbbf24;font-weight:800;letter-spacing:.08em">COMMERCIAL RECEIPT</p>
+    <h1 style="font-size:24px">Payment receipt</h1>
     <p>Hello {},</p>
-    <p>{}</p>
+    <p>This receipt records an application payment and is not a tax authorization.</p>
     <section style="background:#0f172a;border-radius:8px;padding:18px;margin:20px 0">
       <strong>{}</strong><br><span style="font-size:24px">{}</span>
     </section>
     {}
   </main>
 </body></html>"#,
-            escape_html(&subject), badge, heading, customer_name, explanation, identifier, amount,
-            document_link
+            escape_html(&subject), customer_name, identifier, amount, document_link
         );
         let message = Message::new()
             .to(&self.to)
@@ -160,15 +92,11 @@ fn bounded(
     let value = value.into();
     let length = value.chars().count();
     if length == 0 || length > maximum {
-        return Err(validation(&format!(
+        return Err(MailError::ValidationError(format!(
             "{field} must contain between 1 and {maximum} characters"
         )));
     }
     Ok(value)
-}
-
-fn validation(reason: &str) -> MailError {
-    MailError::ValidationError(reason.to_string())
 }
 "##;
 

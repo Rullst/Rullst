@@ -19,7 +19,7 @@ pub(crate) enum MailableKind {
     Reset,
     Otp,
     Invoice,
-    FiscalInvoice,
+    PaymentReceipt,
     Dunning,
 }
 
@@ -95,11 +95,7 @@ pub(crate) fn create_new_mailable(
 
     let manifest_path = Path::new("Cargo.toml");
     let manifest = fs::read_to_string(manifest_path)?;
-    let required_features = match kind {
-        MailableKind::FiscalInvoice => &["mailer", "capital"][..],
-        _ => &["mailer"][..],
-    };
-    let updated_manifest = ensure_rullst_features(&manifest, required_features)?;
+    let updated_manifest = ensure_rullst_features(&manifest, &["mailer"])?;
 
     println!(
         "{}",
@@ -391,8 +387,8 @@ impl __NAME__ {
     }
 }
 "##
-    } else if kind == MailableKind::FiscalInvoice {
-        extended::FISCAL_INVOICE_TEMPLATE
+    } else if kind == MailableKind::PaymentReceipt {
+        extended::PAYMENT_RECEIPT_TEMPLATE
     } else if kind == MailableKind::Dunning {
         extended::DUNNING_TEMPLATE
     } else {

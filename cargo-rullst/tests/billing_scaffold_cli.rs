@@ -1,8 +1,5 @@
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
-#[path = "billing_scaffold_support/paddle.rs"]
-mod paddle_support;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -254,7 +251,6 @@ fn install_live_contract(project: &Path, database: &str) {
     let mut live = fs::read_to_string(&path).unwrap();
     live.push_str("\n#[cfg(test)]\n#[path = \"billing_live_contract.rs\"]\nmod live_contract;\n");
     fs::write(path, live).unwrap();
-    paddle_support::install(project, database, initialize, execute);
 }
 
 fn verify_backend(database: &str) {
@@ -383,8 +379,6 @@ fn verify_backend(database: &str) {
         );
     }
 
-    paddle_support::verify(&project, workspace);
-
     for acknowledgement in [None, Some("yes"), Some("I_UNDERSTAND_REAL_CHARGES")] {
         let mut command = Command::new("cargo");
         command
@@ -428,6 +422,7 @@ fn verify_backend(database: &str) {
     );
     assert_success(&runtime, "generated billing runtime contract");
 
+    // Removed v12 providers are rejected as configuration errors before any I/O.
     for provider in ["stripe", "lemonsqueezy", "paddle"] {
         for (api_key, webhook_secret) in [
             ("fixture_invalid_live_credential", "mock_webhook"),
@@ -444,7 +439,6 @@ fn verify_backend(database: &str) {
                     .args(["run", "--quiet", "--bin", "billing_contract"])
                     .env("RULLST_ENV", "development")
                     .env("BILLING_PROVIDER", provider)
-                    .env("BILLING_STORE_ID", "42")
                     .env("BILLING_API_KEY", api_key)
                     .env("BILLING_WEBHOOK_SECRET", webhook_secret)
                     .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
