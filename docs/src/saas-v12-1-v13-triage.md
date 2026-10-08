@@ -1,5 +1,11 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
+> **v13 update (8 October 2026):** this triage is a historical record. The v13
+> line later removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago,
+> Alipay, Coinbase Commerce, PicPay and Wise adapters and the NFS-e module; see
+> the [migration guide](migration-v13.md#changes-from-the-published-1210-source).
+> Findings about those adapters apply to the 12.x line only.
+
 ## 2026-09-18 account-mail and follow-up candidate
 
 The latest examples account-lifecycle proposal adds MAIL-001/RULLST-005.

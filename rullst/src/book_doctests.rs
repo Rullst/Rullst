@@ -184,10 +184,6 @@ tutorial!(
     "../../docs/src/tutorials/39-scout-search.md"
 );
 tutorial!(
-    tutorial_40_nfse_homologation_preparation,
-    "../../docs/src/tutorials/40-nfse-homologation-preparation.md"
-);
-tutorial!(
     tutorial_41_tenant_bound_rag,
     "../../docs/src/tutorials/41-tenant-bound-rag.md"
 );

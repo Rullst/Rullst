@@ -221,10 +221,8 @@ BILLING_PROVIDER=stripe
 BILLING_ACCOUNT_ID=
 # Live keys require this explicit acknowledgement after reviewing BILLING.md.
 # BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES
-# When changing providers, review Rullst.toml security.csp form-action too.
-# Lemon Squeezy needs your exact reviewed store/custom checkout origin, no wildcard.
-# Required for live Lemon Squeezy checkout; use your merchant's numeric store ID.
-BILLING_STORE_ID=
+# Stripe is the generated provider; review Rullst.toml security.csp form-action
+# before replacing it with an application-owned gateway adapter.
 BILLING_API_KEY=
 BILLING_WEBHOOK_SECRET=
 BILLING_REDIRECT_URL=http://localhost:3000/dashboard

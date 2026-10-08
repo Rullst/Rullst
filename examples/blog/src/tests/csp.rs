@@ -13,7 +13,7 @@ const PAGES: [&str; 10] = [
     "/pico-demo",
     "/templates-demo",
     "/pricing",
-    "/checkout?provider=wise",
+    "/checkout?provider=stripe",
     "/security-demo?test=dlp",
     "/ai-assistant?q=rust",
     "/omni",

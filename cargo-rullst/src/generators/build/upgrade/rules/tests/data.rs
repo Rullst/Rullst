@@ -111,3 +111,43 @@ pub struct Holder {
         &[],
     );
 }
+
+/// Removed Capital providers, payouts and NFS-e types point to their row; the
+/// providers that v13 keeps do not.
+#[test]
+fn removed_capital_providers_and_nfse_are_reviewed() {
+    let source = r#"
+use rullst::capital::{PaddleProvider, StripeProvider, WiseProvider, init_payout_provider};
+use rullst::capital::fiscal::{FiscalEmitter, NfseNationalClient};
+fn boot() {
+    rullst::capital::init_provider(Box::new(PaddleProvider::new("key", "secret")));
+    init_payout_provider(Box::new(WiseProvider::new("token", "profile")));
+    let dps = invoice.to_dps("01.07.01", "3550308", 0.05);
+}
+"#;
+    // A review rule reports its first location in each file.
+    assert_eq!(
+        scan_with(source, "billing.rs", &WorkspaceFacts::default()),
+        vec![("V13-CAPITAL-REMOVED", 2)]
+    );
+    for removed in [
+        "use rullst::capital::fiscal::NfseNationalClient;",
+        "fn a() { init_payout_provider(Box::new(payouts)); }",
+        "fn b(invoice: Invoice) { let _ = invoice.to_dps(\"01.07.01\", \"3550308\", 0.05); }",
+        "fn c(event: rullst::capital::PaddleSubscriptionEvent) {}",
+        "fn d() -> Result<(), FiscalError> { Ok(()) }",
+    ] {
+        assert_only(removed, &["V13-CAPITAL-REMOVED"]);
+    }
+
+    assert_only(
+        r#"
+use rullst::capital::{InfinitePayProvider, StripeProvider};
+fn boot() {
+    rullst::capital::init_provider(Box::new(StripeProvider::new("key", "secret")));
+    let experimental = InfinitePayProvider::new("key", "secret");
+}
+"#,
+        &[],
+    );
+}

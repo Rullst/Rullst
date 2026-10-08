@@ -1,55 +1,29 @@
 # 💳 Payment Gateways & Financial Infrastructure Guide
 
-Rullst Capital (`rullst-capital`) provides typed payment, subscription, payout,
-and webhook adapters. Unsupported operations return typed errors, and mock
-credentials select deterministic offline behavior.
+Rullst Capital (`rullst-capital`) provides typed payment, subscription and
+webhook contracts with two built-in adapters. Unsupported operations return
+typed errors, and mock credentials select deterministic offline behavior.
 
-The provider modules share common traits, but they do not all implement every
+The adapters share common traits, but they do not all implement every
 operation. An adapter's presence is not a promise of geographic availability,
 tax treatment, settlement time, pricing, or regulatory suitability.
 
 ---
 
-## 🏛️ Provider Landscape & Strategic Archetypes
-
-```mermaid
-graph TD
-    Capital[rullst-capital] --> Direct[Direct Merchant]
-    Capital --> MoR[Merchant of Record - MoR]
-    Capital --> Domestic[Domestic Payments]
-    Capital --> APAC[Asia-Pacific & China Cross-Border]
-    Capital --> Crypto[Web3 & Crypto]
-    Capital --> Payouts[Global Payouts]
-
-    Direct --> Stripe[Stripe]
-    Direct --> Razorpay[Razorpay India]
-    Direct --> MercadoPago[Mercado Pago]
-    Direct --> PicPay[PicPay]
-
-    MoR --> LemonSqueezy[Lemon Squeezy]
-    MoR --> Polar[Polar.sh]
-    MoR --> Paddle[Paddle]
-
-    Domestic --> InfinitePay[InfinitePay Brazil]
-    APAC --> Alipay[Alipay / Alipay+ China]
-    Crypto --> Coinbase[Coinbase Commerce]
-    Payouts --> Wise[Wise Transfers]
-```
-
----
-
 ## 📊 Adapter inventory
 
-| Adapter group | Included modules | Rullst contract |
+| Adapter | Status | Rullst contract |
 | :--- | :--- | :--- |
-| Direct payment APIs | Stripe, Mercado Pago, InfinitePay, PicPay, Razorpay | Implemented trait methods perform signed/credentialed requests; unsupported methods fail explicitly. |
-| Merchant-of-record APIs | Lemon Squeezy, Polar, Paddle | Provider-specific checkout/subscription methods only; tax and merchant-of-record obligations remain governed by the provider contract. |
-| Cross-border and wallets | Alipay | Live RSA2 checkout signing and webhook verification are not implemented and fail closed; only explicit `mock_*` credentials run the offline fixture. |
-| Crypto commerce | Coinbase Commerce | Signed one-off charge notifications; live plan-only checkout is unsupported. Chain settlement is outside Rullst's trust boundary. |
-| Payouts | Wise | Bound transfer-status reads and, as a v13 candidate, RSA-verified transfer state-change webhooks; live transfer creation is unsupported. Identity, compliance, currency, and availability checks remain external. |
+| Stripe | Supported | Owner-bound customer and subscription checkout, bound portal, reconciliation reads, Payment Intents charges, Meter Events, coupons and trials; unsupported methods fail explicitly. |
+| InfinitePay | Experimental | Deterministic offline checkout, portal and webhook fixtures. Live plan-only checkout and live callbacks return `UnsupportedOperation` until a reviewed contract is validated against a live account. |
+| Your own adapter | Extension point | Implement `BillingProvider` (and optionally `MeteredBillingProvider`) in the application; see [Writing your own payment provider](capital-custom-provider.md). |
 
-Provider pricing and terms change. Check the provider's current official
-documentation and the concrete trait implementation before selecting an adapter.
+v13 removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay,
+Coinbase Commerce, PicPay and Wise (payout) adapters; see the
+[v13 migration guide](migration-v13.md) row "Capital providers and NFS-e
+removed". Provider pricing and terms change. Check the provider's current
+official documentation and the concrete trait implementation before selecting
+an adapter.
 
 ---
 
@@ -59,9 +33,9 @@ Reviewed live methods use a single bounded egress contract: five-second connect
 and twenty-second whole-request timeouts, no redirects, no ambient proxy
 variables, and at most one MiB of JSON. Checkout responses additionally require
 a bounded credential-free HTTPS URL and provider-specific origin/identity checks.
-Stripe hosted Checkout preserves its documented opaque fragment; payment pages
-for Paddle forbid fragments and bind the transaction query explicitly. These controls do not
-prove that a provider account, product, price, or operation is accepted live.
+Stripe hosted Checkout preserves its documented opaque fragment; other checkout
+locations must not carry a fragment. These controls do not prove that a
+provider account, product, price, or operation is accepted live.
 
 `CapitalError::Provider` exposes only static provider/operation labels, a
 `ProviderFailureKind`, optional HTTP status, bounded numeric `Retry-After`, and
@@ -91,13 +65,12 @@ handling are external contractual properties, not guarantees made by Rullst.
 
 ### 1. Choose the implemented operation
 
-The [Capital capability matrix](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#-supported-providers)
-separates all eleven adapters and their current operations. Stripe has a generated
-durable subscription integration, and the unpublished v13 source adds a
-generated Paddle candidate. Polar uses product IDs and an external owner;
-Paddle uses a customer ID, recurring price and approved Paddle.js page. Lemon
-Squeezy needs an explicit store and variant. Other generated real billing paths
-remain unavailable. Wise is a payout adapter, not a checkout provider.
+The [Capital README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md)
+lists each adapter's current operations. Stripe has a generated durable
+subscription integration (`make:billing` and the SaaS blueprint). InfinitePay
+is experimental and only its offline fixtures succeed. For another gateway,
+write an application-owned adapter as described in
+[Writing your own payment provider](capital-custom-provider.md).
 
 ### 2. Create an owner-bound Stripe checkout
 
@@ -135,17 +108,10 @@ read current provider state under a database revision fence and atomically
 commit the scoped event receipt with subscription state. Exact replays do not
 repeat changes; conflicting receipts, foreign customers and obsolete attempts
 are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
-Paddle and Polar expose typed adapter contracts; the host supplies durable
-orchestration, atomic event processing and reconciliation for those integrations,
-except where it adopts the v13 generated Paddle candidate, which persists
-dispatch claims and commits signed lifecycle receipts with its state.
-Razorpay's live plan checkout requires an explicit billing-cycle count
-(`with_subscription_total_count`, v13 candidate) instead of the earlier fixed
-12 cycles; `subscription.completed` reports the end of billing as `Canceled`.
-Paddle's legacy normalized path accepts only documented `subscription.*`
-lifecycle events whose status matches the event; signed transaction,
-adjustment and customer events are rejected rather than treated as a
-subscription snapshot.
+InfinitePay accepts only explicit `mock_*` webhook fixtures; a real secret
+returns `UnsupportedOperation` until callback authentication is validated. A
+custom adapter supplies its own durable orchestration, atomic event processing
+and reconciliation.
 
 Rullst also supplies canonical Axum/Actix webhook middleware for supported
 normalized events. The production entry points reject empty/`mock_*` secrets.
@@ -247,18 +213,16 @@ and reconciliation.
 
 ### 4. Provider-Specific Metered Usage
 
-Use `MeteredBillingProvider` with `StripeMeterEvent` or
-`LemonSqueezyUsageRecord`. The Stripe request carries customer, configured
-event name, positive value, bounded timestamp and an identifier forwarded to
-the provider and HTTP idempotency header. The Lemon Squeezy request carries the
-numeric subscription-item relationship, positive quantity and an explicit
-`increment`/`set` action matching the provider-side aggregation.
+Use `MeteredBillingProvider` with `StripeMeterEvent`. The Stripe request
+carries customer, configured event name, positive value, bounded timestamp and
+an identifier forwarded to the provider and HTTP idempotency header.
 
-Do not retry Lemon submissions from memory alone: its reviewed request has no
-application event-key field. Claim the request key durably before sending and
-make reconciliation idempotent. Stripe's provider identifier also has only a
-rolling uniqueness window. Protocol fixtures verify request/response shape and
-bounds; they do not replace live provider-account testing.
+Stripe's provider identifier has only a rolling uniqueness window, so keep a
+durable application record of submitted events and make reconciliation
+idempotent. A custom adapter whose provider has no deduplication key returns
+`UsageDeduplication::ApplicationOutboxRequired`; claim the event key durably
+before sending. Protocol fixtures verify request/response shape and bounds;
+they do not replace live provider-account testing.
 
 ### 5. Payment-Bound PDF Invoice Delivery
 
@@ -272,36 +236,16 @@ bridge is at-least-once and does not infer webhook reconciliation.
 The complete runnable shape and its outbox boundary are shown in
 [Tutorial 19](tutorials/19-saas-billing-capital.md#4-render-and-deliver-the-invoice-only-after-final-success).
 
-### 6. International Payouts with Wise
+### 6. Adding another gateway
 
-Wise is an outgoing payout adapter. The legacy `send_payout`/`create_transfer`
-email-based operation remains an offline fixture and returns
-`UnsupportedOperation` with real credentials before network dispatch. A usable
-transfer needs a real recipient account, authenticated quote UUID and durable
-UUID idempotency identity; funding is a separate operation. The existing
-transfer-status read does not provide that missing transfer workflow. With an
-empty or `mock_*` token, the offline mock issues hashed `wise_tr_mock_` IDs
-without the recipient email and reports status only for those IDs; a real
-transfer ID returns `UnsupportedOperation`, so an unset token cannot mark
-dashboard-created transfers as sent.
-
-`parse_webhook_payload` performs no signature verification. It is an offline
-fixture limited to an explicit `mock_*` API token; an empty token is a
-configuration error and a live token returns `UnsupportedOperation` before the
-body is read. A forged `funds_refunded` or `outgoing_payment_sent` body must
-never trigger a payout, refund or release. The fixture requires every field it
-reports and scales exact decimal amounts to ISO 4217 minor units without
-floating point.
-
-The v13 candidate adds `WiseProvider::with_webhook_public_key_pem` and
-`verify_transfer_state_change`. The verifier checks the Base64
-`X-Signature-SHA256` RSA-SHA256 signature over the exact body against the
-configured Wise key for that environment before parsing, and returns a typed
-`WiseTransferStateChange` with the transfer ID, optional profile ID, documented
-current/previous states and occurrence time. Unsigned, tampered or
-wrong-environment deliveries fail as `InvalidSignature`. Wise signs no
-timestamp, so process transitions idempotently and read the transfer before
-acting on money.
+Rullst no longer ships adapters for other gateways or payouts. Implement
+`BillingProvider` for the gateway in application code, declare its webhook
+verification mode, verify the provider's exact signed bytes inside
+`handle_webhook`, and mount it behind the same canonical middleware with
+`WebhookMiddlewareState::production_with_provider`. The
+[custom provider guide](capital-custom-provider.md) walks through a compiling
+example. Payouts, transfers and fiscal documents are application or
+separate-product responsibilities.
 
 ---
 

@@ -1,7 +1,16 @@
 # Rullst Capital 💰
-### *"Enterprise Multi-Gateway Billing, SaaS Analytics & Fiscal Engine"*
+### *"Provider-Neutral SaaS Billing with Stripe and InfinitePay Adapters"*
 
-`rullst-capital` provides a unified financial foundation for SaaS, digital commerce, and marketplace platforms written in Rust. It includes multi-provider adapter surfaces, recurring-subscription models, international payout helpers, and a bounded Brazilian National NFS-e preparation pipeline. Live provider and fiscal production readiness must be established per adapter and environment.
+`rullst-capital` provides a provider-neutral billing base for SaaS and digital
+commerce in Rust: billing/metering traits, checkout and subscription contracts,
+entitlements, quotas, revenue analytics, paid-invoice rendering, canonical
+webhook verification with replay protection, Axum/Actix adapters and offline
+mocks. It ships two adapters: **Stripe** (supported) and **InfinitePay**
+(experimental until validated against a live account). Live readiness must be
+established per operation and environment.
+
+Integrate any other gateway in application code by implementing the provider
+traits: see **[Writing your own payment provider](../capital-custom-provider.md)**.
 
 ---
 
@@ -9,36 +18,44 @@
 
 | Subsystem | Lifecycle Status | Description |
 | :--- | :---: | :--- |
-| **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
+| **Stripe Adapter** | 🟢 `[Supported / Bounded]` | Owner-bound customer, subscription checkout, bound portal, reconciliation reads, direct charge, meter events, coupons and trials with deterministic mocks. Live account acceptance remains per deployment. |
+| **InfinitePay Adapter** | 🟡 `[Experimental]` | Deterministic offline checkout/portal/webhook fixtures. Live plan-only checkout and live callbacks fail closed until a reviewed contract is validated against a live account. |
+| **Custom Providers** | 🟢 `[Extension Point]` | Applications implement `BillingProvider` (and optionally `MeteredBillingProvider`) for another gateway and reuse the canonical webhook verifier. See [the guide](../capital-custom-provider.md). |
 | **Outbound Failure Boundary** | 🟢 `[Implemented / Bounded]` | Reviewed live methods share finite timeouts, disabled redirects/ambient proxies, one-MiB JSON parsing, HTTPS checkout-location validation, and redacted permanent/transient/rate-limited failures. Rullst performs no automatic mutation retry. |
-| **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
-| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification, with timestamp freshness checks for Stripe, Paddle and Polar. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work; Alipay RSA2 remains fail-closed. |
-| **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events and Lemon Squeezy Usage Records shapes with provider-specific identity/action, bounded response binding and deterministic non-live mocks. Durable application-outbox claiming and provider-account evidence remain explicit. |
+| **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist; Stripe implements the reviewed live paths, while InfinitePay returns `UnsupportedOperation` for operations it does not support. |
+| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; adapters implement signature verification, with timestamp freshness checks for Stripe. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work. |
+| **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events shape with provider-specific identity, bounded response binding and deterministic non-live mocks. Custom adapters can return receipts that require application-outbox deduplication. Provider-account evidence remains explicit. |
 | **v13 Plan Entitlements** | 🔵 `[Candidate]` | Typed per-action tenant/owner, exact feature/plan, mode, status, expiry and reconciliation-age checks. The generated SaaS report performs revision-fenced Stripe refreshes. Local and hosted acceptance remain tracked in the [delivery plan](../v13-delivery-plan.md); snapshots assert trusted adapter state and are not payment evidence. |
 | **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Exact validated minor units, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
-| **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, signed-`tpAmb` binding, independent local signature verification, deterministic `dpsXmlGZipB64` request JSON, bounded signed-authorization and structured-rejection parsing, and bounded rustls mTLS client construction. |
-| **NFS-e Local Command Journal** | 🟢 `[Implemented / Bounded]` | Single-active-writer HMAC-chained prepared/terminal evidence, exact replay/conflict handling, restart recovery of minimized pending descriptors, hard record/byte quotas and externally retainable exact-tip checkpoints. It stores no XML, access key, response messages or certificate data and does not transmit or retry. |
-| **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
-| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap / External Evidence]` | Full emitter/ICP-Brasil certificate policy, deployment-owned request/outbox and reconciliation storage, retained official protocol fixtures, real A1 restricted-environment tests, independent review, and official homologation. Transmission is disabled. |
 
 ---
 
-## 📦 Supported Payment & Payout Providers
+## 📦 Built-in providers
 
-`rullst-capital` includes decoupled adapter surfaces for 11 global and regional gateways. The list preserves the intended product reach; it does **not** mean every provider product, fee, payment method, tax promise, or live API path has been independently homologated by Rullst. Several adapters offer only offline fixtures or signed-webhook parsing with live credentials; the [crate README provider matrix](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#-supported-providers) lists the current live boundary of each:
+| Provider | Status | Scope |
+| :--- | :--- | :--- |
+| 💳 **Stripe** | Supported | Card checkout, Customer Portal, recurring subscriptions, Payment Intents charges and Meter Events within the reviewed operation boundaries. |
+| ⚡ **InfinitePay** | Experimental | Brazilian Pix/card provider; offline fixtures only until live checkout and callback authentication are validated. |
 
-1. 💳 **Stripe**: Global card checkouts, Customer Portal, and recurring subscriptions.
-2. 🍋 **Lemon Squeezy**: Merchant of Record (MoR) with automated global tax compliance.
-3. 🌎 **Mercado Pago**: LATAM subscriptions, Pix, and credit card checkouts.
-4. ⚡ **InfinitePay**: Ultra-low-fee domestic Brazilian Pix and installment credit cards.
-5. 📱 **PicPay**: Brazilian digital wallet and QR-code checkout flows.
-6. 🐻‍❄️ **Polar**: Developer-first MoR for monetizing GitHub repositories and SaaS software.
-7. 🛶 **Paddle**: Global B2B SaaS quote-to-cash with EU VAT handling.
-8. 🇮🇳 **Razorpay**: Recurring UPI Autopay and credit card orders in India & APAC.
-9. 💸 **Wise**: High-speed, multi-currency international contractor payouts (40+ currencies).
-10. 🪙 **Coinbase Commerce**: On-chain cryptocurrency payments (Bitcoin, Ethereum, Solana, USDC).
-11. 🌏 **Alipay**: Cross-border Chinese digital wallet checkouts (支付宝).
+Neither entry means every provider product, fee, payment method, tax promise or
+live API path has been homologated by Rullst. The
+[crate README](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md)
+lists the current operation boundary of each adapter.
+
+### Removed in v13
+
+v13 removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay,
+Coinbase Commerce and PicPay adapters, the Wise payout adapter with the payout
+contracts (`PayoutProvider`, `PayoutStatus`, `PayoutEvent` and the payout
+registry functions) and the NFS-e fiscal preparation module (`fiscal`, the
+`nfse`/`capital-nfse` features and `Invoice::to_dps`). NFS-e was never
+validated with a real municipality; it may return as a separate product outside
+the framework. The code remains in git history. Applications that used a
+removed provider implement the traits themselves
+([guide](../capital-custom-provider.md)); see the
+[v13 migration guide](../migration-v13.md) for the row "Capital providers and
+NFS-e removed".
 
 ---
 
@@ -56,15 +73,12 @@ and evidence from one provider cannot be transferred to another.
 | **4. Controlled live acceptance** | The smallest provider-permitted real transaction only after account, legal, secret, refund, observability and reconciliation controls are ready; retain redacted evidence. |
 
 The generated SaaS blueprint and `make:billing` provide a durable Stripe
-integration and, as an unpublished v13 candidate, Paddle; Lemon Squeezy runs
-there only as an offline fixture. It is not a conformance app for all eleven
+integration only. It is not a conformance app for InfinitePay or for custom
 adapters. Record the exact provider, operation, environment and observed
 result; never summarize partial evidence as “all payments work.” Refer to the
 official
-[Stripe testing](https://docs.stripe.com/testing),
-[Stripe sandbox](https://docs.stripe.com/sandboxes),
-[Lemon Squeezy test-mode](https://docs.lemonsqueezy.com/help/getting-started/test-mode),
-and [Lemon Squeezy webhook simulation](https://docs.lemonsqueezy.com/help/webhooks/simulate-webhook-events)
+[Stripe testing](https://docs.stripe.com/testing) and
+[Stripe sandbox](https://docs.stripe.com/sandboxes)
 guides when constructing acceptance cases.
 
 ---
@@ -135,19 +149,19 @@ Stripe integrations use the customer-bound `create_customer` and
 
 ### 2. Provider-Specific Metered Usage
 
-`MeteredBillingProvider` uses an associated request type so the framework does
-not confuse Stripe customer/meter identity with Lemon Squeezy subscription-item
-identity. `StripeMeterEvent` implements the current form-encoded Meter Events
-contract and forwards its identifier as both event identity and idempotency
-header. `LemonSqueezyUsageRecord` implements the current JSON:API relationship
-and requires `Increment` or `Set` to match provider aggregation.
+`MeteredBillingProvider` uses an associated request type so each adapter keeps
+its own provider identity instead of guessing from one subscription ID.
+`StripeMeterEvent` implements the current form-encoded Meter Events contract
+and forwards its identifier as both event identity and idempotency header.
 
-Both paths validate positive bounded quantities, bind accepted responses, cap
-response JSON to one MiB and return visibly non-live deterministic mocks. A
-Stripe identifier has rolling provider deduplication. Lemon's application event
-key is not accepted by the provider request, so claim it in a durable outbox
-before sending. Live-account acceptance, retry/reconciliation and entitlements
-remain application/release evidence.
+The Stripe path validates positive bounded quantities, binds accepted
+responses, caps response JSON to one MiB and returns visibly non-live
+deterministic mocks. A Stripe identifier has only rolling provider
+deduplication. A custom adapter whose provider exposes no deduplication key
+returns `UsageDeduplication::ApplicationOutboxRequired`, so the application
+claims the event key in a durable outbox before sending. Live-account
+acceptance, retry/reconciliation and entitlements remain application/release
+evidence.
 
 ### 3. Payment-Bound Invoice PDF and Mail
 
@@ -221,102 +235,10 @@ need an outbox, idempotent consumers, and reconciliation.
 
 ---
 
-## 🏛️ Brazilian Digital Invoicing (NFS-e Nacional)
-
-`rullst-capital` includes a dedicated fiscal module (`rullst_capital::fiscal`)
-shaped around the National NFS-e domain. Its local schema, signature, bounded
-issuance-codec, and mTLS preparation contracts are implemented and tested; it
-also supplies a bounded authenticated local command journal, but it is not yet
-an officially homologated issuer.
-
-Enable `rullst-capital/nfse` (or umbrella `rullst/capital-nfse`) for the pinned
-XSD, XMLDSig, GZip/Base64 protocol codec, and mTLS preparation dependencies.
-Selecting the feature does not enable SEFIN transmission.
-
-### Architecture & Pipeline
-
-```text
-[SaaS Sale] ─► [NfseDpsV101] ─► [Pinned XSD] ─► [PKCS#12 XMLDSig] ─► [Bounded JSON codec]
-                    │                                                    │
-                    ▼                                                    ▼
-          [Offline deterministic fixture]       [HMAC journal; mTLS prepared; transmission disabled]
-```
-
-### Emitting an Invoicing Document (DPS)
-
-```rust,no_run
-use rullst_capital::fiscal::{
-    build_dps_xml_v1_01, FiscalCustomer, FiscalEmitter, IssRetention,
-    IssTaxation, NfseDpsV101, NfseEnvironment, TaxRegime,
-};
-use chrono::{NaiveDate, Utc};
-
-# fn main() -> Result<(), Box<dyn std::error::Error>> {
-let emitter = FiscalEmitter {
-    cnpj: "12.345.678/0001-90".to_string(),
-    inscricao_municipal: "1234567".to_string(),
-    legal_name: "Rullst SaaS & Software Ltda".to_string(),
-    trade_name: Some("Rullst".to_string()),
-    ibge_code: "3550308".to_string(), // São Paulo
-    tax_regime: TaxRegime::SimplesNacional,
-};
-
-let customer = FiscalCustomer {
-    doc_number: "123.456.789-00".to_string(),
-    name: "João Silva".to_string(),
-    email: "joao@example.com".to_string(),
-    zip_code: Some("01310-100".to_string()),
-    address: Some("Av Paulista, 1000".to_string()),
-    ibge_code: Some("3550308".to_string()),
-};
-
-let dps = NfseDpsV101 {
-    id: "DPS355030821122233300018100001000000000000101".to_string(),
-    series: "1".to_string(),
-    number: 101,
-    issued_at: Utc::now(),
-    competence_date: NaiveDate::from_ymd_opt(2026, 8, 30).ok_or("invalid date")?,
-    service_code: "010301".to_string(),
-    description: "Assinatura Mensal SaaS Rullst Pro".to_string(),
-    amount_cents: 9_900,
-    iss_rate_basis_points: Some(200),
-    iss_taxation: IssTaxation::Taxable,
-    iss_retention: IssRetention::NotRetained,
-    service_city_ibge: "3550308".to_string(),
-};
-
-let unsigned_xml = build_dps_xml_v1_01(
-    &emitter,
-    &customer,
-    &dps,
-    NfseEnvironment::Homologation,
-)?;
-# let _ = unsigned_xml;
-# Ok(())
-# }
-```
-
-See [Preparing a National NFS-e 1.01 homologation
-candidate](../tutorials/40-nfse-homologation-preparation.md) for pinned artifact
-validation, local signing, and the external gates that still prevent live
-transmission.
-
-The opt-in journal records a caller-owned opaque command before transport and
-then one parsed terminal result. Exact replays are read-only; a reused command
-ID with different request/result material fails closed. `pending()` returns
-only the command ID, environment, signed-request digest, local observation time,
-and sequence needed to reconcile application-owned request storage after a
-restart. The host must keep the 32-byte HMAC key in a secret manager, use one
-active writer in a trusted directory, persist `checkpoint()` independently,
-and own retention, backup, request/outbox storage, retries, and authority
-reconciliation.
-
----
-
 ## 🔒 Security Invariants
 
-1. **Constant-Time Verification:** HMAC webhook signatures and explicit `mock_*` fixture secrets are compared with `subtle::ConstantTimeEq` or ring's constant-time `hmac::verify`. Wise transfer webhooks use RSA-SHA256 public-key verification; live Alipay RSA2 verification is not implemented and fails closed.
-2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/codec/mTLS preparation and command evidence do not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the external trust and homologation gates pass.
+1. **Constant-Time Verification:** HMAC webhook signatures and explicit `mock_*` fixture secrets are compared with `subtle::ConstantTimeEq` or ring's constant-time `hmac::verify`.
+2. **Fail-Closed Live Modes:** Operations without a reviewed live contract, including InfinitePay live checkout and callbacks, return `UnsupportedOperation` before network I/O instead of a fabricated success.
 3. **Bounded Egress:** Reviewed live provider methods use a pooled client with
    finite connect/request timeouts, disabled redirects and ambient proxy
    discovery, bounded JSON, and redacted typed failure evidence. Returned

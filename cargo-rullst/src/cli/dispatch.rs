@@ -168,7 +168,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             create_new_mailable(name, kind)?;
         }
         Commands::MakeMailInvoice { name } => {
-            create_new_mailable(name, MailableKind::FiscalInvoice)?;
+            create_new_mailable(name, MailableKind::PaymentReceipt)?;
         }
         Commands::MakeMailDunning { name } => {
             create_new_mailable(name, MailableKind::Dunning)?;

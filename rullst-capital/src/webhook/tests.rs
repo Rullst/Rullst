@@ -1,7 +1,7 @@
 use super::*;
 #[cfg(feature = "axum")]
 use crate::capital::{SubscriptionStatus, WebhookEvent};
-use crate::providers::{LemonSqueezyProvider, StripeProvider};
+use crate::providers::{InfinitePayProvider, StripeProvider};
 #[cfg(feature = "axum")]
 use axum::http::{Method, Version};
 use std::time::Instant;
@@ -115,7 +115,7 @@ fn full_replay_store_fails_closed_until_proofs_expire() {
 fn replay_store_is_bounded_and_provider_scoped() {
     let store = InMemoryWebhookReplayStore::new(2, Duration::from_secs(60)).unwrap();
     assert!(store.record_payload("stripe", b"same body").is_ok());
-    assert!(store.record_payload("paddle", b"same body").is_ok());
+    assert!(store.record_payload("infinitepay", b"same body").is_ok());
     assert!(matches!(
         store.record_payload("stripe", b"same body"),
         Err(CapitalError::WebhookReplay(_))
@@ -130,7 +130,7 @@ fn replay_store_is_bounded_and_provider_scoped() {
 fn semantic_event_keys_are_provider_scoped_and_validated() {
     let store = InMemoryWebhookReplayStore::new(2, Duration::from_secs(60)).unwrap();
     assert!(store.record_event_key("stripe", "evt_123").is_ok());
-    assert!(store.record_event_key("paddle", "evt_123").is_ok());
+    assert!(store.record_event_key("infinitepay", "evt_123").is_ok());
     assert!(matches!(
         store.record_event_key("stripe", "evt_123"),
         Err(CapitalError::WebhookReplay(_))
@@ -149,7 +149,7 @@ fn replay_store_rejects_invalid_configuration() {
 }
 
 #[tokio::test]
-async fn canonical_verifier_decodes_stripe_and_lemonsqueezy_and_rejects_mock_in_production() {
+async fn canonical_verifier_decodes_stripe_and_infinitepay_and_rejects_mock_in_production() {
     let stripe_payload = serde_json::to_vec(&serde_json::json!({
         "type": "customer.subscription.updated",
         "data": { "object": {
@@ -179,32 +179,30 @@ async fn canonical_verifier_decodes_stripe_and_lemonsqueezy_and_rejects_mock_in_
     .expect("local mock signature must produce a normalized event");
     assert_eq!(stripe_event.subscription_id, "sub_stripe");
 
-    let lemon_payload = serde_json::to_vec(&serde_json::json!({
-        "meta": { "event_name": "subscription_updated" },
-        "data": {
-            "type": "subscriptions",
-            "id": "123",
-            "attributes": {
-                "customer_id": 42,
-                "store_id": 42,
-                "test_mode": true,
-                "user_email": "lemon@example.com",
-                "variant_id": 7,
-                "status": "active"
-            }
-        }
+    let infinitepay_payload = serde_json::to_vec(&serde_json::json!({
+        "id": "txn_123",
+        "customer": { "id": "cus_42", "email": "cliente@example.com" },
+        "plan_id": "plan_pro",
+        "status": "paid"
     }))
     .expect("fixture serialization must succeed");
-    let lemon_headers = HashMap::from([(
+    let infinitepay_headers = HashMap::from([(
         "x-signature".to_string(),
-        "mock_lemon_signature".to_string(),
+        "mock_infinitepay_signature".to_string(),
     )]);
-    let lemon = LemonSqueezyProvider::new("mock_api", "mock_lemon_signature");
-    let lemon_store = WebhookReplayBackend::Memory(Arc::new(InMemoryWebhookReplayStore::default()));
-    let lemon_event = verify_payload(&lemon, &lemon_payload, &lemon_headers, &lemon_store, true)
-        .await
-        .expect("local mock signature must produce a normalized event");
-    assert_eq!(lemon_event.subscription_id, "123");
+    let infinitepay = InfinitePayProvider::new("mock_api", "mock_infinitepay_signature");
+    let infinitepay_store =
+        WebhookReplayBackend::Memory(Arc::new(InMemoryWebhookReplayStore::default()));
+    let infinitepay_event = verify_payload(
+        &infinitepay,
+        &infinitepay_payload,
+        &infinitepay_headers,
+        &infinitepay_store,
+        true,
+    )
+    .await
+    .expect("local mock signature must produce a normalized event");
+    assert_eq!(infinitepay_event.subscription_id, "txn_123");
 
     assert!(matches!(
         verify_payload(

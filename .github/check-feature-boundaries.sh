@@ -118,7 +118,6 @@ rullst-security|redis-rate-limit
 rullst-ai|sql-memory
 rullst-capital|axum
 rullst-capital|actix
-rullst-capital|nfse
 rullst-capital|quota-sql
 rullst-capital|webhook-sql
 rullst-mail|mail-smtp
@@ -220,7 +219,6 @@ rullst|ai
 rullst|ai-sql-memory
 rullst|capital
 rullst|capital-actix
-rullst|capital-nfse
 rullst|capital-quota-sql
 rullst|capital-webhook-sql
 rullst|capital-pdf

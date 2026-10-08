@@ -901,32 +901,27 @@ billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
 
 Empty or `mock_*` credentials select a local development fixture, which is
-refused in production. Other credentials select a real provider profile that
-creates provider customers, checkout sessions and portal sessions:
+refused in production. Other credentials select the real Stripe profile
+(`BILLING_PROVIDER=stripe`, the only accepted value), which creates provider
+customers, checkout sessions and portal sessions, persists the
+owner/customer/attempt bindings and processes signed webhooks atomically. It
+requires `BILLING_ACCOUNT_ID=acct_...`, an `sk_test_`/`rk_test_` or
+`sk_live_`/`rk_live_` `BILLING_API_KEY`, a strong `BILLING_WEBHOOK_SECRET` and
+an HTTPS `BILLING_REDIRECT_URL`; live keys additionally require
+`BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. To bill through
+another gateway, implement the Capital provider traits in application code; see
+[Writing your own payment provider](capital-custom-provider.md).
 
-* **Stripe** (`BILLING_PROVIDER=stripe`) persists the owner/customer/attempt
-  bindings and processes signed webhooks atomically. It requires
-  `BILLING_ACCOUNT_ID=acct_...`, an `sk_test_`/`rk_test_` or
-  `sk_live_`/`rk_live_` `BILLING_API_KEY`, a strong `BILLING_WEBHOOK_SECRET` and
-  an HTTPS `BILLING_REDIRECT_URL`; live keys additionally require
-  `BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`.
-* **Paddle** (`BILLING_PROVIDER=paddle`) is a recurring candidate configured with
-  `BILLING_ACCOUNT_ID`, `BILLING_PADDLE_ENVIRONMENT` (`sandbox` or `live`, the
-  latter also requiring the acknowledgement) and `BILLING_PADDLE_PAYMENT_LINK`.
-* **Lemon Squeezy** remains fixture-only.
-
-Mixed mock/real credentials, incomplete profile configuration and real Lemon
-Squeezy credentials return HTTP 503. The generated `BILLING.md` lists the
-permissions, webhook events, recovery procedures and remaining limits of each
-profile.
+Mixed mock/real credentials, incomplete configuration and any other
+`BILLING_PROVIDER` value return HTTP 503. The generated `BILLING.md` lists the
+permissions, webhook events, recovery procedures and remaining limits.
 
 Hosted checkout also requires the submitting page's CSP to allow its exact
 reviewed destination in `form-action`. The SaaS starter selects Stripe and
 generates `form-action 'self' https://checkout.stripe.com` while retaining the
 rest of Core's strict policy. `make:billing` prints this requirement and leaves
-your existing policy for review. Changing to Lemon Squeezy or another provider
-requires its exact merchant/custom checkout origin; do not allow `https:` or
-wildcard domains. Keep a single `form-action` directive in `security.csp` and
+your existing policy for review. A custom provider requires its exact checkout
+origin; do not allow `https:` or wildcard domains. Keep a single `form-action` directive in `security.csp` and
 review proxy/CDN policies too: another restrictive CSP still applies.
 
 Independently validate each returned URL (HTTPS, exact host/port, no embedded
@@ -952,12 +947,11 @@ responsibilities.
 
 ### `cargo rullst make:mail-invoice [Name]`
 
-Generates `FiscalInvoiceEmail` by default and enables `mailer` plus `capital`.
-The result supports an international commercial receipt and an NFS-e message
-constructed from typed `FiscalResponse` provenance. An `OfflineMock` is always
-rendered as `[PREVIEW — NOT AUTHORIZED]`; the generator cannot turn local DPS,
-XSD, or XMLDSig validity into a tax authorization. A custom valid struct name
-may be supplied positionally.
+Generates `PaymentReceiptEmail` by default and enables `mailer`. The result is
+a bounded commercial payment receipt (`international_receipt`, optional
+`with_document_url`) that states it is not a tax authorization; it runs the
+mail pre-flight before returning the message. A custom valid struct name may be
+supplied positionally.
 
 ### `cargo rullst make:mail-dunning [Name]`
 

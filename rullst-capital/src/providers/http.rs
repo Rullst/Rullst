@@ -164,7 +164,7 @@ mod tests {
             validate_checkout_url("stripe", stripe_url).unwrap(),
             stripe_url
         );
-        assert!(validate_checkout_url("paddle", stripe_url).is_err());
+        assert!(validate_checkout_url("infinitepay", stripe_url).is_err());
         assert_eq!(
             validate_checkout_url("stripe", "https://checkout.example/session?id=1")
                 .expect("valid checkout URL"),

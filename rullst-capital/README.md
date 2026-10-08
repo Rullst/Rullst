@@ -1,30 +1,33 @@
 # Rullst Capital 💳
 
-`rullst-capital` provides payment/payout adapter foundations, normalized billing
-types, bounded webhook verification helpers, application-supplied revenue
-snapshots, and a bounded National NFS-e preparation pipeline. Provider method
-coverage is not uniform; inspect the selected adapter and test it in the
-provider sandbox.
+`rullst-capital` provides provider-neutral billing contracts, normalized
+billing types, bounded webhook verification helpers and application-supplied
+revenue snapshots, with a supported **Stripe** adapter and an **experimental**
+InfinitePay adapter. Provider method coverage is not uniform; inspect the
+selected adapter and test it in the provider sandbox. Other gateways are
+integrated by implementing the provider traits in application code.
 
 ## 🚀 Core Features
 
-- **Multi-Provider Architecture:** A unified billing surface across global, regional, Web3, and payout adapters. Capabilities vary by provider, and unsupported live operations fail closed.
+- **Provider-neutral contracts:** `BillingProvider` and `MeteredBillingProvider`
+  define checkout, subscription, webhook and usage operations. Capabilities vary
+  by adapter, and unsupported live operations fail closed.
 - **Revenue snapshot (`/studio/capital`):** Displays metrics supplied explicitly
   by the application to a process-local `RevenueDashboardManager`; it is not an
   accounting ledger and does not infer money from event names.
 - **Webhook event inspector:** Holds records explicitly passed to the local
   manager. Capital does not connect every webhook route to Studio automatically.
-- **Webhook verification:** Provider-specific signature/freshness/replay
-  foundations for documented adapters. The opt-in SQL replay ledger shares
+- **Webhook verification:** One canonical signature/freshness/replay verifier
+  behind the Axum and Actix adapters. The opt-in SQL replay ledger shares
   bounded payload digests or semantic provider event keys across processes on
   SQLite, PostgreSQL, MySQL, and MariaDB. Reconciliation and authorization
   remain application responsibilities.
 - **Payment-bound invoices:** The opt-in `invoice-pdf` feature validates money
   into exact minor units, renders bounded paginated PDF and binds delivery to a
   final receipt matching recipient, amount and currency.
-- **Provider-specific metered billing:** Current Stripe Meter Events and Lemon
-  Squeezy Usage Records request/response contracts, bounded protocol parsing,
-  deterministic non-live mocks and explicit retry evidence.
+- **Provider-specific metered billing:** Current Stripe Meter Events
+  request/response contract, bounded protocol parsing, deterministic non-live
+  mocks and explicit retry evidence; custom adapters reuse the same receipt type.
 - **Shared team/workspace quotas:** Bounded subject identities, idempotent
   reservations, replay-safe execution and an opt-in transactional SQL store for
   SQLite, PostgreSQL, MySQL and MariaDB.
@@ -34,8 +37,35 @@ provider sandbox.
   Trusted storage/reconciliation adapters remain application-owned; success is
   a read-time decision, not a reusable payment or authorization token.
 - **Coupons and relative trials:** A bounded/redacted coupon value, current
-  Stripe discount binding, and 1–730-day trial updates for Stripe/Lemon Squeezy
-  with explicit-clock retries and fail-closed provider capability boundaries.
+  Stripe discount binding, and 1–730-day Stripe trial updates with
+  explicit-clock retries and fail-closed provider capability boundaries.
+- **Offline fixtures:** Empty or `mock_*` credentials select deterministic,
+  visibly non-live behavior for tests and local development.
+
+---
+
+## Removed in v13
+
+v13 reduces Capital to a maintainable base plus two payment adapters. The
+following were removed; their code remains in the repository history:
+
+- the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase
+  Commerce and PicPay adapters, with their typed checkout, portal and usage
+  types (including `LemonSqueezyUsageRecord`/`LemonSqueezyUsageAction`);
+- the Wise payout adapter and the payout contracts it alone used
+  (`PayoutProvider`, `PayoutStatus`, `PayoutEvent`, `init_payout_provider`,
+  `try_init_payout_provider` and `payout_provider`);
+- the NFS-e/fiscal preparation module (`fiscal`, the `nfse` feature and the
+  umbrella `capital-nfse` feature, `Invoice::to_dps` and
+  `CapitalError::FiscalError`). It was never validated with a real
+  municipality; NFS-e support may return later as a separate product outside
+  the framework.
+
+See the "Capital providers and NFS-e removed" row of the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+To keep using another gateway, implement `BillingProvider` for it in your
+application, as shown in
+[Writing your own payment provider](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md).
 
 ---
 
@@ -46,24 +76,13 @@ customer bindings, immutable attempts, Checkout Session IDs and atomic event
 receipts. It reconciles current provider state under database revision fencing
 and resumes existing open sessions. Configure the account, credentials, recurring
 price allowlist and HTTPS return URL as described in generated `BILLING.md`.
-Mixed credentials remain unavailable. Besides Stripe, only the v13 generated
-Paddle candidate (see below) has a live generated path; Lemon Squeezy runs there
-only as an offline fixture and other providers are not generated.
+Mixed credentials remain unavailable. Stripe is the only generated provider.
 Updating Capital does not rewrite existing controllers or apply new migrations.
 
-| Provider | Adapter category | Current boundary |
+| Provider | Status | Current boundary |
 | :--- | :--- | :--- |
-| **Stripe** | Billing | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx/Turso integration. Immediate Payment Intent charge is separate. |
-| **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
-| **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
-| **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
-| **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
-| **Razorpay** | Billing | Plan checkout adapter with an explicit `with_subscription_total_count` billing term (v13) and signed-webhook foundation; completion is reported as `Canceled`. |
-| **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
-| **Coinbase Commerce** | Billing | Signed one-off charge notifications (no subscription period; plan and customer metadata required); live plan-only checkout is unsupported without authoritative pricing. |
-| **PicPay** | Billing | Offline checkout and callback fixtures; live plan-only checkout and seller-token-only callbacks are unsupported without authoritative pricing and status lookup. |
-| **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Transfer-status read bound to the requested transfer, typed state read, sandbox API option and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
+| **Stripe** | Supported | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx/Turso integration. Immediate Payment Intent charge is separate. |
+| **InfinitePay** | Experimental | Offline fixtures only until validated against a live account; live plan-only checkout and body-only callback verification fail closed. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -72,30 +91,24 @@ fixtures, not authenticated portal sessions.
 Legacy checkout and portal fixtures use reserved `https://mock.<provider>.invalid/`
 hosts and carry only the plan ID, never the customer email or return URL, so a
 deployment started without credentials cannot send a browser or personal data
-to a real provider domain. Alipay is the exception: its fixture runs only with
-explicit `mock_*` credentials, and its `mock.alipay.invalid` checkout and portal
-URLs still include the email (and, for checkout, the app ID, plan and return
-URL). Live usage reporting through the
-legacy uniform method is also unsupported for Paddle, Polar, Mercado Pago and
-Razorpay; use the separate reviewed Stripe/Lemon Squeezy metered contracts when
-applicable. InfinitePay, PicPay and Coinbase cancellation, plus Polar pause,
-likewise reject live calls until an actual provider operation is implemented.
+to a real provider domain. InfinitePay cancellation likewise rejects live calls,
+and its pause, usage, coupon and trial operations are unsupported, until an
+actual provider operation is implemented.
 
 The legacy `create_checkout_session(email, plan_id, return_url)` accepts a
-provider-managed plan/price identity, not an amount or currency. Mercado Pago,
-Coinbase Commerce, InfinitePay and PicPay do not have an implemented reviewed
-mapping for that contract; their live methods return `UnsupportedOperation`
-before HTTP dispatch. They never invent a price, currency, buyer identity or
-subscription from a plan label. Empty/`mock_*` API credentials preserve their
-deterministic offline fixture, while `handle_*` and `picpay_token` are not mock
-credentials. An authoritative typed pricing/provider contract is required
-before enabling these live checkout paths.
+provider-managed plan/price identity, not an amount or currency. InfinitePay
+does not have an implemented reviewed mapping for that contract; its live method
+returns `UnsupportedOperation` before HTTP dispatch. It never invents a price,
+currency, buyer identity or subscription from a plan label. Empty/`mock_*` API
+credentials preserve its deterministic offline fixture, while `handle_*` values
+are not mock credentials. An authoritative typed pricing/provider contract is
+required before enabling this live checkout path.
 
-| Reviewed legacy method boundary | Stripe | Lemon Squeezy | Paddle | Polar | Razorpay | Mercado Pago | Coinbase | InfinitePay | PicPay |
-|---|---|---|---|---|---|---|---|---|---|
-| Plan/price-based checkout request | adapter | adapter | unsupported | unsupported | adapter | unsupported | unsupported | unsupported | unsupported |
-| Customer portal by email | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
-| Immediate evidence-bound charge | adapter | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+| Reviewed legacy method boundary | Stripe | InfinitePay (experimental) |
+|---|---|---|
+| Plan/price-based checkout request | adapter | unsupported |
+| Customer portal by email | unsupported | unsupported |
+| Immediate evidence-bound charge | adapter | unsupported |
 
 `adapter` means a bounded request implementation exists, not that this audit
 validated acceptance or every response schema against a live provider account.
@@ -103,243 +116,18 @@ Offline fixtures are deliberately excluded from the live-method matrix.
 
 InfinitePay's [checkout callback and payment lookup](https://www.infinitepay.io/checkout-documentacao)
 do not establish the HMAC/subscription contract assumed by the old adapter.
-The live body-only verifier and handler now return `UnsupportedOperation`;
+The live body-only verifier and handler return `UnsupportedOperation`;
 explicit mock-secret verification remains available for offline fixtures.
 Enabling a real callback needs reviewed authentication, merchant/order/amount
 binding and authoritative reconciliation. A locally signed fixture does not
-prove that the provider emits that protocol.
+prove that the provider emits that protocol. InfinitePay stays experimental
+until those live paths are implemented and validated against a real account.
 
-The v12.1 maintenance rejects legacy Paddle and Polar checkout before
-network dispatch: their current provider contracts cannot be represented by the
-old request shapes. Wise's email-based transfer method also fails explicitly;
-it cannot infer a recipient account, authenticated quote or UUID idempotency
-identity, and transfer creation is not funding. Their offline mocks remain
-available. Polar and Paddle supply the explicit typed replacements below.
-Wise still requires a dedicated recipient/quote/transfer/funding contract.
-Provider-account sandbox acceptance remains separate from protocol tests.
-
-Wise's empty/`mock_*` transfer mock returns a `wise_tr_mock_` ID derived from a
-hash instead of the recipient email, and its status read reports only those
-mock-issued IDs. Any other transfer ID returns `UnsupportedOperation` instead
-of a fabricated `OutgoingPaymentSent`, so an unset token cannot mark real
-transfers as sent. With a live token, the status read accepts only a positive
-decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
-or undocumented state fails the provider response contract, and a
-`bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
-because `PayoutStatus` cannot express a returned or reversed payout; it is
-never reported as `Processing`. A `waiting_recipient_input_to_proceed`
-transfer (a "send money to email" transfer waiting for the recipient's bank
-details) is in flight: the typed state is `WaitingRecipientInput` (v13) and
-the coarse status is `Processing`. The additive v13 `get_transfer_state` returns
-the typed `WiseTransferState` from the same bound read, and
-`with_sandbox_api()` sends reads to `https://api.sandbox.transferwise.tech`
-for sandbox tokens.
-
-`WiseProvider::parse_webhook_payload` performs no signature verification and
-cannot distinguish a Wise delivery from a forged request. It is an offline
-fixture restricted to an explicit `mock_*` API token: an empty token returns
-`ConfigurationError` and a live token returns `UnsupportedOperation` before
-the body is read. Do not re-issue, release or reconcile payouts from it.
-The fixture requires a positive transfer ID, recipient, ISO 4217 currency,
-amount and a documented transfer state; nothing missing is replaced with a
-default. Amounts are exact decimals scaled to the currency's minor units
-without floating point, and negative, zero, over-precise or overflowing
-values are rejected.
-
-### Verified Wise transfer webhooks (v13 candidate)
-
-`verify_transfer_state_change` checks Wise's Base64 `X-Signature-SHA256`
-RSA-SHA256 signature over the exact body before parsing it. Configure the
-public key Wise publishes for the matching environment; sandbox and production
-keys differ and Rullst bundles neither. Up to four keys may be configured for
-rotation.
-
-```rust,no_run
-use rullst_capital::{CapitalError, WiseProvider, WiseTransferState};
-use std::collections::HashMap;
-
-fn on_wise_webhook(
-    wise_public_key_pem: &str,
-    raw_body: &[u8],
-    lowercase_headers: &HashMap<String, String>,
-) -> Result<(), CapitalError> {
-    let provider = WiseProvider::new("mock_wise_token", "profile_id")
-        .with_webhook_public_key_pem(wise_public_key_pem)?;
-    let event = provider.verify_transfer_state_change(raw_body, lowercase_headers)?;
-    if event.current_state() == WiseTransferState::FundsRefunded {
-        // Load the application's transfer record by event.transfer_id() and
-        // read the transfer from Wise before moving money.
-    }
-    Ok(())
-}
-```
-
-Only `transfers#state-change` deliveries for a transfer resource with a
-positive numeric ID, a documented state and a valid `occurred_at` are accepted;
-missing or unknown values are rejected, not defaulted. The result carries no
-amount, currency or recipient because Wise does not send them. The signature
-covers no timestamp or delivery identity, so an exact replay verifies again:
-bind the transfer and profile to the application's own records, apply state
-transitions idempotently and read the transfer before re-issuing, releasing or
-refunding money. The billing webhook middleware does not mount this payout
-verifier.
-
-Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
-ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
-The plan argument must be a numeric variant ID belonging to that store. The
-generated billing application reads `BILLING_STORE_ID`; missing configuration
-fails before HTTP dispatch. Existing applications must adopt this setting.
-
-### Transaction-based Paddle checkout
-
-Configure a default payment-link page in the Paddle account and load Paddle.js
-on that page. The domain must meet Paddle's approval rules. `checkout.url` is
-this launcher, not a return URL after payment; setting a custom URL does not
-remove the default-page prerequisite. `with_sandbox(true)` selects the sandbox
-API explicitly.
-
-```rust,no_run
-use rullst_capital::{PaddleCheckoutRequest, PaddleCustomerRequest, PaddleProvider};
-
-async fn checkout() -> Result<(), rullst_capital::CapitalError> {
-    let provider = PaddleProvider::new("mock_key", "mock_secret").with_sandbox(true);
-    let provision = PaddleCustomerRequest::new(
-        "owner_opaque", "provision_unique", "customer@example.com",
-    )?;
-    // Authorize the owner and persist this intent before dispatch.
-    let customer = provider.create_customer(&provision).await?;
-    // Persist the customer binding before the separate checkout attempt.
-    let attempt = PaddleCheckoutRequest::new(
-        customer.id(), "pri_01h7vjes1v2y4d0v3t4b4e2q8s", "owner_opaque",
-        "checkout_unique", "https://app.example/pay",
-    )?;
-    let session = provider.create_transaction_checkout(&attempt).await?;
-    assert!(session.is_mock());
-    // Persist the transaction ID before redirecting to an available session.url().
-    Ok(())
-}
-```
-
-The request binds one existing customer, one server-owned recurring price and
-quantity one. Customer ownership is checked before transaction creation. The
-response must match customer, owner, attempt, recurring price and payment page;
-its only query parameter is `_ptxn` for that exact transaction. Receipts retain
-the request digest and selected environment; mocks have no real environment.
-
-Paddle does not support arbitrary client-supplied idempotency keys. The attempt
-reference is correlation metadata. Persist it before dispatch and never blindly
-retry an uncertain creation. `retrieve_bound_customer` and
-`retrieve_transaction_checkout` reconcile independently recovered known IDs
-without mutation or email-based ownership claims.
-
-The legacy `handle_webhook` (used by the canonical middleware) normalizes only
-documented `subscription.*` lifecycle events: created, updated, imported,
-activated, resumed, trialing, past_due, paused and canceled. Transaction,
-adjustment, customer, price, address and other signed events return
-`PayloadParseError` instead of becoming subscription state. It requires Paddle
-`sub_`, `ctm_` and `pri_` identities, maps only Paddle subscription statuses
-and rejects an event whose status disagrees with its type. `plan_id` remains
-the first item's price, and the result carries no owner binding.
-
-`verify_checkout_subscription` binds signed events to the request and persisted
-transaction receipt. The first `subscription.created` must carry the matching
-transaction ID. Later events require a receipt with the already-bound
-subscription ID, obtained through the transaction read. Use
-`retrieve_bound_subscription` for current-state reconciliation; commit event
-receipts and domain changes atomically under a revision fence. Account scope,
-entitlement policy and settlement remain application-owned. Cancellation and
-pause respect the selected environment and validate the returned immediate or
-scheduled change. See Paddle's [transaction creation](https://developer.paddle.com/api-reference/transactions/create-transaction/),
-[payment-page setup](https://developer.paddle.com/build/transactions/pass-transaction-checkout/)
-and [retry limitations](https://developer.paddle.com/sdks/libraries/).
-
-### Paddle customer portal (v13 candidate)
-
-`create_bound_customer_portal` creates fresh **customer-wide** overview access.
-First authenticate the application user and authorize that user's billing
-account. Load the original `PaddleCustomerRequest` provisioning intent and known
-customer ID from trusted state scoped to that owner/tenant, provider account and
-environment. Do not accept those references from a browser, discover ownership
-by email, or grant a whole customer's portal to a subscription-only delegate.
-
-```rust,no_run
-use rullst_capital::{CapitalError, PaddleCustomerRequest, PaddleProvider};
-
-// Call only after the host's authentication and billing-owner authorization.
-async fn portal_example() -> Result<(), CapitalError> {
-    let provider = PaddleProvider::new("mock_key", "mock_webhook");
-    let original = PaddleCustomerRequest::new(
-        "authorized_owner", "persisted_provisioning_attempt", "owner@example.test",
-    )?;
-    // This creation is only for the offline example. In a real portal handler,
-    // load the already provisioned customer ID; do not create a customer again.
-    let customer = provider.create_customer(&original).await?;
-    let portal = provider.create_bound_customer_portal(&original, customer.id()).await?;
-    assert!(portal.is_mock());
-    assert!(portal.require_real().is_err());
-    // With real credentials, require_real() must succeed before redirecting
-    // the authorized customer. Never log, cache or persist portal.url().
-    Ok(())
-}
-```
-
-The provider key needs `customer.read` and `customer_portal_session.write`.
-Rullst reads the active customer, verifies its owner and original provisioning
-attempt, then posts once to `/customers/{id}/portal-sessions` without a body.
-The read and creation are separate provider operations: keep ownership metadata
-host-controlled. Each invocation repeats the read; no customer or link cache is
-used. Customer/contact changes do not establish new ownership. Paddle's API
-creates these [temporary portal sessions](https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session/).
-
-The returned customer/session IDs must be consistent. Rullst accepts only the
-selected environment's exact HTTPS portal host, a `/cpl_` identifier path and
-one `action=overview` plus one nonempty `token` query pair, within 8 KiB. It
-rejects userinfo, nondefault ports, fragments, controls and additional/duplicate
-query fields. These [portal domains](https://developer.paddle.com/changelog/2025/subscription-management-links-customer-portal/)
-are an explicit supported profile; an upstream change needs review.
-
-Treat the URL as a bearer credential. `PaddlePortalSession` redacts Debug, has
-no Serialize/Clone implementation and zeroizes its owned URL on drop (not
-transport buffers or application copies). Send it only to the authorized owner
-with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; do not store,
-log, cache or iframe it. Expiry remains provider-controlled; no single-use or
-revocation guarantee is inferred. Mocks use the reserved `example.invalid`
-domain and never confer real access. There are no subscription deep links or
-arbitrary return URLs. The generic email-based portal remains unsupported with
-live keys. Provider interoperability is unvalidated without a live sandbox;
-the generated durable Paddle candidate composes this operation with persisted
-customer ownership. See the generated application's `BILLING.md`; offline
-state-transition tests do not establish hosted-provider interoperability.
-
-### Product-based Polar checkout
-
-Use product UUIDs and an opaque application-owned billing subject, not legacy
-price IDs or email as identity. `with_sandbox(true)` selects the sandbox API.
-
-```rust,no_run
-use rullst_capital::{PolarCheckoutRequest, PolarProvider, CapitalError};
-async fn checkout() -> Result<(), CapitalError> {
-    let provider = PolarProvider::new("mock_token", "mock_secret").with_sandbox(true);
-    let intent = PolarCheckoutRequest::new(
-        "1dbfc517-0bbf-4301-9ba8-555ca42b9737", "opaque_billing_subject",
-        "https://app.example/billing/return",
-    )?;
-    // Persist intent and authorize its owner before dispatch.
-    let session = provider.create_product_checkout(&intent).await?;
-    // Persist session.id() before redirecting to session.url().
-    assert!(session.is_mock());
-    Ok(())
-}
-```
-
-Only supply `with_trusted_client_ip` from your socket/trusted-proxy resolver;
-omit it when that boundary is unavailable. The adapter never trusts raw
-`Forwarded`/`X-Forwarded-For`. Creation is not automatically retried: Polar's
-checkout contract does not establish a provider idempotency guarantee. Use
-`verify_checkout_subscription` with the persisted request to bind signed
-subscription notifications to the external customer and product. Retain account,
-environment, event receipts and entitlement/reconciliation policy in your app.
-See [Polar's current checkout contract](https://polar.sh/docs/api-reference/checkouts/create-session).
+Applications that need another gateway implement `BillingProvider` (and, for
+metered billing, `MeteredBillingProvider`) themselves. Such an adapter must
+declare its webhook verification mode explicitly before the canonical
+middleware accepts it; see
+[Writing your own payment provider](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md).
 
 ### Customer-bound Stripe subscription checkout (12.1)
 
@@ -431,31 +219,11 @@ metering or webhook paths and says nothing about another provider.
    provider-permitted real transaction and retain redacted evidence.
 
 The generated SaaS blueprint currently provides a durable Stripe application
-boundary, the v13 Paddle candidate and an offline Lemon Squeezy fixture. It is
-not a conformance application for all eleven Capital adapters. A release claim
-should name the exact provider, operation, environment and observed result
-rather than saying that “payments work.” See the official [Stripe testing](https://docs.stripe.com/testing) and
-[sandbox](https://docs.stripe.com/sandboxes) guidance and Lemon Squeezy's
-[test-mode](https://docs.lemonsqueezy.com/help/getting-started/test-mode) and
-[webhook simulation](https://docs.lemonsqueezy.com/help/webhooks/simulate-webhook-events)
-guidance.
-
-Mercado Pago signs a manifest containing the original query data ID, request
-ID and timestamp. Its notification also requires an authoritative resource
-lookup before inferring payment/subscription state. The v12 body-only verifier
-cannot establish that contract and therefore rejects live verification;
-`with_webhook_tolerance` remains source-compatible but has no effect on that
-unavailable path. Explicit `mock_*` webhook fixtures remain supported. See the
-[official Mercado Pago webhook contract](https://www.mercadopago.com.br/developers/en/docs/subscriptions/additional-content/your-integrations/notifications/webhooks).
-
-Polar's live `handle_webhook` validates the full Standard Webhooks envelope:
-ID, timestamp and raw payload are signed together; versioned Base64 signatures
-are bounded and timestamps have a five-minute window. The documented Polar
-legacy literal-secret and standard `whsec_` decoded-secret schemes are both
-accepted, matching the provider's SDK transition. Its old body-only
-`verify_signature` method returns `UnsupportedOperation` for live secrets.
-See [Polar's signing contract](https://polar.sh/docs/integrate/webhooks/delivery)
-and the [Standard Webhooks specification](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md).
+boundary only. It is not a conformance application for every Capital adapter.
+A release claim should name the exact provider, operation, environment and
+observed result rather than saying that “payments work.” See the official
+[Stripe testing](https://docs.stripe.com/testing) and
+[sandbox](https://docs.stripe.com/sandboxes) guidance.
 
 Stripe's v12 normalized path accepts subscription `created`, `updated`,
 `deleted`, `paused` and `resumed` events. It requires a subscription object,
@@ -532,55 +300,6 @@ generated handlers, support Turso's remote batch transport, order snapshots or
 make HTTP effects atomic. Stored event/scope/mutation hashes minimize identifiers;
 they are not encryption or a complete billing audit history.
 
-Missing or malformed status no longer implies a paid/active subscription.
-Lemon Squeezy accepts only its subscription lifecycle kinds and `subscriptions`
-objects with positive numeric IDs, valid states and consistent test-mode fields.
-An explicitly configured store must match. `on_trial` becomes `Trialing`;
-cancelled/expired snapshots retain a required valid end time as `Canceled`.
-Grace-period access remains application policy. Invoice/payment/refund events
-need separate processing; they are not subscription snapshots. See the provider's
-[subscription object](https://docs.lemonsqueezy.com/api/subscriptions/the-subscription-object)
-and [event types](https://docs.lemonsqueezy.com/help/webhooks/event-types).
-The legacy normalized event does not retain the provider mode or durable event
-identity; validated parsing alone does not complete owner binding or an inbox.
-
-Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
-names are matched exactly, not by substring. This does not establish every
-provider payload schema or an application-specific entitlement/tenant policy.
-
-Razorpay subscription normalization requires the subscription's own bounded ID,
-customer ID and plan ID, plus an event/entity state match. Authentication alone
-and standalone payment/order events cannot activate a subscription. Activated,
-charged and resumed events require `active`; pending, halted, paused and
-cancelled events require their corresponding provider state.
-`subscription.completed` requires `completed` and maps to the non-entitled
-`Canceled` status: Razorpay stops charging after the subscription's last
-billing cycle, so the host must end or renew access explicitly. The
-authenticated state remains unsupported by the v12 normalized contract. Email
-is optional contact data. The application still owns customer/tenant binding,
-event ordering, durable processing and reconciliation; `Active` is a lifecycle
-state, not proof that a particular invoice was paid. See Razorpay's
-[subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
-and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
-
-Live Razorpay `create_checkout_session` calls use the billing-cycle count set
-with `RazorpayProvider::with_subscription_total_count` (v13 candidate); there
-is no default, and without it live checkout returns `ConfigurationError` before
-any HTTP request. Choose a count that matches the plan period, for example 52
-weekly cycles for one year; Razorpay enforces its own maximum. Earlier releases
-sent a fixed `total_count` of 12 for every plan period. Handle
-`subscription.completed` to learn when billing ends. The `redirect_url`
-argument is recorded in the subscription `notes` only; the adapter does not
-send it as a callback or return URL. Offline fixtures need no count.
-
-Live `pause_subscription` sends Razorpay's documented
-`{"pause_at": "now"}` body and succeeds only when the response is the same
-subscription with status `paused`. Razorpay can pause only an `active`
-subscription and cancels an `authenticated` one instead; that outcome returns
-`SubscriptionError`. See the
-[pause reference](https://razorpay.com/docs/api/payments/subscriptions/pause-subscription/).
-Earlier releases sent an empty body and accepted any successful status.
-
 ---
 
 ## Outbound Provider Safety and Retry Evidence
@@ -628,12 +347,6 @@ Add `rullst-capital` to your `Cargo.toml`:
 ```toml
 [dependencies]
 rullst-capital = "12.1.0"
-```
-
-The heavier NFS-e schema/signature boundary is opt-in:
-
-```toml
-rullst-capital = { version = "12.1.0", features = ["nfse"] }
 ```
 
 Native invoice PDF is independently opt-in. One-call Mail delivery uses the
@@ -783,9 +496,8 @@ application responsibilities.
 
 The provider-bound handle validates coupon IDs before dispatch. Stripe uses the
 current expanded subscription-discount update and checks that the response
-contains both the requested subscription and coupon. Lemon Squeezy discount
-codes are checkout-only, so applying one to an existing live subscription
-returns `UnsupportedOperation`; unreviewed live adapters do the same.
+contains both the requested subscription and coupon. Unreviewed live adapters,
+including InfinitePay, return `UnsupportedOperation`.
 
 ```rust,no_run
 use rullst_capital::{Billable as _, CapitalError, StripeProvider};
@@ -805,10 +517,10 @@ async fn retention_offer(
 
 `extend_trial(15)` uses current UTC for convenience; persist a trusted command
 time and use `extend_trial_days_at` for retry stability. `set_trial_end` remains
-the explicit absolute operation. Stripe and Lemon Squeezy bind trial-update
-responses, but authorization, concurrent-command serialization, billing-cycle
-policy, signed-webhook reconciliation and real-account acceptance remain host
-or release work.
+the explicit absolute operation. Stripe binds trial-update responses, but
+authorization, concurrent-command serialization, billing-cycle policy,
+signed-webhook reconciliation and real-account acceptance remain host or
+release work.
 
 ### Provider-Specific Metered Usage
 
@@ -836,13 +548,11 @@ async fn report_lesson_minutes(stripe: &StripeProvider) -> Result<(), CapitalErr
 }
 ```
 
-`LemonSqueezyUsageRecord` instead requires the provider's numeric subscription
-item ID and an explicit `Increment` or `Set` action. The action must match the
-aggregation configured for that variant. Lemon Squeezy's request does not carry
-the application's event key, so atomically claim `event_key()` in a durable
-outbox before submission. Stripe's identifier is provider-forwarded but only
-has a rolling deduplication guarantee. Empty or `mock_*` keys return a stable
-`UsageStatus::Mock`, never a live acceptance.
+Stripe's identifier is provider-forwarded but only has a rolling deduplication
+guarantee. A custom adapter whose provider has no equivalent key returns a
+receipt marked `UsageDeduplication::ApplicationOutboxRequired`: atomically claim
+its event key in a durable outbox before submission. Empty or `mock_*` keys
+return a stable `UsageStatus::Mock`, never a live acceptance.
 
 ### Payment-Bound Invoice Delivery
 
@@ -873,12 +583,12 @@ fn configure_billing() -> Result<(), std::env::VarError> {
 }
 ```
 
-The global billing and payout providers can be set once per process: a later
-`init_provider`/`init_payout_provider` call is ignored and the first provider
-stays active. The v13 `try_init_provider` and `try_init_payout_provider` return
-`ConfigurationError` in that case, so a live configuration cannot be silently
-shadowed by an earlier mock. Middleware can also take an explicit provider
-through `WebhookMiddlewareState::production_with_provider`.
+The global billing provider can be set once per process: a later
+`init_provider` call is ignored and the first provider stays active. The v13
+`try_init_provider` returns `ConfigurationError` in that case, so a live
+configuration cannot be silently shadowed by an earlier mock. Middleware can
+also take an explicit provider through
+`WebhookMiddlewareState::production_with_provider`.
 
 ### Creating Checkout Sessions
 
@@ -902,7 +612,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body without a checked timestamp, so an exact captured body verifies again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order their state changes in the application. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof. The default store behind `verify_webhook`, `verify_webhook_mock_local` and their Actix equivalents holds at most 10,000 proofs for 24 hours each, so one process admits about 10,000 verified deliveries per rolling day before it answers 503. For busier endpoints, mount `verify_webhook_with_state` with `InMemoryWebhookReplayStore::new(capacity, ttl)` (up to 1,000,000 proofs and 30 days) or a shared `SqlWebhookReplayStore`.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, require the provider to declare its verification mode, verify the provider signature (Stripe also enforces timestamp freshness), reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. A custom provider whose protocol signs only the body without a checked timestamp lets an exact captured body verify again once its replay entry expires (24 hours by default) or, with the in-memory store, after a restart; persist and order its state changes in the application. Live InfinitePay verification is unavailable. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof. The default store behind `verify_webhook`, `verify_webhook_mock_local` and their Actix equivalents holds at most 10,000 proofs for 24 hours each, so one process admits about 10,000 verified deliveries per rolling day before it answers 503. For busier endpoints, mount `verify_webhook_with_state` with `InMemoryWebhookReplayStore::new(capacity, ttl)` (up to 1,000,000 proofs and 30 days) or a shared `SqlWebhookReplayStore`.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
@@ -971,132 +681,10 @@ an outbox, idempotent consumers, and reconciliation.
 
 ---
 
-## 🧾 NFS-e Padrão Nacional — Homologation Preparation
-
-The local pipeline now implements a bounded ordinary-service DPS 1.01 builder,
-checksum-pinned validation against official production/restricted XSD sources,
-PKCS#12 RSA-SHA256 XMLDSig with inclusive C14N 1.0, independent local
-signature verification, deterministic (per build) GZip/Base64 issuance JSON, bounded
-signed-authorization and structured-rejection parsing, and rustls mTLS client
-construction. The signed request now carries its parsed `tpAmb`, so a caller
-cannot reinterpret a homologation DPS as production (or the reverse). An
-authorized NFS-e may embed the submitted signed DPS: its signature is allowed
-only inside `infNFSe/DPS`, and the authority's single root signature is the one
-verified. That signed embedded DPS must carry the submitted DPS Id and `tpAmb`.
-Certificate bytes, passphrases, and derived PEM are redacted and zeroized where
-owned by Rullst.
-The production profile applies one exact, documented in-memory compatibility
-normalization after hash verification: it removes `.NET` `^...$` anchors from
-the known DPS-series pattern because XSD regex grammar treats them as literals.
-
-The same `nfse` feature includes `FiscalCommandJournal`, a bounded local
-single-active-writer journal for the caller-owned transport workflow. It
-synchronously records one `prepared` command and one bound `authorized` or
-`rejected` terminal result, suppresses exact replays, rejects command-key
-conflicts, and recovers unresolved descriptors after restart. A named 256-bit
-HMAC key authenticates the header and a chain of at most 4,096 frames/16 MiB;
-a preparation is refused unless room remains for the terminal result of it and
-of every other pending command;
-an independently retained exact-tip checkpoint detects valid-prefix
-truncation, and the v13 `verify_checkpoint_prefix` accepts a retained
-checkpoint that is an authenticated prefix of the chain (returning how many
-events follow it) so a crash before the new checkpoint was saved is not
-mistaken for tampering. Creating a journal also syncs its parent directory on Unix. A power
-loss during an append can leave an unacknowledged torn final frame, which
-`try_open` rejects as `CorruptRecord` until an operator restores a backup or
-truncates after the last complete frame. The file contains only the opaque application command ID,
-request/result digests, environment, state, and bounded timestamps—not XML,
-access keys, certificate material, provider bodies, or processing messages.
-An HTTP 500 answer returns `IndeterminateResponse` and leaves the command
-pending, because the NFS-e may have been issued; a recorded rejection is final,
-so reconcile a rejection of a retransmitted DPS (for example "DPS already
-exists") by consultation before recording it.
-Persist each request's `dps_xml_gzip_base64()` and rebuild it after a restart
-with the v13 `NfseIssueRequest::try_from_dps_xml_gzip_base64`: recompressing
-the signed XML is reproducible only within one deflate backend, and a build
-whose dependencies select another deflate backend would compute a different
-request digest and conflict with the pending command.
-`record_response` records a wall-clock step backwards as the preparation time,
-while `record_response_at` with an earlier explicit time returns
-`ClockRegression`; a selected environment that differs from the signed `tpAmb`
-returns `EnvironmentMismatch` (both v13).
-
-This is preparation for homologation, not live issuance. `Homologation` and
-`Production` still return `FiscalError::Unsupported` without network I/O until
-full certificate/emitter and ICP-Brasil policy, authoritative request/outbox
-storage, reconciliation, retained official protocol fixtures, real
-restricted-environment evidence, independent review, and official homologation
-are complete. The journal itself does not send or retry a request, provide a
-multi-process lock, or prove cross-system exactly-once behavior. The host owns
-a non-PII command namespace, key custody/rotation, trusted directory, exclusive
-writer, actual request storage, external checkpoint, retention, and backup.
-
-Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
-XSD, XMLDSig, protocol codec, and mTLS preparation APIs. The strict DPS builder
-and unmistakable offline mock remain available through the base Capital crate.
-
-The runnable [`nfse_v101_preview`](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-capital/examples/nfse_v101_preview.rs) example emits
-the unsigned bounded DPS. When `RULLST_NFSE_XSD_DIR` points to an extracted
-official production package whose files match the pinned hashes, it validates
-the document before writing it:
-
-```bash
-RULLST_NFSE_XSD_DIR=/path/to/NFSe/Schemas/1.01 \
-  cargo run -p rullst-capital --features nfse --example nfse_v101_preview
-```
-
-Only `NfseEnvironment::Mock` is executable. Its response is typed as `FiscalResponseKind::OfflineMock`, uses `MOCK_NOT_AUTHORIZED`, and must never be accounted as an issued invoice:
-
-```rust
-use rullst_capital::fiscal::{
-    issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
-    FiscalResponseKind, NfseEnvironment, TaxRegime,
-};
-
-// 1. Configure the emitting SaaS company
-let emitter = FiscalEmitter {
-    cnpj: "12.345.678/0001-90".to_string(),
-    inscricao_municipal: "1234567".to_string(),
-    legal_name: "Minha Empresa SaaS Ltda".to_string(),
-    trade_name: Some("MeuSaaS".to_string()),
-    ibge_code: "3550308".to_string(), // São Paulo
-    tax_regime: TaxRegime::SimplesNacional,
-};
-
-// 2. Customer data
-let customer = FiscalCustomer {
-    doc_number: "123.456.789-00".to_string(),
-    name: "João Silva".to_string(),
-    email: "joao@cliente.com.br".to_string(),
-    zip_code: Some("01310-100".to_string()),
-    address: Some("Av Paulista, 1000".to_string()),
-    ibge_code: Some("3550308".to_string()),
-};
-
-// 3. Convert paid invoice to national DPS format
-let dps = invoice.to_dps("1.03.01", "3550308", 2.0); // 1.03.01 = SaaS & Hosting, 2.0% ISS
-
-// 4. Mock mode does not load or use a real certificate.
-let cert = FiscalCertificate::offline_mock();
-
-// 5. Produce a deterministic offline fixture; no network request is made.
-let response = issue_nfse_direct(
-    &emitter,
-    &customer,
-    &dps,
-    &cert,
-    NfseEnvironment::Mock,
-).await?;
-assert_eq!(response.kind, FiscalResponseKind::OfflineMock);
-assert!(!response.is_officially_authorized());
-```
-
----
-
 ## 🔐 Security Invariants
 
 - **Constant-Time Verification**: Supported HMAC/token signatures use cryptographic verification or `subtle::ConstantTimeEq`.
 - **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
+- **Explicit Verification Mode**: A provider without an explicitly declared webhook verification mode cannot be mounted behind the canonical middleware.
 - **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store. `webhook-sql` adds bounded durable claims; stable semantic event IDs can share a transaction with the domain mutation.
-- **Alipay Containment**: Live RSA2 checkout and webhook verification return `UnsupportedOperation`; only explicitly mock-prefixed credentials operate offline.
-- **Fiscal Containment**: Local XSD/XMLDSig/mTLS preparation and the authenticated command journal are not an official NFS-e authorization; live transmission remains disabled until the documented external gates pass.
+- **InfinitePay Containment**: The experimental adapter's live checkout and callback verification return `UnsupportedOperation`; only empty or `mock_*` API keys and `mock_*` webhook secrets operate offline.
