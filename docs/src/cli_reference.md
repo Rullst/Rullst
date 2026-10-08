@@ -280,6 +280,13 @@ the generating machine only: the generated `.gitignore` and `.dockerignore`
 exclude it, so CI runners, teammates and the container builder (which has
 neither linker) build with the toolchain default.
 
+Since v13 the generated `Cargo.toml` also has a `[profile.release]` with
+`lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`. Debug builds keep
+Cargo's defaults, and `panic` stays `unwind` so one panicking handler cannot
+stop the server. Release builds take longer and their backtraces lose symbol
+names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
+state the size and build-time effect on one starter.
+
 Without `--skip-initial-migration`, project creation performs the first Cargo
 build before applying migrations. A clean first build can take several minutes,
 especially for the larger LMS/SaaS profiles; the animated status remains visible

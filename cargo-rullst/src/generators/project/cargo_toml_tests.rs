@@ -373,3 +373,32 @@ fn orm_without_a_strict_profile_keeps_its_any_drivers() {
         );
     }
 }
+
+#[test]
+fn release_profile_is_optimized_and_keeps_unwinding_panics() {
+    for hot_reload in [false, true] {
+        let manifest = build_cargo_toml(
+            "release-app",
+            hot_reload,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("manifest");
+        let parsed: toml::Value = toml::from_str(&manifest).expect("valid Cargo manifest");
+        let release = &parsed["profile"]["release"];
+        assert_eq!(release["lto"].as_str(), Some("thin"));
+        assert_eq!(release["codegen-units"].as_integer(), Some(1));
+        assert_eq!(release["strip"].as_str(), Some("symbols"));
+        // Aborting on panic would let one failing handler stop the server.
+        assert!(release.get("panic").is_none(), "{manifest}");
+        let profiles = parsed["profile"].as_table().expect("profile table");
+        assert_eq!(profiles.len(), 1, "debug builds keep Cargo's defaults");
+        assert!(parsed.get("workspace").is_some(), "{manifest}");
+    }
+}

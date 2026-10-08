@@ -358,7 +358,7 @@ is classified for `rullst-upgrade-rules-v4`:
   the affected API, feature or configuration, which the rules locate (91 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (46 rows).
+  of inputs that previously failed) (47 rows).
 
 The catalog has 98 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
@@ -503,6 +503,7 @@ the rule together.
 | Kubernetes and Buildah names | (b) review | `V13-K8S-NAMES` |  |
 | Pre-compressed static assets | (c) none | — | CLI |
 | Static asset caching | (c) none | — | Runtime default; not detectable in source |
+| Generated release profile | (c) none | — | Generator output for new projects |
 | Generated container runtime | (c) none | — | Generator output for new projects |
 | Interactive `new --api` | (c) none | — | CLI |
 | CLI `new` wizard | (c) none | — | CLI |
