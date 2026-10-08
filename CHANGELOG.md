@@ -28,6 +28,14 @@ A prepared version section does not establish that its tag or crates exist.
 - See the "Capital providers and NFS-e removed" and "Mail providers removed"
   rows of the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
 
+### Capital: fresh `nfse` builds compile again
+
+- `pkcs1` 0.8.0-rc.5 (published 2026-10-05) breaks `sad-rsa` 0.10.2, which
+  `xml-sec` uses and which accepts any `pkcs1 ^0.8.0-rc.4`. A project enabling
+  `rullst-capital/nfse` (or the facade `capital-nfse`) without an existing lock
+  file therefore failed to compile. The `nfse` feature now pins
+  `pkcs1 = "=0.8.0-rc.4"`. Existing lock files are unaffected.
+
 ### Dependency security: hickory 0.26.3
 
 - Lock `hickory-resolver`, `hickory-net` and `hickory-proto` 0.26.3 (from
