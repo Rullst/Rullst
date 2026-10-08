@@ -16,7 +16,7 @@ pub(crate) fn reject_existing(what: &str, paths: &[PathBuf], remedy: &str) -> io
     let mut collisions = Vec::new();
     for path in paths {
         match fs::symlink_metadata(path) {
-            Ok(_) => collisions.push(path.display().to_string()),
+            Ok(_) => collisions.push(super::slash_path(path)),
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
             Err(error) => return Err(error),
         }
@@ -41,7 +41,7 @@ pub(crate) fn reject_symlink(path: &Path) -> io::Result<()> {
             io::ErrorKind::InvalidInput,
             format!(
                 "refusing to write through symlinked generator output '{}'",
-                path.display()
+                super::slash_path(path)
             ),
         )),
         Ok(_) => Ok(()),
@@ -60,7 +60,10 @@ pub(crate) fn write_new(path: &Path, contents: &[u8]) -> io::Result<()> {
             if error.kind() == io::ErrorKind::AlreadyExists {
                 io::Error::new(
                     io::ErrorKind::AlreadyExists,
-                    format!("refusing to overwrite existing '{}'", path.display()),
+                    format!(
+                        "refusing to overwrite existing '{}'",
+                        super::slash_path(path)
+                    ),
                 )
             } else {
                 error
@@ -90,7 +93,7 @@ pub(crate) fn write_output(path: &Path, contents: &[u8], overwrite: bool) -> io:
             io::ErrorKind::InvalidInput,
             format!(
                 "generator output '{}' is not a regular file",
-                path.display()
+                super::slash_path(path)
             ),
         ));
     }
@@ -159,6 +162,26 @@ mod tests {
         assert_eq!(fs::read_to_string(&existing).unwrap(), "template");
         write_output(&absent, b"created", false).unwrap();
         assert_eq!(fs::read_to_string(&absent).unwrap(), "created");
+    }
+
+    /// Windows joins `k8s\deployment.yaml`; a Unix file name holding that
+    /// backslash simulates it, and messages name it with `/` on every OS.
+    #[cfg(unix)]
+    #[test]
+    fn refusals_name_outputs_with_forward_slashes() {
+        let directory = tempfile::tempdir().unwrap();
+        let existing = directory.path().join("k8s\\deployment.yaml");
+        fs::write(&existing, "customized").unwrap();
+        for error in [
+            reject_existing("Kubernetes manifests", std::slice::from_ref(&existing), "")
+                .unwrap_err(),
+            write_new(&existing, b"template").unwrap_err(),
+        ] {
+            let message = error.to_string();
+            assert!(message.contains("k8s/deployment.yaml"), "{message}");
+            assert!(!message.contains('\\'), "{message}");
+        }
+        assert_eq!(fs::read_to_string(&existing).unwrap(), "customized");
     }
 
     #[cfg(unix)]
