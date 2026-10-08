@@ -12,7 +12,10 @@ pub const DEFAULT_TRACE_STORE_CAPACITY: usize = 2_048;
 /// SQL duration at which the local heuristic reports a slow operation.
 pub const SLOW_QUERY_THRESHOLD_US: u64 = 100_000;
 /// Repetition count at which the local heuristic reports a possible N+1 pattern.
-pub const N_PLUS_ONE_THRESHOLD: usize = 3;
+///
+/// Shared with `cargo rullst dash` through
+/// [`rullst_core::query_patterns::N_PLUS_ONE_THRESHOLD`].
+pub const N_PLUS_ONE_THRESHOLD: usize = rullst_core::query_patterns::N_PLUS_ONE_THRESHOLD;
 
 #[derive(Default)]
 struct StoreInner {
