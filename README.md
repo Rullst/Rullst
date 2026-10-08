@@ -394,8 +394,12 @@ the main commands. The v13 CLI also adds live request metrics to
 `cargo rullst dash`; toolchain, project, configuration, database, migration,
 security and disk checks with fixes and `--json` to `cargo rullst doctor`; a
 searchable command list on the `cargo rullst` home screen;
-`cargo rullst completions <shell>` for tab completion; and v12 → v13 source
-findings to `cargo rullst upgrade`. Until v13 is released, these are
+`cargo rullst completions <shell>` for tab completion; v12 → v13 source
+findings to `cargo rullst upgrade`; and `cargo rullst audit --report`, a
+Markdown, HTML or JSON security evidence report mapped to OWASP ASVS 5.0
+Level 1, with a personal-data inventory and accessibility checks
+([guide](https://rullst.github.io/Rullst/book/security-report.html)). It is
+evidence for a reviewer, not a certification. Until v13 is released, these are
 development candidates, not shipped features.
 
 [v13 roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md)

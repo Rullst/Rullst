@@ -14,7 +14,7 @@ pub enum EvidenceStatus {
 }
 
 impl EvidenceStatus {
-    fn label(&self) -> &'static str {
+    pub(crate) fn label(&self) -> &'static str {
         match self {
             Self::NoFindings => "NO FINDINGS",
             Self::NoFindingsOutsideExceptions(_) => "NO FINDINGS OUTSIDE EXCEPTIONS",
@@ -26,7 +26,25 @@ impl EvidenceStatus {
         }
     }
 
-    fn detail(&self) -> String {
+    /// The stable machine-readable name used by the JSON documents.
+    pub(crate) fn id(&self) -> &'static str {
+        match self {
+            Self::NoFindings => "no_findings",
+            Self::NoFindingsOutsideExceptions(_) => "no_findings_outside_exceptions",
+            Self::Findings(_) => "findings",
+            Self::Generated(_) => "generated",
+            Self::Observed(_) => "observed",
+            Self::NotChecked(_) => "not_checked",
+            Self::Error(_) => "error",
+        }
+    }
+
+    /// Whether this status makes the audit exit non-zero.
+    pub(crate) fn fails(&self) -> bool {
+        matches!(self, Self::Findings(_) | Self::Error(_))
+    }
+
+    pub(crate) fn detail(&self) -> String {
         match self {
             Self::NoFindings => "The named check ran and reported no findings.".to_string(),
             Self::NoFindingsOutsideExceptions(advisories) => format!(
@@ -61,20 +79,16 @@ pub(crate) struct AuditSummary {
 }
 
 fn check_summary(id: &'static str, status: &EvidenceStatus) -> CheckSummary {
-    let (name, count, exceptions) = match status {
-        EvidenceStatus::NoFindings => ("no_findings", None, Vec::new()),
-        EvidenceStatus::NoFindingsOutsideExceptions(advisories) => {
-            ("no_findings_outside_exceptions", None, advisories.clone())
-        }
-        EvidenceStatus::Findings(count) => ("findings", Some(*count), Vec::new()),
-        EvidenceStatus::Generated(count) => ("generated", Some(*count), Vec::new()),
-        EvidenceStatus::Observed(count) => ("observed", Some(*count), Vec::new()),
-        EvidenceStatus::NotChecked(_) => ("not_checked", None, Vec::new()),
-        EvidenceStatus::Error(_) => ("error", None, Vec::new()),
+    let (count, exceptions) = match status {
+        EvidenceStatus::NoFindingsOutsideExceptions(advisories) => (None, advisories.clone()),
+        EvidenceStatus::Findings(count)
+        | EvidenceStatus::Generated(count)
+        | EvidenceStatus::Observed(count) => (Some(*count), Vec::new()),
+        _ => (None, Vec::new()),
     };
     CheckSummary {
         id,
-        status: name,
+        status: status.id(),
         count,
         exceptions,
         detail: crate::ui::error_report::sanitize(&status.detail()),
