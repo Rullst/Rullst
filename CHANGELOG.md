@@ -41,6 +41,15 @@ A prepared version section does not establish that its tag or crates exist.
   `custom_provider` example. `cargo rullst upgrade` reports removed names as
   `V13-CAPITAL-REMOVED`.
 
+### Dependency security: hickory 0.26.3
+
+- Lock `hickory-resolver`, `hickory-net` and `hickory-proto` 0.26.3 (from
+  0.26.1), reached only through the optional MongoDB driver of `rullst-orm`.
+  It resolves GHSA-5j98-2g5x-46v6, GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5.
+  `hickory-resolver` 0.26.2 does not compile against `hickory-net` 0.26.1 even
+  though its manifest allows it; 0.26.3 requires matching versions, so the
+  three move together. Lockfile-only change; no manifest or API change.
+
 ### Maturity tiers and security layer guide
 
 - New [maturity page](docs/src/maturity.md): every crate is Core, Extension or
