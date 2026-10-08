@@ -1995,52 +1995,10 @@ with the other Capital adapters.
 
 ### CI tooling
 
-- Isolate partial-update integration tests in separate processes with checked
-  SQLite initialization. Verify Live's oversized-frame rejection across TCP
-  resets while retaining domain-state and connection-admission assertions.
-- Reject manual archive selectors that would skip the requested package gate.
-  Prepare the complete locked dependency graph before offline archive consumers
-  inspect cross-platform dependencies. Let cancelled observational scorecards
-  release their workflow concurrency slot while retaining reports after failures.
-- Prepare the v13 release line with explicit major/branch/tag/package binding,
-  protected-head admission, automatic checks on both maintained branches and
-  fuzz provenance confined to the candidate's release line. Keep the protected
-  publication approval and full release evidence requirements.
-- Distinguish skipped jobs from measured execution in timing reports, including
-  GitHub's reversed synthetic timestamps; retain strict validation for jobs
-  that ran. Record successful hosted optimization evidence without hiding the
-  longer total elapsed time caused by substantial job-start waits.
-- Limit single-target fuzz diagnostic preparation to the exact requested target
-  with fail-closed package selection. Retain every release preflight target,
-  sanitizer setting and campaign duration; add scheduling/failure regressions.
-- Validate the entire threat evidence manifest before builds, remove repeated
-  Cargo target-listing calls, and require exact non-ignored execution instead
-  of accepting a zero-test success. Preserve all 59 unique negative tests.
-- Run only the fully materialized LMS for its eight threat mappings, using the
-  same case and application-test helper. Keep every configuration and assertion
-  in the normal eight-project matrix, including ERP release builds; exclude only
-  its redundant exact-name LMS wrapper there. Add real Rust harness and
-  scheduling regressions, and bound nested compilation to two jobs in hosted
-  threat checks. The optimized Linux run passed all 25 required runtime jobs;
-  reduced execution work did not guarantee shorter overall queue-plus-run time.
-- Add a bounded read-only job-timing reporter and negative fixtures; distinguish
-  job waits, combined execution steps and summed runner time from release evidence.
-- Add an observation-only Git impact planner with transitive normal, optional,
-  target, build and development dependency edges. Unknown inputs, changed
-  policy/dependencies, critical crates, executable documentation and ambiguous
-  history retain full verification; no check is skipped by its reports.
-- Add a development-only site admission path for v13 pushes, requiring a recent
-  exact-source baseline with all 25 Linux runtime jobs successful, a bounded
-  three-file presentation diff and fresh browser/documentation checks. Missing
-  or invalid evidence falls back to full runtime CI; PRs, main, manual and release
-  gates are unchanged. The first hosted positive path completed Rust CI in 43s;
-  its immediately preceding full Linux baseline took 20m57s. These observed
-  timings do not predict runtime-change or release verification duration.
-- Resolve every fuzz dependency graph with locked Cargo metadata before Clippy
-  and campaign builds. Remove the ineffective `--no-deps` preflight and add real
-  stale-lock regression evidence; retain all forty fuzz targets and durations.
-- Use pinned prebuilt mdBook releases for documentation and Pages builds while
-  retaining their book, link and real-browser checks.
+- Internal CI and release-tooling hardening only: test isolation, fuzz and
+  threat-evidence scheduling, archive and release-line admission for v13,
+  and timing reports. Release requirements and evidence are unchanged; see
+  [WORKFLOWS.md](WORKFLOWS.md) and the commit history for details.
 
 ### Documentation
 
