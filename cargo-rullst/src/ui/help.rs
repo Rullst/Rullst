@@ -83,7 +83,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 (
                     "cargo rullst make:mail-invoice [Name]",
-                    "Scaffold evidence-aware fiscal/receipt mail",
+                    "Scaffold bounded payment-receipt mail",
                 ),
                 (
                     "cargo rullst make:mail-dunning [Name]",

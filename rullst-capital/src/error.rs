@@ -299,10 +299,6 @@ pub enum CapitalError {
     #[error(transparent)]
     Quota(#[from] crate::quota::QuotaError),
 
-    /// Digital invoice or tax authority operation error.
-    #[error("Fiscal error: {0}")]
-    FiscalError(#[from] crate::fiscal::models::FiscalError),
-
     /// General billing error.
     #[error("Billing error: {0}")]
     General(String),
@@ -323,7 +319,6 @@ impl From<&str> for CapitalError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fiscal::models::FiscalError;
 
     #[test]
     fn test_capital_error_display_and_conversions() {
@@ -384,13 +379,6 @@ mod tests {
             "quota exceeded: used 2, requested 1, limit 2"
         );
 
-        let f_err = FiscalError::XmlSigning("bad xml".to_string());
-        let e8: CapitalError = f_err.into();
-        assert!(
-            e8.to_string()
-                .contains("Fiscal error: XML digital signing error")
-        );
-
         let e9: CapitalError = "from str".into();
         assert_eq!(e9, CapitalError::General("from str".to_string()));
 
@@ -420,14 +408,14 @@ mod tests {
         assert_eq!(limited.to_string(), "stripe checkout returned HTTP 429");
         assert!(!limited.to_string().contains("secret"));
 
-        let unavailable = ProviderFailure::http_response("wise", "payout", 503, None);
+        let unavailable = ProviderFailure::http_response("infinitepay", "checkout", 503, None);
         assert_eq!(unavailable.class(), ProviderFailureClass::Transient);
-        let rejected = ProviderFailure::http_response("wise", "payout", 422, None);
+        let rejected = ProviderFailure::http_response("infinitepay", "checkout", 422, None);
         assert_eq!(rejected.class(), ProviderFailureClass::Permanent);
-        let malformed = ProviderFailure::invalid_response("wise", "payout");
+        let malformed = ProviderFailure::invalid_response("infinitepay", "checkout");
         assert_eq!(malformed.kind(), ProviderFailureKind::InvalidResponse);
-        assert_eq!(malformed.provider(), "wise");
-        assert_eq!(malformed.operation(), "payout");
+        assert_eq!(malformed.provider(), "infinitepay");
+        assert_eq!(malformed.operation(), "checkout");
         let mismatch = ProviderFailure::contract_mismatch("stripe", "direct charge");
         assert_eq!(mismatch.kind(), ProviderFailureKind::ContractMismatch);
         assert_eq!(mismatch.class(), ProviderFailureClass::Permanent);

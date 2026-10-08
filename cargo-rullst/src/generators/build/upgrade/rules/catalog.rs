@@ -63,7 +63,7 @@ rules! {
         "Gate A/B code on `variant` instead of `enabled`; a negative `rollout_percentage` means 0%.";
     REFERRER_POLICY: "V13-REFERRER-NO-REFERRER", Review, "Security headers",
         "header layers now preserve an endpoint's exact `Referrer-Policy: no-referrer`",
-        "Confirm the endpoint intends the more restrictive policy; other endpoint values still yield to the baseline.";
+        "Confirm the endpoint intends the more restrictive policy; other endpoint values still yield to `SecureHeadersLayer`, while Core now keeps them.";
     GEMINI_STOP_REASONS: "V13-AI-GEMINI-STOP-REASONS", Review, "AI provider streaming and stop reasons",
         "Gemini now streams and fails with `AiError::ApiError` on `MAX_TOKENS` or safety stop reasons",
         "Handle `AiError::ApiError` for truncated or blocked answers and raise the output limit where needed.";
@@ -196,9 +196,9 @@ rules! {
     MFA_CLIENT_SECRET: "V13-MFA-CLIENT-SECRET", Review, "CLI generators",
         "an MFA handler generated before v13 verified a client-supplied `secret`",
         "Replace it with the server-side factor store that `cargo rullst make:mfa` now generates.";
-    WISE_WEBHOOK: "V13-CAPITAL-WEBHOOKS", Review, "Capital provider webhooks",
-        "Wise `parse_webhook_payload` accepts only `mock_*` tokens; live deliveries need signature verification",
-        "Configure `with_webhook_public_key_pem` and use `verify_transfer_state_change` for live Wise deliveries.";
+    CAPITAL_REMOVED: "V13-CAPITAL-REMOVED", Review, "Capital providers and NFS-e removed",
+        "this names a payment provider, payout or NFS-e API that v13 removed from `rullst-capital`",
+        "Use Stripe or InfinitePay, or implement `BillingProvider` for the gateway in application code (see the custom provider guide); remove NFS-e and payout code, which are no longer part of Rullst.";
     QUOTA_KEYS: "V13-CAPITAL-QUOTA-KEYS", Review, "Capital quota keys on MySQL/MariaDB",
         "`SqlQuotaStore` keys are case-sensitive; older MySQL/MariaDB tables need an `ALTER TABLE`",
         "On MySQL/MariaDB run the `ascii_bin` migration from the Capital README before serving quota calls.";
@@ -226,6 +226,9 @@ rules! {
     MAIL_TEXT_FALLBACK: "V13-MAIL-TEXT-FALLBACK", Review, "Mail plain-text fallback",
         "the derived plain-text part now appends link targets as `label <URL>`",
         "Update tests comparing derived text, or set `text` explicitly.";
+    MAIL_REMOVED: "V13-MAIL-REMOVED", Review, "Mail providers removed",
+        "this names a mail transport, `MAIL_DRIVER` value or setting that v13 removed from `rullst-mail`",
+        "Use Resend, AWS SES, SendPulse or SMTP, or implement `MailDriver` for the provider in application code (see the custom transport guide); a removed `MAIL_DRIVER` fails every send.";
     LABS_RUNNER: "V13-LABS-RUNNER-REMOVED", MustChange, "Labs runner",
         "the `rullst-labs-runner` candidate was removed from v13 and is not published",
         "Remove the dependency and deploy an application-owned runner against the labs controller contract.";
@@ -316,4 +319,128 @@ rules! {
     PAGE_LANGUAGE: "V13-RENDER-PAGE-LANGUAGE", Review, "Starter page language",
         "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
         "Call `rullst::htmx::render_page_with_lang(&htmx, \"en\", title, content)` with the page's language.";
+}
+
+/// Public `rullst-capital` names removed in v13 (`V13-CAPITAL-REMOVED`):
+/// the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase
+/// Commerce and PicPay providers, the Wise payout adapter with its payout
+/// contracts, and the NFS-e fiscal module. Only distinctive names are listed;
+/// generic ones such as `TaxRegime` could name an application's own type.
+pub(crate) const REMOVED_CAPITAL_IDENTS: &[&str] = &[
+    "PaddleProvider",
+    "PaddleCustomerRequest",
+    "PaddleCustomerReceipt",
+    "PaddleCheckoutRequest",
+    "PaddleCheckoutSession",
+    "PaddleSubscriptionEvent",
+    "PaddleSubscriptionSnapshot",
+    "PaddlePortalSession",
+    "LemonSqueezyProvider",
+    "LemonSqueezyUsageRecord",
+    "LemonSqueezyUsageAction",
+    "PolarProvider",
+    "PolarCheckoutRequest",
+    "PolarCheckoutSession",
+    "RazorpayProvider",
+    "MercadoPagoProvider",
+    "AlipayProvider",
+    "CoinbaseCommerceProvider",
+    "CoinbaseProvider",
+    "PicPayProvider",
+    "WiseProvider",
+    "WiseTransferState",
+    "WiseTransferStateChange",
+    "PayoutProvider",
+    "PayoutStatus",
+    "PayoutEvent",
+    "init_payout_provider",
+    "try_init_payout_provider",
+    "FiscalEngine",
+    "FiscalCertificate",
+    "FiscalCommandJournal",
+    "FiscalCustomer",
+    "FiscalEmitter",
+    "FiscalError",
+    "FiscalResponse",
+    "FiscalResponseKind",
+    "NfseDps",
+    "NfseDpsV101",
+    "NfseEnvironment",
+    "NfseNationalClient",
+    "NfseIssueRequest",
+    "NfseIssueResponse",
+    "NfseDpsSchemaValidator",
+    "build_dps_xml",
+    "build_dps_xml_v1_01",
+    "sign_dps_xml",
+    "issue_nfse_direct",
+    "to_dps",
+];
+
+/// Public `rullst-mail` names removed in v13 (`V13-MAIL-REMOVED`): the
+/// SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
+/// transports. `MailTrap`, the in-memory test trap, is kept.
+pub(crate) const REMOVED_MAIL_IDENTS: &[&str] = &[
+    "SendGridDriver",
+    "PostmarkDriver",
+    "MailjetDriver",
+    "MailtrapDriver",
+    "AzureCommunicationDriver",
+    "AzureMailCredential",
+    "AzureMailAccessToken",
+    "AzureManagedIdentity",
+    "StaticAzureMailCredential",
+    "with_message_stream",
+];
+
+/// `MAIL_DRIVER` values of the removed mail transports.
+const REMOVED_MAIL_DRIVERS: &[&str] = &[
+    "sendgrid",
+    "postmark",
+    "mailjet",
+    "mailjet-sandbox",
+    "mailtrap",
+    "mailtrap-sandbox",
+    "azure-acs",
+];
+
+/// Settings that only the removed mail transports read.
+const REMOVED_MAIL_SETTINGS: &[&str] = &[
+    "SENDGRID_API_KEY",
+    "POSTMARK_SERVER_TOKEN",
+    "POSTMARK_API_KEY",
+    "POSTMARK_MESSAGE_STREAM",
+    "MAILJET_API_KEY",
+    "MAILJET_SECRET_KEY",
+    "MAILTRAP_API_TOKEN",
+    "MAILTRAP_SANDBOX_ID",
+    "AZURE_COMMUNICATION_EMAIL_ENDPOINT",
+];
+
+/// Whether a value names a removed `MAIL_DRIVER`, ignoring case and quotes.
+pub(crate) fn is_removed_mail_driver(value: &str) -> bool {
+    let value = value.trim().trim_matches(['"', '\'']).to_ascii_lowercase();
+    REMOVED_MAIL_DRIVERS.contains(&value.as_str())
+}
+
+/// Whether a `.env` line selects or configures a removed mail transport:
+/// `MAIL_DRIVER=<removed>` or a setting only those transports read.
+pub(crate) fn removed_mail_setting(line: &str) -> bool {
+    let line = line.trim();
+    let line = line.strip_prefix("export ").unwrap_or(line);
+    let Some((key, value)) = line.split_once('=') else {
+        return false;
+    };
+    let key = key.trim();
+    let value = value.split(" #").next().unwrap_or(value);
+    (key == "MAIL_DRIVER" && is_removed_mail_driver(value)) || REMOVED_MAIL_SETTINGS.contains(&key)
+}
+
+/// Whether a Rust string literal selects or configures a removed mail
+/// transport: a `.env` style line, a removed setting name, or a removed
+/// driver value paired with the key `MAIL_DRIVER`.
+pub(crate) fn removed_mail_string(value: &str, key: Option<&str>) -> bool {
+    value.lines().any(removed_mail_setting)
+        || REMOVED_MAIL_SETTINGS.contains(&value)
+        || (key == Some("MAIL_DRIVER") && is_removed_mail_driver(value))
 }

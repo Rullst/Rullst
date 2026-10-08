@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 pub mod academy_doctor;
+pub(crate) mod add;
 pub(crate) mod age_gate;
 pub mod ai_context;
 pub(crate) mod api_contract;
@@ -31,6 +32,7 @@ pub mod dev;
 pub mod diagram;
 pub mod doctor;
 pub mod eject;
+pub(crate) mod footprint;
 pub mod foundry;
 pub mod grpc;
 pub mod hook;

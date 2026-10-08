@@ -20,16 +20,7 @@ fn authenticated_incomplete_events_cannot_grant_active_access() {
                 "stripe-signature",
                 format!("t={now},v1={}", sign(format!("{now}.{{}}").as_bytes())),
             ),
-            "paddle" => (
-                "paddle-signature",
-                format!("ts={now};h1={}", sign(format!("{now}:{{}}").as_bytes())),
-            ),
-            "lemonsqueezy" => ("x-signature", sign(payload)),
-            "polar" => ("polar-signature", sign(payload)),
-            "picpay" => ("x-seller-token", secret.to_owned()),
             "infinitepay" => ("x-infinitepay-signature", sign(payload)),
-            "razorpay" => ("x-razorpay-signature", sign(payload)),
-            "coinbase" => ("x-cc-webhook-signature", sign(payload)),
             _ => continue,
         };
         let headers = HashMap::from([(name.to_owned(), signature)]);
@@ -43,61 +34,13 @@ fn authenticated_incomplete_events_cannot_grant_active_access() {
     );
 }
 
-#[test]
-fn unrecognized_authenticated_payment_events_are_not_entitlements() {
-    use ring::hmac;
-    use std::collections::HashMap;
-    for kind in [
-        "charge:created",
-        "unconfirmed",
-        "charge:resolved-but-untrusted",
-        "future.event",
-    ] {
-        let payload = serde_json::to_vec(
-            &serde_json::json!({"event":{"type":kind,"data":{"id":"charge_fixture"}}}),
-        )
-        .unwrap();
-        let signature = hex::encode(
-            hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, b"secret"), &payload).as_ref(),
-        );
-        assert!(
-            CoinbaseCommerceProvider::new("fixture-key", "secret")
-                .handle_webhook(
-                    &payload,
-                    &HashMap::from([("x-cc-webhook-signature".into(), signature)])
-                )
-                .is_err()
-        );
-    }
-    let payload = br#"{"event":"future.subscription.event"}"#;
-    let signature =
-        hex::encode(hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, b"secret"), payload).as_ref());
-    assert!(
-        RazorpayProvider::new("fixture-key", "fixture-key", "secret")
-            .handle_webhook(
-                payload,
-                &HashMap::from([("x-razorpay-signature".into(), signature)])
-            )
-            .is_err()
-    );
-}
-
 #[tokio::test]
 async fn plan_only_checkout_rejects_adapters_without_authoritative_pricing() {
     // A newline makes header construction fail locally in the old implementation,
     // so even the red regression never sends credentials to a real provider.
     let mut attempted_live = Vec::new();
     for provider in providers("fixture\ninvalid-header") {
-        if ![
-            "mercadopago",
-            "coinbase",
-            "infinitepay",
-            "picpay",
-            "paddle",
-            "polar",
-        ]
-        .contains(&provider.name())
-        {
+        if provider.name() != "infinitepay" {
             continue;
         }
         let result = provider
@@ -118,78 +61,11 @@ async fn plan_only_checkout_rejects_adapters_without_authoritative_pricing() {
 }
 
 #[tokio::test]
-async fn wise_email_transfer_cannot_fabricate_recipient_quote_or_funding() {
-    for key in ["live-fixture-key", "fixture\ninvalid-header"] {
-        let provider = WiseProvider::new(key, "profile-123");
-        assert!(matches!(
-            provider
-                .send_payout("person@example.invalid", 100, "BRL", "reference")
-                .await,
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-    }
-    for key in ["", "mock_key"] {
-        assert!(
-            WiseProvider::new(key, "profile-123")
-                .send_payout("person@example.invalid", 100, "BRL", "reference")
-                .await
-                .unwrap()
-                .starts_with("wise_tr_mock_")
-        );
-    }
-}
-
-#[tokio::test]
-async fn wise_offline_mock_never_reports_real_transfers_as_sent() {
-    for key in ["", "mock_key"] {
-        let provider = WiseProvider::new(key, "profile-123");
-        // A transfer created in the Wise dashboard must not appear sent offline.
-        assert!(matches!(
-            provider.get_transfer_status("50123456").await,
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-        let transfer_id = provider
-            .create_transfer("person@example.invalid", 100, "BRL")
-            .await
-            .unwrap();
-        assert!(!transfer_id.contains("person"));
-        assert!(!transfer_id.contains("example"));
-        assert_eq!(
-            provider.get_transfer_status(&transfer_id).await.unwrap(),
-            PayoutStatus::OutgoingPaymentSent
-        );
-    }
-}
-
-#[test]
-fn unauthenticated_wise_webhook_parser_is_limited_to_explicit_mock_fixtures() {
-    // A forged body must never become a payout event outside an offline fixture.
-    let forged = br#"{"data":{"resource":{"id":987654321},"current_state":"funds_refunded"}}"#;
-    for key in ["live-fixture-key", "fixture\ninvalid-header"] {
-        assert!(matches!(
-            WiseProvider::new(key, "profile-123").parse_webhook_payload(forged),
-            Err(CapitalError::UnsupportedOperation(_))
-        ));
-    }
-    for key in ["", "   "] {
-        assert!(matches!(
-            WiseProvider::new(key, "profile-123").parse_webhook_payload(forged),
-            Err(CapitalError::ConfigurationError(_))
-        ));
-    }
-    assert!(
-        WiseProvider::new("mock_key", "profile-123")
-            .parse_webhook_payload(b"not json")
-            .is_err()
-    );
-}
-
-#[tokio::test]
 async fn placeholder_credentials_do_not_silently_enable_mock_checkout() {
-    let providers: Vec<Box<dyn BillingProvider>> = vec![
-        Box::new(InfinitePayProvider::new("handle_fixture", "secret")),
-        Box::new(PicPayProvider::new("picpay_token", "secret")),
-    ];
+    let providers: Vec<Box<dyn BillingProvider>> = vec![Box::new(InfinitePayProvider::new(
+        "handle_fixture",
+        "secret",
+    ))];
     let mut fabricated = Vec::new();
     for provider in providers {
         if !matches!(
@@ -210,14 +86,7 @@ async fn placeholder_credentials_do_not_silently_enable_mock_checkout() {
 fn providers(key: &str) -> Vec<Box<dyn BillingProvider>> {
     vec![
         Box::new(StripeProvider::new(key, "secret")),
-        Box::new(LemonSqueezyProvider::new(key, "secret")),
-        Box::new(PaddleProvider::new(key, "secret")),
-        Box::new(PolarProvider::new(key, "secret")),
-        Box::new(MercadoPagoProvider::new(key, "secret")),
-        Box::new(RazorpayProvider::new(key, key, "secret")),
         Box::new(InfinitePayProvider::new(key, "secret")),
-        Box::new(PicPayProvider::new(key, "secret")),
-        Box::new(CoinbaseCommerceProvider::new(key, "secret")),
     ]
 }
 
@@ -255,22 +124,12 @@ async fn live_subscription_noops_fail_closed() {
     let mut incorrectly_successful = Vec::new();
     for provider in providers("live-fixture-key") {
         let result = match provider.name() {
-            "paddle" | "polar" | "mercadopago" | "razorpay" => {
-                provider.report_usage("sub_1", "usage", 1).await
-            }
-            "infinitepay" | "picpay" | "coinbase" => provider.cancel_subscription("sub_1").await,
+            "infinitepay" => provider.cancel_subscription("sub_1").await,
             _ => continue,
         };
         if !matches!(result, Err(CapitalError::UnsupportedOperation(_))) {
             incorrectly_successful.push(provider.name());
         }
-    }
-    let polar = PolarProvider::new("live-fixture-key", "secret");
-    if !matches!(
-        polar.pause_subscription("sub_1").await,
-        Err(CapitalError::UnsupportedOperation(_))
-    ) {
-        incorrectly_successful.push("polar pause");
     }
     assert!(
         incorrectly_successful.is_empty(),

@@ -113,14 +113,17 @@ with tempfile.TemporaryDirectory(prefix="rullst-ai-") as directory:
 
     workspace = base / "workspace"
     workspace.mkdir()
+    # `cargo rullst new` initializes Git, so the new project gets a real
+    # checkpoint and the assistant no longer asks to continue without one.
     answers = [((b"Apply?", 1), b"y\r"), ((b"Apply?", 2), b"y\r"),
-               ((b"Continue without a checkpoint?", 1), b"y\r"), ((b"Apply?", 3), b"y\r"),
-               ((b"Run `cargo check` now?", 1), b"n\r")]
+               ((b"Apply?", 3), b"y\r"), ((b"Run `cargo check` now?", 1), b"n\r")]
     status, text, _ = terminal(workspace, env, ["ai", "build a shop"], answers, timeout=180)
     assert status == 0, (status, text[-800:])
     created = workspace / "rullst-ai-demo"
     assert (created / "Cargo.toml").is_file(), text[-800:]
     assert "Now working in the new project rullst-ai-demo" in text
+    assert "Continue without a checkpoint?" not in text, text[-800:]
+    assert git(created, "for-each-ref", "refs/rullst") != "", "checkpoint in the new project"
     assert (created / "rullst-ai-demo.md").read_text().endswith("Status: reviewed\n")
     print(json.dumps({"case": "new-project-then-change", "passed": True}))
 

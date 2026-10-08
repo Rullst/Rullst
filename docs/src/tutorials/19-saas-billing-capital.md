@@ -13,10 +13,12 @@ The command detects a relational SQLx or Turso-primary project, adds the exact
 `orm` and `capital` facade features once, generates a reversible matching
 migration, registers the models/controller/page modules, and refuses to
 overwrite an earlier billing scaffold. The generated runtime supports the
-selected Stripe live integration, an opt-in Paddle recurring-billing candidate
-(unpublished v13; see the generated `BILLING.md`) or explicit offline fixtures.
-Lemon Squeezy remains a fixture; adapter capabilities do not imply an
-integrated application journey for every gateway.
+Stripe live integration or explicit offline fixtures; `BILLING_PROVIDER`
+accepts only `stripe`. To bill through another gateway, implement the Capital
+provider traits in the application as described in
+[Writing your own payment provider](../capital-custom-provider.md). v13
+removed the other built-in adapters; see the
+[v13 migration guide](../migration-v13.md).
 
 **Since 12.1.0:** the Stripe flow persists an opaque local owner,
 account/test-live scope, immutable customer and checkout intents, session IDs,
@@ -69,18 +71,6 @@ uses the same persisted customer. The application supplies authentication and
 membership, configured products/prices, retention, entitlement/settlement policy,
 and actual provider-account sandbox acceptance. Navigation and session creation
 never grant paid access.
-
-Polar callers use the additive `PolarCheckoutRequest` and
-`create_product_checkout` API with a product UUID and opaque external customer.
-The legacy email/price-only method cannot supply those bindings. See the
-[Capital README](https://github.com/Rullst/Rullst/tree/main/rullst-capital)
-for sandbox selection, trusted client IP and signed subscription binding.
-
-Paddle callers use `PaddleCustomerRequest`, `PaddleCheckoutRequest` and
-`create_transaction_checkout` with a recurring price and approved Paddle.js
-payment page. Persist the customer/attempt/transaction binding and reconcile
-uncertain creation before retrying; correlation metadata is not provider
-idempotency. The same README describes signed lifecycle and current-state reads.
 
 ### 2.1 Handle provider failure without blindly repeating a charge
 
@@ -185,8 +175,7 @@ currency. The default PDF is paginated, bounded to sixteen MiB and supports
 WinAnsi text (including common Portuguese characters); pass a checked TTF/OTF
 to Capital for other scripts. Mail applies its mandatory pre-flight before the
 facade queues or sends the HTML message and attachment; `from` re-runs it for
-the verified sender, which SendPulse, Mailjet, Mailtrap and ACS require and
-without which other real drivers fall back to a placeholder sender.
+the verified sender, which every real transport requires: none invents one.
 
 This helper does not subscribe to webhooks by itself. Reconcile the provider
 event, build the authoritative invoice and insert `delivery_key` under a unique
@@ -217,40 +206,13 @@ async fn report_ai_exercises(stripe: &StripeProvider) -> Result<(), CapitalError
 }
 ```
 
-Lemon Squeezy instead needs its numeric subscription-item relationship and an
-aggregation action:
-
-```rust,no_run
-use rullst_capital::{
-    CapitalError, LemonSqueezyProvider, LemonSqueezyUsageAction,
-    LemonSqueezyUsageRecord, MeteredBillingProvider as _,
-};
-
-async fn report_lesson_minutes(
-    lemon: &LemonSqueezyProvider,
-) -> Result<(), CapitalError> {
-    let record = LemonSqueezyUsageRecord::new(
-        "42",
-        "lesson_minutes",
-        15,
-        LemonSqueezyUsageAction::Increment,
-        "usage:school-7:lesson-session-123",
-    )?;
-
-    // Atomically claim record.event_key() in a durable outbox before this call.
-    let receipt = lemon.report_metered_usage(&record).await?;
-    assert_eq!(receipt.quantity(), 15);
-    Ok(())
-}
-```
-
-Use `Increment` only with a sum-of-usage aggregation and `Set` only with the
-matching latest-value aggregation. Stripe receives the identifier but enforces
-it only within a rolling window. Lemon's request does not receive the
-application event key at all, so durable application deduplication is mandatory.
-The adapters cap and bind responses, while provider sandbox/live acceptance,
-retry, invoice reconciliation and entitlement updates remain release and
-application work. Empty or `mock_*` API keys produce a deterministic
+Stripe receives the identifier but enforces it only within a rolling window, so
+keep a durable application record of submitted events. A custom adapter whose
+provider receives no event key reports
+`UsageDeduplication::ApplicationOutboxRequired`; durable application
+deduplication is then mandatory. The adapter caps and binds responses, while
+provider sandbox/live acceptance, retry, invoice reconciliation and entitlement
+updates remain release and application work. Empty or `mock_*` API keys produce a deterministic
 `UsageStatus::Mock`, never billable evidence.
 
 ## 6. Verify webhooks before business processing
@@ -317,10 +279,9 @@ async fn grant_a_retention_offer(
 `extend_trial(15)` uses the current UTC time for interactive convenience.
 Workers should persist their command time and use `extend_trial_days_at` so a
 retry sends the identical expiration; `set_trial_end` is the explicit absolute
-timestamp operation. Stripe has the reviewed live coupon path. Lemon Squeezy
-discount codes belong to checkout and therefore fail explicitly when applied
-to an existing live subscription; both Stripe and Lemon Squeezy have reviewed
-trial-update protocol fixtures. Authorize the subscription owner before
+timestamp operation. Stripe has the reviewed live coupon path and reviewed
+trial-update protocol fixtures; adapters without those contracts fail
+explicitly. Authorize the subscription owner before
 building the handle, serialize conflicting updates, and reconcile the signed
 provider webhook because trial changes can affect billing anchors and charges.
 

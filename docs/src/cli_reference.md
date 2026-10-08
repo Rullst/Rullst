@@ -225,7 +225,7 @@ The choices that materially change the generated application:
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
+  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. Its example write route, `POST /api/messages`, is a bearer machine endpoint: clients send `Authorization: Bearer <API_TOKEN>` with the random `API_TOKEN` written to `.env`, and the server does not start without it (see [which security layer to use](security-layers.md#what-generated-applications-already-have)). The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
@@ -233,10 +233,17 @@ The choices that materially change the generated application:
     shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
-    `.dockerignore` is kept unchanged. The runtime
-    image installs CA certificates, runs as UID/GID 10001, sets the production
-    bind address and copies local static/config assets when present. An explicit
-    SQLite selection uses the writable `/app/data` directory. Secrets are never
+    `.dockerignore` is kept unchanged. Since v13 the runtime
+    stage is `gcr.io/distroless/cc-debian12:nonroot` (glibc, libgcc, libstdc++,
+    CA certificates and tzdata; no shell or package manager). It runs as
+    UID/GID 10001 with `HOME=/app`, sets the production bind address and copies
+    local static/config assets when present. The builder stage prepares the
+    `/app` tree, so an explicit SQLite selection still uses the writable
+    `/app/data` directory. Without a shell the image has no `HEALTHCHECK`;
+    let the platform probe `/health` and `/ready` over HTTP. The migration job
+    runs the binary directly (`/app/<name> db:migrate`). The image size of this
+    template has not been measured yet; measure it with `docker image ls` in CI
+    or on a machine with Docker. Secrets are never
     embedded and no anonymous volume is declared. Run schema migrations as one
     deployment job before starting or rolling multiple replicas; the generated
     image deliberately does not race migrations from every application process.
@@ -260,6 +267,7 @@ The choices that materially change the generated application:
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
+  * `--vcs <git|none>` (v13, default `git`): Like `cargo new`, initializes a Git repository in the new project when `git` is installed and the destination is not already inside a Git work tree; `none` skips it. The generated `.gitignore` keeps `.env`, `.env.*` (except `.env.example`) and `/target` out. Without Git, `new` prints a warning and keeps the project; `cargo rullst audit` checks committed secrets through Git.
 
 Since v13, `--blueprint`, `--database`, `--no-database`, `--ai` and `--redis`
 no longer require `--default`: in a terminal they answer their questions and
@@ -272,6 +280,13 @@ When the generating Linux host has `mold` or `lld`, the project's
 the generating machine only: the generated `.gitignore` and `.dockerignore`
 exclude it, so CI runners, teammates and the container builder (which has
 neither linker) build with the toolchain default.
+
+Since v13 the generated `Cargo.toml` also has a `[profile.release]` with
+`lto = "thin"`, `codegen-units = 1` and `strip = "symbols"`. Debug builds keep
+Cargo's defaults, and `panic` stays `unwind` so one panicking handler cannot
+stop the server. Release builds take longer and their backtraces lose symbol
+names; the [measured release defaults](green-software-roadmap.md#measured-release-defaults)
+state the size and build-time effect on one starter.
 
 Without `--skip-initial-migration`, project creation performs the first Cargo
 build before applying migrations. A clean first build can take several minutes,
@@ -299,6 +314,11 @@ cargo rullst new operations-portal --default --blueprint erp \
   --database mariadb \
   --ai --redis --skip-initial-migration
 ```
+
+Every generated manifest also declares `validator` 0.21 with its `derive`
+feature. `#[derive(rullst::Validate)]` expands to `::validator::…` paths that
+only a direct dependency resolves, so `ValidatedForm`/`ValidatedJson` DTOs
+compile without adding it by hand; Rullst Core already builds that version.
 
 Generated SQLx applications disable the default features of both the umbrella
 `rullst` dependency and the direct `rullst-orm` dependency, and select exactly
@@ -393,7 +413,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (98 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (99 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -776,6 +796,47 @@ application routing; Cargo resolves the crate on the next build.
 An unknown action, or `add` without a package name, fails with a non-zero exit
 status.
 
+### `cargo rullst add`
+`cargo rullst add <capability> [--dry-run]` (v13) enables a facade capability
+in an existing project. Capabilities: `mail`, `auth`, `ai`, `nexus` and
+`studio`.
+
+It runs only at the root of a Rullst project (a `Cargo.toml` whose
+`[dependencies]` declare `rullst`), asks nothing and:
+
+1. enables the capability's `rullst` feature in `Cargo.toml`. The edit keeps
+   comments, formatting and the other features; a feature that already
+   implies it (for example `mailer` or `auth-sqlite`) counts as enabled;
+2. appends the capability's variables to `.env.example` under a
+   `# ── <Capability> (added by cargo rullst add …) ──` heading, creating the
+   file when it is missing. Values are placeholders, empty or `mock_*` (the
+   offline mocks of AGENTS.md 3.5), never real secrets; a variable that is
+   already assigned or commented out is not repeated. `.env` is changed only
+   when it lacks a variable the application needs to start in development,
+   and then receives the same mock value and is reported; none of the current
+   capabilities needs one, so `.env` stays as it is;
+3. prints the wiring code to paste and where it goes. Generated projects have
+   no marked insertion points, so `add` never edits application source;
+4. prints one to three next steps.
+
+| Capability | `rullst` feature | `.env.example` | Next steps |
+| :--- | :--- | :--- | :--- |
+| `mail` | `mail` | `MAIL_FROM`, `# MAIL_DRIVER`, `# RESEND_API_KEY` | `make:mail Welcome`, `dev` |
+| `auth` | `auth` | `APP_KEY` placeholder | `auth`, `make:mfa` |
+| `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `ai connect` |
+| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds) | `dev`, then `/nexus` |
+| `studio` | `studio` | none | `dev`, then `http://127.0.0.1:5555` |
+
+Running it again changes nothing and reports that the capability is already
+enabled. `--dry-run` prints the planned diff of every file and writes nothing.
+Outside a project it fails with the shared error report (exit status 1); an
+unknown capability is a usage error (exit status 2).
+
+```bash
+cargo rullst add mail --dry-run
+cargo rullst add mail
+```
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
@@ -822,7 +883,9 @@ automatically.
 
 ### `cargo rullst make:model <name>`
 Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
-receive `FromRow` plus `Orm`; Turso-primary projects receive
+receive `FromRow` plus `Orm` and import only those two derives (`use
+rullst::db::{FromRow, Orm};`), so the new file compiles without warnings;
+Turso-primary projects receive
 `#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
 key. Backend detection reads the generated manifest and does not treat an
 additive `--turso` integration as the primary ORM. Like `make:resource`, it
@@ -901,32 +964,27 @@ billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
 
 Empty or `mock_*` credentials select a local development fixture, which is
-refused in production. Other credentials select a real provider profile that
-creates provider customers, checkout sessions and portal sessions:
+refused in production. Other credentials select the real Stripe profile
+(`BILLING_PROVIDER=stripe`, the only accepted value), which creates provider
+customers, checkout sessions and portal sessions, persists the
+owner/customer/attempt bindings and processes signed webhooks atomically. It
+requires `BILLING_ACCOUNT_ID=acct_...`, an `sk_test_`/`rk_test_` or
+`sk_live_`/`rk_live_` `BILLING_API_KEY`, a strong `BILLING_WEBHOOK_SECRET` and
+an HTTPS `BILLING_REDIRECT_URL`; live keys additionally require
+`BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. To bill through
+another gateway, implement the Capital provider traits in application code; see
+[Writing your own payment provider](capital-custom-provider.md).
 
-* **Stripe** (`BILLING_PROVIDER=stripe`) persists the owner/customer/attempt
-  bindings and processes signed webhooks atomically. It requires
-  `BILLING_ACCOUNT_ID=acct_...`, an `sk_test_`/`rk_test_` or
-  `sk_live_`/`rk_live_` `BILLING_API_KEY`, a strong `BILLING_WEBHOOK_SECRET` and
-  an HTTPS `BILLING_REDIRECT_URL`; live keys additionally require
-  `BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`.
-* **Paddle** (`BILLING_PROVIDER=paddle`) is a recurring candidate configured with
-  `BILLING_ACCOUNT_ID`, `BILLING_PADDLE_ENVIRONMENT` (`sandbox` or `live`, the
-  latter also requiring the acknowledgement) and `BILLING_PADDLE_PAYMENT_LINK`.
-* **Lemon Squeezy** remains fixture-only.
-
-Mixed mock/real credentials, incomplete profile configuration and real Lemon
-Squeezy credentials return HTTP 503. The generated `BILLING.md` lists the
-permissions, webhook events, recovery procedures and remaining limits of each
-profile.
+Mixed mock/real credentials, incomplete configuration and any other
+`BILLING_PROVIDER` value return HTTP 503. The generated `BILLING.md` lists the
+permissions, webhook events, recovery procedures and remaining limits.
 
 Hosted checkout also requires the submitting page's CSP to allow its exact
 reviewed destination in `form-action`. The SaaS starter selects Stripe and
 generates `form-action 'self' https://checkout.stripe.com` while retaining the
 rest of Core's strict policy. `make:billing` prints this requirement and leaves
-your existing policy for review. Changing to Lemon Squeezy or another provider
-requires its exact merchant/custom checkout origin; do not allow `https:` or
-wildcard domains. Keep a single `form-action` directive in `security.csp` and
+your existing policy for review. A custom provider requires its exact checkout
+origin; do not allow `https:` or wildcard domains. Keep a single `form-action` directive in `security.csp` and
 review proxy/CDN policies too: another restrictive CSP still applies.
 
 Independently validate each returned URL (HTTPS, exact host/port, no embedded
@@ -952,12 +1010,11 @@ responsibilities.
 
 ### `cargo rullst make:mail-invoice [Name]`
 
-Generates `FiscalInvoiceEmail` by default and enables `mailer` plus `capital`.
-The result supports an international commercial receipt and an NFS-e message
-constructed from typed `FiscalResponse` provenance. An `OfflineMock` is always
-rendered as `[PREVIEW — NOT AUTHORIZED]`; the generator cannot turn local DPS,
-XSD, or XMLDSig validity into a tax authorization. A custom valid struct name
-may be supplied positionally.
+Generates `PaymentReceiptEmail` by default and enables `mailer`. The result is
+a bounded commercial payment receipt (`international_receipt`, optional
+`with_document_url`) that states it is not a tax authorization; it runs the
+mail pre-flight before returning the message. A custom valid struct name may be
+supplied positionally.
 
 ### `cargo rullst make:mail-dunning [Name]`
 
@@ -1519,6 +1576,7 @@ the dashboard exits.
 * the newest requests with status, method, duration and path (never the query
   string);
 * ORM queries since start and slow ORM operations (at least 100 ms);
+* possible N+1 queries (see [N+1 query warning](#n1-query-warning));
 * the pending jobs of a queue.
 
 Counters, latency samples and slow operations restart with every new process
@@ -1556,6 +1614,32 @@ ORM queries count the outermost `rullst.orm.query` span of each ORM operation
 traversal is not counted itself: each page it fetches and each operation its
 handler runs counts separately. One operation can run several SQL statements,
 and SQL executed directly through SQLx is not counted.
+
+#### N+1 query warning
+
+When the application reports that one request ran the same ORM operation at
+least three times (the threshold Studio's trace view uses), a **POSSIBLE N+1
+QUERIES** panel appears below the logs. Each line shows the request's method
+and matched route (`GET /posts/{id}`), the operation fingerprint
+(`Comment.select_many (comments)`, built from the ORM span's model, operation
+and table labels; Rullst never records SQL text or bound values) and the
+repetition count, followed by a hint to load the related rows eagerly or batch
+the lookups into one query. Inspect the handler before changing it: repeating
+an operation can be intentional. Raw statements (`Orm::raw`) and operations
+started on another task (`tokio::spawn`) are not attributed to a request, so
+they never produce a finding. The **VERIFIED PROJECT STATE** panel shows the
+detection state in its `N+1 check` line: the number of findings since the
+process started, `N+1 detection needs request-correlated ORM telemetry (Rullst
+Core 13)` when the application's telemetry has no request-correlated ORM data
+(an older Rullst Core), or `N+1 detection needs ORM query telemetry` when ORM
+queries themselves are not reported (see the table above).
+
+Performance note: a request that runs one ORM lookup per row (for example
+loading each post's comments inside a loop over posts) makes one database round
+trip per row. [Eager loading](crates/orm.md#query-row-cap) runs one
+related-model query for all parents of a batch, and an `IN` query can fetch
+the rows of several keys at once; measure the route before and after the
+change.
 
 Terminals at least 26 rows tall show the metrics row and terminals at least 105
 columns wide add the recent-requests panel; shorter terminals show a one-line
@@ -1640,6 +1724,40 @@ building an image; `cargo rullst dev` removes siblings that are not newer than
 their source at startup and on every change (siblings without a source file are
 kept).
 * **Flags:** `--debug` (Compiles with debug information, generating a larger binary).
+
+### `cargo rullst footprint` (v13)
+Runs a bounded closed-loop load against the app and reports requests per
+second, latency p50/p95/p99, errors, the app process's CPU time (Linux
+`/proc/<pid>/stat`), peak and idle RSS (`VmHWM`/`VmRSS`), the binary size, the
+Docker image size when a local daemon has an image named after the package,
+energy and a Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure. Every
+value shows its method; anything unavailable is `NOT MEASURED` with the reason.
+
+Without `--url` it builds the release binary (reusing an existing build),
+starts it with `RULLST_ENV=production` on a free `127.0.0.1` port, measures it
+and stops it. With `--url` it measures an app already running on loopback and
+refuses any other host; it makes no network calls beyond loopback and never
+fetches grid intensity. Energy is measured from readable RAPL package counters
+(whole package, includes other processes), otherwise estimated as CPU time ×
+`--cpu-watts` and labelled `estimate`, otherwise `NOT MEASURED`. SCI is
+computed only when energy is known and `--grid-intensity` is given.
+
+```bash
+cargo rullst footprint --duration 5s
+cargo rullst footprint --url http://127.0.0.1:3000 --path /health --json
+```
+
+* **Flags:** `--url <http://127.0.0.1:PORT>`, `--path <PATH>` (default `/`),
+  `--duration <10s|1m|1500ms>` (default `10s`, 1 s to 10 min),
+  `--concurrency <N>` (default 4, at most 256), `--grid-intensity <gCO2e/kWh>`,
+  `--cpu-watts <W>`, `--embodied <gCO2e>`, `--json` (versioned
+  `rullst.cli-footprint.v1`).
+* **Exit status:** `0` when the measurement ran, even with `NOT MEASURED`
+  fields; `1` when the build failed or the app could not be started or reached;
+  `2` for invalid arguments.
+
+See the [footprint guide](footprint.md) for what each number means, the RAPL
+permission note and how to choose a grid intensity.
 
 ### `cargo rullst dockerize` / `cargo rullst nixify`
 **Maturity:** `nixify` and `generate:buildah` are Experimental; `dockerize`
@@ -1777,6 +1895,11 @@ route and listener scans skip each top-level `#[cfg(test)]` item (such as
 `mod tests;` or an inline test module) on its own; code after it is still
 scanned.
 
+`cargo audit` and the SBOM read the project's own `Cargo.lock`. In a workspace
+member, which has none, they read the lockfile of the workspace root that
+`cargo metadata` reports, and `cargo audit` receives it as `--file`; the SBOM
+then lists every package of that workspace lockfile.
+
 SBOM components come from `Cargo.lock`. Only crates.io packages receive the
 plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a
 `repository_url` qualifier, a git package adds a `vcs_url` qualifier with the
@@ -1874,7 +1997,8 @@ protected CI remains authoritative.
 ### `cargo rullst doctor`
 Runs grouped health checks and shows each one as ✓ (pass), ! (warning),
 ✗ (failed) or · (information, optional or not applicable). Every warning and
-failure carries a one-line fix and a link to its group below. The command
+failure carries a fix (one line, or a short configuration snippet) and a link
+to its group below. The command
 exits with status `1` when any check failed; warnings do not fail it.
 `--fix` installs missing rustfmt/clippy components with
 `rustup component add rustfmt clippy`, then checks again. Outside a project
@@ -1892,6 +2016,26 @@ never printed.
 clippy (fixable with `--fix`), Git, the `wasm32-unknown-unknown` target when
 the project has `src/islands`, and one informational line for the optional
 tools (cargo-deny, cargo-geiger, cargo-mutants, Kani, cargo-llvm-cov, Docker).
+
+On Linux, `toolchain.linker` (v13) is a `!` hint, never a failure, when no
+fast linker is selected: no `-fuse-ld=mold`, `-fuse-ld=lld` (or
+`--ld-path=` naming one of them) and no `linker` entry in `[build]`, the host's
+`[target.<triple>]` or a `[target.'cfg(..)']` table of any `.cargo/config.toml`
+(or legacy `.cargo/config`) from the working directory up, or of
+`$CARGO_HOME/config.toml` (`~/.cargo` by default), and none in `RUSTFLAGS`,
+`CARGO_ENCODED_RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS` or the host's
+`CARGO_TARGET_<TRIPLE>_RUSTFLAGS`/`_LINKER`. It says whether `mold` or `ld.lld`
+is on `PATH` and shows the snippet to add, for example:
+
+```toml
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+```
+
+If the file already has that table, add the two flags to its `rustflags`
+instead of repeating the table. The check is skipped on other operating systems
+and on x86_64-unknown-linux-gnu with Rust 1.90 or newer, where rustc already
+links with its bundled LLD by default.
 
 #### Doctor: project
 The enclosing Rullst project (a `Cargo.toml` that depends on `rullst`) and its

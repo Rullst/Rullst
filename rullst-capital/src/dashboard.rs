@@ -36,7 +36,7 @@ impl Default for RevenueMetrics {
 pub struct WebhookEventRecord {
     /// Unique event identifier.
     pub id: String,
-    /// Provider name ("stripe" or "lemonsqueezy").
+    /// Provider name (for example "stripe", "infinitepay" or a custom adapter name).
     pub provider: String,
     /// Webhook event type (e.g. "invoice.payment_succeeded", "subscription_created").
     pub event_type: String,

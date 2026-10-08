@@ -32,6 +32,7 @@ where
             label: "every second".to_string(),
             schedule: CronSchedule::every_second(),
             handler,
+            deferral: None,
         }],
         task_timeout: timeout,
         failure_policy: SchedulerFailurePolicy::Continue,

@@ -97,7 +97,8 @@ requirement for this; it relates to V13.3.1 (L2) in chapter V13 Configuration.
 ### Vulnerable dependencies
 
 Runs the same `cargo audit` step as `cargo rullst audit`, with the same
-`--audit-ignore` exceptions. Without `cargo-audit` the check is `NOT CHECKED`;
+`--audit-ignore` exceptions, on the project's `Cargo.lock` or, in a workspace
+member, on the workspace root's lockfile. Without `cargo-audit` the check is `NOT CHECKED`;
 a run that reports advisories or fails is `ERROR`. Maps to V15.2.1 (L1).
 
 ### IDOR

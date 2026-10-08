@@ -914,7 +914,7 @@ when its dependencies and verification capacity are ready.
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. On 8 October 2026 the maintainer abandoned it in favour of generated Caddy/nginx configuration for established proxies; see the [master roadmap](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#ideas-recorded-for-after-130). | No delivery. Proxy work continues as generated configuration (Caddy today, nginx planned) consuming the existing readiness/drain signals. |
 | M1/M3/M7/M12 — adoption and assurance | The compatible updater is carried forward. `cargo rullst upgrade` reports v12 → v13 source findings from `rullst-upgrade-rules-v4`, each tied to a [migration-guide](migration-v13.md) row, and `cargo rullst ai upgrade` proposes reviewed fixes. Next: improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 
-Gateway/load-balancer implementation, fiscal homologation, physical IoT/Embassy,
+Gateway/load-balancer implementation, physical IoT/Embassy,
 PQC protocols, local facial inference and broad database replication retain
 their dedicated roadmap scope. They are not counted as completed by a proposal,
 an empty crate or a mock. Reconsider them through their own dependency and

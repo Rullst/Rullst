@@ -1,14 +1,24 @@
 # Rullst Capital - Roadmap
 
 > **Status policy (2026-08-26):** the roadmap remains ambitious. A checked
-> foundation does not imply every provider method or live fiscal contract. See
+> foundation does not imply every provider method. See
 > the audited [`rullst-capital` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
 > and the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html).
 
 Rullst Capital simplifies the billing and subscription complexities of building a SaaS application in Rust.
 
+> **v13 scope (2026-10):** Capital keeps the provider-neutral base, the
+> supported Stripe adapter and the experimental InfinitePay adapter. The
+> Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago, Alipay, Coinbase
+> Commerce and PicPay adapters, the Wise payout adapter with its payout
+> contracts, and the NFS-e/fiscal preparation module were removed. NFS-e may
+> return later as a separate product outside the framework. Other gateways are
+> application-owned adapters; see
+> [Writing your own payment provider](https://github.com/Rullst/Rullst/blob/main/docs/src/capital-custom-provider.md)
+> and the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+
 ## Phase 1: Payment Gateways Integration
-- [x] **Unified Payment Drivers**: First-class support for Stripe and LemonSqueezy with a standard Rust Trait interface.
+- [x] **Unified Payment Drivers**: A standard Rust trait interface with a supported Stripe adapter; InfinitePay remains experimental until validated against a live account.
 - [x] **Bounded Gateway Failure Contract**: Reviewed live adapter methods share
   finite connect/request timeouts, disabled redirects and ambient proxies,
   one-MiB JSON parsing, validated HTTPS checkout locations, and redacted typed
@@ -33,7 +43,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
   drift and fail-closed capacity are tested. A caller-owned transaction can bind a
   semantic event claim to one database mutation; external effects still need
   an outbox, idempotent consumers and reconciliation.
-- [ ] **Alipay RSA2**: Implement interoperable RSA-SHA256 request signing and notification verification against official contract tests; live Alipay remains disabled until then.
+- [ ] **InfinitePay live validation**: Implement reviewed checkout pricing, callback authentication and authoritative payment lookup, then validate against a live account before removing the experimental label.
 - [~] **Payment-Bound Invoicing**: Validates the legacy invoice model into exact
   minor units, renders escaped HTML and opt-in bounded native PDF, and binds a
   delivery only to final `Succeeded` evidence matching recipient, amount and
@@ -45,10 +55,10 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 ## Phase 3: Advanced Subscription Management
 - [x] **Bounded Grace Periods & Subscription Handle**: `SubscriptionHandle<P>` validates/redacts the provider ID and exposes `cancel()`/`pause()` with static dispatch when the provider is explicit. `GracePeriod` is a validated half-open window of at most 366 days, and `#[derive(Billable)]` recognizes an all-or-none start/end field pair. Persistence, trusted clock, entitlement enforcement, provider semantics and scheduling remain application/provider boundaries.
 - [ ] **Proration Handling**: Automatically handle prorations when users upgrade or downgrade their tiers mid-billing cycle.
-- [x] **Metered Billing (Usage-Based)**: API to report consumption (`user.report_usage("api_requests", 100).await`) for Stripe/LemonSqueezy metered limits.
+- [x] **Metered Billing (Usage-Based)**: `MeteredBillingProvider` reports provider-specific consumption; Stripe Meter Events are implemented and custom adapters reuse the bounded `UsageReceipt`.
 
 ## Phase 4: Customer Portal & UI Scaffold
-- [x] **Customer Portal Link**: Method to generate a direct login link to Stripe Customer Portal or LemonSqueezy Customer Hub (`user.billing_portal_url().await`).
+- [x] **Customer Portal Link**: `StripeProvider::create_bound_customer_portal` creates a Stripe Customer Portal session for an already persisted customer ID; the email-based `billing_portal_url` remains an offline fixture with live credentials unsupported.
 - [x] **Local Billing Scaffold**: `cargo rullst make:billing --model Workspace` generates registered SQLx or Turso-primary models/migrations, demo pricing and guarded billing routes. Materialized contracts compile, migrate, persist offline fixtures, deny cross-owner reuse and refuse collisions. Real or mixed credentials return HTTP 503 until durable scoped ownership, attempts and atomic webhook processing replace the legacy demo flow; provider sandbox acceptance remains separate.
 
 ## Phase 5: Entitlements & Tax Management
@@ -73,17 +83,12 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 - [x] **Native Discount APIs**: `CouponCode` validates and redacts provider
   coupon identifiers. Stripe sends the current `discounts[0][coupon]` contract,
   requests an expanded discount and binds the returned subscription and coupon.
-  Lemon Squeezy discount codes remain checkout-only; it and unreviewed adapters
-  return `UnsupportedOperation` in live mode instead of reporting false success.
+  Unreviewed adapters return `UnsupportedOperation` in live mode instead of
+  reporting false success.
 - [x] **Trial Extensions**: `extend_trial(15)` now means 15 bounded whole days,
-  with an explicit-clock variant for stable retries. Stripe and Lemon Squeezy
-  send their current form/JSON:API update contracts and bind the returned
-  subscription and expiration; unreviewed live adapters fail explicitly.
+  with an explicit-clock variant for stable retries. Stripe sends its current
+  form update contract and binds the returned subscription and expiration;
+  unreviewed live adapters fail explicitly.
 
 ## Phase 9: Multi-Currency (Localized Pricing)
 - [ ] **Dynamic Geolocation Checkout**: Automatically detect a user's country/IP and resolve the correct gateway Price ID (e.g., charging in BRL for Brazil and USD for the USA) natively through the `Billable` trait.
-
-## Phase 10: NFS-e Nacional
-- [x] **Contained Offline Fixture**: Deterministic `OfflineMock` response that is unambiguously not an authorization.
-- [x] **Authenticated Local Command Journal**: The `nfse` feature binds the selected environment to signed `tpAmb` and supplies a single-active-writer HMAC-chained journal with synchronized prepared/terminal events, exact replay/conflict handling, hard byte/record quotas, restart recovery of minimized pending descriptors and externally retained exact-tip checkpoints. It stores no XML, access key, response messages or certificate data and performs no transport/retry.
-- [~] **Homologation-Ready Contract**: Current official 1.01 artifact profiles are checksum-pinned; the bounded DPS builder, closed-catalog XSD validator, protected PKCS#12 handling, enveloped inclusive-C14N/RSA-SHA256 XMLDSig, independent local signature verification, deterministic `dpsXmlGZipB64` JSON, strict signed-authorization and structured-rejection parser, authenticated local command journal and bounded rustls mTLS client construction are implemented. Certificate/emitter and ICP-Brasil chain policy, authoritative request/outbox and reconciliation operations, retained official protocol fixtures, real restricted-environment evidence, independent review and official homologation remain open. Homologation and production transmission stay fail-closed.

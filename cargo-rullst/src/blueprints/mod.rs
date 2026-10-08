@@ -13,6 +13,7 @@ pub mod k8s;
 pub mod lms;
 pub mod portfolio;
 pub mod saas;
+mod security_tests;
 
 /// Public blueprint IDs are an on-disk/CLI compatibility contract. Never reorder them.
 pub const BLANK_BLUEPRINT_ID: usize = 0;

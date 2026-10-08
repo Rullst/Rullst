@@ -13,7 +13,7 @@ const PAGES: [&str; 10] = [
     "/pico-demo",
     "/templates-demo",
     "/pricing",
-    "/checkout?provider=wise",
+    "/checkout?provider=stripe",
     "/security-demo?test=dlp",
     "/ai-assistant?q=rust",
     "/omni",
@@ -114,7 +114,20 @@ async fn every_page_renders_under_the_production_content_security_policy() {
             .await
             .expect("bounded HTML body");
         let html = std::str::from_utf8(&body).expect("UTF-8 HTML");
-        for tag in start_tags(html) {
+        let tags = start_tags(html);
+        let labels = tags
+            .iter()
+            .filter(|tag| tag.name == "label")
+            .filter_map(|tag| tag.attribute("for"))
+            .collect::<Vec<_>>();
+        for input in tags.iter().filter(|tag| tag.name == "input") {
+            // A placeholder disappears on input; screen readers need a label.
+            if input.attribute("placeholder").is_some() {
+                let id = input.attribute("id").unwrap_or_default();
+                assert!(labels.contains(&id), "{path}: placeholder-only input");
+            }
+        }
+        for tag in tags {
             for (attribute, value) in &tag.attributes {
                 assert_ne!(attribute, "style", "{path}: inline style on <{}>", tag.name);
                 assert!(

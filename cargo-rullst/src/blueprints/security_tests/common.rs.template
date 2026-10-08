@@ -1,0 +1,85 @@
+//! Security checks against this application's own router, wrapped in the
+//! baseline that `Server` adds in staging and production (secure headers, WAF
+//! and CSRF). They run offline with `cargo test`: no database or network.
+
+use rullst::config::{Environment, RullstConfig, SecurityConfig};
+use rullst::web::axum::Router;
+use rullst::web::axum::body::Body;
+use rullst::web::axum::extract::ConnectInfo;
+use rullst::web::axum::http::{Request, StatusCode, header};
+use rullst::web::axum::response::Response;
+use rullst::web::tower::ServiceExt;
+
+/// The `[security]` table of `Rullst.toml`, or the defaults without one.
+fn security_config() -> SecurityConfig {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("Rullst.toml");
+    std::fs::read_to_string(path).map_or_else(
+        |_| SecurityConfig::default(),
+        |toml| RullstConfig::from_toml(&toml).expect("Rullst.toml parses").security,
+    )
+}
+
+/// The application router as `Server` serves it in production.
+fn app() -> Router {
+__APP__
+}
+
+/// Sends `request` from a loopback client to a fresh application.
+async fn send(mut request: Request<Body>) -> Response {
+    let peer = std::net::SocketAddr::from(([127, 0, 0, 1], 40_000));
+    request.extensions_mut().insert(ConnectInfo(peer));
+    app().oneshot(request).await.expect("router response")
+}
+
+fn get(uri: &str) -> Request<Body> {
+    Request::get(uri).body(Body::empty()).expect("GET request")
+}
+
+/// A same-origin form POST; `token` adds the CSRF cookie and header.
+fn post(uri: &str, token: Option<&str>) -> Request<Body> {
+    let mut request = Request::post(uri)
+        .header(header::HOST, "localhost:3000")
+        .header(header::ORIGIN, "http://localhost:3000");
+    if let Some(token) = token {
+        request = request
+            .header(header::COOKIE, format!("rullst_csrf={token}"))
+            .header("x-csrf-token", token);
+    }
+    request.body(Body::empty()).expect("POST request")
+}
+
+/// The token of the `rullst_csrf` cookie that the baseline sets on a GET.
+async fn csrf_token() -> String {
+    let response = send(get("/health")).await;
+    response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .filter_map(|value| value.to_str().ok()?.strip_prefix("rullst_csrf="))
+        .find_map(|cookie| cookie.split(';').next().map(str::to_owned))
+        .expect("CSRF cookie")
+}
+
+#[tokio::test]
+async fn production_responses_carry_the_security_headers() {
+    let response = send(get("/health")).await;
+    let headers = response.headers();
+    // CSP limits which scripts can run if markup is ever injected.
+    assert!(headers.contains_key(header::CONTENT_SECURITY_POLICY));
+    // HSTS keeps browsers on HTTPS after their first visit.
+    assert!(headers.contains_key(header::STRICT_TRANSPORT_SECURITY));
+    // Refusing to be framed stops clickjacking.
+    assert_eq!(headers[header::X_FRAME_OPTIONS], "DENY");
+    // nosniff stops browsers from running uploads or JSON as scripts.
+    assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
+}
+
+#[tokio::test]
+async fn the_waf_refuses_injection_and_accepts_prose() {
+    let attack = send(get("/health?q=x%27%20union%20select%20password%20from%20users--")).await;
+    // A quote breakout into UNION SELECT is refused before any handler runs.
+    assert_eq!(attack.status(), StatusCode::FORBIDDEN);
+    let prose = send(get("/health?q=Please%20select%20an%20option")).await;
+    // Ordinary words such as "select" must not lock real users out.
+    assert_eq!(prose.status(), StatusCode::OK);
+}

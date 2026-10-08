@@ -6,12 +6,13 @@ pub(crate) mod create;
 mod docker;
 pub mod env_config;
 mod next_steps;
+mod vcs;
 pub mod wizard;
 
 use std::io::{Error as IoError, ErrorKind};
 use std::path::{Path, PathBuf};
 
-pub(crate) use command::{new_command, run_dry_run};
+pub(crate) use command::{new_command, run_new_command};
 pub use docker::generate_docker_files;
 pub use env_config::{generate_buildah_script, generate_nix_files};
 pub use wizard::{PolyglotIntegration, ProjectWizardOptions, run_project_wizard};

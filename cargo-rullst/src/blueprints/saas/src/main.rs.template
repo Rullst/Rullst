@@ -1,4 +1,4 @@
-use rullst::{routes, Server};
+use rullst::{routes, Router, Server};
 
 pub mod migrations;
 pub mod models;
@@ -6,9 +6,7 @@ __REPO_MOD_DECL__pub mod controllers;
 pub mod middlewares;
 pub mod pages;
 
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    rullst::artisan!(crate::migrations::get_migrations());
+fn router() -> Result<Router, Box<dyn std::error::Error>> {
     controllers::billing_controller::initialize_billing_provider()?;
 
     let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
@@ -28,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     // Each credential submission runs Argon2id, so it is budgeted per client.
-    let router = router.route("/login", rullst::routing::post(controllers::auth_controller::login_submit)
+    Ok(router.route("/login", rullst::routing::post(controllers::auth_controller::login_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
@@ -46,7 +44,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // `/health` and `/ready` for container, Kubernetes and PaaS probes.
     .merge_axum(rullst::health::health_router())
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus);
+    .nest_axum("/nexus", nexus))
+}
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    rullst::artisan!(crate::migrations::get_migrations());
+    let router = router()?;
 
     #[cfg(debug_assertions)]
     {
@@ -64,3 +68,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+// Security checks against `router()`; run them with `cargo test`. A release
+// build needs the NEXUS_ADMIN_* credentials before the router can be built.
+#[cfg(all(test, debug_assertions))]
+mod security_tests;

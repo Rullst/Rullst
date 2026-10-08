@@ -1,0 +1,12 @@
+
+#[tokio::test]
+async fn another_learners_lessons_are_refused() {
+    use crate::services::learning_service::{LearningError, authorize_lesson};
+    let response = send(get("/lessons/1/play")).await;
+    // Without a session the lesson player sends visitors to sign in.
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    let intruder = rullst_security::UserContext::new("2", vec!["student".to_string()]);
+    let result = authorize_lesson(&intruder, 1, 1).await;
+    // Learner 2's session cannot act as learner 1 to open their lessons.
+    assert!(matches!(result, Err(LearningError::Forbidden)));
+}

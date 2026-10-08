@@ -354,6 +354,78 @@ proxy address and logs one `tracing` event without header contents. Enable
 Nexus accepts an HTTPS report as its TLS evidence. Any host inside a listed
 network can choose the client address, so never list client-reachable ranges.
 
+### Deferrable jobs and time windows
+
+Unpublished v13 API, opt-in. Work that need not run immediately (reports,
+exports, re-indexing) can be dispatched with a `Deferral`: a deadline
+(`run_by`) and up to 24 daily `TimeWindow`s, each with an optional fixed UTC
+offset (daylight-saving changes are not applied; an end earlier than the start
+wraps midnight). `Queue::dispatch_deferred` makes the job claimable at the
+start of the next allowed window (immediately inside an open window), never
+after the deadline; when no window opens before the deadline, it becomes
+claimable at the deadline. Without windows, any time before the deadline is
+allowed, so the job is due immediately.
+
+`Queue::dispatch_deferred_with` takes a `CarbonAwarePlanner` around an
+application-provided `CarbonIntensitySource` (an async trait returning
+forecast slots with their unit; the source has a name). The job is placed at
+the start of the lowest-value slot that overlaps its windows before the
+deadline (ties go to the earliest slot). When the source returns an error or
+exceeds the planner's timeout (2 s by default), the time-window rule is used
+and one warning is logged per outage. Core ships no network source; the
+deterministic `FixedIntensitySource` exists for tests and documentation.
+The planner only chooses a time from the values the source reports; Rullst
+measures nothing and makes no claim about emissions.
+
+Placement is expressed through `dispatch_at`, so SQLite and Redis store a
+deferred job as an ordinary scheduled job: no new column or key, and rows
+written by 12.x keep working unchanged. Custom drivers without durable
+scheduling reject a future placement with `QueueError::Unsupported`. The
+returned `DeferredJob` carries the `DeferralPlan` (`run_at`, `reason` of
+`window`, `intensity` or `deadline`, the source name, and the source's value
+and unit for an intensity placement), and a `rullst.queue.deferral` tracing
+span records the same fields with the job id. Deadlines are limited to 366
+days, like `dispatch_at`, and execution still starts on the first worker poll
+after the job becomes due.
+
+```rust,no_run
+use rullst_core::queue::{
+    CarbonAwarePlanner, Deferral, FixedIntensitySource, Queue, QueueError, TimeWindow,
+};
+use std::time::{Duration, SystemTime};
+
+async fn defer_reports(queue: &Queue) -> Result<(), QueueError> {
+    // Claimable between 00:00 and 06:00 at UTC-03:00, at the latest in 24 hours.
+    let night = TimeWindow::daily(0, 0, 6, 0)?.with_utc_offset_minutes(-180)?;
+    let deferral = Deferral::within(Duration::from_secs(24 * 3_600))?.window(night)?;
+    let job = queue
+        .dispatch_deferred("monthly_report", serde_json::json!({"month": "2026-09"}), &deferral)
+        .await?;
+    println!("{} due at {:?} ({})", job.id, job.plan.run_at, job.plan.reason.as_str());
+
+    // Fixed example values; applications implement CarbonIntensitySource.
+    let now = SystemTime::now();
+    let hour = Duration::from_secs(3_600);
+    let source = FixedIntensitySource::new("example-fixed", "gCO2eq/kWh")
+        .slot(now, now + hour, 300.0)
+        .slot(now + hour, now + 2 * hour, 120.0);
+    let planner = CarbonAwarePlanner::new(source).with_source_timeout(Duration::from_secs(2));
+    let reindex = Deferral::within(4 * hour)?;
+    let job = queue
+        .dispatch_deferred_with(&planner, "reindex", serde_json::json!({}), &reindex)
+        .await?;
+    println!("{:?} from {:?}", job.plan.reason, job.plan.source);
+    Ok(())
+}
+```
+
+`Scheduler::deferrable_task(cron, ScheduleDeferral::within(max_delay)?.window(...)?,
+handler)` applies the same window and deadline rules to each tick of a
+recurring task, with the tick as the start and `tick + max_delay` as the
+deadline. Ticks that pass while a deferred run waits are skipped, as for a slow
+run. Scheduled tasks do not consult an intensity source; a task can enqueue a
+job with `dispatch_deferred_with` instead.
+
 ### Axum First-Class Escape Hatches & Tower Interoperability
 
 `rullst::Router` provides bidirectional conversion with `axum::Router` and

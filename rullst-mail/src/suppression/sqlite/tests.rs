@@ -154,6 +154,53 @@ async fn suppression_guard_observes_restart_safe_state_before_transport() {
     remove_database(&path);
 }
 
+/// Rows that 12.x recorded for providers v13 removed keep their provider label
+/// and still block delivery: the label is data, not a driver selection.
+#[tokio::test]
+async fn rows_recorded_for_removed_providers_stay_readable_after_restart() {
+    let path = temporary_database("removed-providers");
+    let url = database_url(&path);
+    let store = SqliteSuppressionStore::connect(&url, 32, 64)
+        .await
+        .expect("connect store");
+    let labels = ["sendgrid", "postmark", "mailjet", "mailtrap", "azure-acs"];
+    for (index, provider) in labels.into_iter().enumerate() {
+        let event = SuppressionEvent::try_new(
+            provider,
+            format!("v12-{index}"),
+            format!("{provider}@example.com"),
+            SuppressionReason::HardBounce,
+            now(),
+        )
+        .expect("12.x event");
+        store.record(event).await.expect("record 12.x event");
+    }
+    store.close().await;
+
+    let reopened = SqliteSuppressionStore::connect(&url, 32, 64)
+        .await
+        .expect("reopen store");
+    let (driver, deliveries) = MemoryDriver::isolated();
+    let guard = SuppressionGuard::new(driver, reopened.clone());
+    for provider in labels {
+        let recipient = format!("{provider}@example.com");
+        let record = reopened
+            .lookup(&recipient)
+            .await
+            .expect("lookup")
+            .expect("suppressed recipient");
+        assert_eq!(record.provider(), provider);
+        let message = Message::new().to(recipient).subject("blocked").text("no");
+        assert!(matches!(
+            guard.send(&message).await,
+            Err(MailError::SuppressedRecipient { .. })
+        ));
+    }
+    assert!(deliveries.lock().expect("deliveries").is_empty());
+    reopened.close().await;
+    remove_database(&path);
+}
+
 #[tokio::test]
 async fn two_instances_enforce_exact_transactional_quotas() {
     let path = temporary_database("quota");

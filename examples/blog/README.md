@@ -18,9 +18,8 @@ or proof that every crate and feature is exercised.
   small embedded file-template fixture; the latter is not a Tera/Jinja engine.
 - `/posts/repository`: parameterized repository queries bound to the selected
   tenant, listing its newest 20 posts with 160-character previews.
-- `/pricing` (also `/billing`) and `/checkout`: `Billable` quotas,
-  payment-adapter mock fixtures and simulated checkout, and an unsigned,
-  offline DPS XML preview. It never issues or signs an NFS-e.
+- `/pricing` (also `/billing`) and `/checkout`: `Billable` quotas and
+  offline Stripe/InfinitePay fixtures with simulated checkout.
 - `/security-demo`: bounded, instrumented security-control demonstrations. The
   buttons exercise the real local timing, prompt, RASP, DLP and Login Guard
   primitives; they do not prove that a production application mounted every

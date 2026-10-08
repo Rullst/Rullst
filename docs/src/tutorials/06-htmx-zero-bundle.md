@@ -72,6 +72,51 @@ HTTP error bodies visible in the target element.
 
 ---
 
+## 🧪 Step 3: Snapshot-test rendered HTML
+
+`rullst::testing::assert_html_snapshot!` (v13) compares rendered HTML with
+`tests/snapshots/<name>.html` in the crate that calls it, in unit and
+integration tests alike. Both sides are normalised first: whitespace-only text
+between tags is dropped, every tag that follows another tag starts a new line,
+other whitespace runs collapse to one space, and quoted attribute values and
+the content of `pre`, `textarea`, `script` and `style` stay as written.
+`SnapshotOptions` can also replace per-request values with documented
+placeholders: `mask_nonce()` writes `{NONCE}` for `nonce="…"` attributes and
+`'nonce-…'` CSP sources, and `mask_csrf_token()` writes `{CSRF_TOKEN}` for a
+`name="_token"` field, `<meta name="csrf-token">` and `X-CSRF-Token` values.
+
+```rust,no_run
+use rullst::html;
+use rullst::testing::{SnapshotOptions, assert_html_snapshot};
+
+fn search_form(nonce: &str, csrf_token: &str) -> String {
+    html! {
+        <form method="post" action="/search">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <input type="search" name="q" />
+            <script nonce={nonce} src="/static/search.js"></script>
+        </form>
+    }
+}
+
+// In a #[test] function:
+assert_html_snapshot!(
+    "search/form",
+    search_form("per-response-nonce", "per-request-token"),
+    SnapshotOptions::new().mask_nonce().mask_csrf_token()
+);
+```
+
+A missing snapshot fails and names the file to create; a changed one fails
+with a compact line diff (`-` snapshot, `+` rendered). Run the tests with
+`RULLST_UPDATE_SNAPSHOTS=1` to write missing snapshots and overwrite changed
+ones, then review the files and commit them. Snapshot names use ASCII letters,
+digits, `_`, `-` and `.`, with `/` between folders; a name that would leave
+`tests/snapshots` is refused. The helper is test code: it panics like
+`assert_eq!` and has no production use.
+
+---
+
 ## 💡 Key Takeaways
 - **Small application-owned client surface:** business logic can remain on the
   server while HTMX coordinates browser requests.

@@ -119,6 +119,19 @@
     white-space: nowrap;
 }
 
+/* Read by screen readers, not shown: labels for placeholder-styled inputs. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* ---- Security sandbox ---------------------------------------------------- */
 .button-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
 .sandbox {

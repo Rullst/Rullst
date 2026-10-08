@@ -158,6 +158,25 @@ fn package_name(root: &Path, plans: &[ManifestUpgradePlan]) -> Option<(PathBuf, 
     Some((manifest, name, line))
 }
 
+/// The line of a `[mail]` or `[mailer]` `driver` that v13 removed, read like
+/// the `Mail` facade reads `Rullst.toml`.
+fn removed_mail_driver_line(text: &str) -> Option<usize> {
+    let mut in_mail = false;
+    for (index, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            in_mail = line == "[mail]" || line == "[mailer]";
+        } else if in_mail
+            && let Some((key, value)) = line.split_once('=')
+            && key.trim() == "driver"
+            && is_removed_mail_driver(value.split('#').next().unwrap_or(value))
+        {
+            return Some(index + 1);
+        }
+    }
+    None
+}
+
 /// A lowercase DNS label, as Kubernetes object names require.
 fn dns_label(name: &str) -> bool {
     !name.is_empty()
@@ -247,11 +266,20 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         push(&TS_CLIENT_REGENERATE, "rullst-client.ts", 1);
     }
     for name in [".env", ".env.example"] {
-        if let Some(text) = read_small(&root.join(name))
-            && let Some(line) = line_of(&text, |line| line.starts_with("OTEL_EXPORTER_OTLP_"))
-        {
+        let Some(text) = read_small(&root.join(name)) else {
+            continue;
+        };
+        if let Some(line) = line_of(&text, |line| line.starts_with("OTEL_EXPORTER_OTLP_")) {
             push(&OTLP_ENVIRONMENT, name, line);
         }
+        if let Some(line) = line_of(&text, removed_mail_setting) {
+            push(&MAIL_REMOVED, name, line);
+        }
+    }
+    if let Some(text) = read_small(&root.join("Rullst.toml"))
+        && let Some(line) = removed_mail_driver_line(&text)
+    {
+        push(&MAIL_REMOVED, "Rullst.toml", line);
     }
     let mut scripts = vec![
         "Makefile".to_string(),

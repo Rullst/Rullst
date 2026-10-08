@@ -53,7 +53,7 @@ impl TermEnv {
 
 /// ANSI styling that collapses to plain text when colour is disabled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct Style {
+pub(crate) struct Style {
     pub color: bool,
 }
 

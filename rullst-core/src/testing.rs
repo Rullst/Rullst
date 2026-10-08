@@ -10,6 +10,15 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use tower::ServiceExt;
 
+mod html_normalize;
+mod snapshot;
+
+pub use crate::assert_html_snapshot;
+pub use html_normalize::{CSRF_TOKEN_PLACEHOLDER, NONCE_PLACEHOLDER, normalize_html};
+#[doc(hidden)]
+pub use snapshot::__assert_html_snapshot;
+pub use snapshot::{SnapshotOptions, UPDATE_SNAPSHOTS_ENV};
+
 #[cfg_attr(mutants, mutants::skip)]
 const DEFAULT_MAX_BODY: usize = 10 * 1024 * 1024;
 
@@ -354,3 +363,7 @@ mod tests {
 #[cfg(test)]
 #[path = "testing_contract_tests.rs"]
 mod contract_tests;
+
+#[cfg(test)]
+#[path = "testing/snapshot_tests.rs"]
+mod snapshot_tests;

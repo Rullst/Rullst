@@ -55,10 +55,11 @@ pub(crate) fn render(report: &Report, style: Style) -> String {
                 "fix "
             };
             if let Some(fix) = &check.fix {
+                // A multi-line fix (a config snippet) stays aligned under its first line.
                 out.push_str(&format!(
                     "      {}  {}\n",
                     style.paint(label, style::MUTED),
-                    style.paint(fix, style::BRIGHT)
+                    style.paint(&fix.replace('\n', "\n            "), style::BRIGHT)
                 ));
             }
             if let Some(docs) = &check.docs {
