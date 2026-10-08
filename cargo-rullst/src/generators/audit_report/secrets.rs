@@ -146,6 +146,60 @@ pub(super) fn scan_text(display: &str, path: &Path, content: &str) -> Option<Vec
     Some(findings)
 }
 
+/// `scheme://user:password@` credentials in a URL (redaction only).
+static URL_PASSWORD: LazyLock<Option<Regex>> =
+    LazyLock::new(|| Regex::new(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@'\x22]+:([^/\s@'\x22]+)@").ok());
+
+/// Text with every high-signal secret of [`scan_text`] replaced by
+/// `[redacted: <kind>]`, a long non-placeholder `*_SECRET`/`*_KEY`
+/// assignment value on any line and a URL password replaced as well, and the
+/// number of replacements. `None` when a pattern does not compile: callers
+/// must then send nothing.
+pub(crate) fn redact_secrets(text: &str) -> Option<(String, usize)> {
+    let patterns = PATTERNS.as_ref()?;
+    let env = ENV_ASSIGNMENT.as_ref()?;
+    let url = URL_PASSWORD.as_ref()?;
+    let mut count = 0usize;
+    let mut output = String::with_capacity(text.len());
+    for (index, line) in text.split('\n').enumerate() {
+        if index > 0 {
+            output.push('\n');
+        }
+        let mut line = line.to_string();
+        for (kind, regex) in patterns {
+            let found = regex.find_iter(&line).count();
+            if found > 0 {
+                count += found;
+                line = regex
+                    .replace_all(&line, format!("[redacted: {kind}]").as_str())
+                    .into_owned();
+            }
+        }
+        let found = url.captures_iter(&line).count();
+        if found > 0 {
+            count += found;
+            line = url
+                .replace_all(&line, |captures: &regex::Captures<'_>| {
+                    let whole = captures.get(0).map_or("", |m| m.as_str());
+                    let secret = captures.get(1).map_or("", |m| m.as_str());
+                    whole.replacen(secret, "[redacted]", 1)
+                })
+                .into_owned();
+        }
+        if let Some(captures) = env.captures(&line)
+            && let Some(value) = captures.get(2)
+        {
+            let bare = value.as_str().trim_matches(['"', '\'']);
+            if bare.chars().count() >= MIN_ENV_VALUE && !placeholder(bare) {
+                count += 1;
+                line = format!("{}[redacted]", &line[..value.start()]);
+            }
+        }
+        output.push_str(&line);
+    }
+    Some((output, count))
+}
+
 fn skipped_path(path: &Path) -> bool {
     path.components()
         .any(|component| component.as_os_str() == "target")

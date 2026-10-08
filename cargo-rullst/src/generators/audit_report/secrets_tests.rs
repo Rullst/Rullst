@@ -155,3 +155,34 @@ fn redaction_keeps_four_characters() {
     assert_eq!(redact("ab"), "ab…");
     assert_eq!(redact("çãõéxyz"), "çãõé…");
 }
+
+#[test]
+fn redaction_removes_every_high_signal_value_and_counts_it() {
+    let long = "Zq8".repeat(8);
+    for (kind, secret) in fixtures() {
+        let text = format!("+let value = \"{secret}\";\nkeep this line");
+        let (redacted, count) = redact_secrets(&text).unwrap();
+        assert_eq!(count, 1, "{kind}");
+        assert!(!redacted.contains(&secret), "{kind}");
+        assert!(redacted.contains(&format!("[redacted: {kind}]")), "{kind}");
+        assert!(redacted.ends_with("\nkeep this line"));
+    }
+    let env = format!("STRIPE_SECRET_KEY={long}\nexport API_KEY=\"{long}\"\nAPP_KEY=change-me");
+    let (redacted, count) = redact_secrets(&env).unwrap();
+    assert_eq!(count, 2);
+    assert!(!redacted.contains(&long));
+    assert!(
+        redacted.contains("STRIPE_SECRET_KEY=[redacted]") && redacted.contains("APP_KEY=change-me")
+    );
+    let url = format!("DATABASE_URL=postgres://app:{}@db:5432/app", "pw".repeat(3));
+    let (redacted, count) = redact_secrets(&url).unwrap();
+    assert_eq!(count, 1);
+    assert_eq!(
+        redacted,
+        "DATABASE_URL=postgres://app:[redacted]@db:5432/app"
+    );
+    assert_eq!(
+        redact_secrets("plain\ntext").unwrap(),
+        ("plain\ntext".to_string(), 0)
+    );
+}
