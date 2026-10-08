@@ -43,11 +43,37 @@ can choose to publish.
 | 3 | **Efficient release defaults** | Generated projects get a tuned `[profile.release]` (LTO, single codegen unit, stripped symbols, abort on panic where safe), smaller container images (static or distroless runtime) and fast start-up suitable for scale-to-zero hosting. |
 | 4 | **Efficient HTTP defaults** | Long-lived `Cache-Control: immutable` for fingerprinted static assets, ETag/conditional requests, and modern image formats in the asset pipeline. Pre-compressed assets already exist: `cargo rullst build` writes Brotli/Zstandard siblings that the Core static handler serves. |
 | 5 | **Lean pages** | Keep zero-bundle HTMX rendering the default, report page weight in `cargo rullst dash`, and warn on oversized assets. |
-| 6 | **Database efficiency** | Development-time N+1 query detection, slow-query hints (already visible in the live dash), default pagination and index suggestions. |
-| 7 | **Carbon-aware jobs** | Optional scheduling of deferrable queue jobs (reports, exports, re-indexing) for times or regions with lower grid carbon intensity, using a pluggable intensity source with an offline fallback. |
+| 6 | **Database efficiency** | Development-time N+1 query warnings are in the v13 dash ([N+1 query warning](cli_reference.md#n1-query-warning)); slow-query hints are already visible there. Default pagination and index suggestions remain planned. |
+| 7 | **Carbon-aware jobs** | Started in v13: see [carbon-aware deferrable jobs](#carbon-aware-deferrable-jobs-v13). Region selection remains planned. |
 | 8 | **AI efficiency** | Token usage is already reported by `rullst-ai` and `cargo rullst ai`; add response caching, prompt-size budgets and guidance for choosing smaller or local models when they are sufficient. |
 | 9 | **Resource view in the dash** | Show the app process's CPU and memory next to the request metrics so developers see the cost of a change while they work. |
 | 10 | **Green hosting guidance** | Document how to choose lower-carbon regions and providers, and show region information during `cargo rullst deploy` when it is available. |
+
+## Carbon-aware deferrable jobs (v13)
+
+Opt-in and unpublished. A queue job or scheduled task can be marked
+deferrable with a deadline and daily time windows; see
+[deferrable jobs and time windows](crates/core.md#deferrable-jobs-and-time-windows).
+The mechanism:
+
+- **Time windows.** The job becomes claimable at the start of the next allowed
+  window (immediately inside an open one), never after its deadline; when no
+  window opens in time, at the deadline.
+- **Optional intensity source.** An application-provided
+  `CarbonIntensitySource` returns forecast slots with their unit. A
+  `CarbonAwarePlanner` places the job at the lowest-value slot inside its
+  windows before the deadline. Core ships no network source; if the source
+  fails or times out, the window rule applies and one warning is logged per
+  outage.
+- **Persistence.** Placement uses the queue's existing scheduled-job
+  timestamp, so no schema changes and 12.x rows keep working.
+- **Observability.** The chosen time, the reason (`window`, `intensity` or
+  `deadline`) and the source name are returned in `DeferredJob` and recorded on
+  a `rullst.queue.deferral` tracing span.
+
+The planner only shifts when a job runs, using the values the source
+reports. Whether that changes an application's emissions depends on the grid,
+the workload and the data; Rullst does not measure or claim it.
 
 ## Principles
 
