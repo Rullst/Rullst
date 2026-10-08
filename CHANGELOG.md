@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency security: hickory 0.26.3
+
+- Lock `hickory-resolver`, `hickory-net` and `hickory-proto` 0.26.3 (from
+  0.26.1), reached only through the optional MongoDB driver of `rullst-orm`.
+  It resolves GHSA-5j98-2g5x-46v6, GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5.
+  `hickory-resolver` 0.26.2 does not compile against `hickory-net` 0.26.1 even
+  though its manifest allows it; 0.26.3 requires matching versions, so the
+  three move together. Lockfile-only change; no manifest or API change.
+
 ## [12.2.0] - 2026-10-02
 
 Compatible minor release on `v12` with the fixes ported from the v13 review.
