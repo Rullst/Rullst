@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Cross-platform fixes (Windows and macOS)
+
+- Text files are now checked out with LF on every platform (`.gitattributes`),
+  so Windows checkouts no longer embed CRLF into generated projects.
+- On Windows, the development panic console, `audit` findings (and the
+  compliance report built from them) and generator refusals (`make:k8s`,
+  `dockerize` and the other overwrite guards) name files with `/` separators.
+- `make:age-gate` and `make:privacy` resolve the project directory before their
+  symlink guard, so projects behind a symlinked parent (macOS `/var`) or a
+  Windows junction are accepted; a symlink inside the project is still refused.
+- Test isolation: the AI-checkpoint test no longer depends on a global
+  `core.autocrlf`, the CLI behaviour tests use an isolated HOME, and the
+  `cargo rullst dev` cleanup tests check orphaned processes with `ps`, which
+  also works on macOS.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
