@@ -244,6 +244,20 @@ BILLING_REPORT_PLAN_IDS=
     Ok(())
 }
 
+/// Appends the bearer token of the Blank JSON API starter's machine endpoints:
+/// a random value to `.env` and an empty entry to `.env.example`.
+pub(crate) fn append_api_token(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    const SECTION: &str = "\n# ── JSON API ──────────────────────────────────────────────────\n# Bearer token for the JSON write routes: `Authorization: Bearer <API_TOKEN>`.\n# Use 32 to 200 random characters; rotate it before deployment.\n";
+    let token = Alphanumeric.sample_string(&mut rand::rng(), 48);
+    for (file, value) in [(".env", token.as_str()), (".env.example", "")] {
+        let mut content = fs::read_to_string(path.join(file))?;
+        content.push_str(SECTION);
+        content.push_str(&format!("API_TOKEN={value}\n"));
+        fs::write(path.join(file), content)?;
+    }
+    Ok(())
+}
+
 pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     write_nix_files(project_path)?;
     println!(

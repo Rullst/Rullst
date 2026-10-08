@@ -25,9 +25,13 @@ pub fn get_routes(
             ),
         ]
     } else {
-        vec![(
-            "src/main.rs",
-            include_str!("src/main.rs.template").replace("__REPO_MOD_DECL__", repo_mod_decl),
-        )]
+        use crate::blueprints::security_tests::{self, Starter};
+        vec![
+            (
+                "src/main.rs",
+                include_str!("src/main.rs.template").replace("__REPO_MOD_DECL__", repo_mod_decl),
+            ),
+            (security_tests::PATH, security_tests::source(Starter::Saas)),
+        ]
     }
 }

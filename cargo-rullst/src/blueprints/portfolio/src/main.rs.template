@@ -1,9 +1,28 @@
-use rullst::{routes, Server};
+use rullst::{routes, Router, Server};
 
 pub mod migrations;
 pub mod models;
 __REPO_MOD_DECL__pub mod controllers;
 pub mod pages;
+
+fn router() -> Result<Router, Box<dyn std::error::Error>> {
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    let nexus = rullst::nexus::Nexus::new()
+        .with_auth_policy(nexus_auth)
+        .with_brand("Portfolio CMS Admin")
+        .register::<models::profile::Profile>()
+        .register::<models::project::Project>()
+        .register::<models::experience::Experience>()
+        .register::<models::skill::Skill>()
+        .try_build()?;
+
+    Ok(routes![
+        get("/" => controllers::portfolio_controller::index),
+    ]
+    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
+    .merge_axum(rullst::health::health_router())
+    .nest_axum("/nexus", nexus))
+}
 
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,22 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
-        .with_brand("Portfolio CMS Admin")
-        .register::<models::profile::Profile>()
-        .register::<models::project::Project>()
-        .register::<models::experience::Experience>()
-        .register::<models::skill::Skill>()
-        .try_build()?;
-
-    let router = routes![
-        get("/" => controllers::portfolio_controller::index),
-    ]
-    // `/health` and `/ready` for container, Kubernetes and PaaS probes.
-    .merge_axum(rullst::health::health_router())
-    .nest_axum("/nexus", nexus);
+    let router = router()?;
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: __FRONTEND_ENGINE__, ORM: __ORM_PATTERN__)...");
     println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (local loopback access in debug; environment credentials in release)");
@@ -44,3 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+// Security checks against `router()`; run them with `cargo test`. A release
+// build needs the NEXUS_ADMIN_* credentials before the router can be built.
+#[cfg(all(test, debug_assertions))]
+mod security_tests;

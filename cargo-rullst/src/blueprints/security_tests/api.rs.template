@@ -1,0 +1,28 @@
+
+/// A bearer token for these tests only; the application reads `API_TOKEN`.
+const TEST_API_TOKEN: &str = "test-only-api-token-7f3a9c2e5b8d1f40";
+
+/// A JSON write from an API client, with `authorization` when given.
+fn json_post(authorization: Option<&str>) -> Request<Body> {
+    let mut request =
+        Request::post("/api/messages").header(header::CONTENT_TYPE, "application/json");
+    if let Some(value) = authorization {
+        request = request.header(header::AUTHORIZATION, value);
+    }
+    request
+        .body(Body::from(r#"{"text":"hello"}"#))
+        .expect("JSON request")
+}
+
+#[tokio::test]
+async fn json_writes_need_the_api_token() {
+    // Without the bearer token a client cannot write.
+    assert_eq!(send(json_post(None)).await.status(), StatusCode::UNAUTHORIZED);
+    let token = csrf_token().await;
+    let browser = send(post("/api/messages", Some(&token))).await;
+    // Browser cookies and a CSRF token never stand in for the API token.
+    assert_eq!(browser.status(), StatusCode::UNAUTHORIZED);
+    let client = send(json_post(Some(&format!("Bearer {TEST_API_TOKEN}")))).await;
+    // The API token authenticates the client in place of a CSRF token.
+    assert_eq!(client.status(), StatusCode::CREATED);
+}

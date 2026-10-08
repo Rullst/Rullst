@@ -132,6 +132,7 @@
 - [🛡️ Security Architecture](security-architecture.md)
 - [Which Security Layer to Use, and When](security-layers.md)
 - [Security Report (`audit --report`)](security-report.md)
+- [External Audit Kit](external-audit-kit.md)
 - [🎯 Rullst Threat Models](threat-models.md)
 - [v12 Security Claims & Evidence](v12-security-claims.md)
 - [Security Event Schema v1](security-event-schema.md)

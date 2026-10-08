@@ -225,7 +225,7 @@ The choices that materially change the generated application:
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
+  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it. Its example write route, `POST /api/messages`, is a bearer machine endpoint: clients send `Authorization: Bearer <API_TOKEN>` with the random `API_TOKEN` written to `.env`, and the server does not start without it (see [which security layer to use](security-layers.md#what-generated-applications-already-have)). The interactive wizard then skips its blueprint and build-type questions instead of letting their Full-Stack default replace the flag.
   * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The
     `.dockerignore` mirrors the generated `.gitignore`: it excludes `.env` and
     `.env.*` (except `.env.example`), `Foundry.toml`, SQLite and DuckDB files
@@ -1770,6 +1770,11 @@ reported as a finding, so the scan fails as incomplete instead of passing. The
 route and listener scans skip each top-level `#[cfg(test)]` item (such as
 `mod tests;` or an inline test module) on its own; code after it is still
 scanned.
+
+`cargo audit` and the SBOM read the project's own `Cargo.lock`. In a workspace
+member, which has none, they read the lockfile of the workspace root that
+`cargo metadata` reports, and `cargo audit` receives it as `--file`; the SBOM
+then lists every package of that workspace lockfile.
 
 SBOM components come from `Cargo.lock`. Only crates.io packages receive the
 plain `pkg:cargo/<name>@<version>` purl; a package from another registry adds a

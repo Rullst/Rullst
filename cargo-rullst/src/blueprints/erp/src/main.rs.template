@@ -5,11 +5,7 @@ pub mod models;
 __REPO_MOD_DECL__pub mod controllers;
 pub mod pages;
 
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Run migrations on startup
-    rullst::artisan!(crate::migrations::get_migrations());
-
+fn router() -> Result<Router, Box<dyn std::error::Error>> {
     let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(admin_access.clone())
@@ -30,14 +26,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
 
-    let router = Router::new()
+    Ok(Router::new()
         .merge_axum(admin_routes)
         .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
         // `/health` and `/ready` for container, Kubernetes and PaaS probes,
         // outside the administrator policy.
         .merge_axum(rullst::health::health_router())
         .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-        .nest_axum("/nexus", nexus);
+        .nest_axum("/nexus", nexus))
+}
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Run migrations on startup
+    rullst::artisan!(crate::migrations::get_migrations());
+
+    let router = router()?;
 
     #[cfg(debug_assertions)]
     {
@@ -55,3 +59,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+// Security checks against `router()`; run them with `cargo test`. A release
+// build needs the NEXUS_ADMIN_* credentials before the router can be built.
+#[cfg(all(test, debug_assertions))]
+mod security_tests;

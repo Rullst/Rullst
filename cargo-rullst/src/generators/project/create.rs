@@ -53,6 +53,9 @@ pub(crate) fn write_project_files(
         options.blueprint_selection,
         &app_key,
     )?;
+    if options.api && options.blueprint_selection == BLANK_BLUEPRINT_ID {
+        env_config::append_api_token(path)?;
+    }
 
     crate::blueprints::apply(
         options.blueprint_selection,
