@@ -9,6 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Deprecated ahead of 13.0 (planned 12.3.0)
+
+- Public APIs that Rullst 13.0 removes now carry
+  `#[deprecated(since = "12.3.0")]` and keep working unchanged.
+- `rullst-capital`: the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago,
+  Alipay, Coinbase Commerce, PicPay and Wise adapters, the payout contracts
+  (`PayoutProvider`, `PayoutStatus`, `PayoutEvent`, `init_payout_provider`,
+  `payout_provider`), the Lemon Squeezy usage types, the NFS-e `fiscal` module,
+  `Invoice::to_dps` and `CapitalError::FiscalError`. The `nfse` and facade
+  `capital-nfse` features are deprecated in documentation.
+- `rullst-mail`: `SendGridDriver`, `PostmarkDriver`, `MailjetDriver`,
+  `MailtrapDriver` and the Azure Communication Services transport. The `Mail`
+  facade logs one warning per process when `MAIL_DRIVER` or `[mail] driver`
+  selects one of them.
+- `make:billing` and `make:mail-invoice` print a deprecation notice; their
+  generated code still builds under `-D warnings`.
+- See the "Capital providers and NFS-e removed" and "Mail providers removed"
+  rows of the [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+
 ### Capital: fresh `nfse` builds compile again
 
 - `pkcs1` 0.8.0-rc.5 (published 2026-10-05) breaks `sad-rsa` 0.10.2, which

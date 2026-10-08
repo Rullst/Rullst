@@ -1,8 +1,10 @@
 use chrono::Utc;
+#[allow(deprecated)]
 use rullst_capital::fiscal::{
     FiscalCustomer, FiscalEmitter, NfseDps, TaxRegime, build_dps_xml, compute_sha256_digest,
 };
 
+#[allow(deprecated)]
 #[test]
 fn test_dps_xml_generation_and_hashing() {
     let emitter = FiscalEmitter {
@@ -45,6 +47,7 @@ fn test_dps_xml_generation_and_hashing() {
     assert!(!digest.is_empty());
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_all_12_payment_and_payout_providers() {
     use rullst_capital::providers::*;

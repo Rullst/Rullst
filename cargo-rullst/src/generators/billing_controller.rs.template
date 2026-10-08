@@ -2,6 +2,9 @@
 mod live;
 use crate::models::{billing_customer::BillingCustomer, subscription::Subscription};
 use crate::pages::billing;
+// Lemon Squeezy is deprecated in Rullst 12.3 and removed in 13.0 (v13 migration
+// guide row "Capital providers and NFS-e removed").
+#[allow(deprecated)]
 use rullst::capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, WebhookEvent};
 use rullst::server::{
     Extension, Form, IntoResponse, Next, Redirect, Request, Response, StatusCode,
@@ -135,6 +138,7 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
     })
 }
 
+#[allow(deprecated)]
 fn lemon_provider(config: &BillingConfig) -> Result<LemonSqueezyProvider, rullst::capital::CapitalError> {
     let provider = LemonSqueezyProvider::new(config.api_key.clone(), config.webhook_secret.clone());
     match &config.store_id {
@@ -306,6 +310,7 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
     };
 
     let result = match config.provider.as_str() {
+        #[allow(deprecated)]
         "lemonsqueezy" => {
             LemonSqueezyProvider::new(config.api_key, config.webhook_secret)
                 .create_customer_portal(&customer.email, &config.redirect_url)

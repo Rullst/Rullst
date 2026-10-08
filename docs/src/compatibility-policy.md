@@ -81,6 +81,13 @@ A stable public API scheduled for removal is marked with `#[deprecated]` and
 kept for at least one released minor version before removal in the next major
 release. Documentation must name the replacement when one exists.
 
+12.3.0 deprecates the `rullst-capital` payment/payout adapters, payout
+contracts and NFS-e APIs and the `rullst-mail` transports that 13.0 removes.
+Cargo features cannot carry `#[deprecated]`, so the `nfse` and `capital-nfse`
+features are deprecated in documentation only. The
+[12.3.0 record](v12.md#1230-deprecations-in-preparation) lists the items; the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md) names the replacements.
+
 An API that is unsound, enables a security bypass, or cannot be made safe may be
 disabled or removed sooner. Such an exception requires a security advisory or
 changelog entry describing impact, affected versions, and the supported

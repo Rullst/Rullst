@@ -197,6 +197,7 @@ BILLING_ACCOUNT_ID=
 # Live keys require this explicit acknowledgement after reviewing BILLING.md.
 # BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES
 # When changing providers, review Rullst.toml security.csp form-action too.
+# Lemon Squeezy is deprecated in Rullst 12.3 and removed in 13.0 (v13 migration guide).
 # Lemon Squeezy needs your exact reviewed store/custom checkout origin, no wildcard.
 # Required for live Lemon Squeezy checkout; use your merchant's numeric store ID.
 BILLING_STORE_ID=

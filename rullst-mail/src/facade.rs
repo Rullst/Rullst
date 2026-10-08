@@ -206,6 +206,11 @@ impl Mail {
         }
 
         let driver_name = driver_name_opt.unwrap_or_else(|| "log".to_string());
+        if let Some(notice) = deprecated_driver_notice(&driver_name) {
+            // Resolution runs for every send and queued job; warn once per process.
+            static DEPRECATION_LOGGED: std::sync::Once = std::sync::Once::new();
+            DEPRECATION_LOGGED.call_once(|| tracing::warn!(driver = %driver_name, "{notice}"));
+        }
 
         match driver_name.as_str() {
             "log" => Ok(Box::new(LogDriver)),
@@ -238,6 +243,7 @@ impl Mail {
             "sendpulse" => Ok(Box::new(SendPulseDriver::try_new(
                 std::env::var("SENDPULSE_API_KEY").unwrap_or_default(),
             )?)),
+            #[allow(deprecated)]
             "mailjet" | "mailjet-sandbox" => {
                 let driver = MailjetDriver::try_new(
                     std::env::var("MAILJET_API_KEY").unwrap_or_default(),
@@ -249,9 +255,11 @@ impl Mail {
                     driver
                 }))
             }
+            #[allow(deprecated)]
             "mailtrap" => Ok(Box::new(MailtrapDriver::try_new(
                 std::env::var("MAILTRAP_API_TOKEN").unwrap_or_default(),
             )?)),
+            #[allow(deprecated)]
             "mailtrap-sandbox" => {
                 let id = std::env::var("MAILTRAP_SANDBOX_ID")
                     .ok()
@@ -266,10 +274,12 @@ impl Mail {
                     id,
                 )?))
             }
+            #[allow(deprecated)]
             "sendgrid" => {
                 let api_key = std::env::var("SENDGRID_API_KEY").unwrap_or_default();
                 Ok(Box::new(SendGridDriver::try_new(api_key)?))
             }
+            #[allow(deprecated)]
             "postmark" => {
                 let server_token = std::env::var("POSTMARK_SERVER_TOKEN")
                     .or_else(|_| std::env::var("POSTMARK_API_KEY"))
@@ -281,6 +291,7 @@ impl Mail {
                 }
                 Ok(Box::new(driver))
             }
+            #[allow(deprecated)]
             "azure-acs" => {
                 let endpoint =
                     std::env::var("AZURE_COMMUNICATION_EMAIL_ENDPOINT").unwrap_or_default();
@@ -346,6 +357,27 @@ impl Mail {
             ))),
         }
     }
+}
+
+/// `MAIL_DRIVER` values of the transports deprecated in 12.3 and removed in 13.0.
+const DEPRECATED_DRIVERS: &[&str] = &[
+    "sendgrid",
+    "postmark",
+    "mailjet",
+    "mailjet-sandbox",
+    "mailtrap",
+    "mailtrap-sandbox",
+    "azure-acs",
+];
+
+/// The warning logged when configuration selects a deprecated transport.
+fn deprecated_driver_notice(driver: &str) -> Option<String> {
+    DEPRECATED_DRIVERS.contains(&driver).then(|| {
+        format!(
+            "mail driver `{driver}` is deprecated since Rullst 12.3 and removed in 13.0; \
+             see the v13 migration guide row \"Mail providers removed\""
+        )
+    })
 }
 
 fn datetime_to_system_time(

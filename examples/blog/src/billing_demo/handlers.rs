@@ -7,7 +7,11 @@ use chrono::Utc;
 use serde::Deserialize;
 
 use rullst_capital::billable::Billable;
+// Showcases APIs deprecated in 12.3 and removed in 13.0 (v13 migration guide
+// row "Capital providers and NFS-e removed").
+#[allow(deprecated)]
 use rullst_capital::fiscal::dps::build_dps_xml;
+#[allow(deprecated)]
 use rullst_capital::fiscal::models::{FiscalCustomer, FiscalEmitter, NfseDps, TaxRegime};
 
 use super::gateways::simulate_provider_checkout;
@@ -127,6 +131,7 @@ async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) 
 }
 
 /// Generates a real quota result and a clearly labelled offline DPS preview.
+#[allow(deprecated)]
 fn compute_demo_data() -> (bool, String) {
     let free_user = Subscriber {
         email_address: "author@community.dev".to_string(),

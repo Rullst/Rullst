@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+#[allow(deprecated)]
 use rullst_capital::{Billable, CapitalError, ChargeStatus, LemonSqueezyProvider, StripeProvider};
 
 struct Account;
@@ -34,6 +35,7 @@ async fn billable_charge_is_safe_deterministic_and_statically_dispatched() {
     assert!(!format!("{first:?}").contains("owner@example.com"));
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn invalid_requests_and_unreviewed_provider_operations_fail_closed() {
     let account = Account;

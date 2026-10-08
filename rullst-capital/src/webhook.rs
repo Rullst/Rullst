@@ -474,8 +474,10 @@ pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
         | CapitalError::UnsupportedOperation(_)
         | CapitalError::MockWebhookNotAllowed(_)
         | CapitalError::SubscriptionError(_)
-        | CapitalError::Quota(_)
-        | CapitalError::FiscalError(_) => 503,
+        | CapitalError::Quota(_) => 503,
+        // Deprecated in 12.3 (removed in 13.0); still mapped to 503.
+        #[allow(deprecated)]
+        CapitalError::FiscalError(_) => 503,
     }
 }
 

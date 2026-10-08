@@ -1,5 +1,17 @@
 # Rullst Capital 💳
 
+> [!WARNING]
+> **Deprecated in 12.3.** The Paddle, Lemon Squeezy, Polar, Razorpay, Mercado
+> Pago, Alipay, Coinbase Commerce, PicPay and Wise adapters, the payout
+> contracts (`PayoutProvider`, `PayoutStatus`, `PayoutEvent`,
+> `init_payout_provider`, `payout_provider`), the Lemon Squeezy usage types,
+> the NFS-e module (`fiscal` and its crate-root re-exports), `Invoice::to_dps`
+> and `CapitalError::FiscalError` carry `#[deprecated]` and are removed in Rullst
+> 13.0, as are the `nfse` feature and the facade's `capital-nfse` feature. They
+> keep working unchanged on 12.x. Stripe, InfinitePay and the provider-neutral
+> contracts remain. See the row "Capital providers and NFS-e removed" in the
+> [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+
 `rullst-capital` provides payment/payout adapter foundations, normalized billing
 types, bounded webhook verification helpers, application-supplied revenue
 snapshots, and a bounded National NFS-e preparation pipeline. Provider method
