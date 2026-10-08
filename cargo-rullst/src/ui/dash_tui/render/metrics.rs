@@ -229,7 +229,7 @@ fn request_line(sample: &RequestSample, palette: Palette, width: usize) -> Line<
 }
 
 /// Cuts `text` to `room` characters, ending a cut with `…`.
-fn fit(text: &str, room: usize) -> String {
+pub(super) fn fit(text: &str, room: usize) -> String {
     if text.chars().count() <= room {
         return text.to_string();
     }

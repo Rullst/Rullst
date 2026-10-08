@@ -1519,6 +1519,7 @@ the dashboard exits.
 * the newest requests with status, method, duration and path (never the query
   string);
 * ORM queries since start and slow ORM operations (at least 100 ms);
+* possible N+1 queries (see [N+1 query warning](#n1-query-warning));
 * the pending jobs of a queue.
 
 Counters, latency samples and slow operations restart with every new process
@@ -1556,6 +1557,32 @@ ORM queries count the outermost `rullst.orm.query` span of each ORM operation
 traversal is not counted itself: each page it fetches and each operation its
 handler runs counts separately. One operation can run several SQL statements,
 and SQL executed directly through SQLx is not counted.
+
+#### N+1 query warning
+
+When the application reports that one request ran the same ORM operation at
+least three times (the threshold Studio's trace view uses), a **POSSIBLE N+1
+QUERIES** panel appears below the logs. Each line shows the request's method
+and matched route (`GET /posts/{id}`), the operation fingerprint
+(`Comment.select_many (comments)`, built from the ORM span's model, operation
+and table labels; Rullst never records SQL text or bound values) and the
+repetition count, followed by a hint to load the related rows eagerly or batch
+the lookups into one query. Inspect the handler before changing it: repeating
+an operation can be intentional. Raw statements (`Orm::raw`) and operations
+started on another task (`tokio::spawn`) are not attributed to a request, so
+they never produce a finding. The **VERIFIED PROJECT STATE** panel shows the
+detection state in its `N+1 check` line: the number of findings since the
+process started, `N+1 detection needs request-correlated ORM telemetry (Rullst
+Core 13)` when the application's telemetry has no request-correlated ORM data
+(an older Rullst Core), or `N+1 detection needs ORM query telemetry` when ORM
+queries themselves are not reported (see the table above).
+
+Performance note: a request that runs one ORM lookup per row (for example
+loading each post's comments inside a loop over posts) makes one database round
+trip per row. [Eager loading](crates/orm.md#query-row-cap) runs one
+related-model query for all parents of a batch, and an `IN` query can fetch
+the rows of several keys at once; measure the route before and after the
+change.
 
 Terminals at least 26 rows tall show the metrics row and terminals at least 105
 columns wide add the recent-requests panel; shorter terminals show a one-line
