@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791200612002,
+  "lastUpdate": 1791436825155,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -10980,6 +10980,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "594a75c506b4c78634ced6d412bc8629ea3f2b97",
+          "message": "Merge pull request #416 from Rullst/docs/v13-maturity-tiers\n\ndocs: maturity tiers, security layer guide and rullst-security claims review",
+          "timestamp": "2026-10-08T01:41:25-03:00",
+          "tree_id": "3e55c90fd6a0ce8ec88ac1732c45094152f771f6",
+          "url": "https://github.com/Rullst/Rullst/commit/594a75c506b4c78634ced6d412bc8629ea3f2b97"
+        },
+        "date": 1791436824599,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           },
