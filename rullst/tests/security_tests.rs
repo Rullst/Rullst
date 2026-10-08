@@ -95,7 +95,7 @@ async fn test_waf_referrer_and_cookie() {
     // 1. Malicious referrer -> 403 Forbidden
     let res_ref = app
         .get("/waf")
-        .header("referer", "http://attacker.com/sql?q=drop table users;")
+        .header("referer", "http://attacker.com/sql?q=1; drop table users")
         .await;
     res_ref.assert_status(403);
     res_ref.assert_see("Access Denied: Malicious pattern detected by Rullst Shield WAF");
@@ -103,11 +103,18 @@ async fn test_waf_referrer_and_cookie() {
     // 2. Malicious cookie -> 403 Forbidden
     let res_cookie = app
         .get("/waf")
-        .header("cookie", "session=123; tracking=select * from admin;")
+        .header("cookie", "session=123; tracking=1' or '1'='1")
         .await;
     res_cookie.assert_status(403);
 
     // 3. Normal request -> 200 OK
     let res_normal = app.get("/waf").header("referer", "http://google.com").await;
     res_normal.assert_status(200);
+
+    // 4. Ordinary text that names SQL words -> 200 OK
+    let res_prose = app
+        .get("/waf")
+        .header("referer", "https://example.com/?q=please+select+an+option")
+        .await;
+    res_prose.assert_status(200);
 }

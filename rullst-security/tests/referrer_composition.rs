@@ -1,4 +1,5 @@
-//! A private endpoint's referrer restriction survives every supported layer.
+//! A private endpoint's referrer restriction survives every supported layer,
+//! and the Core baseline keeps any other explicit policy.
 use axum::{
     Router,
     body::Body,
@@ -11,7 +12,7 @@ use rullst_security::{CspSecurityLayer, SecureHeadersConfig, SecureHeadersLayer}
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn no_referrer_survives_composition_without_trusting_weaker_handler_policies() {
+async fn no_referrer_survives_composition_and_only_core_keeps_other_policies() {
     for policies in [
         vec![],
         vec!["unsafe-url"],
@@ -63,6 +64,9 @@ async fn no_referrer_survives_composition_without_trusting_weaker_handler_polici
                 "no-referrer"
             } else if layers == 5 {
                 "origin"
+            } else if let (0, [policy]) = (layers, policies.as_slice()) {
+                // The Core baseline adds a policy only when the handler set none.
+                *policy
             } else {
                 "strict-origin-when-cross-origin"
             };
