@@ -73,7 +73,9 @@ fn the_scope_selects_the_diff_and_untracked_files_need_the_flag() {
     }
     let (_guard, root) = repository();
     let program = OsStr::new("git");
-    assert_eq!(diff::work_tree(program, &root.join("src")).unwrap(), root);
+    // Git reports `C:/…` on Windows while `root` is canonical (`\\?\C:\…`).
+    let top = diff::work_tree(program, &root.join("src")).unwrap();
+    assert_eq!(top.canonicalize().unwrap(), root);
 
     let working = collect(program, &root, &Scope::WorkingTree, false).unwrap();
     assert_eq!(paths(&working), ["src/staged.rs", "src/unstaged.rs"]);
