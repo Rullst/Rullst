@@ -71,29 +71,10 @@ pub fn create_new_model(
             .yellow()
         );
     } else {
-        let template = match orm_backend {
-            ProjectOrmBackend::Sqlx => format!(
-                r#"use rullst::db::{{Orm, RullstModel, FromRow, sqlx}};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "{plural_name}")]
-pub struct {pascal_name} {{
-    pub id: i32,
-    // Add your fields here (e.g. pub name: String)
-}}
-"#
-            ),
-            ProjectOrmBackend::Turso => format!(
-                r#"#[derive(Debug, Clone, rullst_orm::Orm)]
-#[orm(table = "{plural_name}", backend = "turso")]
-pub struct {pascal_name} {{
-    pub id: i64,
-    // Add fields supported by TursoCodec (e.g. pub name: String).
-}}
-"#
-            ),
-        };
-        fs::write(&model_path, template)?;
+        fs::write(
+            &model_path,
+            render_model(orm_backend, &plural_name, &pascal_name),
+        )?;
     }
 
     // 6. Attempt to inject "pub mod models;" into src/main.rs if needed
@@ -189,6 +170,37 @@ pub struct {pascal_name} {{
     Ok(())
 }
 
+/// The model file for `backend`. It imports only what the derives need, so
+/// generated projects compile without unused-import warnings.
+pub(crate) fn render_model(
+    backend: ProjectOrmBackend,
+    plural_name: &str,
+    pascal_name: &str,
+) -> String {
+    match backend {
+        ProjectOrmBackend::Sqlx => format!(
+            r#"use rullst::db::{{FromRow, Orm}};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "{plural_name}")]
+pub struct {pascal_name} {{
+    pub id: i32,
+    // Add your fields here (e.g. pub name: String)
+}}
+"#
+        ),
+        ProjectOrmBackend::Turso => format!(
+            r#"#[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(table = "{plural_name}", backend = "turso")]
+pub struct {pascal_name} {{
+    pub id: i64,
+    // Add fields supported by TursoCodec (e.g. pub name: String).
+}}
+"#
+        ),
+    }
+}
+
 /// Rejects names whose module or type would not be a non-keyword Rust identifier
 /// (for example `Match` → `pub mod match;`) before anything is written.
 fn validate_model_identifiers(snake_name: &str, pascal_name: &str) -> std::io::Result<()> {
@@ -228,5 +240,23 @@ mod tests {
         let invalid = model_to_snake_case("Bad.Name");
         assert!(validate_model_identifiers(&invalid, "BadName").is_err());
         assert!(validate_model_identifiers("blog_post", "BlogPost").is_ok());
+    }
+
+    #[test]
+    fn sqlx_models_import_only_what_their_derives_use() {
+        let model = render_model(ProjectOrmBackend::Sqlx, "blog_posts", "BlogPost");
+        let imports: Vec<&str> = model
+            .lines()
+            .filter(|line| line.starts_with("use "))
+            .collect();
+        assert_eq!(imports, ["use rullst::db::{FromRow, Orm};"]);
+        assert!(model.contains("#[derive(Debug, Clone, FromRow, Orm)]"));
+        assert!(model.contains("#[orm(table = \"blog_posts\")]"));
+        assert!(model.contains("pub struct BlogPost {\n    pub id: i32,"));
+        assert!(!model.contains("RullstModel") && !model.contains("sqlx"));
+
+        let turso = render_model(ProjectOrmBackend::Turso, "blog_posts", "BlogPost");
+        assert!(!turso.contains("use "), "{turso}");
+        assert!(turso.contains("backend = \"turso\""));
     }
 }
