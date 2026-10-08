@@ -164,6 +164,11 @@ impl Invoice {
     }
 
     /// Converts this paid invoice into a Declaração de Prestação de Serviços (DPS) for national NFS-e emission.
+    #[deprecated(
+        since = "12.3.0",
+        note = "removed in Rullst 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\""
+    )]
+    #[allow(deprecated)]
     pub fn to_dps(
         &self,
         service_code: &str,

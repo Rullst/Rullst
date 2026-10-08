@@ -32,6 +32,7 @@ fn test_mail_error_formatting() {
     assert!(format!("{}", err3).contains("Driver error: DNS resolution failed"));
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_driver_constructors() {
     let resend = ResendDriver {

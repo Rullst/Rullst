@@ -137,6 +137,7 @@ async fn test_stripe_provider_webhook_uninteresting() {
     ));
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_lemonsqueezy_provider_mock_checkout() {
     use rullst::capital::LemonSqueezyProvider;
@@ -156,6 +157,7 @@ async fn test_lemonsqueezy_provider_mock_checkout() {
     assert!(url.contains("variant_1"));
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_lemonsqueezy_provider_webhook_parsing() {
     use rullst::capital::LemonSqueezyProvider;
@@ -193,6 +195,7 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
     assert_eq!(event.status, SubscriptionStatus::PastDue);
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_lemonsqueezy_webhook_uninteresting() {
     use rullst::capital::LemonSqueezyProvider;
@@ -231,6 +234,7 @@ async fn test_stripe_signature_verification_failure() {
     );
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_lemonsqueezy_signature_verification_failure() {
     use rullst::capital::LemonSqueezyProvider;
@@ -246,6 +250,7 @@ async fn test_lemonsqueezy_signature_verification_failure() {
     );
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn test_invoice_to_dps_conversion() {
     use chrono::Utc;

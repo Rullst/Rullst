@@ -162,6 +162,9 @@ pub fn all_gateways() -> Vec<GatewayInfo> {
 }
 
 /// Generates deterministic offline adapter output for the showcase.
+// Showcases APIs deprecated in 12.3 and removed in 13.0 (v13 migration guide
+// row "Capital providers and NFS-e removed").
+#[allow(deprecated)]
 pub async fn simulate_provider_checkout(
     provider_id: &str,
     customer_email: &str,

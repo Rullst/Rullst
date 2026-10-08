@@ -133,6 +133,7 @@ use mail::{
     PaymentDunningEmail, WelcomeEmail,
 };
 use mail::payment_dunning_email::DunningStage;
+#[allow(deprecated)]
 use rullst::capital::fiscal::{
     FiscalCertificate, FiscalEmitter, FiscalResponseKind, NfseEnvironment, NfseNationalClient,
     TaxRegime,
@@ -146,6 +147,7 @@ fn assert_escaped(html: &str) {
 }
 
 #[rullst::runtime::main]
+#[allow(deprecated)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hostile = "<script>alert(1)</script>";
     let hostile_url = "https://example.com/\"><img src=x onerror=alert(1)>";

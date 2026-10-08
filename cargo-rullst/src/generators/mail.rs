@@ -11,6 +11,8 @@ mod extended;
 mod names;
 use names::{project_root_module, to_pascal_case, to_snake_case};
 
+const NFSE_DEPRECATION: &str = "⚠️ The NFS-e part of this mailable (`from_nfse_response`) is deprecated in Rullst 12.3 and removed in 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\".";
+
 /// Template family selected by the CLI after it rejects conflicting flags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum MailableKind {
@@ -482,6 +484,9 @@ impl __NAME__ {
         )
         .green()
     );
+    if kind == MailableKind::FiscalInvoice {
+        println!("{}", NFSE_DEPRECATION.yellow());
+    }
 
     Ok(())
 }

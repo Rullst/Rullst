@@ -20,6 +20,7 @@ const SQLX_MIGRATION: &str = include_str!("billing_migration_sqlx.rs.template");
 const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template");
 const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
 const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
+const LEMON_SQUEEZY_DEPRECATION: &str = "⚠️ Lemon Squeezy (BILLING_PROVIDER=lemonsqueezy) is deprecated in Rullst 12.3 and removed in 13.0; see the v13 migration guide row \"Capital providers and NFS-e removed\".";
 
 const FIXED_OUTPUTS: [&str; 9] = [
     "src/models/subscription.rs",
@@ -199,6 +200,7 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     );
     println!("👉 Mount authenticated checkout/portal routes and the exact signed webhook route.");
     println!("👉 BILLING_PROVIDER accepts stripe or lemonsqueezy.");
+    println!("{}", LEMON_SQUEEZY_DEPRECATION.yellow());
     println!(
         "👉 Stripe supports durable customer/checkout ownership and atomic webhook reconciliation."
     );
