@@ -98,6 +98,7 @@ jobs:
         run: |
           release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("rullst/Cargo.toml").read_text())["package"]["version"])')"
           python3 .github/render-release-notes.py "$release_version" "$RUNNER_TEMP/release-notes.md"
+          python3 .github/test-render-release-notes.py
 
       - name: Validate mutation artifact aggregation
         run: |

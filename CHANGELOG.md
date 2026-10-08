@@ -9,6 +9,60 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Release notes link to the full changelog
+
+- GitHub release pages now show the version section's introduction and "Known
+  limitations" with a link to the full CHANGELOG section at the tag, instead of
+  the whole section (`.github/render-release-notes.py`, tested by
+  `.github/test-render-release-notes.py`).
+
+## [13.0.0-alpha.1] - 2026-10-10
+
+First v13 prerelease, for evaluation. Stable applications should stay on 12.x.
+Every v13 package is a prerelease and may change in any alpha, beta or release
+candidate; the [maturity tiers](https://github.com/Rullst/Rullst/blob/main/docs/src/maturity.md)
+apply from `13.0.0`. Breaking changes and upgrade steps are in the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md).
+
+**New in 13.0:** `cargo rullst audit --report` (static OWASP ASVS 5.0.0 Level 1
+evidence), offline security tests in every generated starter, fewer WAF false
+positives, `cargo rullst footprint`, cached static assets and an optimized
+release profile in new projects, opt-in deferrable jobs, a possible-N+1 panel in
+`cargo rullst dash`, `cargo rullst add`, `ai fix` and `ai review`, HTML
+snapshots, `llms.txt` and the "Zero to a complete app" tutorial. The toolchain
+is Rust 1.99.0; the MSRV stays 1.96.
+
+**Breaking:** `rullst-mail` keeps Resend, AWS SES, SendPulse and SMTP;
+`rullst-capital` keeps Stripe and InfinitePay. The other transports, gateways,
+payouts and NFS-e were removed and remain in 12.x; `cargo rullst upgrade`
+reports them as `V13-MAIL-REMOVED` and `V13-CAPITAL-REMOVED`.
+
+**Experimental:** `rullst-iot`, `rullst-privacy`, `rullst-supervision`,
+`rullst-media`, `rullst-labs`, the InfinitePay adapter and the Omni iOS,
+Foundry, Nix, Buildah, gRPC and IoT generators.
+
+The full changelog groups the entries by change, roughly newest first. Where
+they differ, the later change wins: for example, the Paddle candidates were removed
+with the other Capital adapters.
+
+### Known limitations
+
+- No security-support commitment for v13 prereleases yet; see `SECURITY.md`.
+  Pin an exact version (`=13.0.0-alpha.1`) and read the changelog before you
+  upgrade.
+- Experimental packages have documented gaps: IoT is not validated on physical
+  hardware and has no network transport; Privacy has no live age provider or
+  verified guardianship; Media is not validated against real Bunny Stream, CDN
+  or S3-compatible accounts (the `s3` adapter only against the offline mock).
+  Labs never executes learner code; you bring your own runner.
+- `audit --report` is a bounded static check, not a certification: most ASVS
+  Level 1 requirements are reported as `NOT EVALUATED`.
+- `footprint` reads Linux `/proc`; energy comes from RAPL or is a labelled
+  estimate, and anything else is `NOT MEASURED`. Deferrable jobs ship no network
+  carbon source and make no emissions claim. The N+1 panel does not attribute
+  raw statements or spawned work. The distroless image size is not yet measured.
+- Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
+
 ### Generated evidence no longer committed
 
 - The stale repository copies of `SECURITY_COMPLIANCE.md` and
@@ -252,22 +306,6 @@ A prepared version section does not establish that its tag or crates exist.
   Explicit application values and `SecureHeadersConfig` omissions therefore win
   over the baseline; `Cache-Control: no-store` and the shared CSP nonce are
   unchanged.
-
-### Security report: `cargo rullst audit --report`
-
-- `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
-  `SECURITY_REPORT.md`, `.html` or `.json` (or `--output <path>`). The checks
-  are static and bounded: security headers and CSP, CSRF, cookie attributes,
-  rate limiting on credential routes, committed secrets in Git-tracked files
-  (shown only as redacted previews), the existing `cargo audit` step with its
-  exceptions, and the IDOR scanner.
-- The report adds a personal-data inventory and WCAG-related accessibility
-  heuristics. Each check reports an evidence status mapped to OWASP ASVS 5.0.0
-  Level 1, and the remaining Level 1 requirements are listed as `NOT EVALUATED`.
-- The JSON schema is `rullst.cli-audit-report.v1`. The command exits 1 on
-  `FINDINGS` or `ERROR`. It is evidence for a reviewer, not a certification.
-  Existing `audit` flags are unchanged.
-
 
 ### Dependency security: hickory 0.26.3
 
@@ -1972,52 +2010,10 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### CI tooling
 
-- Isolate partial-update integration tests in separate processes with checked
-  SQLite initialization. Verify Live's oversized-frame rejection across TCP
-  resets while retaining domain-state and connection-admission assertions.
-- Reject manual archive selectors that would skip the requested package gate.
-  Prepare the complete locked dependency graph before offline archive consumers
-  inspect cross-platform dependencies. Let cancelled observational scorecards
-  release their workflow concurrency slot while retaining reports after failures.
-- Prepare the v13 release line with explicit major/branch/tag/package binding,
-  protected-head admission, automatic checks on both maintained branches and
-  fuzz provenance confined to the candidate's release line. Keep the protected
-  publication approval and full release evidence requirements.
-- Distinguish skipped jobs from measured execution in timing reports, including
-  GitHub's reversed synthetic timestamps; retain strict validation for jobs
-  that ran. Record successful hosted optimization evidence without hiding the
-  longer total elapsed time caused by substantial job-start waits.
-- Limit single-target fuzz diagnostic preparation to the exact requested target
-  with fail-closed package selection. Retain every release preflight target,
-  sanitizer setting and campaign duration; add scheduling/failure regressions.
-- Validate the entire threat evidence manifest before builds, remove repeated
-  Cargo target-listing calls, and require exact non-ignored execution instead
-  of accepting a zero-test success. Preserve all 59 unique negative tests.
-- Run only the fully materialized LMS for its eight threat mappings, using the
-  same case and application-test helper. Keep every configuration and assertion
-  in the normal eight-project matrix, including ERP release builds; exclude only
-  its redundant exact-name LMS wrapper there. Add real Rust harness and
-  scheduling regressions, and bound nested compilation to two jobs in hosted
-  threat checks. The optimized Linux run passed all 25 required runtime jobs;
-  reduced execution work did not guarantee shorter overall queue-plus-run time.
-- Add a bounded read-only job-timing reporter and negative fixtures; distinguish
-  job waits, combined execution steps and summed runner time from release evidence.
-- Add an observation-only Git impact planner with transitive normal, optional,
-  target, build and development dependency edges. Unknown inputs, changed
-  policy/dependencies, critical crates, executable documentation and ambiguous
-  history retain full verification; no check is skipped by its reports.
-- Add a development-only site admission path for v13 pushes, requiring a recent
-  exact-source baseline with all 25 Linux runtime jobs successful, a bounded
-  three-file presentation diff and fresh browser/documentation checks. Missing
-  or invalid evidence falls back to full runtime CI; PRs, main, manual and release
-  gates are unchanged. The first hosted positive path completed Rust CI in 43s;
-  its immediately preceding full Linux baseline took 20m57s. These observed
-  timings do not predict runtime-change or release verification duration.
-- Resolve every fuzz dependency graph with locked Cargo metadata before Clippy
-  and campaign builds. Remove the ineffective `--no-deps` preflight and add real
-  stale-lock regression evidence; retain all forty fuzz targets and durations.
-- Use pinned prebuilt mdBook releases for documentation and Pages builds while
-  retaining their book, link and real-browser checks.
+- Internal CI and release-tooling hardening only: test isolation, fuzz and
+  threat-evidence scheduling, archive and release-line admission for v13,
+  and timing reports. Release requirements and evidence are unchanged; see
+  [WORKFLOWS.md](WORKFLOWS.md) and the commit history for details.
 
 ### Documentation
 
@@ -2033,14 +2029,10 @@ A prepared version section does not establish that its tag or crates exist.
 - Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
   eight shards still use Cargo's test runner.
 
-## [13.0.0-alpha.1] - 2026-09-20 (unpublished development checkpoint)
+### Development checkpoint of 20 September 2026
 
-This section describes the v13 source train. It does not announce a crates.io
-publication or admit a stable v13 release. See the
-[delivery plan](docs/src/v13-delivery-plan.md) and
-[adoption guide](docs/src/migration-v13.md) for current evidence and boundaries.
-The inventory includes subsequent source increments through September 21;
-the development version remains unpublished.
+Recorded as an unpublished source checkpoint; later sections supersede it
+(the separate Labs runner was removed, see "Labs: bring your own runner").
 
 - Set the existing sixteen release packages and internal requirements to the
   explicit development version. Migration catalog v2 admits reviewed 12.1→13

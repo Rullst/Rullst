@@ -36,7 +36,7 @@ FEATURES = [
     ("🗄️", "Data that stays correct", "Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL.", "#22c55e"),
     ("🧱", "Six real blueprints", "API, Blog, SaaS, LMS, Portfolio and ERP — generated as ordinary Rust you own.", "#eab308"),
     ("🤖", "Made for AI coding", "Explicit APIs, compile-time macros, typed errors and no runtime reflection.", "#a855f7"),
-    ("💳", "Payments &amp; email", "Stripe billing with signed webhooks; Resend, SendGrid, Postmark and SMTP delivery.", "#14b8a6"),
+    ("💳", "Payments &amp; email", "Stripe billing with signed webhooks; Resend, AWS SES, SendPulse and SMTP delivery.", "#14b8a6"),
     ("🧠", "AI built in", "OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking.", "#ec4899"),
     ("📊", "See inside your app", "Studio's live runtime telemetry and the Nexus admin with a security radar.", "#3b82f6"),
     ("🖥️", "Web first, native too", "HTMX server rendering, JSON APIs, and Tauri desktop and mobile shells via Omni.", "#06b6d4"),
