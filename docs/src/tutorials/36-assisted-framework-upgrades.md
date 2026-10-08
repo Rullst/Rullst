@@ -445,6 +445,7 @@ the rule together.
 | CLI home screen | (c) none | — | CLI |
 | CLI security audit | (c) none | — | CLI |
 | CLI dashboard audit | (c) none | — | CLI |
+| CLI security report | (c) none | — | CLI |
 | CLI `dev`/`dash` shutdown | (c) none | — | CLI |
 | CLI `dev --ts-sync` | (c) none | — | CLI |
 | CLI `dash` live metrics | (c) none | — | CLI |
