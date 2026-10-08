@@ -13,6 +13,17 @@ pub use crate::config::DEFAULT_CSP_TEMPLATE;
 
 const DEFAULT_STATIC_CSP: &str = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:";
 
+/// Response extension marking that a layer inside [`headers_middleware`]
+/// already chose the response's security headers.
+///
+/// `rullst_security::SecureHeadersLayer` inserts it. When the Core baseline
+/// finds it, it leaves every security header to that layer, including the ones
+/// the layer's configuration omits; it still adds `Cache-Control: no-store`
+/// when the response has no cache policy. A custom header layer can insert it
+/// for the same effect.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SecurityHeadersApplied;
+
 /// A cryptographically random CSP nonce associated with one request.
 ///
 /// Handlers and renderers can extract this value with `Extension<CspNonce>` and add
