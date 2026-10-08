@@ -114,15 +114,16 @@ explicit limit on upload routes too (for example axum's `DefaultBodyLimit`).
 
 Leave these out unless you have a specific reason:
 
-- **`RaspSecurityLayer`** duplicates most of the Core WAF and buffers the same
-  request body a second time. Add it when you need its extra signatures (cloud
-  metadata hosts, JNDI lookups, every non-credential header and decoded JSON
-  strings) and accept more false positives.
+- **`RaspSecurityLayer`** overlaps the Core WAF and buffers the same request
+  body a second time. Add it when you need its extra signatures (cloud
+  metadata hosts, JNDI lookups and every non-credential header) and accept
+  more false positives.
 - **Core PII masking** rewrites e-mail addresses and long digit runs in every
   textual response, including ones your users are meant to see. Prefer
   redacting fields in your own serializers.
-- **`SecureHeadersLayer` inside `Server`**: in staging and production the Core
-  baseline is outermost and overwrites most of its headers (see below).
+- **`SecureHeadersLayer` inside `Server`** only when you need values that
+  `[security]` cannot express: the Core baseline then keeps every header the
+  layer chose or omitted (see below).
 
 ## Overlapping layers compared
 
@@ -133,18 +134,29 @@ Leave these out unless you have a specific reason:
 | Mounted by | `Server` in staging/production; most blueprints also mount it on the router | You, as a Tower layer |
 | Configuration | `[security] csp` (template with `{NONCE}`) and `coep`; other values fixed | `SecureHeadersConfig`: every header value replaceable or omitted (`None`), CSP template or static CSP |
 | Headers | HSTS (two years, preload), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config |
+| Existing values | Adds each header only when the response has none; leaves all of them alone after an inner `SecureHeadersLayer` | Replaces the handler's values with its configured ones |
 | `Cache-Control` | Adds `no-store` when the handler set none | Not touched |
 | CSP nonce | `CspNonce` request extension | Same `CspNonce`, reused when one already exists |
 
 Both layers reuse one `CspNonce` per request, so templates render a nonce that
-matches the final header. Both insert headers rather than merge them, so the
-**outer** layer's value wins on the response. Inside `Server` in staging or
-production that is always the Core baseline. Use `[security]` settings to tune
-a `Server` application, and `SecureHeadersLayer` for a plain Axum router or a
-router you serve without `Server`. An explicit `Referrer-Policy: no-referrer`
-from a handler survives both layers. `CspSecurityLayer` (in `sanitizer`) is a
-smaller variant: default CSP, `X-Frame-Options`, `nosniff` and
-`Referrer-Policy` only.
+matches the final header. The Core baseline is a fallback: it fills in a
+security header only when the handler or an inner layer has not set it, so an
+**explicit value set by the application wins over the baseline**.
+`SecureHeadersLayer` marks its responses with
+`rullst::security::SecurityHeadersApplied`; when the Core baseline (outermost
+inside `Server` in staging and production) sees that marker it leaves every
+security header to the layer, so the headers `SecureHeadersConfig` sets to
+`None` stay absent. It still adds `Cache-Control: no-store` when no cache
+policy was set. The trade-off: a weaker value that a handler sets on purpose
+or by mistake (for example `Referrer-Policy: unsafe-url` or a CSP with
+`'unsafe-inline'`) is no longer replaced, so review the headers your handlers
+set. Use `[security]` settings to tune a `Server` application, and
+`SecureHeadersLayer` when you need per-header values or omissions, or for a
+plain Axum router that you serve without `Server`. An exact
+`Referrer-Policy: no-referrer` from a handler survives both layers, normalized
+to one value. `CspSecurityLayer` (in `sanitizer`) is a smaller variant: default
+CSP, `X-Frame-Options`, `nosniff` and `Referrer-Policy` only; it does not set
+the marker, so the Core baseline keeps those four and adds the rest.
 
 **Not covered:** headers reduce browser-side risks (framing, MIME sniffing,
 inline script injection); they do not fix an XSS bug in a page that allows
@@ -156,20 +168,29 @@ HSTS has no effect until the first HTTPS response reaches the browser.
 | | Core `waf_middleware` | `rullst_security::RaspSecurityLayer` |
 | :--- | :--- | :--- |
 | Mounted by | `Server` in staging/production | You |
-| Signatures | Keyword substrings: SQL (`select `, `union `, `insert `, `delete `, `drop table`, `alter table`), XSS (`<script`, `javascript:`, `onload=`, `onerror=`, `document.cookie`), shell (`; ls`, `&& cat`, piping to `sh` or `bash`, `wget `, `curl `, `ping -c`); traversal (`../`, `..\`, `/etc/passwd`, `win.ini`) | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) |
+| Signatures | Injection structure, not keywords. SQL: a quote followed by `or`/`and` and a comparison or by a comment (`' or '1'='1`, `admin'--`), a `;` followed by a statement (`; drop table`, `; delete from`, `; select *`), `union [all] select`, and probes (`sleep(`, `benchmark(`, `waitfor delay`, `pg_sleep(`, `information_schema`, `@@version`, `xp_cmdshell`, `load_file(`, `into outfile`). Shell: `;`, `\|`, `&&`, a backtick or `$(` followed by a command name (`sh`, `bash`, `cat`, `ls`, `id`, `curl`, `wget`, `nc`, `rm`, `python`…). XSS (`<script`, `javascript:`, `onload=`, `onerror=`, `document.cookie`) and traversal (`../`, `..\`, `/etc/passwd`, `win.ini`) as substrings | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) |
 | Where it looks | Decoded path (traversal only), query, `Referer`, each cookie pair, `User-Agent` against a configurable blocklist (AI and SEO crawlers by default) | Full request target, every header except `Cookie` and `Authorization`, body; JSON keys and strings after decoding |
 | Bodies | `text/*`, JSON, XML, URL-encoded forms; identity encoding only (others get `415`); at most 1 MiB (`413`); invalid UTF-8 gets `400` | Same media types and limits |
-| Decoding | One percent-decoding pass | Raw text plus one percent-decoding pass |
+| Decoding | One percent-decoding pass, then lowercase with whitespace runs collapsed, checked with and without `/* … */` comments; JSON bodies are checked key by key and string by string | Raw text plus one percent-decoding pass |
 | Telemetry | None | `SecurityStore` interception counters and events |
+
+The Core WAF is a coarse baseline. Ordinary text that names SQL or shell
+words ("please select an option", "delete my account", "curl the API with your
+token") passes; only injection syntax around those words is refused.
+Parameterized SQL is the real defense against SQL injection, and shell-free
+process APIs against command injection.
 
 **Not covered by either:** `multipart/form-data` and other binary bodies,
 double-encoded or otherwise obfuscated payloads (HTML entities, Unicode
-escapes outside JSON strings, SQL comments between keywords), payloads split
-across fields, and every attack class without a listed signature. Both produce
-false positives: the Core WAF refuses ordinary text such as "please select an
-option" or "curl the API" in a JSON body or query, and RASP refuses any field
-that contains `../` or `/bin/sh`. Parameterized SQL, output encoding, typed
-validation and URL allowlists remain the actual defenses.
+escapes outside JSON strings, and in RASP SQL comments between keywords),
+payloads split across fields, injections that need no quote, `;` or
+`union` (a bare numeric `1 or 1=1`), and every attack class without a listed
+signature. Both still produce false positives: the Core WAF refuses text in
+which a shell metacharacter precedes a command name (a Markdown cell
+`| id |`, inline code such as `` `ls` ``) or a quote precedes `or` and a
+comparison, and RASP refuses any field that contains `../` or `/bin/sh`.
+Parameterized SQL, output encoding, typed validation and URL allowlists remain
+the actual defenses.
 
 ### Response masking: Core PII masking vs DLP
 
