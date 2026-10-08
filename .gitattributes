@@ -1,0 +1,28 @@
+# Text files are checked out with LF on every platform. cargo-rullst embeds
+# its blueprint and generator templates with `include_str!`, so a CRLF checkout
+# (Git for Windows defaults to `core.autocrlf=true`) would change the bytes of
+# generated projects and of the source shapes the tests assert.
+* text=auto eol=lf
+
+# Binary assets are never converted or diffed as text.
+*.png binary
+*.gif binary
+*.webp binary
+*.webm binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.br binary
+*.zst binary
+*.wasm binary
+*.sqlite binary
+*.db binary
+
+# Fuzz corpora are byte-exact inputs; keep them unconverted but diffable.
+**/fuzz/corpus/** -text
