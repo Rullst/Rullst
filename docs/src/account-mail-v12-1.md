@@ -1,5 +1,14 @@
 # Account mail in 12.1
 
+> **v13 update (8 October 2026):** this page records the 12.1 contract. The v13
+> line removed the Azure Communication Services transport described below,
+> together with the SendGrid, Postmark, Mailjet and Mailtrap transports; they
+> remain in the 12.x line. Account mail in v13 is delivered through Resend,
+> AWS SES, SendPulse, SMTP or an application-owned `MailDriver`; see the
+> [migration guide](migration-v13.md#changes-from-the-published-1210-source)
+> row "Mail providers removed" and
+> [Writing your own mail transport](mail-custom-transport.md).
+
 This is an opt-in 12.1 source contract. Updating a dependency does not migrate an
 application's account table, replace its session middleware, configure a sender
 or deploy a worker. See the [release record](v12.md) for publication status.

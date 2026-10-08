@@ -175,8 +175,7 @@ currency. The default PDF is paginated, bounded to sixteen MiB and supports
 WinAnsi text (including common Portuguese characters); pass a checked TTF/OTF
 to Capital for other scripts. Mail applies its mandatory pre-flight before the
 facade queues or sends the HTML message and attachment; `from` re-runs it for
-the verified sender, which SendPulse, Mailjet, Mailtrap and ACS require and
-without which other real drivers fall back to a placeholder sender.
+the verified sender, which every real transport requires: none invents one.
 
 This helper does not subscribe to webhooks by itself. Reconcile the provider
 event, build the authoritative invoice and insert `delivery_key` under a unique

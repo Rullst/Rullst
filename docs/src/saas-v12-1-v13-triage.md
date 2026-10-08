@@ -4,7 +4,10 @@
 > line later removed the Paddle, Lemon Squeezy, Polar, Razorpay, Mercado Pago,
 > Alipay, Coinbase Commerce, PicPay and Wise adapters and the NFS-e module; see
 > the [migration guide](migration-v13.md#changes-from-the-published-1210-source).
-> Findings about those adapters apply to the 12.x line only.
+> Findings about those adapters apply to the 12.x line only. It also removed
+> the SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
+> mail transports (including the ACS Managed Identity transport mentioned
+> below); see the migration row "Mail providers removed".
 
 ## 2026-09-18 account-mail and follow-up candidate
 
