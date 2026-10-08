@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Successor maintainer checklist
+
+- Add `docs/successor.md`: the access a successor maintainer needs (organization
+  ownership, release approval, crates.io ownership of every published crate,
+  security inbox recovery), the private recovery document, a verification
+  drill and the public record for GOVERNANCE.md. Continuity is still not
+  established; GOVERNANCE.md links the checklist.
+
 ### Security report: `cargo rullst audit --report`
 
 - `cargo rullst audit --report [md|html|json]` (new in 13.0) writes
