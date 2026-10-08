@@ -355,12 +355,12 @@ is classified for `rullst-upgrade-rules-v4`:
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
   application source (8 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (91 rows);
+  the affected API, feature or configuration, which the rules locate (92 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (44 rows).
 
-The catalog has 98 rules. A row can map to several rules and a rule to
+The catalog has 99 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -464,6 +464,7 @@ the rule together.
 | Messaging outbox relay key | (b) review | `V13-OUTBOX-RELAY-KEY` |  |
 | Messaging encrypted SQLite startup | (c) none | — | Correct keyrings are unaffected |
 | Messaging Redis Streams candidate | (c) none | — | No 12.x release contains the adapter |
+| Mail providers removed | (b) review | `V13-MAIL-REMOVED` | Compile-breaking; also locates removed `MAIL_DRIVER` values and settings in Rust strings, `.env`, `.env.example` and `Rullst.toml` |
 | Mail driver default | (b) review | `V13-MAIL-FACADE-CONFIG` |  |
 | Mail sender | (b) review | `V13-MAIL-FACADE-CONFIG` |  |
 | Mail attachment inspection | (b) review | `V13-MAIL-ATTACHMENT-INSPECTION` |  |

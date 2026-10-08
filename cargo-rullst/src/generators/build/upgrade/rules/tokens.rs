@@ -204,7 +204,11 @@ impl Scanner<'_, '_> {
                 }
                 TokenTree::Literal(_) => {
                     if let Some(value) = string_value(Some(tree)) {
-                        self.string(&value, line(tree));
+                        // The key of a `"KEY", "value"` pair, as in `set_var`.
+                        let key = (index.checked_sub(2))
+                            .filter(|key| is_punct(tokens.get(key + 1), ','))
+                            .and_then(|key| string_value(tokens.get(key)));
+                        self.string(&value, key.as_deref(), line(tree));
                     }
                     chain.clear();
                     index += 1;
@@ -302,6 +306,9 @@ impl Scanner<'_, '_> {
         }
         if REMOVED_CAPITAL_IDENTS.contains(&name) {
             self.hit(&CAPITAL_REMOVED, at);
+        }
+        if REMOVED_MAIL_IDENTS.contains(&name) {
+            self.hit(&MAIL_REMOVED, at);
         }
         match name {
             "health_router" | "health_router_with_lifecycle" => self.facts.mounts_health = true,
@@ -419,7 +426,7 @@ impl Scanner<'_, '_> {
         }
     }
 
-    fn string(&mut self, value: &str, at: usize) {
+    fn string(&mut self, value: &str, key: Option<&str>, at: usize) {
         if value.eq_ignore_ascii_case("no-referrer") {
             self.hit(&REFERRER_POLICY, at);
         }
@@ -438,6 +445,9 @@ impl Scanner<'_, '_> {
         }
         if value.starts_with("OTEL_EXPORTER_OTLP_") {
             self.hit(&OTLP_ENVIRONMENT, at);
+        }
+        if removed_mail_string(value, key) {
+            self.hit(&MAIL_REMOVED, at);
         }
     }
 

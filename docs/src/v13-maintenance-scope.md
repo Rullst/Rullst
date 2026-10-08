@@ -75,7 +75,7 @@ in force throughout that transition.
 | `rullst-auth`, `rullst-security`, `rullst-connect` | High and necessary: failures affect application identity, secrets and tenant boundaries. | Maintain narrow, coherent contracts using established primitives. Reduce duplicated responsibilities and close documented gaps before expanding providers or security-product ambitions. |
 | `rullst-messaging` | High: leases, retries, duplicates, outbox consistency and backend recovery. | Maintain bounded durable delivery and supported backends. Additional brokers need a demonstrated application requirement and their own recovery evidence. |
 | `rullst-capital` | High: provider-specific money/state semantics, reconciliation, subscriptions and fiscal expansion. | Preserve reusable SaaS billing: the provider-neutral base plus Stripe and an experimental InfinitePay adapter. The other adapters, payouts and NFS-e preparation were removed from 13.0 as described below. |
-| `rullst-mail`, `rullst-ai`, `rullst-media` | Medium to high: external services, feedback/events, transport changes and provider-specific behavior. | Maintain common contracts and adapters justified by actual use. Prefer interoperable protocols where appropriate, while retaining provider-specific assertions and explicit unsupported operations. |
+| `rullst-mail`, `rullst-ai`, `rullst-media` | Medium to high: external services, feedback/events, transport changes and provider-specific behavior. | Maintain common contracts and adapters justified by actual use. Prefer interoperable protocols where appropriate, while retaining provider-specific assertions and explicit unsupported operations. Mail keeps Resend, AWS SES, SendPulse and SMTP in 13.0, as described below. |
 | `rullst-privacy` | Bounded current foundations; broader legal or biometric promises would create high continuing cost. | Keep reusable consent, minimal-data and proportional age-policy mechanisms. Provider attestations remain separate from native declarations; global legal certification and a first-party facial model are not part of this direction. |
 | `rullst-supervision` | Specialized, sensitive application state; models, capture and operational expansion raise the cost. | Keep transparent observation contracts as an optional education/parental extension. Product workflows, verified relationships, media models and human review belong to the application or separately governed integration. |
 | `rullst-labs` | Bounded trusted orchestration with sensitive authorization, leases and grading contracts. | Keep separate from execution: bring your own runner through the documented [controller contract](labs-runner-contract.md). Retain one useful Academy profile without making broader language or exercise support a framework release prerequisite. |
@@ -171,7 +171,10 @@ In v13 each removed name has a migration row and an assisted-upgrade finding,
 and the replacement is an application-owned adapter on the retained contracts.
 The [deprecation policy](compatibility-policy.md#deprecation-and-removal) also
 expects `#[deprecated]` markers in a released 12.x minor before a stable API is
-removed; adding them on `v12` (for example in 12.2.0) is a separate change. Tests with deterministic mocks establish local
+removed. By owner decision on 8 October 2026, the 12.3.0 minor release marks
+the Capital and Mail APIs removed here `#[deprecated]`, pointing to their
+migration rows, before 13.0.0 ships. The assisted-upgrade findings and the
+fail-closed configuration errors apply in addition. Tests with deterministic mocks establish local
 contracts, not actual provider interoperability. The prohibition on real-account
 tests remains in force; outstanding external evidence stays explicitly pending.
 
@@ -179,6 +182,31 @@ The recurring obligations are concrete: Stripe documents duplicate events,
 delivery ordering and retries in its [webhook guide](https://docs.stripe.com/webhooks),
 and version transitions in its [API upgrade guide](https://docs.stripe.com/upgrades).
 Other providers require their own evidence rather than inferred equivalence.
+
+## Mail: four delivery transports
+
+**Owner-selected v13 scope, 8 October 2026:** `rullst-mail` keeps the Resend,
+AWS SES, SendPulse and SMTP transports, the `log`, `memory` and offline `mock_*`
+development drivers, and the shared infrastructure they use: failover, the
+REST helpers, the pre-flight pipeline, attachment inspection, suppression,
+observations, verified Resend feedback and queued delivery. Removed from the
+13.0 workspace (the source remains in Git history and in the 12.x line): the
+SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
+transports with their `MAIL_DRIVER` values and settings.
+
+Upgrades must not lose mail or data silently. A configuration that still names
+a removed driver fails facade resolution with a typed `MailError::ConfigError`
+that names the driver and the
+[migration guide](migration-v13.md#changes-from-the-published-1210-source) row
+"Mail providers removed"; it never falls back to a development driver. Jobs
+queued by 12.x carry no provider name and are delivered by the upgraded
+worker's configured driver, or fail visibly and stay retryable. Suppression
+rows and delivery observations keep their provider labels and stay readable.
+Applications integrate other providers by implementing `MailDriver`, as shown
+in [Writing your own mail transport](mail-custom-transport.md). Like the
+Capital removal, these transports are marked `#[deprecated]` in 12.3.0 before
+13.0.0 ships. Tests with deterministic mocks establish local contracts, not provider
+interoperability.
 
 ## Turso: assess a complete application journey before universal parity
 
@@ -311,7 +339,9 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
    evidence gaps, responsible reviewer and estimated recurring work. Start with
    current SaaS and Academy journeys. The v13 billing-provider set is Stripe
    (supported) and InfinitePay (experimental), with crypto excluded; the other
-   adapters and NFS-e were removed with migration guidance.
+   adapters and NFS-e were removed with migration guidance. The v13 mail
+   transports are Resend, AWS SES, SendPulse and SMTP; the other transports
+   were removed the same way.
 3. **Prioritize separation and expansion freezes.** The Labs runner's
    assessment concluded with its removal from 13.0 in favor of a
    bring-your-own-runner contract, and Capital's fiscal domain was removed

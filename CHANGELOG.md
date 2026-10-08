@@ -17,6 +17,23 @@ A prepared version section does not establish that its tag or crates exist.
   drill and the public record for GOVERNANCE.md. Continuity is still not
   established; GOVERNANCE.md links the checklist.
 
+### Mail: Resend, AWS SES, SendPulse and SMTP
+
+- `rullst-mail` now ships the Resend, AWS SES, SendPulse and SMTP transports
+  plus the log, memory and offline mock drivers. The SendGrid, Postmark,
+  Mailjet, Mailtrap and Azure Communication Services transports
+  (`SendGridDriver`, `PostmarkDriver`, `MailjetDriver`, `MailtrapDriver`,
+  `AzureCommunicationDriver` and the `Azure*` credential types), their
+  `MAIL_DRIVER` values and their settings were removed; they remain in 12.x.
+- A `MAIL_DRIVER` or `[mail] driver` naming a removed transport now fails with
+  `MailError::ConfigError` naming the driver and the migration row, without
+  falling back. Jobs queued by 12.x are delivered by the configured driver;
+  suppression rows and observations stay readable.
+- Other providers implement `MailDriver`; see "Writing your own mail
+  transport" (`docs/src/mail-custom-transport.md`) and the offline
+  `custom_transport` example. `cargo rullst upgrade` reports removed names and
+  settings as `V13-MAIL-REMOVED`.
+
 ### Capital: provider-neutral base, Stripe and InfinitePay
 
 - `rullst-capital` now ships a provider-neutral base with Stripe (supported) and

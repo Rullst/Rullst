@@ -223,3 +223,34 @@ fn symlinked_project_files_are_not_read() {
     assert!(project.findings("[package]\nname = \"app\"\n").is_empty());
     std::fs::remove_file(outside).unwrap();
 }
+
+/// A removed `MAIL_DRIVER`, or a setting only removed transports read, in
+/// `.env`, `.env.example` or `Rullst.toml` points to its row.
+#[test]
+fn removed_mail_settings_are_reviewed() {
+    let project = Project::new();
+    project
+        .write(".env", "APP_KEY=x\n# MAIL_DRIVER=sendgrid\nMAIL_DRIVER=\"SendGrid\"\n")
+        .write(".env.example", "MAIL_FROM=\nPOSTMARK_SERVER_TOKEN=\n")
+        .write(
+            "Rullst.toml",
+            "[app]\ndriver = \"postmark\"\n[mail]\nfrom = \"ops@example.com\"\ndriver = \"azure-acs\" # ACS\n",
+        );
+    let mut found = project.findings("[package]\nname = \"app\"\n");
+    found.sort();
+    let expected: Vec<_> = [(".env", 3), (".env.example", 2), ("Rullst.toml", 5)]
+        .iter()
+        .map(|(path, line)| (path.to_string(), "V13-MAIL-REMOVED", *line))
+        .collect();
+    assert_eq!(found, expected);
+
+    let current = Project::new();
+    current
+        .write(".env", "MAIL_DRIVER=resend\nRESEND_API_KEY=re_x\n")
+        .write(".env.example", "# MAIL_DRIVER=resend\nMAIL_FROM=\n")
+        .write(
+            "Rullst.toml",
+            "[mail]\ndriver = \"ses\"\n[queue]\ndriver = \"mailtrap\"\n",
+        );
+    assert_eq!(current.findings("[package]\nname = \"app\"\n"), vec![]);
+}

@@ -226,6 +226,9 @@ rules! {
     MAIL_TEXT_FALLBACK: "V13-MAIL-TEXT-FALLBACK", Review, "Mail plain-text fallback",
         "the derived plain-text part now appends link targets as `label <URL>`",
         "Update tests comparing derived text, or set `text` explicitly.";
+    MAIL_REMOVED: "V13-MAIL-REMOVED", Review, "Mail providers removed",
+        "this names a mail transport, `MAIL_DRIVER` value or setting that v13 removed from `rullst-mail`",
+        "Use Resend, AWS SES, SendPulse or SMTP, or implement `MailDriver` for the provider in application code (see the custom transport guide); a removed `MAIL_DRIVER` fails every send.";
     LABS_RUNNER: "V13-LABS-RUNNER-REMOVED", MustChange, "Labs runner",
         "the `rullst-labs-runner` candidate was removed from v13 and is not published",
         "Remove the dependency and deploy an application-owned runner against the labs controller contract.";
@@ -373,3 +376,71 @@ pub(crate) const REMOVED_CAPITAL_IDENTS: &[&str] = &[
     "issue_nfse_direct",
     "to_dps",
 ];
+
+/// Public `rullst-mail` names removed in v13 (`V13-MAIL-REMOVED`): the
+/// SendGrid, Postmark, Mailjet, Mailtrap and Azure Communication Services
+/// transports. `MailTrap`, the in-memory test trap, is kept.
+pub(crate) const REMOVED_MAIL_IDENTS: &[&str] = &[
+    "SendGridDriver",
+    "PostmarkDriver",
+    "MailjetDriver",
+    "MailtrapDriver",
+    "AzureCommunicationDriver",
+    "AzureMailCredential",
+    "AzureMailAccessToken",
+    "AzureManagedIdentity",
+    "StaticAzureMailCredential",
+    "with_message_stream",
+];
+
+/// `MAIL_DRIVER` values of the removed mail transports.
+const REMOVED_MAIL_DRIVERS: &[&str] = &[
+    "sendgrid",
+    "postmark",
+    "mailjet",
+    "mailjet-sandbox",
+    "mailtrap",
+    "mailtrap-sandbox",
+    "azure-acs",
+];
+
+/// Settings that only the removed mail transports read.
+const REMOVED_MAIL_SETTINGS: &[&str] = &[
+    "SENDGRID_API_KEY",
+    "POSTMARK_SERVER_TOKEN",
+    "POSTMARK_API_KEY",
+    "POSTMARK_MESSAGE_STREAM",
+    "MAILJET_API_KEY",
+    "MAILJET_SECRET_KEY",
+    "MAILTRAP_API_TOKEN",
+    "MAILTRAP_SANDBOX_ID",
+    "AZURE_COMMUNICATION_EMAIL_ENDPOINT",
+];
+
+/// Whether a value names a removed `MAIL_DRIVER`, ignoring case and quotes.
+pub(crate) fn is_removed_mail_driver(value: &str) -> bool {
+    let value = value.trim().trim_matches(['"', '\'']).to_ascii_lowercase();
+    REMOVED_MAIL_DRIVERS.contains(&value.as_str())
+}
+
+/// Whether a `.env` line selects or configures a removed mail transport:
+/// `MAIL_DRIVER=<removed>` or a setting only those transports read.
+pub(crate) fn removed_mail_setting(line: &str) -> bool {
+    let line = line.trim();
+    let line = line.strip_prefix("export ").unwrap_or(line);
+    let Some((key, value)) = line.split_once('=') else {
+        return false;
+    };
+    let key = key.trim();
+    let value = value.split(" #").next().unwrap_or(value);
+    (key == "MAIL_DRIVER" && is_removed_mail_driver(value)) || REMOVED_MAIL_SETTINGS.contains(&key)
+}
+
+/// Whether a Rust string literal selects or configures a removed mail
+/// transport: a `.env` style line, a removed setting name, or a removed
+/// driver value paired with the key `MAIL_DRIVER`.
+pub(crate) fn removed_mail_string(value: &str, key: Option<&str>) -> bool {
+    value.lines().any(removed_mail_setting)
+        || REMOVED_MAIL_SETTINGS.contains(&value)
+        || (key == Some("MAIL_DRIVER") && is_removed_mail_driver(value))
+}
