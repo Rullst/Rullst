@@ -145,6 +145,20 @@ while IFS= read -r package; do
           } >> "$baseline_root/Cargo.toml"
         fi
       fi
+      # pkcs1 0.8.0-rc.5 (2026-10-05) breaks sad-rsa 0.10.2, which published
+      # Capital baselines up to 12.2.0 reach through the `nfse` feature
+      # (xml-sec), and the facade through `capital-nfse`. 12.3.0 pins rc.4
+      # itself; give older baselines the same resolver-only constraint without
+      # changing baseline Rust source or disabling any feature.
+      if [[ "$package" == "rullst-capital" || "$package" == "rullst" ]]; then
+        if ! grep -Eq '^\[dependencies\.pkcs1\][[:space:]]*$' "$baseline_root/Cargo.toml"; then
+          {
+            printf '\n[dependencies.pkcs1]\n'
+            printf 'version = "=0.8.0-rc.4"\n'
+            printf 'default-features = false\n'
+          } >> "$baseline_root/Cargo.toml"
+        fi
+      fi
       cargo semver-checks check-release \
         --package "$package" \
         --baseline-root "$baseline_root"

@@ -43,6 +43,8 @@ NON_INPUTS = frozenset({
     ".github/fuzz_dependency_inputs.py", ".github/test-fuzz-dependency-inputs.py",
     SCOPE_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW,
     ".github/workflows/coverage.yml",
+    # SemVer comparison policy: it builds published baselines, never fuzz code.
+    ".github/check-semver.sh", ".github/test-mail-smithy-constraint.py",
     ".github/test-fuzz-target-quality.py", "rullst/tests/fuzz_harness_contracts.rs",
 })
 

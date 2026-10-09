@@ -28,5 +28,18 @@ class MailSmithyConstraint(unittest.TestCase):
         self.assertNotIn('--exclude-features', script)
 
 
+class CapitalPkcs1Constraint(unittest.TestCase):
+    def test_current_nfse_pins_the_compatible_pkcs1_release(self):
+        manifest = tomllib.loads((ROOT / "rullst-capital/Cargo.toml").read_text())
+        self.assertEqual(manifest["dependencies"]["pkcs1"]["version"], "=0.8.0-rc.4")
+        self.assertIn("dep:pkcs1", manifest["features"]["nfse"])
+
+    def test_older_baselines_get_the_same_resolver_only_constraint(self):
+        script = (ROOT / ".github/check-semver.sh").read_text()
+        self.assertIn('"$package" == "rullst-capital" || "$package" == "rullst"', script)
+        self.assertIn("[dependencies.pkcs1]", script)
+        self.assertIn('version = "=0.8.0-rc.4"', script)
+
+
 if __name__ == "__main__":
     unittest.main()
