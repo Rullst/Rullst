@@ -9,13 +9,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-### Release notes link to the full changelog
-
-- GitHub release pages now show the version section's introduction and "Known
-  limitations" with a link to the full CHANGELOG section at the tag, instead of
-  the whole section (`.github/render-release-notes.py`, tested by
-  `.github/test-render-release-notes.py`).
-
 ## [13.0.0-alpha.1] - 2026-10-10
 
 First v13 prerelease, for evaluation. Stable applications should stay on 12.x.
@@ -62,6 +55,13 @@ with the other Capital adapters.
   carbon source and make no emissions claim. The N+1 panel does not attribute
   raw statements or spawned work. The distroless image size is not yet measured.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
+
+### Release notes link to the full changelog
+
+- GitHub release pages now show the version section's introduction and "Known
+  limitations" with a link to the full CHANGELOG section at the tag, instead of
+  the whole section (`.github/render-release-notes.py`, tested by
+  `.github/test-render-release-notes.py`).
 
 ### Generated evidence no longer committed
 
