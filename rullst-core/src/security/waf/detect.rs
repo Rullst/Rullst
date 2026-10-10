@@ -105,28 +105,32 @@ fn structural_match(text: &[u8], at: usize) -> bool {
 
 /// Collapses ASCII whitespace runs to one space and, when `strip_comments` is
 /// set, replaces each closed `/* … */` comment with a space.
+/// Each step consumes input, so the output never exceeds the input.
 fn collapse(text: &[u8], strip_comments: bool) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     let mut unclosed_comment = false;
-    let mut at = 0;
-    while at < text.len() {
-        if strip_comments && !unclosed_comment && text[at..].starts_with(b"/*") {
-            match find(&text[at + 2..], b"*/") {
+    let mut rest = text;
+    while let [byte, tail @ ..] = rest {
+        if strip_comments
+            && !unclosed_comment
+            && let Some(comment) = rest.strip_prefix(b"/*")
+        {
+            match find(comment, b"*/") {
                 Some(end) => {
                     push_space(&mut out);
-                    at += end + 4;
+                    rest = comment.get(end + 2..).unwrap_or_default();
                     continue;
                 }
                 // No later comment can close either: stop searching.
                 None => unclosed_comment = true,
             }
         }
-        if text[at].is_ascii_whitespace() {
+        if byte.is_ascii_whitespace() {
             push_space(&mut out);
         } else {
-            out.push(text[at]);
+            out.push(*byte);
         }
-        at += 1;
+        rest = tail;
     }
     out
 }
@@ -152,11 +156,15 @@ fn is_word_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || byte == b'_' || !byte.is_ascii()
 }
 
-fn skip_spaces(text: &[u8], mut at: usize) -> usize {
-    while text.get(at) == Some(&b' ') {
-        at += 1;
-    }
-    at
+/// The offset after the run of bytes from `at` that `include` accepts.
+fn run_end(text: &[u8], at: usize, include: impl Fn(u8) -> bool) -> usize {
+    at + text.get(at..).map_or(0, |rest| {
+        rest.iter().take_while(|byte| include(**byte)).count()
+    })
+}
+
+fn skip_spaces(text: &[u8], at: usize) -> usize {
+    run_end(text, at, |byte| byte == b' ')
 }
 
 /// The offset after `word` when `text[at..]` starts with it as a whole word.
@@ -186,10 +194,7 @@ fn identifier_end(text: &[u8], at: usize) -> Option<usize> {
 /// `' or '1'='1`, `" or ""="`, `admin'--`, `admin'#`: a quote followed by a
 /// boolean operator and a comparison, or by a SQL comment.
 fn quote_breaks_out(text: &[u8], quote: usize) -> bool {
-    let mut at = quote + 1;
-    while matches!(text.get(at), Some(b' ' | b')')) {
-        at += 1;
-    }
+    let at = run_end(text, quote + 1, |byte| matches!(byte, b' ' | b')'));
     let rest = &text[at.min(text.len())..];
     if rest.starts_with(b"--") || rest.starts_with(b"/*") {
         return true;
@@ -272,12 +277,7 @@ fn unions_select(text: &[u8]) -> bool {
     let Some(mut at) = word_at(text, 0, "union") else {
         return false;
     };
-    let skip_open = |mut at: usize| {
-        while matches!(text.get(at), Some(b' ' | b'(')) {
-            at += 1;
-        }
-        at
-    };
+    let skip_open = |at: usize| run_end(text, at, |byte| matches!(byte, b' ' | b'('));
     at = skip_open(at);
     if let Some(end) = word_at(text, at, "all").or_else(|| word_at(text, at, "distinct")) {
         at = skip_open(end);
@@ -304,10 +304,11 @@ fn runs_command(text: &[u8], at: usize) -> bool {
         if !text[name..].starts_with(command.as_bytes()) {
             return false;
         }
-        let mut end = name + command.len();
-        while text.get(end).is_some_and(u8::is_ascii_digit) {
-            end += 1;
-        }
+        let end = run_end(text, name + command.len(), |byte| byte.is_ascii_digit());
         text.get(end).is_none_or(|byte| COMMAND_END.contains(byte))
     })
 }
+
+#[cfg(test)]
+#[path = "detect_tests.rs"]
+mod tests;
