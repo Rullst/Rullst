@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791599363233,
+  "lastUpdate": 1791604285585,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -15042,6 +15042,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2b7cf2b22d94a5551a527f7a394c6341df15dfd",
+          "message": "Merge pull request #449 from Rullst/test/v13-upgrade-rehearsal-12-3\n\nfix(cli): 12.3 upgrade rehearsal fixes for removed Capital APIs",
+          "timestamp": "2026-10-10T00:28:40-03:00",
+          "tree_id": "97f8374e86e9052dd005b063ec04448068cd39f4",
+          "url": "https://github.com/Rullst/Rullst/commit/f2b7cf2b22d94a5551a527f7a394c6341df15dfd"
+        },
+        "date": 1791604285070,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5317,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 557,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
             "range": "± 0",
             "unit": "ns/iter"
           },
