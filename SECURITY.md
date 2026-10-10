@@ -7,12 +7,16 @@ The **12.1.1** security maintenance release's
 retains the source, workflow and verified registry checksums. Applications using
 public example keys must rotate those keys and renew sessions when upgrading.
 
-The **12.1.2** maintenance release, the latest published stable patch,
-additionally corrects stored-value escaping in Nexus; the same correction is
-integrated into v13 development on `main`, which is not a published release. See
-the [maintenance review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
-for scope, validation and application actions. An application-specific patch
-does not update other installations of the published framework.
+The **12.3.0** minor release (9 October 2026) is the latest published stable
+release. It locks the hickory DNS family at 0.26.3 for GHSA-5j98-2g5x-46v6,
+GHSA-6w6g-hm98-mhgm and GHSA-6f2x-v7q7-m7m5, stops the Core WAF and the Security
+RASP from refusing ordinary text, and deprecates the Capital and Mail APIs that
+13.0 removes. See the
+[release review](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-3-0-review.md)
+and the [upgrade notes](https://github.com/Rullst/Rullst/blob/v12/docs/src/migration-v12-1.md#upgrading-to-123).
+Earlier fixes, such as the 12.1.2 Nexus stored-value escaping, are included.
+An application-specific patch does not update other installations of the
+published framework.
 
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
