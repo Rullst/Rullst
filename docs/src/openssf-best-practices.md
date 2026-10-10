@@ -26,24 +26,16 @@ These MUST criteria are not met yet:
 | --- | --- |
 | `documentation_achievements` | The README does not show the Best Practices badge yet. [PR #447](https://github.com/Rullst/Rullst/pull/447) adds it; merge it, then answer **Met** with the justification in the Basics table. |
 
-Check these before submitting; they are answered Met below, but need an owner
-action or confirmation:
+Owner confirmations recorded on 9 October 2026:
 
-- **`vulnerability_report_credit`:** confirm that no vulnerability fixed in the
-  last 12 months came from an outside reporter. If one did, credit them in the
-  changelog or advisory first.
-- **`documentation_current`:** on `main`, the "Supported Versions" section of
-  `SECURITY.md` still calls 12.1.2 the latest stable patch; the `v12` copy
-  already describes 12.2.0 and 12.3.x. Synchronize it.
-- **`documentation_roadmap`:** the roadmap is organized by release lines (v12
-  maintenance, v13, ideas after 13.0), not by dates. A reviewer may ask for an
-  explicit twelve-month horizon; one dated paragraph in `ROADMAP.md` would
-  settle it.
-- **`sites_password_security`:** answered N/A because the project's sites store
-  no passwords. The README also links demo applications on `rullst.win`, while
-  `GOVERNANCE.md` says the project has no registered domains. Decide whether
-  those demos count as project sites; if they do, they must hash passwords
-  with Argon2id (the `rullst-auth` default) and the answer becomes Met.
+- **`vulnerability_report_credit`:** the only advisory in the last 12 months
+  (application-key configuration, fixed in 12.1.1) was opened by the maintainer
+  from the project's own review; no outside reporter needs credit.
+- **`documentation_current`** and **`documentation_roadmap`:** `SECURITY.md` names
+  12.3.0, and `ROADMAP.md` has a dated twelve-month section.
+- **`sites_password_security`:** the demo applications on `rullst.win` are
+  project sites. They are built from the Rullst starters, which hash passwords
+  with Argon2id (`rullst-auth`); the answer is Met.
 
 ## Basics
 
@@ -65,7 +57,7 @@ action or confirmation:
 | `documentation_achievements` (URL required) | Unmet until PR #447 merges | After PR #447: the README front page shows and links the OpenSSF Best Practices badge next to the OpenSSF Scorecard badge. | [README](https://github.com/Rullst/Rullst#readme) |
 | `accessibility_best_practices` | Met | Browser smoke tests of the documentation site check the skip link, ARIA states, keyboard navigation and reduced motion. `cargo rullst audit --report` checks image text alternatives, form labels and page language in generated applications. No formal WCAG conformance is claimed. | [site-browser-smoke.mjs](https://github.com/Rullst/Rullst/blob/main/.github/site-browser-smoke.mjs), [audit report](https://rullst.github.io/Rullst/book/security-report.html) |
 | `internationalization` | Unmet | Documentation, CLI and generated starters are English only. The framework has a few locale hooks (account mail in English, Portuguese and Spanish; a configurable HTML `lang`), but no general message-catalog localization. | [account mail](https://rullst.github.io/Rullst/book/account-mail-v12-1.html) |
-| `sites_password_security` | N/A | The project's sites (GitHub repository and releases, the static GitHub Pages book, crates.io) store no passwords for external users; sign-in is handled by GitHub and crates.io. | [pages.yml](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) |
+| `sites_password_security` | Met | Project sites that keep accounts are the demo applications on rullst.win; they are built from the Rullst starters, whose sign-in stores only Argon2id password hashes (rullst-auth). The repository, releases, book and crates.io use GitHub/crates.io sign-in and store no passwords. | [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) |
 
 ## Change Control
 
@@ -134,9 +126,8 @@ action or confirmation:
 
 | Answer | Count | Criteria |
 | --- | ---: | --- |
-| Met | 48 | All others |
+| Met | 49 | All others |
 | Unmet | 6 | `documentation_achievements` (MUST, until PR #447 merges), `dco`, `bus_factor`, `internationalization`, `crypto_algorithm_agility` (SHOULD), `version_tags_signed` (SUGGESTED) |
-| N/A | 1 | `sites_password_security` |
 
 Once PR #447 is merged, every MUST criterion is answered Met. The unmet
 SHOULD and SUGGESTED criteria do not block Silver if their justifications are
