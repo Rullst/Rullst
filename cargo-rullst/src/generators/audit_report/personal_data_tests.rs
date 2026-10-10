@@ -124,6 +124,7 @@ pub struct Vault {
     #[sqlx(masked)]
     pub sqlx_hint: String,
     pub email: String,
+    pub phone: String,
 }
 "#;
 
@@ -142,7 +143,7 @@ fn only_secret_options_and_orm_markers_count_as_protected() {
     assert_eq!(row(&data, "email"), Some(("review".to_string(), false)));
     assert!(
         data.detail
-            .starts_with("2 classified or flagged field(s); 1 need review."),
+            .starts_with("3 classified or flagged field(s); 2 need review."),
         "{}",
         data.detail
     );
