@@ -73,6 +73,87 @@ recorded in [Security advisory exceptions](docs/src/security-advisory-exceptions
 
 ---
 
+## Verifying a release
+
+Each release tag runs [`release.yml`](.github/workflows/release.yml). It
+attaches these files to the GitHub release:
+
+- `<crate>-<version>.crate` for every published crate, byte-identical to
+  crates.io, with their SHA-256 digests in `checksums.txt`;
+- from v12.1.0 on, native CLI executables `rullst-<version>-<target>` and
+  `cargo-rullst-<version>-<target>` (`.exe` on Windows), each target's
+  `cli-manifest-<target>.json` and `cli-checksums-<target>.txt`;
+- release evidence (SBOM, `cargo-audit.json`, `Cargo.lock` and others) with
+  `evidence-checksums.txt`;
+- from v12.1.2 on, `rullst-release.sigstore.json` (the signed Sigstore bundle)
+  and `rullst-release.intoto.jsonl` (its signed DSSE envelope).
+
+**How releases are signed.** The `attest` job creates a GitHub artifact
+attestation (SLSA build provenance) for every crate archive, CLI file and
+evidence file. It uses Sigstore keyless signing: the release workflow's
+short-lived GitHub OIDC identity receives a certificate for a single run, and
+the signature is recorded in a public transparency log. There is no long-lived
+signing key, so none is stored on GitHub releases or crates.io. The job neither
+checks out nor executes source code. `checksums.txt` itself is not signed: it
+detects corrupted downloads, while the attestation proves origin.
+
+Verify with a recent [GitHub CLI](docs/src/gh-install.md) (it may ask you to
+run `gh auth login` first). Replace the tag and file with the ones you use:
+
+```sh
+RELEASE_TAG=v12.2.0
+gh release download "$RELEASE_TAG" --repo Rullst/Rullst \
+  --pattern "rullst-macros-${RELEASE_TAG#v}.crate" \
+  --pattern checksums.txt --pattern rullst-release.sigstore.json
+
+# 1. Integrity: the digest matches the release's checksum list.
+sha256sum --check --ignore-missing checksums.txt
+
+# 2. Origin: signed by Rullst's release workflow for this tag.
+gh attestation verify "rullst-macros-${RELEASE_TAG#v}.crate" \
+  --repo Rullst/Rullst \
+  --signer-workflow Rullst/Rullst/.github/workflows/release.yml \
+  --source-ref "refs/tags/$RELEASE_TAG" \
+  --deny-self-hosted-runners
+```
+
+For a native executable, check it with `sha256sum --check --ignore-missing
+cli-checksums-<target>.txt`, then run the same `gh attestation verify` command
+on the executable. Every attested file since v12.0.0 can be verified online this
+way.
+
+From v12.1.2 on, the downloaded bundle can be checked without looking up
+GitHub's attestation store. Pin the full commit as well, taken from a source
+you trust (release tags are not signed today):
+
+```sh
+gh attestation verify "$ARTIFACT" \
+  --bundle rullst-release.sigstore.json \
+  --repo Rullst/Rullst \
+  --cert-identity "https://github.com/Rullst/Rullst/.github/workflows/release.yml@refs/tags/$RELEASE_TAG" \
+  --cert-oidc-issuer https://token.actions.githubusercontent.com \
+  --source-ref "refs/tags/$RELEASE_TAG" \
+  --source-digest "$RELEASE_COMMIT" \
+  --signer-digest "$RELEASE_COMMIT" \
+  --deny-self-hosted-runners
+```
+
+A successful check exits with status 0; changed bytes, a wrong workflow or a
+wrong commit fail. On 9 October 2026 these commands verified
+`rullst-macros-12.2.0.crate` against tag `v12.2.0` (commit
+`565e222a3249f788a0eb560b7ecd6a2ce379ad47`) and rejected a modified copy and a
+wrong commit.
+
+**Crates from crates.io.** Cargo checks every downloaded crate against the
+checksum in the registry index. The publish job only succeeds when the checksum
+crates.io reports equals the SHA-256 of the attested archive, so a crates.io
+checksum that matches `checksums.txt` refers to the signed bytes. The archives
+are also reproducible from source; see
+[Reproducible crate archives](docs/src/reproducible-builds.md). Versions before
+12.0.0 were published without attestations.
+
+---
+
 ## 🏛️ Rullst Security Architecture Matrix (v12.1.0)
 
 Rullst provides composable defense-in-depth controls for a zero-trust
