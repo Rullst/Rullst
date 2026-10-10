@@ -46,21 +46,24 @@ pub fn normalize_html(html: &str, options: SnapshotOptions) -> String {
     let mut out = String::with_capacity(source.len() + 16);
     let mut after_tag = false;
     let mut rest = source.as_str();
-    while !rest.is_empty() {
-        if rest.starts_with("<!--") {
-            let end = rest[4..].find("-->").map_or(rest.len(), |index| index + 7);
+    while let Some(first) = rest.chars().next() {
+        let consumed = if let Some(comment) = rest.strip_prefix("<!--") {
+            let end = comment.find("-->").map_or(rest.len(), |index| index + 7);
             push_tag(&mut out, &rest[..end], &mut after_tag);
-            rest = &rest[end..];
+            end
         } else if starts_tag(rest) {
             let end = tag_end(rest);
             let raw_tag = &rest[..end];
             push_tag(&mut out, &normalize_tag(raw_tag, options), &mut after_tag);
-            rest = &rest[end..];
-            if let Some(name) = raw_text_element(raw_tag) {
-                let close = closing_tag(rest, name);
-                out.push_str(&rest[..close]);
-                after_tag = false;
-                rest = &rest[close..];
+            match raw_text_element(raw_tag) {
+                Some(name) => {
+                    let content = &rest[end..];
+                    let close = closing_tag(content, name);
+                    out.push_str(&content[..close]);
+                    after_tag = false;
+                    end + close
+                }
+                None => end,
             }
         } else {
             let end = next_tag(rest);
@@ -69,8 +72,10 @@ pub fn normalize_html(html: &str, options: SnapshotOptions) -> String {
                 out.push_str(&collapse_whitespace(text));
                 after_tag = false;
             }
-            rest = &rest[end..];
-        }
+            end
+        };
+        // Every step consumes at least its first character, so the loop ends.
+        rest = &rest[consumed.max(first.len_utf8())..];
     }
     let mut normalized = out
         .trim_matches(|c: char| c.is_ascii_whitespace())
@@ -143,16 +148,16 @@ fn raw_text_element(tag: &str) -> Option<&'static str> {
 fn closing_tag(text: &str, name: &str) -> usize {
     let lower = text.to_ascii_lowercase();
     let needle = format!("</{name}");
-    let mut from = 0;
-    while let Some(found) = lower[from..].find(&needle) {
-        let start = from + found;
-        let after = lower.as_bytes().get(start + needle.len()).copied();
-        if after.is_none_or(|byte| byte == b'>' || byte == b'/' || byte.is_ascii_whitespace()) {
-            return start;
-        }
-        from = start + needle.len();
-    }
-    text.len()
+    lower
+        .match_indices(&needle)
+        .map(|(start, _)| start)
+        .find(|start| {
+            lower
+                .as_bytes()
+                .get(start + needle.len())
+                .is_none_or(|byte| *byte == b'>' || *byte == b'/' || byte.is_ascii_whitespace())
+        })
+        .unwrap_or(text.len())
 }
 
 fn collapse_whitespace(text: &str) -> String {
@@ -227,57 +232,48 @@ struct Attribute<'a> {
     value: Option<std::ops::Range<usize>>,
 }
 
+/// The index of the first byte at or after `index` that `skip` rejects.
+fn skip_bytes(bytes: &[u8], index: usize, skip: impl Fn(u8) -> bool) -> usize {
+    index
+        + bytes.get(index..).map_or(0, |rest| {
+            rest.iter().take_while(|byte| skip(**byte)).count()
+        })
+}
+
 fn attributes(tag: &str) -> Vec<Attribute<'_>> {
     let bytes = tag.as_bytes();
-    let mut index = 1;
-    while index < bytes.len() && !bytes[index].is_ascii_whitespace() && bytes[index] != b'>' {
-        index += 1;
-    }
+    let mut index = skip_bytes(bytes, 1, |byte| !byte.is_ascii_whitespace() && byte != b'>');
     let mut found = Vec::new();
-    while index < bytes.len() {
-        while index < bytes.len() && (bytes[index].is_ascii_whitespace() || bytes[index] == b'/') {
-            index += 1;
-        }
+    loop {
+        index = skip_bytes(bytes, index, |byte| {
+            byte.is_ascii_whitespace() || byte == b'/'
+        });
         let start = index;
-        while index < bytes.len()
-            && !bytes[index].is_ascii_whitespace()
-            && !matches!(bytes[index], b'=' | b'>' | b'/')
-        {
-            index += 1;
-        }
+        index = skip_bytes(bytes, index, |byte| {
+            !byte.is_ascii_whitespace() && !matches!(byte, b'=' | b'>' | b'/')
+        });
         if start == index {
             break;
         }
         let name = &tag[start..index];
-        while index < bytes.len() && bytes[index].is_ascii_whitespace() {
-            index += 1;
-        }
+        index = skip_bytes(bytes, index, |byte| byte.is_ascii_whitespace());
         if bytes.get(index) != Some(&b'=') {
             found.push(Attribute { name, value: None });
             continue;
         }
-        index += 1;
-        while index < bytes.len() && bytes[index].is_ascii_whitespace() {
-            index += 1;
-        }
+        index = skip_bytes(bytes, index + 1, |byte| byte.is_ascii_whitespace());
         let value = match bytes.get(index) {
             Some(&quote @ (b'"' | b'\'')) => {
                 let begin = index + 1;
-                let end = tag[begin..]
-                    .bytes()
-                    .position(|byte| byte == quote)
-                    .map_or(tag.len(), |offset| begin + offset);
+                let end = skip_bytes(bytes, begin, |byte| byte != quote);
                 index = (end + 1).min(tag.len());
                 begin..end
             }
             _ => {
                 let begin = index;
-                while index < bytes.len()
-                    && !bytes[index].is_ascii_whitespace()
-                    && bytes[index] != b'>'
-                {
-                    index += 1;
-                }
+                index = skip_bytes(bytes, index, |byte| {
+                    !byte.is_ascii_whitespace() && byte != b'>'
+                });
                 begin..index
             }
         };
@@ -312,16 +308,18 @@ fn mask_attribute(tag: &str, name: &str, placeholder: &str) -> String {
 
 /// `'nonce-…'` CSP source expressions, for example in a CSP `<meta>`.
 fn mask_nonce_sources(tag: &str) -> String {
+    const SOURCE: &str = "'nonce-";
     let mut out = String::with_capacity(tag.len());
     let mut rest = tag;
-    while let Some(found) = rest.find("'nonce-") {
-        let start = found + "'nonce-".len();
-        let Some(length) = rest[start..].find('\'') else {
+    while let Some((before, after)) = rest.split_once(SOURCE) {
+        let Some((_, remainder)) = after.split_once('\'') else {
             break;
         };
-        out.push_str(&rest[..start]);
+        out.push_str(before);
+        out.push_str(SOURCE);
         out.push_str(NONCE_PLACEHOLDER);
-        rest = &rest[start + length..];
+        out.push('\'');
+        rest = remainder;
     }
     out.push_str(rest);
     out
@@ -337,10 +335,12 @@ fn mask_csrf_headers(tag: &str) -> String {
     let lower = tag.to_ascii_lowercase();
     let mut out = String::with_capacity(tag.len());
     let mut copied = 0;
-    let mut from = 0;
-    while let Some(found) = lower[from..].find(KEY) {
-        let mut index = from + found + KEY.len();
-        from = index;
+    for (found, _) in lower.match_indices(KEY) {
+        // A key inside an already masked value is part of that value.
+        if found < copied {
+            continue;
+        }
+        let mut index = found + KEY.len();
         index += quote_at(&tag[index..]).map_or(0, str::len);
         index += tag[index..].len() - tag[index..].trim_start().len();
         if !tag[index..].starts_with(':') {
@@ -358,8 +358,11 @@ fn mask_csrf_headers(tag: &str) -> String {
         out.push_str(&tag[copied..start]);
         out.push_str(CSRF_TOKEN_PLACEHOLDER);
         copied = start + length;
-        from = copied;
     }
     out.push_str(&tag[copied..]);
     out
 }
+
+#[cfg(test)]
+#[path = "html_normalize_tests.rs"]
+mod tests;
