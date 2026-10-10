@@ -140,6 +140,7 @@
 - [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)
 - [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
+- [Reproducible Crate Archives](reproducible-builds.md)
 
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)
