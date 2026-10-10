@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791604285585,
+  "lastUpdate": 1791641191187,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -15085,6 +15085,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 557,
             "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a0843ec885ac9b346133039bfd8996a73f63b62",
+          "message": "Merge pull request #450 from Rullst/test/v13-focused-mutation\n\ntest: focused mutation campaign on critical v13 code (0 missed)",
+          "timestamp": "2026-10-10T10:44:24-03:00",
+          "tree_id": "49ea88164730cd1cfb9f46817d1469c61589a0e5",
+          "url": "https://github.com/Rullst/Rullst/commit/7a0843ec885ac9b346133039bfd8996a73f63b62"
+        },
+        "date": 1791641190298,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5312,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 597,
+            "range": "± 3",
             "unit": "ns/iter"
           },
           {
