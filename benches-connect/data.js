@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791604159066,
+  "lastUpdate": 1791641060049,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9732,6 +9732,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 542,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a0843ec885ac9b346133039bfd8996a73f63b62",
+          "message": "Merge pull request #450 from Rullst/test/v13-focused-mutation\n\ntest: focused mutation campaign on critical v13 code (0 missed)",
+          "timestamp": "2026-10-10T10:44:24-03:00",
+          "tree_id": "49ea88164730cd1cfb9f46817d1469c61589a0e5",
+          "url": "https://github.com/Rullst/Rullst/commit/7a0843ec885ac9b346133039bfd8996a73f63b62"
+        },
+        "date": 1791641059198,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 546,
             "range": "± 2",
             "unit": "ns/iter"
           }
