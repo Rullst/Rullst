@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791599161214,
+  "lastUpdate": 1791604091135,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15679,6 +15679,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4437,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2b7cf2b22d94a5551a527f7a394c6341df15dfd",
+          "message": "Merge pull request #449 from Rullst/test/v13-upgrade-rehearsal-12-3\n\nfix(cli): 12.3 upgrade rehearsal fixes for removed Capital APIs",
+          "timestamp": "2026-10-10T00:28:40-03:00",
+          "tree_id": "97f8374e86e9052dd005b063ec04448068cd39f4",
+          "url": "https://github.com/Rullst/Rullst/commit/f2b7cf2b22d94a5551a527f7a394c6341df15dfd"
+        },
+        "date": 1791604090600,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 994,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 759,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1778,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4479,
+            "range": "± 179",
             "unit": "ns/iter"
           }
         ]
