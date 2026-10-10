@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791596200307,
+  "lastUpdate": 1791599232911,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9673,6 +9673,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 398,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1dec3713fbf9358a8aaeccd5244ba2720d7d6e20",
+          "message": "Merge pull request #448 from Rullst/docs/openssf-silver-evidence\n\ndocs: OpenSSF Best Practices Silver evidence and guide",
+          "timestamp": "2026-10-09T23:08:25-03:00",
+          "tree_id": "459e567bac526a4a9057b50b363dc63337163280",
+          "url": "https://github.com/Rullst/Rullst/commit/1dec3713fbf9358a8aaeccd5244ba2720d7d6e20"
+        },
+        "date": 1791599232344,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 552,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
