@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791598464828,
+  "lastUpdate": 1791603409011,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -25741,6 +25741,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2300,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2b7cf2b22d94a5551a527f7a394c6341df15dfd",
+          "message": "Merge pull request #449 from Rullst/test/v13-upgrade-rehearsal-12-3\n\nfix(cli): 12.3 upgrade rehearsal fixes for removed Capital APIs",
+          "timestamp": "2026-10-10T00:28:40-03:00",
+          "tree_id": "97f8374e86e9052dd005b063ec04448068cd39f4",
+          "url": "https://github.com/Rullst/Rullst/commit/f2b7cf2b22d94a5551a527f7a394c6341df15dfd"
+        },
+        "date": 1791603406869,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 745,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 994,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 665,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2250,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
