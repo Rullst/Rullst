@@ -462,7 +462,7 @@ the rule together.
 | CLI `doctor` | (c) none | — | CLI |
 | CLI output additions | (c) none | — | CLI |
 | SaaS plan gates | (c) none | — | Opt-in generated module |
-| Capital providers and NFS-e removed | (b) review | `V13-CAPITAL-REMOVED` | Compile-breaking; reported for review because a name such as `FiscalError` can also be an application type |
+| Capital providers and NFS-e removed | (b) review | `V13-CAPITAL-REMOVED` | Compile-breaking; reported for review because a name such as `FiscalError` can also be an application type; also locates `BILLING_PROVIDER=lemonsqueezy` and `BILLING_STORE_ID` in `.env` and `.env.example` |
 | Capital quota keys on MySQL/MariaDB | (b) review | `V13-CAPITAL-QUOTA-KEYS` | `SqlQuotaStore`/`SqlQuotaBackend`; the database backend is not located |
 | Capital zero tier limit | (b) review | `V13-CAPITAL-ZERO-TIER` |  |
 | Capital provider subscription IDs | (c) none | — | Rejects dot-only identifiers before a request |

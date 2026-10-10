@@ -254,3 +254,36 @@ fn removed_mail_settings_are_reviewed() {
         );
     assert_eq!(current.findings("[package]\nname = \"app\"\n"), vec![]);
 }
+
+/// Lemon Squeezy, the only removed provider 12.x billing code accepted, is
+/// located through `BILLING_PROVIDER` or its `BILLING_STORE_ID` setting, as
+/// the 12.3 SaaS starter's `.env.example` declares it.
+#[test]
+fn removed_billing_settings_are_reviewed() {
+    let project = Project::new();
+    project
+        .write(
+            ".env",
+            "APP_KEY=x\n# BILLING_PROVIDER=lemonsqueezy\nexport BILLING_PROVIDER=\"LemonSqueezy\"\n",
+        )
+        .write(".env.example", "BILLING_PROVIDER=stripe\nBILLING_STORE_ID=\n");
+    let mut found = project.findings("[package]\nname = \"app\"\n");
+    found.sort();
+    let expected: Vec<_> = [(".env", 3), (".env.example", 2)]
+        .iter()
+        .map(|(path, line)| (path.to_string(), "V13-CAPITAL-REMOVED", *line))
+        .collect();
+    assert_eq!(found, expected);
+
+    let current = Project::new();
+    current
+        .write(
+            ".env",
+            "BILLING_PROVIDER=stripe\nBILLING_ACCOUNT_ID=acct_x\n",
+        )
+        .write(
+            ".env.example",
+            "# BILLING_STORE_ID=\nBILLING_PROVIDER=stripe\n",
+        );
+    assert_eq!(current.findings("[package]\nname = \"app\"\n"), vec![]);
+}
