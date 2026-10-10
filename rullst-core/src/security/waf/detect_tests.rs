@@ -1,6 +1,19 @@
 //! Direct checks of the structural detector on decoded, lowercased text.
 
+#![allow(clippy::expect_used)]
+
 use super::*;
+
+/// `is_injection` on a helper thread, failing instead of hanging.
+fn detects(text: &'static str) -> bool {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(is_injection(text));
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("detection returns promptly")
+}
 
 #[test]
 fn collapse_merges_whitespace_and_strips_only_closed_comments() {
@@ -63,4 +76,56 @@ fn union_select_allows_parentheses_and_set_quantifiers() {
     assert!(is_injection("1 union all select 1"));
     assert!(is_injection("1 union  distinct ( select 1"));
     assert!(!is_injection("trade union selection"));
+}
+
+#[test]
+fn underscores_and_non_ascii_bytes_keep_words_whole() {
+    assert!(!detects("my_union select 1"));
+    assert!(!detects("caf\u{e9}union select 1"));
+    assert!(detects("1 union select 1"));
+}
+
+#[test]
+fn chained_updates_need_a_table_identifier_before_set() {
+    assert!(detects("x; update users set a=1"));
+    assert!(detects("x; update app.users set a=1"));
+    assert!(!detects("x; update (set a"));
+    assert!(!detects("x; update"));
+}
+
+#[test]
+fn chained_selects_need_columns_and_from() {
+    assert!(detects("x; select 1"));
+    assert!(detects("x; select a, b from users"));
+    assert!(detects("x; select a,b,c from users"));
+    assert!(!detects("x; select ,a from users"));
+    assert!(!detects("x; select a, from users"));
+    assert!(!detects("x; select a plan from the list"));
+}
+
+#[test]
+fn declare_shutdown_and_exec_chain_a_statement() {
+    assert!(detects("x; declare @v int"));
+    assert!(!detects("x; declare victory"));
+    assert!(detects("x; shutdown"));
+    assert!(detects("x; exec xp_dirtree"));
+}
+
+#[test]
+fn a_hash_after_a_quote_is_a_comment_only_after_a_word() {
+    assert!(detects("admin'#"));
+    assert!(!detects("'#fff"));
+    assert!(!detects("color: '#fff'"));
+}
+
+#[test]
+fn quote_breakouts_accept_symbolic_operators_and_like() {
+    assert!(detects("abcdefgh' || 1=1"));
+    assert!(detects("abcdefgh' && 1=1"));
+    assert!(detects("x' or name like 'a%'"));
+    assert!(detects("x' or 1 --"));
+    // The comparison must follow the operator within the window.
+    assert!(!detects(
+        "rock' or roll, and that is the whole story = done"
+    ));
 }
