@@ -405,3 +405,60 @@ async fn middleware_serves_stock_powershell_clients() {
         StatusCode::FORBIDDEN
     );
 }
+
+#[test]
+fn one_layer_of_percent_and_plus_decoding_is_applied() {
+    assert_eq!(decode_percent_once("%41%62%7e%7E"), "Ab~~");
+    assert_eq!(decode_percent_once("%6A%10"), "j\u{10}");
+    assert_eq!(decode_percent_once("a+b"), "a b");
+    assert_eq!(decode_percent_once("%2e%2E%2f"), "../");
+    // Incomplete and invalid escapes are kept as written.
+    assert_eq!(decode_percent_once("%4"), "%4");
+    assert_eq!(decode_percent_once("50%"), "50%");
+    assert_eq!(decode_percent_once("x%4"), "x%4");
+    assert_eq!(decode_percent_once("%zz%4g%+1"), "%zz%4g% 1");
+    assert_eq!(decode_percent_once("%%41"), "%A");
+    // Only one layer is decoded.
+    assert_eq!(decode_percent_once("%252e"), "%2e");
+    assert_eq!(hex_value(b'F'), Some(15));
+    assert_eq!(hex_value(b'g'), None);
+}
+
+#[test]
+fn signatures_apply_to_one_decoded_layer_without_flagging_plain_encoding() {
+    assert!(RaspInspector::inspect_text("%2Fetc%2Fpasswd"));
+    assert!(RaspInspector::inspect_text("x%3B+rm+-rf+%2F"));
+    for value in ["caf%C3%A9+au+lait", "a+b%20c", "100%25", "%41%42"] {
+        assert!(!RaspInspector::inspect_text(value), "{value}");
+    }
+}
+
+#[tokio::test]
+async fn clean_bodies_up_to_the_inspection_limit_are_served() {
+    let payload = "a".repeat(64 * 1024);
+    let request = Request::builder()
+        .method("POST")
+        .uri("/echo")
+        .header(header::CONTENT_TYPE, "text/plain")
+        .header(header::CONTENT_LENGTH, payload.len())
+        .body(Body::from(payload.clone()))
+        .unwrap();
+    let response = guarded_app().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let echoed = axum::body::to_bytes(response.into_body(), 128 * 1024)
+        .await
+        .unwrap();
+    assert_eq!(echoed.len(), payload.len());
+
+    let attack = format!("{payload}; rm -rf /");
+    let request = Request::builder()
+        .method("POST")
+        .uri("/echo")
+        .header(header::CONTENT_TYPE, "text/plain")
+        .body(Body::from(attack))
+        .unwrap();
+    assert_eq!(
+        guarded_app().oneshot(request).await.unwrap().status(),
+        StatusCode::FORBIDDEN
+    );
+}

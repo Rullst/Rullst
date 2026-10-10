@@ -181,31 +181,38 @@ fn inspect_value(payload: &str, is_user_agent: bool) -> bool {
     decoded != payload && has_attack_pattern(&decoded, is_user_agent)
 }
 
+/// One layer of form decoding: `%XX` escapes and `+` as a space. Each step
+/// consumes at least one input byte, so the output never exceeds the input.
 fn decode_percent_once(payload: &str) -> String {
-    let bytes = payload.as_bytes();
-    let mut decoded = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-
-    while index < bytes.len() {
-        if bytes[index] == b'%' && index + 2 < bytes.len() {
-            let high = (bytes[index + 1] as char).to_digit(16);
-            let low = (bytes[index + 2] as char).to_digit(16);
-            if let (Some(high), Some(low)) = (high, low) {
-                decoded.push(((high << 4) | low) as u8);
-                index += 3;
+    let mut decoded = Vec::with_capacity(payload.len());
+    let mut rest = payload.as_bytes();
+    while let [first, tail @ ..] = rest {
+        rest = tail;
+        match (*first, tail) {
+            (b'%', [high, low, after @ ..]) => {
+                if let (Some(high), Some(low)) = (hex_value(*high), hex_value(*low)) {
+                    decoded.push((high << 4) + low);
+                    rest = after;
+                    continue;
+                }
+            }
+            (b'+', _) => {
+                decoded.push(b' ');
                 continue;
             }
-        } else if bytes[index] == b'+' {
-            decoded.push(b' ');
-            index += 1;
-            continue;
+            _ => {}
         }
-
-        decoded.push(bytes[index]);
-        index += 1;
+        decoded.push(*first);
     }
 
     String::from_utf8_lossy(&decoded).into_owned()
+}
+
+/// The value of one hexadecimal digit.
+fn hex_value(byte: u8) -> Option<u8> {
+    char::from(byte)
+        .to_digit(16)
+        .and_then(|digit| u8::try_from(digit).ok())
 }
 
 fn inspect_json_value(value: &serde_json::Value) -> bool {
