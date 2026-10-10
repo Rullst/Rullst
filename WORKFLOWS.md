@@ -554,7 +554,8 @@ higher component result for the repository total.
 
 The v13 focused campaign (targeted runs of security and correctness files
 before 13.0.0-alpha.1) and the local whole-crate campaign that followed it
-(`rullst-iot`) gave every missed mutant in their files a test, except these.
+(`rullst-iot`, `rullst-privacy`) gave every missed mutant in their files a
+test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
@@ -575,6 +576,9 @@ entry needs the same one-line justification.
 | `rullst-iot/src/coap.rs` (`CoapRequest::encode` twice, `append_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and `ensure_room` rejects the same lengths with the same error. |
 | `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |
+| `rullst-privacy/src/age_assurance/challenge_tokens.rs`: `ChallengeTokens::open_with_clock`, `token.len() > MAX_TOKEN_BYTES` and `payload.len() > MAX_PAYLOAD_BASE64` with `==` or `>=`, the `\|\|` before `payload.is_empty()`, the payload bound and `tag.len() != 43` with `&&`, and `MAX_PAYLOAD_BASE64` with its `+` or `/` replaced by `*` | These pre-authentication bounds only reject early what key lookup, tag verification, the 4096-byte decoded limit or JSON parsing reject with the same `InvalidChallengeToken`: a well-formed token is far below 8192 bytes, and 5463 base64 characters already decode to 4097 bytes. |
+| `rullst-privacy/src/age_assurance/sqlite.rs`: `SqliteReplayStore::open`, the `error.kind() != NotFound` guard with `false` | Every other metadata failure (permission, name length, symlink loop) also makes the SQLite open fail with the same `StoreUnavailable`. |
+| `rullst-privacy/src/consent/gate.rs`: `allows_with_clock`, `completed < record.valid_until()` with `<=` | A grant with `completed >= valid_until` has already returned `false`, so the two never compare equal there. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
@@ -593,6 +597,13 @@ so no single test can fail first:
 
 A targeted run sets each test binary's address space to 8 GiB, so a loop that
 does allocate aborts its tests and counts as caught instead.
+
+The `rullst-privacy` PostgreSQL adapters (`age_assurance/postgres.rs` and
+`consent/postgres.rs`) are exercised only by the ignored contract tests that
+`.github/check-privacy-postgres.py` runs against an owned Docker server, so a
+mutation run without that wrapper reports their database-bound mutants as
+missed. Their URL policy in `postgres_connection.rs` and the capacity check
+have unit tests.
 
 ### Fuzzing and OSS-Fuzz
 
