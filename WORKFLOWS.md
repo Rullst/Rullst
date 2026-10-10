@@ -554,8 +554,8 @@ higher component result for the repository total.
 
 The v13 focused campaign (targeted runs of security and correctness files
 before 13.0.0-alpha.1) and the local whole-crate campaign that followed it
-(`rullst-iot`, `rullst-privacy`, `rullst-labs`) gave every missed mutant in
-their files a test, except these.
+(`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`) gave
+every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
@@ -584,6 +584,11 @@ entry needs the same one-line justification.
 | `rullst-labs/src/sqlite/jobs.rs`: `load_job`, `body.len() > 32796`, and `seal_record`, `body.len() > 32768`, each with `==` or `>=` | Bounded record fields serialize far below 32 KiB, and a longer stored body fails authentication with the same `Integrity`. |
 | `rullst-labs/src/sqlite/jobs.rs`: `payload`, the `\|\|` before the scope and id comparisons with `&&` | The exercise digest covers scope, id and revision, so none of them can differ alone. |
 | `rullst-labs/src/sqlite/retention.rs`: `expire_queued`, either `\|\|` with `&&`, and `purge_terminal`, the `\|\|` after the state match with `&&` | The SQL selection, `load_job`'s column checks and `Record::validate` already guarantee a queued, expired, unleased record, or an unleased one that is neither queued, running nor `Uncertain` (which always holds its lease). |
+| `rullst-supervision/src/exam/observation.rs`: `Observation::from_code`, `(code - 10) % 4` with `+` | `(code + 10) % 4` equals `(code - 10) % 4`, because 20 is a multiple of 4. |
+| `rullst-supervision/src/sqlite/events.rs`: `events`, and `rullst-supervision/src/sqlite/observations.rs`: `observations`, `expires_at > MAX_TIME` with `==` or `>=` | An event is received before its session expires, at least an hour before the session's retention ends at or before `MAX_TIME`, so with its fixed retention it always expires before `MAX_TIME`. |
+| `rullst-supervision/src/sqlite/observations.rs`: `record_observation`, both source match guards with `true` | `record_browser` and `record_capture` pass only browser or capture observations with the browser source, and `analyze` only presence or audio findings with an adapter source. |
+| `rullst-supervision/src/sqlite/transaction.rs`: `Operation::begin`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
+| `rullst-supervision/src/sqlite/mod.rs`: `resolved_path`, both metadata match guards with `false` | `open` checks for a regular file again, `initialize` creates the file exclusively and fails on any existing entry, and every other metadata error also fails the open with the same `Storage`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
