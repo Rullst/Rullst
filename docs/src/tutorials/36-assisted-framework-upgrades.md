@@ -240,6 +240,9 @@ A review rule is reported once per file (its first location); a must-change
 rule at every location. The [rule classification](#v12--v13-rule-classification)
 lists which migration rows have rules. Findings never block `cargo rullst upgrade`, whose
 `cargo check` gate still restores the project when the code does not compile.
+The gate's error names the must-change findings and repeats the guidance of
+`V13-CAPITAL-REMOVED` and `V13-MAIL-REMOVED` findings, which name removed APIs
+but are review findings.
 `update project verify`, `review` and `apply` refuse a preparation that has
 must-change findings and carry review findings in the plan.
 

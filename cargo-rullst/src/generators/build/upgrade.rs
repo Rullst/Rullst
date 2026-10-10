@@ -154,15 +154,37 @@ pub(crate) fn assist_plan(
     })
 }
 
-/// Recovery advice when a Cargo gate fails while must-change findings remain.
-fn findings_hint(scan: &SourceScan) -> String {
-    match scan.count(FindingKind::MustChange) {
+/// Recovery advice when a Cargo gate fails while must-change findings, or
+/// review findings for APIs that v13 removed in Rust sources, remain. The
+/// plan prints no guidance, so the removed-API rules repeat theirs here.
+fn findings_hint(root: &Path, scan: &SourceScan) -> String {
+    let mut hint = match scan.count(FindingKind::MustChange) {
         0 => String::new(),
         count => format!(
             "; the plan lists {count} must-change finding(s): fix them first, or rerun with --keep-on-failure and use `{}`",
             report::ASSIST_COMMAND
         ),
+    };
+    let mut named = std::collections::BTreeSet::new();
+    for finding in &scan.findings {
+        let removed = rules::REMOVED_API_RULES
+            .iter()
+            .any(|rule| rule.code == finding.rule.code)
+            && finding
+                .path
+                .extension()
+                .is_some_and(|extension| extension == "rs");
+        if removed && named.insert(finding.rule.code) {
+            hint.push_str(&format!(
+                "; {} at {}:{} names an API that v13 removed, so the project does not compile until it is replaced: {}",
+                finding.rule.code,
+                relative_report_path(root, &finding.path),
+                finding.line,
+                finding.rule.guidance
+            ));
+        }
     }
+    hint
 }
 
 pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Error>> {
@@ -244,7 +266,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
         return Err(UpgradeError::CommandFailed {
             command: "cargo fix --workspace --all-targets",
-            recovery: format!("{recovery}{}", findings_hint(&scan)),
+            recovery: format!("{recovery}{}", findings_hint(&root, &scan)),
         }
         .into());
     }
@@ -259,7 +281,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
         return Err(UpgradeError::CommandFailed {
             command: "cargo check --workspace --all-targets --locked",
-            recovery: format!("{recovery}{}", findings_hint(&scan)),
+            recovery: format!("{recovery}{}", findings_hint(&root, &scan)),
         }
         .into());
     }
@@ -417,6 +439,50 @@ mod tests {
         let prerelease = Version::parse("13.0.0-alpha.1").unwrap();
         assert!(requirement_exceeds("13", &prerelease));
         assert!(!requirement_exceeds("13.0.0-alpha.1", &prerelease));
+    }
+
+    /// A removed provider is a review finding, so a failed gate used to give no
+    /// hint; it now names the finding and repeats its guidance.
+    #[test]
+    fn a_failed_gate_repeats_the_guidance_of_removed_api_findings() {
+        let root = Path::new("/project");
+        let finding = |rule: &'static rules::Rule, path: &str, line| rules::SourceFinding {
+            rule,
+            path: root.join(path),
+            line,
+        };
+        let capital = rules::REMOVED_API_RULES
+            .iter()
+            .copied()
+            .find(|rule| rule.code == "V13-CAPITAL-REMOVED")
+            .unwrap();
+        let other = rules::REMOVED_API_RULES
+            .iter()
+            .copied()
+            .find(|rule| rule.code == "V13-MAIL-REMOVED")
+            .unwrap();
+        let scan = SourceScan {
+            findings: vec![
+                finding(capital, ".env.example", 21),
+                finding(capital, "src/controllers/billing_controller.rs", 8),
+                finding(other, "src/mail.rs", 3),
+            ],
+            unscanned: Vec::new(),
+        };
+        let hint = findings_hint(root, &scan);
+        assert!(!hint.contains("must-change"), "{hint}");
+        assert!(
+            hint.contains("V13-CAPITAL-REMOVED at src/controllers/billing_controller.rs:8"),
+            "{hint}"
+        );
+        assert!(!hint.contains(".env.example"), "{hint}");
+        assert!(hint.contains("`StripeProvider`"), "{hint}");
+        assert!(
+            hint.contains("`InfinitePayProvider` is experimental"),
+            "{hint}"
+        );
+        assert!(hint.contains("V13-MAIL-REMOVED at src/mail.rs:3"), "{hint}");
+        assert!(findings_hint(root, &SourceScan::default()).is_empty());
     }
 
     #[test]

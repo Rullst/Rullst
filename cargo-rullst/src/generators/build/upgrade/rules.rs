@@ -21,6 +21,7 @@ use walkdir::WalkDir;
 
 #[cfg(test)]
 pub(crate) use catalog::CATALOG;
+pub(crate) use catalog::REMOVED_API_RULES;
 
 /// Catalog identifier recorded in plans and preparations.
 pub(crate) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v4";
