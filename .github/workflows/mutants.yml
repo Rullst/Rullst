@@ -1,4 +1,5 @@
 name: Mutation Testing (manual informational)
+run-name: "Mutation testing: ${{ inputs.mode }} ${{ inputs.file }} ${{ inputs.mode == 'targeted' && inputs.test_scope || '' }} ${{ inputs.shard }}"
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
@@ -29,9 +30,31 @@ on:
         description: Comma-separated failed shard indexes, for example 2,4,65
         required: false
         type: string
+      test_scope:
+        description: >-
+          Targeted mode only. package runs the mutated package's whole test
+          suite; lib runs only its library unit tests (cargo test --lib), so a
+          mutant caught only by an integration test can be reported as missed
+        required: false
+        default: package
+        type: choice
+        options:
+          - package
+          - lib
+      timeout_seconds:
+        description: Targeted mode only. Per-mutant test timeout, also applied to the baseline (30-3600)
+        required: false
+        default: "300"
+        type: string
+      shard:
+        description: Targeted mode only. Optional k/n slice of the file's mutants (n at most 16), for files too slow for one job
+        required: false
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Targeted runs are independent single-file diagnostics, so each file gets
+  # its own group; campaign and recovery modes keep the shared per-ref group.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ inputs.mode == 'targeted' && format('-targeted-{0}-{1}-{2}', inputs.file, inputs.test_scope, inputs.shard) || '' }}
   cancel-in-progress: false
 
 permissions:
@@ -68,6 +91,8 @@ jobs:
       incomplete_fragment_artifact: ${{ steps.plan.outputs.incomplete_fragment_artifact }}
       test_timeout_seconds: ${{ steps.plan.outputs.test_timeout_seconds }}
       build_timeout_seconds: ${{ steps.plan.outputs.build_timeout_seconds }}
+      test_scope: ${{ steps.plan.outputs.test_scope }}
+      targeted_shard: ${{ steps.plan.outputs.targeted_shard }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,8 +115,32 @@ jobs:
           REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
           RESUME_RUN_ID: ${{ inputs.resume_run_id }}
           RESUME_SHARDS: ${{ inputs.resume_shards }}
+          TEST_SCOPE: ${{ inputs.test_scope }}
+          TARGETED_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+          TARGETED_SHARD: ${{ inputs.shard }}
         run: |
           resume_run_id=""
+          test_scope="${TEST_SCOPE:-package}"
+          if [ "$test_scope" != "package" ] && [ "$test_scope" != "lib" ]; then
+            echo "test_scope must be package or lib." >&2
+            exit 2
+          fi
+          if [ "$MUTATION_MODE" != "targeted" ] && [ "$test_scope" != "package" ]; then
+            echo "Only targeted mode accepts a narrowed test scope." >&2
+            exit 2
+          fi
+          targeted_shard="${TARGETED_SHARD:-}"
+          if [ -n "$targeted_shard" ]; then
+            if [ "$MUTATION_MODE" != "targeted" ]; then
+              echo "Only targeted mode accepts a shard slice." >&2
+              exit 2
+            fi
+            if [[ ! "$targeted_shard" =~ ^([0-9]|1[0-5])/([1-9]|1[0-6])$ ]] \
+              || [ "${targeted_shard%/*}" -ge "${targeted_shard#*/}" ]; then
+              echo "shard must be k/n with 0 <= k < n <= 16." >&2
+              exit 2
+            fi
+          fi
           resume_shards=""
           source_sha=$(python3 .github/resolve-mutation-source.py \
             "$MUTATION_MODE" "$REQUESTED_SOURCE_SHA" "$GITHUB_SHA")
@@ -147,6 +196,19 @@ jobs:
                 echo "Targeted mutation path must be tracked by Git." >&2
                 exit 2
               fi
+              # Bound every targeted run explicitly. The automatic timeout is
+              # five times the baseline, which let one hanging mutant of a
+              # slow package consume hours of the job budget. The explicit
+              # test timeout also applies to the unmutated baseline.
+              targeted_timeout="${TARGETED_TIMEOUT_SECONDS:-300}"
+              if [[ ! "$targeted_timeout" =~ ^[1-9][0-9]{1,3}$ ]] \
+                || [ "$targeted_timeout" -lt 30 ] \
+                || [ "$targeted_timeout" -gt 3600 ]; then
+                echo "timeout_seconds must be an integer from 30 to 3600." >&2
+                exit 2
+              fi
+              test_timeout_seconds="$targeted_timeout"
+              build_timeout_seconds=300
               shard_count=1
               matrix='{"include":[{"index":0,"count":1,"artifact":"0"}]}'
               ;;
@@ -240,6 +302,8 @@ jobs:
             echo "incomplete_fragment_artifact=$incomplete_fragment_artifact"
             echo "test_timeout_seconds=$test_timeout_seconds"
             echo "build_timeout_seconds=$build_timeout_seconds"
+            echo "test_scope=$test_scope"
+            echo "targeted_shard=$targeted_shard"
           } >> "$GITHUB_OUTPUT"
 
   inventory:
@@ -273,11 +337,15 @@ jobs:
         env:
           MUTATION_MODE: ${{ needs.plan.outputs.mode }}
           MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          TARGETED_SHARD: ${{ needs.plan.outputs.targeted_shard }}
           EXPECTED_INVENTORY_SHA256: ${{ needs.plan.outputs.expected_inventory_sha256 }}
         run: |
           command=(cargo mutants --workspace --all-features --list --json)
           if [ "$MUTATION_MODE" = "targeted" ]; then
             command+=(--file "$MUTATION_FILE")
+            if [ -n "$TARGETED_SHARD" ]; then
+              command+=(--shard "$TARGETED_SHARD")
+            fi
           fi
           "${command[@]}" > mutation-inventory.json
 
@@ -361,6 +429,8 @@ jobs:
           SHARD_COUNT: ${{ matrix.count }}
           TEST_TIMEOUT_SECONDS: ${{ needs.plan.outputs.test_timeout_seconds }}
           BUILD_TIMEOUT_SECONDS: ${{ needs.plan.outputs.build_timeout_seconds }}
+          TEST_SCOPE: ${{ needs.plan.outputs.test_scope }}
+          TARGETED_SHARD: ${{ needs.plan.outputs.targeted_shard }}
         run: |
           # Keep the release feature surface explicit in hosted logs as well as
           # in .cargo/mutants.toml, which applies the same policy locally.
@@ -369,12 +439,21 @@ jobs:
             command+=(--shard "$SHARD_INDEX/$SHARD_COUNT")
           else
             command+=(--file "$MUTATION_FILE")
+            if [ -n "$TARGETED_SHARD" ]; then
+              command+=(--shard "$TARGETED_SHARD")
+            fi
           fi
           if [ -n "$TEST_TIMEOUT_SECONDS" ]; then
             command+=(--timeout "$TEST_TIMEOUT_SECONDS")
           fi
           if [ -n "$BUILD_TIMEOUT_SECONDS" ]; then
             command+=(--build-timeout "$BUILD_TIMEOUT_SECONDS")
+          fi
+          if [ "$MUTATION_MODE" = "targeted" ] && [ "$TEST_SCOPE" = "lib" ]; then
+            # Library unit tests only: avoids rebuilding generated projects in
+            # slow integration suites, at the cost of reporting mutants that
+            # only an integration test catches as missed.
+            command+=(-- --lib)
           fi
 
           set +e
@@ -538,6 +617,8 @@ jobs:
           MATRIX_RESULT: ${{ needs.mutants.result }}
           AGGREGATE_RESULT: ${{ needs.aggregate-results.result }}
           MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          TEST_SCOPE: ${{ needs.plan.outputs.test_scope }}
+          TARGETED_SHARD: ${{ needs.plan.outputs.targeted_shard }}
           SHARD_COUNT: ${{ needs.plan.outputs.shard_count }}
           ARTIFACT_COUNT: ${{ needs.plan.outputs.artifact_count }}
           RESUME_RUN_ID: ${{ needs.plan.outputs.resume_run_id }}
@@ -551,7 +632,10 @@ jobs:
             echo
             echo "Mode: \`$MUTATION_MODE\`; inventory result: \`$INVENTORY_RESULT\`; matrix result: \`$MATRIX_RESULT\`; aggregate result: \`$AGGREGATE_RESULT\`."
             if [ "$MUTATION_MODE" = "targeted" ]; then
-              echo "Targeted file: \`$MUTATION_FILE\`. This is correction feedback, not a full-workspace campaign."
+              echo "Targeted file: \`$MUTATION_FILE\`; test scope: \`$TEST_SCOPE\`; slice: \`${TARGETED_SHARD:-all}\`. This is correction feedback, not a full-workspace campaign."
+              if [ "$TEST_SCOPE" = "lib" ]; then
+                echo "Library-only scope can report a mutant as missed when only an integration test would catch it."
+              fi
             else
               echo "The complete workspace was partitioned into $SHARD_COUNT shards. Missed and timed-out mutants remain informational findings in the artifacts."
               if [ -n "$RESUME_RUN_ID" ]; then
