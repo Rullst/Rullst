@@ -48,10 +48,12 @@ impl Tag {
 pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
     let bytes = source.as_bytes();
     let mut bodies = Vec::new();
-    let mut search = 0;
-    while let Some(found) = source[search..].find("html!") {
-        let start = search + found;
-        search = start + "html!".len();
+    // Occurrences inside an extracted body belong to that body.
+    let mut consumed = 0;
+    for (start, keyword) in source.match_indices("html!") {
+        if start < consumed {
+            continue;
+        }
         let preceded = source[..start]
             .chars()
             .next_back()
@@ -59,7 +61,8 @@ pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
         if preceded {
             continue;
         }
-        let open = search + (source.len() - search - source[search..].trim_start().len());
+        let after = &source[start + keyword.len()..];
+        let open = source.len() - after.trim_start().len();
         let Some(&delimiter) = bytes.get(open) else {
             break;
         };
@@ -68,7 +71,7 @@ pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
         }
         if let Some(close) = matching_close(bytes, open) {
             bodies.push((open + 1, &source[open + 1..close]));
-            search = close;
+            consumed = close;
         }
     }
     bodies
@@ -77,12 +80,14 @@ pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
 /// The index of the bracket closing the one at `open`; string literals are skipped.
 fn matching_close(bytes: &[u8], open: usize) -> Option<usize> {
     let mut depth = 0usize;
-    let mut index = open;
     let mut in_string = false;
-    while let Some(&byte) = bytes.get(index) {
-        if in_string {
+    let mut escaped = false;
+    for (index, &byte) in bytes.iter().enumerate().skip(open) {
+        if escaped {
+            escaped = false;
+        } else if in_string {
             match byte {
-                b'\\' => index += 1,
+                b'\\' => escaped = true,
                 b'"' => in_string = false,
                 _ => {}
             }
@@ -99,7 +104,6 @@ fn matching_close(bytes: &[u8], open: usize) -> Option<usize> {
                 _ => {}
             }
         }
-        index += 1;
     }
     None
 }

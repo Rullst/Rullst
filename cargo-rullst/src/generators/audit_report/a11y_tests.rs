@@ -105,3 +105,18 @@ fn projects_without_markup_are_not_checked_and_test_markup_is_ignored() {
             .all(|check| matches!(check.status, EvidenceStatus::NotChecked(_)))
     );
 }
+
+#[test]
+fn bodies_carry_their_byte_offset_and_skip_escaped_quotes() {
+    let source = "let x = html! { <p>hi</p> };";
+    assert_eq!(html_macro_bodies(source), [(15, " <p>hi</p> ")]);
+
+    // An escaped quote does not end the string, so its `}` stays inside.
+    let escaped = r#"html! { "a \" }" <b></b> } html!(<i></i>)"#;
+    assert_eq!(
+        html_macro_bodies(escaped),
+        [(7, r#" "a \" }" <b></b> "#), (33, "<i></i>")]
+    );
+    // A trailing escape inside an unterminated string never closes.
+    assert!(html_macro_bodies(r#"html! { "\"#).is_empty());
+}
