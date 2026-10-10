@@ -386,3 +386,52 @@ fn bunny_rejects_object_storage_capabilities() {
         UploadProtocol::Tus
     );
 }
+
+#[test]
+fn an_upload_of_exactly_the_object_limit_is_granted() {
+    let storage = S3Storage::new(r2(live())).unwrap();
+    let at_limit = UploadDeclaration::new("video/mp4", 1_000_000).unwrap();
+    let grant = storage
+        .upload_declared(&video(), NOW, 300, &at_limit)
+        .unwrap();
+    assert_eq!(grant.content_length, Some(1_000_000));
+    let over = UploadDeclaration::new("video/mp4", 1_000_001).unwrap();
+    assert_eq!(
+        storage
+            .upload_declared(&video(), NOW, 300, &over)
+            .unwrap_err(),
+        MediaError::Capacity
+    );
+}
+
+#[tokio::test]
+async fn a_renamed_video_no_longer_matches_its_creation_marker() {
+    let storage =
+        S3Storage::new(r2(S3Credentials::new("mock_access", "mock_secret").unwrap())).unwrap();
+    let created = storage.create(MARKER).await.unwrap();
+    storage
+        .update(&created.id, &Metadata::new("Lesson 1", "").unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        storage.find_created(MARKER).await.unwrap_err(),
+        MediaError::Conflict
+    );
+}
+
+#[tokio::test]
+async fn a_full_offline_store_still_answers_an_existing_marker() {
+    let storage =
+        S3Storage::new(r2(S3Credentials::new("mock_access", "mock_secret").unwrap())).unwrap();
+    let marker = |index: u32| format!("rullst-video-{index:032x}");
+    for index in 0..10_000 {
+        storage.create(&marker(index)).await.unwrap();
+    }
+    // Creation is idempotent at capacity; only a new marker is refused.
+    let existing = storage.create(&marker(42)).await.unwrap();
+    assert_eq!(existing.title, marker(42));
+    assert_eq!(
+        storage.create(&marker(10_000)).await.unwrap_err(),
+        MediaError::Capacity
+    );
+}
