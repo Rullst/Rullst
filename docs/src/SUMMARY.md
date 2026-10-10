@@ -135,6 +135,7 @@
 - [Security Report (`audit --report`)](security-report.md)
 - [External Audit Kit](external-audit-kit.md)
 - [🎯 Rullst Threat Models](threat-models.md)
+- [Security Assurance Case](assurance-case.md)
 - [v12 Security Claims & Evidence](v12-security-claims.md)
 - [Security Event Schema v1](security-event-schema.md)
 - [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)

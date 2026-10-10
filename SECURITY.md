@@ -194,6 +194,9 @@ or deployment.
 The repository defines the following assurance jobs. A named workflow is
 evidence only when it passed for the exact commit and declared target; no one
 tool proves the whole framework secure.
+The [security assurance case](docs/src/assurance-case.md) argues how the threat
+models, trust boundaries, design principles and these checks fit together, and
+states its limits.
 
 | Verification Suite | Target | Tooling |
 | :--- | :--- | :--- |
