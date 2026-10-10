@@ -101,5 +101,7 @@ describe their criteria. Do not fabricate approvals or weaken protections to
 improve a numerical score.
 
 A Silver application is in preparation now that continuity is established.
-Keep the Passing badge until the Silver criteria are answered with evidence and
-the badge is granted; the score above changes only after that.
+The [Silver evidence guide](openssf-best-practices.md) gives the answer,
+justification and evidence for every criterion. Keep the Passing badge until
+the Silver criteria are answered with evidence and the badge is granted; the
+score above changes only after that.

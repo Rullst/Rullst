@@ -151,6 +151,9 @@ jobs:
       - name: Check formatting (Workspace)
         run: cargo fmt --all -- --check
 
+      - name: Reproduce small crate archives byte-for-byte
+        run: bash .github/check-package-reproducibility.sh rullst-macros rullst-orm-macros
+
       - name: Set up Node for the development browser contract
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:

@@ -420,8 +420,11 @@ manifests and generated project files, and reports each finding as
 behaviour of an API, feature or configuration in use) with a stable `V13-*`
 code, `file:line`, a one-line message and the title of its row in the
 [v13 migration guide](migration-v13.md#changes-from-the-published-1210-source).
-Findings do not stop the transaction; `update project verify`/`review`/`apply`
-refuse a preparation with must-change findings. In JSON, each
+Findings do not stop the transaction; a failed Cargo gate names the
+must-change findings and repeats the guidance of `V13-CAPITAL-REMOVED` and
+`V13-MAIL-REMOVED` (removed APIs reported for review).
+`update project verify`/`review`/`apply` refuse a preparation with must-change
+findings. In JSON, each
 `source_findings` element keeps `path`, `line`, `code`, `severity` (`BLOCKER`
 or `REVIEW`) and `message` and adds `kind`, `migration_row` and
 `migration_url`; the root adds `finding_counts`, `unscanned_sources` and

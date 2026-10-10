@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### OpenSSF Silver evidence
+
+Adds a security assurance case, release verification steps in `SECURITY.md`,
+a pull-request check that crate archives are reproducible, and the Silver
+evidence guide.
+
 ## [13.0.0-alpha.1] - 2026-10-10
 
 First v13 prerelease, for evaluation. Stable applications should stay on 12.x.
@@ -55,6 +61,12 @@ with the other Capital adapters.
   carbon source and make no emissions claim. The N+1 panel does not attribute
   raw statements or spawned work. The distroless image size is not yet measured.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
+
+### Upgrade rehearsal from 12.3.0
+
+- `cargo rullst upgrade` repeats the removed-API guidance when its gate fails
+  and locates Lemon Squeezy billing settings; Blank, Blog, SaaS and LMS starters
+  made with 12.3.0 upgrade to this release (see tutorial 36).
 
 ### Release notes link to the full changelog
 

@@ -66,7 +66,7 @@ State recorded on 8 October 2026.
 | Security inbox `officialrullst@gmail.com` (named in SECURITY.md) | Done: recovery set up (confirmed by the maintainer) | Set up recovery (3.4) | Depends on the option chosen |
 | OpenSSF Best Practices entry | Edited by the maintainer | Grant the successor edit rights on the project page | The successor can open the edit form |
 | Maintainer's personal GitHub account | No successor set | Optional (3.5) | The successor accepts the invitation |
-| Domains | None; the book is served from `rullst.github.io` | Add a row here if a domain is ever registered | — |
+| Domains and demo hosting | Done: the successor has recovery access to the domain registrar and the demo hosting account (9 October 2026, confirmed by the maintainer); the book is served from `rullst.github.io` | Give the successor recovery access to the domain registrar and the hosting account, and record where in the private recovery document | The successor can sign in to, or recover, both accounts |
 
 ### 3.1 Organization owner
 
