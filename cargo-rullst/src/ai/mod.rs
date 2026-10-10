@@ -213,17 +213,44 @@ fn project_root() -> Option<PathBuf> {
         .and_then(|directory| std::fs::canonicalize(directory).ok())
 }
 
+/// The handler a parsed `cargo rullst ai` invocation selects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Route {
+    Connect,
+    Disconnect,
+    Status,
+    Upgrade,
+    Fix,
+    Review,
+    Session,
+}
+
+/// Selects the handler and the matches it reads (the subcommand's own, or
+/// the top-level ones for a chat session).
+fn route(matches: &ArgMatches) -> (Route, &ArgMatches) {
+    match matches.subcommand() {
+        Some(("connect", connect)) => (Route::Connect, connect),
+        Some(("disconnect", disconnect)) => (Route::Disconnect, disconnect),
+        Some(("status", status)) => (Route::Status, status),
+        Some(("upgrade", upgrade)) => (Route::Upgrade, upgrade),
+        Some(("fix", fix)) => (Route::Fix, fix),
+        Some(("review", review)) => (Route::Review, review),
+        _ => (Route::Session, matches),
+    }
+}
+
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), AiCliError> {
     let env = TermEnv::detect();
     let style = Style { color: env.color() };
-    match matches.subcommand() {
-        Some(("connect", connect)) => connect::connect(connect, &env, style),
-        Some(("disconnect", _)) => connect::disconnect(style),
-        Some(("status", status)) => connect::status(status, style),
-        Some(("upgrade", upgrade)) => run_upgrade(upgrade, &env, style),
-        Some(("fix", fix)) => run_fix(fix, &env, style),
-        Some(("review", review)) => review::run(review, style),
-        _ => run_session(matches, &env, style, None),
+    let (route, selected) = route(matches);
+    match route {
+        Route::Connect => connect::connect(selected, &env, style),
+        Route::Disconnect => connect::disconnect(style),
+        Route::Status => connect::status(selected, style),
+        Route::Upgrade => run_upgrade(selected, &env, style),
+        Route::Fix => run_fix(selected, &env, style),
+        Route::Review => review::run(selected, style),
+        Route::Session => run_session(selected, &env, style, None),
     }
 }
 
@@ -239,15 +266,28 @@ fn run_upgrade(matches: &ArgMatches, env: &TermEnv, style: Style) -> Result<(), 
     .map_err(|error| AiCliError::Upgrade(sanitize(&error.to_string())))?;
     if plan.findings.is_empty() {
         println!("{}", sanitize(&plan.summary));
-        let next = if plan.pending_changes > 0 {
-            "No source findings need the assistant. Apply the dependency plan with `cargo rullst upgrade`."
-        } else {
-            "No source findings need the assistant and the dependencies already target this release."
-        };
-        println!("{}", style.green(next));
+        println!(
+            "{}",
+            style.green(no_findings_next_step(plan.pending_changes))
+        );
         return Ok(());
     }
     run_session(matches, env, style, Some(Grounding::Upgrade(root, plan)))
+}
+
+/// Whether a session reads standard input. A one-shot plan never prompts, so
+/// standard input is left untouched.
+fn reads_stdin(has_goal: bool, mode: &Mode) -> bool {
+    !(has_goal && *mode != Mode::Execute)
+}
+
+/// The next step printed when the upgrade plan has no source findings.
+fn no_findings_next_step(pending_changes: usize) -> &'static str {
+    if pending_changes > 0 {
+        "No source findings need the assistant. Apply the dependency plan with `cargo rullst upgrade`."
+    } else {
+        "No source findings need the assistant and the dependencies already target this release."
+    }
 }
 
 /// A session grounded in prepared data: the upgrade plan or a recorded error.
@@ -351,11 +391,10 @@ fn run_session(
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    // A one-shot plan never prompts, so standard input is left untouched.
-    let input = if goal.is_some() && mode != Mode::Execute {
-        input::Input::closed()
-    } else {
+    let input = if reads_stdin(goal.is_some(), &mode) {
         input::Input::stdin()
+    } else {
+        input::Input::closed()
     };
     runtime.block_on(async {
         let settings = Settings {
@@ -384,3 +423,7 @@ fn run_session(
     });
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "tests/dispatch.rs"]
+mod tests;
