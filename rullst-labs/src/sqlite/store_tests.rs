@@ -151,3 +151,39 @@ fn only_verbatim_drive_paths_lose_their_prefix() {
     assert_eq!(verbatim_drive_path(r"C:\Users\labs"), None);
     assert_eq!(verbatim_drive_path("/var/lib/labs"), None);
 }
+
+#[tokio::test]
+async fn validation_itself_rejects_a_foreign_binding_or_a_missing_time() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = initialized(&directory).await;
+    let own = SqliteLabs::connect(&path, config(10), key(), SystemClock)
+        .await
+        .unwrap();
+    own.validate().await.unwrap();
+    own.close().await;
+
+    let foreign = SqliteLabs::connect(&path, config(11), key(), SystemClock)
+        .await
+        .unwrap();
+    assert!(matches!(
+        foreign.validate().await,
+        Err(Error::Configuration)
+    ));
+    foreign.close().await;
+
+    tamper(
+        &path,
+        &[
+            "PRAGMA ignore_check_constraints = ON",
+            "UPDATE labs_meta SET last_now = 0",
+        ],
+    )
+    .await;
+    let untimed = SqliteLabs::connect(&path, config(10), key(), SystemClock)
+        .await
+        .unwrap();
+    assert!(matches!(
+        untimed.validate().await,
+        Err(Error::Configuration)
+    ));
+}
