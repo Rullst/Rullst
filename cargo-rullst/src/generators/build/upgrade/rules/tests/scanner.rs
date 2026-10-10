@@ -1,5 +1,7 @@
 //! Token-scanner paths that decide individual rules.
 
+#![allow(clippy::expect_used)]
+
 use super::*;
 
 fn has(source: &str, code: &str) -> bool {
@@ -108,4 +110,61 @@ fn view(h: &str) -> String {
         .map(|(_, line)| line)
         .collect();
     assert_eq!(lines, [5, 6], "{lines:?}");
+}
+
+/// `codes` on a helper thread, failing instead of hanging.
+fn bounded_codes(source: &'static str) -> Vec<&'static str> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(codes(source));
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("the scan returns promptly")
+}
+
+#[test]
+fn field_kind_number_counts_only_when_compared() {
+    for source in [
+        "fn a(k: &FieldKind) -> bool { *k == FieldKind::Number }",
+        "fn a(k: &FieldKind) -> bool { *k != FieldKind::Number }",
+        "fn a(k: &FieldKind) -> bool { FieldKind::Number == *k }",
+        "fn a(k: &FieldKind) -> bool { FieldKind::Number != *k }",
+        "fn a(k: &FieldKind) -> u8 { match k { FieldKind::Number => 1, _ => 0 } }",
+        "fn a(k: &FieldKind) -> u8 { match k { FieldKind::Number | FieldKind::Text => 1, _ => 0 } }",
+    ] {
+        assert!(has(source, "V13-NEXUS-FIELD-KIND-NUMBER"), "{source}");
+    }
+    for source in [
+        "fn a() { let k = FieldKind::Number; }",
+        "fn a(k: FieldKind) { let FieldKind::Number = k else { return; }; }",
+        "fn a(k: u8) -> bool { FieldKind::Number >= k }",
+        "fn a() { FieldKind::Number += 1; }",
+        "fn a(k: u8) -> bool { k <= FieldKind::Number }",
+    ] {
+        assert!(!has(source, "V13-NEXUS-FIELD-KIND-NUMBER"), "{source}");
+    }
+}
+
+#[test]
+fn a_single_joined_colon_does_not_continue_a_path() {
+    assert!(has("fn a() { Storage::r2(c); }", "V13-R2-PUBLIC-URL"));
+    assert!(!has("fn a() { x!(Storage:&r2(c)); }", "V13-R2-PUBLIC-URL"));
+}
+
+#[test]
+fn attributes_are_skipped_and_a_lone_hash_is_not_one() {
+    for source in [
+        "#[doc = \"progress:{u}:next\"] fn a() {}",
+        "mod m { #![doc = \"progress:{u}:next\"] }",
+    ] {
+        assert!(
+            !bounded_codes(source).contains(&"V13-LMS-PROGRESS-KEY"),
+            "{source}"
+        );
+    }
+    // `#` without a bracket group, as in a quoting macro, is skipped alone.
+    assert!(
+        bounded_codes("fn a() { x!(# \"progress:{u}:next\"); }").contains(&"V13-LMS-PROGRESS-KEY")
+    );
 }
