@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791555103919,
+  "lastUpdate": 1791596506529,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11358,6 +11358,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6e518b7c7532ca52519a3ed3c10e4a8a1b9020a5",
+          "message": "Merge pull request #447 from Rullst/docs/best-practices-badge\n\ndocs(readme): show the OpenSSF Best Practices badge",
+          "timestamp": "2026-10-09T22:18:58-03:00",
+          "tree_id": "d86f060127f9684bf126b83bcd750a9754f7fa31",
+          "url": "https://github.com/Rullst/Rullst/commit/6e518b7c7532ca52519a3ed3c10e4a8a1b9020a5"
+        },
+        "date": 1791596505710,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
             "range": "± 0",
             "unit": "ns/iter"
           },
