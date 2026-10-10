@@ -125,3 +125,105 @@ fn borrowed_media_contract_checks_format_and_size_and_withholds_debug_contents()
     assert!(!options.permits_simulation());
     assert!(options.allow_simulated_for_testing().permits_simulation());
 }
+
+#[test]
+fn system_time_and_identifier_debug_output_are_exact() {
+    use rullst_supervision::{Clock, SystemClock};
+    let expected = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let now = SystemClock.now().unwrap();
+    assert!((expected - 1..=expected + 1).contains(&now));
+    assert_eq!(
+        format!("{:?}", OpaqueId::new("private-reference").unwrap()),
+        "OpaqueId([redacted])"
+    );
+}
+
+#[cfg(feature = "parental")]
+#[test]
+fn course_policies_and_access_decisions_expose_exact_values() {
+    use rullst_supervision::parental::{AccessDecision, CoursePolicy};
+    let policy = CoursePolicy::new(["course-b", "course-a"], 5, 50).unwrap();
+    let courses: Vec<&str> = policy.courses().iter().map(OpaqueId::as_str).collect();
+    assert_eq!(courses, ["course-a", "course-b"]);
+    assert_eq!(policy.not_before(), 5);
+    assert_eq!(policy.expires_at(), 50);
+    for (decision, permits) in [
+        (AccessDecision::Unmanaged, true),
+        (AccessDecision::Allowed, true),
+        (AccessDecision::MissingPolicy, false),
+        (AccessDecision::OutsideWindow, false),
+        (AccessDecision::CourseDenied, false),
+    ] {
+        assert_eq!(decision.permits_learning(), permits, "{decision:?}");
+    }
+}
+
+#[cfg(feature = "exam")]
+#[test]
+fn capability_and_observation_names_are_stable() {
+    use rullst_supervision::exam::{
+        BrowserEvent, Capability, CaptureDevice, CaptureEvent, Collection, Observation,
+        ObservationRequest,
+    };
+    assert_eq!(
+        Capability::ALL.map(Capability::name),
+        [
+            "visibility",
+            "focus",
+            "clipboard",
+            "fullscreen",
+            "camera_status",
+            "microphone_status",
+            "screen_share_status",
+            "camera_presence",
+            "audio_activity",
+        ]
+    );
+    let collection = Collection::new([Capability::WindowFocus, Capability::Visibility]).unwrap();
+    assert_eq!(
+        collection.capabilities().collect::<Vec<_>>(),
+        [Capability::Visibility, Capability::WindowFocus]
+    );
+    assert_eq!(
+        Observation::Browser(BrowserEvent::PageHidden).name(),
+        "page_hidden"
+    );
+    assert_eq!(
+        Observation::Capture {
+            device: CaptureDevice::Camera,
+            event: CaptureEvent::PermissionDenied,
+        }
+        .name(),
+        "capture_permission_denied"
+    );
+    let actor = Context::new("school", "learner").unwrap();
+    let scope = Scope::new("school", "learner", "exam").unwrap();
+    let session = OpaqueId::new("session").unwrap();
+    let request =
+        ObservationRequest::new(&actor, &scope, &session, Revision::new(7).unwrap(), 2).unwrap();
+    assert_eq!(request.sequence(), 2);
+}
+
+#[cfg(feature = "analysis")]
+#[test]
+fn media_samples_lend_exact_bytes_and_descriptors_report_simulation() {
+    use rullst_supervision::analysis::{
+        AnalysisKind, AnalyzerDescriptor, MediaSample, SampleFormat,
+    };
+    let audio = [1, 2, 3, 4];
+    let sample = MediaSample::new(SampleFormat::Pcm16LeMono16Khz, &audio).unwrap();
+    assert_eq!(sample.bytes(), &audio);
+    assert_eq!(
+        format!("{sample:?}"),
+        "MediaSample { format: Pcm16LeMono16Khz, bytes: \"[withheld]\" }"
+    );
+    for simulated in [false, true] {
+        let descriptor =
+            AnalyzerDescriptor::new("adapter", "v1", AnalysisKind::AudioActivity, simulated)
+                .unwrap();
+        assert_eq!(descriptor.simulated(), simulated);
+    }
+}
