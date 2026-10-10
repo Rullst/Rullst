@@ -49,3 +49,37 @@ async fn a_changed_setting_builds_a_new_driver() {
     ));
     Mail::reset_driver();
 }
+
+#[tokio::test]
+async fn both_aws_keys_select_native_ses_credentials() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.set("MAIL_DRIVER", "ses");
+    environment.set("AWS_ACCESS_KEY_ID", "configured-access-key");
+    environment.set("AWS_SECRET_ACCESS_KEY", "configured-secret-key");
+    let spec = DriverSpec::from_settings(&MailSettings::load().await.unwrap());
+    #[cfg(feature = "aws-ses")]
+    assert!(matches!(
+        spec,
+        Ok(DriverSpec::Ses {
+            credentials: SesCredentials::Native { .. },
+            ..
+        })
+    ));
+    #[cfg(not(feature = "aws-ses"))]
+    assert!(spec.is_err());
+
+    // Without any AWS key the HTTPS proxy token is used.
+    environment.clear("AWS_ACCESS_KEY_ID");
+    environment.clear("AWS_SECRET_ACCESS_KEY");
+    environment.set("AWS_SES_TOKEN", "mock_proxy_token");
+    let spec = DriverSpec::from_settings(&MailSettings::load().await.unwrap());
+    assert!(matches!(
+        spec,
+        Ok(DriverSpec::Ses {
+            credentials: SesCredentials::Proxy(_),
+            ..
+        })
+    ));
+}
