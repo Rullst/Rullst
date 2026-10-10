@@ -119,5 +119,28 @@ class PackageInventoryTests(unittest.TestCase):
         self.assertEqual(audit([]), 0)
 
 
+    def test_secret_names_refuse_data_files_but_not_rust_modules(self):
+        self.inventory.write_text('["rullst-core"]')
+        license_text = (ROOT / "LICENSE").read_bytes()
+        (self.root / "LICENSE").write_bytes(license_text)
+        archives = self.root / "packages"
+        archives.mkdir()
+        args = ["bash", str(ROOT / ".github/audit-packages.sh"), "13.0.0-alpha.1", str(archives)]
+        def audit(extra_path):
+            with tarfile.open(archives / "rullst-core-13.0.0-alpha.1.crate", "w:gz") as archive:
+                files = {"LICENSE": license_text, "Cargo.toml": b"[package]\n", "README.md": b"Fixture\n",
+                         "src/lib.rs": b"// fixture\n", extra_path: b"// fixture\n"}
+                for path, content in files.items():
+                    info = tarfile.TarInfo(f"rullst-core-13.0.0-alpha.1/{path}")
+                    info.size = len(content)
+                    archive.addfile(info, io.BytesIO(content))
+            return subprocess.run(args, cwd=self.root, capture_output=True, text=True, check=False)
+        for module in ("src/nexus/access/credentials.rs", "src/secrets.rs"):
+            self.assertEqual(audit(module).returncode, 0, module)
+        for data in ("src/credentials.json", "credentials", "secrets.toml", ".env", "src/.env.local", "src/id_rsa"):
+            result = audit(data)
+            self.assertNotEqual(result.returncode, 0, data)
+            self.assertIn("Potential secret material", result.stdout, data)
+
 if __name__ == "__main__":
     unittest.main()
