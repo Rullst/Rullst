@@ -275,6 +275,9 @@ pub(super) fn project_findings(root: &Path, plans: &[ManifestUpgradePlan]) -> Ve
         if let Some(line) = line_of(&text, removed_mail_setting) {
             push(&MAIL_REMOVED, name, line);
         }
+        if let Some(line) = line_of(&text, removed_billing_setting) {
+            push(&CAPITAL_REMOVED, name, line);
+        }
     }
     if let Some(text) = read_small(&root.join("Rullst.toml"))
         && let Some(line) = removed_mail_driver_line(&text)

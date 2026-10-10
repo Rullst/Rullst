@@ -62,6 +62,12 @@ with the other Capital adapters.
   raw statements or spawned work. The distroless image size is not yet measured.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 
+### Upgrade rehearsal from 12.3.0
+
+- `cargo rullst upgrade` repeats the removed-API guidance when its gate fails
+  and locates Lemon Squeezy billing settings; Blank, Blog, SaaS and LMS starters
+  made with 12.3.0 upgrade to this release (see tutorial 36).
+
 ### Release notes link to the full changelog
 
 - GitHub release pages now show the version section's introduction and "Known
