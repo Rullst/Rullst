@@ -381,3 +381,51 @@ fn implied_features_match_the_facade_manifest() {
         assert_eq!(implied, table, "{}", capability.name);
     }
 }
+
+#[test]
+fn the_report_says_when_dotenv_needs_nothing() {
+    let root = project(MANIFEST, &[(".env", "APP_KEY=local\n")]);
+    let report = add(root.path(), "mail");
+    assert!(
+        report.contains(
+            "· .env          unchanged: nothing it lacks is needed to start in development"
+        ),
+        "{report}"
+    );
+    assert_eq!(read(root.path(), ".env"), "APP_KEY=local\n");
+}
+
+#[test]
+fn the_command_takes_a_capability_and_a_dry_run_flag() {
+    let matches = super::command()
+        .try_get_matches_from(["add", "mail", "--dry-run"])
+        .unwrap();
+    assert_eq!(
+        matches.get_one::<String>("capability").map(String::as_str),
+        Some("mail")
+    );
+    assert!(matches.get_flag("dry_run"));
+    assert!(
+        super::command()
+            .try_get_matches_from(["add", "unknown"])
+            .is_err()
+    );
+}
+
+#[test]
+fn hints_come_from_the_named_capability() {
+    let mail = find("mail").unwrap();
+    assert!(!mail.hints.is_empty());
+    assert_eq!(super::hints("mail"), mail.hints);
+    assert!(super::hints("unknown").is_empty());
+}
+
+#[test]
+fn running_outside_a_rullst_project_fails() {
+    // The unit tests run in the cargo-rullst package, which does not depend
+    // on the `rullst` facade; the dry run writes nothing either way.
+    let matches = super::command()
+        .try_get_matches_from(["add", "mail", "--dry-run"])
+        .unwrap();
+    assert!(super::run(&matches).is_err());
+}
