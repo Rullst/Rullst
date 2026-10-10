@@ -493,7 +493,10 @@ higher component result for the repository total.
   the package's library unit tests (`cargo test --lib`) to avoid rebuilding
   generated projects in slow integration suites; that narrower scope can report
   a mutant as missed when only an integration test would catch it, and such a
-  mutant still gets a unit test. An optional `shard=k/n` slice (n at most 16)
+  mutant still gets a unit test. Each targeted test binary runs under an
+  8 GiB address-space limit (`prlimit` as the Cargo test runner), so a
+  mutant that allocates without bound aborts its own tests instead of
+  exhausting the runner. An optional `shard=k/n` slice (n at most 16)
   splits a file that is too slow for one job; the preflight inventory and the
   aggregate then cover exactly that slice. Recovery is governed by a committed, versioned policy binding the
   originating and continuation runs, attempts, branches, workflow identity,

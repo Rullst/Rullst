@@ -449,6 +449,13 @@ jobs:
           if [ -n "$BUILD_TIMEOUT_SECONDS" ]; then
             command+=(--build-timeout "$BUILD_TIMEOUT_SECONDS")
           fi
+          if [ "$MUTATION_MODE" = "targeted" ]; then
+            # Cap each test binary's address space (8 GiB). A mutant that
+            # allocates without bound then aborts its own test process, which
+            # counts as caught, instead of exhausting the runner's memory and
+            # losing the whole job. Compilers and linkers are not capped.
+            export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="prlimit --as=8589934592 --"
+          fi
           if [ "$MUTATION_MODE" = "targeted" ] && [ "$TEST_SCOPE" = "lib" ]; then
             # Library unit tests only: avoids rebuilding generated projects in
             # slow integration suites, at the cost of reporting mutants that
