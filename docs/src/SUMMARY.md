@@ -135,11 +135,13 @@
 - [Security Report (`audit --report`)](security-report.md)
 - [External Audit Kit](external-audit-kit.md)
 - [🎯 Rullst Threat Models](threat-models.md)
+- [Security Assurance Case](assurance-case.md)
 - [v12 Security Claims & Evidence](v12-security-claims.md)
 - [Security Event Schema v1](security-event-schema.md)
 - [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)
 - [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
+- [Reproducible Crate Archives](reproducible-builds.md)
 
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)
@@ -179,6 +181,7 @@
 - [SaaS Findings: v12.1 & v13 Triage](saas-v12-1-v13-triage.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
 - [OpenSSF Scorecard Evidence & Improvements](openssf-scorecard.md)
+- [OpenSSF Best Practices: Silver Evidence](openssf-best-practices.md)
 - [v12 Stable Release Audit](v12-release-audit.md)
 - [🚑 v12 Partial Release Recovery](release-recovery.md)
 - [Website Maintenance & Privacy Boundaries](website-maintenance.md)

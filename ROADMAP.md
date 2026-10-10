@@ -15,6 +15,22 @@ for Humans and AI."**
 > live in [`docs/src/v12.md`](docs/src/v12.md); this roadmap owns the v13
 > programme until a dedicated release checklist is approved.
 
+## Next twelve months (October 2026 – October 2027)
+
+Intentions, not promises; dates follow the evidence gates described below.
+
+- **v13:** `13.0.0-alpha.1`, then further alphas, betas and a release candidate
+  driven by user feedback, then `13.0.0` stable with the
+  [maturity tiers](docs/src/maturity.md) applying from that release.
+- **v12:** compatible maintenance on the `v12` branch under the
+  [compatibility policy](docs/src/compatibility-policy.md): security fixes,
+  dependency advisories and deprecation notices that ease the move to v13.
+- **Assurance:** OpenSSF Best Practices Silver, mutation testing extended from the
+  critical v13 code to the whole workspace, and an independent review prepared
+  with the [external audit kit](docs/src/external-audit-kit.md).
+- **Selected programmes:** the [green software roadmap](docs/src/green-software-roadmap.md)
+  and the [legal compliance roadmap](docs/src/legal-compliance-roadmap.md).
+
 ## Status language
 
 - `[x] Implemented`: a bounded, testable implementation exists. This never means

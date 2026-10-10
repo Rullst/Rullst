@@ -52,6 +52,16 @@ manifests therefore contain absolute path dependencies and are not portable.
 Running from the repository root remains an explicit fallback. Prefer stable
 published v12 releases and their matching registry packages for ordinary applications.
 
+Cargo installs the `cargo-rullst` and `rullst` executables into
+`$CARGO_HOME/bin` (`~/.cargo/bin` by default). To install elsewhere, set
+`CARGO_INSTALL_ROOT` or pass `--root <dir>`. To remove the CLI, run:
+
+```bash
+cargo uninstall cargo-rullst
+```
+
+Add the same `--root <dir>` if you installed with one.
+
 ## 2. Creating Your First Project
 
 We have completely redesigned the project creation experience. Instead of remembering complex flags, just run:

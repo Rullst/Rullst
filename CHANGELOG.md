@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### OpenSSF Silver evidence
+
+Adds a security assurance case, release verification steps in `SECURITY.md`,
+a pull-request check that crate archives are reproducible, and the Silver
+evidence guide.
+
 ## [13.0.0-alpha.1] - 2026-10-10
 
 First v13 prerelease, for evaluation. Stable applications should stay on 12.x.

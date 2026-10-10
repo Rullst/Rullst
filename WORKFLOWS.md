@@ -740,6 +740,13 @@ path-dependency locks. Five tests cover that failure, the complete inventory,
 early failure, argument rejection and CI wiring. Neither the forty-two-target
 inventory nor campaign duration or release admission is reduced.
 
+After formatting, `check-package-reproducibility.sh` packages `rullst-macros`
+and `rullst-orm-macros` twice with `--no-verify`: once from the CI checkout and
+once from a fresh worktree of the same commit at another path, with new file
+times and umask `077`, each into an empty target directory. Different SHA-256
+digests fail the job. It compiles nothing; the release preflight still compares
+every admitted archive. See [reproducible crate archives](docs/src/reproducible-builds.md).
+
 The threat-model runner now validates all evidence rows before downloads or
 compilation and runs each unique exact test once, instead of first invoking
 Cargo again to list that target. The current 66 evidence mappings, 50 threat

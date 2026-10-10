@@ -10,6 +10,8 @@ logic, a trusted reverse proxy, operating-system hardening, or independent
 security testing. To choose between overlapping Core and `rullst-security`
 layers, and for one recommended production stack, see
 [which security layer to use, and when](security-layers.md).
+The [security assurance case](assurance-case.md) connects these boundaries to
+the threat models, secure design principles and tested countermeasures.
 
 ## Defense in depth
 
