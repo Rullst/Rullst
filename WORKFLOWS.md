@@ -550,6 +550,46 @@ higher component result for the repository total.
   [public benchmark hub](https://rullst.github.io/Rullst/benches/); they are not
   a promise against every nanosecond-level regression.
 
+### Accepted equivalent mutants
+
+The v13 focused campaign (targeted runs of security and correctness files
+before 13.0.0-alpha.1) gave every missed mutant in its files a test, except
+these. Each change has no observable effect in the all-feature Linux build the
+campaign measures, so a test cannot tell it apart. Keep this list short: a new
+entry needs the same one-line justification.
+
+| Mutant | Why it is equivalent |
+| --- | --- |
+| `rullst-core/src/queue/deferral/window.rs`: `TimeWindow::length_ms`, `>` with `>=` | `TimeWindow::daily` rejects equal start and end times, so the two never compare equal. |
+| `rullst-core/src/queue/deferral/window.rs`: `TimeWindow::intervals`, `day < until_ms` with `<=` | The extra day starts at or after `until_ms`, so it never yields an interval. |
+| `rullst-core/src/testing/html_normalize.rs`: `mask_csrf_headers`, `found < copied` with `<=` | `copied` indexes the closing quote of a masked value, so no `x-csrf-token` key can start there. |
+| `rullst-media/src/s3/signing.rs`: `settings` with `Default::default()` | Adapter URLs hold only unreserved characters, `%XX` and `/` without empty or dot segments, so single or double encoding and path normalisation give the same canonical URI. |
+| `rullst-mail/src/facade/driver.rs`: `DigestHasher::finish` with `1` | `finish` is never called; the digest is read from the SHA-256 state. |
+| `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
+| `cargo-rullst/src/generators/audit_report/secrets.rs`: `redact_secrets`, both `found > 0` with `>=` | Replacing zero matches leaves the line unchanged. |
+| `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
+| `cargo-rullst/src/generators/footprint/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
+| `cargo-rullst/src/generators/footprint/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
+| `cargo-rullst/src/generators/footprint/energy.rs`: `discover`, `root == POWERCAP_ROOT` with `!=` | On Linux `!cfg!(target_os = "linux")` is false, so the comparison is never evaluated. |
+
+Timed-out mutants are not counted as caught, and cargo-mutants reports them
+separately. The campaign rewrote the scanning loops of the WAF detector, the
+RASP decoder, the HTML snapshot normaliser and the accessibility scanner so
+that every step consumes input, and bounded the WAF linear-time test, which
+removed their timeouts. The remaining ones turn forward progress into a loop
+that never ends without allocating, in code every test of the file reaches,
+so no single test can fail first:
+
+- `rullst-core/src/error_console/store.rs`: `Store::record` with
+  `len() >= MAX_ENTRIES` replaced by `<` pops an empty queue forever.
+- `cargo-rullst/src/generators/build/upgrade/rules/tokens.rs`: the token
+  scanner's `level` and `path` loops, where an index step (`+= 1`, `+= 2`,
+  `next + 1`, `end + 1`, `end + 2`) becomes `-` or `*`, or `path` returns
+  `0` or `1`, and the scan revisits the same token forever.
+
+A targeted run sets each test binary's address space to 8 GiB, so a loop that
+does allocate aborts its tests and counts as caught instead.
+
 ### Fuzzing and OSS-Fuzz
 
 The v13 manual `fuzzing.yml` matrix covers all **42** declared libFuzzer targets
