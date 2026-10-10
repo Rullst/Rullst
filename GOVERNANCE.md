@@ -69,9 +69,9 @@ their APIs, and the successor opened and closed a test issue
 re-verified every year and after any account change, following the
 [successor maintainer checklist](docs/successor.md). The book is served from
 `rullst.github.io`. The maintainer holds the project's domains (for example
-`rullst.win`, which serves the demo applications); successor recovery access
-to the domain registrar and the demo hosting is being added in October 2026
-and is checked at the next verification.
+`rullst.win`, which serves the demo applications); the successor received
+recovery access to the domain registrar and the demo hosting on 9 October 2026
+(confirmed by the maintainer).
 
 Keep credentials and recovery instructions outside the public repository.
 Additional maintainers and independent review are welcome, but no role or
