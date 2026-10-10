@@ -554,8 +554,8 @@ higher component result for the repository total.
 
 The v13 focused campaign (targeted runs of security and correctness files
 before 13.0.0-alpha.1) and the local whole-crate campaign that followed it
-(`rullst-iot`, `rullst-privacy`) gave every missed mutant in their files a
-test, except these.
+(`rullst-iot`, `rullst-privacy`, `rullst-labs`) gave every missed mutant in
+their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
@@ -579,6 +579,11 @@ entry needs the same one-line justification.
 | `rullst-privacy/src/age_assurance/challenge_tokens.rs`: `ChallengeTokens::open_with_clock`, `token.len() > MAX_TOKEN_BYTES` and `payload.len() > MAX_PAYLOAD_BASE64` with `==` or `>=`, the `\|\|` before `payload.is_empty()`, the payload bound and `tag.len() != 43` with `&&`, and `MAX_PAYLOAD_BASE64` with its `+` or `/` replaced by `*` | These pre-authentication bounds only reject early what key lookup, tag verification, the 4096-byte decoded limit or JSON parsing reject with the same `InvalidChallengeToken`: a well-formed token is far below 8192 bytes, and 5463 base64 characters already decode to 4097 bytes. |
 | `rullst-privacy/src/age_assurance/sqlite.rs`: `SqliteReplayStore::open`, the `error.kind() != NotFound` guard with `false` | Every other metadata failure (permission, name length, symlink loop) also makes the SQLite open fail with the same `StoreUnavailable`. |
 | `rullst-privacy/src/consent/gate.rs`: `allows_with_clock`, `completed < record.valid_until()` with `<=` | A grant with `completed >= valid_until` has already returned `false`, so the two never compare equal there. |
+| `rullst-labs/src/sqlite/completion.rs`: `finish`, `lease.until <= tx.now \|\| record.view.expires_at <= tx.now` with `&&` | `narrow_deadline` with the earlier of the two returns the same `Expired`. |
+| `rullst-labs/src/sqlite/jobs.rs`: `cancel`, `revision <= 0 \|\| record.view.revision != revision` with `&&` | `save_job` updates only the row at that revision, so a stale revision still returns `Conflict`. |
+| `rullst-labs/src/sqlite/jobs.rs`: `load_job`, `body.len() > 32796`, and `seal_record`, `body.len() > 32768`, each with `==` or `>=` | Bounded record fields serialize far below 32 KiB, and a longer stored body fails authentication with the same `Integrity`. |
+| `rullst-labs/src/sqlite/jobs.rs`: `payload`, the `\|\|` before the scope and id comparisons with `&&` | The exercise digest covers scope, id and revision, so none of them can differ alone. |
+| `rullst-labs/src/sqlite/retention.rs`: `expire_queued`, either `\|\|` with `&&`, and `purge_terminal`, the `\|\|` after the state match with `&&` | The SQL selection, `load_job`'s column checks and `Record::validate` already guarantee a queued, expired, unleased record, or an unleased one that is neither queued, running nor `Uncertain` (which always holds its lease). |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
