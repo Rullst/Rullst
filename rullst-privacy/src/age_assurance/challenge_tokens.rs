@@ -167,3 +167,72 @@ fn authenticated_message(message: &str) -> Vec<u8> {
     bytes.extend_from_slice(message.as_bytes());
     bytes
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::age_assurance::challenge::tests::{binding, challenge, policy};
+
+    const SECRET: [u8; 32] = [7; 32];
+
+    struct At(i64);
+    impl AgeClock for At {
+        fn now(&self) -> Result<i64, AgeError> {
+            Ok(self.0)
+        }
+    }
+
+    fn tokens() -> ChallengeTokens {
+        ChallengeTokens::new("active", &SECRET).unwrap()
+    }
+
+    /// A correctly authenticated token around arbitrary payload bytes.
+    fn authenticated(version: &str, payload: &[u8]) -> String {
+        let message = format!("{version}.active.{}", URL_SAFE_NO_PAD.encode(payload));
+        let key = hmac::Key::new(hmac::HMAC_SHA256, &SECRET);
+        let tag = hmac::sign(&key, &authenticated_message(&message));
+        format!("{message}.{}", URL_SAFE_NO_PAD.encode(tag.as_ref()))
+    }
+
+    fn open(token: &str) -> Result<AgeChallenge, AgeError> {
+        tokens().open_with_clock(token, &policy(), &binding(), &At(1001))
+    }
+
+    #[test]
+    fn seal_accepts_challenge_json_up_to_4096_bytes() {
+        let base = challenge(1000);
+        let sealed = |subject_bytes: usize| {
+            tokens().seal(&base.with_unchecked_subject("s".repeat(subject_bytes)))
+        };
+        let one = base
+            .with_unchecked_subject("s".into())
+            .request_json()
+            .unwrap()
+            .len();
+        let fitting = 1 + MAX_CHALLENGE_BYTES - one;
+        assert!(sealed(fitting).is_ok());
+        assert_eq!(sealed(fitting + 1), Err(AgeError::InvalidChallengeToken));
+    }
+
+    #[test]
+    fn open_accepts_authenticated_payloads_up_to_4096_bytes() {
+        let mut json = challenge(1000).request_json().unwrap();
+        json.resize(MAX_CHALLENGE_BYTES, b' ');
+        assert!(open(&authenticated("ra1", &json)).is_ok());
+        json.push(b' ');
+        assert_eq!(
+            open(&authenticated("ra1", &json)).err(),
+            Some(AgeError::InvalidChallengeToken)
+        );
+    }
+
+    #[test]
+    fn only_version_ra1_opens_even_with_a_valid_tag() {
+        let json = challenge(1000).request_json().unwrap();
+        assert!(open(&authenticated("ra1", &json)).is_ok());
+        assert_eq!(
+            open(&authenticated("ra2", &json)).err(),
+            Some(AgeError::InvalidChallengeToken)
+        );
+    }
+}

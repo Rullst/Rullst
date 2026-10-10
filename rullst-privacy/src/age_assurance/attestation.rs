@@ -199,3 +199,67 @@ fn degenerate_key(key: &[u8; 32]) -> bool {
     let non_canonical = y[31] == 0x7f && y[1..31].iter().all(|byte| *byte == 0xff) && y[0] >= 0xed;
     non_canonical || SMALL_ORDER_Y.contains(&y)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::age_assurance::challenge::tests::challenge;
+
+    #[test]
+    fn issuer_and_key_id_are_each_validated() {
+        for (issuer, key_id) in [
+            ("", "key-1"),
+            ("issuer", ""),
+            ("bad issuer", "key-1"),
+            ("issuer", "bad key"),
+        ] {
+            assert_eq!(
+                encode_attestation(issuer, key_id, &challenge(1000), AgeOutcome::MeetsThreshold),
+                Err(AgeError::InvalidConfiguration)
+            );
+        }
+    }
+
+    #[test]
+    fn encoded_attestations_are_bounded_at_exactly_4096_bytes() {
+        let base = challenge(1000);
+        let encoded = |subject_bytes: usize| {
+            encode_attestation(
+                "issuer",
+                "key-1",
+                &base.with_unchecked_subject("s".repeat(subject_bytes)),
+                AgeOutcome::MeetsThreshold,
+            )
+        };
+        let fitting = 1 + MAX_ATTESTATION_BYTES - encoded(1).unwrap().len();
+        assert_eq!(
+            encoded(fitting).map(|bytes| bytes.len()),
+            Ok(MAX_ATTESTATION_BYTES)
+        );
+        assert_eq!(encoded(fitting + 1), Err(AgeError::InvalidAttestation));
+    }
+
+    #[test]
+    fn signing_messages_accept_payloads_up_to_4096_bytes() {
+        let message = signing_message(&[b'x'; MAX_ATTESTATION_BYTES]).unwrap();
+        assert_eq!(message.len(), SIGNING_CONTEXT.len() + MAX_ATTESTATION_BYTES);
+        assert!(message.starts_with(SIGNING_CONTEXT));
+        assert_eq!(
+            signing_message(&[b'x'; MAX_ATTESTATION_BYTES + 1]),
+            Err(AgeError::InvalidAttestation)
+        );
+    }
+
+    #[test]
+    fn a_reduced_y_with_a_high_top_byte_is_not_degenerate() {
+        let mut key = [0x11; 32];
+        key[31] = 0x7f;
+        assert!(!degenerate_key(&key));
+        key[31] = 0xff;
+        assert!(!degenerate_key(&key));
+        let mut p = [0xff; 32];
+        p[0] = 0xed;
+        p[31] = 0x7f;
+        assert!(degenerate_key(&p));
+    }
+}

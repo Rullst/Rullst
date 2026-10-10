@@ -63,3 +63,31 @@ pub(crate) fn connection_options(url: &str) -> Result<PgConnectOptions, PgOption
         .statement_cache_capacity(16)
         .disable_statement_logging())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn urls_are_bounded_at_8192_bytes() {
+        let prefix = "postgres://localhost/";
+        let url = format!("{prefix}{}", "d".repeat(8192 - prefix.len()));
+        assert!(connection_options(&url).is_ok());
+        assert!(matches!(
+            connection_options(&format!("{url}d")),
+            Err(PgOptionsError::InvalidConfiguration)
+        ));
+    }
+
+    #[test]
+    fn a_unix_socket_keeps_the_requested_tls_mode() {
+        let options = connection_options(
+            "postgres://db.example.test/replay?host=/run/postgresql&sslmode=disable",
+        )
+        .unwrap();
+        assert!(matches!(options.get_ssl_mode(), PgSslMode::Disable));
+        let remote =
+            connection_options("postgres://db.example.test/replay?sslmode=disable").unwrap();
+        assert!(matches!(remote.get_ssl_mode(), PgSslMode::VerifyFull));
+    }
+}

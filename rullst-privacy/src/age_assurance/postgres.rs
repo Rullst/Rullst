@@ -245,6 +245,20 @@ fn connection_options(url: &str) -> Result<PgConnectOptions, AgeError> {
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn capacity_is_validated_before_connecting() {
+        // Port 1 refuses connections, so a missing capacity check would
+        // report an unavailable store instead.
+        for capacity in [0, 100_001] {
+            assert_eq!(
+                PostgresReplayStore::connect("postgres://postgres@127.0.0.1:1/replay", capacity)
+                    .await
+                    .err(),
+                Some(AgeError::InvalidConfiguration)
+            );
+        }
+    }
+
     #[test]
     fn remote_connections_cannot_disable_certificate_or_hostname_verification() {
         for mode in ["disable", "prefer", "require", "verify-ca", "verify-full"] {

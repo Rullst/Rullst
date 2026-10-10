@@ -117,3 +117,16 @@ async fn mocks_are_explicit_and_debug_output_omits_subject_references() {
         }
     }
 }
+
+#[tokio::test]
+async fn claim_windows_are_inclusive_at_the_epoch_and_900_seconds() {
+    for (expires, now) in [(1, 0), (900, 0), (1900, 1000)] {
+        let store = MemoryReplayStore::new(1).unwrap();
+        assert_eq!(store.claim([4; 32], expires, now).await, Ok(true));
+    }
+    let store = MemoryReplayStore::new(1).unwrap();
+    assert_eq!(
+        store.claim([4; 32], 901, 0).await,
+        Err(AgeError::InvalidChallenge)
+    );
+}

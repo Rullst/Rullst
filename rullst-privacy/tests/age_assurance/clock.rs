@@ -186,3 +186,49 @@ async fn a_claim_that_loses_the_lock_to_a_later_second_is_retried_at_fresh_time(
         AgeDecision::Allowed
     );
 }
+
+#[test]
+fn system_clock_reports_current_unix_seconds() {
+    let expected = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let now = SystemAgeClock.now().unwrap();
+    assert!((expected - 1..=expected + 1).contains(&now));
+    assert_eq!(policy().minimum_age(), 18);
+}
+
+/// Rejects every claim as a rollback and counts the attempts.
+struct AlwaysRollback(AtomicI64);
+
+impl ReplayStore for AlwaysRollback {
+    fn durability(&self) -> ReplayDurability {
+        ReplayDurability::ProcessLocal
+    }
+
+    async fn claim(&self, _: [u8; 32], _: i64, _: i64) -> Result<bool, AgeError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Err(AgeError::ClockRollback)
+    }
+}
+
+/// Advances one second on every read.
+struct Advancing(AtomicI64);
+
+impl AgeClock for Advancing {
+    fn now(&self) -> Result<i64, AgeError> {
+        Ok(self.0.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
+#[tokio::test]
+async fn persistent_rollback_is_retried_exactly_twice() {
+    let store = Arc::new(AlwaysRollback(AtomicI64::new(0)));
+    let verifier = AgeVerifier::for_development(issuer(), store.clone());
+    let challenge = challenge(AgeMethod::VerifiedAttribute);
+    assert_eq!(
+        assess(&verifier, &challenge, &Advancing(AtomicI64::new(1001))).await,
+        Err(AgeError::ClockRollback)
+    );
+    assert_eq!(store.0.load(Ordering::SeqCst), 3);
+}
