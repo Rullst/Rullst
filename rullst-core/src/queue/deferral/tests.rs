@@ -226,6 +226,10 @@ fn schedule_deferral_places_each_tick() {
         (MIDNIGHT + 19 * HOUR, DeferralReason::Deadline)
     );
     assert!(ScheduleDeferral::within(Duration::from_secs(367 * 24 * 3_600)).is_err());
+    // The 366-day limit itself is allowed.
+    let limit = Duration::from_secs(366 * 24 * 3_600);
+    assert_eq!(ScheduleDeferral::within(limit).unwrap().max_delay(), limit);
+    assert!(ScheduleDeferral::within(limit + Duration::from_secs(1)).is_err());
 }
 
 fn fixed() -> FixedIntensitySource {

@@ -174,3 +174,75 @@ async fn a_marked_inner_csp_keeps_the_shared_nonce() {
     let nonce = std::str::from_utf8(&body).unwrap();
     assert_eq!(csp, format!("script-src 'nonce-{nonce}'"));
 }
+
+#[test]
+fn a_generated_nonce_is_a_fresh_128_bit_base64_value() {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+
+    let nonce = CspNonce::generate();
+    let decoded = STANDARD.decode(nonce.as_str()).unwrap();
+    assert_eq!(decoded.len(), 16);
+    assert_eq!(nonce.to_string(), nonce.as_str());
+    assert_ne!(CspNonce::generate().as_str(), nonce.as_str());
+}
+
+#[test]
+fn the_csp_template_is_rendered_only_when_its_nonce_can_be_filled() {
+    use super::headers::{DEFAULT_CSP_TEMPLATE, render_csp_policy};
+
+    let nonce = CspNonce::generate();
+    let static_policy = render_csp_policy(None, None);
+    assert!(static_policy.contains("script-src 'self';"));
+    assert!(!static_policy.contains("nonce-"));
+
+    // A nonce fills both the configured and the default template.
+    assert_eq!(
+        render_csp_policy(Some("script-src 'nonce-{NONCE}'"), Some(&nonce)),
+        format!("script-src 'nonce-{}'", nonce.as_str())
+    );
+    assert_eq!(
+        render_csp_policy(None, Some(&nonce)),
+        DEFAULT_CSP_TEMPLATE.replace("{NONCE}", nonce.as_str())
+    );
+
+    // Without a nonce, a template that needs one falls back to the static
+    // policy, while a template without the placeholder is kept.
+    assert_eq!(
+        render_csp_policy(Some("script-src 'nonce-{NONCE}'"), None),
+        static_policy
+    );
+    assert_eq!(
+        render_csp_policy(Some("default-src 'none'"), None),
+        "default-src 'none'"
+    );
+
+    // A blank template counts as no template.
+    assert_eq!(render_csp_policy(Some("   "), None), static_policy);
+    assert_eq!(
+        render_csp_policy(Some(" "), Some(&nonce)),
+        DEFAULT_CSP_TEMPLATE.replace("{NONCE}", nonce.as_str())
+    );
+}
+
+#[test]
+fn an_explicit_no_referrer_survives_the_configured_referrer_policy() {
+    use super::headers::apply_referrer_policy;
+
+    let configured = HeaderValue::from_static("strict-origin-when-cross-origin");
+    let mut restricted = HeaderMap::new();
+    restricted.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("no-referrer"),
+    );
+    apply_referrer_policy(&mut restricted, configured.clone());
+    assert_eq!(restricted[header::REFERRER_POLICY], "no-referrer");
+
+    let mut other = HeaderMap::new();
+    other.insert(header::REFERRER_POLICY, HeaderValue::from_static("origin"));
+    apply_referrer_policy(&mut other, configured.clone());
+    assert_eq!(other[header::REFERRER_POLICY], configured);
+
+    let mut empty = HeaderMap::new();
+    apply_referrer_policy(&mut empty, configured.clone());
+    assert_eq!(empty[header::REFERRER_POLICY], configured);
+}

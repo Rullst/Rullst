@@ -131,3 +131,32 @@ fn ids_are_32_lowercase_hex_characters() {
         assert!(!valid_id(id), "{id}");
     }
 }
+
+/// Records `message` on a helper thread, failing instead of hanging.
+fn recorded_message(message: String) -> String {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut store = Store::default();
+        let now = Instant::now();
+        let id = record(&mut store, now, &message);
+        let _ = sender.send(store.get(now, &id).map(|context| context.message));
+    });
+    receiver
+        .recv_timeout(Duration::from_secs(10))
+        .expect("recording returns promptly")
+        .expect("the entry is stored")
+}
+
+#[test]
+fn messages_keep_two_kibibytes_and_truncate_on_a_character_boundary() {
+    let exact = "m".repeat(2 * 1024);
+    assert_eq!(recorded_message(exact.clone()), exact);
+
+    let over = "m".repeat(2 * 1024 + 1);
+    assert_eq!(recorded_message(over), format!("{}…", "m".repeat(2 * 1024)));
+
+    // Byte 2048 falls inside a two-byte character, so the cut moves back.
+    let wide = format!("a{}", "é".repeat(1_500));
+    let kept = recorded_message(wide.clone());
+    assert_eq!(kept, format!("{}…", &wide[..2 * 1024 - 1]));
+}

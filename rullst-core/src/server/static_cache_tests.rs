@@ -128,3 +128,14 @@ async fn dynamic_responses_and_static_errors_keep_no_store() {
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_eq!(headers[header::CACHE_CONTROL], "no-store");
 }
+
+#[tokio::test]
+async fn the_working_directory_mount_keeps_the_application_routes() {
+    let app = axum::Router::new().route("/page", axum::routing::get(|| async { "dynamic" }));
+    let app = mount_static_assets(app);
+    let response = app
+        .oneshot(Request::builder().uri("/page").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+}
