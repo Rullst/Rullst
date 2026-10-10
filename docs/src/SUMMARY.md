@@ -181,6 +181,7 @@
 - [SaaS Findings: v12.1 & v13 Triage](saas-v12-1-v13-triage.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
 - [OpenSSF Scorecard Evidence & Improvements](openssf-scorecard.md)
+- [OpenSSF Best Practices: Silver Evidence](openssf-best-practices.md)
 - [v12 Stable Release Audit](v12-release-audit.md)
 - [🚑 v12 Partial Release Recovery](release-recovery.md)
 - [Website Maintenance & Privacy Boundaries](website-maintenance.md)
