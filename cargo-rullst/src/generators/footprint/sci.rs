@@ -160,5 +160,18 @@ mod tests {
         assert_eq!(without_intensity.missing_terms, ["I"]);
         assert!(without_intensity.i_source.starts_with("not provided"));
         assert_eq!(without_intensity.sci_g_per_request, None);
+
+        // Energy and intensity without a request leave R missing: no
+        // division by zero.
+        let without_requests = compute(&measured, Some(400.0), None, 0);
+        assert_eq!(without_requests.status, "not_computed");
+        assert_eq!(without_requests.missing_terms, ["R"]);
+        assert_eq!(
+            (
+                without_requests.operational_g,
+                without_requests.sci_g_per_request
+            ),
+            (None, None)
+        );
     }
 }
