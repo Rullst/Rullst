@@ -82,7 +82,9 @@ class InputTests(unittest.TestCase):
 
     def test_reviewed_fixture_and_dev_dependency_changes_preserve_fuzz_inputs(self):
         for path in ("rullst-mail/tests/feedback.rs", ".github/mobile-ui-browser-smoke.mjs",
-                     ".github/billing-csp-browser-smoke.mjs", "Cargo.lock", "WORKFLOWS.md"):
+                     ".github/billing-csp-browser-smoke.mjs", "Cargo.lock", "WORKFLOWS.md",
+                     ".github/audit-packages.sh", ".github/test-package-release.py",
+                     "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs"):
             self.write(path, "changed test or non-input")
         with (self.root / "rullst-mail/Cargo.toml").open("a") as output:
             output.write('[dev-dependencies]\nrand={workspace=true}\n')
