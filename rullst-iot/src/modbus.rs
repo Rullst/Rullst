@@ -55,6 +55,16 @@ mod tests {
         assert_eq!(frame[1], 0x03);
         assert_eq!(frame.len(), 8);
     }
+
+    #[test]
+    fn crc16_matches_published_modbus_vectors() {
+        assert_eq!(ModbusFrame::calculate_crc16(&[]), 0xFFFF);
+        assert_eq!(ModbusFrame::calculate_crc16(b"123456789"), 0x4B37);
+        assert_eq!(
+            ModbusFrame::read_holding_registers(1, 0, 10),
+            [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xC5, 0xCD]
+        );
+    }
 }
 
 #[cfg(kani)]

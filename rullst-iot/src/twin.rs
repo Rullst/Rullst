@@ -143,4 +143,20 @@ mod tests {
         assert_eq!(parsed["error"], "serialize_failed");
         assert!(parsed.get("injected").is_none());
     }
+
+    #[test]
+    fn sync_errors_have_stable_messages() {
+        use alloc::string::ToString;
+
+        assert_eq!(
+            TwinSyncError::NonFiniteReading.to_string(),
+            "non-finite sensor reading"
+        );
+        let source = serde_json::from_str::<u8>("x").expect_err("invalid JSON");
+        let message = source.to_string();
+        assert_eq!(
+            TwinSyncError::from(source).to_string(),
+            alloc::format!("snapshot serialization failed: {message}")
+        );
+    }
 }

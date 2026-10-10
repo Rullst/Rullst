@@ -445,6 +445,104 @@ mod tests {
         );
         assert_eq!(classify_option_component(65_805), None);
     }
+
+    fn empty_get() -> Result<CoapRequest, CoapCodecError> {
+        CoapRequest::new(
+            CoapMessageType::Confirmable,
+            CoapMethod::Get,
+            1,
+            Vec::<u8>::new(),
+        )
+    }
+
+    #[test]
+    fn codec_errors_have_stable_messages() {
+        use alloc::string::ToString;
+
+        for (error, message) in [
+            (
+                CoapCodecError::TokenTooLong,
+                "CoAP token exceeds eight bytes",
+            ),
+            (
+                CoapCodecError::InvalidPathSegment,
+                "CoAP URI path segment is invalid",
+            ),
+            (
+                CoapCodecError::OptionTooLarge,
+                "CoAP option cannot be represented",
+            ),
+            (
+                CoapCodecError::DatagramTooLarge,
+                "CoAP request exceeds the local datagram ceiling",
+            ),
+        ] {
+            assert_eq!(error.to_string(), message);
+        }
+    }
+
+    #[test]
+    fn token_bytes_count_toward_the_path_bound() {
+        // 4 header bytes + a 2-byte token + 573 two-byte options = 1_152.
+        let mut request = CoapRequest::new(
+            CoapMessageType::Confirmable,
+            CoapMethod::Get,
+            1,
+            [0xa1, 0xa2],
+        )
+        .expect("short token");
+        for _ in 0..573 {
+            request = request
+                .path_segment("a")
+                .expect("segment fits the datagram ceiling");
+        }
+        assert_eq!(request.encode().map(|datagram| datagram.len()), Ok(1_152));
+        assert_eq!(
+            request.path_segment("a"),
+            Err(CoapCodecError::DatagramTooLarge)
+        );
+    }
+
+    #[test]
+    fn payload_setter_accepts_exactly_the_datagram_ceiling() {
+        assert!(
+            empty_get()
+                .and_then(|request| request.payload(vec![0; MAX_COAP_DATAGRAM_BYTES]))
+                .is_ok()
+        );
+        assert_eq!(
+            empty_get().and_then(|request| request.payload(vec![0; MAX_COAP_DATAGRAM_BYTES + 1])),
+            Err(CoapCodecError::DatagramTooLarge)
+        );
+    }
+
+    #[test]
+    fn ensure_room_rejects_growth_past_the_ceiling() {
+        let datagram = vec![0; MAX_COAP_DATAGRAM_BYTES - 1];
+        assert_eq!(ensure_room(&datagram, 1), Ok(()));
+        assert_eq!(
+            ensure_room(&datagram, 2),
+            Err(CoapCodecError::DatagramTooLarge)
+        );
+        assert_eq!(
+            ensure_room(&datagram, usize::MAX),
+            Err(CoapCodecError::DatagramTooLarge)
+        );
+    }
+
+    #[test]
+    fn content_format_uses_the_shortest_uint_encoding() {
+        for (format, option) in [
+            (0, &[0xc0][..]),
+            (50, &[0xc1, 0x32][..]),
+            (11_542, &[0xc2, 0x2d, 0x16][..]),
+        ] {
+            let datagram = empty_get()
+                .and_then(|request| request.content_format(format).encode())
+                .expect("Content-Format option should encode");
+            assert_eq!(&datagram[4..], option);
+        }
+    }
 }
 
 #[cfg(kani)]

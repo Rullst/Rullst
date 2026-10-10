@@ -80,4 +80,22 @@ mod tests {
             device.digest_fixture(b"payload-b")
         );
     }
+
+    #[test]
+    fn simulated_hsm_fixtures_depend_on_serial_and_profile() {
+        let device = SimulatedHsmDevice::new(SimulatedHsmProfile::Software, "fixture-device-1");
+        let other_serial =
+            SimulatedHsmDevice::new(SimulatedHsmProfile::Software, "fixture-device-2");
+        let other_profile = SimulatedHsmDevice::new(SimulatedHsmProfile::Tpm2, "fixture-device-1");
+        assert_eq!(device.serial(), "fixture-device-1");
+        assert_eq!(device.profile(), SimulatedHsmProfile::Software);
+        assert_ne!(
+            device.derive_fixture_bytes(),
+            other_serial.derive_fixture_bytes()
+        );
+        assert_ne!(
+            device.derive_fixture_bytes(),
+            other_profile.derive_fixture_bytes()
+        );
+    }
 }

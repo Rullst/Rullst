@@ -73,4 +73,11 @@ mod tests {
         assert!(html.contains("&lt;script&gt;"));
         assert!(html.contains("&lt;img"));
     }
+
+    #[test]
+    fn sensor_card_escapes_ampersands_and_quotes() {
+        let telemetry = SensorTelemetry::new(r#"a&b "c" 'd'"#, "m", 1.0, 1);
+        let html = IotDashboard::render_sensor_card(&telemetry);
+        assert!(html.contains("a&amp;b &quot;c&quot; &#x27;d&#x27;"));
+    }
 }
