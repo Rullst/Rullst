@@ -62,6 +62,12 @@ with the other Capital adapters.
   raw statements or spawned work. The distroless image size is not yet measured.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 
+### Focused mutation testing
+
+- 29 critical v13 files (about 1,620 mutants) now have no surviving mutant
+  besides 17 documented equivalents; targeted `mutants.yml` runs are bounded
+  (per-mutant timeouts, `test_scope=lib`, memory cap). See `WORKFLOWS.md`.
+
 ### Upgrade rehearsal from 12.3.0
 
 - `cargo rullst upgrade` repeats the removed-API guidance when its gate fails

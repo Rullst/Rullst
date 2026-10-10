@@ -276,6 +276,51 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn unparsable_missing_and_unreadable_counters_are_told_apart() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let package = |root: &Path, energy: Option<&str>| {
+            let path = root.join("intel-rapl:0");
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(path.join("name"), "package-0\n").unwrap();
+            std::fs::write(path.join("max_energy_range_uj"), "1000\n").unwrap();
+            if let Some(energy) = energy {
+                std::fs::write(path.join("energy_uj"), energy).unwrap();
+            }
+            path.join("energy_uj")
+        };
+        for energy in [Some("not a number\n"), None] {
+            let root = tempfile::tempdir().unwrap();
+            package(root.path(), energy);
+            let error = discover(root.path()).unwrap_err();
+            assert!(error.contains("no readable RAPL package zone"), "{error}");
+        }
+
+        let root = tempfile::tempdir().unwrap();
+        let counter = package(root.path(), Some("5\n"));
+        std::fs::set_permissions(&counter, std::fs::Permissions::from_mode(0o000)).unwrap();
+        // A privileged test user can still read the file; nothing to assert then.
+        if std::fs::read_to_string(&counter).is_err() {
+            let error = discover(root.path()).unwrap_err();
+            assert!(error.contains("exist but are not readable"), "{error}");
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_system_powercap_root_is_inspected_on_linux() {
+        let outcome = discover(Path::new(POWERCAP_ROOT));
+        assert!(
+            outcome
+                .as_ref()
+                .err()
+                .is_none_or(|error| !error.contains("are a Linux interface")),
+            "{outcome:?}"
+        );
+    }
+
     #[test]
     fn energy_prefers_rapl_then_a_labelled_estimate() {
         let measured = Energy::decide(Ok((12.5, vec!["package-0".into()])), Some(2.0), Some(15.0));
@@ -292,6 +337,12 @@ mod tests {
 
         let missing_cpu = Energy::decide(Err("denied".into()), None, Some(15.0));
         assert_eq!(missing_cpu.joules(), None);
+        assert_eq!(
+            missing_cpu,
+            Energy::NotMeasured {
+                reason: "--cpu-watts needs the process CPU time, which was not measured".into()
+            }
+        );
         assert_eq!(
             Energy::decide(Err("denied".into()), Some(2.0), None),
             Energy::NotMeasured {

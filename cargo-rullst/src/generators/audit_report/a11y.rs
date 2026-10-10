@@ -48,10 +48,12 @@ impl Tag {
 pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
     let bytes = source.as_bytes();
     let mut bodies = Vec::new();
-    let mut search = 0;
-    while let Some(found) = source[search..].find("html!") {
-        let start = search + found;
-        search = start + "html!".len();
+    // Occurrences inside an extracted body belong to that body.
+    let mut consumed = 0;
+    for (start, keyword) in source.match_indices("html!") {
+        if start < consumed {
+            continue;
+        }
         let preceded = source[..start]
             .chars()
             .next_back()
@@ -59,7 +61,8 @@ pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
         if preceded {
             continue;
         }
-        let open = search + (source.len() - search - source[search..].trim_start().len());
+        let after = &source[start + keyword.len()..];
+        let open = source.len() - after.trim_start().len();
         let Some(&delimiter) = bytes.get(open) else {
             break;
         };
@@ -68,7 +71,7 @@ pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
         }
         if let Some(close) = matching_close(bytes, open) {
             bodies.push((open + 1, &source[open + 1..close]));
-            search = close;
+            consumed = close;
         }
     }
     bodies
@@ -77,12 +80,14 @@ pub(super) fn html_macro_bodies(source: &str) -> Vec<(usize, &str)> {
 /// The index of the bracket closing the one at `open`; string literals are skipped.
 fn matching_close(bytes: &[u8], open: usize) -> Option<usize> {
     let mut depth = 0usize;
-    let mut index = open;
     let mut in_string = false;
-    while let Some(&byte) = bytes.get(index) {
-        if in_string {
+    let mut escaped = false;
+    for (index, &byte) in bytes.iter().enumerate().skip(open) {
+        if escaped {
+            escaped = false;
+        } else if in_string {
             match byte {
-                b'\\' => index += 1,
+                b'\\' => escaped = true,
                 b'"' => in_string = false,
                 _ => {}
             }
@@ -99,7 +104,6 @@ fn matching_close(bytes: &[u8], open: usize) -> Option<usize> {
                 _ => {}
             }
         }
-        index += 1;
     }
     None
 }
@@ -108,14 +112,14 @@ fn matching_close(bytes: &[u8], open: usize) -> Option<usize> {
 pub(super) fn tags(text: &str) -> Vec<Tag> {
     let bytes = text.as_bytes();
     let mut tags = Vec::new();
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] != b'<' {
-            index += 1;
+    // Openers before `resume` lie inside a comment or a parsed tag.
+    let mut resume = 0;
+    for (index, _) in text.match_indices('<') {
+        if index < resume {
             continue;
         }
         if text[index..].starts_with("<!--") {
-            index = text[index..]
+            resume = text[index..]
                 .find("-->")
                 .map_or(bytes.len(), |end| index + end + 3);
             continue;
@@ -127,7 +131,6 @@ pub(super) fn tags(text: &str) -> Vec<Tag> {
             .position(|byte| !(byte.is_ascii_alphanumeric() || *byte == b'-'))
             .map_or(bytes.len(), |end| name_start + end);
         if name_end == name_start || !bytes[name_start].is_ascii_alphabetic() {
-            index += 1;
             continue;
         }
         let (attributes, end) = attributes(bytes, name_end);
@@ -137,52 +140,62 @@ pub(super) fn tags(text: &str) -> Vec<Tag> {
             attributes,
             offset: index,
         });
-        index = end;
+        resume = end;
     }
     tags
 }
 
+/// The length of the run of bytes from `index` that `include` accepts.
+fn run_length(bytes: &[u8], index: usize, include: impl Fn(u8) -> bool) -> usize {
+    bytes.get(index..).map_or(0, |rest| {
+        rest.iter().take_while(|byte| include(**byte)).count()
+    })
+}
+
+/// The end of an attribute value starting at `index`: quoted, `{...}` or bare.
+fn value_end(bytes: &[u8], index: usize) -> usize {
+    match bytes.get(index) {
+        Some(&quote @ (b'"' | b'\'')) => {
+            (index + 2 + run_length(bytes, index + 1, |byte| byte != quote)).min(bytes.len())
+        }
+        Some(b'{') => matching_close(bytes, index).map_or(bytes.len(), |end| end + 1),
+        _ => {
+            index
+                + run_length(bytes, index, |byte| {
+                    !byte.is_ascii_whitespace() && byte != b'>'
+                })
+        }
+    }
+}
+
 /// Attributes from `start` to the closing `>`; values may be quoted or `{...}`.
+/// Whitespace, `/` and other bytes that start no name are skipped.
 fn attributes(bytes: &[u8], start: usize) -> (Vec<(String, Option<String>)>, usize) {
     let mut attributes = Vec::new();
-    let mut index = start;
     let text = |from: usize, to: usize| String::from_utf8_lossy(&bytes[from..to]).into_owned();
-    while index < bytes.len() {
-        match bytes[index] {
+    // Bytes before `resume` belong to an attribute already read.
+    let mut resume = start;
+    for (index, &byte) in bytes.iter().enumerate().skip(start) {
+        if index < resume {
+            continue;
+        }
+        match byte {
             b'>' => return (attributes, index + 1),
-            byte if byte.is_ascii_whitespace() || byte == b'/' => index += 1,
-            b'{' => index = matching_close(bytes, index).map_or(bytes.len(), |end| end + 1),
+            b'{' => resume = matching_close(bytes, index).map_or(bytes.len(), |end| end + 1),
             _ => {
-                let name_start = index;
-                while index < bytes.len()
-                    && !bytes[index].is_ascii_whitespace()
-                    && !matches!(bytes[index], b'=' | b'>' | b'/')
-                {
-                    index += 1;
-                }
-                let name = text(name_start, index).to_ascii_lowercase();
+                resume = index
+                    + run_length(bytes, index, |byte| {
+                        !byte.is_ascii_whitespace() && !matches!(byte, b'=' | b'>' | b'/')
+                    });
+                let name = text(index, resume).to_ascii_lowercase();
                 let mut value = None;
-                if bytes.get(index) == Some(&b'=') {
-                    index += 1;
-                    while bytes.get(index).is_some_and(u8::is_ascii_whitespace) {
-                        index += 1;
-                    }
-                    let value_start = index;
-                    index = match bytes.get(index) {
-                        Some(quote @ (b'"' | b'\'')) => bytes[index + 1..]
-                            .iter()
-                            .position(|byte| byte == quote)
-                            .map_or(bytes.len(), |end| index + 1 + end + 1),
-                        Some(b'{') => {
-                            matching_close(bytes, index).map_or(bytes.len(), |end| end + 1)
-                        }
-                        _ => bytes[index..]
-                            .iter()
-                            .position(|byte| byte.is_ascii_whitespace() || *byte == b'>')
-                            .map_or(bytes.len(), |end| index + end),
-                    };
+                if bytes.get(resume) == Some(&b'=') {
+                    let value_start = resume
+                        + 1
+                        + run_length(bytes, resume + 1, |byte| byte.is_ascii_whitespace());
+                    resume = value_end(bytes, value_start);
                     value = Some(
-                        text(value_start, index)
+                        text(value_start, resume)
                             .trim_matches(['"', '\''])
                             .to_string(),
                     );

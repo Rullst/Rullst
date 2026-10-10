@@ -242,6 +242,7 @@ fn structural_detection_is_linear_on_adversarial_input() {
         .and_then(|value| value.parse::<u32>().ok())
         .unwrap_or(1)
         .clamp(1, 100);
+    let budget = std::time::Duration::from_secs(5) * scale;
     for unit in [
         "'",
         "/*",
@@ -253,12 +254,15 @@ fn structural_detection_is_linear_on_adversarial_input() {
         "$(/",
     ] {
         let text = unit.repeat(MAX_INSPECTED_REQUEST_BYTES / unit.len());
-        let started = std::time::Instant::now();
-        let _ = contains_malicious_pattern(&text);
+        // A helper thread lets a super-linear or non-terminating scan fail
+        // the test at the budget instead of hanging it.
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(contains_malicious_pattern(&text));
+        });
         assert!(
-            started.elapsed() < std::time::Duration::from_secs(5) * scale,
-            "{unit:?} took {:?}",
-            started.elapsed()
+            receiver.recv_timeout(budget).is_ok(),
+            "{unit:?} took longer than {budget:?}"
         );
     }
 }

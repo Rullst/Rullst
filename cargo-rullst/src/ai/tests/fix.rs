@@ -215,3 +215,140 @@ async fn an_offline_session_starts_with_the_error_context_as_quoted_data() {
     let main = std::fs::read_to_string(root.join("src/main.rs")).unwrap();
     assert!(main.contains(".unwrap()"), "nothing was edited");
 }
+
+#[test]
+fn the_brief_names_a_file_without_a_line_and_lists_backtrace_frames() {
+    let (_guard, root) = project();
+    let mut without_line = context("boom", "src/main.rs");
+    without_line.line = None;
+    let prepared = brief(&root, &without_line).unwrap();
+    let attachments = prepared.brief.attachments.join("\n");
+    assert!(
+        attachments.contains("location: src/main.rs\n"),
+        "{attachments}"
+    );
+    assert!(
+        prepared.summary.ends_with("at src/main.rs"),
+        "{}",
+        prepared.summary
+    );
+    assert!(attachments.contains("backtrace (project frames):\n  app::show at ./src/main.rs:2:5"));
+    // Nothing secret-like was found, so no redaction note is added.
+    assert!(
+        !prepared
+            .brief
+            .notes
+            .iter()
+            .any(|note| note.contains("redacted"))
+    );
+
+    let mut no_frames = context("boom", "src/main.rs");
+    no_frames.backtrace.clear();
+    let prepared = brief(&root, &no_frames).unwrap();
+    assert!(!prepared.brief.attachments.join("\n").contains("backtrace"));
+}
+
+#[test]
+fn a_source_file_over_the_size_limit_is_not_attached() {
+    let (_guard, root) = project();
+    let large = "// filler\n".repeat(30 * 1024);
+    std::fs::write(root.join("src/large.rs"), large).unwrap();
+    let prepared = brief(&root, &context("boom", "src/large.rs")).unwrap();
+    assert_eq!(prepared.brief.attachments.len(), 1);
+    assert!(prepared.brief.notes[0].contains("was not shared"));
+}
+
+fn context_json(message_len: usize) -> String {
+    serde_json::json!({
+        "schema": SCHEMA, "id": ID, "message": "m".repeat(message_len), "file": null,
+        "line": null, "backtrace": [], "method": "GET", "path": "/", "expires_in_seconds": 1
+    })
+    .to_string()
+}
+
+#[tokio::test]
+async fn the_context_body_may_hold_exactly_64_kib() {
+    let base_len = context_json(0).len();
+    for (size, accepted) in [(40 * 1024, true), (64 * 1024, true), (64 * 1024 + 1, false)] {
+        let body = context_json(size - base_len);
+        assert_eq!(body.len(), size);
+        let (base, server) = serve_once("200 OK", body);
+        let url = source_url(Some(&base), || Ok(0)).unwrap();
+        let result = fetch(&url, ID).await;
+        // The refused body may still be in flight when the client stops reading.
+        let _ = server.join();
+        if accepted {
+            assert_eq!(result.unwrap().message.len(), size - base_len);
+        } else {
+            assert!(result.unwrap_err().contains("larger than 64 KiB"));
+        }
+    }
+}
+
+#[test]
+fn credentials_without_a_password_or_a_user_are_refused() {
+    for raw in [
+        "http://user@127.0.0.1:3000",
+        "http://:secret@127.0.0.1:3000",
+    ] {
+        let error = source_url(Some(raw), || Ok(0)).unwrap_err();
+        assert!(error.contains("refusing"), "{raw}: {error}");
+    }
+}
+
+fn fix_command() -> clap::Command {
+    command(
+        clap::Arg::new("provider").long("provider"),
+        clap::Arg::new("model").long("model"),
+    )
+}
+
+#[test]
+fn the_command_takes_an_id_a_url_and_a_dry_run_flag() {
+    let matches = fix_command()
+        .try_get_matches_from(["fix", ID, "--url", "http://127.0.0.1:1", "--dry-run"])
+        .unwrap();
+    assert_eq!(
+        matches.get_one::<String>("error-id").map(String::as_str),
+        Some(ID)
+    );
+    assert_eq!(
+        matches.get_one::<String>("url").map(String::as_str),
+        Some("http://127.0.0.1:1")
+    );
+    assert!(matches.get_flag("dry-run"));
+    assert!(fix_command().try_get_matches_from(["fix"]).is_err());
+}
+
+#[test]
+fn a_valid_id_reaches_the_source_check() {
+    let (_guard, root) = project();
+    let matches = fix_command()
+        .try_get_matches_from(["fix", &ID.to_uppercase(), "--url", "http://192.0.2.1:3000"])
+        .unwrap();
+    match prepare(&matches, &root) {
+        Err(AiCliError::Fix(message)) => assert!(message.contains("refusing"), "{message}"),
+        Err(other) => panic!("unexpected error: {other}"),
+        Ok(_) => panic!("a remote source must be refused"),
+    }
+}
+
+#[test]
+fn large_messages_and_source_excerpts_are_shared_within_their_bounds() {
+    let (_guard, root) = project();
+    let source: String = (1..=1000)
+        .map(|line| format!("// line {line:04} {}\n", "x".repeat(130)))
+        .collect();
+    std::fs::write(root.join("src/big.rs"), source).unwrap();
+    let mut context = context(&"m".repeat(10_000), "src/big.rs");
+    context.line = Some(500);
+    let prepared = brief(&root, &context).unwrap();
+    assert!(prepared.brief.attachments[0].contains(&"m".repeat(10_000)));
+    let excerpt = prepared
+        .brief
+        .attachments
+        .get(1)
+        .expect("a 150 KB source file is shared as an excerpt");
+    assert!(excerpt.contains("// line 0460 "), "{}", excerpt.len());
+    assert!(excerpt.contains("// line 0540 "), "{}", excerpt.len());
+}

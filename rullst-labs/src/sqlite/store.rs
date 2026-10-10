@@ -280,14 +280,21 @@ fn resolved(path: &Path) -> Result<PathBuf, Error> {
 fn without_verbatim_prefix(path: PathBuf) -> PathBuf {
     #[cfg(windows)]
     {
-        let plain = path
-            .to_str()
-            .and_then(|text| text.strip_prefix(r"\\?\"))
-            .filter(|rest| rest.as_bytes().get(1) == Some(&b':'))
-            .map(PathBuf::from);
-        if let Some(plain) = plain {
-            return plain;
+        if let Some(plain) = path.to_str().and_then(verbatim_drive_path) {
+            return PathBuf::from(plain);
         }
     }
     path
 }
+
+/// The plain drive path of a verbatim `\\?\C:\…` path; other verbatim forms
+/// (UNC shares, device paths) are kept as they are.
+#[cfg(any(windows, test))]
+fn verbatim_drive_path(text: &str) -> Option<&str> {
+    text.strip_prefix(r"\\?\")
+        .filter(|rest| rest.as_bytes().get(1) == Some(&b':'))
+}
+
+#[cfg(test)]
+#[path = "store_tests.rs"]
+mod tests;

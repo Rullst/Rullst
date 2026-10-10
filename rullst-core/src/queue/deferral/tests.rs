@@ -103,6 +103,20 @@ fn intervals_cover_wrapped_occurrences_and_clip_to_the_range() {
         ]
     );
     assert!(window.intervals(MIDNIGHT, MIDNIGHT).is_empty());
+
+    // The range is half-open: an occurrence that ends at its start or begins
+    // at its end contributes no empty interval.
+    let early = TimeWindow::daily(1, 0, 2, 0).unwrap();
+    assert!(
+        early
+            .intervals(MIDNIGHT + 2 * HOUR, MIDNIGHT + 3 * HOUR)
+            .is_empty()
+    );
+    assert!(early.intervals(MIDNIGHT, MIDNIGHT + HOUR).is_empty());
+    assert_eq!(
+        early.intervals(MIDNIGHT, MIDNIGHT + 2 * HOUR),
+        vec![(MIDNIGHT + HOUR, MIDNIGHT + 2 * HOUR)]
+    );
 }
 
 #[test]
@@ -226,6 +240,10 @@ fn schedule_deferral_places_each_tick() {
         (MIDNIGHT + 19 * HOUR, DeferralReason::Deadline)
     );
     assert!(ScheduleDeferral::within(Duration::from_secs(367 * 24 * 3_600)).is_err());
+    // The 366-day limit itself is allowed.
+    let limit = Duration::from_secs(366 * 24 * 3_600);
+    assert_eq!(ScheduleDeferral::within(limit).unwrap().max_delay(), limit);
+    assert!(ScheduleDeferral::within(limit + Duration::from_secs(1)).is_err());
 }
 
 fn fixed() -> FixedIntensitySource {

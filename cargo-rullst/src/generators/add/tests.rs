@@ -381,3 +381,98 @@ fn implied_features_match_the_facade_manifest() {
         assert_eq!(implied, table, "{}", capability.name);
     }
 }
+
+#[test]
+fn the_report_says_when_dotenv_needs_nothing() {
+    let root = project(MANIFEST, &[(".env", "APP_KEY=local\n")]);
+    let report = add(root.path(), "mail");
+    assert!(
+        report.contains(
+            "· .env          unchanged: nothing it lacks is needed to start in development"
+        ),
+        "{report}"
+    );
+    assert_eq!(read(root.path(), ".env"), "APP_KEY=local\n");
+}
+
+#[test]
+fn the_command_takes_a_capability_and_a_dry_run_flag() {
+    let matches = super::command()
+        .try_get_matches_from(["add", "mail", "--dry-run"])
+        .unwrap();
+    assert_eq!(
+        matches.get_one::<String>("capability").map(String::as_str),
+        Some("mail")
+    );
+    assert!(matches.get_flag("dry_run"));
+    assert!(
+        super::command()
+            .try_get_matches_from(["add", "unknown"])
+            .is_err()
+    );
+}
+
+#[test]
+fn hints_come_from_the_named_capability() {
+    let mail = find("mail").unwrap();
+    assert!(!mail.hints.is_empty());
+    assert_eq!(super::hints("mail"), mail.hints);
+    assert!(super::hints("unknown").is_empty());
+}
+
+#[test]
+fn running_outside_a_rullst_project_fails() {
+    // The unit tests run in the cargo-rullst package, which does not depend
+    // on the `rullst` facade; the dry run writes nothing either way.
+    let matches = super::command()
+        .try_get_matches_from(["add", "mail", "--dry-run"])
+        .unwrap();
+    assert!(super::run(&matches).is_err());
+}
+
+#[test]
+fn errors_describe_the_failing_file_or_value() {
+    assert_eq!(
+        AddError::UnknownCapability("cache".into()).to_string(),
+        "`cache` is not a capability"
+    );
+    assert_eq!(
+        AddError::InvalidManifest { line: Some(3) }.to_string(),
+        "Cargo.toml is not valid TOML (line 3)"
+    );
+    assert_eq!(
+        AddError::Read {
+            file: ".env.example",
+            kind: std::io::ErrorKind::PermissionDenied
+        }
+        .to_string(),
+        "could not read .env.example: permission denied"
+    );
+}
+
+#[test]
+fn an_unreadable_env_example_fails_instead_of_counting_as_missing() {
+    let root = project(MANIFEST, &[]);
+    fs::create_dir(root.path().join(".env.example")).unwrap();
+    match execute(root.path(), "mail", true, Style::PLAIN) {
+        Err(Failure::Add(AddError::Read { file, .. })) => assert_eq!(file, ".env.example"),
+        Err(_) => panic!("unexpected failure"),
+        Ok(report) => panic!("a directory is not an empty .env.example: {report}"),
+    }
+}
+
+#[test]
+fn the_manifest_is_written_last() {
+    let root = project(MANIFEST, &[]);
+    let plan = match super::plan::plan(root.path(), find("mail").unwrap()).unwrap() {
+        Ok(plan) => plan,
+        Err(_) => panic!("the fixture is a Rullst project"),
+    };
+    assert!(plan.changes.len() >= 2, "{:?}", plan.changes);
+    let written = super::plan::apply(root.path(), &plan).unwrap();
+    assert!(
+        written.last().unwrap().ends_with("Cargo.toml"),
+        "{written:?}"
+    );
+    assert!(!written[0].ends_with("Cargo.toml"), "{written:?}");
+}

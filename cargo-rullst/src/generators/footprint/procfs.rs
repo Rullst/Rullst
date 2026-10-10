@@ -131,7 +131,38 @@ mod tests {
         assert!(sample_cpu_ticks(pid).is_some());
         let (peak, resident) = sample_memory(pid);
         assert!(peak.unwrap_or(0) >= resident.unwrap_or(0));
-        assert!(resident.unwrap_or(0) > 0);
-        assert!(ticks_per_second().is_some());
+        assert!(resident.unwrap_or(0) > 1024 * 1024, "{resident:?}");
+        assert!(ticks_per_second().is_some_and(|ticks| ticks >= 10));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn samples_match_the_proc_files() {
+        let direct = || {
+            std::fs::read_to_string("/proc/self/stat")
+                .ok()
+                .as_deref()
+                .and_then(cpu_ticks)
+                .unwrap_or(0)
+        };
+        // Spend a few clock ticks so the sample cannot be 0 or 1.
+        let started = std::time::Instant::now();
+        let mut spin = 0u64;
+        while direct() < 3 && started.elapsed() < std::time::Duration::from_secs(10) {
+            spin = std::hint::black_box(spin.wrapping_add(1));
+        }
+        let before = direct();
+        let sampled = sample_cpu_ticks(std::process::id()).unwrap_or(0);
+        let after = direct();
+        assert!(before >= 3, "{before}");
+        assert!(
+            (before..=after).contains(&sampled),
+            "{before} {sampled} {after}"
+        );
+
+        let expected = std::fs::read_to_string("/proc/cpuinfo")
+            .ok()
+            .and_then(|cpuinfo| cpuinfo_model(&cpuinfo));
+        assert_eq!(cpu_model(), expected);
     }
 }

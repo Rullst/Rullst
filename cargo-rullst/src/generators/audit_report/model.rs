@@ -166,3 +166,48 @@ impl Report {
             .count()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::generators::audit_report::catalog::{CSRF, HEADERS, IMG_ALT};
+
+    #[test]
+    fn groups_have_stable_report_ids() {
+        assert_eq!(Group::Security.id(), "security");
+        assert_eq!(Group::Accessibility.id(), "accessibility");
+    }
+
+    #[test]
+    fn a_location_needs_a_file_before_it_shows_a_line() {
+        assert_eq!(
+            Finding::new("src/a.rs", Some(3), "m").location(),
+            "src/a.rs:3"
+        );
+        assert_eq!(Finding::new("src/a.rs", None, "m").location(), "src/a.rs");
+        assert_eq!(Finding::new("", Some(3), "m").location(), "");
+    }
+
+    #[test]
+    fn failing_counts_every_check_with_findings_or_an_error() {
+        let report = |checks| Report {
+            generated_at: String::new(),
+            checks,
+            personal_data: PersonalData {
+                status: EvidenceStatus::Observed(0),
+                fields: Vec::new(),
+                detail: String::new(),
+            },
+        };
+        let clean = report(vec![Check::from_findings(&HEADERS, Vec::new(), "d")]);
+        assert_eq!(clean.failing(), 0);
+        assert!(!clean.fails());
+        let failing = report(vec![
+            Check::from_findings(&HEADERS, vec![Finding::new("a", None, "m")], "d"),
+            Check::with_status(&CSRF, EvidenceStatus::Error("e".into()), Vec::new(), "d"),
+            Check::not_checked(&IMG_ALT, "no templates"),
+        ]);
+        assert_eq!(failing.failing(), 2);
+        assert!(failing.fails());
+    }
+}

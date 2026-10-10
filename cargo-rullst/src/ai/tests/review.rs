@@ -266,3 +266,163 @@ fn the_json_report_has_a_stable_schema() {
         ["input_tokens", "line", "output_tokens", "total_tokens"]
     );
 }
+
+/// An empty repository: `git init` without any commit.
+fn empty_repository() -> (tempfile::TempDir, PathBuf) {
+    let directory = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(directory.path()).unwrap();
+    git(&root, &["init", "-q"]);
+    (directory, root)
+}
+
+#[test]
+fn a_base_must_be_a_plain_revision_name() {
+    for base in ["main", "v1.2.3", "HEAD~2", "origin/main", "a^", "x@{1}"] {
+        assert_eq!(diff::valid_base(base), !base.contains('{'), "{base}");
+    }
+    assert!(diff::valid_base(&"a".repeat(200)));
+    for base in ["", "-x", "--output=x", "a..b", "a b", &"a".repeat(201)] {
+        assert!(!diff::valid_base(base), "{base}");
+    }
+}
+
+#[test]
+fn an_interrupted_section_keeps_only_the_paths_it_names() {
+    assert_eq!(
+        section_paths("diff --git a/old.rs b/new.rs\n--- a/old.rs\n"),
+        ["old.rs"]
+    );
+    assert_eq!(
+        section_paths("diff --git a/mode.sh b/mode.sh\nold mode 100644\nnew mode 100755\n"),
+        ["mode.sh"]
+    );
+}
+
+#[test]
+fn a_repository_without_commits_reviews_staged_files_once() {
+    if !git_available() {
+        return;
+    }
+    let (_guard, root) = empty_repository();
+    fs::write(root.join("first.rs"), "fn a() {}\n").unwrap();
+    git(&root, &["add", "first.rs"]);
+    fs::write(root.join("first.rs"), "fn a() {}\nfn b() {}\n").unwrap();
+    let collected = collect(OsStr::new("git"), &root, &Scope::WorkingTree, false).unwrap();
+    assert_eq!(paths(&collected), ["first.rs", "first.rs"]);
+
+    // With a commit, a file with staged and unstaged edits is one section.
+    git(&root, &["add", "first.rs"]);
+    git(&root, &["commit", "-q", "-m", "init", "--no-gpg-sign"]);
+    fs::write(root.join("first.rs"), "fn a() {}\nfn b() {}\nfn c() {}\n").unwrap();
+    git(&root, &["add", "first.rs"]);
+    fs::write(root.join("first.rs"), "fn a() {}\nfn c() {}\n").unwrap();
+    let collected = collect(OsStr::new("git"), &root, &Scope::WorkingTree, false).unwrap();
+    assert_eq!(paths(&collected), ["first.rs"]);
+}
+
+#[test]
+fn binary_files_are_omitted_but_text_mentioning_binary_is_reviewed() {
+    if !git_available() {
+        return;
+    }
+    let (_guard, root) = empty_repository();
+    fs::write(root.join(".env"), "PORT=3000\n").unwrap();
+    fs::write(root.join("logo.bin"), [0u8, 159, 146, 150, 0, 1]).unwrap();
+    fs::write(
+        root.join("notes.md"),
+        "Binary files are listed\nthe two values differ\n",
+    )
+    .unwrap();
+    git(&root, &["add", "-f", ".env", "logo.bin", "notes.md"]);
+    let collected = collect(OsStr::new("git"), &root, &Scope::Staged, false).unwrap();
+    assert_eq!(paths(&collected), ["notes.md"]);
+    let omitted: Vec<(&str, &str)> = collected
+        .omitted
+        .iter()
+        .map(|omitted| (omitted.path.as_str(), omitted.reason.as_str()))
+        .collect();
+    assert_eq!(omitted.len(), 2, "{omitted:?}");
+    assert!(
+        omitted.contains(&("logo.bin", "binary file")),
+        "{omitted:?}"
+    );
+    assert!(omitted.iter().any(|(path, _)| *path == ".env"));
+}
+
+#[test]
+fn untracked_files_up_to_256_kib_are_reviewed() {
+    if !git_available() {
+        return;
+    }
+    let (_guard, root) = empty_repository();
+    let line = format!("{}\n", "a".repeat(1023));
+    fs::write(root.join("exact.txt"), line.repeat(256)).unwrap();
+    fs::write(root.join("over.txt"), format!("{}b", line.repeat(256))).unwrap();
+    let collected = collect(OsStr::new("git"), &root, &Scope::WorkingTree, true).unwrap();
+    assert_eq!(paths(&collected), ["exact.txt"]);
+    assert_eq!(collected.omitted.len(), 1);
+    assert_eq!(collected.omitted[0].path, "over.txt");
+    assert_eq!(collected.omitted[0].reason, "larger than 256 KiB");
+}
+
+/// The length of `git diff --cached` output, as `collect` requests it.
+fn staged_diff_len(root: &Path) -> usize {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args([
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.quotePath=false",
+            "diff",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--find-renames",
+            "--unified=3",
+            "--cached",
+            "--",
+        ])
+        .output()
+        .unwrap();
+    output.stdout.len()
+}
+
+#[test]
+fn git_output_is_read_up_to_8_mib_and_a_longer_diff_is_marked_cut() {
+    if !git_available() {
+        return;
+    }
+    const LIMIT: usize = 8 * 1024 * 1024;
+    let (_guard, root) = empty_repository();
+    let stage = |bytes: usize| {
+        let line = format!("{}\n", "z".repeat(1023));
+        let mut text = line.repeat(bytes / 1024);
+        text.push_str(&"z".repeat(bytes % 1024));
+        fs::write(root.join("big.txt"), text).unwrap();
+        git(&root, &["add", "big.txt"]);
+    };
+
+    // A 2 MiB diff is read whole.
+    stage(2 * 1024 * 1024);
+    let collected = collect(OsStr::new("git"), &root, &Scope::Staged, false).unwrap();
+    assert!(!collected.output_cut);
+    assert_eq!(paths(&collected), ["big.txt"]);
+
+    // A diff of exactly 8 MiB is still whole; one more byte is cut.
+    let mut size = LIMIT - 4096;
+    for _ in 0..3 {
+        stage(size);
+        let length = staged_diff_len(&root);
+        if length == LIMIT {
+            break;
+        }
+        size = size + LIMIT - length;
+    }
+    assert_eq!(staged_diff_len(&root), LIMIT);
+    let exact = collect(OsStr::new("git"), &root, &Scope::Staged, false).unwrap();
+    assert!(!exact.output_cut);
+    stage(size + 1);
+    let over = collect(OsStr::new("git"), &root, &Scope::Staged, false).unwrap();
+    assert!(over.output_cut);
+}

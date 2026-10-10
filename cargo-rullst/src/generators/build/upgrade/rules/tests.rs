@@ -4,6 +4,7 @@ use super::*;
 
 mod data;
 mod files;
+mod scanner;
 
 /// Codes and lines found in one Rust source.
 fn scan_with(source: &str, file_name: &str, facts: &WorkspaceFacts) -> Vec<(&'static str, usize)> {

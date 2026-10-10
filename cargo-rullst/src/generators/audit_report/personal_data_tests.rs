@@ -113,3 +113,38 @@ fn unparsable_files_are_reported_and_missing_sources_are_not_checked() {
     let data = inventory(&ProjectSources::load(empty.path()));
     assert!(matches!(data.status, EvidenceStatus::NotChecked(_)));
 }
+
+const MARKERS: &str = r#"
+#[derive(rullst_orm::Orm)]
+pub struct Vault {
+    pub backup_token: Option<SecretString>,
+    pub recovery_codes: Vec<SecretString>,
+    #[sqlx(encrypted)]
+    pub sqlx_note: String,
+    #[sqlx(masked)]
+    pub sqlx_hint: String,
+    pub email: String,
+    pub phone: String,
+}
+"#;
+
+#[test]
+fn only_secret_options_and_orm_markers_count_as_protected() {
+    let root = project(&[("src/vault.rs", MARKERS)]);
+    let data = inventory(&ProjectSources::load(root.path()));
+    assert_eq!(
+        row(&data, "backup_token"),
+        Some(("encrypted".to_string(), true))
+    );
+    // Another wrapper, and `encrypted`/`masked` under `sqlx`, are not markers.
+    assert_eq!(row(&data, "recovery_codes"), None);
+    assert_eq!(row(&data, "sqlx_note"), None);
+    assert_eq!(row(&data, "sqlx_hint"), None);
+    assert_eq!(row(&data, "email"), Some(("review".to_string(), false)));
+    assert!(
+        data.detail
+            .starts_with("3 classified or flagged field(s); 2 need review."),
+        "{}",
+        data.detail
+    );
+}

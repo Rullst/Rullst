@@ -211,3 +211,7 @@ pub(crate) fn render(report: &Report) -> String {
     out.push_str("</tbody></table></div>\n<p>V16 Security Logging and Error Handling and V17 WebRTC have no Level 1 requirements.</p>\n</main>\n</body>\n</html>\n");
     out
 }
+
+#[cfg(test)]
+#[path = "render_html_tests.rs"]
+mod tests;

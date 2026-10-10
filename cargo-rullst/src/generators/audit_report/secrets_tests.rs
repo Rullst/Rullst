@@ -186,3 +186,36 @@ fn redaction_removes_every_high_signal_value_and_counts_it() {
         ("plain\ntext".to_string(), 0)
     );
 }
+
+#[test]
+fn variable_references_angle_placeholders_and_short_values_stay_visible() {
+    for line in [
+        "PAYMENT_GATEWAY_KEY=${PAYMENT_GATEWAY_TOKEN_VALUE}",
+        "PAYMENT_GATEWAY_KEY=<PAYMENT_GATEWAY_TOKEN_VALUE>",
+        "API_KEY=abc123",
+    ] {
+        assert_eq!(
+            redact_secrets(line).unwrap(),
+            (line.to_string(), 0),
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn the_tracked_file_bound_is_inclusive() {
+    let root = project(&[("clean.txt", "nothing here\n")]);
+    let at_bound: Vec<PathBuf> = (0..MAX_TRACKED_FILES)
+        .map(|index| PathBuf::from(format!("missing-{index}.rs")))
+        .collect();
+    let mut over_bound = at_bound.clone();
+    over_bound.push(PathBuf::from("clean.txt"));
+    assert_eq!(
+        check(root.path(), Ok(at_bound)).status,
+        EvidenceStatus::NoFindings
+    );
+    assert!(matches!(
+        check(root.path(), Ok(over_bound)).status,
+        EvidenceStatus::Error(_)
+    ));
+}

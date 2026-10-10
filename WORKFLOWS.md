@@ -170,7 +170,7 @@ The workflows below run **only when requested manually**:
 | `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.99.0 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
-| `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
+| `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction, with explicit per-mutant test/build timeouts and an optional library-only test scope; it does not replace the complete campaign. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
 
 The v13 candidate also provides `verus.yml` as a manual-only pilot. Its source
 linkage/proof/negative-control checks are strict when invoked, while the pilot
@@ -486,7 +486,19 @@ higher component result for the repository total.
   legacy root configuration and its exclusions were not silently activated.
   Targeted mode accepts exactly one tracked production `.rs` path so a
   correction can be retested without restarting the complete workspace
-  campaign. Recovery is governed by a committed, versioned policy binding the
+  campaign. Each targeted run uses its own per-file concurrency group, an
+  explicit per-mutant test timeout (`timeout_seconds`, default 300 s, which
+  also bounds the unmutated baseline) and a 300 s build timeout, so one hanging
+  mutant cannot consume the job budget. Its optional `test_scope=lib` runs only
+  the package's library unit tests (`cargo test --lib`) to avoid rebuilding
+  generated projects in slow integration suites; that narrower scope can report
+  a mutant as missed when only an integration test would catch it, and such a
+  mutant still gets a unit test. Each targeted test binary runs under an
+  8 GiB address-space limit (`prlimit` as the Cargo test runner), so a
+  mutant that allocates without bound aborts its own tests instead of
+  exhausting the runner. An optional `shard=k/n` slice (n at most 16)
+  splits a file that is too slow for one job; the preflight inventory and the
+  aggregate then cover exactly that slice. Recovery is governed by a committed, versioned policy binding the
   originating and continuation runs, attempts, branches, workflow identity,
   measured source SHA, cargo-mutants version, exact shard set and inventory
   digest. It bisects only authorized incomplete fragments and combines them
@@ -537,6 +549,46 @@ higher component result for the repository total.
   non-blocking alerts at a 20% regression and feed the
   [public benchmark hub](https://rullst.github.io/Rullst/benches/); they are not
   a promise against every nanosecond-level regression.
+
+### Accepted equivalent mutants
+
+The v13 focused campaign (targeted runs of security and correctness files
+before 13.0.0-alpha.1) gave every missed mutant in its files a test, except
+these. Each change has no observable effect in the all-feature Linux build the
+campaign measures, so a test cannot tell it apart. Keep this list short: a new
+entry needs the same one-line justification.
+
+| Mutant | Why it is equivalent |
+| --- | --- |
+| `rullst-core/src/queue/deferral/window.rs`: `TimeWindow::length_ms`, `>` with `>=` | `TimeWindow::daily` rejects equal start and end times, so the two never compare equal. |
+| `rullst-core/src/queue/deferral/window.rs`: `TimeWindow::intervals`, `day < until_ms` with `<=` | The extra day starts at or after `until_ms`, so it never yields an interval. |
+| `rullst-core/src/testing/html_normalize.rs`: `mask_csrf_headers`, `found < copied` with `<=` | `copied` indexes the closing quote of a masked value, so no `x-csrf-token` key can start there. |
+| `rullst-media/src/s3/signing.rs`: `settings` with `Default::default()` | Adapter URLs hold only unreserved characters, `%XX` and `/` without empty or dot segments, so single or double encoding and path normalisation give the same canonical URI. |
+| `rullst-mail/src/facade/driver.rs`: `DigestHasher::finish` with `1` | `finish` is never called; the digest is read from the SHA-256 state. |
+| `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
+| `cargo-rullst/src/generators/audit_report/secrets.rs`: `redact_secrets`, both `found > 0` with `>=` | Replacing zero matches leaves the line unchanged. |
+| `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
+| `cargo-rullst/src/generators/footprint/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
+| `cargo-rullst/src/generators/footprint/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
+| `cargo-rullst/src/generators/footprint/energy.rs`: `discover`, `root == POWERCAP_ROOT` with `!=` | On Linux `!cfg!(target_os = "linux")` is false, so the comparison is never evaluated. |
+
+Timed-out mutants are not counted as caught, and cargo-mutants reports them
+separately. The campaign rewrote the scanning loops of the WAF detector, the
+RASP decoder, the HTML snapshot normaliser and the accessibility scanner so
+that every step consumes input, and bounded the WAF linear-time test, which
+removed their timeouts. The remaining ones turn forward progress into a loop
+that never ends without allocating, in code every test of the file reaches,
+so no single test can fail first:
+
+- `rullst-core/src/error_console/store.rs`: `Store::record` with
+  `len() >= MAX_ENTRIES` replaced by `<` pops an empty queue forever.
+- `cargo-rullst/src/generators/build/upgrade/rules/tokens.rs`: the token
+  scanner's `level` and `path` loops, where an index step (`+= 1`, `+= 2`,
+  `next + 1`, `end + 1`, `end + 2`) becomes `-` or `*`, or `path` returns
+  `0` or `1`, and the scan revisits the same token forever.
+
+A targeted run sets each test binary's address space to 8 GiB, so a loop that
+does allocate aborts its tests and counts as caught instead.
 
 ### Fuzzing and OSS-Fuzz
 
