@@ -350,6 +350,47 @@ adopt by hand; and the application-owned gates below. In the rehearsal
 fix to the upgraded Blank starter after a checkpoint, and the proposed
 `cargo check` passed against the v13 crates.
 
+### 12.3.0 published CLI
+
+The October 2026 rehearsal used the published `v12.3.0` Linux binary, checked
+with `sha256sum -c cli-checksums-x86_64-unknown-linux-gnu.txt` from the same
+release, and Rust 1.99.0:
+
+```bash
+./cargo-rullst-12.3.0-x86_64-unknown-linux-gnu rullst new v12-saas --default \
+  --blueprint saas --database sqlite --skip-initial-migration
+cargo build                          # on 12.3.0, writes Cargo.lock
+# append [patch.crates-io] entries pointing at the v13 checkout, commit
+cargo rullst upgrade --dry-run       # v13 CLI; then --dry-run --json
+cargo rullst upgrade
+cargo build && cargo test
+```
+
+Blank, Blog, SaaS and LMS starters each built on 12.3.0 without warnings.
+Against the v13 workspace:
+
+| Starter | Must-change | Review | `cargo rullst upgrade` | v13 build and tests |
+| :--- | :--- | :--- | :--- | :--- |
+| Blank | 0 | 5 (`V13-GITIGNORE-DATABASES`, `V13-ORM-DEFAULT-FEATURES`, `V13-MODEL-ALL`, `V13-RENDER-PAGE-LANGUAGE`, `V13-HEALTH-PROBES`) | passed without source edits | no warnings; no tests |
+| Blog | 0 | 6 (the Blank items except page language, plus `V13-BLOG-ROBOTS-SITEMAP`, `V13-NEXUS-DOTENV`) | passed without source edits | no warnings; no tests |
+| SaaS | 0 | 14 (`V13-CAPITAL-REMOVED` in `.env`, `.env.example` and `billing_controller.rs`; `V13-BILLING-PROJECT-SETTINGS` and `V13-EMPTY-TIMESTAMPS` twice; `V13-CREDENTIAL-RATE-LIMIT`, `V13-UTF16-LENGTHS`, `V13-PASSWORD-HASH-HIDDEN`, `V13-NEXUS-DOTENV`, `V13-HEALTH-PROBES`, `V13-GITIGNORE-DATABASES`, `V13-ORM-DEFAULT-FEATURES`) | `cargo fix` failed on `LemonSqueezyProvider` and the project was restored; passed after the Lemon Squeezy removal below | no warnings; no tests |
+| LMS | 0 | 12 (`V13-LMS-RECORD-PROGRESS` in four files, `V13-LMS-MEDIA-KINDS`, `V13-CREDENTIAL-RATE-LIMIT`, `V13-EMPTY-TIMESTAMPS`, `V13-UTF16-LENGTHS`, `V13-NEXUS-DOTENV`, `V13-HEALTH-PROBES`, `V13-GITIGNORE-DATABASES`, `V13-ORM-DEFAULT-FEATURES`) | passed without source edits | no warnings; 14 tests passed |
+
+The 12.3 SaaS starter still names `LemonSqueezyProvider`. Following the
+`V13-CAPITAL-REMOVED` guidance, one edit of `src/controllers/billing_controller.rs`
+(the import, `store_id`, `lemon_provider` and the `lemonsqueezy` branches of
+`billing_config`, `initialize_billing_provider`, checkout and portal) and the
+`BILLING_STORE_ID` lines of `.env` and `.env.example` leave the Stripe paths
+unchanged. The edit also compiles on 12.3.0, so it can land before the upgrade.
+
+The rehearsal fixed two gaps: the failed gate gave no hint because
+`V13-CAPITAL-REMOVED` is a review finding (it now repeats the rule's guidance),
+and the rule did not locate `BILLING_STORE_ID` (the SaaS count was 12 before).
+Limits: the review findings were read, not applied; there was no HTTP smoke
+test and no live Stripe call; `V13-NEXUS-DOTENV` and `V13-LMS-RECORD-PROGRESS`
+locate API use, so they also report on a fresh v13 starter; a project changed
+after generation can have other findings.
+
 ## v12 → v13 rule classification
 
 Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-published-1210-source)
