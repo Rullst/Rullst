@@ -264,3 +264,7 @@ impl<C: Clock> SqliteLabs<C> {
         .map_err(|_| Error::Configuration)
     }
 }
+
+#[cfg(test)]
+#[path = "jobs_tests.rs"]
+mod tests;

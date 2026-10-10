@@ -3,6 +3,8 @@ mod support;
 use rullst_labs::{sqlite::*, *};
 use std::sync::atomic::Ordering;
 use support::*;
+#[path = "job_store/boundaries.rs"]
+mod boundaries;
 #[path = "job_store/limits.rs"]
 mod limits;
 

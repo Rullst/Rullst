@@ -2,6 +2,8 @@
 #[path = "support/mixed_grading.rs"]
 mod mixed_grading;
 mod support;
+#[path = "leased_grading/timing.rs"]
+mod timing;
 use rullst_labs::{sqlite::*, *};
 use std::sync::atomic::Ordering;
 use support::*;

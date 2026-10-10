@@ -128,3 +128,7 @@ impl Record {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "record_tests.rs"]
+mod tests;

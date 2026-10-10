@@ -10,6 +10,8 @@ mod record;
 mod recovery;
 mod retention;
 mod store;
+#[cfg(test)]
+mod test_support;
 mod transaction;
 
 pub use crypto::ContentKey;
