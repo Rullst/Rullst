@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791555027459,
+  "lastUpdate": 1791596423114,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -13183,6 +13183,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 274,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6e518b7c7532ca52519a3ed3c10e4a8a1b9020a5",
+          "message": "Merge pull request #447 from Rullst/docs/best-practices-badge\n\ndocs(readme): show the OpenSSF Best Practices badge",
+          "timestamp": "2026-10-09T22:18:58-03:00",
+          "tree_id": "d86f060127f9684bf126b83bcd750a9754f7fa31",
+          "url": "https://github.com/Rullst/Rullst/commit/6e518b7c7532ca52519a3ed3c10e4a8a1b9020a5"
+        },
+        "date": 1791596422287,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1259,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 220,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 297,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
