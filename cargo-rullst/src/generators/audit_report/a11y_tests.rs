@@ -120,3 +120,81 @@ fn bodies_carry_their_byte_offset_and_skip_escaped_quotes() {
     // A trailing escape inside an unterminated string never closes.
     assert!(html_macro_bodies(r#"html! { "\"#).is_empty());
 }
+
+fn attribute_list(tag: &Tag) -> Vec<(&str, Option<&str>)> {
+    tag.attributes
+        .iter()
+        .map(|(name, value)| (name.as_str(), value.as_deref()))
+        .collect()
+}
+
+#[test]
+fn attribute_values_are_parsed_whole() {
+    let parsed = tags(
+        r#"<img {if x > 1 { "a" } else { "b" }} alt="a b" title= 'c' id={x y} data-v=bare><br>"#,
+    );
+    assert_eq!(
+        parsed.len(),
+        2,
+        "{:?}",
+        parsed.iter().map(|tag| &tag.name).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        attribute_list(&parsed[0]),
+        [
+            ("alt", Some("a b")),
+            ("title", Some("c")),
+            ("id", Some("{x y}")),
+            ("data-v", Some("bare"))
+        ]
+    );
+    assert_eq!(parsed[1].name, "br");
+
+    // An unterminated tag still yields its attributes.
+    let open = tags(r#"<img alt="x" hidden"#);
+    assert_eq!(
+        attribute_list(&open[0]),
+        [("alt", Some("x")), ("hidden", None)]
+    );
+    let open = tags("<img alt");
+    assert_eq!(attribute_list(&open[0]), [("alt", None)]);
+}
+
+#[test]
+fn only_label_elements_associate_controls_and_counts_are_reported() {
+    let page = r#"<html lang="en"><output for="email"></output><input id="email"><input id={field}><img src="a.png" alt=""></html>"#;
+    let checks = run(&[("templates/page.html", page)]);
+    assert_eq!(locations(&checks[1]).len(), 2, "{:?}", checks[1].findings);
+    assert!(
+        checks[0].detail.starts_with("1 <img> tag(s);"),
+        "{}",
+        checks[0].detail
+    );
+    assert!(
+        checks[1]
+            .detail
+            .starts_with("2 form control(s) needing a label;"),
+        "{}",
+        checks[1].detail
+    );
+    assert!(
+        checks[2].detail.starts_with("1 <html> element(s);"),
+        "{}",
+        checks[2].detail
+    );
+}
+
+#[test]
+fn comments_and_names_that_are_not_tags_are_skipped() {
+    let names = |text| {
+        tags(text)
+            .into_iter()
+            .map(|tag| tag.name)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names("<!--<b>--><i>"), ["i"]);
+    assert_eq!(names("a <1x> b < c <p>"), ["p"]);
+    assert_eq!(names("<!-- open <b>"), Vec::<String>::new());
+    assert_eq!(names("<a href=x><b>"), ["a", "b"]);
+    assert_eq!(tags("x <img alt><br>")[1].offset, 11);
+}
