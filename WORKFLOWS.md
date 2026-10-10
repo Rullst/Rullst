@@ -553,8 +553,9 @@ higher component result for the repository total.
 ### Accepted equivalent mutants
 
 The v13 focused campaign (targeted runs of security and correctness files
-before 13.0.0-alpha.1) gave every missed mutant in its files a test, except
-these. Each change has no observable effect in the all-feature Linux build the
+before 13.0.0-alpha.1) and the local whole-crate campaign that followed it
+(`rullst-iot`) gave every missed mutant in their files a test, except these.
+Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
 
@@ -571,6 +572,9 @@ entry needs the same one-line justification.
 | `cargo-rullst/src/generators/footprint/procfs.rs`: `ticks_per_second`, `> 0` with `>= 0` | The clock tick rate is always positive. |
 | `cargo-rullst/src/generators/footprint/procfs.rs`: the non-Unix `ticks_per_second` with `Some(0)` or `Some(1)` | Not compiled on Linux. |
 | `cargo-rullst/src/generators/footprint/energy.rs`: `discover`, `root == POWERCAP_ROOT` with `!=` | On Linux `!cfg!(target_os = "linux")` is false, so the comparison is never evaluated. |
+| `rullst-iot/src/coap.rs` (`CoapRequest::encode` twice, `append_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
+| `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and `ensure_room` rejects the same lengths with the same error. |
+| `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
