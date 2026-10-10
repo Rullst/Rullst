@@ -84,7 +84,8 @@ class InputTests(unittest.TestCase):
         for path in ("rullst-mail/tests/feedback.rs", ".github/mobile-ui-browser-smoke.mjs",
                      ".github/billing-csp-browser-smoke.mjs", "Cargo.lock", "WORKFLOWS.md",
                      ".github/audit-packages.sh", ".github/test-package-release.py",
-                     "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs"):
+                     "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
+                     "rullst-core/src/server/stack_tests.rs"):
             self.write(path, "changed test or non-input")
         with (self.root / "rullst-mail/Cargo.toml").open("a") as output:
             output.write('[dev-dependencies]\nrand={workspace=true}\n')
