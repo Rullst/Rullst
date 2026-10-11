@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791685968784,
+  "lastUpdate": 1791728750062,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15823,6 +15823,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3955,
             "range": "± 60",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc44bf76914b9639523722a707d1b9396d9e47c3",
+          "message": "Merge pull request #452 from Rullst/fix/release-bootstrap-v13-names\n\nfix(release): allow one-time first publication of reviewed names",
+          "timestamp": "2026-10-11T11:11:22-03:00",
+          "tree_id": "c2b5a6669af5aeb24578e826612654fd198bdc76",
+          "url": "https://github.com/Rullst/Rullst/commit/fc44bf76914b9639523722a707d1b9396d9e47c3"
+        },
+        "date": 1791728748775,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 697,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 567,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1282,
+            "range": "± 56",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1975,
+            "range": "± 186",
             "unit": "ns/iter"
           }
         ]
