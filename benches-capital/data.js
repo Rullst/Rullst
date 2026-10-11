@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791743184112,
+  "lastUpdate": 1791747525676,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11658,6 +11658,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b30890bee18873e29e04fddba5db31860938a082",
+          "message": "Merge pull request #458 from Rullst/fix/windows-sqlite-store-timeouts\n\nfix(labs,media): wait 5 s for SQLite locks like the sibling stores",
+          "timestamp": "2026-10-11T16:14:25-03:00",
+          "tree_id": "6d5a7867ac90250b868084c93ed7e00b31eae3c4",
+          "url": "https://github.com/Rullst/Rullst/commit/b30890bee18873e29e04fddba5db31860938a082"
+        },
+        "date": 1791747524895,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
