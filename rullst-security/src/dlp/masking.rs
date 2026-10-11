@@ -297,4 +297,12 @@ mod tests {
         let longest = format!("redis://u:{}@h", "p".repeat(MAX_DSN_AUTHORITY_BYTES - 4));
         assert_eq!(mask_text(&longest).as_deref(), Some("redis://u:*****@h"));
     }
+
+    #[test]
+    fn a_prefix_that_is_not_a_key_does_not_hide_a_later_key() {
+        assert_eq!(
+            mask_text("xyzAKIA AKIAIOSFODNN7EXAMPLE").as_deref(),
+            Some("xyzAKIA AKIA****************")
+        );
+    }
 }

@@ -49,6 +49,7 @@ redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 
 [dev-dependencies]
 futures-util = { workspace = true }
+http-body = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 axum = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
