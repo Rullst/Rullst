@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791641060049,
+  "lastUpdate": 1791686020935,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -9762,6 +9762,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 546,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cea202ec14093e5d7b77ae4ecc0c941bb8e76aee",
+          "message": "Merge pull request #451 from Rullst/fix/v13-alpha-admission\n\nfix: unblock the 13.0.0-alpha.1 release admission",
+          "timestamp": "2026-10-10T23:18:12-03:00",
+          "tree_id": "7bc95c9b3dea99ccea814c48a053f536ea0b78cb",
+          "url": "https://github.com/Rullst/Rullst/commit/cea202ec14093e5d7b77ae4ecc0c941bb8e76aee"
+        },
+        "date": 1791686019885,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 389,
             "range": "± 2",
             "unit": "ns/iter"
           }
