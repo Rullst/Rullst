@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "purpose": "Checks that release.yml does not repeat: check-release-admission.py requires each listed ci.yml job at the exact release SHA, and test-release-verification-coverage.py proves each command still runs there.",
+  "covered": [
+    {
+      "job": "check",
+      "matrix": {},
+      "commands": ["cargo clippy --workspace --all-targets --all-features -- -D warnings"]
+    },
+    {
+      "job": "feature-boundaries",
+      "matrix": {"shard": ["0", "1", "2", "3"]},
+      "commands": ["bash .github/check-feature-boundaries.sh"]
+    },
+    {
+      "job": "threat-model-release-minimum",
+      "matrix": {"shard": ["0", "1", "2", "3"]},
+      "commands": ["bash .github/check-threat-model-release-minimum.sh"]
+    },
+    {
+      "job": "versioned-ai-evals",
+      "matrix": {},
+      "commands": ["bash .github/check-ai-evals.sh"]
+    },
+    {
+      "job": "test",
+      "matrix": {
+        "os": ["ubuntu-latest"],
+        "shard": ["workspace", "cli-standard", "cli-profiles-basic", "cli-profiles-relational", "cli-profiles-polyglot", "cli-lms", "cli-saas-foundation", "cli-saas-product"]
+      },
+      "commands": ["bash .github/run-workspace-test-shard.sh"]
+    },
+    {
+      "job": "test",
+      "matrix": {"os": ["ubuntu-latest"], "shard": ["workspace"]},
+      "commands": [
+        "cargo test -p rullst-orm --no-default-features --features drivers-all --test outbox_transaction_test -- --test-threads=1",
+        "cargo test -p rullst-capital --features webhook-sql --test stripe_inbox_sql --locked",
+        "cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1",
+        "cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb",
+        "cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb",
+        "cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso",
+        "cargo test -p rullst-orm --no-default-features --features scout-http --test matrix_meilisearch",
+        "cargo test -p rullst-orm --no-default-features --features pgvector,strict-postgres --test matrix_pgvector",
+        "cargo test -p rullst-orm --no-default-features --features qdrant --test matrix_qdrant",
+        "cargo test -p rullst-orm --no-default-features --features redis --test matrix_redis_data",
+        "cargo test -p rullst-studio --no-default-features --test data_browser_mutation_sqlite -- --test-threads=1",
+        "cargo test -p rullst-studio --no-default-features --features strict-postgres --test data_browser_mutation_postgres -- --test-threads=1",
+        "cargo test -p rullst-studio --test data_browser_mutation_postgres -- --test-threads=1",
+        "cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mysql -- --test-threads=1",
+        "cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1",
+        "cargo test -p rullst-nexus --no-default-features --test tenant_audit -- --test-threads=1",
+        "cargo test -p rullst-nexus --test sql_matrix_postgres --test sql_matrix_mysql -- --test-threads=1",
+        "cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1",
+        "cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1"
+      ]
+    },
+    {
+      "job": "strict-database-features",
+      "matrix": {"feature": ["strict-postgres", "strict-mysql", "strict-sqlite"]},
+      "commands": [
+        "python3 .github/check-auth-recovery-postgres.py",
+        "python3 .github/check-mail-postgres.py",
+        "python3 .github/check-recurring-postgres.py"
+      ]
+    },
+    {
+      "job": "redis-rate-limit",
+      "matrix": {},
+      "commands": [
+        "cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live",
+        "cargo test -p rullst-core --features queue-redis --test queue_scheduling_live",
+        "cargo test -p rullst-core --features cache-redis --test cache_inspection_live",
+        "cargo test -p rullst-orm --features redis --test query_cache_live --test post_commit_transaction_test --test scout_post_commit_test"
+      ]
+    },
+    {
+      "job": "packaged-distribution",
+      "matrix": {},
+      "commands": [
+        "bash .github/package-release.sh --no-verify",
+        "bash .github/test-packaged-distribution.sh"
+      ]
+    }
+  ]
+}

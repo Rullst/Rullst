@@ -188,10 +188,19 @@ GitHub Actions will automatically execute the topological crate publish pipeline
 4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 
-Before publication, the workflow extracts the exact version section from
-`CHANGELOG.md`, packages and reproduces every archive, writes checksums and the
-tag-bound evidence bundle, and creates a SHA-pinned GitHub build-provenance
-attestation. The GitHub release uses those extracted notes and is marked as a
+Before publication, the workflow:
+- requires every admission workflow at the tagged SHA, including the full
+  `ci.yml` release matrix;
+- extracts the exact version section from `CHANGELOG.md`;
+- packages and reproduces every archive;
+- writes checksums and the tag-bound evidence bundle;
+- creates a SHA-pinned GitHub build-provenance attestation.
+
+The tag run does not repeat the tests that the admission already ran at that
+SHA. `.github/release-verification-coverage.json` records which `ci.yml` job
+covers each check, and a test fails if one stops covering it. The release also
+requires its archive checksums to equal the archives that the admitted
+packaged-distribution job tested. The GitHub release uses those extracted notes and is marked as a
 prerelease automatically when the semantic version contains a prerelease
 suffix. This evidence does not establish a project-wide SLSA level or an
 independent certification.

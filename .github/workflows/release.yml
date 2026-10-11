@@ -72,7 +72,7 @@ jobs:
     name: Verify release artifacts without release identity
     needs: admit
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 120
     env:
       CARGO_INCREMENTAL: "0"
       RUSTC_WRAPPER: sccache
@@ -80,17 +80,8 @@ jobs:
       SCCACHE_GHA_VERSION: rullst-ci-v1
       SCCACHE_GHA_RW_MODE: READ_ONLY
       RULLST_GENERATED_BUILD_JOBS: "2"
-    services:
-      redis:
-        image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Checkout monorepo
@@ -109,7 +100,7 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
-          components: rustfmt, clippy
+          components: rustfmt
           cache: false
 
       - name: Install cargo-audit for release evidence
@@ -125,80 +116,12 @@ jobs:
           python3 .github/test-validate-action-pins.py
           python3 .github/validate-action-pins.py
 
-      - name: Run Clippy (strict)
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-      - name: Verify public minimal and isolated feature boundaries
-        run: bash .github/check-feature-boundaries.sh
-
-      - name: Run the explicit threat-model release-negative minimum
-        run: bash .github/check-threat-model-release-minimum.sh
-
-      - name: Run the versioned deterministic AI evals
-        run: bash .github/check-ai-evals.sh
-
-      - name: Run all workspace tests
-        run: cargo test --workspace --all-features
-
-      - name: Run portable transactional outbox contract
-        run: >-
-          cargo test -p rullst-orm --no-default-features --features drivers-all
-          --test outbox_transaction_test -- --test-threads=1
-
-      - name: Run portable Stripe inbox transaction contract
-        env:
-          RULLST_REQUIRE_SQLITE_INBOX: "1"
-        run: cargo test -p rullst-capital --features webhook-sql --test stripe_inbox_sql --locked
-
-      - name: Run provider matrices (SQL, document, edge and search)
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: "true"
-          RULLST_REQUIRE_TESTCONTAINERS: "true"
-        run: |
-          python3 .github/check-auth-recovery-postgres.py
-          python3 .github/check-mail-postgres.py
-          python3 .github/check-recurring-postgres.py
-          cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
-          cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
-          cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb
-          cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
-          cargo test -p rullst-orm --no-default-features --features scout-http --test matrix_meilisearch
-          cargo test -p rullst-orm --no-default-features --features pgvector,strict-postgres --test matrix_pgvector
-          cargo test -p rullst-orm --no-default-features --features qdrant --test matrix_qdrant
-          cargo test -p rullst-orm --no-default-features --features redis --test matrix_redis_data
-          cargo test -p rullst-studio --no-default-features --test data_browser_mutation_sqlite -- --test-threads=1
-          cargo test -p rullst-studio --no-default-features --features strict-postgres --test data_browser_mutation_postgres -- --test-threads=1
-          cargo test -p rullst-studio --test data_browser_mutation_postgres -- --test-threads=1
-          cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mysql -- --test-threads=1
-          cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
-          cargo test -p rullst-nexus --no-default-features --test tenant_audit -- --test-threads=1
-          cargo test -p rullst-nexus --test sql_matrix_postgres --test sql_matrix_mysql -- --test-threads=1
-          cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1
-          cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
-
-      - name: Run live Redis distributed rate-limit contract
-        env:
-          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
-        run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
-
-      - name: Run live Redis queue scheduling contract
-        env:
-          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
-        run: cargo test -p rullst-core --features queue-redis --test queue_scheduling_live
-
-      - name: Run live Redis metadata-only cache inspection contract
-        env:
-          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
-        run: cargo test -p rullst-core --features cache-redis --test cache_inspection_live
-
-      - name: Run ORM cache and post-commit contracts
-        env:
-          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
-        run: >-
-          cargo test -p rullst-orm --features redis
-          --test query_cache_live
-          --test post_commit_transaction_test
-          --test scout_post_commit_test
+      # The admit job already required every ci.yml release-matrix job at this
+      # exact SHA, so clippy, workspace and provider tests, feature boundaries,
+      # the threat-model minimum, AI evals and Redis contracts are not repeated.
+      # .github/release-verification-coverage.json records what moved where.
+      - name: Prove the admitted ci.yml jobs still cover the release checks
+        run: python3 .github/test-release-verification-coverage.py
 
       - name: Verify current crates.io name ownership and bootstrap scope
         id: ownership
@@ -237,15 +160,6 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: bash .github/audit-packages.sh "${RELEASE_TAG#v}"
-
-      - name: Test crates-only consumer and installed CLI blueprints
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-          # The extracted consumer is intentionally outside the workspace, so
-          # it needs the same native-build bounds as package verification.
-          CARGO_PROFILE_DEV_DEBUG: "0"
-          CARGO_BUILD_JOBS: "2"
-        run: bash .github/test-packaged-distribution.sh "${RELEASE_TAG#v}"
 
       - name: Generate tag-bound SBOM, audit, and bounded compliance evidence
         env:
@@ -304,6 +218,11 @@ jobs:
           cd target/package
           sha256sum -- *.crate | sort -k2 > checksums.txt
           sha256sum -- release-evidence/* | sort -k2 > evidence-checksums.txt
+
+      - name: Require the admitted consumer test of these exact archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/check-admitted-archives.py target/package/checksums.txt
 
       - name: Preserve verified release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
