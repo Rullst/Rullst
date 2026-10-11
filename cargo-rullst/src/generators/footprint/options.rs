@@ -13,6 +13,8 @@ const MAX_PATH_BYTES: usize = 2048;
 pub(super) struct Options {
     pub url: Option<reqwest::Url>,
     pub path: String,
+    /// `RULLST_ENV` of the app footprint starts: `production` or `staging`.
+    pub environment: &'static str,
     pub duration: Duration,
     pub concurrency: u16,
     pub grid_intensity: Option<f64>,
@@ -40,6 +42,15 @@ pub(crate) fn command() -> Command {
                 .default_value("/")
                 .value_parser(validate_path)
                 .help("Request path for the load, such as / or /health"),
+        )
+        .arg(
+            Arg::new("env")
+                .long("env")
+                .value_name("ENV")
+                .default_value("production")
+                .value_parser(["production", "staging"])
+                .conflicts_with("url")
+                .help("RULLST_ENV of the started app; staging accepts the starters' mock billing credentials"),
         )
         .arg(
             Arg::new("duration")
@@ -94,6 +105,10 @@ impl Options {
         Self {
             url: get(matches, "url"),
             path: get(matches, "path").unwrap_or_else(|| "/".to_string()),
+            environment: match get::<String>(matches, "env").as_deref() {
+                Some("staging") => "staging",
+                _ => "production",
+            },
             duration: get(matches, "duration").unwrap_or(Duration::from_secs(10)),
             concurrency: get(matches, "concurrency").unwrap_or(4),
             grid_intensity: get(matches, "grid-intensity"),
@@ -186,6 +201,7 @@ mod tests {
         let defaults = parse(&[]).unwrap();
         assert_eq!(defaults.url, None);
         assert_eq!(defaults.path, "/");
+        assert_eq!(defaults.environment, "production");
         assert_eq!(defaults.duration, Duration::from_secs(10));
         assert_eq!(defaults.concurrency, 4);
         assert_eq!(
@@ -227,6 +243,7 @@ mod tests {
         assert_eq!(full.cpu_watts, Some(15.0));
         assert_eq!(full.embodied, Some(0.0));
         assert!(full.json);
+        assert_eq!(parse(&["--env", "staging"]).unwrap().environment, "staging");
     }
 
     #[test]
@@ -248,6 +265,8 @@ mod tests {
             &["--path", "/a b"],
             &["--path", "/#top"],
             &["--url", "http://example.com"],
+            &["--env", "development"],
+            &["--env", "staging", "--url", "http://127.0.0.1:3000"],
         ] {
             assert!(parse(arguments).is_err(), "{arguments:?}");
         }

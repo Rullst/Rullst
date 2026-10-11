@@ -3,9 +3,10 @@
 //! not measured. It talks to loopback only and never fetches carbon data.
 //!
 //! Without `--url` it builds the project's release binary (reusing an
-//! existing build), starts it in production mode on a free loopback port,
-//! measures it and stops it. With `--url` it measures an app already running
-//! on loopback. The process exits 0 whenever the measurement ran.
+//! existing build), starts it in production mode (or `--env staging`) on a
+//! free loopback port, measures it and stops it. With `--url` it measures an
+//! app already running on loopback. The process exits 0 whenever the
+//! measurement ran.
 
 mod artifacts;
 mod energy;
@@ -146,7 +147,11 @@ async fn existing(
     })
 }
 
-async fn spawned(client: &reqwest::Client, path: &str) -> Result<Subject, Box<dyn Error>> {
+async fn spawned(
+    client: &reqwest::Client,
+    path: &str,
+    environment: &'static str,
+) -> Result<Subject, Box<dyn Error>> {
     if crate::generators::platform_name::package_name(Path::new("Cargo.toml")).is_none() {
         return Err(ProjectRequired.into());
     }
@@ -166,8 +171,8 @@ async fn spawned(client: &reqwest::Client, path: &str) -> Result<Subject, Box<dy
     let port = target::free_port()?;
     let base = target::validate_url(&format!("http://127.0.0.1:{port}"))?;
     let url = target::request_url(&base, path);
-    eprintln!("Starting the app in production mode on {base} ...");
-    let mut app = target::OwnedApp::spawn(&binary, port).map_err(|error| {
+    eprintln!("Starting the app with RULLST_ENV={environment} on {base} ...");
+    let mut app = target::OwnedApp::spawn(&binary, port, environment).map_err(|error| {
         failure(
             "App could not be started",
             format!("Starting {} failed: {error}.", binary.display()),
@@ -181,10 +186,15 @@ async fn spawned(client: &reqwest::Client, path: &str) -> Result<Subject, Box<dy
         } else {
             format!("\nLast stderr lines:\n{tail}")
         };
+        let fix = if environment == "production" {
+            "Production needs the app's production settings (the SaaS starter's real billing credentials, for example): set them, measure with --env staging, or start the app yourself and measure it with --url."
+        } else {
+            "Run the release binary with RULLST_ENV=staging to see why it does not serve requests, or measure a running app with --url."
+        };
         return Err(failure(
             "App could not be started",
             format!("{error}.{detail}"),
-            "Run the release binary with RULLST_ENV=production to see why it does not serve requests, or measure a running app with --url.",
+            fix,
         ));
     }
     let name = binary
@@ -198,7 +208,11 @@ async fn spawned(client: &reqwest::Client, path: &str) -> Result<Subject, Box<dy
             pid: Some(app.pid()),
             process_lookup: "started by footprint".to_string(),
             executable: name,
-            environment: Some("RULLST_ENV=production HOST=127.0.0.1"),
+            environment: Some(if environment == "staging" {
+                "RULLST_ENV=staging HOST=127.0.0.1"
+            } else {
+                "RULLST_ENV=production HOST=127.0.0.1"
+            }),
         },
         executable: Some(binary),
         executable_method: "file size of the release binary built by cargo",
@@ -210,7 +224,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
     let client = load::client()?;
     let mut subject = match &options.url {
         Some(base) => existing(&client, base, &options.path).await?,
-        None => spawned(&client, &options.path).await?,
+        None => spawned(&client, &options.path, options.environment).await?,
     };
     let pid = subject.target.pid;
     let zones = energy::discover(Path::new(energy::POWERCAP_ROOT));

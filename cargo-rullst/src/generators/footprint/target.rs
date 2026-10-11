@@ -182,12 +182,12 @@ pub(super) enum StartError {
 }
 
 impl OwnedApp {
-    /// Starts `binary` in production mode on `127.0.0.1:port`, in the
-    /// current directory. It shares the terminal's process group so Ctrl+C
-    /// stops it too.
-    pub(super) fn spawn(binary: &Path, port: u16) -> io::Result<Self> {
+    /// Starts `binary` with `RULLST_ENV=environment` on `127.0.0.1:port`, in
+    /// the current directory. It shares the terminal's process group so
+    /// Ctrl+C stops it too.
+    pub(super) fn spawn(binary: &Path, port: u16, environment: &str) -> io::Result<Self> {
         let mut child = Command::new(binary)
-            .env("RULLST_ENV", "production")
+            .env("RULLST_ENV", environment)
             .env("HOST", "127.0.0.1")
             .env("PORT", port.to_string())
             .env_remove("HOT_RELOAD")
