@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791747434131,
+  "lastUpdate": 1791758553497,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -13567,6 +13567,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 368,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f9cc98c4b7b165bed3609ff54313a779cf5b3fb",
+          "message": "Merge pull request #460 from Rullst/fix/v13-alpha1-known-issues\n\nfix: resolve the 13.0.0-alpha.1 known issues",
+          "timestamp": "2026-10-11T19:23:22-03:00",
+          "tree_id": "563de498eaad89173ffca2cc4bb33a360efdba7b",
+          "url": "https://github.com/Rullst/Rullst/commit/5f9cc98c4b7b165bed3609ff54313a779cf5b3fb"
+        },
+        "date": 1791758552506,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1013,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 160,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 250,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
