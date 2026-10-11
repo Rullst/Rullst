@@ -164,7 +164,8 @@ fn add_to_manifest(
     if dependencies.contains_key(package_name) {
         return Ok((PackageAddOutcome::AlreadyPresent, table));
     }
-    dependencies.insert(package_name, value(version));
+    let requirement = crate::generators::project::cargo_toml::version_requirement(version);
+    dependencies.insert(package_name, value(requirement));
 
     fs::write(manifest, document.to_string()).map_err(|source| PackageError::WriteManifest {
         path: manifest.to_path_buf(),
@@ -266,6 +267,20 @@ mod tests {
         assert_eq!(
             parsed["dependencies"]["rullst-example"].as_str(),
             Some("12.0.0")
+        );
+    }
+
+    #[test]
+    fn a_prerelease_dependency_is_pinned_exactly() {
+        let directory = tempdir().expect("temporary directory");
+        let manifest = directory.path().join("Cargo.toml");
+        fs::write(&manifest, "[package]\nname = \"demo\"\n").expect("fixture manifest");
+
+        add_to_manifest(&manifest, "rullst-privacy", "13.0.0-alpha.1").expect("valid addition");
+        let parsed = read_manifest(&manifest).expect("written manifest parses");
+        assert_eq!(
+            parsed["dependencies"]["rullst-privacy"].as_str(),
+            Some("=13.0.0-alpha.1")
         );
     }
 

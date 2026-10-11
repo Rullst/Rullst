@@ -52,7 +52,20 @@ fn dependency_source(
         let path_literal = toml_edit::value(absolute_path).to_string();
         Ok(format!("path = {path_literal}"))
     } else {
-        Ok(format!("version = \"{crate_version}\""))
+        Ok(format!(
+            "version = \"{}\"",
+            version_requirement(crate_version)
+        ))
+    }
+}
+
+/// A prerelease is pinned exactly: Cargo's caret requirement for
+/// `13.0.0-alpha.1` also accepts later prereleases, which may break the API.
+pub(crate) fn version_requirement(version: &str) -> String {
+    if version.contains('-') {
+        format!("={version}")
+    } else {
+        version.to_string()
     }
 }
 

@@ -8,6 +8,33 @@ use rand::distr::{Alphanumeric, SampleString};
 use std::fs;
 use std::path::Path;
 
+/// The Linux hosts a generated project is commonly built on.
+const LINUX_TARGETS: [&str; 2] = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"];
+
+/// `.cargo/config.toml` selecting `linker` (mold or lld) for every Linux
+/// target in [`LINUX_TARGETS`], or only unpacked debug information without one.
+pub(crate) fn cargo_config(linker: Option<&str>) -> String {
+    let mut config_toml = String::from(
+        r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
+# Selects the linkers found on the machine that generated this project.
+# Host-local: the generated .gitignore and .dockerignore exclude this file so
+# CI runners and container builds without mold/lld do not inherit it.
+# Windows uses the toolchain's supported linker and debug-information defaults.
+
+"#,
+    );
+    let flags = match linker {
+        Some(linker) => {
+            format!(r#""-C", "link-arg=-fuse-ld={linker}", "-C", "split-debuginfo=unpacked""#)
+        }
+        None => r#""-C", "split-debuginfo=unpacked""#.to_string(),
+    };
+    for target in LINUX_TARGETS {
+        config_toml.push_str(&format!("[target.{target}]\nrustflags = [{flags}]\n\n"));
+    }
+    config_toml
+}
+
 pub fn generate_env_and_configs(
     path: &Path,
     db_needed: bool,
@@ -22,39 +49,16 @@ pub fn generate_env_and_configs(
     let has_mold = has_binary("mold");
     let has_lld = has_binary("lld") || has_binary("lld-link");
 
-    let mut config_toml = String::new();
-    config_toml.push_str(
-        r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
-# Selects the linkers found on the machine that generated this project.
-# Host-local: the generated .gitignore and .dockerignore exclude this file so
-# CI runners and container builds without mold/lld do not inherit it.
-# Windows uses the toolchain's supported linker and debug-information defaults.
-
-"#,
-    );
-
-    if has_mold && cfg!(target_os = "linux") {
-        config_toml.push_str(
-            r#"[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "split-debuginfo=unpacked"]
-
-"#,
-        );
-    } else if has_lld && cfg!(target_os = "linux") {
-        config_toml.push_str(
-            r#"[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "split-debuginfo=unpacked"]
-
-"#,
-        );
+    let linker = if !cfg!(target_os = "linux") {
+        None
+    } else if has_mold {
+        Some("mold")
+    } else if has_lld {
+        Some("lld")
     } else {
-        config_toml.push_str(
-            r#"[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "split-debuginfo=unpacked"]
-
-"#,
-        );
-    }
+        None
+    };
+    let config_toml = cargo_config(linker);
 
     fs::write(cargo_dir.join("config.toml"), config_toml)?;
 

@@ -107,7 +107,7 @@ fn registry_dependencies_preserve_the_cli_prerelease_version() {
             dependency_line(&root, crate_name, "12.0.0-rc.7").expect("registry dependency");
         assert_eq!(
             dependency,
-            format!("{crate_name} = {{ version = \"12.0.0-rc.7\" }}\n")
+            format!("{crate_name} = {{ version = \"=12.0.0-rc.7\" }}\n")
         );
     }
 }
@@ -124,7 +124,7 @@ fn arbitrary_matching_sibling_is_not_trusted_as_a_framework_checkout() {
     .expect("lookalike manifest");
     assert_eq!(
         dependency_source(root.path(), "rullst", "12.0.0-rc.7").expect("registry fallback"),
-        "version = \"12.0.0-rc.7\""
+        "version = \"=12.0.0-rc.7\""
     );
 }
 
