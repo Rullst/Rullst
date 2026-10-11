@@ -2,7 +2,7 @@
 
 `rullst-messaging` defines bounded, broker-neutral messaging contracts for
 Rullst applications. It provides a deterministic in-memory broker and an
-opt-in durable SQLite adapter. The unpublished v13 `redis-streams` candidate adds
+opt-in durable SQLite adapter. The v13 prerelease `redis-streams` candidate adds
 a standalone Redis transport with Rullst-owned delivery indexes; hosted source
 and package admission passed in PR #236, and final release admission remains
 separate.
@@ -210,7 +210,7 @@ Core's process-local scheduler remains independent. Facade consumers select
 
 See the [recurring-publication guide](https://github.com/Rullst/Rullst/blob/main/docs/src/recurring-publications.md)
 for clock/calendar semantics, runtime roles, host authorization and at-least-once
-boundaries. This unpublished candidate passed combined hosted and
+boundaries. This v13 prerelease candidate passed combined hosted and
 extracted-package source admission in PR #239; final release admission remains
 outstanding.
 

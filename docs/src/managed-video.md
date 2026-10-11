@@ -1,11 +1,11 @@
 # Private course videos with Bunny Stream
 
-`rullst-media` is an optional, unpublished v13 candidate. It implements a bounded
+`rullst-media` is an optional v13 candidate, first published in the
+13.0.0-alpha.1 prerelease. It implements a bounded
 private-video lifecycle: authorized creation and resumable upload, processing
 refresh, explicit publication, current-entitlement playback, withdrawal, metadata
 updates, deletion and durable reconciliation. Its standalone package is in the
-v13 release inventory, pending initial registration and final release
-acceptance; it is not part of the framework facade. Existing blueprints are not
+v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing blueprints are not
 changed.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation

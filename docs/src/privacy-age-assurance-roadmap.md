@@ -1,7 +1,7 @@
 # Privacy and age assurance roadmap
 
-**Status: v13 P0, initial unpublished age-assurance foundation, reviewed
-17 September 2026; persistence, consumer and packaging engineering updated 20 September 2026.** The [crate](../../rullst-privacy/README.md) implements
+**Status: v13 P0, initial age-assurance foundation (first published in the
+13.0.0-alpha.1 prerelease on 11 October 2026), reviewed 17 September 2026; persistence, consumer and packaging engineering updated 20 September 2026.** The [crate](../../rullst-privacy/README.md) implements
 risk policies, bound challenges, signed threshold attestations, explicit
 outcomes and asynchronous replay-store contracts. The optional shared-local
 SQLite adapter adds atomic persisted consumption, quota and clock rollback
@@ -60,8 +60,8 @@ The base crate must not require a database, camera, remote provider, inference
 runtime or new default Core dependency. Provider/persistence integrations stay
 feature-gated. The package candidate is included in the v13 release-order
 manifest and has explicit optional umbrella features, with no Core dependency.
-Registry publication still requires packaged consumer acceptance, initial name
-registration and reviewed ownership/Trusted Publishing configuration. Live
+The package was first published in the 13.0.0-alpha.1 prerelease on
+11 October 2026. Live
 providers remain outside this independent foundation's advertised scope.
 A future local vision engine may need its own package/model lifecycle;
 that is separate from this first policy and adapter contract.

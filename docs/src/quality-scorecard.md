@@ -71,7 +71,7 @@ The earlier planning tables and interim scores are preserved in the
 Future work can earn different scores only after the policy, implementation
 and evidence are reviewed together.
 
-## Unpublished v13 privacy candidate
+## v13 privacy candidate
 
 The 20 September policy update retains the sixteen existing ceilings and adds
 `rullst-privacy` to the seventeen-package candidate inventory. Its initial ceiling
@@ -87,7 +87,9 @@ installed-distribution acceptance, first registry publication/ownership and
 operator recovery evidence withhold operations credit. Live providers and
 verified guardianship remain outside the implemented scope. The workspace
 and generated CLI test matrix conditions security/operations credit; the local Verus pilot
-is separate evidence and does not increase this report's score.
+is separate evidence and does not increase this report's score. This score
+predates the first publication of `rullst-privacy` in the 13.0.0-alpha.1
+prerelease on October 11, 2026.
 
 ## Maintaining the score
 

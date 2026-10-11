@@ -17,7 +17,8 @@ operated by the application.
 
 ## Package and deployment boundaries
 
-`rullst-labs` is an unpublished implementation candidate in the Rullst monorepo.
+`rullst-labs` is an implementation candidate in the Rullst monorepo, first
+published in the 13.0.0-alpha.1 prerelease.
 It must remain opt-in and must not become a default dependency of `rullst`.
 
 ### `rullst-labs`

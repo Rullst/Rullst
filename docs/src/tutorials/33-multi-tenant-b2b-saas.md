@@ -38,8 +38,8 @@ more easily through history, referrers and access logs. The built-in subdomain
 parser reads the `Host` header, or the HTTP/2 `:authority` when no `Host` is
 sent, and selects the first label only for hostnames with at least three
 labels; a `www` label is never a tenant. When the apex domain sits under a
-multi-label public suffix such as `.com.br` or `.co.uk`, set the unpublished
-v13 `TenantConfig::with_base_domain("escola.com.br")`: the tenant is then the
+multi-label public suffix such as `.com.br` or `.co.uk`, set the v13
+prerelease `TenantConfig::with_base_domain("escola.com.br")`: the tenant is then the
 label immediately to the left of that domain, and the apex itself uses
 `with_domain_fallback` (which only the subdomain strategy reads). Custom-domain
 ownership and trusted-proxy normalization remain application and deployment

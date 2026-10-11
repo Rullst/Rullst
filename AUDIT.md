@@ -46,7 +46,7 @@ a run; it does not turn an informational workflow into a formal assurance.
   integration remain roadmap items.
 - `rullst-connect` focuses on OAuth2/OIDC; brokered messaging is deliberately
   outside it. `rullst-messaging` provides the process-local and SQLite brokers
-  and the unpublished v13 Redis Streams candidate; Kafka and RabbitMQ adapters
+  and the v13 Redis Streams candidate (13.0.0-alpha.1 prerelease); Kafka and RabbitMQ adapters
   are not implemented. Document queue facilities by their actual module.
 - Security headers provide a strict baseline but cannot guarantee a third-party
   scanner grade for every deployed application.

@@ -1,6 +1,6 @@
 # Shared passkey ceremonies
 
-This unpublished v13 implementation passed real-PostgreSQL and Chromium
+This v13 implementation, published in the 13.0.0-alpha.1 prerelease, passed real-PostgreSQL and Chromium
 contracts, hosted workspace checks and isolated-archive acceptance in
 [PR #223](https://github.com/Rullst/Rullst/pull/223). The final release campaign
 remains separate; this is not a WebAuthn conformance claim. The existing synchronous

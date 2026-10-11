@@ -1,6 +1,6 @@
 # Durable outgoing webhooks
 
-The unpublished v13 candidate adds Messaging `webhooks` and facade
+The v13 prerelease (13.0.0-alpha.1) adds Messaging `webhooks` and facade
 `messaging-webhooks`. It provides a private encrypted SQLite outbox for one
 immutable destination per server-owned namespace, signed HTTP deliveries,
 bounded retry, cancellation and minimized failure inspection. It reuses the

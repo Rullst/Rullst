@@ -47,7 +47,7 @@
   `HOST`/`RULLST_HOST` is set, serves every path including `/`, and rejects a
   body over 2 MiB with `413` (or an unreadable one with `400`) instead of
   passing the handler an empty body. The raw query string reaches the handler
-  in `EdgeRequest::query` (unpublished v13 field). It applies no security
+  in `EdgeRequest::query` (v13 prerelease field). It applies no security
   baseline.
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
@@ -79,7 +79,7 @@
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
   Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
-  `purge_failed_jobs`. SQLite and Redis implement the unpublished v13
+  `purge_failed_jobs`. SQLite and Redis implement the v13 prerelease
   `list_job_previews`, which cuts each payload and error to a byte budget in
   SQL or Lua.
 - **Swappable HTMX Validation Errors:** `ValidatedForm`/`ValidatedJson` send

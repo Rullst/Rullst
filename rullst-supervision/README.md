@@ -1,6 +1,7 @@
 # Rullst Supervision
 
-Unpublished v13 implementation candidate. Optional exam-session observations and
+v13 implementation candidate, first published in the 13.0.0-alpha.1 prerelease.
+Optional exam-session observations and
 parental application restrictions use explicit scoped authority and bounded local
 SQLite state. The application owns authentication, current school membership,
 resource authorization and independent guardian/reviewer verification.
@@ -55,7 +56,7 @@ supported scope and its validation evidence. Source increments entered
 repaired retrospectively, as recorded in the
 [delivery evidence](https://rullst.github.io/Rullst/book/v13-delivery-plan.html). Final combined release
 and package-admission requirements remain separate.
-The standalone package is now included in the v13 release inventory. Initial
-crates.io registration and final release acceptance remain outstanding; the
-current `13.0.0-alpha.1` source is not a published stable release. Applications
+The standalone package is now included in the v13 release inventory and was
+first published on crates.io as `13.0.0-alpha.1`. Final release acceptance
+remains outstanding; `13.0.0-alpha.1` is a prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.

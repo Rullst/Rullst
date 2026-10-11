@@ -20,9 +20,8 @@ below, also enable the facade's `security` feature.
 rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["storage-s3", "security"] }
 ```
 
-The version above identifies the unpublished candidate, not an available
-registry release. Use the reviewed candidate source or extracted packages until
-registration and release admission complete.
+The version above is the 13.0.0-alpha.1 prerelease, which `cargo add rullst`
+does not select; name it explicitly. Final release admission remains separate.
 
 ```rust,no_run
 # #[cfg(all(feature = "storage-s3", feature = "security"))]

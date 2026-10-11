@@ -5,7 +5,7 @@
 > for publication status and commit Cargo.lock for reproducible builds.
 > Use path dependencies only when intentionally testing checkout-local changes.
 > The result ordering, SQL fallback, indexed-field, `restore()`/`force_delete()`
-> projection and hit-cap rules below describe the unpublished v13 source
+> projection and hit-cap rules below describe the v13 prerelease source
 > (`13.0.0-alpha.1`).
 
 Scout connects a `#[orm(searchable)]` SQLx model to one search backend. The

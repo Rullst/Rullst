@@ -8,7 +8,7 @@ to guess about application data or security policy.
 > The v13 source rules, the assisted `cargo rullst ai upgrade` session and the
 > rule classification are described in
 > [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to the
-> unpublished `13.0.0-alpha.1` source. Install the exact release and complete
+> `13.0.0-alpha.1` prerelease. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
@@ -522,9 +522,9 @@ the rule together.
 | Mail tracking recipient | (b) review | `V13-MAIL-TRACKING-RECIPIENT` |  |
 | Mail plain-text fallback | (b) review | `V13-MAIL-TEXT-FALLBACK` |  |
 | Labs runner | (a) must-change | `V13-LABS-RUNNER-REMOVED` |  |
-| Education candidates | (c) none | — | Unpublished v13 candidates |
+| Education candidates | (c) none | — | New v13 packages, first published in 13.0.0-alpha.1 |
 | Labs package | (c) none | — | New package in the release inventory |
-| Media S3 storage | (c) none | — | New opt-in feature of an unpublished candidate |
+| Media S3 storage | (c) none | — | New opt-in feature of a package first published in 13.0.0-alpha.1 |
 | Generated billing settings | (b) review | `V13-BILLING-PROJECT-SETTINGS` |  |
 | Application templates | (c) none | — | Generator output |
 | Starter migrations | (b) review | `V13-SQLITE-ONLY-SEED-TIME` |  |
@@ -637,7 +637,7 @@ File recovery does not replace database backups or application acceptance
 tests, and updating the CLI alone never updates a deployed application.
 
 The 12.1.0 update mechanism does not implement v13 migrations. The
-unpublished v13 CLI carries its own rule catalog
+v13 CLI (13.0.0-alpha.1 prerelease) carries its own rule catalog
 ([v12 to v13: source findings](#v12-to-v13-source-findings)); `update guided`
 offers a project update only within the installed CLI's major.
 

@@ -1,7 +1,7 @@
 # Supervised Development Auto-Reload
 
 > Supervised restart is the development loop of the published v12 CLI and of
-> the unreleased v13 CLI. The [release audit](../v12-release-audit.md#development-reload-decision)
+> the v13 prerelease CLI. The [release audit](../v12-release-audit.md#development-reload-decision)
 > records the v12 decision.
 
 Rullst v12's development command rebuilds and restarts a directly linked

@@ -36,7 +36,7 @@ release, pass its full version, such as `--version 12.1.2`, after checking
 
 Source reviewers who intentionally need checkout-local changes can instead
 clone this repository and install the CLI from that exact checkout. On `main`
-this installs the unreleased v13 CLI:
+this installs the v13 development CLI:
 
 ```bash
 git clone --branch main https://github.com/Rullst/Rullst.git

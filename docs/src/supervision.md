@@ -1,9 +1,9 @@
 # Transparent exam and parental supervision
 
-**Status: unpublished v13 release candidate.** The implemented contract and
-observation extension passed combined source/archive acceptance in PR #239. The
-package is included in the release inventory, pending initial registration and
-final release acceptance. It supplies no verified guardianship, device-wide
+**Status: v13 release candidate, first published in the 13.0.0-alpha.1
+prerelease.** The implemented contract and observation extension passed combined
+source/archive acceptance in PR #239. The package is included in the release
+inventory, pending final release acceptance. It supplies no verified guardianship, device-wide
 control or legal-compliance certification. Its
 [maturity tier](maturity.md) is **Experimental**.
 

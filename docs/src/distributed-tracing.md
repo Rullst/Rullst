@@ -1,6 +1,6 @@
 # Tracing operations across processes
 
-The unpublished v13 candidate extends Core/facade's optional `telemetry` feature
+The v13 prerelease (13.0.0-alpha.1) extends Core/facade's optional `telemetry` feature
 with `telemetry::distributed`. It propagates an explicitly trusted parent and
 exports a minimized operation trace through the maintained OpenTelemetry SDK.
 The existing `SpanCollector` stays process-local; Studio's authenticated trace
@@ -18,8 +18,8 @@ tracing = "0.1.44"
 tracing-subscriber = "0.3"
 ```
 
-The candidate version is not a published installation instruction. Evaluate
-reviewed source/extracted packages until release admission completes.
+This version is the 13.0.0-alpha.1 prerelease, which `cargo add rullst` does not
+select; name it explicitly. Final release admission remains separate.
 
 ```rust,no_run
 # #[cfg(feature = "telemetry")]

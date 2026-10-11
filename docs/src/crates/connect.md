@@ -128,7 +128,7 @@ adapter treats its argument as an ID token and checks signature, issuer,
 audience and expiry but no nonce, so a captured Apple ID token for your client
 can be replayed until it expires.
 
-The unpublished v13 development source adds that audience-bound entry point for
+The v13 prerelease (13.0.0-alpha.1) adds that audience-bound entry point for
 Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
 the signature through the provider's rotating JWKS and requires the exact
 issuer, `aud` equal to your `client_id` (and, when present, an `azp` equal to
@@ -272,7 +272,7 @@ proxy constructors already apply the bounded retry policy.
 
 `OidcProvider::discover` fetches its metadata before `with_http_client` can
 apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
-(unpublished v13 API); discovery, JWKS and token calls then share it.
+(v13 prerelease API); discovery, JWKS and token calls then share it.
 
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
 credentials, path, query, or fragment. Authenticated non-loopback proxies must
@@ -313,7 +313,7 @@ login with a 12.x release. Use the manual state/PKCE/nonce flow with a
 dedicated `SameSite=None; Secure; HttpOnly` challenge cookie, as described in
 [Sign in with Apple: form POST callback](../tutorials/42-server-bound-oauth-sessions.md#sign-in-with-apple-form-post-callback).
 
-The unpublished v13 development source adds `AuthSessionForm`, which consumes
+The v13 prerelease (13.0.0-alpha.1) adds `AuthSessionForm`, which consumes
 the `begin_oidc_session` challenge from the form POST body (at most 16 KiB).
 The session cookie that holds that challenge must still be
 `SameSite=None; Secure`, so give the Apple routes their own session layer.
@@ -403,7 +403,7 @@ generation advances, because the provider has already consumed the prior one;
 the call fails and the next call refreshes with the rotation. The same
 applies when the grant succeeds but the follow-up profile lookup or ID-token
 validation fails: provider adapters then return
-`ConnectError::RefreshIncomplete` (unpublished v13 API), whose `IssuedTokens`
+`ConnectError::RefreshIncomplete` (v13 prerelease API), whose `IssuedTokens`
 carry the new tokens to direct `Provider::refresh_token` callers, and the
 session keeps the rotation and returns the underlying error. Persist the
 snapshot after such a failure too.

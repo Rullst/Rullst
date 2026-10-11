@@ -1,6 +1,6 @@
 # Community dependency helper and package roadmap
 
-Rullst (v12 and the unreleased v13 line) does **not** define a runtime
+Rullst (v12 and the v13 prerelease line) does **not** define a runtime
 `RullstPackage` plugin ABI, execute third-party generators, discover a private
 package registry, or register routes automatically. Community integrations are
 ordinary Rust crates selected through Cargo and reviewed like any other

@@ -30,7 +30,7 @@ alone do not establish superiority.
 ## How to assess maintenance cost
 
 The assessments below are qualitative, not measured engineering hours or
-monthly costs. They include unpublished v13 candidates. Review each capability
+monthly costs. They include v13 prerelease candidates. Review each capability
 using its actual user journey and these recurring obligations:
 
 - external API, protocol, operating-system and toolchain changes;
@@ -255,7 +255,7 @@ Rullst remains a foundation for complete education, parental-supervision and
 exercise platforms. Preserve the useful domain capabilities already implemented
 in the optional packages, alongside authentication, tenant boundaries, storage
 and durable work. Their current candidate status and evidence limits still
-apply; this decision does not promote unpublished code to a stable guarantee.
+apply; this decision does not promote prerelease code to a stable guarantee.
 
 | Layer | Responsibility |
 | :--- | :--- |
@@ -303,7 +303,8 @@ application operator now owns the runner's isolation, review, deployment and
 updates. Isolation evidence must match the deployed toolchain and image.
 
 `rullst-labs` still declares `13.0.0-alpha.1` with publication disabled and is
-not part of any published 12.x release. There is one wire protocol and no
+not part of any published 12.x release. (Labs later joined the release inventory
+and was first published in 13.0.0-alpha.1 on 11 October 2026.) There is one wire protocol and no
 adapter layer; interchangeable external executors are not implemented. The
 removed candidate's [first-profile record](labs-first-profile.md) remains a
 reference design, not a supported runner.

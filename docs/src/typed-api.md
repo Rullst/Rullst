@@ -1,6 +1,6 @@
 # Schema-first Rust and TypeScript APIs
 
-This is an **unpublished v13 candidate**. `generate:api` consumes one explicit
+This is a **v13 candidate, first published in the 13.0.0-alpha.1 prerelease**. `generate:api` consumes one explicit
 OpenAPI 3.1 JSON document and generates Rust DTOs/operation codecs, a TypeScript
 client and a canonical OpenAPI copy. It does not infer request or response types
 from a route handler, install dependencies or mount routes. The earlier

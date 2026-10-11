@@ -209,7 +209,7 @@ can still be false, malicious, stale, or unauthorized.
 
 `StreamingAiClient` streams guarded, bounded and cancellable (`AiCancellation`)
 output from an OpenAI-compatible configuration that declares `with_streaming()`
-and, in unreleased v13, from Anthropic and Gemini through their native SSE
+and, in the v13 prerelease, from Anthropic and Gemini through their native SSE
 protocols; `StreamSummary::usage()` returns the token usage the provider
 reported. The OpenAI, DeepSeek and Ollama transports do not stream. Rullst can
 host ordinary Axum SSE responses, but an application that uses a third-party

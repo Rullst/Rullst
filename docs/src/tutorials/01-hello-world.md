@@ -124,7 +124,7 @@ cargo rullst --help
 ```
 
 The CLI's `new` generator targets the CLI's own framework version. A CLI built
-from a source checkout of `main` is the unreleased v13 line: it emits absolute
+from a source checkout of `main` is the v13 development line: it emits absolute
 path dependencies to that exact checkout, including when invoked elsewhere.
 Keep such a checkout in place and review its sources before sharing a generated
 project. See the [CLI reference](../cli_reference.md) for every command and

@@ -12,7 +12,7 @@ There are two different meanings of **API** in this documentation:
 The Rust reference links target the published **12.1.2** packages. Versioned
 docs.rs pages become available after registry publication and rustdoc builds;
 check the [release record](v12.md). This book is built from `main`, where the
-unreleased v13 APIs can differ; for them, build local documentation from the
+v13 prerelease APIs can differ; for them, build local documentation from the
 checkout. The index connects existing guides without certifying every public
 symbol or v13 roadmap item. Check [capability boundaries](capability-status.md)
 before interpreting a provider or blueprint name as complete product support.
@@ -68,7 +68,7 @@ cross-owner/tenant denial, missing records, bounded pagination and error respons
 that do not expose credentials or database details. Public demos and a compiling
 example are not substitutes for these application tests.
 
-The unpublished v13 [schema-first API candidate](typed-api.md) adds an explicit
+The v13 prerelease [schema-first API candidate](typed-api.md) adds an explicit
 bounded OpenAPI profile, generated Rust codecs and a compiled TypeScript HTTP
 consumer. Its authenticated fixture proves the stated wire/ownership boundary;
 it does not close the broader CRUD/documentation programme below.

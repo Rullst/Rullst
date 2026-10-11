@@ -90,7 +90,7 @@ matrix](ai-provider-capabilities.md).
 
 ## Measuring token usage (v13)
 
-The unreleased v13 `rullst-ai` reports the token counts a provider returns
+The v13 prerelease `rullst-ai` reports the token counts a provider returns
 instead of estimating them. `ChatBuilder::send_with_usage` (or
 `AiProvider::chat_with_usage`) returns a `ChatCompletion` whose optional
 `TokenUsage` carries input, output, total and cached-input counts, and

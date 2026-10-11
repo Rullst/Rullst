@@ -10,7 +10,7 @@
 Rullst ORM aims for an inspectable, AI-friendly Active Record experience while
 retaining Rust typing, explicit escape hatches and parameterized values.
 
-## Unpublished v13 candidate
+## v13 prerelease candidate
 
 [Transactional partial updates](../docs/src/transactional-partial-updates.md)
 merge selected values into the current scoped row and reuse the normal save

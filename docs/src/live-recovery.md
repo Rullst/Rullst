@@ -1,6 +1,6 @@
 # Recoverable server-driven Live UI
 
-The unpublished v13 candidate adds `rullst::live::recovery` in the existing Core
+The v13 prerelease (13.0.0-alpha.1) adds `rullst::live::recovery` in the existing Core
 and facade, with no extra feature or browser dependency. It is an explicitly
 mounted native-server API; the browser uses the supplied small ES module.
 Protocol and Chromium acceptance have passed. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.

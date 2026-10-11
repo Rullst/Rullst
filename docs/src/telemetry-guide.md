@@ -11,7 +11,7 @@ The optional `telemetry` Cargo feature also installs an OpenTelemetry tracing
 layer. None of these components proves a performance target or replaces a
 durable production observability backend.
 
-The unpublished v13 candidate adds an explicit, minimized cross-process profile
+The v13 prerelease (13.0.0-alpha.1) adds an explicit, minimized cross-process profile
 and repairs legacy OTLP transport initialization. See
 [distributed operation tracing](distributed-tracing.md) for parent trust,
 approved labels, owned shutdown, actual collector tests and admission status.
@@ -86,9 +86,9 @@ or a parent/child tracing model.
 
 ## OpenTelemetry export
 
-The following legacy initializer example targets the unpublished v13 repair.
+The following legacy initializer example targets the v13 prerelease repair.
 Prefer the owned profile linked above when you need explicit metadata policy
-and flush/shutdown. Enable the feature and use reviewed candidate source:
+and flush/shutdown. Enable the feature and opt in to the prerelease explicitly:
 
 ```toml
 [dependencies]

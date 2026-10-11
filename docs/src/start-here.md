@@ -7,7 +7,8 @@ as your product needs it.
 > **This guide targets stable Rullst 12.1.x.** Check [publication status](v12.md)
 > before installing the matching CLI and framework packages. Review the
 > [12.1 migration guide](migration-v12-1.md) when upgrading an existing application.
-> This book is built from `main`, where v13 is in development and unpublished.
+> This book is built from `main`, where v13 is in development. Its first
+> prerelease, 13.0.0-alpha.1, is on crates.io and requires an explicit opt-in.
 
 ## Pick your starting line
 

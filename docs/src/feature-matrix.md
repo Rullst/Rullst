@@ -7,8 +7,9 @@
 
 This page is the public feature contract for the 20 packages in the v13
 [release inventory](../../.github/release-order.json): the 16 published 12.x
-packages plus the unpublished `rullst-privacy`, `rullst-supervision`,
-`rullst-media` and `rullst-labs` candidates. The package manifests remain the machine-readable
+packages plus the `rullst-privacy`, `rullst-supervision`, `rullst-media` and
+`rullst-labs` candidates, first published in the 13.0.0-alpha.1 prerelease.
+The package manifests remain the machine-readable
 source of truth. The matrix explains the behavior those names select in this
 v13 source and makes the default build visible before an application adopts
 optional integrations.
@@ -30,11 +31,11 @@ matrix. See
 [`check-feature-boundaries.sh`](../../.github/check-feature-boundaries.sh) for
 the exact individual checks.
 
-## Unpublished v13 privacy additions
+## v13 prerelease privacy additions
 
 The v13 candidate adds `rullst-privacy` as an optional release package. These
-features are absent from published 12.x releases; use the matching v13
-source until its package and release admission complete. They do not change
+features are absent from published 12.x releases and first shipped in the
+13.0.0-alpha.1 prerelease, which requires an explicit version opt-in. They do not change
 default dependencies or select application policies automatically.
 
 | Umbrella feature | Standalone privacy feature | Contract |
@@ -66,7 +67,7 @@ email login, JWT and OAuth remain independent. See the
 
 ## Umbrella crate: `rullst`
 
-The unpublished private-storage candidate adds Core/facade `storage-multipart`,
+The v13 prerelease private-storage candidate adds Core/facade `storage-multipart`,
 which selects `storage-s3`, bounded XML parsing and checkpoint key zeroization.
 It enables no database, queue or default feature. See
 [private multipart uploads](private-multipart-uploads.md) for server-mediated
@@ -129,7 +130,7 @@ for example, adds only SQLite).
 | `messaging-webhooks` | no | v13 candidate: encrypted shared-local SQLite outgoing outbox, immutable HTTPS destination, signed exact bytes, fenced retries and minimized terminal inspection |
 | `messaging-orm-outbox` | no | `messaging` and `orm` plus the static relational outbox-to-broker relay; the publish/ACK crash window remains at-least-once |
 | `messaging-redis` | no | v13 candidate: `messaging` plus the Redis Streams broker with fenced delivery indexes; enables no ORM, mail, cache or Core queue; see [Redis Streams messaging](redis-messaging.md) |
-| `privacy` | no | v13 candidate: the independent empty `rullst-privacy` base; the `privacy-*` features are listed in [the privacy additions](#unpublished-v13-privacy-additions) |
+| `privacy` | no | v13 candidate: the independent empty `rullst-privacy` base; the `privacy-*` features are listed in [the privacy additions](#v13-prerelease-privacy-additions) |
 | `privacy-age` | no | v13 candidate: `privacy` plus proportional age-policy contracts |
 | `privacy-challenge-tokens` | no | v13 candidate: `privacy-age` plus authenticated server challenge transport |
 | `privacy-sqlite` | no | v13 candidate: `privacy-age` plus shared-local age replay protection |
@@ -307,7 +308,7 @@ types remain available without a web-framework adapter.
 Default features: none. The deterministic process-local broker, versioned
 envelope, idempotency, consumer groups, leases, retry, dead-letter, and purge
 contracts are available without optional dependencies. The only remote broker
-adapter is the unpublished v13 Redis Streams candidate; other remote brokers
+adapter is the v13 Redis Streams candidate (13.0.0-alpha.1 prerelease); other remote brokers
 are not implemented and have no placeholder features.
 
 | Feature | Enables |
@@ -417,11 +418,11 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 
 Use the same single-selection rule described for `rullst-orm`.
 
-## Unpublished v13 candidate packages
+## v13 prerelease candidate packages
 
 `rullst-supervision`, `rullst-media` and `rullst-labs` are in the v13 release
-inventory but have no umbrella features; depend on them directly. None has
-default features.
+inventory and were first published in the 13.0.0-alpha.1 prerelease. They have
+no umbrella features; depend on them directly. None has default features.
 
 | Crate | Feature | Enables |
 | --- | --- | --- |

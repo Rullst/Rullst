@@ -4,7 +4,7 @@ Build a per-connection Rust component that receives JSON events and sends
 rendered HTML over WebSockets. The browser still needs the HTMX WebSocket
 extension (or a compatible client transport).
 
-This tutorial documents the legacy per-connection API. For the unpublished v13
+This tutorial documents the legacy per-connection API. For the v13 prerelease
 candidate with explicit authorization, revision conflicts, bounded reconnection
 and recovery after process restart, use [Recoverable Live UI](../live-recovery.md).
 Its browser module and application trait are separate; `make:live` does not

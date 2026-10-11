@@ -1,7 +1,7 @@
 # Compatibility, MSRV, deprecation, and support policy
 
 This policy applies to the packages in the [release inventory](../../.github/release-order.json):
-16 published packages in v12.1 and 20 candidates in the unpublished v13 train,
+16 published packages in v12.1 and 20 packages in the v13 prerelease train (13.0.0-alpha.1),
 including `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`. They are released as one synchronized release train
 even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
@@ -10,7 +10,7 @@ workspace is not a supported release merely because its manifest exists.
 
 ## Source branches
 
-The permanent branches are `main` (unpublished v13 development), `v12`
+The permanent branches are `main` (v13 development; latest prerelease 13.0.0-alpha.1), `v12`
 (supported 12.x maintenance) and `gh-pages` (generated site/benchmark data).
 Use short-lived feature, fix and Dependabot branches with a pull request to the
 appropriate protected base. Remove those temporary branches after their changes
@@ -77,7 +77,7 @@ handling is the same for every tier.
 
 ## Minimum Supported Rust Version
 
-The v12 release line and the unpublished v13 source both declare **Rust 1.96.0**
+The v12 release line and the v13 prerelease source both declare **Rust 1.96.0**
 in every publishable manifest.
 
 - Patch releases do not raise the MSRV.

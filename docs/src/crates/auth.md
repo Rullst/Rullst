@@ -65,7 +65,7 @@ opaque sessions, including [active-session management](../session-management.md)
 `api-tokens-sqlite`/`api-tokens-postgres` add
 [scoped API tokens](../api-tokens.md). The facade features are
 `auth-sessions-*`, `auth-email-login-*` and `auth-api-tokens-*`. These
-unpublished candidates are opt-in and do not enable JWT or OAuth.
+v13 prerelease candidates are opt-in and do not enable JWT or OAuth.
 
 ## WebAuthn/passkeys
 
