@@ -91,20 +91,55 @@ pub fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::e
         .bold()
     );
     println!("{}", "How to map in your routes:".cyan());
-    println!(
-        "{}",
-        format!("  1. Use: 'use crate::controllers::{};'", snake_name).cyan()
-    );
-    println!(
-        "{}",
-        format!(
-            "  2. Add: 'get(\"/url\" => {}::index)' inside your routes! macro.",
-            snake_name
-        )
-        .cyan()
-    );
+    for line in mapping_instructions(&snake_name, api) {
+        println!("{}", line.cyan());
+    }
 
     Ok(())
+}
+
+const MACHINE_ENDPOINTS_DOCS: &str = "https://rullst.github.io/Rullst/book/security-layers.html#what-generated-applications-already-have";
+
+/// The routes to add after `make:controller`. JSON write routes also need a
+/// machine endpoint: in staging and production the browser CSRF check
+/// refuses them otherwise.
+fn mapping_instructions(snake_name: &str, api: bool) -> Vec<String> {
+    let mut lines = vec![format!("  1. Use: 'use crate::controllers::{snake_name};'")];
+    if !api {
+        lines.push(format!(
+            "  2. Add: 'get(\"/url\" => {snake_name}::index)' inside your routes! macro."
+        ));
+        return lines;
+    }
+    let resource = snake_name
+        .strip_suffix("_controller")
+        .filter(|resource| !resource.is_empty())
+        .unwrap_or(snake_name);
+    let collection = format!("/api/{resource}");
+    let member = format!("{collection}/{{id}}");
+    lines.push("  2. Add inside your routes! macro:".to_string());
+    for (method, path, action) in [
+        ("get", &collection, "index"),
+        ("get", &member, "show"),
+        ("post", &collection, "store"),
+        ("put", &member, "update"),
+        ("delete", &member, "delete"),
+    ] {
+        lines.push(format!(
+            "       {method}(\"{path}\" => {snake_name}::{action}),"
+        ));
+    }
+    lines.push("  3. In staging and production, JSON clients need each write route in".to_string());
+    lines.push(
+        "     machine_endpoints() in src/main.rs, as in the Blank JSON API starter:".to_string(),
+    );
+    for (method, path) in [("POST", &collection), ("PUT", &member), ("DELETE", &member)] {
+        lines.push(format!(
+            "       MachineEndpoint::bearer(Method::{method}, \"{path}\", api_token)?,"
+        ));
+    }
+    lines.push(format!("     See {MACHINE_ENDPOINTS_DOCS}"));
+    lines
 }
 
 /// Renders the controller module emitted by `make:controller`.
@@ -115,7 +150,11 @@ pub fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::e
 pub fn render_controller_source(camel_name: &str, api: bool) -> String {
     if api {
         format!(
-            r#"use rullst::server::{{IntoResponse, Json, Path}};
+            r#"//! JSON controller. In staging and production, JSON clients reach its write
+//! routes only through `machine_endpoints()` in `src/main.rs` (bearer API
+//! token); otherwise the browser CSRF check refuses them.
+
+use rullst::server::{{IntoResponse, Json, Path}};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -279,5 +318,55 @@ mod tests {
 
         let html = render_controller_source("ProductController", false);
         assert!(html.contains("Form(_payload): Form<CreateDto>"));
+    }
+
+    #[test]
+    fn api_instructions_register_every_write_route_as_a_machine_endpoint() {
+        let lines = mapping_instructions("product_controller", true);
+        let text = lines.join("\n");
+        for route in [
+            r#"get("/api/product" => product_controller::index),"#,
+            r#"get("/api/product/{id}" => product_controller::show),"#,
+            r#"post("/api/product" => product_controller::store),"#,
+            r#"put("/api/product/{id}" => product_controller::update),"#,
+            r#"delete("/api/product/{id}" => product_controller::delete),"#,
+        ] {
+            assert!(text.contains(route), "{route} missing from:\n{text}");
+        }
+        let machine: Vec<_> = lines
+            .iter()
+            .filter_map(|line| line.trim().strip_prefix("MachineEndpoint::bearer(Method::"))
+            .collect();
+        assert_eq!(
+            machine,
+            [
+                r#"POST, "/api/product", api_token)?,"#,
+                r#"PUT, "/api/product/{id}", api_token)?,"#,
+                r#"DELETE, "/api/product/{id}", api_token)?,"#,
+            ]
+        );
+        // Core accepts the printed routes.
+        for (method, path) in [
+            (rullst_core::http::Method::POST, "/api/product"),
+            (rullst_core::http::Method::PUT, "/api/product/{id}"),
+            (rullst_core::http::Method::DELETE, "/api/product/{id}"),
+        ] {
+            rullst_core::security::MachineEndpoint::bearer(
+                method,
+                path,
+                "0123456789abcdef".repeat(2),
+            )
+            .expect("printed route is a valid machine endpoint");
+        }
+        assert!(text.contains(MACHINE_ENDPOINTS_DOCS));
+        assert!(
+            mapping_instructions("controller", true)
+                .join("\n")
+                .contains(r#"post("/api/controller" => controller::store),"#)
+        );
+
+        let html = mapping_instructions("product_controller", false).join("\n");
+        assert!(html.contains(r#"get("/url" => product_controller::index)"#));
+        assert!(!html.contains("MachineEndpoint"));
     }
 }
