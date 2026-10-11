@@ -1058,12 +1058,14 @@ inbox/entitlement transactions. Existing generated billing remains recurring;
 new sandbox evidence and merchant refund/dispute operations are still required.
 
 **12.1 authenticated machine endpoints:** an immutable `MachineEndpointPolicy`
-on `Server` exempts only exact write-method/path pairs from browser CSRF after
+on `Server` exempts only registered write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
 verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
 size is bounded and WAF/secure headers remain composed. The development
 hot-reload server (`Server::new_hot`) authenticates the same routes in front of
-each reloaded router. Wildcards and weak secrets fail at construction; a static bearer token needs 32–200 printable
+each reloaded router. A path segment after the first may be a `{name}` placeholder
+matching one non-empty segment other than `.` or `..` (v13); two routes with the
+same method that one request path could match are refused. Wildcards and weak secrets fail at construction; a static bearer token needs 32–200 printable
 ASCII bytes with at least 8 distinct values. Applications own ingress limits, replay storage,
 certificate trust and authorization; an unverified proxy header is not mTLS.
 

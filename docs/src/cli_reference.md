@@ -882,7 +882,7 @@ automatically.
   module or type would not be a non-keyword Rust identifier (for example
   `Bad.Name`) is rejected before any file is edited.
 * **Optional Flags:**
-  * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`.
+  * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`. The command prints the `routes!` lines (`/api/<name>` and `/api/<name>/{id}`) and the `MachineEndpoint::bearer` lines for `machine_endpoints()` in `src/main.rs`: in staging and production JSON clients reach the write routes only as machine endpoints, or the browser CSRF check refuses them with 403 (see [which security layer to use](security-layers.md#what-generated-applications-already-have)).
 
 ### `cargo rullst make:model <name>`
 Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
@@ -1780,7 +1780,8 @@ energy and a Software Carbon Intensity (SCI, ISO/IEC 21031:2024) figure. Every
 value shows its method; anything unavailable is `NOT MEASURED` with the reason.
 
 Without `--url` it builds the release binary (reusing an existing build),
-starts it with `RULLST_ENV=production` on a free `127.0.0.1` port, measures it
+starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
+starters' mock billing credentials) on a free `127.0.0.1` port, measures it
 and stops it. With `--url` it measures an app already running on loopback and
 refuses any other host; it makes no network calls beyond loopback and never
 fetches grid intensity. Energy is measured from readable RAPL package counters
@@ -1793,7 +1794,8 @@ cargo rullst footprint --duration 5s
 cargo rullst footprint --url http://127.0.0.1:3000 --path /health --json
 ```
 
-* **Flags:** `--url <http://127.0.0.1:PORT>`, `--path <PATH>` (default `/`),
+* **Flags:** `--url <http://127.0.0.1:PORT>`, `--env <production|staging>`
+  (default `production`; not with `--url`), `--path <PATH>` (default `/`),
   `--duration <10s|1m|1500ms>` (default `10s`, 1 s to 10 min),
   `--concurrency <N>` (default 4, at most 256), `--grid-intensity <gCO2e/kWh>`,
   `--cpu-watts <W>`, `--embodied <gCO2e>`, `--json` (versioned

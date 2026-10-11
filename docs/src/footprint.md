@@ -26,7 +26,10 @@ cargo rullst footprint --cpu-watts 15 --grid-intensity 120 --json
    reuses an up-to-date build), starts the binary from the project root with
    `RULLST_ENV=production`, `HOST=127.0.0.1` and `PORT=<free port>`, and waits
    up to 60 seconds for the first HTTP response. It stops the app with SIGTERM
-   (then a kill after 5 seconds) when the run ends. With `--url`, it measures an
+   (then a kill after 5 seconds) when the run ends. Production refuses to start
+   without production settings, such as the SaaS starter's real billing
+   credentials; set them, or pass `--env staging`, which accepts the starters'
+   mock credentials and is recorded in the report. With `--url`, it measures an
    app that is already running. The URL must be `http://` on a loopback address
    (`127.0.0.0/8`, `::1` or `localhost`, which is pinned to `127.0.0.1`);
    anything else is refused before a request is sent.

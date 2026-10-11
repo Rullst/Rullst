@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixes for 13.0.0-alpha.1 known issues
+
+- Core machine endpoints accept `{name}` placeholder segments after the first,
+  such as `PUT /api/posts/{id}`; overlapping routes are refused.
+  `make:controller --api` prints its routes and the `machine_endpoints()`
+  lines its JSON write routes need in staging and production, where they
+  were refused with 403.
+- `footprint --env staging` measures apps, such as the SaaS starter, that
+  refuse to start in production without real credentials.
+- Generated `.cargo/config.toml` selects mold or lld on aarch64 Linux too.
+- `new` and `pkg add` pin prerelease dependencies exactly (`=13.0.0-alpha.2`, for
+  example), as the release notes advise; a caret requirement also accepted
+  later prereleases.
+
 ### OpenSSF Silver evidence
 
 Adds a security assurance case, release verification steps in `SECURITY.md`,
