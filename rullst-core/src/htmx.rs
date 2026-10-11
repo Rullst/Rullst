@@ -193,7 +193,7 @@ pub fn render_page(htmx: &HtmxRequest, title: &str, content: String) -> Html<Str
 /// `pt-BR`) declared on `<html lang>`, which screen readers, translation and
 /// spell-checking use. The tag is HTML-escaped.
 ///
-/// Unpublished v13 API.
+/// Added in v13.
 pub fn render_page_with_lang(
     htmx: &HtmxRequest,
     lang: &str,

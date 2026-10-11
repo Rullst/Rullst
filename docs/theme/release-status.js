@@ -11,7 +11,7 @@
 
     const title = document.createElement("strong");
     title.className = "rullst-release-status__title";
-    title.textContent = "Rullst v13 — unreleased";
+    title.textContent = "Rullst v13 — prerelease";
 
     const stableLink = document.createElement("a");
     stableLink.href = "https://github.com/Rullst/Rullst/tree/v12";
@@ -23,8 +23,9 @@
 
     const message = document.createElement("span");
     message.append(
-      "Unreleased v13 source on ", mainLink,
-      ". Install published v12 packages for stable use; maintenance is on ", stableLink, "."
+      "v13 development on ", mainLink,
+      "; 13.0.0-alpha.1 is an evaluation prerelease. Install published v12 packages for stable use; maintenance is on ",
+      stableLink, "."
     );
 
     const details = document.createElement("details");

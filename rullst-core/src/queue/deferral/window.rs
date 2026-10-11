@@ -19,7 +19,7 @@ const MAX_OFFSET_MINUTES: i32 = 14 * 60;
 /// The end is exclusive. A window whose end is earlier than its start wraps
 /// midnight (22:00–06:00). Times are local to a fixed UTC offset (UTC unless
 /// [`Self::with_utc_offset_minutes`] is used); daylight-saving changes are
-/// not applied. Unpublished v13 API.
+/// not applied. Added in v13.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeWindow {
     start_ms: i64,

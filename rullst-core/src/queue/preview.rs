@@ -9,7 +9,7 @@ use super::QueuedJobDetail;
 /// UTF-8 character boundary; invalid UTF-8 read from the store is replaced
 /// with U+FFFD within the same budget. `id`, `name`, `status` and the
 /// timestamps are not cut ([`super::Queue::dispatch`] bounds job names to 256
-/// bytes). Unpublished v13 API.
+/// bytes). Added in v13.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub struct QueuedJobPreview {

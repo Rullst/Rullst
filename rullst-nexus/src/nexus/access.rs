@@ -57,7 +57,7 @@ pub enum NexusBuildError {
     /// A required Nexus credential contains invalid Unicode.
     InvalidCredentialEncoding { variable: &'static str },
     /// A required Nexus credential is absent from the process environment and
-    /// the project's `.env` file is unreadable or malformed. Unpublished v13.
+    /// the project's `.env` file is unreadable or malformed. Added in v13.
     InvalidDotenv { variable: &'static str },
     /// Unauthenticated local access is never available in release builds.
     LocalAccessRequiresDebugBuild,

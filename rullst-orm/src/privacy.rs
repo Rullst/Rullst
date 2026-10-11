@@ -76,7 +76,7 @@ pub trait ComplianceModel {
 
     /// The fields the application declared as personal data with
     /// `#[privacy]` on `#[derive(PersonalData)]`; empty by default.
-    /// Unpublished v13 API.
+    /// Added in v13.
     fn personal_fields() -> Vec<&'static str> {
         Vec::new()
     }

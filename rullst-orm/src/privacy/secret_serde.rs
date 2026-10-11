@@ -112,7 +112,7 @@ const ENVELOPE_INPUT_ERROR: &str = "an encrypted RULLST envelope is not accepted
 /// `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`,
 /// which rejects any envelope-shaped value (`RULLST:...`) without decrypting
 /// it. The generated cache path decodes fields with their own `Deserialize`
-/// and is unaffected. Unpublished v13 API.
+/// and is unaffected. Added in v13.
 pub fn deserialize_plaintext_secret<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<SecretString, D::Error> {
@@ -121,7 +121,7 @@ pub fn deserialize_plaintext_secret<'de, D: Deserializer<'de>>(
 
 /// [`deserialize_plaintext_secret`] for an `Option<SecretString>` field:
 /// `null` is `None`. Add `#[serde(default)]` to accept a missing field too.
-/// Unpublished v13 API.
+/// Added in v13.
 pub fn deserialize_optional_plaintext_secret<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<SecretString>, D::Error> {

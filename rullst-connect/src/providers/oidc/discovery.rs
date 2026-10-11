@@ -54,7 +54,7 @@ impl OidcProvider {
     /// the same transport; [`Self::discover`] fetches metadata with the default
     /// client and its ambient proxy settings. Empty or `mock_*` credentials
     /// construct deterministic local metadata and never use `client`.
-    /// Unpublished v13 API.
+    /// Added in v13.
     pub async fn discover_with_client(
         issuer_url: impl Into<String>,
         client_id: impl Into<String>,

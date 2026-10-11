@@ -21,7 +21,7 @@ pub trait Migration: Send + Sync {
     /// MariaDB commit implicitly at each DDL statement, so there only data
     /// changes after the last DDL statement are atomic with the record.
     /// Statements that cannot run in a transaction block, such as PostgreSQL
-    /// `CREATE INDEX CONCURRENTLY`, need `false`. Unpublished v13 API.
+    /// `CREATE INDEX CONCURRENTLY`, need `false`. Added in v13.
     fn within_transaction(&self) -> bool {
         false
     }

@@ -81,10 +81,10 @@ const MAX_SCHEDULE_DELAY: Duration = Duration::from_secs(366 * 24 * 60 * 60);
 /// requeuing it, so a job that keeps killing its worker cannot loop forever.
 ///
 /// Configure it with `SqliteDriver::try_with_max_stalled_leases` or
-/// `RedisDriver::try_with_max_stalled_leases`. Unpublished v13 API.
+/// `RedisDriver::try_with_max_stalled_leases`. Added in v13.
 pub const DEFAULT_MAX_STALLED_LEASES: u32 = 5;
 /// Largest value accepted by the drivers' `try_with_max_stalled_leases`.
-/// Unpublished v13 API.
+/// Added in v13.
 pub const MAX_STALLED_LEASES_LIMIT: u32 = 1_000;
 
 // ─── Queued Job ─────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ pub trait QueueDriver: Send + Sync {
     /// longer-running job. The SQLite and Redis drivers store the deadline
     /// with the claim and [`Self::recover_stalled`] honours it whatever age
     /// the recovering worker passes. The default ignores `lease` and calls
-    /// `pop`. Unpublished v13 API.
+    /// `pop`. Added in v13.
     async fn pop_with_lease(
         &self,
         lease: std::time::Duration,
@@ -272,7 +272,7 @@ pub trait QueueDriver: Send + Sync {
     /// The SQLite and Redis drivers cut the values in SQL and Lua, so complete
     /// payloads and errors never leave the store. The default projects
     /// [`Self::list_all_jobs`] and still loads complete records first.
-    /// Unpublished v13 API.
+    /// Added in v13.
     async fn list_job_previews(
         &self,
         limit: u32,
@@ -424,7 +424,7 @@ impl Queue {
 
     /// Lists recent jobs with each payload and error cut to at most
     /// `max_field_bytes` bytes; see [`QueueDriver::list_job_previews`].
-    /// Unpublished v13 API.
+    /// Added in v13.
     pub async fn list_job_previews(
         &self,
         limit: u32,

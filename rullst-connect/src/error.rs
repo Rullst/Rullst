@@ -53,7 +53,7 @@ pub enum ConnectError {
     /// Providers that rotate refresh tokens have already consumed the one
     /// that was sent, so the newly issued tokens are carried here instead of
     /// being dropped. `AutoRefreshingSession` keeps the rotated refresh token
-    /// and returns `source`. Unpublished v13 API.
+    /// and returns `source`. Added in v13.
     #[error("the provider refreshed the tokens, but a follow-up step failed: {source}")]
     RefreshIncomplete {
         /// Tokens the provider issued before the failure.
@@ -66,7 +66,7 @@ pub enum ConnectError {
 /// Tokens a provider issued before a later refresh step failed.
 ///
 /// `Debug` redacts both tokens. Persist them only in an encrypted secret store
-/// bound to the owning account and provider. Unpublished v13 API.
+/// bound to the owning account and provider. Added in v13.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct IssuedTokens {

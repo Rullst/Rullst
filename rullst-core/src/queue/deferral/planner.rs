@@ -85,7 +85,7 @@ pub(super) fn lowest_intensity(
 
 /// Places deferrable jobs in the lowest-intensity slot reported by a
 /// [`CarbonIntensitySource`], inside the job's windows and before its
-/// deadline. Unpublished v13 API.
+/// deadline. Added in v13.
 ///
 /// When the source fails or exceeds its timeout, the placement falls back to
 /// the time-window rule. The first failure of an outage is logged as a

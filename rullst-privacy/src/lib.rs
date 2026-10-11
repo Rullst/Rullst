@@ -1,4 +1,4 @@
-//! Optional privacy contracts for the unreleased Rullst v13 line.
+//! Optional privacy contracts for the Rullst v13 line.
 //!
 //! Enable `age-assurance` for risk policies, signed threshold attestations and
 //! replay protection. This crate does not infer age from images, certify legal

@@ -97,7 +97,7 @@ impl AuditChain {
     /// the same tip fork it, and verification of the merged trail fails. The
     /// tip is only as trustworthy as the store it came from: deleting the
     /// newest records before a restart is not detected without an external
-    /// checkpoint of the last sequence and hash. Unpublished v13 API.
+    /// checkpoint of the last sequence and hash. Added in v13.
     pub fn try_resume(
         secret_key: &[u8],
         logger: Arc<dyn AuditLogger>,

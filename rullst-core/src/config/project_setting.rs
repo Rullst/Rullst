@@ -17,7 +17,7 @@ use std::path::Path;
 /// `Ok(Some(String::new()))`.
 ///
 /// Generated application code uses it for keys such as `BILLING_*`, and Rullst
-/// Nexus for its administrator credentials. Unpublished v13 API.
+/// Nexus for its administrator credentials. Added in v13.
 ///
 /// # Errors
 /// [`ConfigError::NonUnicodeEnvironmentVariable`] when the process value is

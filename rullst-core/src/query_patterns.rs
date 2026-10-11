@@ -4,7 +4,7 @@
 //! The rule is a heuristic: the same operation fingerprint appearing at least
 //! [`N_PLUS_ONE_THRESHOLD`] times within one request or trace. Repetition can
 //! be intentional, so a finding is evidence to inspect, not proof of an N+1
-//! defect. Unpublished v13 API.
+//! defect. Added in v13.
 
 use std::collections::HashMap;
 
