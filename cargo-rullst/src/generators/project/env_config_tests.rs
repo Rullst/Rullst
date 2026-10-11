@@ -189,3 +189,26 @@ fn the_json_api_token_is_random_in_env_and_empty_in_the_example() {
     assert!(token.bytes().all(|byte| byte.is_ascii_alphanumeric()));
     assert!(read(".env.example").ends_with("\nAPI_TOKEN=\n"));
 }
+
+#[test]
+fn cargo_config_selects_the_linker_for_x86_64_and_aarch64_linux() {
+    for linker in ["mold", "lld"] {
+        let config: toml::Value = toml::from_str(&cargo_config(Some(linker))).expect("valid TOML");
+        for target in LINUX_TARGETS {
+            let flags = config["target"][target]["rustflags"]
+                .as_array()
+                .expect("rustflags array");
+            assert!(
+                flags.contains(&toml::Value::from(format!("link-arg=-fuse-ld={linker}"))),
+                "{target}: {flags:?}"
+            );
+        }
+    }
+    let plain: toml::Value = toml::from_str(&cargo_config(None)).expect("valid TOML");
+    for target in LINUX_TARGETS {
+        assert_eq!(
+            plain["target"][target]["rustflags"],
+            toml::Value::from(vec!["-C", "split-debuginfo=unpacked"])
+        );
+    }
+}
