@@ -201,7 +201,15 @@ jobs:
           --test scout_post_commit_test
 
       - name: Verify current crates.io name ownership and bootstrap scope
+        id: ownership
         run: bash .github/check-crates-ownership.sh
+
+      - name: Refuse unregistered packages before packaging
+        if: steps.ownership.outputs.has_unregistered == 'true'
+        run: |
+          # The publish job refuses first publications; fail now, not hours later.
+          echo "An unregistered release package needs a reviewed bootstrap change; see docs/src/release-recovery.md."
+          exit 1
 
       - name: Validate tag and package every publishable crate
         env:

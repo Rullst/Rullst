@@ -93,9 +93,14 @@ completes step 6 for the four crates:
 The next release's ownership check verifies that `venelouis` owns all twenty
 names.
 
-**Lesson:** check for unregistered names before tagging. The release
-verification job accepts reviewed bootstrap names, so the refusal surfaced only
+**Lesson:** check for unregistered names before the admission. The release
+verification job accepted reviewed bootstrap names, so the refusal surfaced only
 in the publish job, two hours into the run.
+- `.github/release-preflight.py` now refuses an unregistered name before the
+  admission is dispatched.
+- The verification job refuses it before packaging.
+
+A change that restores the fallback must also remove that early refusal.
 
 ## Determine the exact state
 
