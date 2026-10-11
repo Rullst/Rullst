@@ -1,10 +1,14 @@
 # OpenSSF Best Practices: Silver Evidence
 
-Rullst holds the **passing** [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/13321)
-(project 13321). This page is the evidence guide for the **Silver** form: one
-row per Silver criterion, with the answer to select, a justification ready to
-paste and the evidence link. Only a project owner can edit the form, and a
-Silver badge is not claimed until bestpractices.dev grants it.
+Rullst holds the **Silver** [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/13321)
+(project 13321), granted on 10 October 2026. This page is the evidence guide
+for the Silver form, with one row per Silver criterion:
+- the answer to select;
+- a justification ready to paste;
+- the evidence link.
+
+Only a project owner can edit the form. Keep this guide and the form in
+agreement when an answer changes.
 
 The criteria list was taken from the
 [official Silver criteria](https://www.bestpractices.dev/en/criteria/1) on

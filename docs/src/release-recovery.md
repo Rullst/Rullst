@@ -29,14 +29,16 @@ bootstrap allowlist. A name registered by another owner, an unexpected missing
 name, an API error, or a malformed policy stops the release.
 
 The following one-time bootstrap procedure was completed before the first v12
-RC. All sixteen v12 package names are now registered, so future releases must
-use Trusted Publishing and must not recreate a bootstrap secret unless a new,
-reviewed package name is introduced:
+RC and again for the four new v13 names (see below). All twenty package names
+are now registered, so future releases must use Trusted Publishing and must not
+recreate a bootstrap secret unless a new, reviewed package name is introduced:
 
 **Historical procedure:** the current `release.yml` has removed this token
 fallback and refuses every unregistered package, including on prerelease tags.
 Adding a name to the allowlist does not enable publication. Do not set the old
-secret and expect the steps below to work on the current workflow.
+secret and expect the steps below to work on the current workflow. A new name
+needs a reviewed change that restores the fallback, merged before the release
+admission, as [PR #452](https://github.com/Rullst/Rullst/pull/452) did.
 
 1. Protect the GitHub `crates-io` environment with required review and tag
    deployment rules.
@@ -66,25 +68,34 @@ and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishin
 
 ### v13 package registration
 
-The unpublished packaging candidate adds `rullst-privacy`, `rullst-supervision`
-and `rullst-media` to the release inventory. All three owner endpoints returned
-404 on September 22, 2026, while the other sixteen names retained the expected
-owner. `rullst-labs` joined the inventory on October 8, 2026; its owner endpoint
-also returned 404 that day. These four are the only names in the reviewed
-initial-registration allowlist.
-This enables ownership diagnostics, not publication: the ordinary release
-workflow still refuses unregistered names. The current
-[crates.io documentation](https://crates.io/docs/trusted-publishing) still requires
-an API token for the first publication. Package/consumer acceptance must precede
-an explicitly reviewed initial publication of real crate content; an empty
-name-reservation package does not meet Rullst's admission criteria.
+`rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs` were
+first published in 13.0.0-alpha.1 on October 11, 2026, from release run
+[38151068563](https://github.com/Rullst/Rullst/actions/runs/38151068563).
+The [crates.io documentation](https://crates.io/docs/trusted-publishing) still
+requires an API token for a first publication.
 
-After that initial release is accepted, verify `venelouis` ownership and set the
-Trusted Publisher to `Rullst/Rullst`, `release.yml`, environment `crates-io`.
-Enable trusted-publishing-only updates and revoke the one-time credential.
-The ordinary stable workflow remains unchanged and must pass the ownership
-check again. Initial registration is still pending, and this document does not
-claim that a bootstrap workflow or token has been configured.
+The first attempt (run 38121092958) refused before uploading anything, because
+the publish job had no first-publication path. Registering the names outside
+the workflow was not possible: `rullst-media` depends on `rullst-core` at the
+same prerelease version. [PR #452](https://github.com/Rullst/Rullst/pull/452)
+restored the fallback above for that release:
+- The maintainer created a short-lived `publish-new` token and stored it only
+  as the `crates-io` environment secret.
+- All twenty archives matched the release checksums on crates.io.
+
+This change reverts the fallback and empties the allowlist. The maintainer then
+completes step 6 for the four crates:
+- set the Trusted Publisher to `Rullst/Rullst`, `release.yml`, environment
+  `crates-io`;
+- enable trusted-publishing-only updates;
+- revoke the token and delete the environment secret.
+
+The next release's ownership check verifies that `venelouis` owns all twenty
+names.
+
+**Lesson:** check for unregistered names before tagging. The release
+verification job accepts reviewed bootstrap names, so the refusal surfaced only
+in the publish job, two hours into the run.
 
 ## Determine the exact state
 

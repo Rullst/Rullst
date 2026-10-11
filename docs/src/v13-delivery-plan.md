@@ -1,5 +1,17 @@
 # v13 delivery plan and evidence
 
+**13.0.0-alpha.1 published on October 11, 2026.** Tag `v13.0.0-alpha.1` points
+at `fc44bf76`. [Release run 38151068563](https://github.com/Rullst/Rullst/actions/runs/38151068563)
+followed an exact-SHA admission of all 28 required workflows. Its fuzz evidence
+was reused from campaign 38056935372. All twenty crates on crates.io match the
+release checksums. The GitHub release is a prerelease, and 12.3.0 remains the
+latest stable release.
+
+A smoke test used the published Linux CLI to generate a Blank SQLite project
+from the registry crates. The project built, passed its tests and served `/`.
+First publication of the four new names is recorded in the
+[release recovery runbook](release-recovery.md#v13-package-registration).
+
 **Direction revised on September 22:** maintain stable v12.1 and continue v13
 according to product value, evidence and available resources. The owner no
 longer requires publication by September 26; it is a review/handoff point, and

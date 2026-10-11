@@ -256,16 +256,17 @@ short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (
 
 ## 🔑 One-time GitHub Setup Required
 
-All sixteen registered v12 crates use crates.io Trusted Publishing through
-GitHub OIDC. The protected `crates-io` environment must require review and be
-configured for `release.yml`. The first-publication bootstrap token has been
-revoked and its GitHub secret removed. On `main`, the bootstrap allowlist in
-`.github/crates-ownership-policy.json` names the three unregistered v13 packages
-(`rullst-privacy`, `rullst-supervision` and `rullst-media`) so the ownership
-check can classify them, but `release.yml` refuses publication while any
-release package is unregistered. Their first publication needs the separately
-reviewed initial registration described under
+All twenty release crates are registered on crates.io and publish through
+Trusted Publishing with GitHub OIDC. The protected `crates-io` environment must
+require review and be configured for `release.yml`.
+
+The four v13 names were first published in 13.0.0-alpha.1 with a one-time
+token, described under
 [v13 package registration](docs/src/release-recovery.md#v13-package-registration).
+That fallback was removed again, and the bootstrap allowlist in
+`.github/crates-ownership-policy.json` is empty. `release.yml` refuses
+publication while any release package is unregistered.
+
 Do not maintain a permanent repository-wide registry token.
 
 ---
