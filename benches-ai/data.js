@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791641306673,
+  "lastUpdate": 1791686214483,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -13375,6 +13375,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 418,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cea202ec14093e5d7b77ae4ecc0c941bb8e76aee",
+          "message": "Merge pull request #451 from Rullst/fix/v13-alpha-admission\n\nfix: unblock the 13.0.0-alpha.1 release admission",
+          "timestamp": "2026-10-10T23:18:12-03:00",
+          "tree_id": "7bc95c9b3dea99ccea814c48a053f536ea0b78cb",
+          "url": "https://github.com/Rullst/Rullst/commit/cea202ec14093e5d7b77ae4ecc0c941bb8e76aee"
+        },
+        "date": 1791686213359,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1442,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 244,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 275,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
