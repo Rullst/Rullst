@@ -333,3 +333,28 @@ async fn route_hits_are_keyed_by_the_configured_trap_not_the_request_spelling() 
         .load(std::sync::atomic::Ordering::Relaxed);
     assert!(canonical >= variants.len() as u64);
 }
+
+#[test]
+fn default_bans_last_fifteen_minutes() {
+    let state = HoneypotState::new(vec!["/.env".to_string()]);
+    let peer: IpAddr = "192.0.2.77".parse().expect("peer address");
+    assert_eq!(state.ban_peer(peer), Some(Duration::from_secs(15 * 60)));
+    assert!(state.is_banned("192.0.2.77"));
+}
+
+#[test]
+fn up_to_1024_trap_paths_are_accepted() {
+    let paths = |count: usize| (0..count).map(|index| format!("/trap-{index}")).collect();
+    assert!(
+        HoneypotState::try_with_limits(paths(MAX_HONEYPOT_TRAP_PATHS), Duration::from_secs(60), 1)
+            .is_ok()
+    );
+    assert!(
+        HoneypotState::try_with_limits(
+            paths(MAX_HONEYPOT_TRAP_PATHS + 1),
+            Duration::from_secs(60),
+            1
+        )
+        .is_err()
+    );
+}
