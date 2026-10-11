@@ -226,3 +226,34 @@ fn unrelated_text_and_empty_input_are_preserved() {
     assert_eq!(redact_secrets(""), "");
     assert_eq!(redact_secrets("compassword=value"), "compassword=value");
 }
+
+#[test]
+fn records_up_to_sixty_four_kib_are_processed() {
+    let limit = 64 * 1024;
+    let record = format!("{} token=abc", "x".repeat(limit - " token=abc".len()));
+    assert_eq!(record.len(), limit);
+    assert!(redact_secrets(&record).ends_with(" token=[REDACTED]"));
+    assert_eq!(
+        redact_secrets(&format!("{record}c")),
+        "[REDACTED_OVERSIZED_LOG_RECORD]"
+    );
+}
+
+#[test]
+fn spaces_around_the_separator_and_empty_values_are_handled() {
+    assert_eq!(
+        redact_secrets("password = hunter2"),
+        "password = [REDACTED]"
+    );
+    assert_eq!(redact_secrets("password="), "password=");
+    assert_eq!(redact_secrets("password=, next"), "password=, next");
+}
+
+#[test]
+fn an_unquoted_value_ends_only_at_a_real_delimiter() {
+    assert_eq!(
+        redact_secrets(r#"password=abc" tail"#),
+        r#"password=[REDACTED]" tail"#
+    );
+    assert_eq!(redact_secrets(r"password=a\b"), "password=[REDACTED]");
+}

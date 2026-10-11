@@ -200,6 +200,63 @@ mod tests {
         }
     }
 
+    fn padding_config(min_duration: Duration, max_jitter: Duration) -> TimingGuardConfig {
+        TimingGuardConfig {
+            min_duration,
+            max_jitter,
+            enable_synthetic_cpu_cycles: false,
+        }
+    }
+
+    /// Paused Tokio time: the virtual clock moves only by the padding sleep.
+    async fn padding_of(scope: TimingScope) -> Duration {
+        let started = tokio::time::Instant::now();
+        scope.finish().await;
+        started.elapsed()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn padding_subtracts_the_time_already_spent() {
+        let scope = TimingScope::start(padding_config(Duration::from_millis(100), Duration::ZERO));
+        std::thread::sleep(Duration::from_millis(30));
+        let padding = padding_of(scope).await;
+        assert!(padding <= Duration::from_millis(71), "{padding:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn jitter_spreads_over_the_whole_configured_range() {
+        let mut longest = Duration::ZERO;
+        for _ in 0..20 {
+            let scope = TimingScope::start(padding_config(Duration::ZERO, Duration::from_secs(1)));
+            let padding = padding_of(scope).await;
+            assert!(padding <= Duration::from_millis(1_001), "{padding:?}");
+            longest = longest.max(padding);
+        }
+        // Twenty draws below 10 ms out of 1 s happen with probability 1e-40.
+        assert!(longest >= Duration::from_millis(10), "{longest:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn synthetic_finish_still_pads_to_the_minimum() {
+        let scope = TimingScope::start(TimingGuardConfig {
+            min_duration: Duration::from_secs(5),
+            max_jitter: Duration::ZERO,
+            enable_synthetic_cpu_cycles: true,
+        });
+        let started = tokio::time::Instant::now();
+        scope.finish_with_synthetic_work().await;
+        assert!(started.elapsed() >= Duration::from_secs(4));
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)]
+    fn synthetic_cpu_work_takes_measurable_time() {
+        // 1,500 sequential SHA-256 blocks cannot finish in 20 microseconds.
+        let started = Instant::now();
+        synthetic_argon2_cpu_work();
+        assert!(started.elapsed() >= Duration::from_micros(20));
+    }
+
     #[tokio::test]
     async fn middleware_returns_the_inner_response_after_padding() {
         use axum::{Router, body::Body, http::Request, middleware, routing::get};
