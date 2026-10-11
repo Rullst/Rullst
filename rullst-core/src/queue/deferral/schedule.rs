@@ -6,7 +6,7 @@ use crate::queue::MAX_SCHEDULE_DELAY;
 use std::time::Duration;
 
 /// Lets a scheduled task start up to `max_delay` after its cron tick, at the
-/// start of the next allowed window. Unpublished v13 API.
+/// start of the next allowed window. Added in v13.
 ///
 /// Each tick is placed by the time-window and deadline rules of
 /// [`super::Deferral`] with the tick as "now" and `tick + max_delay` as the

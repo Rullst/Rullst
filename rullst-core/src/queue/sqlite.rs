@@ -61,7 +61,7 @@ impl SqliteDriver {
     /// job instead of requeuing it (default
     /// [`super::DEFAULT_MAX_STALLED_LEASES`]; `1` fails on the first stall).
     ///
-    /// Unpublished v13 API.
+    /// Added in v13.
     ///
     /// # Errors
     /// Returns [`QueueError::InvalidConfiguration`] outside

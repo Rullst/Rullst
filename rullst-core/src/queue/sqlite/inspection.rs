@@ -45,7 +45,7 @@ impl SqliteDriver {
     /// Lists the records of [`Self::list_all_jobs`] with each payload and error
     /// cut to at most `max_field_bytes` bytes. SQLite returns only the leading
     /// `max_field_bytes + 1` bytes of each value, so complete payloads are
-    /// never copied out of the database. Unpublished v13 API.
+    /// never copied out of the database. Added in v13.
     pub async fn list_job_previews(
         &self,
         limit: u32,

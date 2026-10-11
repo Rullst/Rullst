@@ -159,7 +159,7 @@ impl GoogleProvider {
     /// `azp` (when present) to equal this `client_id`.
     ///
     /// At most 16 distinct IDs of 1–255 visible ASCII characters are accepted;
-    /// calling this again replaces the list. Unpublished v13 API.
+    /// calling this again replaces the list. Added in v13.
     ///
     /// # Errors
     /// Returns [`crate::error::ConnectError::InvalidConfiguration`] for an

@@ -17,7 +17,7 @@ pub struct EdgeRequest {
     /// Raw query string after `?`, still percent-encoded (e.g. `q=rust&page=2`),
     /// or `None` when the URL has no `?`.
     ///
-    /// Unpublished v13 API.
+    /// Added in v13.
     pub query: Option<String>,
     /// Collection of request headers.
     pub headers: HashMap<String, String>,

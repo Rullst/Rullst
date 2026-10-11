@@ -132,7 +132,7 @@ pub mod redis_driver {
         /// [`super::super::DEFAULT_MAX_STALLED_LEASES`]; `1` fails on the
         /// first stall). The failure uses the configured failed-job retention.
         ///
-        /// Unpublished v13 API.
+        /// Added in v13.
         ///
         /// # Errors
         /// Returns [`QueueError::InvalidConfiguration`] outside

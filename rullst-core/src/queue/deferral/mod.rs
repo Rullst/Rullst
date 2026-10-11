@@ -35,7 +35,7 @@ use window::{from_millis, to_millis};
 /// Most windows one deferral accepts.
 pub const MAX_DEFERRAL_WINDOWS: usize = 24;
 
-/// Errors raised while configuring a deferral. Unpublished v13 API.
+/// Errors raised while configuring a deferral. Added in v13.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum DeferralError {
@@ -56,7 +56,7 @@ impl From<DeferralError> for QueueError {
     }
 }
 
-/// Why a deferred job was placed where it was. Unpublished v13 API.
+/// Why a deferred job was placed where it was. Added in v13.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum DeferralReason {
@@ -79,7 +79,7 @@ impl DeferralReason {
     }
 }
 
-/// The placement chosen for one deferred job. Unpublished v13 API.
+/// The placement chosen for one deferred job. Added in v13.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct DeferralPlan {
@@ -98,7 +98,7 @@ pub struct DeferralPlan {
     pub source_failed: bool,
 }
 
-/// A job dispatched with a deferral. Unpublished v13 API.
+/// A job dispatched with a deferral. Added in v13.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct DeferredJob {
@@ -109,7 +109,7 @@ pub struct DeferredJob {
 }
 
 /// Marks a job as deferrable: it must become claimable no later than
-/// `run_by` and preferably inside one of its windows. Unpublished v13 API.
+/// `run_by` and preferably inside one of its windows. Added in v13.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Deferral {
     run_by: SystemTime,
@@ -195,7 +195,7 @@ fn horizon_ms(now_ms: i64) -> i64 {
 
 impl Queue {
     /// Dispatches a deferrable job placed by the time-window and deadline
-    /// rules (see [`Deferral`]). Unpublished v13 API.
+    /// rules (see [`Deferral`]). Added in v13.
     ///
     /// The job is stored through [`Self::dispatch_at`], so the queue's
     /// at-least-once semantics and poll-based start apply, and a custom
@@ -220,7 +220,7 @@ impl Queue {
 
     /// Dispatches a deferrable job placed by `planner`: the lowest-intensity
     /// slot inside its windows before its deadline, or the time-window rule
-    /// when the source fails. Unpublished v13 API.
+    /// when the source fails. Added in v13.
     ///
     /// # Errors
     /// As [`Self::dispatch_deferred`]; a failing source is not an error.

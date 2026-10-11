@@ -58,7 +58,7 @@ pub enum SchedulerError {
         message: String,
     },
     /// A scheduler option would make every execution fail, such as a zero
-    /// task timeout. Unpublished v13 variant.
+    /// task timeout. Added in v13.
     #[error("invalid scheduler configuration: {0}")]
     InvalidConfiguration(String),
 }
@@ -161,7 +161,7 @@ impl Scheduler {
     /// Registers a recurring task, like [`Self::task`], whose runs may start
     /// up to the deferral's `max_delay` after each tick, at the start of the
     /// next allowed [`TimeWindow`] (immediately when a window is open, at the
-    /// deadline when none opens in time). Unpublished v13 API.
+    /// deadline when none opens in time). Added in v13.
     ///
     /// Ticks that pass while a deferred run waits or executes are skipped, as
     /// for a slow run. Each placement is logged at debug level with its reason.

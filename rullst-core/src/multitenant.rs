@@ -49,7 +49,7 @@ pub struct TenantConfig {
     /// `www.acme.escola.com.br` both select `acme`), while the domain itself,
     /// `www.` plus the domain and hosts outside it have no tenant subdomain.
     /// When unset, the first label of a host with at least three labels is
-    /// the tenant. Unpublished v13 API.
+    /// the tenant. Added in v13.
     pub base_domain: Option<String>,
 }
 
@@ -90,8 +90,7 @@ impl TenantConfig {
 
     /// Set the domain the `Subdomain` strategy strips from the host (see
     /// [`TenantConfig::base_domain`]). Required when the application's apex
-    /// is under a multi-label public suffix such as `.com.br`. Unpublished v13
-    /// API.
+    /// is under a multi-label public suffix such as `.com.br`. Added in v13.
     pub fn with_base_domain<S: Into<String>>(mut self, domain: S) -> Self {
         self.base_domain = Some(domain.into());
         self

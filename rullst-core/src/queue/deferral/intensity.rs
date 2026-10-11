@@ -7,7 +7,7 @@
 use async_trait::async_trait;
 use std::time::SystemTime;
 
-/// A failure reported by a [`CarbonIntensitySource`]. Unpublished v13 API.
+/// A failure reported by a [`CarbonIntensitySource`]. Added in v13.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum IntensitySourceError {
@@ -38,7 +38,7 @@ pub struct IntensitySlot {
 /// Intensity values for consecutive or sparse time slots, in one unit.
 ///
 /// Slots with a non-finite or negative value, or whose end is not after their
-/// start, are ignored by the planner. Unpublished v13 API.
+/// start, are ignored by the planner. Added in v13.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntensityForecast {
     unit: String,
@@ -76,7 +76,7 @@ impl IntensityForecast {
 ///
 /// Implementations may call a remote API; the planner bounds each call with
 /// its timeout and falls back to the time-window rule on error or timeout.
-/// Core ships no network implementation. Unpublished v13 API.
+/// Core ships no network implementation. Added in v13.
 #[async_trait]
 pub trait CarbonIntensitySource: Send + Sync {
     /// Short, stable name recorded with every placement that consulted the
@@ -93,7 +93,7 @@ pub trait CarbonIntensitySource: Send + Sync {
 
 /// A deterministic source that answers from a fixed list of slots and never
 /// performs I/O. Intended for tests, examples and documentation.
-/// Unpublished v13 API.
+/// Added in v13.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FixedIntensitySource {
     name: String,

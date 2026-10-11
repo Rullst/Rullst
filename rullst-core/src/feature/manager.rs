@@ -48,7 +48,7 @@ impl FeatureManager {
     /// global [`crate::feature::manager`]). `None` for a manager built with
     /// [`FeatureManager::new`], whose drivers are all supplied by the caller.
     ///
-    /// Unpublished v13 API.
+    /// Added in v13.
     pub fn overrides(&self) -> Option<&MemoryFeatureDriver> {
         self.overrides.as_deref()
     }
