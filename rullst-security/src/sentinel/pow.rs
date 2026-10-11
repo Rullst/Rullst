@@ -388,3 +388,6 @@ fn current_epoch() -> Result<u64, SentinelError> {
         .map(|duration| duration.as_secs())
         .map_err(|_| SentinelError::ClockUnavailable)
 }
+
+#[cfg(test)]
+mod tests;

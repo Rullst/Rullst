@@ -175,4 +175,27 @@ mod tests {
         event.event_type = "A".repeat(MAX_EVENT_TYPE_BYTES + 1);
         assert_eq!(event.normalized().event_type, "SECURITY_EVENT");
     }
+
+    /// Runs `work` on its own thread so a non-terminating loop fails the test.
+    fn within_deadline<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> T {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(work());
+        });
+        receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("work finished before the deadline")
+    }
+
+    #[test]
+    fn details_keep_the_whole_budget_and_cut_before_a_split_character() {
+        let exact = "a".repeat(MAX_EVENT_DETAILS_BYTES);
+        let event = LiveSecurityEvent::local("TEST", exact.clone(), "unknown");
+        assert_eq!(event.details, exact);
+
+        // The three-byte euro sign straddles the limit, so the cut falls before it.
+        let split = format!("{}€tail", "a".repeat(MAX_EVENT_DETAILS_BYTES - 1));
+        let event = within_deadline(move || LiveSecurityEvent::local("TEST", split, "unknown"));
+        assert_eq!(event.details, "a".repeat(MAX_EVENT_DETAILS_BYTES - 1));
+    }
 }
