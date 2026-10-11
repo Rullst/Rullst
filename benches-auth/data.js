@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791728750062,
+  "lastUpdate": 1791742857942,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -15871,6 +15871,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1975,
             "range": "± 186",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3abac8d43d3a243a9dd0335ad37d00fb8660dc81",
+          "message": "Merge pull request #454 from Rullst/test/v13-local-mutation\n\ntest(v13): kill surviving mutants in iot, privacy, labs and supervision",
+          "timestamp": "2026-10-11T15:05:12-03:00",
+          "tree_id": "2f36227578cca63774c6559a37f44bbf280238ca",
+          "url": "https://github.com/Rullst/Rullst/commit/3abac8d43d3a243a9dd0335ad37d00fb8660dc81"
+        },
+        "date": 1791742856974,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 640,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 523,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1226,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3139,
+            "range": "± 264",
             "unit": "ns/iter"
           }
         ]
