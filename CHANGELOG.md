@@ -15,7 +15,7 @@ Adds a security assurance case, release verification steps in `SECURITY.md`,
 a pull-request check that crate archives are reproducible, and the Silver
 evidence guide.
 
-## [13.0.0-alpha.1] - 2026-10-10
+## [13.0.0-alpha.1] - 2026-10-11
 
 First v13 prerelease, for evaluation. Stable applications should stay on 12.x.
 Every v13 package is a prerelease and may change in any alpha, beta or release

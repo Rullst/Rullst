@@ -140,9 +140,10 @@ On the maintainer's personal GitHub account: Settings → Account → "Successor
 settings". This only covers repositories owned by the personal account, not
 the `Rullst` organization, which section 3.1 covers.
 
-## 4. Optional hardening: require 2FA in the organization
+## 4. Require 2FA in the organization
 
-Once every member has 2FA:
+Done: the `Rullst` organization requires two-factor authentication (verified on
+11 October 2026). To re-check or redo it, start only when every member has 2FA:
 
 1. Check organization Settings → People and filter by 2FA status.
 2. Open Settings → Authentication security and enable "Require two-factor
@@ -238,11 +239,10 @@ line at the top of this file.
 
 ## 10. What it changes, honestly
 
-- **OpenSSF Best Practices Silver:** this resolves the documented blocker
-  (access continuity). Silver has other criteria still to check, such as test
-  coverage, an assurance case and signed releases.
-- **OpenSSF Scorecard:** CII-Best-Practices moves from 5 to 7 only if Silver is
-  granted. Code-Review rises only when the successor really reviews and
+- **OpenSSF Best Practices Silver:** this resolved the documented blocker
+  (access continuity). Silver was granted on 10 October 2026.
+- **OpenSSF Scorecard:** CII-Best-Practices can move from 5 to 7 now that
+  Silver is granted; a later scan must confirm it. Code-Review rises only when the successor really reviews and
   approves pull requests. Making that approval mandatory would block routine
   maintenance, so it stays optional.
 - **Bus factor:** access alone does not transfer knowledge. Report the bus
