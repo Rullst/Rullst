@@ -1,6 +1,7 @@
 # Building an exam observation platform
 
-**Unpublished v13 candidate.** `rullst-supervision` supplies scoped sessions,
+**v13 candidate, first published in the 13.0.0-alpha.1 prerelease.**
+`rullst-supervision` supplies scoped sessions,
 selected collection categories, bounded observation storage and optional adapter
 orchestration. It does not supply an entire assessment product or camera/audio
 model. A developer supplies the exam UI, authenticated membership and enrollment,
@@ -123,7 +124,7 @@ pass does not establish model accuracy or provider interoperability.
 
 ## Storage transition and review
 
-This unpublished extension uses SQLite schema v2. Opening v1 refuses it without
+This extension uses SQLite schema v2. Opening v1 refuses it without
 migrating its schema or data. Preserve old records under the existing retention
 policy; quiesce the old preview and prepare a separately named private v2 store,
 with a new independently retained deployment epoch and independently re-established

@@ -1,6 +1,6 @@
 # Durable recurring publications
 
-The unpublished v13 candidate adds Messaging `schedules-postgres` and facade
+The v13 prerelease (13.0.0-alpha.1) adds Messaging `schedules-postgres` and facade
 `messaging-schedules-postgres`. Independent application instances coordinate
 through one authoritative PostgreSQL database, then relay frozen occurrences
 into the existing `MessageBroker` contract. Core's process-local `Scheduler`

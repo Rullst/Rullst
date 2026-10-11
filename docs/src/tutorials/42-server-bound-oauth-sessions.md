@@ -153,7 +153,7 @@ authenticated session as usual.
 
 ### Managed form POST callback
 
-The unpublished v13 development source adds `AuthSessionForm`, the form POST
+The v13 prerelease (13.0.0-alpha.1) adds `AuthSessionForm`, the form POST
 counterpart of `AuthSession`. It reads an `application/x-www-form-urlencoded`
 `POST` body of at most 16 KiB, ignores `id_token` and `user`, and consumes the
 same challenge that `begin_oidc_session` stored, with the same expiry,

@@ -42,7 +42,7 @@ future source changes.
 | Package | Role | Typical user choice |
 | :--- | :--- | :--- |
 | `rullst-core` | Low-level runtime engine: HTTP server, routes, lifecycle, queue/realtime, storage/cache and the default browser-security baseline. It deliberately does not aggregate every domain crate. | Use directly when a library/application wants only the runtime primitives and explicit dependencies. |
-| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Connect, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs (and, in unpublished v13, Privacy) through one dependency. It also exposes the browser/WASM surface used by web-first applications; Omni packaging itself is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
+| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Connect, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs (and, from the 13.0.0-alpha.1 prerelease, Privacy) through one dependency. It also exposes the browser/WASM surface used by web-first applications; Omni packaging itself is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
 
 ## Documentation maintenance gate
 
@@ -90,15 +90,15 @@ homologated.
 | M30 | Tonic/gRPC and Protobuf support | 🟡 Still to implement — partial |
 | M31 | Aerospace/autonomous/defence systems | ⏳ Separate safety-critical programme; outside the general framework suite |
 | M32 | Axum/Tower escape hatches and proc-macro diagnostics | ✅ Implemented — bounded |
-| M33 | Server-side declarative SaaS entitlements | 🟡 Unpublished foundation — typed current-state plan authorization with an authenticated SaaS consumer; the declarative `#[rullst::gate]`/`GateGuard` model remains open |
-| M34 | Schema-driven TypeScript/React/Dart/Swift SDKs | 🟡 Unpublished foundation — one bounded OpenAPI 3.1 profile generates Rust codecs and a strict TypeScript client; React, Dart and Swift remain open |
+| M33 | Server-side declarative SaaS entitlements | 🟡 v13 prerelease foundation — typed current-state plan authorization with an authenticated SaaS consumer; the declarative `#[rullst::gate]`/`GateGuard` model remains open |
+| M34 | Schema-driven TypeScript/React/Dart/Swift SDKs | 🟡 v13 prerelease foundation — one bounded OpenAPI 3.1 profile generates Rust codecs and a strict TypeScript client; React, Dart and Swift remain open |
 | M35 | Distributed OpenTelemetry waterfall in Studio | 🟡 Still to implement — partial |
 | M36 | Read-only explainable natural-language SQL assistant | ⏳ Still to implement — not started |
-| M37 | Reviewable one-click error-console patch workflow | 🟡 Unpublished v13 preview — the error page hands off to `cargo rullst ai fix <error-id>` (diff, confirmation, git checkpoint, `cargo check`); copy-and-run rather than one click, no edit audit trail beyond the checkpoint, live-provider fix quality unmeasured and hot-reload mode not covered |
+| M37 | Reviewable one-click error-console patch workflow | 🟡 v13 prerelease preview — the error page hands off to `cargo rullst ai fix <error-id>` (diff, confirmation, git checkpoint, `cargo check`); copy-and-run rather than one click, no edit audit trail beyond the checkpoint, live-provider fix quality unmeasured and hot-reload mode not covered |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
 | M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Not implemented — abandoned on 8 October 2026 in favour of generated Caddy/nginx configuration; kept in the not-started count |
-| M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 Unpublished foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
-| M41 | Privacy controls and proportional age assurance | 🟡 Unpublished foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
+| M40 | `rullst-labs` contracts with a bring-your-own runner | 🟡 v13 prerelease foundation — trusted job/lease/grading contracts and a documented runner contract; the `rullst-labs-runner` candidate was removed from 13.0, so execution is application-owned; full offensive CTF arenas require external isolated infrastructure |
+| M41 | Privacy controls and proportional age assurance | 🟡 v13 prerelease foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
 The labels match the root roadmap inventory: **5 implemented, 28 partial, and
 7 not started** inside the 40-milestone framework programme. M31 is excluded

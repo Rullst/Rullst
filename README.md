@@ -247,13 +247,14 @@ crate is labelled Core, Extension or Experimental; see the
 | [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/main/rullst-orm-macros) | Typed ORM code generation | Core |
 | [cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst) | Project scaffolding, development and upgrade CLI | Core |
 
-The v13 workspace on `main` also contains unpublished candidates, all in the
+The v13 workspace on `main` also contains four new packages, all in the
 Experimental tier:
 [rullst-privacy](https://github.com/Rullst/Rullst/tree/main/rullst-privacy),
 [rullst-supervision](https://github.com/Rullst/Rullst/tree/main/rullst-supervision),
 [rullst-media](https://github.com/Rullst/Rullst/tree/main/rullst-media) and
 [rullst-labs](https://github.com/Rullst/Rullst/tree/main/rullst-labs) are in
-the v13 release order.
+the v13 release order and were first published in the 13.0.0-alpha.1
+prerelease.
 
 **Tiers (v13):** *Core* packages are needed by every application. *Extensions*
 are optional and supported. *Experimental* packages are optional, may change
@@ -382,6 +383,8 @@ migrate production data. [Assisted upgrade tutorial](https://rullst.github.io/Ru
 This `main` branch is where **v13** is being built (`13.0.0-alpha.1`). The
 commands above install the stable **v12** line, maintained on the
 [`v12`](https://github.com/Rullst/Rullst/tree/v12) branch; v5 is no longer maintained.
+The first v13 prerelease, `13.0.0-alpha.1`, is on crates.io; `cargo add rullst`
+still selects 12.3.0, so opt in explicitly with `rullst = "13.0.0-alpha.1"`.
 
 In development for v13: email login and scoped API tokens, active-session
 management with remote logout, private S3/R2 storage with resumable uploads,

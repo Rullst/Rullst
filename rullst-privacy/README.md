@@ -1,9 +1,9 @@
 # rullst-privacy
 
-Unpublished v13 release candidate for proportional age assurance and optional
-consent. The source package joins the v13 distribution inventory, subject to
-package validation, initial registration and publication configuration. It is
-not part of v12 or the default `rullst` dependency graph.
+v13 release candidate for proportional age assurance and optional consent,
+first published in the 13.0.0-alpha.1 prerelease. The package is in the v13
+distribution inventory. It is not part of v12 or the default `rullst`
+dependency graph.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
 the API may change between 13.x releases and not every real-world scenario is
@@ -34,7 +34,7 @@ The standalone package remains independent of Core and the umbrella.
 ## Optional-processing consent
 
 The v13 CLI's explicit
-[`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
+[`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeprivacy-v13-prerelease-preview)
 composes these controls with the recognized SaaS authentication and a
 server-owned tenant fixed at generation by the required `--tenant-ref`. It
 supplies preferences, an optional personalized greeting,
@@ -338,7 +338,7 @@ keep tokens out of URLs and logs. A changed policy or session invalidates the
 old challenge. No external age provider is required for this transport.
 
 The v13 CLI preview supplies an optional
-[`make:age-gate` SaaS consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
+[`make:age-gate` SaaS consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeage-gate-v13-prerelease-preview).
 It mounts a declaration before the existing authenticated dashboard rendering,
 with explicit server policy, CSRF and durable one-use consumption in the SQLite
 or PostgreSQL replay store selected by the required `--replay-store`. The

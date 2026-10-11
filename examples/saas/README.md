@@ -5,7 +5,7 @@ checkout. It demonstrates registration, login and an authenticated notes API
 with explicit organization membership and resource ownership. The same source
 is used by the `cli-saas-journey` CI diagnostic.
 
-This is a development example for the unpublished v13 candidate. It is separate
+This is a development example for the v13 source (`13.0.0-alpha.1` prerelease). It is separate
 from the [blog showcase](../blog/README.md) and from the independently maintained
 [deployed SaaS](https://github.com/Rullst/examples/tree/main/blueprints/saas).
 Its provider credentials are empty and its data is disposable.

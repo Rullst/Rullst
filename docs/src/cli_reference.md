@@ -4,7 +4,7 @@ The Command Line Interface (`cargo-rullst`) scaffolds projects, invokes build
 tools, and provides bounded static-analysis and deployment helpers.
 
 The CLI's `--help` output is authoritative for the installed version. This page
-documents the principal commands of the unreleased version 13 CLI and their
+documents the principal commands of the version 13 prerelease CLI and their
 security boundaries.
 
 `cargo-rullst` is a Core package. A few generators depend on outside toolchains
@@ -1027,7 +1027,9 @@ responsible for calculating the due state, scheduling delivery, enforcing its
 disclosed billing policy, and reconciling payment. The generated build path
 runs the mandatory pre-flight and rejects dangerous links.
 
-### `cargo rullst make:age-gate` (unpublished v13 preview)
+<a id="cargo-rullst-makeage-gate-unpublished-v13-preview"></a>
+
+### `cargo rullst make:age-gate` (v13 prerelease preview)
 
 Adds an explicit first-party declaration before each visit to the recognized
 SaaS starter's `/dashboard`. Generation requires a server-owned policy version,
@@ -1063,7 +1065,9 @@ requires `--tenant-ref`. v13 removed the LMS target together with the complete
 Academy scaffold. The tenant is compiled into the generated configuration; no
 query parameter, header or form field is read to select it.
 
-### `cargo rullst make:privacy` (unpublished v13 preview)
+<a id="cargo-rullst-makeprivacy-unpublished-v13-preview"></a>
+
+### `cargo rullst make:privacy` (v13 prerelease preview)
 
 Adds authenticated preferences at `/privacy`, an optional personalized greeting
 at `/privacy/personalization`, and a private own-account JSON download at

@@ -96,7 +96,7 @@ what your application needs.
 | `rullst-studio` | Extension | Local developer control room. |
 | `rullst-messaging` | Extension | Broker-neutral messaging, durable local state and the [Redis Streams profile](redis-messaging.md). |
 | `rullst-iot` | Experimental | Not validated on physical hardware and has no network transport. See the [module status](crates/iot.md#module-status). |
-| `rullst-privacy` | Experimental | Unpublished v13 package. No live age providers or verified guardianship; see the [privacy roadmap](privacy-age-assurance-roadmap.md). |
+| `rullst-privacy` | Experimental | First published in the 13.0.0-alpha.1 prerelease. No live age providers or verified guardianship; see the [privacy roadmap](privacy-age-assurance-roadmap.md). |
 | `rullst-supervision` | Experimental | The host owns capture, models and reviewer workflow. Read [Responsible use](supervision.md#responsible-use) first. |
 | `rullst-media` | Experimental | Interoperability with real Bunny Stream accounts, transcoding and CDN delivery is unvalidated; the opt-in `s3` adapter (S3, R2, MinIO) is validated against the offline mock only. See the [managed-video candidate](managed-video.md). |
 | `rullst-labs` | Experimental | In the 13.0 release inventory as `13.0.0-alpha.1`. Contracts only; it never executes learner code. Bring your own runner; see the [runner contract](labs-runner-contract.md). |
@@ -106,7 +106,7 @@ what your application needs.
 `cargo-rullst` is a Core package, and commands without a label here have the
 CLI's Core tier, within the boundaries described for each command in the
 [CLI reference](cli_reference.md). A command that the reference marks as a v13
-preview or candidate is unreleased. A generator that adds an Extension or
+preview or candidate is not yet in a stable release. A generator that adds an Extension or
 Experimental crate to your application cannot promise more than that crate. For
 example, `make:privacy` and `make:age-gate` generate consumers of the
 experimental `rullst-privacy`.

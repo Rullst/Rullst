@@ -141,8 +141,8 @@ refine this theme-level assessment without changing its counts. Their
 governs future scope reductions and extractions.
 
 The source already contains at least a bounded implementation in each theme
-below. “Existing” includes unpublished v13 code and does not imply a complete
-milestone or an available crates.io release. The primary repeated costs are
+below. “Existing” includes v13 prerelease code and does not imply a complete
+milestone or a stable crates.io release. The primary repeated costs are
 provider drift, supported combinations, security review and recovery evidence,
 not merely writing the first implementation.
 

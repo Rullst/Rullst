@@ -1,6 +1,6 @@
 # Resumable private multipart uploads
 
-The unpublished v13 candidate adds Core/facade `storage-multipart`. It extends
+The v13 prerelease (13.0.0-alpha.1) adds Core/facade `storage-multipart`. It extends
 the existing private S3/R2 adapter with server-mediated parts and recovery after
 an interrupted connection or process restart. It does not change default features.
 The application sends bounded parts through its authenticated server; provider

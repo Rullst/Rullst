@@ -24,7 +24,7 @@ The crate has an **implemented, bounded broker foundation**:
   immutable profile selection and bounded primary/prior-key rotation;
 - an opt-in static relational ORM outbox relay with exact stream/topic binding
   and publish-before-ACK crash/replay evidence;
-- unpublished v13 candidates: `schedules-postgres`
+- v13 prerelease candidates: `schedules-postgres`
   [recurring publications](../recurring-publications.md) and `webhooks`
   [outgoing webhooks](../outgoing-webhooks.md).
 
@@ -32,7 +32,7 @@ The `InMemoryBroker` is suitable for offline tests, deterministic development,
 and explicitly process-local workloads. `SqliteBroker` uses a fixed schema and
 serialized SQLite write transactions; restart, two-instance contention,
 configuration drift and corrupt-row repair are tested. It is a durable local
-adapter, not a remote transport. The unpublished optional
+adapter, not a remote transport. The optional v13 prerelease
 [Redis Streams candidate](../redis-messaging.md) provides a standalone transport
 with Rullst-owned group and fenced-lease indexes; hosted source/package admission
 passed in PR #236 and final release admission remains separate. Kafka, RabbitMQ,

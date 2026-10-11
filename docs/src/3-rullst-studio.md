@@ -136,7 +136,7 @@ separate WebSocket telemetry transport or zero runtime overhead.
   its processing/failed/completed counts describe only that window, while the
   pending count and the purge actions cover the whole queue. Studio previews at
   most 256 payload and 512 error characters. It reads records through
-  `Queue::list_job_previews` (unreleased v13), which cuts each payload and error
+  `Queue::list_job_previews` (v13 prerelease), which cuts each payload and error
   to 2 KiB: the SQLite and Redis drivers cut them inside the store, while other
   drivers inherit a default that still loads complete records first. SQLite
   deletes successful rows by default; an application can explicitly select

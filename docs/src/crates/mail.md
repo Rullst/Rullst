@@ -1,8 +1,8 @@
 # Rullst Mail 📬
 
 > [!IMPORTANT]
-> The dependency example targets `12.1.0`. This page describes the unreleased
-> v13 `main` source: items marked (v13) and other recent fixes are not in the
+> The dependency example targets `12.1.0`. This page describes the v13
+> prerelease `main` source: items marked (v13) and other recent fixes are not in the
 > published 12.1.x crates. Check the [release record](../v12.md) for
 > publication status; use a path dependency only for checkout-local review.
 

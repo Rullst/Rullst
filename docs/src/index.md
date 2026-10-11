@@ -5,8 +5,9 @@ Tokio, Axum, Tower, and SQLx for full-stack applications and the product
 workflows around them. Version 12 is the current stable release line; use the
 capability and release documents to distinguish implemented behavior from
 roadmap work and application-specific responsibilities. This book is built
-from the `main` branch, where the unreleased v13 (`13.0.0-alpha.1`) is in
-development; the **v13 Preview** chapters describe that unreleased work.
+from the `main` branch, where v13 is in development; its first prerelease,
+`13.0.0-alpha.1`, is published, and the **v13 Preview** chapters describe that
+prerelease work.
 
 **Welcome to the Rullst documentation.** Build a small application, understand
 the code behind it, then explore the tools that fit your next idea.

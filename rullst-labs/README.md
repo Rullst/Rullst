@@ -1,7 +1,7 @@
 # Rullst Labs
 
-Unpublished v13 implementation candidate for trusted exercise orchestration and
-exact grading. **Bring your own runner:** this crate never compiles, interprets
+v13 implementation candidate for trusted exercise orchestration and exact
+grading, first published in the 13.0.0-alpha.1 prerelease. **Bring your own runner:** this crate never compiles, interprets
 or spawns learner code. An application-owned, separately deployed and isolated
 runner claims leased jobs and returns signed receipts through the documented
 [controller contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md).
@@ -9,7 +9,7 @@ runner claims leased jobs and returns signed receipts through the documented
 The experimental `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi
 executor) passed source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228)
 but was removed from the workspace for 13.0; its source remains in git history.
-Registry publication and final release acceptance of this crate remain outstanding. Neither the
+Final release acceptance of this crate remains outstanding. Neither the
 candidate name nor a signed receipt establishes production readiness.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):

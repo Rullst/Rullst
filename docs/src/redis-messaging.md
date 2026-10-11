@@ -14,8 +14,8 @@ owner's account or production data.
 rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["messaging-redis"] }
 ```
 
-This version identifies the unpublished candidate. Use reviewed source or its
-extracted packages until release admission completes.
+This version is the 13.0.0-alpha.1 prerelease, which `cargo add rullst` does not
+select; name it explicitly. Final release admission remains separate.
 
 ```rust,no_run
 # #[cfg(feature = "messaging-redis")]

@@ -95,7 +95,7 @@ Limits of this measurement:
 
 ## Carbon-aware deferrable jobs (v13)
 
-Opt-in and unpublished. A queue job or scheduled task can be marked
+Opt-in; first published in the 13.0.0-alpha.1 prerelease. A queue job or scheduled task can be marked
 deferrable with a deadline and daily time windows; see
 [deferrable jobs and time windows](crates/core.md#deferrable-jobs-and-time-windows).
 The mechanism:

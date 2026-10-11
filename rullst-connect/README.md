@@ -127,7 +127,7 @@ adapter treats its argument as an ID token and checks signature, issuer,
 audience and expiry but no nonce, so a captured Apple ID token for your client
 can be replayed until it expires.
 
-The unpublished v13 development source adds that audience-bound entry point for
+The v13 prerelease (13.0.0-alpha.1) adds that audience-bound entry point for
 Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
 the signature through the provider's rotating JWKS and requires the exact
 issuer, `aud` equal to your `client_id` (and, when present, an `azp` equal to
@@ -296,7 +296,7 @@ proxy constructors already apply the bounded retry policy.
 
 `OidcProvider::discover` fetches its metadata before `with_http_client` can
 apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
-(unpublished v13 API); discovery, JWKS and token calls then share it.
+(v13 prerelease API); discovery, JWKS and token calls then share it.
 
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
 credentials, path, query, or fragment. Authenticated non-loopback proxies must
@@ -331,7 +331,7 @@ login with a 12.x release. Use the manual state/PKCE/nonce flow with a
 dedicated `SameSite=None; Secure; HttpOnly` challenge cookie, as described in the
 [server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html#sign-in-with-apple-form-post-callback).
 
-The unpublished v13 development source adds `AuthSessionForm`, which consumes
+The v13 prerelease (13.0.0-alpha.1) adds `AuthSessionForm`, which consumes
 the `begin_oidc_session` challenge from the form POST body (at most 16 KiB).
 The session cookie that holds that challenge must still be
 `SameSite=None; Secure`, so give the Apple routes their own session layer.
@@ -424,7 +424,7 @@ otherwise rejected (for example it omits `expires_in`), the rotated refresh
 token is still kept and the generation advances, so persist the snapshot after
 that failure too; the next call refreshes with the rotation. If the grant
 succeeds but the follow-up profile or ID-token step fails, adapters return
-`ConnectError::RefreshIncomplete` (unpublished v13 API) with the issued tokens
+`ConnectError::RefreshIncomplete` (v13 prerelease API) with the issued tokens
 (`IssuedTokens`), and the session keeps the rotation the same way.
 
 Do not cancel `access_token()` while it refreshes. The provider call runs

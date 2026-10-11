@@ -13,7 +13,7 @@
 
 > [!IMPORTANT]
 > The dependency examples target `12.1.0`, the published stable line; the rest
-> of this page describes the unreleased v13 source (see the
+> of this page describes the v13 prerelease source (see the
 > [v13 migration guide](../migration-v13.md)). Check the
 > [release record](../v12.md) for publication status; use a path dependency
 > only for checkout-local review.

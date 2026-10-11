@@ -38,8 +38,9 @@ In the sample application: `POST /posts`, `/posts/repository`, `/checkout`,
   hardening, and volumetric DDoS.
 - The deliberate mock credentials and offline fixtures of `examples/`
   (see `examples/blog/README.md`).
-- Unpublished v13 candidates (`rullst-privacy`, `rullst-labs`, `rullst-media`,
-  `rullst-supervision`) unless the engagement names them.
+- The v13 candidates first published in the 13.0.0-alpha.1 prerelease
+  (`rullst-privacy`, `rullst-labs`, `rullst-media`, `rullst-supervision`)
+  unless the engagement names them.
 
 ## Threat models
 

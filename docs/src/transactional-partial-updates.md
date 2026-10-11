@@ -1,6 +1,6 @@
 # Transactional partial updates
 
-The unpublished v13 candidate makes a SQLx model’s typed partial change participate in the
+The v13 prerelease (13.0.0-alpha.1) makes a SQLx model’s typed partial change participate in the
 model's normal save lifecycle. A lesson editor can submit a new title while
 preserving a note that another operation has already changed, applying its
 policy, recording the audit and refreshing projections after commit.
