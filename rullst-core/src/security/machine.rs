@@ -1,4 +1,5 @@
-//! Exact machine routes authenticated before their cookie-CSRF exemption.
+//! Machine routes authenticated before their cookie-CSRF exemption. A route is
+//! an exact path whose segments after the first may be `{name}` placeholders.
 
 use axum::{
     extract::Request,
@@ -24,7 +25,9 @@ pub enum MachineAuthentication {
 #[non_exhaustive]
 pub enum MachineEndpointError {
     /// Unsupported method, wildcard or noncanonical route.
-    #[error("machine endpoint requires an exact canonical path and a write method")]
+    #[error(
+        "machine endpoint requires a canonical path (literal first segment, optional {{name}} segments) and a write method"
+    )]
     InvalidRoute,
     /// Missing, weak or structurally unsafe credential.
     #[error(
@@ -32,7 +35,7 @@ pub enum MachineEndpointError {
     )]
     InvalidCredential,
     /// Ambiguous or oversized endpoint registry.
-    #[error("machine endpoint policy exceeds 32 routes or contains a duplicate")]
+    #[error("machine endpoint policy exceeds 32 routes or contains overlapping routes")]
     InvalidPolicy,
     /// Request proof was not accepted by the verifier.
     #[error("machine request authentication failed")]
@@ -68,7 +71,10 @@ enum Credential {
     Verified(Arc<dyn MachineRequestVerifier>),
 }
 
-/// One exact method/path pair and its mandatory authentication mechanism.
+/// One method/path pair and its mandatory authentication mechanism. Each path
+/// segment after the first may be a `{name}` placeholder, as in Rullst
+/// routes, matching one non-empty segment other than `.` or `..`:
+/// `/api/posts/{id}` covers `PUT /api/posts/7`.
 pub struct MachineEndpoint {
     method: Method,
     path: String,
@@ -165,10 +171,7 @@ impl MachineEndpoint {
         ) || !path.starts_with('/')
             || path.len() > 512
             || path.contains("//")
-            || path.split('/').any(|part| matches!(part, "." | ".."))
-            || !path
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'/' | b'-' | b'_' | b'.'))
+            || !canonical_segments(&path)
         {
             return Err(MachineEndpointError::InvalidRoute);
         }
@@ -179,6 +182,50 @@ impl MachineEndpoint {
             credential,
         })
     }
+}
+
+/// A literal segment, or a `{name}` placeholder anywhere but the first.
+fn canonical_segments(path: &str) -> bool {
+    path.split('/').skip(1).enumerate().all(|(index, part)| {
+        if index > 0 && placeholder(part) {
+            return true;
+        }
+        !matches!(part, "." | "..")
+            && part
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+    })
+}
+
+fn placeholder(part: &str) -> bool {
+    part.strip_prefix('{')
+        .and_then(|rest| rest.strip_suffix('}'))
+        .is_some_and(|name| {
+            !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+        })
+}
+
+/// Whether the request path `actual` is an instance of the route `pattern`.
+fn path_matches(pattern: &str, actual: &str) -> bool {
+    let mut actual = actual.split('/');
+    pattern.split('/').all(|expected| {
+        actual.next().is_some_and(|segment| {
+            if placeholder(expected) {
+                !segment.is_empty() && !matches!(segment, "." | "..")
+            } else {
+                expected == segment
+            }
+        })
+    }) && actual.next().is_none()
+}
+
+/// Whether some request path matches both routes.
+fn overlaps(first: &str, second: &str) -> bool {
+    first.split('/').count() == second.split('/').count()
+        && first
+            .split('/')
+            .zip(second.split('/'))
+            .all(|(a, b)| a == b || placeholder(a) || placeholder(b))
 }
 
 fn digest(value: &[u8]) -> [u8; 32] {
@@ -209,13 +256,14 @@ struct MachineAuthenticated {
 }
 
 impl MachineEndpointPolicy {
-    /// Rejects duplicate method/path pairs and registries exceeding 32 entries.
+    /// Rejects registries exceeding 32 entries and two routes with the same
+    /// method that one request path could match, such as `/a/{id}` and `/a/b`.
     pub fn new(endpoints: Vec<MachineEndpoint>) -> Result<Self, MachineEndpointError> {
         if endpoints.len() > 32
             || endpoints.iter().enumerate().any(|(i, endpoint)| {
-                endpoints[..i]
-                    .iter()
-                    .any(|prior| prior.method == endpoint.method && prior.path == endpoint.path)
+                endpoints[..i].iter().any(|prior| {
+                    prior.method == endpoint.method && overlaps(&prior.path, &endpoint.path)
+                })
             })
         {
             return Err(MachineEndpointError::InvalidPolicy);
@@ -226,7 +274,7 @@ impl MachineEndpointPolicy {
     pub(crate) fn matches(&self, request: &Request) -> bool {
         self.0
             .iter()
-            .any(|e| e.method == request.method() && e.path == request.uri().path())
+            .any(|e| e.method == request.method() && path_matches(&e.path, request.uri().path()))
     }
 
     pub(crate) async fn authenticate(&self, mut request: Request) -> Result<Request, StatusCode> {
@@ -244,7 +292,7 @@ impl MachineEndpointPolicy {
         let endpoint = self
             .0
             .iter()
-            .find(|e| e.method == request.method() && e.path == request.uri().path())
+            .find(|e| e.method == request.method() && path_matches(&e.path, request.uri().path()))
             .ok_or(StatusCode::UNAUTHORIZED)?;
         // A machine exception must never become an ambient-cookie browser path.
         if request.headers().contains_key(header::COOKIE)
@@ -318,3 +366,7 @@ pub(crate) async fn authenticate_machine_request(
     }
     next.run(request).await
 }
+
+#[cfg(test)]
+#[path = "machine_tests.rs"]
+mod tests;

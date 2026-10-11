@@ -2,7 +2,7 @@ use axum::{
     Router,
     body::Body,
     http::{Method, Request, StatusCode},
-    routing::post,
+    routing::{post, put},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rullst_core::{
@@ -228,6 +228,163 @@ fn policy_rejects_wildcards_duplicates_and_weak_credentials() {
     assert_eq!(
         format!("{:?}", policy()),
         "MachineEndpointPolicy { routes: 1 }"
+    );
+}
+
+fn parameterized_app() -> Router {
+    let policy = MachineEndpointPolicy::new(vec![
+        MachineEndpoint::bearer(Method::PUT, "/api/posts/{id}", TOKEN).unwrap(),
+        MachineEndpoint::bearer(Method::DELETE, "/api/posts/{id}", TOKEN).unwrap(),
+    ])
+    .unwrap();
+    let app = Router::new()
+        .route(
+            "/api/posts/{id}",
+            put(|| async { StatusCode::NO_CONTENT }).delete(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route(
+            "/api/posts/{id}/publish",
+            put(|| async { StatusCode::NO_CONTENT }),
+        );
+    apply_security_baseline_with_machine_endpoints(
+        app,
+        SecurityConfig::default(),
+        Environment::Production,
+        policy,
+    )
+    .unwrap()
+}
+
+#[tokio::test]
+async fn placeholder_route_authenticates_one_segment_only() {
+    for (method, path, token, cookie, expected) in [
+        (
+            "PUT",
+            "/api/posts/7",
+            Some(TOKEN),
+            false,
+            StatusCode::NO_CONTENT,
+        ),
+        (
+            "DELETE",
+            "/api/posts/a-b_c",
+            Some(TOKEN),
+            false,
+            StatusCode::NO_CONTENT,
+        ),
+        ("PUT", "/api/posts/7", None, false, StatusCode::UNAUTHORIZED),
+        (
+            "PUT",
+            "/api/posts/7",
+            Some(TOKEN),
+            true,
+            StatusCode::UNAUTHORIZED,
+        ),
+        // Another shape, segment or method is not a machine route: browser CSRF applies.
+        (
+            "PUT",
+            "/api/posts/7/publish",
+            Some(TOKEN),
+            false,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "PUT",
+            "/api/posts/..",
+            Some(TOKEN),
+            false,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "POST",
+            "/api/posts/7",
+            Some(TOKEN),
+            false,
+            StatusCode::FORBIDDEN,
+        ),
+    ] {
+        let mut request = Request::builder().method(method).uri(path);
+        if let Some(token) = token {
+            request = request.header("Authorization", format!("Bearer {token}"));
+        }
+        if cookie {
+            request = request.header("Cookie", "session=anything");
+        }
+        let response = parameterized_app()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected, "{method} {path}");
+    }
+}
+
+#[test]
+fn placeholders_must_be_named_whole_segments_after_a_literal_one() {
+    for path in [
+        "/api/posts/{id}",
+        "/api/{tenant}/posts/{id}",
+        "/api/posts/{post_id}/comments",
+    ] {
+        assert!(
+            MachineEndpoint::bearer(Method::PUT, path, TOKEN).is_ok(),
+            "{path}"
+        );
+    }
+    for path in [
+        "/{id}/posts",
+        "/api/{}",
+        "/api/{*rest}",
+        "/api/{a-b}",
+        "/api/x{id}",
+        "/api/{id",
+        "/api/id}",
+        "/api/{{id}}",
+    ] {
+        assert!(
+            matches!(
+                MachineEndpoint::bearer(Method::PUT, path, TOKEN),
+                Err(MachineEndpointError::InvalidRoute)
+            ),
+            "{path}"
+        );
+    }
+}
+
+#[test]
+fn policy_rejects_routes_one_request_could_match_twice() {
+    let route = |method, path| MachineEndpoint::bearer(method, path, TOKEN).unwrap();
+    for (first, second) in [
+        ("/api/posts/{id}", "/api/posts/{post}"),
+        ("/api/posts/{id}", "/api/posts/latest"),
+        ("/api/{a}/x", "/api/b/{c}"),
+    ] {
+        assert!(
+            matches!(
+                MachineEndpointPolicy::new(vec![
+                    route(Method::PUT, first),
+                    route(Method::PUT, second)
+                ]),
+                Err(MachineEndpointError::InvalidPolicy)
+            ),
+            "{first} / {second}"
+        );
+    }
+    for (first, second) in [
+        ("/api/posts/{id}", "/api/posts/{id}/publish"),
+        ("/api/posts/{id}", "/api/users/{id}"),
+    ] {
+        assert!(
+            MachineEndpointPolicy::new(vec![route(Method::PUT, first), route(Method::PUT, second)])
+                .is_ok(),
+            "{first} / {second}"
+        );
+    }
+    assert!(
+        MachineEndpointPolicy::new(vec![
+            route(Method::PUT, "/api/posts/{id}"),
+            route(Method::DELETE, "/api/posts/{id}"),
+        ])
+        .is_ok()
     );
 }
 
