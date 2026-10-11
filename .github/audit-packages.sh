@@ -60,6 +60,10 @@ for crate in "${crates[@]}"; do
     relative="${entry#"$root"}"
     lower="${relative,,}"
     case "$lower" in
+      src/*.rs)
+        # Rust modules such as `src/nexus/access/credentials.rs` are reviewed
+        # source (content is scanned by TruffleHog), not credential files.
+        ;;
       .env|.env.*|*/.env|*/.env.*|.git|.git/*|*/.git|*/.git/*|credentials|credentials.*|*/credentials|*/credentials.*|secrets|secrets.*|*/secrets|*/secrets.*|id_rsa|*/id_rsa|id_ed25519|*/id_ed25519|*.pem|*.p12|*.pfx|*.key)
         echo "Potential secret material in $archive: $relative"
         exit 1

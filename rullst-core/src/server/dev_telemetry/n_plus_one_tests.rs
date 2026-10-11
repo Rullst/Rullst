@@ -6,7 +6,11 @@ use super::recorder::{RECENT_REPEATED, Recorder};
 use super::request_scope::observe;
 use super::*;
 use crate::query_patterns::{N_PLUS_ONE_THRESHOLD, RepeatedOperation, repeated_operations};
+// Only the debug-build route test sends requests; release-mode test runs
+// (property testing) compile without it.
+#[cfg(debug_assertions)]
 use axum::http::Request as HttpRequest;
+#[cfg(debug_assertions)]
 use tower::ServiceExt;
 use tracing_subscriber::layer::SubscriberExt;
 

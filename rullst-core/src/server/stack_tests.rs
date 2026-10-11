@@ -250,7 +250,9 @@ async fn development_telemetry_is_mounted_only_for_a_supervised_development_proc
         StatusCode::NOT_FOUND
     };
     // Repeated polls bypass the exhausted rate-limit bucket, like the reload poll.
-    for _ in 0..3 {
+    // Release builds never mount the route, so the limiter answers a second poll.
+    let polls = if cfg!(debug_assertions) { 3 } else { 1 };
+    for _ in 0..polls {
         assert_eq!(poll(&development).await.unwrap().status(), expected);
     }
     for app in [&staging, &production] {
