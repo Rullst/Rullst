@@ -74,6 +74,8 @@ jobs:
           python3 .github/test-check-release-admission.py
           python3 .github/test-release-source.py
           python3 .github/test-release-preflight.py
+          python3 .github/test-release-verification-coverage.py
+          python3 .github/test-check-admitted-archives.py
           python3 .github/test-check-fuzz-locks.py
           python3 .github/test-upgrade-package-inventory.py
           python3 .github/test-package-release.py
