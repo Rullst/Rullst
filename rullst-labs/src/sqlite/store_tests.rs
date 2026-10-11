@@ -2,6 +2,10 @@
 
 use super::*;
 use sqlx::{Connection, SqliteConnection};
+use std::sync::{
+    Arc,
+    atomic::{AtomicI64, Ordering},
+};
 
 fn reference(value: &str) -> Reference {
     Reference::new(value).unwrap()
@@ -186,4 +190,100 @@ async fn validation_itself_rejects_a_foreign_binding_or_a_missing_time() {
         untimed.validate().await,
         Err(Error::Configuration)
     ));
+}
+
+/// Returns its time, then advances it by the step (zero during setup).
+#[derive(Clone)]
+struct Stepping(Arc<AtomicI64>, Arc<AtomicI64>);
+impl Clock for Stepping {
+    fn now(&self) -> Result<i64, Error> {
+        Ok(self
+            .0
+            .fetch_add(self.1.load(Ordering::SeqCst), Ordering::SeqCst))
+    }
+}
+
+const T: i64 = 1_800_000_000;
+
+/// A store whose clock advances one second on every read once it is open.
+async fn stepping(directory: &tempfile::TempDir) -> SqliteLabs<Stepping> {
+    let clock = Stepping(Arc::new(AtomicI64::new(T)), Arc::new(AtomicI64::new(0)));
+    let store = SqliteLabs::initialize(
+        directory.path().join("labs.sqlite"),
+        config(10),
+        key(),
+        clock.clone(),
+    )
+    .await
+    .unwrap();
+    clock.1.store(1, Ordering::SeqCst);
+    store
+}
+
+#[tokio::test]
+async fn a_commit_accepts_time_that_advances_within_its_deadline() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = stepping(&directory).await;
+    // Begin reads T and T + 1; the commit reads T + 2 and T + 3.
+    let tx = super::super::transaction::Operation::begin(&store, None)
+        .await
+        .unwrap();
+    assert_eq!(tx.now, T + 1);
+    tx.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn a_narrowed_deadline_bounds_the_commit_and_its_confirmation() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = stepping(&directory).await;
+    let mut tx = super::super::transaction::Operation::begin(&store, None)
+        .await
+        .unwrap();
+    assert!(matches!(tx.narrow_deadline(T + 1), Err(Error::Expired)));
+    tx.narrow_deadline(T + 2).unwrap();
+    // The commit reads T + 2, which reaches the deadline.
+    assert!(matches!(tx.commit().await, Err(Error::Expired)));
+    // Begin reads T + 3 and T + 4; the commit reads T + 5 before the
+    // deadline but confirms at T + 6, which reaches it.
+    let mut tx = super::super::transaction::Operation::begin(&store, None)
+        .await
+        .unwrap();
+    tx.narrow_deadline(T + 6).unwrap();
+    assert!(matches!(tx.commit().await, Err(Error::Uncertain)));
+}
+
+#[tokio::test]
+async fn metadata_changed_while_open_stops_every_operation() {
+    let changes: [&[&'static str]; 4] = [
+        &["UPDATE labs_meta SET configuration = 'changed'"],
+        &[
+            "PRAGMA ignore_check_constraints = ON",
+            "UPDATE labs_meta SET last_now = 0",
+        ],
+        // One more job or exercise row than the configuration allows.
+        &[
+            "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 11) \
+             INSERT INTO labs_jobs SELECT 't', 'c', 'job' || i, 'l', 'Queued', 1, 0, 0, x'00', NULL FROM n",
+        ],
+        &[
+            "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 5) \
+             INSERT INTO labs_exercises SELECT 't', 'c', 'e' || i, 'v1', 'd', 0, x'00' FROM n",
+        ],
+    ];
+    for change in changes {
+        let directory = tempfile::tempdir().unwrap();
+        let path = initialized(&directory).await;
+        let store = SqliteLabs::open(&path, config(10), key(), SystemClock)
+            .await
+            .unwrap();
+        tamper(&path, change).await;
+        assert!(
+            matches!(
+                super::super::transaction::Operation::begin(&store, None).await,
+                Err(Error::Configuration)
+            ),
+            "{change:?}"
+        );
+        store.close().await;
+    }
 }

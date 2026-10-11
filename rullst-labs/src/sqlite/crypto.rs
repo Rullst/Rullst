@@ -122,4 +122,60 @@ mod tests {
         );
         assert!(ContentKey::new([0; 32]).is_err());
     }
+
+    /// Seals with the AEAD directly, bypassing the length checks under test.
+    fn raw_seal(key: &ContentKey, aad: &[u8], plaintext: &[u8]) -> Vec<u8> {
+        let mut body = plaintext.to_vec();
+        key.key()
+            .unwrap()
+            .seal_in_place_append_tag(
+                aead::Nonce::assume_unique_for_key([1; 12]),
+                aead::Aad::from(aad),
+                &mut body,
+            )
+            .unwrap();
+        [&[1; 12][..], &body].concat()
+    }
+
+    #[test]
+    fn seal_accepts_exactly_the_aad_and_plaintext_limits() {
+        let key = ContentKey::new([7; 32]).unwrap();
+        assert!(key.seal(&[b'a'; 2048], &vec![0; MAX_PLAINTEXT]).is_ok());
+        for (aad, plaintext) in [
+            (&[][..], 1),
+            (&[b'a'; 2049][..], 1),
+            (&b"aad"[..], MAX_PLAINTEXT + 1),
+        ] {
+            assert!(matches!(
+                key.seal(aad, &vec![0; plaintext]),
+                Err(LabError::Capacity)
+            ));
+        }
+        assert_eq!(format!("{key:?}"), "ContentKey([REDACTED])");
+    }
+
+    #[test]
+    fn open_accepts_exactly_the_sealed_limits() {
+        let key = ContentKey::new([7; 32]).unwrap();
+        let empty = key.seal(b"aad", b"").unwrap();
+        assert_eq!(empty.len(), 28);
+        assert!(key.open(b"aad", &empty).unwrap().is_empty());
+        let largest = key.seal(b"aad", &vec![0; MAX_PLAINTEXT]).unwrap();
+        assert_eq!(key.open(b"aad", &largest).unwrap().len(), MAX_PLAINTEXT);
+        let long_aad = [b'a'; 2048];
+        let sealed = key.seal(&long_aad, b"x").unwrap();
+        assert_eq!(&**key.open(&long_aad, &sealed).unwrap(), b"x");
+        // Authentic ciphertexts outside the accepted bounds still fail closed.
+        for (aad, sealed) in [
+            (&[][..], raw_seal(&key, b"", b"x")),
+            (&[b'a'; 2049][..], raw_seal(&key, &[b'a'; 2049], b"x")),
+            (
+                &b"aad"[..],
+                raw_seal(&key, b"aad", &vec![0; MAX_PLAINTEXT + 1]),
+            ),
+            (&b"aad"[..], vec![0; 5]),
+        ] {
+            assert!(matches!(key.open(aad, &sealed), Err(LabError::Integrity)));
+        }
+    }
 }

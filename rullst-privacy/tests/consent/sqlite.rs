@@ -73,7 +73,10 @@ async fn initialization_is_explicit_and_normal_open_never_repairs_state() {
     assert!(SqliteConsentStore::open(&path, 8).await.is_err());
     assert!(!path.exists());
     let store = SqliteConsentStore::initialize(&path, 8).await.unwrap();
-    assert!(SqliteConsentStore::initialize(&path, 8).await.is_err());
+    assert_eq!(
+        SqliteConsentStore::initialize(&path, 8).await.err(),
+        Some(ConsentError::StoreConfiguration)
+    );
     assert!(SqliteConsentStore::open(&path, 7).await.is_err());
     store.close().await;
     let raw =
@@ -370,5 +373,29 @@ async fn bootstrap_sets_private_permissions_and_refuses_symlinks() {
     assert!(SqliteConsentStore::initialize(&link, 8).await.is_err());
     assert!(SqliteConsentStore::open(temp.path(), 8).await.is_err());
     assert!(SqliteConsentStore::initialize(":memory:", 8).await.is_err());
+    store.close().await;
+}
+
+#[tokio::test]
+async fn declined_choices_round_trip_through_storage() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("choices.db");
+    let store = SqliteConsentStore::initialize(&path, 8).await.unwrap();
+    let gate = ConsentGate::new(store.clone()).unwrap();
+    gate.choose_with_clock(
+        &subject(),
+        &purpose(),
+        &submission(0, ConsentChoice::Declined),
+        0,
+        &Clock::at(1000),
+    )
+    .await
+    .unwrap();
+    let current = gate
+        .current_with_clock(&subject(), &purpose(), &Clock::at(1001))
+        .await
+        .unwrap();
+    assert_eq!(current.choice(), ConsentChoice::Declined);
+    assert_eq!(current.revision(), 1);
     store.close().await;
 }

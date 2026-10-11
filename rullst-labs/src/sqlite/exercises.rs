@@ -159,3 +159,7 @@ pub(super) async fn bounded<T>(work: impl Future<Output = Result<T, Error>>) -> 
         .await
         .map_err(|_| Error::Uncertain)?
 }
+
+#[cfg(test)]
+#[path = "exercises_tests.rs"]
+mod tests;

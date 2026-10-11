@@ -149,3 +149,49 @@ fn truncated_and_byte_mutated_frames_never_bypass_decoded_invariants() {
         }
     }
 }
+
+#[test]
+fn padded_frames_respect_the_exact_transport_limits() {
+    let original = input(1);
+    assert_eq!(original.inputs(), &[[i64::MIN, -1], [-1, 0]]);
+    let debug = format!("{original:?}");
+    assert!(debug.starts_with("WorkerInput { binding: "), "{debug}");
+    assert!(debug.ends_with("case_count: 2, .. }"), "{debug}");
+    let mut bytes = serde_json::to_vec(&original).unwrap();
+    bytes.resize(131_072, b' ');
+    assert!(WorkerInput::from_bytes(&bytes).is_ok());
+    bytes.push(b' ');
+    assert_eq!(
+        WorkerInput::from_bytes(&bytes).err(),
+        Some(LabError::Capacity)
+    );
+
+    let output = WorkerOutput {
+        binding: original.binding().clone(),
+        outcome: WorkerOutcome::Executed {
+            artifact: ContentHash::of(b"artifact"),
+            cases: vec![CaseOutput::Value(1)],
+        },
+    };
+    let mut bytes = serde_json::to_vec(&output).unwrap();
+    bytes.resize(20_480, b' ');
+    assert_eq!(WorkerOutput::from_bytes(&bytes), Ok(output));
+    bytes.push(b' ');
+    assert_eq!(WorkerOutput::from_bytes(&bytes), Err(LabError::Capacity));
+}
+
+#[test]
+fn executed_outputs_need_one_to_max_cases() {
+    let binding = input(0).binding().clone();
+    let executed = |count: usize| WorkerOutput {
+        binding: binding.clone(),
+        outcome: WorkerOutcome::Executed {
+            artifact: ContentHash::of(b"artifact"),
+            cases: vec![CaseOutput::Value(0); count],
+        },
+    };
+    assert_eq!(executed(0).validate(), Err(LabError::Protocol));
+    assert_eq!(executed(1).validate(), Ok(()));
+    assert_eq!(executed(MAX_CASES).validate(), Ok(()));
+    assert_eq!(executed(MAX_CASES + 1).validate(), Err(LabError::Protocol));
+}

@@ -85,4 +85,18 @@ mod tests {
         let gov2 = PowerGovernor::new(3700, 400);
         assert_eq!(gov2.harvester_state(), HarvesterState::Critical);
     }
+
+    #[test]
+    fn harvester_state_boundaries() {
+        for (solar_mv, state) in [
+            (500, HarvesterState::Critical),
+            (501, HarvesterState::Low),
+            (2000, HarvesterState::Low),
+            (2001, HarvesterState::Charging),
+            (3800, HarvesterState::Charging),
+            (3801, HarvesterState::Full),
+        ] {
+            assert_eq!(PowerGovernor::new(3700, solar_mv).harvester_state(), state);
+        }
+    }
 }

@@ -153,3 +153,59 @@ impl AgeChallenge {
         Ok(())
     }
 }
+
+#[cfg(test)]
+impl AgeChallenge {
+    /// Copy with an unvalidated subject reference, so tests can reach encoding
+    /// size limits that valid references cannot.
+    pub(crate) fn with_unchecked_subject(&self, subject: String) -> Self {
+        let mut wire = self.0.clone();
+        wire.binding.subject = subject;
+        Self(wire)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+    use crate::age_assurance::RiskLevel;
+
+    const REFERENCES: [&str; 5] = ["subject", "tenant", "session", "audience", "action"];
+
+    pub(crate) fn policy() -> AgePolicy {
+        AgePolicy::new("policy-v1", RiskLevel::Low, 18).unwrap()
+    }
+
+    pub(crate) fn binding() -> SubjectBinding {
+        let [subject, tenant, session, audience, action] = REFERENCES;
+        SubjectBinding::new(subject, tenant, session, audience, action).unwrap()
+    }
+
+    pub(crate) fn challenge(now: i64) -> AgeChallenge {
+        AgeChallenge::issue(&policy(), binding(), AgeMethod::SelfDeclaration, now).unwrap()
+    }
+
+    #[test]
+    fn every_binding_reference_is_validated() {
+        for invalid in 0..REFERENCES.len() {
+            let mut references = REFERENCES.map(String::from);
+            references[invalid] = "not valid".into();
+            let [subject, tenant, session, audience, action] = references;
+            assert_eq!(
+                SubjectBinding::new(subject, tenant, session, audience, action),
+                Err(AgeError::InvalidConfiguration)
+            );
+        }
+    }
+
+    #[test]
+    fn debug_output_redacts_bindings_and_challenges() {
+        assert_eq!(format!("{:?}", binding()), "SubjectBinding([redacted])");
+        assert_eq!(format!("{:?}", challenge(1000)), "AgeChallenge([redacted])");
+    }
+
+    #[test]
+    fn a_challenge_issued_at_the_epoch_is_valid() {
+        assert_eq!(challenge(0).validate(&policy(), &binding(), 0), Ok(()));
+    }
+}

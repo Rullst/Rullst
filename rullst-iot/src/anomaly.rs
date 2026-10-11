@@ -78,5 +78,24 @@ mod tests {
             invalid_baseline.evaluate(25.0),
             AnomalyState::CriticalAnomaly
         );
+        let unbounded_tolerance = AnomalyDetector::new(25.0, f64::INFINITY);
+        assert_eq!(
+            unbounded_tolerance.evaluate(25.0),
+            AnomalyState::CriticalAnomaly
+        );
+    }
+
+    #[test]
+    fn thresholds_are_inclusive_at_one_and_two_tolerances() {
+        let detector = AnomalyDetector::new(25.0, 5.0);
+        assert_eq!(detector.evaluate(30.0), AnomalyState::Normal);
+        assert_eq!(detector.evaluate(33.0), AnomalyState::Warning);
+        assert_eq!(detector.evaluate(35.0), AnomalyState::Warning);
+        assert_eq!(detector.evaluate(15.0), AnomalyState::Warning);
+        assert_eq!(detector.evaluate(35.5), AnomalyState::CriticalAnomaly);
+
+        let exact = AnomalyDetector::new(25.0, 0.0);
+        assert_eq!(exact.evaluate(25.0), AnomalyState::Normal);
+        assert_eq!(exact.evaluate(25.5), AnomalyState::CriticalAnomaly);
     }
 }

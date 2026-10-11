@@ -274,3 +274,80 @@ pub(super) fn valid_expiry(choice: ConsentChoice, now: i64, expiry: i64) -> bool
         expiry == 0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn subject() -> ConsentSubject {
+        ConsentSubject::new("user-1", "school-1").unwrap()
+    }
+
+    fn purpose() -> ConsentPurpose {
+        ConsentPurpose::new("optional-digest", "notice-v1").unwrap()
+    }
+
+    fn update(choice: ConsentChoice, now: i64, valid_until: i64) -> ConsentUpdate {
+        ConsentUpdate {
+            subject: subject(),
+            purpose: purpose(),
+            expected_revision: None,
+            choice,
+            now,
+            valid_until,
+        }
+    }
+
+    #[test]
+    fn scope_rejects_times_before_the_last_change() {
+        let record =
+            ConsentRecord::from_stored(subject(), purpose(), 1, ConsentChoice::Declined, 100, 0)
+                .unwrap();
+        assert_eq!(record.validate_scope(&subject(), &purpose(), 100), Ok(()));
+        assert_eq!(
+            record.validate_scope(&subject(), &purpose(), 99),
+            Err(ConsentError::ClockRollback)
+        );
+        let absent = ConsentRecord::absent(subject(), "optional-digest").unwrap();
+        assert_eq!(absent.validate_scope(&subject(), &purpose(), 0), Ok(()));
+        assert_eq!(
+            absent.validate_scope(&subject(), &purpose(), -1),
+            Err(ConsentError::ClockRollback)
+        );
+    }
+
+    #[test]
+    fn the_last_revision_records_only_a_refusal_or_withdrawal() {
+        let current = ConsentRecord::from_stored(
+            subject(),
+            purpose(),
+            i64::MAX as u64 - 1,
+            ConsentChoice::Declined,
+            100,
+            0,
+        )
+        .unwrap();
+        assert_eq!(
+            update(ConsentChoice::Granted, 100, 200).apply_to(&current),
+            Err(ConsentError::RevisionExhausted)
+        );
+        let withdrawn = update(ConsentChoice::Withdrawn, 100, 0)
+            .apply_to(&current)
+            .unwrap();
+        assert_eq!(withdrawn.revision(), i64::MAX as u64);
+    }
+
+    #[test]
+    fn records_restore_from_the_epoch_and_debug_output_is_redacted() {
+        let record =
+            ConsentRecord::from_stored(subject(), purpose(), 1, ConsentChoice::Declined, 0, 0)
+                .unwrap();
+        assert_eq!(record.purpose_id(), "optional-digest");
+        assert_eq!(format!("{record:?}"), "ConsentRecord([redacted])");
+        assert_eq!(format!("{:?}", subject()), "ConsentSubject([redacted])");
+        assert_eq!(
+            format!("{:?}", update(ConsentChoice::Withdrawn, 0, 0)),
+            "ConsentUpdate([redacted])"
+        );
+    }
+}

@@ -201,3 +201,43 @@ fn legacy_apis_and_every_typed_error_remain_explicit() {
         assert!(!error.to_string().is_empty());
     }
 }
+
+#[test]
+fn only_a_conflict_naming_the_manifest_counter_confirms_an_uncertain_commit() {
+    assert!(reports_committed_counter(
+        RollbackCounterError::Conflict {
+            expected: 1,
+            actual: 3,
+        },
+        3
+    ));
+    assert!(reports_committed_counter(
+        RollbackCounterError::NonMonotonic {
+            current: 3,
+            proposed: 3,
+        },
+        3
+    ));
+    assert!(!reports_committed_counter(
+        RollbackCounterError::Conflict {
+            expected: 1,
+            actual: 2,
+        },
+        3
+    ));
+    assert!(!reports_committed_counter(
+        RollbackCounterError::NonMonotonic {
+            current: 4,
+            proposed: 3,
+        },
+        3
+    ));
+    assert!(!reports_committed_counter(
+        RollbackCounterError::Unavailable,
+        3
+    ));
+    assert!(!reports_committed_counter(
+        RollbackCounterError::CorruptState,
+        3
+    ));
+}

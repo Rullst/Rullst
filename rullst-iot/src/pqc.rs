@@ -72,4 +72,19 @@ mod tests {
             fixture.derive_ciphertext_fixture(b"b")
         );
     }
+
+    #[test]
+    fn simulated_pqc_fixtures_depend_on_seed_and_input() {
+        let fixture = SimulatedPqcFixture::from_seed(b"documented test seed");
+        let other = SimulatedPqcFixture::from_seed(b"another test seed");
+        assert_ne!(fixture.public_fixture(), other.public_fixture());
+        assert_ne!(
+            fixture.derive_output_fixture(b"a"),
+            fixture.derive_output_fixture(b"b")
+        );
+        assert_ne!(
+            fixture.derive_output_fixture(b"a"),
+            other.derive_output_fixture(b"a")
+        );
+    }
 }

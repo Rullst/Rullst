@@ -188,3 +188,88 @@ fn fully_escaped_compiler_diagnostics_fit_the_bounded_transport() {
         );
     }
 }
+
+#[test]
+fn debug_output_names_only_non_secret_fields() {
+    let diagnostic = Diagnostic::new("error[E0308]: mismatched types").unwrap();
+    assert_eq!(diagnostic.as_str(), "error[E0308]: mismatched types");
+    assert_eq!(format!("{diagnostic:?}"), "Diagnostic([redacted])");
+    assert_eq!(
+        format!("{:?}", RustSource::new("fn main() {}").unwrap()),
+        "RustSource([REDACTED])"
+    );
+    let exercise = exercise();
+    let case = format!("{:?}", exercise.grader_cases()[0]);
+    assert!(case.starts_with("GraderCase { id: "), "{case}");
+    assert!(case.ends_with(", .. }"), "{case}");
+    let debug = format!("{exercise:?}");
+    assert!(debug.starts_with("Exercise { scope: "), "{debug}");
+    assert!(debug.ends_with("case_count: 1, .. }"), "{debug}");
+    let submission = Submission::new(
+        reference("job-1"),
+        ExerciseRef::new("sum", "v1").unwrap(),
+        RustSource::new("fn main() {}").unwrap(),
+        60,
+    )
+    .unwrap();
+    let debug = format!("{submission:?}");
+    assert!(debug.starts_with("Submission { id: "), "{debug}");
+    assert!(debug.ends_with(", .. }"), "{debug}");
+    assert_eq!(format!("{:?}", CaseOutput::Value(42)), "Value([redacted])");
+    assert_eq!(
+        format!("{:?}", CaseOutput::Trap(TrapKind::Fuel)),
+        "Trap(Fuel)"
+    );
+}
+
+#[cfg(feature = "receipt-signing")]
+#[test]
+fn receipts_bound_duration_size_and_signature_encoding() {
+    let signer = ReceiptSigner::from_seed(zeroize::Zeroizing::new([23; 32])).unwrap();
+    assert_eq!(format!("{signer:?}"), "ReceiptSigner([redacted])");
+    let output = WorkerOutput {
+        binding: AttemptBinding {
+            request: ContentHash::of(b"request"),
+            profile: ContentHash::of(b"profile"),
+            source: ContentHash::of(b"source"),
+            nonce: reference("nonce"),
+        },
+        outcome: WorkerOutcome::Rejected(ExecutionFailure::Isolation),
+    };
+    let receipt = |seconds: i64| ExecutionReceipt {
+        output: output.clone(),
+        started_at: 1_800_000_000,
+        finished_at: 1_800_000_000 + seconds,
+        observation_digest: ContentHash::of(b"observations"),
+        teardown: Teardown::Confirmed,
+    };
+    assert_eq!(receipt(90).validate(), Ok(()));
+    assert_eq!(receipt(91).validate(), Err(LabError::Protocol));
+
+    let signed = signer.sign(receipt(90)).unwrap();
+    let debug = format!("{signed:?}");
+    assert!(
+        debug.starts_with("SignedReceipt { receipt: ExecutionReceipt {"),
+        "{debug}"
+    );
+    assert!(debug.ends_with(", .. }"), "{debug}");
+    let mut padded = serde_json::to_vec(&signed).unwrap();
+    padded.resize(20_480, b' ');
+    assert_eq!(SignedReceipt::from_bytes(&padded), Ok(signed.clone()));
+    padded.push(b' ');
+    assert_eq!(SignedReceipt::from_bytes(&padded), Err(LabError::Capacity));
+
+    let mut wire = serde_json::to_value(&signed).unwrap();
+    let signature = wire["signature"].as_str().unwrap().to_owned();
+    for changed in [
+        format!("g{}", &signature[1..]),
+        signature[2..].to_owned(),
+        signature.to_uppercase(),
+    ] {
+        wire["signature"] = json!(changed);
+        assert_eq!(
+            SignedReceipt::from_bytes(&serde_json::to_vec(&wire).unwrap()),
+            Err(LabError::Protocol)
+        );
+    }
+}

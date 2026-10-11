@@ -255,6 +255,45 @@ impl ConsentStore for AlwaysBehind {
     }
 }
 
+/// Fails every operation as unavailable and counts the attempts.
+struct Unavailable(AtomicI64);
+impl ConsentStore for Unavailable {
+    fn durability(&self) -> ConsentDurability {
+        ConsentDurability::SharedDurable
+    }
+    async fn read(
+        &self,
+        _: &ConsentSubject,
+        _: &str,
+        _: i64,
+    ) -> Result<ConsentRecord, ConsentError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Err(ConsentError::StoreUnavailable)
+    }
+    async fn update(&self, _: &ConsentUpdate) -> Result<ConsentRecord, ConsentError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Err(ConsentError::StoreUnavailable)
+    }
+}
+
+#[tokio::test]
+async fn only_clock_rollbacks_are_retried() {
+    let attempts = Arc::new(Unavailable(AtomicI64::new(0)));
+    let gate = ConsentGate::new(attempts.clone()).unwrap();
+    let advancing = SteppingClock(AtomicI64::new(1000));
+    assert_eq!(
+        gate.allows_with_clock(&subject(), &purpose(), &advancing)
+            .await,
+        Err(ConsentError::StoreUnavailable)
+    );
+    assert_eq!(
+        gate.withdraw_with_clock(&subject(), &purpose(), &advancing)
+            .await,
+        Err(ConsentError::StoreUnavailable)
+    );
+    assert_eq!(attempts.0.load(Ordering::SeqCst), 2);
+}
+
 #[tokio::test]
 async fn clock_race_retries_are_bounded() {
     let attempts = Arc::new(AlwaysBehind(AtomicI64::new(0)));
@@ -272,4 +311,170 @@ async fn clock_race_retries_are_bounded() {
         Err(ConsentError::ClockRollback)
     );
     assert_eq!(attempts.0.load(Ordering::SeqCst), 6);
+}
+
+/// Accepts every operation and counts the calls that reach storage.
+struct Permissive(AtomicI64);
+impl ConsentStore for Permissive {
+    fn durability(&self) -> ConsentDurability {
+        ConsentDurability::SharedDurable
+    }
+    async fn read(
+        &self,
+        who: &ConsentSubject,
+        why: &str,
+        _: i64,
+    ) -> Result<ConsentRecord, ConsentError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        ConsentRecord::absent(who.clone(), why)
+    }
+    async fn update(&self, update: &ConsentUpdate) -> Result<ConsentRecord, ConsentError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        update.apply_to(&ConsentRecord::absent(
+            update.subject().clone(),
+            update.purpose().id(),
+        )?)
+    }
+}
+
+#[tokio::test]
+async fn negative_times_and_invalid_expiries_never_reach_storage() {
+    let calls = Arc::new(Permissive(AtomicI64::new(0)));
+    let gate = ConsentGate::new(calls.clone()).unwrap();
+    assert_eq!(
+        gate.allows_with_clock(&subject(), &purpose(), &Clock::at(-1))
+            .await,
+        Err(ConsentError::ClockRollback)
+    );
+    assert_eq!(
+        gate.withdraw_with_clock(&subject(), &purpose(), &Clock::at(-1))
+            .await,
+        Err(ConsentError::InvalidConfiguration)
+    );
+    for (valid_until, now) in [(100, -1), (1000, 1000)] {
+        assert_eq!(
+            gate.choose_with_clock(
+                &subject(),
+                &purpose(),
+                &submission(0, ConsentChoice::Granted),
+                valid_until,
+                &Clock::at(now)
+            )
+            .await,
+            Err(ConsentError::InvalidConfiguration)
+        );
+    }
+    assert_eq!(calls.0.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn the_epoch_is_a_valid_trusted_time() {
+    let gate = ConsentGate::for_development(store());
+    let current = gate
+        .current_with_clock(&subject(), &purpose(), &Clock::at(0))
+        .await
+        .unwrap();
+    assert_eq!(current.revision(), 0);
+    let granted = gate
+        .choose_with_clock(
+            &subject(),
+            &purpose(),
+            &submission(0, ConsentChoice::Granted),
+            100,
+            &Clock::at(0),
+        )
+        .await
+        .unwrap();
+    assert_eq!(granted.changed_at(), 0);
+}
+
+/// Acknowledges every update with a fixed record.
+struct Acknowledges(ConsentRecord);
+impl ConsentStore for Acknowledges {
+    fn durability(&self) -> ConsentDurability {
+        ConsentDurability::SharedDurable
+    }
+    async fn read(
+        &self,
+        who: &ConsentSubject,
+        why: &str,
+        _: i64,
+    ) -> Result<ConsentRecord, ConsentError> {
+        ConsentRecord::absent(who.clone(), why)
+    }
+    async fn update(&self, _: &ConsentUpdate) -> Result<ConsentRecord, ConsentError> {
+        Ok(self.0.clone())
+    }
+}
+
+fn acknowledgement(
+    version: &str,
+    choice: ConsentChoice,
+    changed_at: i64,
+    valid_until: i64,
+) -> ConsentRecord {
+    let notice = ConsentPurpose::new("optional-digest", version).unwrap();
+    ConsentRecord::from_stored(subject(), notice, 1, choice, changed_at, valid_until).unwrap()
+}
+
+#[tokio::test]
+async fn an_acknowledgement_differing_in_any_one_field_is_rejected() {
+    for record in [
+        acknowledgement("notice-v1", ConsentChoice::Declined, 1000, 0),
+        acknowledgement("notice-v2", ConsentChoice::Withdrawn, 1000, 0),
+        acknowledgement("notice-v1", ConsentChoice::Withdrawn, 999, 0),
+    ] {
+        let gate = ConsentGate::new(Acknowledges(record)).unwrap();
+        assert_eq!(
+            gate.withdraw_with_clock(&subject(), &purpose(), &Clock::at(1000))
+                .await,
+            Err(ConsentError::StoreConfiguration)
+        );
+    }
+    let gate = ConsentGate::new(Acknowledges(acknowledgement(
+        "notice-v1",
+        ConsentChoice::Granted,
+        1000,
+        1200,
+    )))
+    .unwrap();
+    assert_eq!(
+        gate.choose_with_clock(
+            &subject(),
+            &purpose(),
+            &submission(0, ConsentChoice::Granted),
+            1100,
+            &Clock::at(1000)
+        )
+        .await,
+        Err(ConsentError::StoreConfiguration)
+    );
+    let exact = acknowledgement("notice-v1", ConsentChoice::Withdrawn, 1000, 0);
+    let gate = ConsentGate::new(Acknowledges(exact.clone())).unwrap();
+    assert_eq!(
+        gate.withdraw_with_clock(&subject(), &purpose(), &Clock::at(1000))
+            .await,
+        Ok(exact)
+    );
+}
+
+#[tokio::test]
+async fn default_clock_methods_use_current_server_time() {
+    let expected = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let now = SystemConsentClock.now().unwrap();
+    assert!((expected - 1..=expected + 1).contains(&now));
+    let gate = ConsentGate::for_development(store());
+    assert_eq!(gate.allows(&subject(), &purpose()).await, Ok(false));
+    gate.choose(
+        &subject(),
+        &purpose(),
+        &submission(0, ConsentChoice::Granted),
+        now + 3600,
+    )
+    .await
+    .unwrap();
+    assert_eq!(gate.allows(&subject(), &purpose()).await, Ok(true));
 }

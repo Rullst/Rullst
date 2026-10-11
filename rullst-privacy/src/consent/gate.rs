@@ -81,16 +81,17 @@ impl<S: ConsentStore> ConsentGate<S> {
         mut now: i64,
         clock: &impl ConsentClock,
     ) -> Result<(ConsentRecord, i64), ConsentError> {
-        let mut retries = 0;
-        loop {
+        for attempt in 0..=CLOCK_RACE_RETRIES {
             if now < 0 {
                 return Err(ConsentError::ClockRollback);
             }
             match self.store.read(subject, purpose.id(), now).await {
                 Ok(record) => return Ok((record, now)),
-                Err(error) => now = later_time(error, now, &mut retries, clock)?,
+                Err(error) => now = later_time(error, now, attempt, clock)?,
             }
         }
+        // `later_time` refuses the final attempt, so this is not reached.
+        Err(ConsentError::ClockRollback)
     }
 
     pub async fn allows(
@@ -204,17 +205,22 @@ impl<S: ConsentStore> ConsentGate<S> {
     ) -> Result<ConsentRecord, ConsentError> {
         self.production_state()?;
         let mut update = update;
-        let mut retries = 0;
-        let record = loop {
+        // `later_time` refuses the final attempt, so this error is not returned.
+        let mut acknowledged = Err(ConsentError::ClockRollback);
+        for attempt in 0..=CLOCK_RACE_RETRIES {
             if update.now < 0 || !state::valid_expiry(update.choice, update.now, update.valid_until)
             {
                 return Err(ConsentError::InvalidConfiguration);
             }
             match self.store.update(&update).await {
-                Ok(record) => break record,
-                Err(error) => update.now = later_time(error, update.now, &mut retries, clock)?,
+                Ok(record) => {
+                    acknowledged = Ok(record);
+                    break;
+                }
+                Err(error) => update.now = later_time(error, update.now, attempt, clock)?,
             }
-        };
+        }
+        let record = acknowledged?;
         record.validate_scope(&update.subject, &update.purpose, update.now)?;
         // A trusted adapter still must return the exact acknowledged operation.
         if record.choice() != update.choice
@@ -257,7 +263,8 @@ impl<S: ConsentStore> ConsentGate<S> {
 /// Extra attempts after a store rejects a sampled time as a rollback.
 const CLOCK_RACE_RETRIES: u8 = 2;
 
-/// Returns the time for one more serialized attempt, or the original error.
+/// Returns the time for the attempt after `attempt` (counted from zero), or the
+/// original error.
 ///
 /// Each request samples the one-second trusted clock before it waits for the
 /// store's serialized lock. A request can therefore lose that wait to one that
@@ -269,16 +276,15 @@ const CLOCK_RACE_RETRIES: u8 = 2;
 fn later_time(
     error: ConsentError,
     rejected: i64,
-    retries: &mut u8,
+    attempt: u8,
     clock: &impl ConsentClock,
 ) -> Result<i64, ConsentError> {
-    if error != ConsentError::ClockRollback || *retries >= CLOCK_RACE_RETRIES {
+    if error != ConsentError::ClockRollback || attempt >= CLOCK_RACE_RETRIES {
         return Err(error);
     }
     let fresh = clock.now()?;
     if fresh <= rejected {
         return Err(error);
     }
-    *retries += 1;
     Ok(fresh)
 }

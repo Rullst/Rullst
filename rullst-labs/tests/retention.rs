@@ -210,3 +210,97 @@ async fn corrupt_queued_metadata_rolls_back_the_whole_retention_batch() {
     assert_eq!(intact, 2);
     f.store.close().await;
 }
+
+#[tokio::test]
+async fn queued_jobs_that_expired_before_now_are_expired() {
+    let f = Fixture::new(3).await;
+    f.store
+        .submit(&f.policy, &id("alice"), &scope(), submission("late"))
+        .await
+        .unwrap();
+    f.clock.0.store(NOW + 301, Ordering::SeqCst);
+    assert_eq!(
+        f.store
+            .expire_queued(&f.policy, &id("teacher"), &scope(), 1)
+            .await
+            .unwrap(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn purge_validates_both_bounds_and_honours_its_limit() {
+    let f = Fixture::new(3).await;
+    for (min_age, limit) in [(86_399, 1), (86_400, 0), (86_400, 101)] {
+        assert_eq!(
+            f.store
+                .purge_terminal(&f.policy, &id("teacher"), &scope(), min_age, limit)
+                .await
+                .unwrap_err(),
+            LabError::InvalidInput,
+            "{min_age} {limit}"
+        );
+    }
+    for name in ["one", "two"] {
+        let view = f
+            .store
+            .submit(&f.policy, &id("alice"), &scope(), submission(name))
+            .await
+            .unwrap();
+        f.store
+            .cancel(&f.policy, &id("alice"), &scope(), &id(name), view.revision)
+            .await
+            .unwrap();
+    }
+    f.clock.0.store(NOW + 86_400, Ordering::SeqCst);
+    f.policy.0.store(NOW + 90_000, Ordering::SeqCst);
+    for _ in 0..2 {
+        assert_eq!(
+            f.store
+                .purge_terminal(&f.policy, &id("teacher"), &scope(), 86_400, 1)
+                .await
+                .unwrap(),
+            1
+        );
+    }
+}
+
+#[tokio::test]
+async fn purge_refuses_a_terminal_job_whose_content_was_restored() {
+    let f = Fixture::new(3).await;
+    let view = f
+        .store
+        .submit(&f.policy, &id("alice"), &scope(), submission("restored"))
+        .await
+        .unwrap();
+    let mut database = f.database().await;
+    let content: Vec<u8> = sqlx::query_scalar("SELECT content FROM labs_jobs")
+        .fetch_one(&mut database)
+        .await
+        .unwrap();
+    f.store
+        .cancel(
+            &f.policy,
+            &id("alice"),
+            &scope(),
+            &id("restored"),
+            view.revision,
+        )
+        .await
+        .unwrap();
+    // An external writer replays the erased snapshot of the same job.
+    sqlx::query("UPDATE labs_jobs SET content=?")
+        .bind(content)
+        .execute(&mut database)
+        .await
+        .unwrap();
+    f.clock.0.store(NOW + 86_400, Ordering::SeqCst);
+    f.policy.0.store(NOW + 90_000, Ordering::SeqCst);
+    assert_eq!(
+        f.store
+            .purge_terminal(&f.policy, &id("teacher"), &scope(), 86_400, 1)
+            .await
+            .unwrap_err(),
+        LabError::Integrity
+    );
+}
