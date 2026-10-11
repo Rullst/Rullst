@@ -151,10 +151,12 @@ impl<C: Clock> SqliteMedia<C> {
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
-            .busy_timeout(Duration::from_secs(3));
+            // Same waits as the Supervision and Privacy stores: a full-sync WAL
+            // commit on a slow disk can hold the write lock for seconds.
+            .busy_timeout(Duration::from_secs(5));
         let pool = SqlitePoolOptions::new()
             .max_connections(4)
-            .acquire_timeout(Duration::from_secs(3))
+            .acquire_timeout(Duration::from_secs(5))
             .connect_with(options)
             .await
             .map_err(storage)?;
