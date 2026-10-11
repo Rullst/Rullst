@@ -33,6 +33,11 @@ def validate_source(root: Path, tag: str, sha: str, branch_state: dict) -> None:
         ).strip()
         if actual != sha:
             raise ValueError("checked-out source and tag must both match the admitted SHA")
+    validate_packages(root, version)
+
+
+def validate_packages(root: Path, version: str) -> list[str]:
+    """Return the release inventory once every package publishes at `version`."""
     packages = json.loads((root / ".github/release-order.json").read_text())
     if (not isinstance(packages, list) or not packages
             or any(not isinstance(name, str) or re.fullmatch(r"[a-z][a-z0-9-]*", name) is None
@@ -44,6 +49,7 @@ def validate_source(root: Path, tag: str, sha: str, branch_state: dict) -> None:
         if (package.get("name") != name or package.get("version") != version or publish is False
                 or isinstance(publish, list) and "crates-io" not in publish):
             raise ValueError(f"{name} must be publishable at the exact tagged version {version}")
+    return packages
 
 
 def main() -> int:

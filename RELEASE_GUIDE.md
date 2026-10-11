@@ -152,9 +152,21 @@ Once everything is stable and verified:
 1. Freeze feature work and prepare the synchronized version change through a
    reviewed pull request into the selected release branch (`v12` for v12,
    `main` for v13).
-2. Run the full local and CI release gates on the resulting release-branch SHA.
-3. Record and review the package/evidence artifacts for that exact SHA.
-4. Create a new version tag only on the approved SHA, then push that tag to
+2. On the release-branch head, run `python3 .github/release-preflight.py vX.Y.Z`
+   before dispatching the manual admission workflows. It refuses, in seconds,
+   problems that `release.yml` would otherwise find hours later:
+   - packages not at the tagged version, or a missing changelog section;
+   - a stale head or an existing tag;
+   - an unregistered or foreign-owned crate name;
+   - a version already on crates.io.
+
+   For a change that can behave differently in release builds
+   (`cfg(debug_assertions)`, release profile), dispatch `proptest.yml` on its
+   branch before merging. It is the admission workflow that runs the workspace
+   tests in release mode.
+3. Run the full local and CI release gates on the resulting release-branch SHA.
+4. Record and review the package/evidence artifacts for that exact SHA.
+5. Create a new version tag only on the approved SHA, then push that tag to
    trigger the release workflow. Published tags, including `v12.0.0` and `v12.1.0`, are immutable;
    never recreate or move them. For a reviewed v13 candidate:
 
