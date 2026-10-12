@@ -234,14 +234,16 @@ fn configuration_limits_are_inclusive() {
     let endpoint = |len: usize| format!("https://{}/v1/traces", "a".repeat(len - 18));
     assert!(TelemetryConfig::try_new("service", endpoint(2_048), ["operation"]).is_ok());
     assert!(TelemetryConfig::try_new("service", endpoint(2_049), ["operation"]).is_err());
-    assert!(
-        TelemetryConfig::try_new(
-            "service",
-            "https://user@collector.example/v1/traces",
-            ["operation"]
-        )
-        .is_err()
-    );
+    for endpoint in [
+        "https://user@collector.example/v1/traces",
+        "https://:secret@collector.example/v1/traces",
+        "https://collector.example:0/v1/traces",
+    ] {
+        assert!(
+            TelemetryConfig::try_new("service", endpoint, ["operation"]).is_err(),
+            "{endpoint}"
+        );
+    }
     assert!(
         offline_config()
             .with_limits(32, 32, Duration::from_secs(1), Duration::from_secs(3))
