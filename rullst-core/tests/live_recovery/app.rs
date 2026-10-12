@@ -238,7 +238,11 @@ impl RecoverableLiveView for View {
         }
         if !matches!(
             command.action(),
-            "increment" | "increment-drop" | "increment-revoke" | "slow-increment"
+            "increment"
+                | "increment-drop"
+                | "increment-revoke"
+                | "slow-increment"
+                | "increment-padded"
         ) {
             return Err(LiveRecoveryError::Invalid);
         }
@@ -269,7 +273,15 @@ impl RecoverableLiveView for View {
                 .await
                 .unwrap();
         }
-        self.snapshot(scope).await
+        let snapshot = self.snapshot(scope).await?;
+        if command.action() == "increment-padded" {
+            // Larger than one kibibyte, still far below the snapshot limits.
+            return LiveSnapshot::try_new(
+                snapshot.revision(),
+                format!("{}<!--{}-->", snapshot.html(), "p".repeat(2_048)),
+            );
+        }
+        Ok(snapshot)
     }
 }
 
