@@ -249,11 +249,29 @@ async fn database_targets_must_be_named_regular_files_with_a_known_schema() {
         .execute(&mut raw)
         .await
         .expect("change schema version");
-    sqlx::Connection::close(raw).await.expect("close raw");
     assert!(matches!(
         SqlitePasskeyStore::connect(database_url(&path), 4, 2).await,
         Err(CorruptStorage("schema configuration"))
     ));
+    // So is a non-positive stored limit written around the CHECK constraints.
+    for statement in [
+        "UPDATE rullst_auth_passkey_meta SET schema_version = 1, max_total_credentials = 0",
+        "UPDATE rullst_auth_passkey_meta SET max_total_credentials = 4, max_credentials_per_subject = 0",
+    ] {
+        sqlx::query("PRAGMA ignore_check_constraints = ON")
+            .execute(&mut raw)
+            .await
+            .expect("ignore CHECK constraints");
+        sqlx::query(statement)
+            .execute(&mut raw)
+            .await
+            .expect("corrupt stored limit");
+        assert!(matches!(
+            SqlitePasskeyStore::connect(database_url(&path), 4, 2).await,
+            Err(CorruptStorage("schema configuration"))
+        ));
+    }
+    sqlx::Connection::close(raw).await.expect("close raw");
     remove_database(&path);
 
     let directory = temporary_database("directory");
