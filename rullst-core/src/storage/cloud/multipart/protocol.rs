@@ -106,3 +106,75 @@ pub(super) fn parts(
     }
     Ok(parts)
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    const NS: &str = "http://s3.amazonaws.com/doc/2006-03-01/";
+
+    fn listing(entries: &str) -> String {
+        format!(
+            "<ListPartsResult xmlns=\"{NS}\"><Bucket>b</Bucket><Key>k</Key><UploadId>u</UploadId><IsTruncated>false</IsTruncated>{entries}</ListPartsResult>"
+        )
+    }
+
+    fn nested(depth: usize) -> String {
+        let mut xml = String::from("<R>");
+        for _ in 1..depth {
+            xml.push_str("<e>");
+        }
+        for _ in 1..depth {
+            xml.push_str("</e>");
+        }
+        xml.push_str("</R>");
+        xml
+    }
+
+    #[test]
+    fn documents_are_bounded_in_bytes_nodes_and_depth() {
+        let padded = |len: usize| format!("<R>{}</R>", " ".repeat(len - 7));
+        assert!(parse(padded(262_144).as_bytes(), "R").is_ok());
+        assert!(parse(padded(262_145).as_bytes(), "R").is_err());
+        let crowded = format!("<R>{}</R>", "<e/>".repeat(5_000));
+        assert!(parse(crowded.as_bytes(), "R").is_err());
+        assert!(parse(nested(7).as_bytes(), "R").is_ok());
+        assert!(parse(nested(8).as_bytes(), "R").is_err());
+    }
+
+    #[test]
+    fn etags_are_short_quoted_and_plain() {
+        for valid in ["\"\"", "\"abc-1\"", &format!("\"{}\"", "a".repeat(254))] {
+            assert!(valid_etag(valid), "{valid}");
+        }
+        for invalid in [
+            "abc",
+            "x\"",
+            "\"x",
+            &format!("\"{}\"", "a".repeat(255)),
+            "\"a<b\"",
+            "\"a b\"",
+        ] {
+            assert!(!valid_etag(invalid), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn listed_parts_must_belong_to_this_upload_and_be_in_range() {
+        let part = |number: u32, etag: &str| {
+            format!(
+                "<Part><PartNumber>{number}</PartNumber><Size>5</Size><ETag>{etag}</ETag></Part>"
+            )
+        };
+        let listed = parts(listing(&part(256, "\"e\"")).as_bytes(), "b", "k", "u").unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].number, 256);
+        for entries in [part(257, "\"e\""), part(1, "e")] {
+            assert!(parts(listing(&entries).as_bytes(), "b", "k", "u").is_err());
+        }
+        let xml = listing("");
+        assert!(parts(xml.as_bytes(), "b", "other", "u").is_err());
+        assert!(parts(xml.as_bytes(), "b", "k", "other").is_err());
+    }
+}

@@ -43,6 +43,8 @@ struct Observations {
     marker: String,
     calls: usize,
     parts: Vec<Vec<u8>>,
+    /// Replaces the ETag header of every reply when set.
+    etag: Option<&'static str>,
 }
 type Shared = Arc<Mutex<Observations>>;
 struct Fixture {
@@ -60,7 +62,7 @@ async fn handler(State(state): State<Shared>, request: Request<Body>) -> Respons
     let (parts, body) = request.into_parts();
     let body = to_bytes(body, 1024).await.unwrap();
     let is_head = parts.method == "HEAD";
-    let (reply, marker) = {
+    let (reply, marker, etag) = {
         let mut state = state.lock().unwrap();
         state.calls += 1;
         assert!(parts.headers.contains_key("authorization"));
@@ -90,6 +92,7 @@ async fn handler(State(state): State<Shared>, request: Request<Body>) -> Respons
                 .pop_front()
                 .expect("unexpected extra network call"),
             state.marker.clone(),
+            state.etag.unwrap_or("\"opaque-part\""),
         )
     };
     if !reply.delay.is_zero() {
@@ -97,7 +100,7 @@ async fn handler(State(state): State<Shared>, request: Request<Body>) -> Respons
     }
     let mut response = Response::builder()
         .status(reply.status)
-        .header("etag", "\"opaque-part\"");
+        .header("etag", etag);
     if is_head {
         response = response
             .header("x-amz-meta-rullst-upload", marker)
@@ -287,5 +290,64 @@ async fn changed_remote_parts_and_truncated_or_ambiguous_lists_are_rejected() {
         let fixture = fixture(vec![init(), Reply::xml(xml)]).await;
         let token = fixture.uploader.begin(5).await.unwrap();
         assert!(fixture.uploader.progress(&token).await.is_err());
+    }
+}
+
+#[tokio::test]
+async fn upload_sizes_part_etags_and_completion_identity_are_checked() {
+    // Only 1-5 bytes may be uploaded, before any network call.
+    for total in [0, 6] {
+        let fx = fixture(Vec::new()).await;
+        assert_eq!(
+            fx.uploader.begin(total).await.err(),
+            Some(MultipartError::InvalidInput)
+        );
+        assert_eq!(fx.observed.lock().unwrap().calls, 0);
+    }
+
+    // A part acknowledged with an unquoted ETag is not recorded.
+    let fx = fixture(vec![init(), Reply::xml("")]).await;
+    fx.observed.lock().unwrap().etag = Some("unquoted");
+    let token = fx.uploader.begin(5).await.unwrap();
+    assert_eq!(
+        fx.uploader
+            .upload_part(&token, 1, b"hello", sha())
+            .await
+            .err(),
+        Some(MultipartError::InvalidResponse)
+    );
+
+    // A listed part matches the checkpoint only with the same size and ETag.
+    let listing = "<ListPartsResult><Bucket>private-files</Bucket><Key>one</Key><UploadId>opaque+/=?id</UploadId><IsTruncated>false</IsTruncated><Part><PartNumber>1</PartNumber><Size>5</Size><ETag>&quot;changed&quot;</ETag></Part></ListPartsResult>";
+    let fx = fixture(vec![init(), Reply::xml(""), Reply::xml(listing)]).await;
+    let token = fx.uploader.begin(5).await.unwrap();
+    let token = fx
+        .uploader
+        .upload_part(&token, 1, b"hello", sha())
+        .await
+        .unwrap();
+    let progress = fx.uploader.progress(&token).await.unwrap();
+    assert_eq!(progress.len(), 1);
+    assert_eq!(progress[0].size_bytes, 5);
+    assert!(!progress[0].matches_checkpoint);
+
+    // Completion needs this bucket, this key and a quoted ETag.
+    for result in [
+        "<CompleteMultipartUploadResult><Bucket>another-bucket</Bucket><Key>one</Key><ETag>&quot;whole&quot;</ETag></CompleteMultipartUploadResult>",
+        "<CompleteMultipartUploadResult><Bucket>private-files</Bucket><Key>two</Key><ETag>&quot;whole&quot;</ETag></CompleteMultipartUploadResult>",
+        "<CompleteMultipartUploadResult><Bucket>private-files</Bucket><Key>one</Key><ETag>whole</ETag></CompleteMultipartUploadResult>",
+    ] {
+        let fx = fixture(vec![init(), Reply::xml(""), Reply::xml(result)]).await;
+        let token = fx.uploader.begin(5).await.unwrap();
+        let token = fx
+            .uploader
+            .upload_part(&token, 1, b"hello", sha())
+            .await
+            .unwrap();
+        assert_eq!(
+            fx.uploader.complete(&token).await,
+            Err(MultipartError::CompletionUncertain),
+            "{result}"
+        );
     }
 }
