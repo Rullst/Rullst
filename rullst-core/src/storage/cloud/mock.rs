@@ -87,3 +87,6 @@ impl MockStore {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests;
