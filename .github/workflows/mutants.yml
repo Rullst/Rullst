@@ -1,17 +1,18 @@
 name: Mutation Testing (manual informational)
-run-name: "Mutation testing: ${{ inputs.mode }} ${{ inputs.file }} ${{ inputs.mode == 'targeted' && inputs.test_scope || '' }} ${{ inputs.shard }}"
+run-name: "Mutation testing: ${{ inputs.mode }} ${{ inputs.file }} ${{ inputs.mode == 'targeted' && inputs.test_scope || '' }} ${{ inputs.mode == 'contract' && inputs.contract || '' }} ${{ inputs.mode == 'contract' && inputs.mutants_regex != '.' && inputs.mutants_regex || '' }} ${{ inputs.shard }}"
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
     inputs:
       mode:
-        description: Full campaign, one changed file, or exact-run recovery
+        description: Full campaign, one changed file, one owned-server contract, or exact-run recovery
         required: true
         default: full
         type: choice
         options:
           - full
           - targeted
+          - contract
           - resume
           - finalize
       file:
@@ -47,14 +48,36 @@ on:
         default: "300"
         type: string
       shard:
-        description: Targeted mode only. Optional k/n slice of the file's mutants (n at most 16), for files too slow for one job
+        description: Targeted and contract modes. Optional k/n slice of the mutants (n at most 16), for runs too slow for one job
         required: false
+        type: string
+      contract:
+        description: >-
+          Contract mode only. The wrapper that owns a disposable PostgreSQL or
+          Redis server; its adapter files are mutated and only its contract
+          tests run against that server
+        required: false
+        default: none
+        type: choice
+        options:
+          - none
+          - passkey-postgres
+          - auth-recovery-postgres
+          - privacy-postgres
+          - mail-postgres
+          - recurring-postgres
+          - messaging-redis
+      mutants_regex:
+        description: Contract mode only. cargo-mutants --re filter over the contract's mutants
+        required: false
+        default: "."
         type: string
 
 concurrency:
-  # Targeted runs are independent single-file diagnostics, so each file gets
-  # its own group; campaign and recovery modes keep the shared per-ref group.
-  group: ${{ github.workflow }}-${{ github.ref }}${{ inputs.mode == 'targeted' && format('-targeted-{0}-{1}-{2}', inputs.file, inputs.test_scope, inputs.shard) || '' }}
+  # Targeted and contract runs are independent diagnostics, so each file or
+  # contract slice gets its own group; campaign and recovery modes keep the
+  # shared per-ref group.
+  group: ${{ github.workflow }}-${{ github.ref }}${{ inputs.mode == 'targeted' && format('-targeted-{0}-{1}-{2}', inputs.file, inputs.test_scope, inputs.shard) || inputs.mode == 'contract' && format('-contract-{0}-{1}-{2}', inputs.contract, inputs.mutants_regex, inputs.shard) || '' }}
   cancel-in-progress: false
 
 permissions:
@@ -93,6 +116,8 @@ jobs:
       build_timeout_seconds: ${{ steps.plan.outputs.build_timeout_seconds }}
       test_scope: ${{ steps.plan.outputs.test_scope }}
       targeted_shard: ${{ steps.plan.outputs.targeted_shard }}
+      contract: ${{ steps.plan.outputs.contract }}
+      mutants_regex: ${{ steps.plan.outputs.mutants_regex }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,6 +143,8 @@ jobs:
           TEST_SCOPE: ${{ inputs.test_scope }}
           TARGETED_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
           TARGETED_SHARD: ${{ inputs.shard }}
+          CONTRACT: ${{ inputs.contract }}
+          MUTANTS_REGEX: ${{ inputs.mutants_regex }}
         run: |
           resume_run_id=""
           test_scope="${TEST_SCOPE:-package}"
@@ -131,8 +158,8 @@ jobs:
           fi
           targeted_shard="${TARGETED_SHARD:-}"
           if [ -n "$targeted_shard" ]; then
-            if [ "$MUTATION_MODE" != "targeted" ]; then
-              echo "Only targeted mode accepts a shard slice." >&2
+            if [ "$MUTATION_MODE" != "targeted" ] && [ "$MUTATION_MODE" != "contract" ]; then
+              echo "Only targeted and contract modes accept a shard slice." >&2
               exit 2
             fi
             if [[ ! "$targeted_shard" =~ ^([0-9]|1[0-5])/([1-9]|1[0-6])$ ]] \
@@ -140,6 +167,13 @@ jobs:
               echo "shard must be k/n with 0 <= k < n <= 16." >&2
               exit 2
             fi
+          fi
+          contract="${CONTRACT:-none}"
+          mutants_regex="${MUTANTS_REGEX:-.}"
+          if [ "$MUTATION_MODE" != "contract" ] \
+            && { [ "$contract" != "none" ] || [ "$mutants_regex" != "." ]; }; then
+            echo "Only contract mode accepts a contract and a mutant regex." >&2
+            exit 2
           fi
           resume_shards=""
           source_sha=$(python3 .github/resolve-mutation-source.py \
@@ -211,6 +245,28 @@ jobs:
               build_timeout_seconds=300
               shard_count=1
               matrix='{"include":[{"index":0,"count":1,"artifact":"0"}]}'
+              ;;
+            contract)
+              if [ -n "$MUTATION_FILE" ] || [ -n "$RESUME_RUN_ID" ] || [ -n "$RESUME_SHARDS" ]; then
+                echo "Contract mode mutates its wrapper's adapter files; leave file and resume inputs empty." >&2
+                exit 2
+              fi
+              case "$contract" in
+                passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis)
+                  ;;
+                *)
+                  echo "Contract mode requires one of the owned-server wrappers." >&2
+                  exit 2
+                  ;;
+              esac
+              if [ "${#mutants_regex}" -gt 200 ] || [[ "$mutants_regex" == *$'\n'* ]]; then
+                echo "mutants_regex must be one line of at most 200 characters." >&2
+                exit 2
+              fi
+              # The wrapper owns the inventory, timeouts and the server, so the
+              # workspace inventory, matrix and aggregate jobs do not run.
+              shard_count=1
+              matrix='{"include":[{"index":0,"count":1,"artifact":"contract"}]}'
               ;;
             resume)
               if [ -n "$MUTATION_FILE" ]; then
@@ -304,11 +360,14 @@ jobs:
             echo "build_timeout_seconds=$build_timeout_seconds"
             echo "test_scope=$test_scope"
             echo "targeted_shard=$targeted_shard"
+            echo "contract=$contract"
+            echo "mutants_regex=$mutants_regex"
           } >> "$GITHUB_OUTPUT"
 
   inventory:
     name: Verify mutation inventory before execution
     needs: plan
+    if: needs.plan.outputs.mode != 'contract'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -379,6 +438,7 @@ jobs:
       contents: read
     name: cargo-mutants informational shard ${{ matrix.index }}/${{ matrix.count }}
     needs: [plan, inventory]
+    if: needs.plan.outputs.mode != 'contract'
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
@@ -495,6 +555,124 @@ jobs:
         if: always()
         with:
           name: mutants-out-${{ matrix.artifact }}
+          path: mutants.out/
+          if-no-files-found: error
+          retention-days: 30
+
+  contract:
+    permissions:
+      contents: read
+    name: cargo-mutants contract ${{ needs.plan.outputs.contract }} ${{ needs.plan.outputs.targeted_shard }}
+    needs: plan
+    if: needs.plan.outputs.mode == 'contract'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        with:
+          toolchain: 1.99.0
+
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-mutants@27.1.0
+
+      - name: Prefetch the frozen workspace dependency graph
+        # The wrappers run cargo-mutants with --locked --offline.
+        run: cargo fetch --locked
+
+      - name: Run the contract's mutants against its owned server
+        # The wrapper starts its disposable server, mutates its adapter files
+        # and runs only its exercise-phase contract tests, resetting the server
+        # before every test binary. Exit 2 (missed) and 3 (timed out) are
+        # informational findings; a broken baseline, a reset failure, a
+        # contract test the baseline did not run or a server failure is not.
+        shell: bash
+        env:
+          CONTRACT: ${{ needs.plan.outputs.contract }}
+          MUTANTS_REGEX: ${{ needs.plan.outputs.mutants_regex }}
+          TARGETED_SHARD: ${{ needs.plan.outputs.targeted_shard }}
+          # The 8 GiB test-binary cap of targeted runs; the wrapper keeps it
+          # behind its own runner.
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=8589934592 --
+          # One build directory serves every mutant, so incremental rebuilds
+          # of the mutated crate and its few test binaries are much faster;
+          # dependencies still come from sccache. Debug info only slows linking.
+          CARGO_INCREMENTAL: "1"
+          CARGO_PROFILE_DEV_DEBUG: "0"
+        run: |
+          case "$CONTRACT" in
+            passkey-postgres|auth-recovery-postgres|privacy-postgres|mail-postgres|recurring-postgres|messaging-redis)
+              ;;
+            *)
+              echo "Unknown owned-server contract: $CONTRACT" >&2
+              exit 2
+              ;;
+          esac
+          command=(python3 ".github/check-$CONTRACT.py" --mutants "$MUTANTS_REGEX")
+          if [ -n "$TARGETED_SHARD" ]; then
+            command+=(--shard "$TARGETED_SHARD")
+          fi
+
+          set +e
+          "${command[@]}"
+          mutation_status=$?
+          set -e
+          case "$mutation_status" in
+            0|2|3)
+              echo "cargo-mutants completed with informational status $mutation_status"
+              ;;
+            *)
+              echo "The contract run failed before producing valid findings (status $mutation_status)" >&2
+              exit "$mutation_status"
+              ;;
+          esac
+
+      - name: Verify and summarize contract outcomes
+        shell: bash
+        env:
+          CONTRACT: ${{ needs.plan.outputs.contract }}
+        run: |
+          outcomes=mutants.out/outcomes.json
+          # Every listed mutant needs exactly one classification.
+          jq -e '
+            .total_mutants > 0 and
+            ([.outcomes[] | select(.scenario | type == "object")] | length) == .total_mutants and
+            (.caught + .missed + .timeout + .unviable) == .total_mutants
+          ' "$outcomes" >/dev/null
+          {
+            echo "### Contract \`$CONTRACT\`"
+            echo
+            jq -r '"\(.total_mutants) mutants: \(.caught) caught, \(.missed) missed, \(.timeout) timed out, \(.unviable) unviable."' "$outcomes"
+            for outcome in missed timeout; do
+              if [ -s "mutants.out/$outcome.txt" ]; then
+                echo
+                echo "**$outcome:**"
+                echo '```'
+                cat "mutants.out/$outcome.txt"
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload contract results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mutants-out-contract
           path: mutants.out/
           if-no-files-found: error
           retention-days: 30
@@ -627,7 +805,7 @@ jobs:
   evidence-boundary:
     name: Mutation campaign evidence boundary
     if: always()
-    needs: [plan, inventory, mutants, aggregate-results]
+    needs: [plan, inventory, mutants, aggregate-results, contract]
     runs-on: ubuntu-latest
     steps:
       - name: Record informational scope and infrastructure result
@@ -646,7 +824,23 @@ jobs:
           SECONDARY_RESUME_RUN_ID: ${{ needs.plan.outputs.secondary_resume_run_id }}
           SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
           INVENTORY_SHA256: ${{ needs.inventory.outputs.inventory_sha256 }}
+          CONTRACT_RESULT: ${{ needs.contract.result }}
+          CONTRACT: ${{ needs.plan.outputs.contract }}
+          MUTANTS_REGEX: ${{ needs.plan.outputs.mutants_regex }}
         run: |
+          if [ "$MUTATION_MODE" = "contract" ]; then
+            {
+              echo "## Mutation testing"
+              echo
+              echo "Mode: \`contract\`; contract result: \`$CONTRACT_RESULT\`."
+              echo "Contract: \`$CONTRACT\`; regex: \`$MUTANTS_REGEX\`; slice: \`${TARGETED_SHARD:-all}\`; measured source: \`$SOURCE_SHA\`."
+              echo "Only the wrapper's exercise-phase contract tests ran against its owned server, so a mutant that another test of the package catches can still be reported as missed. This is correction feedback, not a full-workspace campaign."
+            } >> "$GITHUB_STEP_SUMMARY"
+            if [ "$CONTRACT_RESULT" != "success" ]; then
+              exit 1
+            fi
+            exit 0
+          fi
           {
             echo "## Mutation testing"
             echo

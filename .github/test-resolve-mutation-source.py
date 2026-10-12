@@ -51,7 +51,7 @@ class MutationSourceTests(unittest.TestCase):
         self.assertEqual(self.git("rev-parse", "HEAD"), self.workflow)
 
     def test_explicit_source_cannot_override_targeted_or_recovery_policy(self) -> None:
-        for mode in ("targeted", "resume", "finalize"):
+        for mode in ("targeted", "contract", "resume", "finalize"):
             with self.subTest(mode=mode), self.assertRaises(ValueError):
                 self.resolve(self.release, mode)
             self.assertEqual(self.resolve("", mode), self.workflow)

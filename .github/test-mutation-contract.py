@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fake docker and cargo fixtures for the owned-server mutation mode."""
+"""Fake docker, cargo and wrapper fixtures for the owned-server mutation mode."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,17 @@ if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"cannot import {HELPER}")
 CONTRACT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CONTRACT)
+WORKFLOW = (HERE / "workflows" / "mutants.yml").read_text()
+SHA = "a" * 40
+
+
+def step(name: str) -> str:
+    match = re.search(r"      - name: " + re.escape(name) + r"\n.*?        run: \|\n(.*?)(?=\n      - name:|\n\n  [a-z])",
+                      WORKFLOW, re.DOTALL)
+    if match is None:
+        raise RuntimeError(f"cannot locate the {name!r} step")
+    return textwrap.dedent(match.group(1))
+
 
 class Fixture(unittest.TestCase):
     def setUp(self) -> None:
@@ -164,6 +176,62 @@ class RunTests(Fixture):
         for shard in ("1", "1/0", "a/b", "1/3/4"):
             with self.subTest(shard=shard), self.assertRaises(ValueError):
                 self.run_contract("", 0, shard=shard)
+
+
+class WorkflowTests(Fixture):
+    def test_contract_step_keeps_findings_informational(self) -> None:
+        self.tool("python3", "sys.exit(int(os.environ['FAKE_STATUS']))\n")
+        script = step("Run the contract's mutants against its owned server")
+        for status, expected in ((0, 0), (2, 0), (3, 0), (1, 1), (4, 4)):
+            with self.subTest(status=status):
+                result = subprocess.run(
+                    ["bash", "-euo", "pipefail", "-c", script], cwd=self.root, text=True,
+                    capture_output=True, check=False,
+                    env=self.env(CONTRACT="mail-postgres", MUTANTS_REGEX="x y", TARGETED_SHARD="0/2",
+                                 FAKE_STATUS=str(status)))
+                self.assertEqual(result.returncode, expected, result.stderr)
+        self.assertEqual(self.recorded()[-1], ["python3", ".github/check-mail-postgres.py",
+                                               "--mutants", "x y", "--shard", "0/2"])
+        result = subprocess.run(["bash", "-euo", "pipefail", "-c", script], cwd=self.root,
+                                capture_output=True, check=False,
+                                env=self.env(CONTRACT="../x", MUTANTS_REGEX=".", TARGETED_SHARD="",
+                                             FAKE_STATUS="0"))
+        self.assertEqual(result.returncode, 2)
+
+    def plan(self, **inputs: str) -> tuple[int, dict[str, str]]:
+        self.tool("python3", f"print({SHA!r})\n")
+        output = self.root / f"outputs-{len(list(self.root.glob('outputs-*')))}"
+        env = self.env(GITHUB_OUTPUT=str(output), GITHUB_REPOSITORY="o/r", GITHUB_RUN_ID="1",
+                       GITHUB_RUN_ATTEMPT="1", GITHUB_REF_NAME="b", GITHUB_SHA=SHA,
+                       RUNNER_TEMP=str(self.root), MUTATION_FILE="", REQUESTED_SOURCE_SHA="",
+                       RESUME_RUN_ID="", RESUME_SHARDS="", TEST_SCOPE="package",
+                       TARGETED_TIMEOUT_SECONDS="300", TARGETED_SHARD="", CONTRACT="none",
+                       MUTANTS_REGEX=".")
+        env.update(inputs)
+        result = subprocess.run(["bash", "-euo", "pipefail", "-c", step("Export strict mutation scope")],
+                                cwd=self.root, env=env, text=True, capture_output=True, check=False)
+        outputs = dict(line.split("=", 1) for line in output.read_text().splitlines()) \
+            if output.exists() else {}
+        return result.returncode, outputs
+
+    def test_plan_accepts_only_complete_contract_requests(self) -> None:
+        status, outputs = self.plan(MUTATION_MODE="contract", CONTRACT="messaging-redis",
+                                    MUTANTS_REGEX="in Foo::bar", TARGETED_SHARD="1/4")
+        self.assertEqual(status, 0)
+        self.assertEqual((outputs["mode"], outputs["contract"], outputs["mutants_regex"],
+                          outputs["targeted_shard"], outputs["source_sha"]),
+                         ("contract", "messaging-redis", "in Foo::bar", "1/4", SHA))
+        for inputs in ({"MUTATION_MODE": "contract"},
+                       {"MUTATION_MODE": "contract", "CONTRACT": "mail-postgres",
+                        "MUTATION_FILE": "x.rs"},
+                       {"MUTATION_MODE": "contract", "CONTRACT": "mail-postgres",
+                        "MUTANTS_REGEX": "a" * 201},
+                       {"MUTATION_MODE": "contract", "CONTRACT": "mail-postgres",
+                        "MUTANTS_REGEX": "a\nb"},
+                       {"MUTATION_MODE": "full", "CONTRACT": "mail-postgres"},
+                       {"MUTATION_MODE": "full", "MUTANTS_REGEX": "x"}):
+            with self.subTest(inputs=inputs):
+                self.assertEqual(self.plan(**inputs), (2, {}))
 
 
 if __name__ == "__main__":
