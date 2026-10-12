@@ -420,6 +420,34 @@ mod tests {
             .unwrap();
         assert_eq!(&body[..], b"plain bytes");
     }
+
+    #[test]
+    fn zstd_variants_restore_each_known_content_type() {
+        for (file, expected) in [
+            ("index.html", "text/html; charset=utf-8"),
+            ("legacy.HTM", "text/html; charset=utf-8"),
+            ("app.css", "text/css; charset=utf-8"),
+            ("app.mjs", "application/javascript; charset=utf-8"),
+            ("data.json", "application/json; charset=utf-8"),
+            ("app.js.map", "application/json; charset=utf-8"),
+            (
+                "site.webmanifest",
+                "application/manifest+json; charset=utf-8",
+            ),
+            ("logo.svg", "image/svg+xml"),
+            ("module.wasm", "application/wasm"),
+            ("feed.xml", "application/xml; charset=utf-8"),
+            ("notes.txt", "text/plain; charset=utf-8"),
+            ("report.csv", "text/csv; charset=utf-8"),
+            ("guide.pdf", "application/pdf"),
+            ("font.ttf", "font/ttf"),
+            ("font.otf", "font/otf"),
+        ] {
+            assert_eq!(zstd_content_type(file), Some(expected), "{file}");
+        }
+        assert_eq!(zstd_content_type("photo.png"), None);
+        assert_eq!(zstd_content_type("LICENSE"), None);
+    }
 }
 
 #[cfg(test)]

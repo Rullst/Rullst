@@ -114,3 +114,33 @@ async fn fragments_head_partial_encoded_and_non_utf8_bodies_are_untouched() {
     let (_, body) = send(Request::get("/latin1").body(Body::empty()).unwrap()).await;
     assert_eq!(body, b"<body>Jos\xe9</body>");
 }
+
+#[tokio::test]
+async fn documents_up_to_ten_mebibytes_get_the_script() {
+    // `<body>` and `</body>` around filler, `len` bytes in all.
+    let page = |len: usize| format!("<body>{}</body>", "x".repeat(len - 13));
+    for (len, injected) in [(10_485_760, true), (10_485_761, false)] {
+        let html = page(len);
+        let app = axum::Router::new()
+            .route(
+                "/big",
+                axum::routing::get(move || {
+                    let html = html.clone();
+                    async move { html_response(StatusCode::OK, Body::from(html)) }
+                }),
+            )
+            .layer(axum::middleware::from_fn(inject_hmr_script));
+        let response = app
+            .oneshot(Request::get("/big").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let body = to_bytes(response.into_body(), 11 * 1024 * 1024)
+            .await
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&body).contains(HMR_CLIENT_PATH),
+            injected,
+            "{len}"
+        );
+    }
+}
