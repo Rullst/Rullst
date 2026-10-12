@@ -4,8 +4,10 @@ use super::*;
 use crate::client_contract::{FailureCode, IdempotencyKey};
 use serde_json::json;
 
+mod limits;
 mod orchestration;
 mod recovery;
+mod state_bounds;
 
 fn policy() -> OfflineSyncPolicy {
     OfflineSyncPolicy::new(8, 6, 6, 2_048, 32_768, 3).expect("valid test policy")
