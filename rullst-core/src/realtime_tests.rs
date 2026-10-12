@@ -5,6 +5,14 @@
 use super::*;
 use crate::security::TenantMembership;
 
+/// Awaits a message with a deadline, so one that never arrives fails the
+/// test instead of hanging it.
+async fn within_deadline<T>(receive: impl std::future::Future<Output = T>) -> T {
+    tokio::time::timeout(std::time::Duration::from_secs(10), receive)
+        .await
+        .expect("message within the deadline")
+}
+
 #[tokio::test]
 // TM-TENANT-04
 async fn identical_channels_are_isolated_by_authenticated_tenant_context() {
@@ -21,7 +29,9 @@ async fn identical_channels_are_isolated_by_authenticated_tenant_context() {
     alpha
         .publish("course/1", "lesson.completed", r#"{"lesson_id":7}"#)
         .expect("alpha publish");
-    let alpha_message = alpha_receiver.recv().await.expect("alpha message");
+    let alpha_message = within_deadline(alpha_receiver.recv())
+        .await
+        .expect("alpha message");
 
     assert_eq!(alpha_message.channel, "tenants:school-alpha:course/1");
     assert_eq!(alpha_message.event, "lesson.completed");
@@ -94,7 +104,10 @@ async fn colon_in_tenant_or_channel_cannot_alias_another_namespace() {
         1
     );
     assert_eq!(
-        a_b_receiver.recv().await.expect("a:b message").channel,
+        within_deadline(a_b_receiver.recv())
+            .await
+            .expect("a:b message")
+            .channel,
         "tenants:a%3Ab:c"
     );
     assert!(matches!(
@@ -151,4 +164,37 @@ fn a_user_stays_online_until_their_last_connection_leaves() {
     tracker.user_left("course/1", "learner-7");
     tracker.user_joined("course/1", "learner-7");
     assert_eq!(tracker.count_online("course/1"), 1);
+}
+
+#[tokio::test]
+async fn tenant_facades_expose_their_tenant_and_inclusive_bounds() {
+    let membership = TenantMembership::try_new(["school-alpha"]).expect("membership");
+    let context = membership.select("school-alpha").expect("context");
+    let realtime = TenantRealtime::from_context(Arc::new(BroadcastManager::new()), &context);
+    assert_eq!(realtime.tenant_id(), "school-alpha");
+    let _receiver = realtime.subscribe("course/1").expect("subscription");
+    assert_eq!(
+        realtime.publish("course/1", &"e".repeat(128), &"p".repeat(65_536)),
+        Ok(1)
+    );
+    for event in [String::new(), "e".repeat(129)] {
+        assert!(matches!(
+            realtime.publish("course/1", &event, "{}"),
+            Err(RealtimeError::InvalidEvent(_))
+        ));
+    }
+    assert_eq!(
+        realtime.publish("course/1", "event", &"p".repeat(65_537)),
+        Err(RealtimeError::PayloadTooLarge {
+            actual: 65_537,
+            maximum: 65_536
+        })
+    );
+
+    let presence = TenantPresence::from_context(Arc::new(PresenceTracker::new()), &context);
+    assert_eq!(presence.tenant_id(), "school-alpha");
+    presence.user_joined("course/1", "learner-7").expect("join");
+    assert_eq!(presence.count_online("course/1"), Ok(1));
+    presence.user_left("course/1", "learner-7").expect("leave");
+    assert_eq!(presence.count_online("course/1"), Ok(0));
 }

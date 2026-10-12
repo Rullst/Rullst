@@ -126,3 +126,11 @@ fn idle_sweeps_never_detach_a_live_subscriber() {
     manager.remove_idle_channels();
     assert_eq!(manager.channels.len(), 0);
 }
+
+#[test]
+fn small_registries_keep_idle_channels_until_the_sweep_threshold() {
+    let manager = BroadcastManager::new();
+    drop(manager.get_or_create("idle"));
+    let _active = manager.get_or_create("active");
+    assert_eq!(manager.channels.len(), 2);
+}
