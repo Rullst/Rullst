@@ -155,6 +155,8 @@ mod tests {
         // An incomplete trailing character that is the whole stored value
         // is invalid data, not a cut.
         assert_eq!(utf8_prefix(b"ab\xc3", 8), ("ab\u{fffd}".to_string(), false));
+        // A broken character before the cut is replaced, not taken for the cut.
+        assert_eq!(utf8_prefix(b"x\xe6abc", 4), ("x\u{fffd}".to_string(), true));
     }
 
     #[test]
