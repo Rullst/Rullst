@@ -297,6 +297,25 @@ mod tests {
                 "{address}"
             );
         }
+        let longest = format!("postgres://db.example/{}", "a".repeat(8_170));
+        assert_eq!(longest.len(), 8_192);
+        assert!(postgres_options(&longest).is_ok());
+        // Remote URLs keep exactly one, forced, sslmode.
+        let forced =
+            postgres_options("postgres://db.example/a?sslmode=disable&ssl-mode=require").unwrap();
+        let modes: Vec<(String, String)> = forced
+            .database_url
+            .query_pairs()
+            .filter(|(key, _)| key == "sslmode" || key == "ssl-mode")
+            .map(|(key, value)| (key.into_owned(), value.into_owned()))
+            .collect();
+        assert_eq!(modes, [("sslmode".to_owned(), "verify-full".to_owned())]);
+        // A Unix socket is local even when `hostaddr` names a remote address.
+        let socket = postgres_options(
+            "postgres:///accounts?host=%2Fvar%2Frun%2Fpostgresql&hostaddr=192.0.2.1&sslmode=disable",
+        )
+        .unwrap();
+        assert!(matches!(ssl_mode(&socket), PgSslMode::Disable));
         let oversized = format!("postgres://db.example/{}", "a".repeat(MAX_URL_BYTES));
         assert_eq!(
             postgres_options(&oversized).err(),
@@ -323,6 +342,13 @@ mod tests {
                 Err(RecoveryError::Configuration)
             );
         }
+        // An empty file name is volatile; a private cache is allowed.
+        assert_eq!(
+            configure_sqlite(&mut Url::parse("sqlite:").unwrap(), true),
+            Err(RecoveryError::Configuration)
+        );
+        let mut private = Url::parse("sqlite:database?cache=private").unwrap();
+        assert_eq!(configure_sqlite(&mut private, true), Ok(()));
         let mut url = Url::parse("sqlite:database?mode=rwc").unwrap();
         configure_sqlite(&mut url, false).unwrap();
         assert!(
@@ -333,5 +359,25 @@ mod tests {
             url.query_pairs()
                 .any(|(key, value)| key == "cache" && value == "private")
         );
+    }
+
+    #[cfg(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite"))]
+    #[tokio::test]
+    async fn sqlite_urls_of_up_to_8192_bytes_open() {
+        let directory = tempfile::tempdir().unwrap();
+        let base = format!("sqlite:{}/", directory.path().display());
+        let mut file = "state.db".to_owned();
+        if (8_192 - base.len() - file.len()) % 2 == 1 {
+            file.insert(0, 'x');
+        }
+        // Parsing removes the `./` segments, so the path stays short.
+        let padding = "./".repeat((8_192 - base.len() - file.len()) / 2);
+        let url = format!("{base}{padding}{file}");
+        assert_eq!(url.len(), 8_192);
+        let keys = RecoverySecrets::new([3; 32], [9; 32]).unwrap();
+        let (store, postgres) = open(url, keys, true).await.unwrap();
+        assert!(!postgres);
+        store.close().await;
+        assert!(directory.path().join(&file).exists());
     }
 }

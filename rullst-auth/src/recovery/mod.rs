@@ -93,3 +93,8 @@ fn normalized_email(email: &str) -> Result<String, RecoveryError> {
     }
     Ok(email)
 }
+
+#[cfg(test)]
+#[path = "mod_tests.rs"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;

@@ -433,3 +433,6 @@ async fn retention_is_bounded_and_foreign_store_tokens_never_authenticate() {
     other.close().await;
     store.close().await;
 }
+
+#[path = "tests/boundaries.rs"]
+mod boundaries;
