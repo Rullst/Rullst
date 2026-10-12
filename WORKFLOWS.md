@@ -500,9 +500,12 @@ higher component result for the repository total.
   splits a file that is too slow for one job; the preflight inventory and the
   aggregate then cover exactly that slice. Every full and targeted shard has
   the pinned Redis service of `ci.yml`'s Redis job and sets
-  `RULLST_TEST_REDIS_URL`, so the Security rate-limit, Core queue and cache
-  and ORM query-cache Redis contracts run in the baseline and for every
-  mutant. [Contract mode](#owned-server-contract-mutation-runs) covers the
+  `RULLST_TEST_REDIS_URL`, so the Security rate-limit and Core cache
+  inspection Redis contracts run in the baseline and for every mutant (Core
+  queue scheduling and the ORM Redis data matrix start their own
+  testcontainer). The ORM query-cache and hash-scope Redis contracts need the
+  non-strict pool, so the all-feature build compiles them out and no mutation
+  run reaches them. [Contract mode](#owned-server-contract-mutation-runs) covers the
   adapters that only a wrapper-owned server reaches. Recovery is governed by a committed, versioned policy binding the
   originating and continuation runs, attempts, branches, workflow identity,
   measured source SHA, cargo-mutants version, exact shard set and inventory

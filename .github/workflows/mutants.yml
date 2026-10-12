@@ -445,8 +445,10 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    # The env-gated Redis contracts (security rate limit, Core queue and cache,
-    # ORM query cache) run in the baseline and for every mutant, as in ci.yml.
+    # The RULLST_TEST_REDIS_URL contracts of the all-feature build (Security
+    # rate limit, Core cache inspection) run in the baseline and for every
+    # mutant, as in ci.yml. The ORM query-cache and hash-scope ones need the
+    # non-strict pool, so the all-feature build compiles them out.
     services:
       redis:
         image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
