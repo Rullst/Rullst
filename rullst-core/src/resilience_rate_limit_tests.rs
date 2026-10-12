@@ -49,17 +49,21 @@ fn rotating_ipv6_source_addresses_cannot_bypass_the_limit() {
 
 #[test]
 fn distinct_keys_cannot_grow_the_bucket_map_without_bound() {
-    let limiter = RateLimiter::new(RateLimitConfig::per_hour(5.0));
-
-    for client in 0..150_000 {
-        limiter.check_and_consume(&format!("client-{client}"));
-    }
-
-    assert!(
-        limiter.buckets.len() <= 100_000,
-        "{} buckets retained",
-        limiter.buckets.len()
-    );
+    // On a helper thread: retention that scans the whole map for every new
+    // key turns this loop quadratic, which fails at the budget instead of
+    // hanging the test binary.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let limiter = RateLimiter::new(RateLimitConfig::per_hour(5.0));
+        for client in 0..150_000 {
+            limiter.check_and_consume(&format!("client-{client}"));
+        }
+        let _ = sender.send(limiter.buckets.len());
+    });
+    let retained = receiver
+        .recv_timeout(Duration::from_secs(60))
+        .expect("bounded retention keeps insertion cheap");
+    assert!(retained <= 100_000, "{retained} buckets retained");
 }
 
 #[test]
@@ -154,4 +158,43 @@ fn long_keys_are_stored_as_bounded_digests() {
         buckets::bounded_bucket_key(&digest_form),
         digest_form.as_str()
     );
+}
+
+#[test]
+fn a_full_map_is_trimmed_to_seven_eighths_before_a_new_key() {
+    let limiter = RateLimiter::new(RateLimitConfig::per_hour(1.0)).with_bucket_limit(16);
+    for client in 0..16 {
+        assert!(limiter.check_and_consume(&format!("client-{client}")));
+        // Distinct last-use instants make the eviction order exact.
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert!(limiter.check_and_consume("newcomer"));
+    // The two least recently used buckets made room: 14 kept, then the new one.
+    assert_eq!(limiter.buckets.len(), 15);
+    assert!(!limiter.buckets.contains_key("client-0"));
+    assert!(!limiter.buckets.contains_key("client-1"));
+    assert!(limiter.buckets.contains_key("client-2"));
+}
+
+#[test]
+fn refilled_buckets_are_swept_only_when_due() {
+    let limiter = RateLimiter::new(RateLimitConfig::per_second(10.0)).with_bucket_limit(16);
+    assert!(limiter.check_and_consume("early"));
+    std::thread::sleep(Duration::from_millis(300));
+    // Below capacity and before the periodic sweep, a refilled bucket stays.
+    assert!(limiter.check_and_consume("later"));
+    assert_eq!(limiter.buckets.len(), 2);
+
+    // At capacity, refilled buckets go first; the rest already fit.
+    let limiter = RateLimiter::new(RateLimitConfig::per_second(10.0)).with_bucket_limit(16);
+    for client in 0..2 {
+        assert!(limiter.check_and_consume(&format!("refilled-{client}")));
+    }
+    std::thread::sleep(Duration::from_millis(300));
+    for client in 0..14 {
+        assert!(limiter.check_and_consume(&format!("fresh-{client}")));
+    }
+    assert!(limiter.check_and_consume("newcomer"));
+    assert_eq!(limiter.buckets.len(), 15);
+    assert!(!limiter.buckets.contains_key("refilled-0"));
 }
