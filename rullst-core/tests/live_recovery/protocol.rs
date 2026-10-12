@@ -336,3 +336,27 @@ async fn revocation_during_a_committed_action_prevents_its_snapshot_disclosure()
     );
     server.stop().await;
 }
+
+#[tokio::test]
+async fn revalidation_waits_its_interval_and_large_snapshots_are_delivered() {
+    let server = Server::with_timing(
+        "sqlite::memory:",
+        0,
+        Duration::from_millis(500),
+        Duration::from_secs(10),
+    )
+    .await;
+    let mut socket = connect(&server, app::TEACHER).await;
+    snapshot(&mut socket, "0", "recovered").await;
+    // The first revalidation ping is due only after its interval.
+    assert!(
+        tokio::time::timeout(Duration::from_millis(500), socket.next())
+            .await
+            .is_err()
+    );
+    action(&mut socket, "0", "increment-padded").await;
+    let value = snapshot(&mut socket, "1", "applied").await;
+    assert!(value["html"].as_str().unwrap().len() > 2_048);
+    socket.close(None).await.ok();
+    server.stop().await;
+}

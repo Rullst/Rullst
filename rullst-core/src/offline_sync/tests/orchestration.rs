@@ -423,3 +423,25 @@ async fn coordinator_preserves_typed_transport_and_state_policy_failures() {
         ))
     ));
 }
+
+#[tokio::test]
+async fn a_push_batch_may_be_as_large_as_the_state_policy_allows() {
+    let mut state = OfflineSyncState::new(account("user-1"));
+    let transport = ApplyingTransport {
+        pulls: Mutex::new(VecDeque::from([AuthoritativePull::new(
+            SyncPullPage::new(
+                SyncCursor::new("cursor-final").expect("cursor"),
+                vec![],
+                false,
+                false,
+            ),
+            101,
+        )])),
+    };
+    // `policy()` allows three mutations per push batch.
+    let run_policy = OfflineSyncRunPolicy::new(3, 1, 1, 1_000).expect("run policy");
+    let report = OfflineSyncCoordinator::synchronize(&transport, &mut state, policy(), run_policy)
+        .await
+        .expect("a batch at the state limit");
+    assert_eq!(report.pull_pages, 1);
+}

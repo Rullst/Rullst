@@ -221,3 +221,65 @@ async fn oversize_upload_is_rejected_before_network_io() {
         Err(oneshot::error::TryRecvError::Empty)
     ));
 }
+
+#[tokio::test]
+async fn objects_may_fill_the_size_limit_exactly() {
+    for reply in [
+        &b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabcd"[..],
+        &b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n4\r\nabcd\r\n0\r\n\r\n"[..],
+    ] {
+        let peer = peer(reply, Duration::ZERO).await;
+        assert_eq!(
+            storage(&peer, 4, Duration::from_secs(2))
+                .get("file")
+                .await
+                .unwrap(),
+            b"abcd"
+        );
+    }
+}
+
+#[tokio::test]
+async fn metadata_etags_are_bounded_printable_text() {
+    let etag_reply = |etag: &str| {
+        let reply = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: 7\r\nETag: {etag}\r\nConnection: close\r\n\r\n"
+        );
+        &*Box::leak(reply.into_boxed_str().into_boxed_bytes())
+    };
+    for valid in ["\"short\"".to_string(), format!("\"{}\"", "e".repeat(254))] {
+        let peer = peer(etag_reply(&valid), Duration::ZERO).await;
+        let metadata = storage(&peer, 64, Duration::from_secs(2))
+            .metadata("file")
+            .await
+            .unwrap();
+        assert_eq!(metadata.size_bytes, 7);
+        assert_eq!(metadata.etag.as_deref(), Some(valid.as_str()));
+    }
+
+    for etag in [format!("\"{}\"", "e".repeat(255)), "\"a\tb\"".to_string()] {
+        let peer = peer(etag_reply(&etag), Duration::ZERO).await;
+        assert_eq!(
+            storage(&peer, 64, Duration::from_secs(2))
+                .metadata("file")
+                .await
+                .unwrap_err(),
+            StorageError::Cloud(CloudError::InvalidResponse)
+        );
+    }
+}
+
+#[tokio::test]
+async fn uploads_send_their_body() {
+    let mut peer = peer(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
+        Duration::ZERO,
+    )
+    .await;
+    storage(&peer, 64, Duration::from_secs(2))
+        .put("file", b"payload")
+        .await
+        .unwrap();
+    let request = String::from_utf8((&mut peer.received).await.unwrap()).unwrap();
+    assert!(request.contains("content-length: 7\r\n"), "{request}");
+}

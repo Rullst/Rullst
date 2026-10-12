@@ -204,3 +204,110 @@ async fn configured_sampling_cannot_be_forced_by_an_untrusted_header() {
     runtime.flush().await.unwrap();
     assert_eq!(runtime.shutdown().await.unwrap().forwarded_spans, 0);
 }
+
+/// A throwaway self-signed P-256 CA certificate, valid until 2126.
+const TEST_CA: &str = concat!(
+    "-----BEGIN CERTIFICATE-----\n",
+    "MIIBiDCCAS+gAwIBAgIUflSK31tnN2guJ7teA0JuEa1H0FQwCgYIKoZIzj0EAwIw\n",
+    "GTEXMBUGA1UEAwwOUnVsbHN0IHRlc3QgQ0EwIBcNMjYxMDEyMDY0MTE2WhgPMjEy\n",
+    "NjA5MTgwNjQxMTZaMBkxFzAVBgNVBAMMDlJ1bGxzdCB0ZXN0IENBMFkwEwYHKoZI\n",
+    "zj0CAQYIKoZIzj0DAQcDQgAEq+GaEFF8OtHecQLzmINL6sj8bBZgKKPWtU1MlMxF\n",
+    "EANt1B3aS/SZfYe/B4DoXt45Nvlx0HAcGu7CPkBQaYGexaNTMFEwHQYDVR0OBBYE\n",
+    "FAjmJHbKIwK4tUDRkHCNUOGJPun9MB8GA1UdIwQYMBaAFAjmJHbKIwK4tUDRkHCN\n",
+    "UOGJPun9MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgIIhdOSMR\n",
+    "pAoHNm99r+WTL5XXES7ylZtgi3VCcvNqdB0CIGsJyRWDnMOwkJ2yQsVAf3OpHzZB\n",
+    "B928Zxu3tshcUiHc\n",
+    "-----END CERTIFICATE-----\n",
+);
+
+fn offline_config() -> TelemetryConfig {
+    TelemetryConfig::try_new("service", "mock_test", ["operation"]).unwrap()
+}
+
+#[test]
+fn configuration_limits_are_inclusive() {
+    assert!(TelemetryConfig::try_new("s".repeat(64), "mock_test", ["operation"]).is_ok());
+    for service in [String::new(), "s".repeat(65)] {
+        assert!(TelemetryConfig::try_new(service, "mock_test", ["operation"]).is_err());
+    }
+    // `https://`, the host and `/v1/traces`.
+    let endpoint = |len: usize| format!("https://{}/v1/traces", "a".repeat(len - 18));
+    assert!(TelemetryConfig::try_new("service", endpoint(2_048), ["operation"]).is_ok());
+    assert!(TelemetryConfig::try_new("service", endpoint(2_049), ["operation"]).is_err());
+    for endpoint in [
+        "https://user@collector.example/v1/traces",
+        "https://:secret@collector.example/v1/traces",
+        "https://collector.example:0/v1/traces",
+    ] {
+        assert!(
+            TelemetryConfig::try_new("service", endpoint, ["operation"]).is_err(),
+            "{endpoint}"
+        );
+    }
+    assert!(
+        offline_config()
+            .with_limits(32, 32, Duration::from_secs(1), Duration::from_secs(3))
+            .is_ok()
+    );
+    assert!(
+        offline_config()
+            .with_bearer_token("t".repeat(8_192))
+            .is_ok()
+    );
+    for token in [String::new(), "t".repeat(8_193)] {
+        assert!(offline_config().with_bearer_token(token).is_err());
+    }
+    let debug = format!("{:?}", offline_config());
+    assert!(debug.contains("TelemetryConfig"), "{debug}");
+    assert!(debug.contains("offline: true"), "{debug}");
+}
+
+#[test]
+fn ca_bundles_may_fill_64_kib() {
+    let bundle = |len: usize| {
+        let mut pem = TEST_CA.as_bytes().to_vec();
+        pem.resize(len, b'\n');
+        pem
+    };
+    assert!(
+        offline_config()
+            .with_ca_certificate(TEST_CA.as_bytes().to_vec())
+            .is_ok()
+    );
+    assert!(offline_config().with_ca_certificate(bundle(65_536)).is_ok());
+    assert!(
+        offline_config()
+            .with_ca_certificate(bundle(65_537))
+            .is_err()
+    );
+    assert!(offline_config().with_ca_certificate(Vec::new()).is_err());
+}
+
+#[tokio::test]
+async fn a_trusted_unsampled_parent_keeps_its_children_unsampled() {
+    let runtime = DistributedTelemetry::try_new(
+        TelemetryConfig::try_new("fixture", "mock_offline", ["operation"]).unwrap(),
+    )
+    .unwrap();
+    let unsampled = format!("{}-00", &PARENT[..52]);
+    let parent = TraceParent::try_new(unsampled.as_str()).unwrap();
+    assert_eq!(format!("{parent:?}"), "TraceParent([REDACTED])");
+    let subscriber = tracing_subscriber::registry().with(runtime.layer());
+    tracing::subscriber::with_default(subscriber, || {
+        let span = tracing::info_span!(parent:None,"operation");
+        parent.attach_to(&span).unwrap();
+        assert!(
+            TraceParent::capture(&span)
+                .unwrap()
+                .as_str()
+                .ends_with("-00")
+        );
+    });
+    runtime.flush().await.unwrap();
+    let _ = runtime.shutdown().await.unwrap();
+
+    // The separator after the trace id is required on its own.
+    let mut separator = PARENT.to_string();
+    separator.replace_range(35..36, "a");
+    assert!(TraceParent::try_new(separator).is_err());
+}

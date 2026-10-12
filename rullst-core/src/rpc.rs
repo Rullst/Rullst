@@ -296,4 +296,64 @@ mod tests {
         assert_eq!((status, code.as_str()), (400, "rpc.request_invalid"));
         assert!(id.starts_with("rpc_") && id != "has space", "{id}");
     }
+
+    #[test]
+    fn application_failures_keep_their_code_and_retry_hint() {
+        let failure = RpcFailure::application("counter.limit_reached", true).unwrap();
+        assert_eq!(failure.code(), "counter.limit_reached");
+        assert!(failure.retryable());
+        assert!(
+            !RpcFailure::application("counter.closed", false)
+                .unwrap()
+                .retryable()
+        );
+    }
+
+    #[tokio::test]
+    async fn the_route_accepts_json_envelopes_and_stamps_server_time() {
+        use tower::ServiceExt;
+
+        let app = route(
+            "/api/rpc/double",
+            |request: axum::extract::Request| async move {
+                handle_request::<u32, u32, _, _>(request, |value| async move { Ok(value * 2) })
+                    .await
+            },
+        )
+        .into_axum();
+        let envelope =
+            r#"{"contract":"rullst.client","version":1,"request_id":"rpc_client3","payload":21}"#;
+        let call = |content_type: &'static str| {
+            axum::http::Request::post("/api/rpc/double")
+                .header("content-type", content_type)
+                .body(axum::body::Body::from(envelope))
+                .unwrap()
+        };
+
+        let before = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let response = app.clone().oneshot(call("application/json")).await.unwrap();
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        let decoded = ClientContractPolicy::default()
+            .decode_response::<u32>(&bytes)
+            .unwrap();
+        assert_eq!(*decoded.data(), 42);
+        let after = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let stamped = u128::from(decoded.server_epoch_ms());
+        assert!((before..=after).contains(&stamped), "{stamped}");
+
+        let response = app.oneshot(call("text/plain")).await.unwrap();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::UNSUPPORTED_MEDIA_TYPE
+        );
+    }
 }

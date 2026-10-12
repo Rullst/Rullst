@@ -262,4 +262,51 @@ mod tests {
         assert_eq!(store.get("c"), None);
         assert_eq!(store.usage(), (0, 0));
     }
+
+    #[test]
+    fn a_full_store_evicts_its_oldest_entries_down_to_three_quarters() {
+        let store = store(8, 1_024);
+        for index in 0..8 {
+            store.set(&format!("key-{index}"), "value");
+        }
+        // Nothing is evicted before a bound is reached.
+        assert_eq!(store.usage(), (8, 80));
+        store.set("key-8", "value");
+        // Down to 5 of 8 entries, then the new one.
+        assert_eq!(store.usage(), (6, 60));
+        for index in 0..3 {
+            assert_eq!(store.get(&format!("key-{index}")), None);
+        }
+        for index in 3..9 {
+            assert_eq!(store.get(&format!("key-{index}")).as_deref(), Some("value"));
+        }
+    }
+
+    #[test]
+    fn a_byte_bound_store_evicts_down_to_three_quarters_of_its_bytes() {
+        let store = store(1_000, 100);
+        for index in 0..7 {
+            store.set(&format!("k{index:02}"), "0123456789");
+        }
+        assert_eq!(store.usage(), (7, 91));
+        store.set("k07", "0123456789");
+        // 65 of 75 bytes with the new entry.
+        assert_eq!(store.usage(), (5, 65));
+        assert_eq!(store.get("k02"), None);
+        assert_eq!(store.get("k03").as_deref(), Some("0123456789"));
+    }
+
+    #[test]
+    fn entries_may_fill_the_entry_and_total_limits_exactly() {
+        let store = MemoStore::new(Limits {
+            max_entries: 8,
+            max_entry_bytes: 64,
+            max_total_bytes: 64,
+            ttl: TTL,
+        });
+        store.set("k", &"x".repeat(63));
+        assert_eq!(store.usage(), (1, 64));
+        store.set("k", &"x".repeat(64));
+        assert_eq!(store.usage(), (0, 0));
+    }
 }

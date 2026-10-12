@@ -1,6 +1,8 @@
 #![cfg(feature = "queue-redis")]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+#[path = "queue_scheduling_live/listing.rs"]
+mod listing;
 #[path = "queue_scheduling_live/preview.rs"]
 mod preview;
 

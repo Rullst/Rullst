@@ -107,6 +107,19 @@ fn linear_card_scan_matches_legacy_rescan() {
     }
 }
 
+/// `mask_pii` on a helper thread, so a super-linear scan fails the test at
+/// the budget instead of hanging the test binary.
+fn mask_within_budget(text: &str) -> String {
+    let text = text.to_owned();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(mask_pii(&text));
+    });
+    receiver
+        .recv_timeout(Duration::from_secs(10))
+        .expect("masking returns promptly")
+}
+
 #[test]
 fn over_long_digit_runs_are_masked_in_linear_time() {
     // Linear scanning finishes in milliseconds. The former per-position
@@ -115,13 +128,13 @@ fn over_long_digit_runs_are_masked_in_linear_time() {
     let started = Instant::now();
 
     let digits = "7".repeat(200_000);
-    let masked = mask_pii(&digits);
+    let masked = mask_within_budget(&digits);
     assert_eq!(masked.len(), digits.len());
     assert_eq!(&masked[..199_981], &digits[..199_981]);
     assert_eq!(&masked[199_981..], "***************7777");
 
     let spaced = "1 ".repeat(100_000);
-    let masked = mask_pii(&spaced);
+    let masked = mask_within_budget(&spaced);
     assert_eq!(masked.len(), spaced.len());
     let tail_start = spaced.len() - 38;
     assert_eq!(&masked[..tail_start], &spaced[..tail_start]);

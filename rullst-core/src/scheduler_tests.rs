@@ -196,3 +196,51 @@ fn deferrable_tasks_start_at_the_next_window_and_plain_tasks_at_the_tick() {
     assert_eq!(deferred_start(&deferred, tick), Some(midnight));
     assert_eq!(deferred_start(&plain, tick), None);
 }
+
+#[tokio::test]
+async fn builder_options_keep_the_registered_tasks() {
+    // A zero timeout set after registering a task still fails the start.
+    let rejected = Scheduler::new()
+        .task("* * * * *", || async {})
+        .unwrap()
+        .with_task_timeout(Duration::ZERO)
+        .start();
+    assert!(matches!(
+        rejected,
+        Err(SchedulerError::InvalidConfiguration(_))
+    ));
+
+    // A task registered before the stop policy runs once and stops.
+    let runs = Arc::new(AtomicUsize::new(0));
+    let counted = Arc::clone(&runs);
+    let mut handle = super::contract_tests::every_second(Duration::from_secs(5), move || {
+        counted.fetch_add(1, Ordering::SeqCst);
+        async { panic!("scheduled task failure") }
+    })
+    .with_failure_policy(SchedulerFailurePolicy::StopTask)
+    .start()
+    .unwrap();
+    let failure = tokio::time::timeout(Duration::from_secs(5), handle.next_error())
+        .await
+        .expect("the task fails within the deadline");
+    assert!(matches!(failure, Some(SchedulerError::TaskPanicked { .. })));
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    assert_eq!(runs.load(Ordering::SeqCst), 1);
+    drop(handle);
+}
+
+#[tokio::test]
+async fn ticks_wait_for_their_time() {
+    let runs = Arc::new(AtomicUsize::new(0));
+    let counted = Arc::clone(&runs);
+    let handle = super::contract_tests::every_second(Duration::from_secs(5), move || {
+        counted.fetch_add(1, Ordering::SeqCst);
+        async {}
+    })
+    .start()
+    .unwrap();
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    drop(handle);
+    let runs = runs.load(Ordering::SeqCst);
+    assert!(runs <= 3, "{runs} runs in 1.5 seconds");
+}

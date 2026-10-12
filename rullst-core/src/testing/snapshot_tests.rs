@@ -181,3 +181,108 @@ fn the_macro_compares_with_this_crates_snapshot_folder() {
 fn the_macro_rejects_an_escaping_name() {
     crate::assert_html_snapshot!("../outside", "<p>x</p>");
 }
+
+/// Reference diff: an independent longest-common-subsequence walk that, like
+/// `line_diff`, prefers a deletion to an insertion and shows 40 lines.
+fn reference_diff(expected: &str, actual: &str) -> String {
+    let old: Vec<&str> = expected.lines().collect();
+    let new: Vec<&str> = actual.lines().collect();
+    // lcs[i][j]: longest common subsequence of old[i..] and new[j..].
+    let mut lcs = vec![vec![0_usize; new.len() + 1]; old.len() + 1];
+    for i in (0..old.len()).rev() {
+        for j in (0..new.len()).rev() {
+            lcs[i][j] = if old[i] == new[j] {
+                lcs[i + 1][j + 1] + 1
+            } else {
+                lcs[i + 1][j].max(lcs[i][j + 1])
+            };
+        }
+    }
+    let mut changes = Vec::new();
+    let (mut i, mut j) = (0, 0);
+    while i < old.len() || j < new.len() {
+        if i < old.len() && j < new.len() && old[i] == new[j] {
+            i += 1;
+            j += 1;
+        } else if j == new.len() || (i < old.len() && lcs[i + 1][j] >= lcs[i][j + 1]) {
+            changes.push(format!("  -{:>4} | {}\n", i + 1, old[i]));
+            i += 1;
+        } else {
+            changes.push(format!("  +{:>4} | {}\n", j + 1, new[j]));
+            j += 1;
+        }
+    }
+    let mut out = String::from("  (- snapshot, + rendered)\n");
+    for change in changes.iter().take(40) {
+        out.push_str(change);
+    }
+    if changes.len() > 40 {
+        out.push_str(&format!("  … {} more changed lines\n", changes.len() - 40));
+    }
+    out
+}
+
+#[test]
+fn line_diffs_match_a_reference_longest_common_subsequence() {
+    let alphabet = ["<p>a</p>", "<p>b</p>", "<p>c</p>", ""];
+    let mut state: u64 = 0x2545_F491_4F6C_DD1D;
+    let mut next = |bound: u64| {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        (state % bound) as usize
+    };
+    for _ in 0..3_000 {
+        let mut text = || {
+            let lines = next(8);
+            (0..lines)
+                .map(|_| alphabet[next(4)])
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let (old, new) = (text(), text());
+        assert_eq!(
+            line_diff(&old, &new),
+            reference_diff(&old, &new),
+            "{old:?} -> {new:?}"
+        );
+    }
+    assert_eq!(
+        line_diff("a\nb\nc\nd", "b\nc\nd\na"),
+        "  (- snapshot, + rendered)\n  -   1 | a\n  +   4 | a\n"
+    );
+}
+
+#[test]
+fn forty_changed_lines_are_shown_without_a_remainder() {
+    let old: String = (0..40).map(|n| format!("<p>{n}</p>\n")).collect();
+    let diff = line_diff(&old, "");
+    assert_eq!(diff.lines().count(), 41);
+    assert!(!diff.contains("more changed lines"), "{diff}");
+}
+
+#[test]
+fn diffs_over_four_million_cells_show_only_the_first_difference() {
+    let text = |prefix: &str, lines: usize| {
+        let mut text = String::from("same\nsame\n");
+        for n in 2..lines {
+            text.push_str(&format!("{prefix}{n}\n"));
+        }
+        text
+    };
+    // 1,000 by 4,001 and 4,001 by 1,000 cells, just over the limit.
+    for (old, new) in [(999, 4_000), (4_000, 999)] {
+        assert_eq!(
+            line_diff(&text("o", old), &text("n", new)),
+            "  (- snapshot, + rendered)\n  -   3 | o2\n  +   3 | n2\n",
+            "{old} by {new}"
+        );
+    }
+}
+
+#[test]
+fn an_unreadable_snapshot_is_an_error_not_a_missing_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let error = check_snapshot(dir.path(), "folder", "<p>x</p>\n", PLAIN, false).unwrap_err();
+    assert!(error.contains("could not read HTML snapshot"), "{error}");
+}

@@ -282,3 +282,66 @@ async fn environment_includes_the_dotenv_selector_a_server_read() {
         }
     }
 }
+
+#[test]
+fn malformed_cors_origins_fail_the_shape_check_first() {
+    let mut config = SecurityConfig::default();
+    for invalid in [
+        "ftp://academy.example",
+        "https://academy.example/path",
+        "https://academy.example?x=1",
+        "https://academy.example/",
+        "https://user@academy.example",
+    ] {
+        config.cors_allow_origins = vec![invalid.to_string()];
+        let error = config.validate().unwrap_err().to_string();
+        assert!(
+            error.contains("without path, query, credentials, wildcard, or trailing slash"),
+            "{invalid}: {error}"
+        );
+    }
+}
+
+#[test]
+fn the_root_path_is_not_a_signed_webhook_exemption() {
+    let mut config = SecurityConfig::default();
+    config.csrf_signed_webhook_paths = vec!["/".to_owned()];
+    assert!(config.validate().is_err());
+}
+
+#[tokio::test]
+async fn detect_prefers_the_process_environment_to_the_configured_value() {
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let saved: Vec<_> = ["RULLST_ENV", "APP_ENV"]
+        .into_iter()
+        .map(|key| (key, std::env::var_os(key)))
+        .collect();
+    unsafe {
+        std::env::remove_var("RULLST_ENV");
+        std::env::remove_var("APP_ENV");
+    }
+    let configured = Environment::detect(Some("production"));
+    unsafe { std::env::set_var("RULLST_ENV", "staging") };
+    let from_process = Environment::detect(Some("production"));
+    for (key, value) in saved {
+        unsafe {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+    assert_eq!(configured.unwrap(), Environment::Production);
+    assert_eq!(from_process.unwrap(), Environment::Staging);
+    assert_eq!(Environment::Staging.to_string(), "staging");
+}
+
+#[test]
+fn parse_errors_name_their_line_and_column() {
+    match RullstConfig::from_toml("[app]\nname = = 1\n") {
+        Err(ConfigError::Parse(message)) => {
+            assert_eq!(message, "invalid configuration at line 2, column 8");
+        }
+        other => panic!("expected a parse error, got {other:?}"),
+    }
+}

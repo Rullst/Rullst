@@ -385,4 +385,69 @@ mod tests {
             .unwrap();
         assert!(!response.status().is_success());
     }
+
+    #[test]
+    fn generations_are_32_lowercase_hex_digits() {
+        assert!(
+            is_enabled(true, Some("0123456789abcdef0123456789abcdef")) == cfg!(debug_assertions)
+        );
+        for invalid in ["abc", "0123456789abcdef0123456789abcdeg"] {
+            assert!(!is_enabled(true, Some(invalid)), "{invalid}");
+        }
+    }
+
+    #[tokio::test]
+    async fn only_bounded_full_html_get_responses_receive_the_script() {
+        if !cfg!(debug_assertions) {
+            return;
+        }
+        let page = |len: usize| format!("<body>{}</body>", "x".repeat(len - 13));
+        let html = page(10_485_760);
+        let router = Router::new()
+            .route(
+                "/page",
+                get(move || {
+                    let html = html.clone();
+                    async move { axum::response::Html(html) }
+                }),
+            )
+            .route(
+                "/big",
+                get(|| async {
+                    axum::response::Html(format!("<body>{}</body>", "x".repeat(10_485_748)))
+                }),
+            )
+            .route(
+                "/data",
+                get(|| async { axum::Json(serde_json::json!({ "page": "<body>" })) }),
+            );
+        let router = mount(
+            router,
+            true,
+            Some("0123456789abcdef0123456789abcdef".into()),
+        );
+        let body = |response: Response| async move {
+            let bytes = axum::body::to_bytes(response.into_body(), 11 * 1024 * 1024)
+                .await
+                .unwrap();
+            String::from_utf8(bytes.to_vec()).unwrap()
+        };
+        let call = |method: &str, path: &str| {
+            Request::builder()
+                .method(method)
+                .uri(path)
+                .body(Body::empty())
+                .unwrap()
+        };
+
+        let full = router.clone().oneshot(call("GET", "/page")).await.unwrap();
+        assert!(body(full).await.contains(PATH));
+        let over = router.clone().oneshot(call("GET", "/big")).await.unwrap();
+        assert!(!body(over).await.contains(PATH));
+        let data = router.clone().oneshot(call("GET", "/data")).await.unwrap();
+        assert_eq!(body(data).await, r#"{"page":"<body>"}"#);
+        let head = router.oneshot(call("HEAD", "/page")).await.unwrap();
+        assert!(!head.headers().contains_key(header::CACHE_CONTROL));
+        assert!(!body(head).await.contains(PATH));
+    }
 }

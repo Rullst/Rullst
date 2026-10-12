@@ -107,3 +107,40 @@ async fn poisoned_monitor_lock_recovers_and_optional_db_probe_stops_cleanly() {
 fn resilience_duration_conversion_saturates() {
     assert_eq!(duration_millis_u64(Duration::MAX), u64::MAX);
 }
+
+#[tokio::test]
+async fn served_requests_release_their_active_slot() {
+    let shield = TrafficShield::new(TrafficShieldConfig::new().with_db_probe(false));
+    let observed = shield.clone();
+    let app = Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(axum::middleware::from_fn(move |request, next| {
+            let shield = shield.clone();
+            async move { backpressure_middleware(shield, request, next).await }
+        }));
+    for _ in 0..3 {
+        let response = app
+            .clone()
+            .oneshot(request())
+            .await
+            .expect("infallible router");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+    assert_eq!(observed.active_requests(), 0);
+    observed.shutdown();
+}
+
+#[test]
+fn probed_database_latency_raises_moderate_pressure_at_half_its_limit() {
+    use super::shield::{TrafficPressure, classify_traffic_pressure};
+
+    let config = TrafficShieldConfig::new().with_db_probe(true);
+    assert_eq!(
+        classify_traffic_pressure(&config, Duration::ZERO, Duration::ZERO, 0),
+        TrafficPressure::Normal
+    );
+    assert_eq!(
+        classify_traffic_pressure(&config, Duration::ZERO, Duration::from_millis(300), 0),
+        TrafficPressure::Moderate
+    );
+}

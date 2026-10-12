@@ -250,11 +250,10 @@ async fn a_short_stalled_after_pool_does_not_duplicate_a_longer_running_job() {
     // Without claim leases it requeues A's job, which then either runs a
     // second time in A or is claimed (and handed back) by B.
     tokio::time::sleep(Duration::from_millis(4_500)).await;
-    pool_b
-        .shutdown()
+    super::test_support::shut_down(pool_b)
         .await
         .expect("pool B must not recover and claim pool A's running job");
-    pool_a.shutdown().await.unwrap();
+    super::test_support::shut_down(pool_a).await.unwrap();
 
     assert_eq!(
         runs.load(Ordering::SeqCst),

@@ -264,6 +264,10 @@ impl HttpBody for ReplayBody {
 }
 
 #[cfg(test)]
+#[path = "csrf_multipart_tests.rs"]
+mod stream_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

@@ -222,3 +222,23 @@ fn tenant_identifiers_with_reserved_characters_are_encoded_once() {
         "/private-files/tenants/acme%3Aprod/Report%20%28final%29.pdf"
     );
 }
+
+#[test]
+fn keys_may_fill_1024_bytes_and_grants_may_last_one_to_900_seconds() {
+    assert_eq!(validate_key(&"k".repeat(1_024)), Ok(()));
+    assert_eq!(
+        validate_key(&"k".repeat(1_025)),
+        Err(CloudError::InvalidKey)
+    );
+    let url = Url::parse("https://s3.us-east-1.amazonaws.com/private-files/file").unwrap();
+    for seconds in [1, 900] {
+        let grant = signed_download(
+            &example_config(),
+            "us-east-1",
+            url.clone(),
+            Duration::from_secs(seconds),
+            example_time(),
+        );
+        assert!(grant.is_ok(), "{seconds}");
+    }
+}

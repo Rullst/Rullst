@@ -445,3 +445,39 @@ async fn an_outage_is_logged_as_a_warning_once() {
     planner.plan(&deferral, hour(9)).await;
     assert_eq!(count(), 2);
 }
+
+/// Where the planner places a night-window job given `slots`.
+async fn placed(slots: &[(i64, i64, f64)]) -> (SystemTime, DeferralReason, Option<f64>) {
+    let source = slots.iter().fold(
+        FixedIntensitySource::new("slots", "g"),
+        |source, (from, to, value)| source.slot(hour(*from), hour(*to), *value),
+    );
+    let deferral = Deferral::until(hour(40)).window(night()).unwrap();
+    let plan = CarbonAwarePlanner::new(source)
+        .plan(&deferral, hour(9))
+        .await;
+    (plan.run_at, plan.reason, plan.intensity)
+}
+
+#[tokio::test]
+async fn unusable_slots_are_skipped_and_ties_go_to_the_earliest_start() {
+    // Non-finite values are not intensities.
+    assert_eq!(
+        placed(&[(25, 26, f64::NAN), (26, 27, f64::INFINITY)]).await,
+        (hour(24), DeferralReason::Window, None)
+    );
+    // Zero is a valid intensity, a negative one is not.
+    assert_eq!(
+        placed(&[(25, 26, 5.0), (26, 27, 0.0)]).await,
+        (hour(26), DeferralReason::Intensity, Some(0.0))
+    );
+    assert_eq!(
+        placed(&[(25, 26, 5.0), (27, 28, -1.0)]).await,
+        (hour(25), DeferralReason::Intensity, Some(5.0))
+    );
+    // Equal values choose the earliest start, whatever the slot order.
+    assert_eq!(
+        placed(&[(27, 28, 7.0), (25, 26, 7.0)]).await,
+        (hour(25), DeferralReason::Intensity, Some(7.0))
+    );
+}

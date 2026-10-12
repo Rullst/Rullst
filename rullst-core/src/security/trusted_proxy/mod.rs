@@ -10,6 +10,8 @@ mod config;
 mod parse;
 
 #[cfg(test)]
+mod boundary_tests;
+#[cfg(test)]
 mod layer_tests;
 #[cfg(test)]
 mod tests;

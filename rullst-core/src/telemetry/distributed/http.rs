@@ -227,3 +227,7 @@ fn failure_reports_are_rate_limited_and_count_suppressed_batches() {
     assert_eq!(report.admit(start + FAILURE_REPORT_INTERVAL), Some(2));
     assert_eq!(report.admit(start + FAILURE_REPORT_INTERVAL), None);
 }
+
+#[cfg(test)]
+#[path = "http_tests.rs"]
+mod tests;

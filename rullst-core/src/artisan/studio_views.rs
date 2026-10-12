@@ -238,4 +238,10 @@ mod tests {
         assert!(telemetry.contains("point-in-time local observations"));
         assert!(capital.contains("No data source connected"));
     }
+
+    #[test]
+    fn metrics_show_their_unit_or_unavailable() {
+        assert_eq!(display_metric(Some(12), " ms"), "12 ms");
+        assert_eq!(display_metric(None::<u64>, " ms"), "Unavailable");
+    }
 }

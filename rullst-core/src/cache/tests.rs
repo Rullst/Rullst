@@ -376,3 +376,27 @@ fn memoize_never_conflates_values_that_json_writes_as_null() {
     assert_eq!(memoized_floats::label(2.5), "2.5");
     assert_eq!(memoized_floats::LABEL_CALLS.load(Ordering::SeqCst), 5);
 }
+
+#[tokio::test]
+async fn memory_inspection_flags_only_entries_beyond_the_limit_and_sweeps_keep_live_ones() {
+    let cache = Cache::memory();
+    cache.put("alpha", "abc", Some(3_600)).await.unwrap();
+    cache.put("zeta", "longer", None).await.unwrap();
+    let inspection = cache.inspect(2).await.unwrap();
+    assert_eq!(inspection.entries().len(), 2);
+    assert!(!inspection.truncated());
+
+    // Enough operations to run the expiry sweep keep an unexpired entry.
+    for _ in 0..300 {
+        assert!(cache.get("missing").await.unwrap().is_none());
+    }
+    assert_eq!(
+        cache
+            .get("alpha")
+            .await
+            .unwrap()
+            .as_deref()
+            .map(String::as_str),
+        Some("abc")
+    );
+}

@@ -363,3 +363,38 @@ async fn studio_reports_a_port_that_is_already_in_use() {
     let message = ArtisanError::Studio(error).to_string();
     assert!(message.contains("could not serve"), "{message}");
 }
+
+#[tokio::test]
+async fn ai_is_configured_only_by_a_non_blank_provider_key() {
+    const KEYS: [&str; 4] = [
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "DEEPSEEK_API_KEY",
+    ];
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let saved = KEYS.map(|key| (key, std::env::var_os(key)));
+    // SAFETY: the shared test lock serializes the environment changes made by
+    // this crate's tests, as in the other environment tests.
+    unsafe {
+        for key in KEYS {
+            std::env::remove_var(key);
+        }
+    }
+    let without_key = is_ai_configured();
+    unsafe { std::env::set_var("DEEPSEEK_API_KEY", "  ") };
+    let blank_key = is_ai_configured();
+    unsafe { std::env::set_var("DEEPSEEK_API_KEY", "fixture-value") };
+    let with_key = is_ai_configured();
+    unsafe {
+        for (key, value) in &saved {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+    assert!(!without_key);
+    assert!(!blank_key);
+    assert!(with_key);
+}

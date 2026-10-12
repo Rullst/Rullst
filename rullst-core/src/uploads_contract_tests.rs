@@ -286,3 +286,52 @@ fn bidi_and_invisible_format_characters_cannot_disguise_a_display_name() {
         );
     }
 }
+
+#[test]
+fn policies_allow_up_to_one_hundred_mebibytes() {
+    assert!(UploadPolicy::try_new(104_857_600, [UploadKind::PlainText]).is_ok());
+    assert!(matches!(
+        UploadPolicy::try_new(104_857_601, [UploadKind::PlainText]),
+        Err(UploadError::InvalidPolicy(_))
+    ));
+}
+
+#[test]
+fn an_upload_may_fill_its_size_limit_and_a_name_may_fill_255_bytes() {
+    let policy = UploadPolicy::try_new(16, [UploadKind::PlainText]).expect("policy");
+    assert!(
+        policy
+            .admit("school-1", "note.txt", "text/plain", b"sixteen bytes!!!")
+            .is_ok()
+    );
+    assert!(matches!(
+        policy.admit("school-1", "note.txt", "text/plain", b"seventeen bytes!!"),
+        Err(UploadError::InvalidSize)
+    ));
+
+    let longest = format!("{}.txt", "n".repeat(251));
+    assert!(
+        policy
+            .admit("school-1", &longest, "text/plain", b"short")
+            .is_ok()
+    );
+    let longer = format!("{}.txt", "n".repeat(252));
+    assert!(matches!(
+        policy.admit("school-1", &longer, "text/plain", b"short"),
+        Err(UploadError::InvalidFileName)
+    ));
+}
+
+#[test]
+fn a_kind_outside_the_allowlist_is_denied_even_when_declared_correctly() {
+    let policy = UploadPolicy::try_new(1_024, [UploadKind::PlainText]).expect("policy");
+    assert!(matches!(
+        policy.admit(
+            "school-1",
+            "image.png",
+            "image/png",
+            b"\x89PNG\r\n\x1a\nrest"
+        ),
+        Err(UploadError::MediaTypeDenied)
+    ));
+}

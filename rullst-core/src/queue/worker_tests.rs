@@ -132,7 +132,7 @@ async fn worker_never_exceeds_concurrency_limit() {
     })
     .await
     .unwrap();
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert!(maximum.load(Ordering::SeqCst) <= 2);
 }
@@ -157,7 +157,7 @@ async fn completion_transition_errors_are_observable() {
             ..
         }
     ));
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 }
 
 #[tokio::test]
@@ -184,7 +184,7 @@ async fn graceful_shutdown_requeues_an_interrupted_job() {
     })
     .await
     .unwrap();
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(state.requeued.load(Ordering::SeqCst), 1);
 }
@@ -203,7 +203,7 @@ async fn handler_panics_are_contained_and_failed() {
         .unwrap();
     assert!(matches!(error, QueueError::JobPanicked { .. }));
     assert_eq!(state.failed.load(Ordering::SeqCst), 1);
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 }
 
 #[tokio::test]
@@ -228,7 +228,7 @@ async fn handler_timeouts_are_contained_and_failed() {
         QueueError::JobTimedOut { timeout_ms: 5, .. }
     ));
     assert_eq!(state.failed.load(Ordering::SeqCst), 1);
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 }
 
 /// Driver whose every claim fails, like an unreachable Redis server.
@@ -280,7 +280,7 @@ async fn undrained_worker_errors_are_bounded_and_counted() {
     assert_eq!(buffered, capacity);
     assert!(handle.dropped_errors() >= 16);
     assert!(matches!(
-        handle.shutdown().await,
+        test_support::shut_down(handle).await,
         Ok(()) | Err(QueueError::Driver(_))
     ));
 }
@@ -308,7 +308,7 @@ async fn a_handler_that_succeeds_after_its_deadline_is_completed_not_timed_out()
     })
     .await
     .unwrap();
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(state.completed.load(Ordering::SeqCst), 1);
     assert_eq!(state.failed.load(Ordering::SeqCst), 0);
@@ -340,7 +340,7 @@ async fn a_handler_that_succeeds_during_shutdown_is_completed_not_requeued() {
     })
     .await
     .unwrap();
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(state.completed.load(Ordering::SeqCst), 1);
     assert_eq!(state.requeued.load(Ordering::SeqCst), 0);
@@ -464,7 +464,7 @@ async fn a_claim_in_flight_is_dispatched_even_when_a_handler_finishes_first() {
     })
     .await
     .expect("the claimed job must be dispatched, not stranded in processing");
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
     assert!(state.requeued.lock().unwrap().is_empty());
 }
 
