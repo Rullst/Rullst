@@ -153,6 +153,56 @@ mod tests {
         assert!(token.expose_encoded().len() < MAX_TOKEN);
         assert_eq!(storage.open(&token, false).unwrap().receipts.len(), 256);
     }
+
+    #[test]
+    fn outer_tokens_may_fill_256_kib_and_debug_output_is_redacted() {
+        let longest = format!("mp1.{}", "a".repeat(262_140));
+        assert!(MultipartCheckpoint::from_encoded(longest).is_ok());
+        let storage = storage();
+        assert_eq!(format!("{:?}", storage.key), "MultipartKey([REDACTED])");
+        let now = now().unwrap();
+        let token = storage
+            .seal(&State {
+                upload: "owned-upload".into(),
+                marker: "owned-marker".into(),
+                total: 10,
+                created: now,
+                expires: now + 60,
+                receipts: BTreeMap::new(),
+            })
+            .unwrap();
+        assert_eq!(format!("{token:?}"), "MultipartCheckpoint([REDACTED])");
+    }
+
+    #[test]
+    fn authenticated_state_needs_a_size_and_protocol_tokens() {
+        let storage = storage();
+        let now = now().unwrap();
+        let valid = State {
+            upload: "owned-upload".into(),
+            marker: "owned-marker".into(),
+            total: 10,
+            created: now,
+            expires: now + 60,
+            receipts: BTreeMap::new(),
+        };
+        assert!(storage.open(&storage.seal(&valid).unwrap(), false).is_ok());
+        let mut invalid = Vec::new();
+        let mut empty = valid.clone();
+        empty.total = 0;
+        invalid.push(empty);
+        for upload in [String::new(), "a".repeat(2_049), "owned upload".into()] {
+            let mut state = valid.clone();
+            state.upload = upload;
+            invalid.push(state);
+        }
+        for state in invalid {
+            assert!(matches!(
+                storage.open(&storage.seal(&state).unwrap(), false),
+                Err(MultipartError::InvalidCheckpoint)
+            ));
+        }
+    }
 }
 
 impl fmt::Debug for MultipartKey {
