@@ -283,4 +283,85 @@ mod tests {
             Err(SchemaPolicyError::InvalidSchema(_))
         ));
     }
+
+    #[test]
+    fn debug_output_describes_the_policy_without_schema_contents() {
+        let policy = JsonSchemaPolicy::from_schema(json!({"type": "string"})).expect("schema");
+        assert_eq!(
+            format!("{policy:?}"),
+            r#"JsonSchemaPolicy { external_resolution: "disabled", draft: "2020-12" }"#
+        );
+    }
+
+    #[test]
+    fn schema_documents_may_reach_two_mebibytes() {
+        let limit = 2 * 1024 * 1024;
+        let overhead = serde_json::to_vec(&json!({"description": ""}))
+            .expect("serialize")
+            .len();
+        let at_limit = json!({"description": "d".repeat(limit - overhead)});
+        assert_eq!(inspect_schema_document(&at_limit), Ok(()));
+        let over_limit = json!({"description": "d".repeat(limit - overhead + 1)});
+        assert_eq!(
+            inspect_schema_document(&over_limit),
+            Err(SchemaPolicyError::TooLarge)
+        );
+    }
+
+    #[test]
+    fn node_budget_counts_every_container_and_scalar() {
+        let at_limit = Value::Array(vec![json!(0); MAX_SCHEMA_NODES - 1]);
+        assert_eq!(inspect_schema_document(&at_limit), Ok(()));
+        let over_limit = Value::Array(vec![json!(0); MAX_SCHEMA_NODES]);
+        assert_eq!(
+            inspect_schema_document(&over_limit),
+            Err(SchemaPolicyError::TooManyNodes)
+        );
+    }
+
+    fn in_array(value: Value) -> Value {
+        json!([value])
+    }
+
+    fn in_object(value: Value) -> Value {
+        json!({"a": value})
+    }
+
+    #[test]
+    fn depth_budget_applies_to_objects_and_arrays_alike() {
+        for wrap in [in_array as fn(Value) -> Value, in_object] {
+            let mut value = json!(true);
+            for _ in 1..MAX_SCHEMA_DEPTH {
+                value = wrap(value);
+            }
+            assert_eq!(inspect_schema_document(&value), Ok(()));
+            assert_eq!(
+                inspect_schema_document(&wrap(value)),
+                Err(SchemaPolicyError::TooDeep)
+            );
+        }
+    }
+
+    #[test]
+    fn component_names_are_one_to_eighty_token_bytes() {
+        let longest = "A".repeat(80);
+        let too_long = "A".repeat(81);
+        let mut schemas = serde_json::Map::new();
+        for name in [longest.as_str(), too_long.as_str(), ""] {
+            schemas.insert(name.to_string(), json!({"type": "string"}));
+        }
+        let document = json!({"openapi": "3.1.0", "components": {"schemas": schemas}});
+        assert!(JsonSchemaPolicy::from_openapi_component(&document, &longest).is_ok());
+        let token = SchemaPolicyError::InvalidOpenApi(
+            "component name must be a bounded ASCII token".to_string(),
+        );
+        for name in [too_long.as_str(), ""] {
+            assert_eq!(
+                JsonSchemaPolicy::from_openapi_component(&document, name).err(),
+                Some(token.clone()),
+                "{} bytes",
+                name.len()
+            );
+        }
+    }
 }

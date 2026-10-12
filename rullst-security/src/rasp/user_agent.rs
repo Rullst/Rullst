@@ -65,3 +65,21 @@ fn is_product_token(bytes: &[u8], start: usize) -> bool {
     }
     bytes.get(index).is_none_or(u8::is_ascii_whitespace)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_windows_prefix_extends_a_product_token() {
+        assert!(!has_powershell_outside_product_tokens(
+            "Mozilla/5.0 WindowsPowerShell/5.1.22621.2506"
+        ));
+        for agent in [
+            "abcdefgPowerShell/7.4.1",
+            "Mozilla/5.0 abcdefgPowerShell/7.4.1",
+        ] {
+            assert!(has_powershell_outside_product_tokens(agent), "{agent}");
+        }
+    }
+}

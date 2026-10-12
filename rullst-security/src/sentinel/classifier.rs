@@ -344,6 +344,10 @@ fn per_minute(count: u64, window_seconds: u64) -> u64 {
 }
 
 #[cfg(test)]
+#[path = "classifier_tests.rs"]
+mod boundary_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

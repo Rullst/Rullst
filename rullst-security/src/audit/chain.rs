@@ -295,6 +295,10 @@ fn constant_time_equal(candidate: &[u8], expected: &[u8]) -> bool {
 }
 
 #[cfg(test)]
+#[path = "chain_tests.rs"]
+mod record_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicBool, Ordering};

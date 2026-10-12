@@ -197,3 +197,36 @@ fn capacity_keys_configuration_and_composed_sentinel_fail_closed() {
             .is_some()
     );
 }
+
+#[test]
+fn composed_sentinel_uses_its_policy_and_verifies_through_its_gate() {
+    let policy = SentinelPolicy::default()
+        .try_with_api_scraping(10, 3)
+        .expect("scraping policy");
+    let sentinel = ThreatSentinel::try_new(
+        KEY,
+        policy,
+        ProofOfWorkConfig::try_new(8, Duration::from_secs(30), 4).expect("PoW config"),
+    )
+    .expect("Sentinel");
+    let quiet_scraper = observation(10, 0, 0, 3, 1, 0);
+    assert_eq!(
+        sentinel.classifier().assess(quiet_scraper).patterns(),
+        &[ThreatPattern::ApiScraping]
+    );
+
+    let outcome = sentinel
+        .assess("peer:scraper", quiet_scraper)
+        .expect("assessment");
+    let challenge = outcome.challenge().expect("challenge").clone();
+    let nonce = solve(&challenge);
+    assert_eq!(
+        sentinel.verify("peer:other", challenge.token(), nonce),
+        Err(SentinelError::InvalidToken)
+    );
+    assert_eq!(
+        sentinel.verify("peer:scraper", challenge.token(), nonce),
+        Ok(())
+    );
+    assert_eq!(sentinel.proof_of_work().active_challenges(), 0);
+}

@@ -126,6 +126,29 @@ mod tests {
         assert!(try_register_deception_trap("../escape?token=secret").is_err());
     }
 
+    #[test]
+    fn traps_are_bounded_exact_paths() {
+        let longest = format!("/longest-trap-{}", "a".repeat(2_048 - 14));
+        assert_eq!(longest.len(), 2_048);
+        assert!(try_register_deception_trap(&longest).is_ok());
+        assert!(global_deception_routes().contains(&longest));
+        for invalid in [
+            format!("/longer-trap-{}", "a".repeat(2_048 - 12)),
+            "/trap-with-query?x".to_string(),
+            "/trap-with-fragment#x".to_string(),
+            "/trap-with-control\u{7}".to_string(),
+            "/trap/../escape".to_string(),
+            "/trap/./same".to_string(),
+        ] {
+            assert!(
+                try_register_deception_trap(&invalid).is_err(),
+                "{} bytes",
+                invalid.len()
+            );
+            assert!(!global_deception_routes().contains(&invalid));
+        }
+    }
+
     #[tokio::test]
     async fn middleware_blocks_registered_traps_and_allows_safe_routes() {
         register_deception_trap("agent_test_trap");

@@ -2,7 +2,10 @@ use axum::{
     body::Body,
     http::{Request, Response},
 };
-use rullst_security::{DlpResponseLayer, RaspSecurityLayer};
+use rullst_security::{
+    CspSecurityLayer, DlpResponseLayer, HoneypotLayer, HoneypotState, RaspSecurityLayer,
+    SecureHeadersLayer,
+};
 use std::{
     future::{Ready, ready},
     task::{Context, Poll},
@@ -68,4 +71,26 @@ async fn dlp_calls_the_ready_instance() {
             .await
             .is_ok()
     );
+}
+
+#[tokio::test]
+async fn header_and_honeypot_layers_call_the_ready_instance() {
+    let honeypot = HoneypotLayer::new(HoneypotState::new(vec!["/.env".to_string()]));
+    let results = [
+        SecureHeadersLayer::new()
+            .layer(PermitService::default())
+            .oneshot(Request::new(Body::empty()))
+            .await,
+        CspSecurityLayer
+            .layer(PermitService::default())
+            .oneshot(Request::new(Body::empty()))
+            .await,
+        honeypot
+            .layer(PermitService::default())
+            .oneshot(Request::new(Body::empty()))
+            .await,
+    ];
+    for result in results {
+        assert!(result.is_ok());
+    }
 }

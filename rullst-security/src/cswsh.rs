@@ -182,6 +182,10 @@ pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+mod scheme_tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use axum::{Router, body::Body, http::Request as HttpRequest, middleware, routing::get};

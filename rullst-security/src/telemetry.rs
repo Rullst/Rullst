@@ -367,6 +367,9 @@ pub struct TelemetrySnapshot {
 }
 
 #[cfg(test)]
+mod store_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

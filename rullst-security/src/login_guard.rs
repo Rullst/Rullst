@@ -385,6 +385,17 @@ mod tests {
         assert_eq!(guard.record_login_failure("window-user"), Duration::ZERO);
     }
 
+    /// Runs `work` on its own thread so a non-terminating loop fails the test.
+    fn within_deadline<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> T {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(work());
+        });
+        receiver
+            .recv_timeout(Duration::from_secs(10))
+            .expect("work finished before the deadline")
+    }
+
     #[test]
     fn logged_identity_is_trimmed_and_truncated_on_utf8_boundary() {
         assert_eq!(
@@ -392,7 +403,7 @@ mod tests {
             "short identity"
         );
         let long = format!("{}é-tail", "a".repeat(127));
-        let bounded = bounded_identity_for_log(&long);
+        let bounded = within_deadline(move || bounded_identity_for_log(&long));
         assert!(bounded.ends_with('…'));
         assert!(bounded.len() <= 131);
         assert!(!bounded.contains("tail"));
@@ -409,6 +420,40 @@ mod tests {
             guard.record_login_failure_and_wait("async-user").await,
             Duration::from_secs(1)
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn async_failure_api_waits_for_the_returned_delay() {
+        let guard = LoginGuard::new();
+        guard.record_login_failure("waiting-user");
+        let started = tokio::time::Instant::now();
+        assert_eq!(
+            guard.record_login_failure_and_wait("waiting-user").await,
+            Duration::from_secs(1)
+        );
+        assert!(started.elapsed() >= Duration::from_secs(1));
+    }
+
+    #[test]
+    fn the_global_guard_is_one_shared_instance() {
+        let identity = format!("global-guard-{}", rand::random::<u64>());
+        for _ in 0..LoginGuard::global().max_failures {
+            LoginGuard::global().record_login_failure(&identity);
+        }
+        assert!(LoginGuard::global().is_jailed(&identity));
+        LoginGuard::global().record_login_success(&identity);
+    }
+
+    #[test]
+    fn jailing_is_recorded_in_security_telemetry() {
+        let bans = || SecurityStore::global().snapshot().login_jail_bans;
+        let before = bans();
+        let guard = LoginGuard {
+            max_failures: 1,
+            ..LoginGuard::default()
+        };
+        assert_eq!(guard.record_login_failure("telemetry-user"), JAILED_DELAY);
+        assert!(bans() > before);
     }
 }
 
