@@ -228,7 +228,7 @@ impl SecurityStore {
     fn push_live_event(&self, event: LiveSecurityEvent) {
         if let Ok(mut events) = self.live_events.lock() {
             events.insert(0, event.normalized());
-            if events.len() > MAX_LIVE_EVENTS {
+            if MAX_LIVE_EVENTS < events.len() {
                 events.truncate(MAX_LIVE_EVENTS);
             }
         }
