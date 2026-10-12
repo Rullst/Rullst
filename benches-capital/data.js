@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791787058927,
+  "lastUpdate": 1791810418831,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -11868,6 +11868,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e400005f1781b7d33376cf3ae88a1c6164b800f3",
+          "message": "Merge pull request #465 from Rullst/test/v13-core-mutation\n\ntest(core): kill surviving mutants in rullst-core (first pass)",
+          "timestamp": "2026-10-12T09:44:59-03:00",
+          "tree_id": "5664b830630b2717c6ca5f80435a68f14e3fe252",
+          "url": "https://github.com/Rullst/Rullst/commit/e400005f1781b7d33376cf3ae88a1c6164b800f3"
+        },
+        "date": 1791810418001,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
