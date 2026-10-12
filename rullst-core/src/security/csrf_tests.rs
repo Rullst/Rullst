@@ -400,8 +400,30 @@ async fn multipart_forms_echo_the_token_and_keep_the_whole_body() {
     assert!(echoed.as_ref() == small.as_slice());
 }
 
-#[tokio::test]
-async fn multipart_forms_without_a_leading_matching_token_are_rejected() {
+/// The status `echo_app` answers `request` with, from a helper thread with
+/// its own runtime, so a body reader that stops making progress fails the
+/// test at the budget instead of hanging the test binary.
+fn upload_status_within_budget(request: Request<Body>) -> StatusCode {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let _ = sender.send(
+            runtime
+                .block_on(echo_app().oneshot(request))
+                .map(|r| r.status()),
+        );
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("the upload is answered promptly")
+        .unwrap()
+}
+
+#[test]
+fn multipart_forms_without_a_leading_matching_token_are_rejected() {
     let token = generate_csrf_token();
     let other = generate_csrf_token();
     for body in [
@@ -411,19 +433,27 @@ async fn multipart_forms_without_a_leading_matching_token_are_rejected() {
             .to_vec(),
         Vec::new(),
     ] {
-        let response = echo_app()
-            .oneshot(upload_request(&token, Body::from(body)))
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        let status = upload_status_within_budget(upload_request(&token, Body::from(body)));
+        assert_eq!(status, StatusCode::FORBIDDEN);
     }
     // A token after a small file part is still within the bounded prefix.
-    let response = echo_app()
-        .oneshot(upload_request(
-            &token,
-            Body::from(upload_form(&token, false, 1_024)),
-        ))
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    let status = upload_status_within_budget(upload_request(
+        &token,
+        Body::from(upload_form(&token, false, 1_024)),
+    ));
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[test]
+fn static_assets_are_exempt_whatever_their_extension() {
+    for path in [
+        "/static/fonts/inter.woff2",
+        "/static/app.mjs",
+        "/static/report",
+    ] {
+        assert!(is_csrf_exempt_path(path), "{path}");
+    }
+    for path in ["/statics/report", "/upload", "/static"] {
+        assert!(!is_csrf_exempt_path(path), "{path}");
+    }
 }
