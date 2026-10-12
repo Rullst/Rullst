@@ -223,6 +223,7 @@ mod contract_tests {
         assert!(is_safe_rpc_path("/api/rpc/counter/increment"));
         assert!(!is_safe_rpc_path("https://example.test/api/rpc/counter"));
         assert!(!is_safe_rpc_path("/api/rpc/../admin"));
+        assert!(!is_safe_rpc_path("/api/rpc/counter.increment"));
         assert!(is_json_content_type("application/json; charset=utf-8"));
         assert!(!is_json_content_type("text/application/json"));
     }

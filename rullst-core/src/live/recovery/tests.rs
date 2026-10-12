@@ -111,10 +111,20 @@ fn exact_origin_subprotocol_and_limits_cannot_be_implicitly_weakened() {
     assert!(config.clone().with_capacity(1, 1025).is_err());
     assert!(
         config
+            .clone()
             .with_timing(
                 Duration::ZERO,
                 Duration::from_secs(1),
                 Duration::from_secs(1)
+            )
+            .is_err()
+    );
+    assert!(
+        config
+            .with_timing(
+                Duration::from_secs(1),
+                Duration::from_secs(1),
+                Duration::from_secs(3_601)
             )
             .is_err()
     );
