@@ -46,6 +46,8 @@ pub(crate) use bounds::unix_timestamp_millis_floor;
 use bounds::validate_max_stalled_leases;
 
 #[cfg(test)]
+mod defaults_tests;
+#[cfg(test)]
 mod lease_tests;
 #[cfg(all(test, feature = "queue-sqlite", not(miri)))]
 mod recovery_tests;
@@ -53,6 +55,8 @@ mod recovery_tests;
 mod sqlite_claim_tests;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
+#[cfg(test)]
+mod worker_lifecycle_tests;
 #[cfg(test)]
 mod worker_tests;
 
