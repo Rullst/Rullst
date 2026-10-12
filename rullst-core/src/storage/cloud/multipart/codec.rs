@@ -196,6 +196,33 @@ mod tests {
             state.upload = upload;
             invalid.push(state);
         }
+        // The one 10-byte part needs its exact size and a quoted ETag.
+        let mut with_receipt = valid.clone();
+        with_receipt.receipts.insert(
+            1,
+            super::super::Receipt {
+                etag: "\"etag\"".into(),
+                size: 10,
+                sha256: [7; 32],
+            },
+        );
+        assert!(
+            storage
+                .open(&storage.seal(&with_receipt).unwrap(), false)
+                .is_ok()
+        );
+        for (etag, size) in [("unquoted", 10), ("\"etag\"", 9)] {
+            let mut state = with_receipt.clone();
+            state.receipts.insert(
+                1,
+                super::super::Receipt {
+                    etag: etag.into(),
+                    size,
+                    sha256: [7; 32],
+                },
+            );
+            invalid.push(state);
+        }
         for state in invalid {
             assert!(matches!(
                 storage.open(&storage.seal(&state).unwrap(), false),
