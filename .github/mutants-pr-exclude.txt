@@ -1,0 +1,25 @@
+# Globs the pull-request mutation gate (mutants-pr.yml) does not mutate.
+#
+# Each file below is exercised only by a wrapper that owns a disposable
+# database or broker, so a plain `cargo test` reports its mutants as missed.
+# Redis contracts that read RULLST_TEST_REDIS_URL are not listed: the gate
+# provides that service. Keep this list to such files; everything else is
+# tested.
+
+# Generated-project integration suites are too slow to rerun per mutant.
+cargo-rullst/**
+
+# PostgreSQL: .github/check-passkey-postgres.py, check-privacy-postgres.py
+# and check-mail-postgres.py.
+rullst-auth/src/auth/passkey/shared/postgres.rs
+rullst-auth/src/auth/passkey/shared/postgres/**
+rullst-privacy/src/age_assurance/postgres.rs
+rullst-privacy/src/consent/postgres.rs
+rullst-mail/src/suppression/postgres/**
+
+# MySQL/MariaDB live matrices in ci.yml.
+rullst-ai/src/ai/memory/sql/mysql.rs
+rullst-capital/src/quota/sql/mysql.rs
+
+# Authenticated, TLS and restart Redis contracts: .github/check-messaging-redis.py.
+rullst-messaging/src/redis_streams/**

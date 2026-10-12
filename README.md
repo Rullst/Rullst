@@ -299,7 +299,7 @@ of every application built with Rullst. Explore the
 and [quality scorecard](https://rullst.github.io/Rullst/book/quality-scorecard.html).
 
 <details>
-<summary><strong>🛡️ Open the verification dashboard (39 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (40 workflows)</strong></summary>
 
 <p align="center">
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
@@ -334,6 +334,7 @@ and [quality scorecard](https://rullst.github.io/Rullst/book/quality-scorecard.h
 | **Omni Android compile** | [![Omni Android](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-android.yml?branch=main&style=flat-square&label=Omni%20Android)](https://github.com/Rullst/Rullst/actions/workflows/omni-android.yml?query=branch%3Amain) | Generates a fresh shell and compiles an unsigned Android debug APK; no physical-device, Play testing/signing or store claim. |
 | **Omni iOS simulator** | [![Omni iOS](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-ios.yml?branch=main&style=flat-square&label=Omni%20iOS)](https://github.com/Rullst/Rullst/actions/workflows/omni-ios.yml?query=branch%3Amain) | Path-aware fresh scaffold generation and compilation on a macOS iOS simulator target; no device, signing or App Store claim. |
 | **PR security evidence** | [![PR-only evidence](https://img.shields.io/badge/trigger-PR--only-2563eb?style=flat-square)](https://github.com/Rullst/Rullst/actions/workflows/ai-sentinel-pr.yml?query=event%3Apull_request) | Pull-request-only bounded IDOR/RBAC heuristics and CycloneDX SBOM artifact. It intentionally has no continuous `main` status. |
+| **PR mutation diff** | [![PR-only evidence](https://img.shields.io/badge/trigger-PR--only-2563eb?style=flat-square)](https://github.com/Rullst/Rullst/actions/workflows/mutants-pr.yml?query=event%3Apull_request) | Pull-request-only cargo-mutants run over the changed Rust lines; a missed mutant fails it. It intentionally has no continuous `main` status. |
 
 Deep or irreversible workflows are intentionally not presented as continuously
 green main gates:
@@ -353,7 +354,7 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous development evidence refer to `main`; stable v12 has its own branch.
 The branch-protection profiles and the exact scope of all
-39 workflow definitions in this source branch are documented in
+40 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**

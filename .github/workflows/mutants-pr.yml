@@ -1,0 +1,202 @@
+name: Mutation Testing (pull request diff)
+run-name: "Mutation diff gate: PR #${{ github.event.pull_request.number }}"
+
+# Mutates only the Rust lines a pull request changes, so the score of the
+# manual mutants.yml campaign does not decay with every merge. A missed mutant
+# needs a test, or an entry in WORKFLOWS.md "Accepted equivalent mutants".
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.rs"
+      - ".cargo/mutants.toml"
+      - ".github/mutants-pr.sh"
+      - ".github/mutants-pr-exclude.txt"
+      - ".github/workflows/mutants-pr.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_VERSION: rullst-mutants-v1
+  SCCACHE_GHA_RW_MODE: READ_WRITE
+
+jobs:
+  plan:
+    name: List mutants on changed lines
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      count: ${{ steps.plan.outputs.count }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout the pull request merge commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        with:
+          toolchain: 1.99.0
+
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-mutants@27.1.0
+
+      - name: Split the changed-line mutants into shards
+        id: plan
+        shell: bash
+        run: |
+          bash .github/mutants-pr.sh list > mutants-pr.json
+          # An empty diff prints nothing; a diff without mutants prints [].
+          count=$(jq -s 'map(length) | add // 0' mutants-pr.json)
+          # About twenty mutants per shard, at most eight shards.
+          shards=$(( (count + 19) / 20 ))
+          if [ "$shards" -gt 8 ]; then
+            shards=8
+          fi
+          matrix=$(jq -cn --argjson count "$shards" \
+            '{include: [range(0; $count) | {index: ., count: $count}]}')
+          {
+            echo "count=$count"
+            echo "matrix=$matrix"
+          } >> "$GITHUB_OUTPUT"
+          echo "$count mutants on changed lines, $shards shards." >> "$GITHUB_STEP_SUMMARY"
+
+  mutants:
+    name: cargo-mutants diff shard ${{ matrix.index }}/${{ matrix.count }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    services:
+      redis:
+        image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - name: Checkout the pull request merge commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        with:
+          toolchain: 1.99.0
+
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-mutants@27.1.0
+
+      - name: Prefetch the frozen workspace dependency graph
+        run: cargo fetch --locked
+
+      - name: Test the changed-line mutants of this shard
+        shell: bash
+        env:
+          SHARD: ${{ matrix.index }}/${{ matrix.count }}
+          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
+          # Cap each test binary's address space (8 GiB), as targeted
+          # mutants.yml runs do: a mutant that allocates without bound aborts
+          # its own tests instead of the runner.
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=8589934592 --
+        run: |
+          set +e
+          bash .github/mutants-pr.sh run "$SHARD"
+          status=$?
+          set -e
+          {
+            echo "### Shard $SHARD"
+            for outcome in missed timeout; do
+              if [ -s "mutants.out/$outcome.txt" ]; then
+                echo
+                echo "**$outcome:**"
+                echo '```'
+                cat "mutants.out/$outcome.txt"
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          # 0: every mutant caught or unviable. 3: only timeouts, which
+          # also mean the tests noticed the change. 2: missed mutants.
+          case "$status" in
+            0|3)
+              ;;
+            2)
+              while IFS= read -r mutant; do
+                echo "::error file=${mutant%%:*}::Missed mutant: $mutant"
+              done < mutants.out/missed.txt
+              echo "Add a test that fails with each missed mutant, or document it in WORKFLOWS.md \"Accepted equivalent mutants\"." >&2
+              exit 1
+              ;;
+            *)
+              echo "cargo-mutants failed before classifying the mutants (status $status)" >&2
+              exit "$status"
+              ;;
+          esac
+
+      - name: Upload shard results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mutants-pr-out-${{ matrix.index }}
+          path: mutants.out/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  gate:
+    name: Mutation diff gate
+    if: >-
+      !cancelled()
+    needs: [plan, mutants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every changed-line mutant to be caught
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          MUTANTS_RESULT: ${{ needs.mutants.result }}
+          COUNT: ${{ needs.plan.outputs.count }}
+        run: |
+          if [ "$PLAN_RESULT" != "success" ]; then
+            echo "Listing the changed-line mutants failed." >&2
+            exit 1
+          fi
+          if [ "$COUNT" = "0" ]; then
+            echo "No mutants on the changed lines."
+            exit 0
+          fi
+          if [ "$MUTANTS_RESULT" != "success" ]; then
+            echo "Missed mutants or a failed shard; see the shard summaries." >&2
+            exit 1
+          fi
+          echo "All $COUNT changed-line mutants were caught."

@@ -23,6 +23,12 @@ A prepared version section does not establish that its tag or crates exist.
   example), as the release notes advise; a caret requirement also accepted
   later prereleases.
 
+### Mutation testing
+
+- Pull requests to `main` that change Rust run `mutants-pr.yml`, which
+  mutates only the changed lines and fails when a mutant survives, so the
+  mutation score no longer decays between campaigns.
+
 ### OpenSSF Silver evidence
 
 Adds a security assurance case, release verification steps in `SECURITY.md`,
