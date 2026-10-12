@@ -78,6 +78,19 @@ mod tests {
         }
     }
 
+    struct DenyAll;
+    impl Policy<User, Post> for DenyAll {}
+
+    #[test]
+    fn operations_a_policy_does_not_override_are_denied() {
+        let admin = User { id: 7, admin: true };
+        let post = Post { owner_id: 7 };
+        assert!(!DenyAll::can_view(&admin, &post));
+        assert!(!DenyAll::can_create(&admin));
+        assert!(!DenyAll::can_edit(&admin, &post));
+        assert!(!DenyAll::can_delete(&admin, &post));
+    }
+
     #[test]
     fn test_default_gate_methods() {
         let user = DummyUser;

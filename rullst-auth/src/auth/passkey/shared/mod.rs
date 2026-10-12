@@ -15,5 +15,7 @@ pub use postgres::PostgresCeremonyStore;
 
 #[cfg(test)]
 mod contract_tests;
+#[cfg(test)]
+mod manager_tests;
 #[cfg(all(test, feature = "passkey-postgres"))]
 mod tests;
