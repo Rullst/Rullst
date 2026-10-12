@@ -263,3 +263,71 @@ async fn compiled_schema_middleware_preserves_valid_bodies_and_fails_closed() {
         assert_eq!(response.status(), expected);
     }
 }
+
+#[test]
+fn transport_limits_are_inclusive_and_sibling_containers_do_not_add_depth() {
+    assert_eq!(inspect_json_payload(b"[]", 1, 2), Ok(()));
+    assert_eq!(inspect_json_payload(b"[[1]]", 2, 100), Ok(()));
+    assert_eq!(
+        inspect_json_payload(b"[[[1]]]", 2, 100),
+        Err("Payload exceeds maximum allowed object nesting depth")
+    );
+    assert_eq!(inspect_json_payload(b"[[],{},[]]", 2, 100), Ok(()));
+}
+
+const TWO_MIB: usize = 2 * 1024 * 1024;
+
+/// A JSON string literal of exactly `total` bytes.
+fn json_string_of_len(total: usize) -> Vec<u8> {
+    let mut body = vec![b'a'; total];
+    body[0] = b'"';
+    body[total - 1] = b'"';
+    body
+}
+
+async fn post_json(app: Router, body: Vec<u8>) -> (StatusCode, String) {
+    let response = app
+        .oneshot(
+            Request::post("/")
+                .header(axum::http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body))
+                .expect("request should be valid"),
+        )
+        .await
+        .expect("middleware request should complete");
+    let status = response.status();
+    let text = axum::body::to_bytes(response.into_body(), 1_024)
+        .await
+        .expect("short response body");
+    (status, String::from_utf8_lossy(&text).into_owned())
+}
+
+#[tokio::test]
+async fn both_guards_accept_two_mebibytes_and_reject_one_byte_more() {
+    let measure = post(|body: axum::body::Bytes| async move { body.len().to_string() });
+    let global = Router::new()
+        .route("/", measure.clone())
+        .layer(middleware::from_fn(schema_guard_middleware));
+    let policy =
+        JsonSchemaPolicy::from_schema(serde_json::json!({"type": "string"})).expect("schema");
+    let scoped = Router::new().route(
+        "/",
+        measure.layer(middleware::from_fn_with_state(
+            policy,
+            json_schema_guard_middleware,
+        )),
+    );
+    for app in [global, scoped] {
+        assert_eq!(
+            post_json(app.clone(), json_string_of_len(TWO_MIB)).await,
+            (StatusCode::OK, TWO_MIB.to_string())
+        );
+        assert_eq!(
+            post_json(app, json_string_of_len(TWO_MIB + 1)).await,
+            (
+                StatusCode::BAD_REQUEST,
+                "Payload exceeds maximum allowed size".to_string()
+            )
+        );
+    }
+}

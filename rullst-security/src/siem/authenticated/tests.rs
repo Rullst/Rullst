@@ -329,3 +329,96 @@ fn newly_created_journal_is_owner_only() {
     drop(spool);
     std::fs::remove_file(path).expect("remove journal");
 }
+
+#[test]
+fn key_identity_and_ring_debug_output_omit_material() {
+    let integrity_key = key("key-2026-a", 0);
+    assert_eq!(integrity_key.id(), "key-2026-a");
+    let ring = SiemKeyRing::try_new(key("key-2026-b", 32), [integrity_key]).expect("ring");
+    assert_eq!(
+        format!("{ring:?}"),
+        r#"SiemKeyRing { active: "key-2026-b", key_count: 2 }"#
+    );
+}
+
+#[test]
+fn appends_may_fill_the_quota_exactly_and_reopen_at_that_size() {
+    let path = temporary_spool("exact-fit");
+    let event = LiveSecurityEvent::local("SECURITY_EVENT", "x".repeat(600), "192.0.2.9");
+    let payload = serde_json::to_vec(&event).expect("encode event");
+    let material = (0_u8..32).collect::<Vec<_>>();
+    let (frame, _) =
+        codec::encode_frame(1, "primary", &material, [0; 32], &payload).expect("frame");
+    let max_bytes = (codec::SPOOL_MAGIC.len() + frame.len()) as u64;
+
+    let spool =
+        AuthenticatedSiemSpool::try_open_with_max_bytes(&path, ring("primary", 0), max_bytes)
+            .expect("create bounded spool");
+    let empty = spool.snapshot().expect("empty snapshot");
+    assert_eq!(empty.records(), 0);
+    assert_eq!(empty.bytes(), codec::SPOOL_MAGIC.len() as u64);
+    assert_eq!(empty.max_bytes(), max_bytes);
+    let receipt = spool
+        .append_local(event)
+        .expect("frame fills the quota exactly");
+    assert_eq!(receipt.end_offset(), max_bytes);
+    assert_eq!(spool.snapshot().expect("full snapshot").bytes(), max_bytes);
+    drop(spool);
+
+    let reopened =
+        AuthenticatedSiemSpool::try_open_with_max_bytes(&path, ring("primary", 0), max_bytes)
+            .expect("full spool reopens");
+    assert_eq!(
+        reopened.read_verified().expect("verify full spool").len(),
+        1
+    );
+    drop(reopened);
+    std::fs::remove_file(path).expect("remove test spool");
+}
+
+#[test]
+fn directories_are_not_journal_files() {
+    let directory = temporary_spool("directory");
+    std::fs::create_dir(&directory).expect("create directory");
+    assert_eq!(
+        AuthenticatedSiemSpool::try_open(&directory, ring("primary", 0)).err(),
+        Some(AuthenticatedSiemSpoolError::UnsafeFileType)
+    );
+    std::fs::remove_dir(directory).expect("remove directory");
+}
+
+#[cfg(unix)]
+#[test]
+fn metadata_failures_other_than_absence_are_reported() {
+    let parent = temporary_spool("not-a-directory");
+    std::fs::File::create(&parent).expect("create regular file");
+    assert_eq!(
+        AuthenticatedSiemSpool::try_open(parent.join("child.spool"), ring("primary", 0)).err(),
+        Some(AuthenticatedSiemSpoolError::Io {
+            operation: "metadata",
+            kind: io::ErrorKind::NotADirectory,
+        })
+    );
+    std::fs::remove_file(parent).expect("remove regular file");
+}
+
+#[test]
+fn a_failed_rollback_marks_the_writer_unhealthy() {
+    let path = temporary_spool("rollback");
+    std::fs::write(&path, codec::SPOOL_MAGIC).expect("write header");
+    // A read-only handle cannot truncate, so the rollback itself fails.
+    let mut state = AuthenticatedSpoolState {
+        file: std::fs::File::open(&path).expect("open read-only"),
+        bytes: codec::SPOOL_MAGIC.len() as u64,
+        records: 0,
+        last_tag: [0; 32],
+        healthy: true,
+    };
+    assert_eq!(
+        recover_partial_write(&mut state, 0, &io::Error::other("disk full")),
+        Err(AuthenticatedSiemSpoolError::RecoveryFailed)
+    );
+    assert!(!state.healthy);
+    drop(state);
+    std::fs::remove_file(path).expect("remove test spool");
+}

@@ -376,4 +376,43 @@ mod tests {
         assert!(build_mfa_qr_svg("", "user@example.com", &secret).is_err());
         assert!(build_mfa_qr_svg("Rullst", "user@example.com", "ABC").is_err());
     }
+
+    #[test]
+    fn base32_digits_decode_to_their_rfc_4648_values() {
+        assert_eq!(
+            decode_base32("GEZDGNBVGY3TQOJQ").as_deref(),
+            Some(&b"1234567890"[..])
+        );
+        assert_eq!(decode_base32(&"7".repeat(40)), Some(vec![0xff; 25]));
+    }
+
+    #[test]
+    fn secrets_longer_than_the_minimum_still_verify() {
+        let secret = "7".repeat(40);
+        let bytes = decode_base32(&secret).expect("valid secret");
+        assert!(bytes.len() > MIN_TOTP_SECRET_BYTES);
+        let step = 57_000_000;
+        let code = format!("{:06}", generate_totp_at_counter(&bytes, step));
+        assert_eq!(verify_totp_step_at(&secret, &code, step, None), Some(step));
+    }
+
+    #[test]
+    fn enrollment_labels_are_checked_one_by_one_up_to_256_bytes() {
+        let secret = generate_mfa_secret();
+        let longest = "a".repeat(MAX_MFA_LABEL_BYTES);
+        let too_long = "a".repeat(MAX_MFA_LABEL_BYTES + 1);
+        assert!(build_mfa_qr_svg(&longest, &longest, &secret).is_ok());
+        for (issuer, account) in [
+            ("Rullst", "   "),
+            (too_long.as_str(), "user@example.com"),
+            ("Rullst", too_long.as_str()),
+        ] {
+            assert!(
+                build_mfa_qr_svg(issuer, account, &secret).is_err(),
+                "{} / {} bytes",
+                issuer.len(),
+                account.len()
+            );
+        }
+    }
 }

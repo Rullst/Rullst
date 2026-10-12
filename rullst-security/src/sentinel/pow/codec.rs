@@ -131,3 +131,52 @@ fn has_leading_zero_bits(digest: &[u8; 32], difficulty_bits: u8) -> bool {
     }
     remaining_bits == 0 || digest[full_bytes] & (0xff << (8 - remaining_bits)) == 0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A digest that starts with `prefix` and has every later bit set.
+    fn digest_with(prefix: &[u8]) -> [u8; 32] {
+        let mut digest = [0xff_u8; 32];
+        digest[..prefix.len()].copy_from_slice(prefix);
+        digest
+    }
+
+    #[test]
+    fn leading_zero_bits_span_whole_and_partial_bytes() {
+        for (prefix, difficulty_bits) in [
+            (&[0][..], 8),
+            (&[0, 0x7f][..], 9),
+            (&[0, 0x0f][..], 12),
+            (&[0, 0, 0][..], 24),
+        ] {
+            assert!(
+                has_leading_zero_bits(&digest_with(prefix), difficulty_bits),
+                "{difficulty_bits} bits"
+            );
+        }
+        for (prefix, difficulty_bits) in [
+            (&[1][..], 8),
+            (&[0, 0x80][..], 9),
+            (&[0, 0x10][..], 12),
+            (&[0, 0x40][..], 12),
+            (&[0, 0, 1][..], 24),
+        ] {
+            assert!(
+                !has_leading_zero_bits(&digest_with(prefix), difficulty_bits),
+                "{difficulty_bits} bits"
+            );
+        }
+    }
+
+    #[test]
+    fn proofs_need_an_in_range_difficulty_that_matches_the_token() {
+        let mut bytes = [7_u8; TOKEN_BYTES];
+        bytes[49] = 8;
+        assert!((0..20_000).any(|nonce| proof_matches(&bytes, nonce, 8)));
+        assert!((0..20_000).all(|nonce| !proof_matches(&bytes, nonce, 9)));
+        bytes[49] = 7;
+        assert!((0..20_000).all(|nonce| !proof_matches(&bytes, nonce, 7)));
+    }
+}

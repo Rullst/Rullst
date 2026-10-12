@@ -250,3 +250,38 @@ fn authenticated_non_utf8_plaintext_is_rejected() {
         Err(VaultError::InvalidPlaintextUtf8)
     );
 }
+
+#[test]
+fn key_identifiers_may_reach_the_maximum_length() {
+    let longest = "k".repeat(MAX_KEY_ID_LENGTH);
+    let envelope = FieldEncryptor::encrypt_with_key_id("secret", KEY, longest.clone(), AAD)
+        .expect("longest key identifier");
+    assert_eq!(
+        FieldEncryptor::envelope_key_id(&envelope),
+        Ok(longest.as_str())
+    );
+    assert_eq!(
+        FieldEncryptor::decrypt_with_keyring(&envelope, &[(longest.as_str(), &KEY[..])], AAD),
+        Ok("secret".to_string())
+    );
+}
+
+#[test]
+fn dropping_a_vault_secret_zeroizes_its_value() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    struct Probe(Arc<AtomicBool>);
+
+    impl Zeroize for Probe {
+        fn zeroize(&mut self) {
+            self.0.store(true, Ordering::SeqCst);
+        }
+    }
+
+    let zeroized = Arc::new(AtomicBool::new(false));
+    let secret = VaultSecret::new(Probe(Arc::clone(&zeroized)));
+    assert!(!zeroized.load(Ordering::SeqCst));
+    drop(secret);
+    assert!(zeroized.load(Ordering::SeqCst));
+}

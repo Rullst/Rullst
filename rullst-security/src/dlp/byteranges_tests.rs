@@ -216,3 +216,48 @@ fn splitting_is_linear_in_the_body_length() {
         started.elapsed()
     );
 }
+
+#[test]
+fn part_headers_may_fill_eight_kib_exactly() {
+    // `X-Pad: ` plus padding plus CRLF, then the CRLF of the empty line.
+    let padding = 8 * 1024 - "X-Pad: \r\n\r\n".len();
+    let at_limit = format!("X-Pad: {}", "a".repeat(padding));
+    let text = body(&[(&at_limit, "x")], "\r\n");
+    let split_body = split(BYTERANGES, text.as_bytes()).expect("header block at the limit");
+    assert_eq!(split_body.parts.len(), 1);
+
+    let over_limit = format!("X-Pad: {}", "a".repeat(padding + 1));
+    let text = body(&[(&over_limit, "x")], "\r\n");
+    assert_eq!(split(BYTERANGES, text.as_bytes()).err(), Some(Malformed));
+}
+
+#[test]
+fn boundaries_must_be_one_to_seventy_bchars_without_a_trailing_space() {
+    let framed = |boundary: &str| format!("--{boundary}\r\n\r\nx\r\n--{boundary}--\r\n");
+    let longest = "b".repeat(70);
+    let content_type = format!("multipart/byteranges; boundary={longest}");
+    assert!(split(&content_type, framed(&longest).as_bytes()).is_ok());
+
+    let too_long = "b".repeat(71);
+    for (content_type, boundary) in [
+        (
+            format!("multipart/byteranges; boundary={too_long}"),
+            too_long.as_str(),
+        ),
+        ("multipart/byteranges; boundary=\"ab \"".to_string(), "ab "),
+    ] {
+        assert_eq!(
+            split(&content_type, framed(boundary).as_bytes()).err(),
+            Some(Malformed),
+            "{content_type}"
+        );
+    }
+}
+
+#[test]
+fn an_empty_first_line_belongs_to_the_preamble() {
+    let text = format!("\n{}", body(&[("", "x")], "\r\n"));
+    let split_body = split(BYTERANGES, text.as_bytes()).expect("leading bare LF");
+    assert_eq!(split_body.outside[0], b"\n");
+    assert_eq!(split_body.parts[0].body, b"x");
+}

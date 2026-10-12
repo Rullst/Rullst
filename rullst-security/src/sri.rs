@@ -122,6 +122,41 @@ mod tests {
         assert!(tag.contains("src=\"/asset.js?x=&quot;unsafe\""));
         std::fs::remove_file(path).expect("temporary asset cleanup");
     }
+
+    #[test]
+    fn file_backed_tags_hash_the_file_contents_up_to_the_size_limit() {
+        let path = std::env::temp_dir().join(format!("rullst-sri-{}.css", rand::random::<u64>()));
+        // A sparse two-mebibyte file: larger than every mistyped limit.
+        let file = std::fs::File::create(&path).expect("temporary asset");
+        file.set_len(2 * 1024 * 1024).expect("sparse asset length");
+        drop(file);
+        let content = vec![0_u8; 2 * 1024 * 1024];
+        assert_eq!(
+            sri_link_tag_from_file("/app.css", &path).expect("stylesheet tag"),
+            sri_link_tag("/app.css", &content)
+        );
+        assert_eq!(
+            sri_script_tag_from_file("/app.js", &path).expect("script tag"),
+            sri_script_tag("/app.js", &content)
+        );
+
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("reopen asset");
+        file.set_len(64 * 1024 * 1024 + 1)
+            .expect("sparse oversized asset");
+        drop(file);
+        assert!(matches!(
+            sri_link_tag_from_file("/app.css", &path),
+            Err(SriError::TooLarge { .. })
+        ));
+        std::fs::remove_file(&path).expect("temporary asset cleanup");
+        assert!(matches!(
+            sri_link_tag_from_file("/app.css", &path),
+            Err(SriError::Inspect { .. })
+        ));
+    }
 }
 
 #[cfg(kani)]

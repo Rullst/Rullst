@@ -6642,6 +6642,7 @@ dependencies = [
  "futures-util",
  "hex",
  "hmac",
+ "http-body",
  "jsonschema",
  "libc",
  "qrcode",

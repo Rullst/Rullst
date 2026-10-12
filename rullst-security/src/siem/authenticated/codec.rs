@@ -283,3 +283,7 @@ fn io_failure(operation: &'static str, error: &std::io::Error) -> AuthenticatedS
         kind: error.kind(),
     }
 }
+
+#[cfg(test)]
+#[path = "codec_tests.rs"]
+mod tests;

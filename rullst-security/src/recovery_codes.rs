@@ -289,4 +289,94 @@ mod tests {
                 .expect("invalid format")
         );
     }
+
+    #[test]
+    fn a_batch_may_hold_up_to_twenty_codes() {
+        let batch = generate_recovery_codes("learner", MAX_CODES, PEPPER).expect("full batch");
+        assert_eq!(batch.verifiers().len(), MAX_CODES);
+        assert!(
+            batch
+                .verifiers()
+                .iter()
+                .all(|verifier| verifier.version() == 1)
+        );
+    }
+
+    #[test]
+    fn subjects_are_bounded_and_printable() {
+        assert!(generate_recovery_codes("a".repeat(MAX_SUBJECT_BYTES), 1, PEPPER).is_ok());
+        for subject in [
+            "a".repeat(MAX_SUBJECT_BYTES + 1),
+            "learner\u{7}".to_string(),
+        ] {
+            assert_eq!(
+                generate_recovery_codes(subject, 1, PEPPER).err(),
+                Some(RecoveryCodeError::InvalidConfiguration("subject"))
+            );
+        }
+    }
+
+    #[test]
+    fn peppers_need_thirty_two_bytes_and_twelve_distinct_values() {
+        let twelve_distinct = b"0123456789ab".repeat(3);
+        let eleven_distinct = b"0123456789a".repeat(3);
+        assert!(generate_recovery_codes("learner", 1, &twelve_distinct[..32]).is_ok());
+        for pepper in [
+            &twelve_distinct[..31],
+            &b"0123456789abcdefghijklmnopqrstu"[..],
+            &eleven_distinct[..32],
+            &[b'a'; 64][..],
+        ] {
+            assert_eq!(
+                generate_recovery_codes("learner", 1, pepper).err(),
+                Some(RecoveryCodeError::WeakPepper),
+                "{} bytes",
+                pepper.len()
+            );
+        }
+    }
+
+    #[test]
+    fn codes_are_four_dash_separated_groups_drawn_from_the_whole_alphabet() {
+        let batch = generate_recovery_codes("learner", MAX_CODES, PEPPER).expect("batch");
+        let mut used = std::collections::BTreeSet::new();
+        for code in batch.plaintext() {
+            let groups = code.split('-').collect::<Vec<_>>();
+            assert_eq!(groups.len(), 4, "{code}");
+            for group in groups {
+                assert_eq!(group.len(), 4, "{code}");
+                assert!(group.bytes().all(|byte| CODE_ALPHABET.contains(&byte)));
+                used.extend(group.bytes());
+            }
+        }
+        // 320 uniform draws from 32 symbols cover far more than an eighth of them.
+        assert!(used.len() > 8, "{} distinct characters", used.len());
+    }
+
+    #[test]
+    fn stored_verifier_versions_are_reported_and_only_version_one_verifies() {
+        let batch = generate_recovery_codes("learner", 1, PEPPER).expect("batch");
+        let code = batch.plaintext()[0].clone();
+        let mut stored = serde_json::to_value(&batch.verifiers()[0]).expect("serialize");
+        stored["version"] = serde_json::json!(2);
+        let future: RecoveryCodeVerifier = serde_json::from_value(stored).expect("deserialize");
+        assert_eq!(future.version(), 2);
+        assert!(!verify_recovery_code("learner", &code, &future, PEPPER).expect("verify"));
+    }
+
+    #[test]
+    fn codes_outside_the_alphabet_never_verify() {
+        // Even a stored verifier for such a string cannot make it acceptable.
+        let salt = [9_u8; 16];
+        let outside = "0000000000000000";
+        let verifier = RecoveryCodeVerifier {
+            version: 1,
+            salt,
+            digest: recovery_digest("learner", outside, &salt, PEPPER).expect("digest"),
+        };
+        assert!(
+            !verify_recovery_code("learner", "0000-0000-0000-0000", &verifier, PEPPER)
+                .expect("verify")
+        );
+    }
 }

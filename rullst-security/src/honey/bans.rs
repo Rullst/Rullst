@@ -59,3 +59,27 @@ impl BanList {
         self.expires.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn a_ban_ends_at_its_expiry_instant() {
+        let peer: IpAddr = "192.0.2.1".parse().expect("peer address");
+        let expires_at = Instant::now() + Duration::from_secs(60);
+
+        let mut bans = BanList::default();
+        bans.insert(peer, expires_at, 4);
+        assert!(bans.is_banned(peer, expires_at - Duration::from_secs(1)));
+        assert!(!bans.is_banned(peer, expires_at));
+        assert_eq!(bans.len(), 0);
+
+        bans.insert(peer, expires_at, 4);
+        bans.prune_expired(expires_at - Duration::from_secs(1));
+        assert_eq!(bans.len(), 1);
+        bans.prune_expired(expires_at);
+        assert_eq!(bans.len(), 0);
+    }
+}

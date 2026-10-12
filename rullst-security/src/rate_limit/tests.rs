@@ -304,3 +304,21 @@ fn peer_keys_group_ipv6_by_64_and_keep_ipv4_per_address() {
     );
     assert_ne!(key("2001:db8:0:1::1"), key("2001:db8:0:2::1"));
 }
+
+#[test]
+fn client_keys_may_reach_256_bytes() {
+    let limiter = RateLimiter::new(1, Duration::from_secs(60));
+    let longest = "k".repeat(256);
+    assert!(!limiter.check(&longest));
+    assert!(limiter.check(&longest));
+}
+
+#[test]
+fn blocked_requests_are_counted_in_security_telemetry() {
+    let blocks = || SecurityStore::global().snapshot().rate_limit_blocks;
+    let before = blocks();
+    let limiter = RateLimiter::new(1, Duration::from_secs(60));
+    assert!(!limiter.check("telemetry-client"));
+    assert!(limiter.check("telemetry-client"));
+    assert!(blocks() > before);
+}

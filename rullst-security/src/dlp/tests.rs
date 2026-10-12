@@ -250,3 +250,124 @@ async fn test_dlp_layer_middleware() {
         );
     }
 }
+
+const LEAKED_KEY: &str = "AKIAIOSFODNN7EXAMPLE";
+
+async fn through_layer(method: Method, response: Response<Body>) -> Response<Body> {
+    use tower::ServiceExt;
+
+    let slot = std::sync::Arc::new(std::sync::Mutex::new(Some(response)));
+    let service = DlpResponseLayer.layer(tower::service_fn(move |_request: Request<Body>| {
+        let response = slot
+            .lock()
+            .expect("response slot")
+            .take()
+            .expect("one response");
+        async move { Ok::<_, std::convert::Infallible>(response) }
+    }));
+    service
+        .oneshot(
+            Request::builder()
+                .method(method)
+                .uri("/")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("layer response")
+}
+
+fn text_response(status: StatusCode, body: impl Into<Body>) -> Response<Body> {
+    let mut response = Response::new(body.into());
+    *response.status_mut() = status;
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/plain; charset=utf-8"),
+    );
+    response
+}
+
+async fn text_of(response: Response<Body>) -> String {
+    let bytes = axum::body::to_bytes(response.into_body(), 4 * 1024 * 1024)
+        .await
+        .expect("response body");
+    String::from_utf8(bytes.to_vec()).expect("UTF-8 body")
+}
+
+#[tokio::test]
+async fn bodies_up_to_two_mebibytes_are_inspected() {
+    let limit = 2 * 1024 * 1024;
+    let body = format!("{}{LEAKED_KEY}", "a".repeat(limit - LEAKED_KEY.len()));
+    let response = through_layer(Method::GET, text_response(StatusCode::OK, body)).await;
+    let text = text_of(response).await;
+    assert_eq!(text.len(), limit);
+    assert!(!text.contains(LEAKED_KEY));
+}
+
+#[tokio::test]
+async fn a_content_length_matching_the_body_is_inspected() {
+    let body = format!("key {LEAKED_KEY}");
+    let mut response = text_response(StatusCode::OK, body.clone());
+    response
+        .headers_mut()
+        .insert(header::CONTENT_LENGTH, HeaderValue::from(body.len()));
+    let text = text_of(through_layer(Method::GET, response).await).await;
+    assert!(!text.contains(LEAKED_KEY));
+}
+
+#[tokio::test]
+async fn encoded_head_and_informational_responses_pass_through() {
+    let body = format!("key {LEAKED_KEY}");
+    let mut gzip = text_response(StatusCode::OK, body.clone());
+    gzip.headers_mut()
+        .insert(header::CONTENT_ENCODING, HeaderValue::from_static("gzip"));
+    let early_hints = StatusCode::from_u16(103).expect("103 Early Hints");
+    for (method, response) in [
+        (Method::GET, gzip),
+        (Method::HEAD, text_response(StatusCode::OK, body.clone())),
+        (Method::GET, text_response(early_hints, body.clone())),
+    ] {
+        let label = format!("{method} {}", response.status());
+        let text = text_of(through_layer(method, response).await).await;
+        assert_eq!(text, body, "{label}");
+    }
+
+    let mut identity = text_response(StatusCode::OK, body.clone());
+    identity.headers_mut().insert(
+        header::CONTENT_ENCODING,
+        HeaderValue::from_static("Identity"),
+    );
+    let text = text_of(through_layer(Method::GET, identity).await).await;
+    assert!(!text.contains(LEAKED_KEY));
+}
+
+/// A fixed-size body whose only frame is a read error.
+struct FailingBody;
+
+impl HttpBody for FailingBody {
+    type Data = axum::body::Bytes;
+    type Error = std::io::Error;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        _context: &mut Context<'_>,
+    ) -> Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
+        Poll::Ready(Some(Err(std::io::Error::other("connection reset"))))
+    }
+
+    fn size_hint(&self) -> http_body::SizeHint {
+        http_body::SizeHint::with_exact(32)
+    }
+}
+
+#[tokio::test]
+async fn a_body_that_fails_while_buffered_is_withheld() {
+    let response = text_response(StatusCode::OK, Body::new(FailingBody));
+    let response = through_layer(Method::GET, response).await;
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    assert_eq!(
+        response.headers().get(header::CACHE_CONTROL),
+        Some(&HeaderValue::from_static("no-store"))
+    );
+    assert_eq!(text_of(response).await, "response inspection failed");
+}

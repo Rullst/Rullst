@@ -176,4 +176,28 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn severity_follows_the_event_type() {
+        for (event_type, severity) in [
+            ("HONEYPOT_TRAP_TRIGGERED", "8"),
+            ("AI_PROMPT_INJECTION_SHIELDED", "9"),
+            ("XSS_SANITIZED", "7"),
+            ("RBAC_ACCESS_DENIED", "5"),
+        ] {
+            let cef = format_cef_event(&LiveSecurityEvent::local(event_type, "x", "unknown"));
+            assert!(
+                cef.contains(&format!("|{event_type}|{event_type}|{severity}|")),
+                "{cef}"
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_records_a_local_alert() {
+        let store = SecurityStore::global();
+        let before = store.snapshot().siem_dispatches;
+        dispatch_siem_alert("SECURITY_EVENT", "dispatched locally", "192.0.2.30");
+        assert!(store.snapshot().siem_dispatches > before);
+    }
 }

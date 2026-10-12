@@ -226,4 +226,14 @@ mod tests {
             Some("pt-BR")
         ));
     }
+
+    #[test]
+    fn observations_may_reach_1024_bytes_without_control_characters() {
+        let longest = "a".repeat(MAX_OBSERVATION_BYTES);
+        assert!(try_generate_fingerprint(KEY, Some(&longest), None, None).is_ok());
+        let too_long = "a".repeat(MAX_OBSERVATION_BYTES + 1);
+        for user_agent in [too_long.as_str(), "Mozilla/5.0\u{7}"] {
+            assert!(try_generate_fingerprint(KEY, Some(user_agent), None, None).is_err());
+        }
+    }
 }
