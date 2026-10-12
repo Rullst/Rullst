@@ -419,3 +419,30 @@ fn signing_does_not_expose_private_keys_or_payloads_to_trace_subscribers() {
         assert!(!output.contains(marker), "signing emitted a private value");
     }
 }
+
+#[test]
+fn limits_session_tokens_and_debug_output_are_bounded() {
+    let config = || CloudStorageConfig::new(live_credentials());
+    assert!(
+        config()
+            .with_limits(268_435_456, Duration::from_millis(1))
+            .is_ok()
+    );
+    assert!(config().with_limits(1, Duration::from_secs(120)).is_ok());
+
+    let expires = SystemTime::now() + Duration::from_secs(3_600);
+    assert!(
+        live_credentials()
+            .with_session_token("t".repeat(8_192), expires)
+            .is_ok()
+    );
+    for token in [String::new(), "t".repeat(8_193)] {
+        assert!(matches!(
+            live_credentials().with_session_token(token, expires),
+            Err(CloudError::Configuration)
+        ));
+    }
+
+    assert!(format!("{:?}", live_credentials()).contains("CloudCredentials"));
+    assert!(format!("{:?}", offline()).contains("CloudClient"));
+}
