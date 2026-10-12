@@ -553,9 +553,10 @@ higher component result for the repository total.
 ### Accepted equivalent mutants
 
 The v13 focused campaign (targeted runs of security and correctness files
-before 13.0.0-alpha.1) and the local whole-crate campaign that followed it
-(`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`) gave
-every missed mutant in their files a test, except these.
+before 13.0.0-alpha.1), the local whole-crate campaign that followed it
+(`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`) and the
+security campaign (targeted runs of every `rullst-security` file) gave every
+missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
@@ -589,6 +590,20 @@ entry needs the same one-line justification.
 | `rullst-supervision/src/sqlite/observations.rs`: `record_observation`, both source match guards with `true` | `record_browser` and `record_capture` pass only browser or capture observations with the browser source, and `analyze` only presence or audio findings with an adapter source. |
 | `rullst-supervision/src/sqlite/transaction.rs`: `Operation::begin`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
 | `rullst-supervision/src/sqlite/mod.rs`: `resolved_path`, both metadata match guards with `false` | `open` checks for a regular file again, `initialize` creates the file exclusively and fails on any existing entry, and every other metadata error also fails the open with the same `Storage`. |
+| `rullst-security/src/telemetry.rs`: `SecurityStore::push_live_event`, `events.len() > MAX_LIVE_EVENTS` with `>=` | Truncating a buffer that holds exactly 50 events to 50 changes nothing. |
+| `rullst-security/src/telemetry/event.rs`: `security_event_schema_version` with `1` | `SECURITY_EVENT_SCHEMA_VERSION` is 1. |
+| `rullst-security/src/telemetry/event.rs`: `truncate_utf8`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
+| `rullst-security/src/sentinel/pow/codec.rs`: `decode_token`, `token.is_empty() \|\| token.len() > 128` with `&&`, and `>` with `==` or `>=` | Decoding rejects every token that does not decode to exactly 82 bytes with the same `InvalidToken`. |
+| `rullst-security/src/siem/spool.rs`: `decode_file`, and `rullst-security/src/siem/authenticated/codec.rs`: `read_and_verify`, `events.len() + 1` in the `invalid frame offset` error of `cursor.checked_add(relative_end)` with `-` or `*` | A line end found inside the buffer cannot overflow `usize`, so the closure never runs. |
+| `rullst-security/src/recovery_codes.rs`: `GeneratedRecoveryCodes::drop` with `()` | Zeroizing the plaintext codes changes only memory that is freed right after; safe code cannot read it. |
+| `rullst-security/src/mfa.rs`: `verify_totp_step_at`, `code.len() != 6 \|\| !all digits` with `&&` | Every other input fails the constant-time comparison with the six-digit expected code. |
+| `rullst-security/src/mfa.rs`: `decode_base32` and `generate_totp_at_counter` (three times), `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same value. |
+| `rullst-security/src/schema_guard.rs`: `StrictJsonVisitor::expecting` with `Ok(Default::default())` | serde_json calls a visit method for every JSON value, so the message is never formatted, and `inspect_json_payload` maps every error to fixed text. |
+| `rullst-security/src/dlp/masking.rs`: `mask_database_passwords`, `pass_end + 1` with `-` or `*` | The next scheme search starts at or just before the `@`, where no scheme can begin. |
+| `rullst-security/src/log_redactor.rs`: `identifier_continuation`, `end + 1` with `-` | A `_` or `.` followed by a non-alphanumeric byte then yields an empty last component, which is skipped like the identifier without it: neither byte is a separator, quote or space. |
+| `rullst-security/src/timing_guard.rs`: `TimingScope::finish`, `elapsed < target_duration` with `<=` | Sleeping for a zero remainder returns immediately. |
+| `rullst-security/src/login_guard.rs`: `record_login_failure`, the window match guard with `true` | `prune_expired` has just removed every counter whose last attempt is a window or more old. |
+| `rullst-security/src/rate_limit.rs`: `is_rate_limited_in`, the retention `<` with `<=` | Two `Instant::now()` readings would have to differ by exactly the window, and an entry kept at that instant restarts its count on its next use. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
@@ -604,6 +619,26 @@ so no single test can fail first:
   scanner's `level` and `path` loops, where an index step (`+= 1`, `+= 2`,
   `next + 1`, `end + 1`, `end + 2`) becomes `-` or `*`, or `path` returns
   `0` or `1`, and the scan revisits the same token forever.
+- `rullst-security/src/log_redactor.rs`: the bearer, identifier, separator
+  and escaped-quote scans, where an index step (`+= 1`, `+= 2`) becomes `-`
+  or `*`, a key offset (`cursor + offset`, `key_start +
+  key.len()`) becomes `-` or `*`, or `identifier_continuation` returns `0` or
+  `1`, and the scan finds the same key or byte again forever.
+- `rullst-security/src/dlp/byteranges.rs`: `Lines::next`, where the
+  non-empty filter is negated or the next-line offset (`start + offset + 1`)
+  becomes `-` or `*`, and the reader returns the same line forever;
+  `rullst-security/src/dlp/masking.rs`: the AWS-key and database scans, where
+  `cursor + offset` becomes `*` or `-`, or `+ scheme.len()` becomes `-`, and
+  the scan restarts before the same match.
+- `rullst-security/src/login_guard/state.rs`: `pop_earliest` returning
+  `None` or `Some(Default::default())`, or `make_room` with `&&` replaced by
+  `||`, so pruning or eviction never removes an entry; and
+  `rullst-security/src/rasp/user_agent.rs`: the version scan's `index += 1`
+  replaced by `*=`.
+
+`rullst-security/src/timing_guard.rs`: `TimingScope::finish` with the jitter
+`%` replaced by `+` does not loop: it sleeps for up to 72 minutes in the
+real-time padding tests.
 
 A targeted run sets each test binary's address space to 8 GiB, so a loop that
 does allocate aborts its tests and counts as caught instead.
