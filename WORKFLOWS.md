@@ -170,7 +170,7 @@ The workflows below run **only when requested manually**:
 | `fuzzing.yml` | All 42 declared libFuzzer targets from the validated shared inventory | **Required release evidence:** release mode validates all 42 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the same release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 42 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.99.0 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
-| `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction, with explicit per-mutant test/build timeouts and an optional library-only test scope; it does not replace the complete campaign. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
+| `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction, with explicit per-mutant test/build timeouts and an optional library-only test scope; it does not replace the complete campaign. Every shard has a pinned Redis service, so the `RULLST_TEST_REDIS_URL` contracts run for each mutant. A contract mode runs one owned-server wrapper's mutation mode, which mutates only that wrapper's PostgreSQL or Redis adapter files and runs only its contract tests against the server it owns; it checks its own outcome count instead of the workspace inventory and aggregate. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
 
 The v13 candidate also provides `verus.yml` as a manual-only pilot. Its source
 linkage/proof/negative-control checks are strict when invoked, while the pilot
@@ -498,7 +498,15 @@ higher component result for the repository total.
   mutant that allocates without bound aborts its own tests instead of
   exhausting the runner. An optional `shard=k/n` slice (n at most 16)
   splits a file that is too slow for one job; the preflight inventory and the
-  aggregate then cover exactly that slice. Recovery is governed by a committed, versioned policy binding the
+  aggregate then cover exactly that slice. Every full and targeted shard has
+  the pinned Redis service of `ci.yml`'s Redis job and sets
+  `RULLST_TEST_REDIS_URL`, so the Security rate-limit and Core cache
+  inspection Redis contracts run in the baseline and for every mutant (Core
+  queue scheduling and the ORM Redis data matrix start their own
+  testcontainer). The ORM query-cache and hash-scope Redis contracts need the
+  non-strict pool, so the all-feature build compiles them out and no mutation
+  run reaches them. [Contract mode](#owned-server-contract-mutation-runs) covers the
+  adapters that only a wrapper-owned server reaches. Recovery is governed by a committed, versioned policy binding the
   originating and continuation runs, attempts, branches, workflow identity,
   measured source SHA, cargo-mutants version, exact shard set and inventory
   digest. It bisects only authorized incomplete fragments and combines them
@@ -561,7 +569,8 @@ require the check yet. `.github/mutants-pr-exclude.txt` lists the files it
 skips: the CLI, whose generated-project suites are too slow to rerun per
 mutant, and adapters exercised only by wrappers that own a disposable
 PostgreSQL, MySQL or authenticated Redis server. Those files remain the
-manual campaign's responsibility.
+manual campaign's responsibility, through its
+[contract mode](#owned-server-contract-mutation-runs).
 
 ### Accepted equivalent mutants
 
@@ -656,12 +665,41 @@ real-time padding tests.
 A targeted run sets each test binary's address space to 8 GiB, so a loop that
 does allocate aborts its tests and counts as caught instead.
 
-The `rullst-privacy` PostgreSQL adapters (`age_assurance/postgres.rs` and
-`consent/postgres.rs`) are exercised only by the ignored contract tests that
-`.github/check-privacy-postgres.py` runs against an owned Docker server, so a
-mutation run without that wrapper reports their database-bound mutants as
-missed. Their URL policy in `postgres_connection.rs` and the capacity check
-have unit tests.
+### Owned-server contract mutation runs
+
+Some adapters are reached only by ignored contract tests that a wrapper runs
+against a disposable Docker server it owns, so a full or targeted run reports
+their database-bound mutants as missed. `mode=contract` measures them: it runs
+`.github/check-<contract>.py --mutants REGEX [--shard k/n]` on a hosted runner
+and uploads `mutants.out` as `mutants-out-contract`. The wrapper starts its
+server, mutates only its adapter files and runs only the first (exercise)
+phase of its contract tests, one at a time, never the restart phase.
+`.github/mutation_contract.py` is the Cargo target runner for those tests: it
+resets the server before every test binary (a recreated database of the same
+name, no leftover runtime roles, `ALTER SYSTEM RESET ALL`, or `FLUSHALL` for
+Redis), because a mutant can stop a test halfway and leave a role, a disabled
+`fsync` or a full Redis behind. Missed and timed-out mutants are findings; a
+failed baseline, a baseline that did not run every contract test, a failed
+reset or an incomplete classification fails the run. Because only the contract
+tests run, a mutant that a unit test of the same file catches can still be
+reported as missed: compare it with a targeted run of that file. One build
+directory serves every mutant, so the job compiles incrementally, without
+sccache (which refuses incremental builds), and rebuilds a mutant in about a
+second.
+
+| `contract` | Mutated files | Contract tests |
+| --- | --- | --- |
+| `passkey-postgres` | `rullst-auth/src/auth/passkey/shared/manager.rs`, `shared/postgres/operations.rs` | `postgres_contract` |
+| `auth-recovery-postgres` | `rullst-auth/src/recovery/connection.rs`, `store.rs`, `email_login/guard.rs`, `email_login/storage.rs`, `api_tokens/storage.rs`: the files with PostgreSQL-only branches | recovery, sessions, email login, API token (with HTTP) and the exercise phase of the three restart journeys; not the browser journey |
+| `privacy-postgres` | `rullst-privacy/src/age_assurance/postgres.rs`, `consent/postgres.rs` | `shared_replay_contract`, `shared_consent_contract` |
+| `mail-postgres` | `rullst-mail/src/suppression/postgres/**` | suppression contract and restart exercise |
+| `recurring-postgres` | `rullst-messaging/src/schedules/**` (`schedules-postgres`) | recurring contract and restart exercise |
+| `messaging-redis` | `rullst-messaging/src/redis_streams/**` | the password, TLS, fault, ordering, outbox and bounds contracts and the AOF restart exercise |
+
+The MySQL statement files `rullst-capital/src/quota/sql/mysql.rs` and
+`rullst-ai/src/ai/memory/sql/mysql.rs` hold only string constants, so
+cargo-mutants generates no mutant for them. The privacy URL policy in
+`postgres_connection.rs` and the capacity check have unit tests.
 
 ### Fuzzing and OSS-Fuzz
 
@@ -775,7 +813,7 @@ dependency graph make static estimates unreliable.
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Blocking release scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.99.0 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
-| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, one validated production-file diagnostic, or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
+| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, each shard with a pinned Redis service for the `RULLST_TEST_REDIS_URL` contracts, one validated production-file diagnostic, one owned-server contract (`mode=contract`: a PostgreSQL or Redis wrapper's adapter mutants against the server it owns), or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt`, and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh Omni shell and compiles an aarch64 debug APK. It additionally checks generated icon bytes, rejects missing release-signing inputs, builds a real release APK with an ephemeral CI-only key and verifies its certificate digest with apksigner. No production key, physical-device behavior, Play testing, privacy declarations or store acceptance is certified. |

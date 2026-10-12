@@ -6,9 +6,12 @@ import os
 import re
 import secrets
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
+
+import mutation_contract
 
 
 IMAGE = "postgres@sha256:29342cb52157b098821961d2c14eec3c019071f56a5d559e990cf07cf541ea9b"
@@ -36,16 +39,23 @@ def database_url(name: str) -> str:
     return "postgres://postgres@" + binding + "/rullst_privacy_contract"
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage", action="store_true",
                         help="accumulate profiles with cargo llvm-cov --no-report")
     parser.add_argument("--suite", choices=("all", "age", "consent"), default="all")
     parser.add_argument("--manifest-path", type=Path,
                         help="external consent consumer, using only extracted packages")
+    parser.add_argument("--mutants", metavar="REGEX",
+                        help="mutate both PostgreSQL adapters and run their exercise-phase contracts")
+    parser.add_argument("--shard", metavar="K/N", help="with --mutants, test only this cargo-mutants shard")
     args = parser.parse_args()
     if args.manifest_path is not None and (args.suite != "consent" or args.coverage):
         parser.error("external package consumers require --suite consent without --coverage")
+    if args.mutants and (args.coverage or args.manifest_path is not None or args.suite != "all"):
+        parser.error("mutation runs use both suites in the workspace, without coverage")
+    if args.shard and not args.mutants:
+        parser.error("--shard needs --mutants")
     name = "rullst-privacy-contract-" + uuid.uuid4().hex
     started = False
     try:
@@ -65,6 +75,17 @@ def main() -> None:
             "RULLST_PRIVACY_RESTART_NONCE": secrets.token_hex(32),
             "RULLST_PRIVACY_POSTGRES_PHASE": "exercise",
         })
+        if args.mutants:
+            # Exercise phase only; the runner recreates the database, drops the
+            # runtime roles and resets ALTER SYSTEM settings per binary.
+            return mutation_contract.run(
+                package="rullst-privacy", features="postgres,consent-postgres",
+                files=["rullst-privacy/src/age_assurance/postgres.rs",
+                       "rullst-privacy/src/consent/postgres.rs"],
+                targets=["--test=age_assurance", "--test=consent"],
+                tests=["postgres::shared_replay_contract", "postgres::shared_consent_contract"],
+                regex=args.mutants, shard=args.shard, env=env, timeout=60,
+                reset_spec=mutation_contract.postgres(name, "rullst_privacy_contract"))
         commands = []
         for suite, feature, target, contract in [
             ("age", "postgres", "age_assurance", "shared_replay_contract"),
@@ -92,6 +113,7 @@ def main() -> None:
         env["RULLST_PRIVACY_POSTGRES_PHASE"] = "restart"
         for command in commands:
             subprocess.run(command, env=env, check=True, timeout=1800)
+        return 0
     except (subprocess.SubprocessError, RuntimeError):
         if started:
             subprocess.run(["docker", "logs", "--tail", "60", name],
@@ -104,4 +126,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

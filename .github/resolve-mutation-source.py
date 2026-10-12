@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def resolve_source(mode: str, requested: str, workflow: str, repo: Path) -> str:
-    if mode not in {"full", "targeted", "resume", "finalize"}:
+    if mode not in {"full", "targeted", "contract", "resume", "finalize"}:
         raise ValueError("Unsupported mutation mode.")
     if requested and mode != "full":
         raise ValueError("An explicit source_sha is supported only in full mode.")

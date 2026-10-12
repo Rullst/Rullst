@@ -28,6 +28,13 @@ A prepared version section does not establish that its tag or crates exist.
 - Pull requests to `main` that change Rust run `mutants-pr.yml`, which
   mutates only the changed lines and fails when a mutant survives, so the
   mutation score no longer decays between campaigns.
+- `mutants.yml` gives every full and targeted shard a Redis service, so the
+  Security and Core `RULLST_TEST_REDIS_URL` contracts run for each mutant,
+  and gains a
+  `contract` mode: the passkey, auth recovery, privacy, mail and recurring
+  PostgreSQL wrappers and the Redis messaging wrapper mutate their adapter
+  files and run their contract tests against the server they own, which is
+  reset before every test binary.
 
 ### OpenSSF Silver evidence
 

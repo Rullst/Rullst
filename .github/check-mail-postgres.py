@@ -5,9 +5,12 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
+
+import mutation_contract
 
 IMAGE = "postgres@sha256:29342cb52157b098821961d2c14eec3c019071f56a5d559e990cf07cf541ea9b"
 
@@ -34,9 +37,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage", action="store_true")
     parser.add_argument("--manifest-path", type=Path)
+    parser.add_argument("--mutants", metavar="REGEX",
+                        help="mutate the PostgreSQL suppression adapter and run its exercise-phase contracts")
+    parser.add_argument("--shard", metavar="K/N", help="with --mutants, test only this cargo-mutants shard")
     args = parser.parse_args()
     if args.manifest_path and args.coverage:
         parser.error("archive consumers do not support coverage")
+    if args.mutants and (args.coverage or args.manifest_path):
+        parser.error("mutation runs use the workspace, without coverage")
+    if args.shard and not args.mutants:
+        parser.error("--shard needs --mutants")
     name = "rullst-mail-suppression-" + uuid.uuid4().hex
     started = False
     try:
@@ -46,6 +56,20 @@ def main():
         started = True
         ready(name)
         env = dict(os.environ, RULLST_MAIL_TEST_POSTGRES_URL=url(name))
+        if args.mutants:
+            with tempfile.TemporaryDirectory(prefix="rullst-mail-mutants-") as directory:
+                # Exercise phase only: it rewrites the receipt, and the runner
+                # recreates the database and drops the runtime role per binary.
+                receipt = Path(directory, "receipt.json")
+                receipt.touch(mode=0o600)
+                env.update(RULLST_MAIL_RESTART_RECEIPT=str(receipt), RULLST_MAIL_RESTART_PHASE="exercise")
+                return mutation_contract.run(
+                    package="rullst-mail", features="postgres",
+                    files=["rullst-mail/src/suppression/postgres/**"],
+                    targets=["--test=postgres_suppression", "--test=postgres_suppression_restart"],
+                    tests=["postgres_suppression_contract", "postgres_suppression_process_restart"],
+                    regex=args.mutants, shard=args.shard, env=env, timeout=60,
+                    reset_spec=mutation_contract.postgres(name, "rullst_mail_contract"))
         command = ["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"]
         command += ["--locked"]
         if args.manifest_path:
@@ -65,10 +89,11 @@ def main():
             ready(name)
             env.update(RULLST_MAIL_TEST_POSTGRES_URL=url(name), RULLST_MAIL_RESTART_PHASE="restart")
             subprocess.run(journey, env=env, check=True, timeout=300)
+        return 0
     finally:
         if started:
             subprocess.run(["docker", "stop", "--timeout", "5", name], check=True, timeout=30)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
