@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791758303622,
+  "lastUpdate": 1791767948337,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16015,6 +16015,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3144,
             "range": "± 120",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1788ea564d2f04decb4e4842a0790251be764010",
+          "message": "Merge pull request #461 from Rullst/ci/mutants-pr-gate\n\nci(mutants): fail pull requests that leave changed-line mutants alive",
+          "timestamp": "2026-10-11T21:58:29-03:00",
+          "tree_id": "3d8c19a06c3cfe3b4280fb2d61f8189c204dfb6f",
+          "url": "https://github.com/Rullst/Rullst/commit/1788ea564d2f04decb4e4842a0790251be764010"
+        },
+        "date": 1791767947454,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 599,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 484,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1108,
+            "range": "± 109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3032,
+            "range": "± 59",
             "unit": "ns/iter"
           }
         ]
