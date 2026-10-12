@@ -53,6 +53,8 @@ mod lease_tests;
 mod recovery_tests;
 #[cfg(all(test, feature = "queue-sqlite", not(miri)))]
 mod sqlite_claim_tests;
+#[cfg(test)]
+mod test_support;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
 #[cfg(test)]

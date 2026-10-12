@@ -108,7 +108,7 @@ async fn worker_fences_transitions_on_the_claimed_attempt() {
     worker.register("test", |_| async { Ok(()) });
     let handle = worker.run().unwrap();
     wait_for_transition(&state).await;
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(
         *state.fenced.lock().unwrap(),
@@ -122,10 +122,10 @@ async fn worker_fences_transitions_on_the_claimed_attempt() {
     let mut handle = worker.run().unwrap();
     wait_for_transition(&state).await;
     assert!(matches!(
-        handle.next_error().await,
+        test_support::next_error(&mut handle).await,
         Some(QueueError::JobFailed(_))
     ));
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(
         *state.fenced.lock().unwrap(),
@@ -141,10 +141,10 @@ async fn a_worker_without_the_handler_hands_the_claim_back_with_a_delay() {
     let mut handle = worker.run().unwrap();
     wait_for_transition(&state).await;
     assert!(matches!(
-        handle.next_error().await,
+        test_support::next_error(&mut handle).await,
         Some(QueueError::HandlerNotFound(name)) if name == "export_csv"
     ));
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(
         *state.fenced.lock().unwrap(),
@@ -164,10 +164,10 @@ async fn a_driver_without_deferral_still_fails_an_unhandled_claim() {
     let mut handle = Worker::new(&queue).poll_interval(2).run().unwrap();
     wait_for_transition(&state).await;
     assert!(matches!(
-        handle.next_error().await,
+        test_support::next_error(&mut handle).await,
         Some(QueueError::HandlerNotFound(_))
     ));
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
 
     assert_eq!(
         *state.fenced.lock().unwrap(),
@@ -192,10 +192,10 @@ async fn a_job_no_worker_can_handle_is_failed_after_the_hand_back_ceiling() {
     let mut handle = Worker::new(&queue).poll_interval(2).run().unwrap();
     wait_for_transition(&state).await;
     assert!(matches!(
-        handle.next_error().await,
+        test_support::next_error(&mut handle).await,
         Some(QueueError::HandlerNotFound(name)) if name == "retired_export"
     ));
-    handle.shutdown().await.unwrap();
+    test_support::shut_down(handle).await.unwrap();
     assert_eq!(
         *state.fenced.lock().unwrap(),
         vec![("mark_failed_attempt", "job".to_string(), ceiling)]
@@ -300,7 +300,7 @@ mod sqlite {
             .mark_failed(&reclaimed.id, "second claim failed")
             .await
             .unwrap();
-        handle.shutdown().await.unwrap();
+        test_support::shut_down(handle).await.unwrap();
     }
 
     async fn claimed_twice(driver: &SqliteDriver, id: &str) -> (u32, u32) {
@@ -413,7 +413,7 @@ mod sqlite {
             .unwrap();
         assert!(matches!(error, QueueError::HandlerNotFound(name) if name == "export_csv"));
         tokio::time::sleep(Duration::from_millis(50)).await;
-        old_handle.shutdown().await.unwrap();
+        test_support::shut_down(old_handle).await.unwrap();
 
         let (job_status, attempts, available_at_ms): (String, i64, i64) = sqlx::query_as(
             "SELECT status, attempts, available_at_ms FROM rullst_jobs WHERE id = ?",
@@ -452,7 +452,7 @@ mod sqlite {
         })
         .await
         .unwrap();
-        new_handle.shutdown().await.unwrap();
+        test_support::shut_down(new_handle).await.unwrap();
         assert!(ran.load(Ordering::SeqCst));
     }
 
