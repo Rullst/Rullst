@@ -160,3 +160,7 @@ fn parse_cbor_at_depth(bytes: &[u8], depth: usize) -> Result<(CborValue, &[u8]),
         ))),
     }
 }
+
+#[cfg(test)]
+#[path = "cbor_tests.rs"]
+mod tests;
