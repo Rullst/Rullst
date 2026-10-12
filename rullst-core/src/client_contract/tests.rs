@@ -269,3 +269,18 @@ fn payloads_that_cannot_be_serialized_are_not_reported_as_too_large() {
         Err(ClientContractError::EncodeJson(_))
     ));
 }
+
+#[test]
+fn envelope_accessors_return_what_was_set() {
+    let key = IdempotencyKey::new("attempt_01j8lesson").expect("replay key");
+    let mutation = ClientRequest::mutation(version(1), request_id(), key.clone(), ());
+    assert_eq!(mutation.idempotency_key(), Some(&key));
+    let failure = ServerFailure::new(
+        version(1),
+        request_id(),
+        1_727_712_000_000,
+        FailureDetail::new(FailureCode::new("lesson.busy").expect("code"), true),
+    );
+    assert_eq!(failure.server_epoch_ms(), 1_727_712_000_000);
+    assert!(failure.error().retryable());
+}
