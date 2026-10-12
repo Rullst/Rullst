@@ -267,3 +267,6 @@ impl Queue {
 mod sqlite_tests;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod bounds_tests;
