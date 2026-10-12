@@ -124,6 +124,65 @@ async fn counter_updates_keep_the_credential_and_advance_unless_both_are_zero() 
 }
 
 #[tokio::test]
+async fn malformed_credentials_are_neither_stored_nor_loaded() {
+    let path = temporary_database("malformed");
+    let auth = auth();
+    let (_, passkey) = registered_fixture(&auth);
+    let store = SqlitePasskeyStore::connect(database_url(&path), 32, 8)
+        .await
+        .expect("connect store");
+    let mut off_curve = vec![4];
+    off_curve.extend_from_slice(&[1; 64]);
+    let mut wrong_tag = passkey.public_key.clone();
+    wrong_tag[0] = 3;
+    let malformed = [
+        Passkey {
+            credential_id: Vec::new(),
+            ..passkey.clone()
+        },
+        Passkey {
+            credential_id: vec![1; 1_024],
+            ..passkey.clone()
+        },
+        Passkey {
+            public_key: passkey.public_key[..33].to_vec(),
+            ..passkey.clone()
+        },
+        Passkey {
+            public_key: wrong_tag,
+            ..passkey.clone()
+        },
+        Passkey {
+            public_key: off_curve.clone(),
+            ..passkey.clone()
+        },
+    ];
+    for candidate in malformed {
+        assert_eq!(
+            store.register("user-7", "Laptop", candidate).await,
+            Err(InvalidCredential)
+        );
+    }
+    assert!(store.devices("user-7").await.expect("list").is_empty());
+    // A stored key corrupted outside the store is not handed to WebAuthn.
+    store
+        .register("user-7", "Laptop", passkey)
+        .await
+        .expect("register credential");
+    sqlx::query("UPDATE rullst_auth_passkey_devices SET public_key = ?")
+        .bind(off_curve)
+        .execute(&store.pool)
+        .await
+        .expect("corrupt stored key");
+    assert_eq!(
+        store.active_passkeys("user-7").await.err(),
+        Some(InvalidCredential)
+    );
+    store.close().await;
+    remove_database(&path);
+}
+
+#[tokio::test]
 async fn rename_and_revoke_classify_missing_revoked_and_malformed_ids() {
     let path = temporary_database("classify");
     let auth = auth();
