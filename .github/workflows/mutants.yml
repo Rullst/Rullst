@@ -385,6 +385,18 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # The env-gated Redis contracts (security rate limit, Core queue and cache,
+    # ORM query cache) run in the baseline and for every mutant, as in ci.yml.
+    services:
+      redis:
+        image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -431,6 +443,7 @@ jobs:
           BUILD_TIMEOUT_SECONDS: ${{ needs.plan.outputs.build_timeout_seconds }}
           TEST_SCOPE: ${{ needs.plan.outputs.test_scope }}
           TARGETED_SHARD: ${{ needs.plan.outputs.targeted_shard }}
+          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: |
           # Keep the release feature surface explicit in hosted logs as well as
           # in .cargo/mutants.toml, which applies the same policy locally.
