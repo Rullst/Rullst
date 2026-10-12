@@ -119,3 +119,61 @@ fn exact_origin_subprotocol_and_limits_cannot_be_implicitly_weakened() {
             .is_err()
     );
 }
+
+#[test]
+fn command_and_snapshot_limits_are_inclusive() {
+    let valid = command(r#"{"answer":"private-answer"}"#);
+    // Padding with JSON whitespace reaches the 16 KiB limit exactly.
+    let mut padded = valid.clone();
+    padded.push_str(&" ".repeat(16_384 - valid.len()));
+    let decoded = LiveCommand::decode(&padded).unwrap();
+    assert_eq!(decoded.id(), "0123456789abcdef0123456789abcdef");
+    assert!(format!("{decoded:?}").contains("LiveCommand"));
+
+    let fields: std::collections::BTreeMap<String, &str> = (0..32)
+        .map(|index| (format!("field{index}"), "v"))
+        .collect();
+    let many = command(&serde_json::to_string(&fields).unwrap());
+    assert_eq!(LiveCommand::decode(&many).unwrap().fields().len(), 32);
+    let longest_value = command(
+        &serde_json::to_string(&std::collections::BTreeMap::from([(
+            "answer",
+            "v".repeat(2_048),
+        )]))
+        .unwrap(),
+    );
+    assert!(LiveCommand::decode(&longest_value).is_ok());
+
+    let action = "a".repeat(64);
+    let largest = valid
+        .replace("\"7\"", "\"18446744073709551615\"")
+        .replace("\"answer\",\"fields\"", &format!("\"{action}\",\"fields\""));
+    let decoded = LiveCommand::decode(&largest).unwrap();
+    assert_eq!(decoded.expected_revision(), u64::MAX);
+    assert_eq!(decoded.action(), action);
+
+    for invalid in [
+        valid.replace("\"kind\":\"action\"", "\"kind\":\"snapshot\""),
+        valid.replace(
+            "0123456789abcdef0123456789abcdef",
+            "0123456789abcdef0123456789abcde",
+        ),
+        valid.replace("\"7\"", "\"+7\""),
+    ] {
+        assert!(matches!(
+            LiveCommand::decode(&invalid),
+            Err(LiveRecoveryError::Invalid)
+        ));
+    }
+
+    let html = "x".repeat(65_536);
+    let snapshot = LiveSnapshot::try_new(3, html.clone()).unwrap();
+    assert_eq!(snapshot.html(), html);
+    assert!(format!("{snapshot:?}").contains("html_bytes: 65536"));
+    let tenant = crate::security::TenantMembership::try_new(["school-a"])
+        .unwrap()
+        .select("school-a")
+        .unwrap();
+    let scope = LiveScope::try_new(&tenant, "account", "exam/7").unwrap();
+    assert_eq!(format!("{scope:?}"), "LiveScope([REDACTED])");
+}
