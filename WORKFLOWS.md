@@ -149,7 +149,7 @@ Tag publication remains deliberately unavailable through a manual button.
 
 ## Manual and periodic execution map
 
-Every verification workflow except the PR-context-only `ai-sentinel-pr.yml`,
+Every verification workflow except the PR-context-only `ai-sentinel-pr.yml` and `mutants-pr.yml`,
 reusable `cli-artifacts.yml` and tag-only `release.yml` can be started from **Actions → select workflow
 → Run workflow**. A manual run checks the selected branch's current SHA; record
 that SHA and the run URL before treating it as release evidence. The release
@@ -550,6 +550,19 @@ higher component result for the repository total.
   [public benchmark hub](https://rullst.github.io/Rullst/benches/); they are not
   a promise against every nanosecond-level regression.
 
+### Pull-request mutation gate
+
+`mutants-pr.yml` keeps the campaign's result from decaying between
+campaigns: on every pull request to `main` that changes Rust, it mutates only
+the changed lines and fails when a mutant survives. Resolve a red result
+before merging, with a test that fails with the mutant or, when the mutant is
+truly equivalent, with an entry in the list below. Branch protection does not
+require the check yet. `.github/mutants-pr-exclude.txt` lists the files it
+skips: the CLI, whose generated-project suites are too slow to rerun per
+mutant, and adapters exercised only by wrappers that own a disposable
+PostgreSQL, MySQL or authenticated Redis server. Those files remain the
+manual campaign's responsibility.
+
 ### Accepted equivalent mutants
 
 The v13 focused campaign (targeted runs of security and correctness files
@@ -702,7 +715,7 @@ Dependabot updating the wrapper alone is insufficient. The scan's existing
 scope and verified-secret failure policy remain unchanged. These automation
 updates do not change published crate versions or constitute a v12.0.1 release.
 
-## Workflow inventory (39 definitions)
+## Workflow inventory (40 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -728,6 +741,7 @@ dependency graph make static estimates unreliable.
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main/v12/v13 push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A source-bound inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards with four concurrent jobs over that source's all-feature workspace, one validated production-file diagnostic, or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
+| [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml) | pull requests to main that change Rust | Blocking by policy; not a required check | Lists the pinned cargo-mutants 27.1.0 all-feature mutants on the Rust lines the pull request changes, skipping the globs in `.github/mutants-pr-exclude.txt`, and tests them in at most eight shards with a Redis service and the targeted-run timeouts and memory cap. A missed mutant fails the run; unviable and timed-out mutants do not. See [Pull-request mutation gate](#pull-request-mutation-gate). |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main/v12/v13 push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh Omni shell and compiles an aarch64 debug APK. It additionally checks generated icon bytes, rejects missing release-signing inputs, builds a real release APK with an ephemeral CI-only key and verifies its certificate digest with apksigner. No production key, physical-device behavior, Play testing, privacy declarations or store acceptance is certified. |
 | [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
