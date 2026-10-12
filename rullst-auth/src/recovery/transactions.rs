@@ -209,3 +209,8 @@ async fn take_limit(
     .await?;
     Ok(true)
 }
+
+#[cfg(all(test, feature = "recovery-sqlite"))]
+#[path = "transactions_tests.rs"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;

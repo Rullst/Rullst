@@ -196,3 +196,8 @@ impl SqlRecoveryStore {
         Ok(snapshot)
     }
 }
+
+#[cfg(all(test, feature = "recovery-sqlite"))]
+#[path = "outbox_tests.rs"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;
