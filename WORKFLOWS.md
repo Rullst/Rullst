@@ -611,6 +611,7 @@ entry needs the same one-line justification.
 | `rullst-auth/src/recovery/connection.rs`: the fallback `configure_postgres` and `configure_sqlite` with `Ok(())` | They compile only without `recovery-postgres` or without both SQLite families, which the all-feature build does not compile. |
 | `rullst-auth/src/recovery/email_login/delivery.rs`: `<impl Drop for WireNotice>::drop` with `()` | Zeroizing a buffer that is being freed has no effect safe code can observe. |
 | `rullst-auth/src/recovery/email_login/types.rs`: `safe_path`, `part == "." \|\| part == ".."` with `&&` | The byte allowlist that follows already rejects every `.`. |
+| `rullst-auth/src/recovery/store.rs`: `SqlRecoveryStore::connect`, the `\|\|` before the `recovery-postgres` clause with `&&` | With every feature enabled both feature clauses are always false, so joining them with `&&` changes nothing. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
