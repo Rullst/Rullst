@@ -377,3 +377,6 @@ fn subject_revocations_keep_a_reserve_when_token_rows_fill_their_share() {
         .revoke_subject_before("learner-6", 3)
         .expect("existing subject update");
 }
+
+#[path = "tests/boundaries.rs"]
+mod boundaries;
