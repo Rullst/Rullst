@@ -56,3 +56,22 @@ fn namespace_is_bounded_and_syntax_checked() {
         assert!(matches!(result, Err(QueueError::InvalidConfiguration(_))));
     }
 }
+
+#[test]
+fn namespaces_may_be_64_bytes_and_claimed_jobs_need_an_id_and_a_name() {
+    let driver = || RedisDriver::new("redis://127.0.0.1/").unwrap();
+    assert!(driver().try_with_namespace("n".repeat(64)).is_ok());
+    assert!(matches!(
+        driver().try_with_namespace("n".repeat(65)),
+        Err(QueueError::InvalidConfiguration(_))
+    ));
+    for envelope in [
+        r#"{"id":"","name":"test","payload":"{}","attempts":1}"#,
+        r#"{"id":"job-1","name":"","payload":"{}","attempts":1}"#,
+    ] {
+        assert!(matches!(
+            parse_claimed_job(envelope),
+            Err(QueueError::Serialization(_))
+        ));
+    }
+}
