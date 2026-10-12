@@ -392,6 +392,29 @@ mod tests {
         );
     }
 
+    /// `htmx_header` on a helper thread, so a decoder that stops advancing
+    /// fails the test at the budget instead of hanging the test binary.
+    fn header_within_budget(headers: &axum::http::HeaderMap, name: &'static str) -> Option<String> {
+        let headers = headers.clone();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(htmx_header(&headers, name));
+        });
+        receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("decoding returns promptly")
+    }
+
+    fn encoded_prompt(value: &'static str) -> axum::http::HeaderMap {
+        let mut headers = axum::http::HeaderMap::new();
+        headers.insert("HX-Prompt", HeaderValue::from_static(value));
+        headers.insert(
+            "HX-Prompt-URI-AutoEncoded",
+            HeaderValue::from_static("true"),
+        );
+        headers
+    }
+
     #[tokio::test]
     async fn prompt_answers_outside_ascii_are_decoded() {
         let mut latin1 = axum::http::HeaderMap::new();
@@ -400,12 +423,25 @@ mod tests {
             HeaderValue::from_bytes(b"Jos\xe9 Concei\xe7\xe3o").unwrap(),
         );
         assert_eq!(
-            htmx_header(&latin1, "HX-Prompt").as_deref(),
+            header_within_budget(&latin1, "HX-Prompt").as_deref(),
             Some("José Conceição")
         );
 
+        assert_eq!(
+            header_within_budget(
+                &encoded_prompt("%E6%97%A5%E6%9C%AC%20%E2%82%AC"),
+                "HX-Prompt"
+            )
+            .as_deref(),
+            Some("日本 €")
+        );
+        assert_eq!(
+            header_within_budget(&encoded_prompt("Ol%C3%A1 mundo"), "HX-Prompt").as_deref(),
+            Some("Olá mundo")
+        );
+
         let request = Request::builder()
-            .header("HX-Prompt", "%E6%97%A5%E6%9C%AC%20%E2%82%AC")
+            .header("HX-Prompt", "x%E6%97%A5")
             .header("HX-Prompt-URI-AutoEncoded", "true")
             .header("HX-Target", "plain-id")
             .body(())
@@ -414,20 +450,16 @@ mod tests {
         let htmx = HtmxRequest::from_request_parts(&mut parts, &())
             .await
             .unwrap();
-        assert_eq!(htmx.prompt.as_deref(), Some("日本 €"));
+        assert_eq!(htmx.prompt.as_deref(), Some("x日"));
         assert_eq!(htmx.target.as_deref(), Some("plain-id"));
 
-        let mut malformed = axum::http::HeaderMap::new();
-        malformed.insert("HX-Prompt", HeaderValue::from_static("%E6%9"));
-        malformed.insert(
-            "HX-Prompt-URI-AutoEncoded",
-            HeaderValue::from_static("true"),
-        );
-        assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
-        malformed.insert("HX-Prompt", HeaderValue::from_static("%+f"));
-        assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
-        malformed.insert("HX-Prompt", HeaderValue::from_static("%FF"));
-        assert_eq!(htmx_header(&malformed, "HX-Prompt"), None);
+        for malformed in ["%E6%9", "%+f", "%FF"] {
+            assert_eq!(
+                header_within_budget(&encoded_prompt(malformed), "HX-Prompt"),
+                None,
+                "{malformed}"
+            );
+        }
     }
 
     #[test]
