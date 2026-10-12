@@ -162,6 +162,18 @@ async fn a_body_that_fails_while_buffering_is_withheld() {
     assert_eq!(body_bytes(response).await, "response masking failed");
 }
 
+/// `mask_pii` on a helper thread, so a scan that stops advancing fails the
+/// test at the budget instead of hanging the test binary.
+fn masked(text: &'static str) -> String {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(mask_pii(text));
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("masking returns promptly")
+}
+
 #[test]
 fn top_level_domains_must_be_at_least_two_letters() {
     for unchanged in [
@@ -169,13 +181,13 @@ fn top_level_domains_must_be_at_least_two_letters() {
         "mail ab@example.c0m today",
         "mail ab@cdn.example.12 today",
     ] {
-        assert_eq!(mask_pii(unchanged), unchanged);
+        assert_eq!(masked(unchanged), unchanged);
     }
-    assert_eq!(mask_pii("mail ab@example.co"), "mail a*@example.co");
+    assert_eq!(masked("mail ab@example.co"), "mail a*@example.co");
 }
 
 #[test]
 fn a_domain_needs_more_than_three_characters() {
-    assert_eq!(mask_pii("mail ab@.io today"), "mail ab@.io today");
-    assert_eq!(mask_pii("mail ab@a.io today"), "mail a*@a.io today");
+    assert_eq!(masked("mail ab@.io today"), "mail ab@.io today");
+    assert_eq!(masked("mail ab@a.io today"), "mail a*@a.io today");
 }
