@@ -308,3 +308,40 @@ fn the_root_path_is_not_a_signed_webhook_exemption() {
     config.csrf_signed_webhook_paths = vec!["/".to_owned()];
     assert!(config.validate().is_err());
 }
+
+#[tokio::test]
+async fn detect_prefers_the_process_environment_to_the_configured_value() {
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let saved: Vec<_> = ["RULLST_ENV", "APP_ENV"]
+        .into_iter()
+        .map(|key| (key, std::env::var_os(key)))
+        .collect();
+    unsafe {
+        std::env::remove_var("RULLST_ENV");
+        std::env::remove_var("APP_ENV");
+    }
+    let configured = Environment::detect(Some("production"));
+    unsafe { std::env::set_var("RULLST_ENV", "staging") };
+    let from_process = Environment::detect(Some("production"));
+    for (key, value) in saved {
+        unsafe {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+    assert_eq!(configured.unwrap(), Environment::Production);
+    assert_eq!(from_process.unwrap(), Environment::Staging);
+    assert_eq!(Environment::Staging.to_string(), "staging");
+}
+
+#[test]
+fn parse_errors_name_their_line_and_column() {
+    match RullstConfig::from_toml("[app]\nname = = 1\n") {
+        Err(ConfigError::Parse(message)) => {
+            assert_eq!(message, "invalid configuration at line 2, column 8");
+        }
+        other => panic!("expected a parse error, got {other:?}"),
+    }
+}
