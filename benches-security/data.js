@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791758461570,
+  "lastUpdate": 1791768094068,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -15409,6 +15409,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 286,
             "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1788ea564d2f04decb4e4842a0790251be764010",
+          "message": "Merge pull request #461 from Rullst/ci/mutants-pr-gate\n\nci(mutants): fail pull requests that leave changed-line mutants alive",
+          "timestamp": "2026-10-11T21:58:29-03:00",
+          "tree_id": "3d8c19a06c3cfe3b4280fb2d61f8189c204dfb6f",
+          "url": "https://github.com/Rullst/Rullst/commit/1788ea564d2f04decb4e4842a0790251be764010"
+        },
+        "date": 1791768093245,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2844,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 280,
+            "range": "± 5",
             "unit": "ns/iter"
           },
           {
