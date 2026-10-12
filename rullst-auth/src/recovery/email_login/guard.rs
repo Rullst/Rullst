@@ -192,4 +192,25 @@ mod tests {
         assert_eq!(budgets.len(), TRACKED_BINDINGS);
         assert!(budgets.contains_key(&format!("rotated-{TRACKED_BINDINGS}")));
     }
+
+    #[test]
+    fn eviction_runs_only_for_a_new_binding_into_a_still_full_table() {
+        let failures = RedemptionFailures::default();
+        for index in 0..9_999 {
+            failures.charge(format!("old-{index}"), 1_000).unwrap();
+        }
+        failures.charge("target".to_owned(), 1_001).unwrap();
+        // Charging a tracked binding never evicts another one.
+        failures.charge("target".to_owned(), 1_002).unwrap();
+        assert_eq!(failures.0.lock().unwrap().len(), 10_000);
+
+        let failures = RedemptionFailures::default();
+        for index in 0..10_000 {
+            let start = if index < 5_000 { 1_000 } else { 1_050 };
+            failures.charge(format!("half-{index}"), start).unwrap();
+        }
+        // Expired windows free enough room, so no live budget is evicted.
+        failures.charge("new".to_owned(), 1_065).unwrap();
+        assert_eq!(failures.0.lock().unwrap().len(), 5_001);
+    }
 }

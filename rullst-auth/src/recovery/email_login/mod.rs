@@ -43,3 +43,7 @@ async fn bounded<T>(
 fn now(clock: &impl EmailLoginClock) -> Result<i64, RecoveryError> {
     super::timestamp(clock.now()?)
 }
+
+#[cfg(all(test, feature = "email-login-sqlite"))]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;
