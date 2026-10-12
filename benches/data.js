@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791757703871,
+  "lastUpdate": 1791767339353,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26173,6 +26173,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1174,
             "range": "± 209",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1788ea564d2f04decb4e4842a0790251be764010",
+          "message": "Merge pull request #461 from Rullst/ci/mutants-pr-gate\n\nci(mutants): fail pull requests that leave changed-line mutants alive",
+          "timestamp": "2026-10-11T21:58:29-03:00",
+          "tree_id": "3d8c19a06c3cfe3b4280fb2d61f8189c204dfb6f",
+          "url": "https://github.com/Rullst/Rullst/commit/1788ea564d2f04decb4e4842a0790251be764010"
+        },
+        "date": 1791767336991,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 418,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 598,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 422,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1195,
+            "range": "± 62",
             "unit": "ns/iter"
           }
         ]
