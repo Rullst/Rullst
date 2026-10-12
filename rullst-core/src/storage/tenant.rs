@@ -294,4 +294,38 @@ mod tests {
         ));
         std::fs::remove_dir_all(root).expect("tenant storage cleanup");
     }
+
+    #[test]
+    fn urls_and_the_tenant_id_reflect_the_bound_tenant() {
+        let acme = TenantStorage::from_context(
+            Storage::local("unused-root"),
+            &TenantContext::try_new("acme").expect("valid tenant"),
+        );
+        assert_eq!(acme.tenant_id(), "acme");
+        assert_eq!(
+            acme.url("avatars/a b.png").expect("url"),
+            "/storage/tenants/acme/avatars/a%20b.png"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_tenant_root_below_a_regular_file_is_an_io_error() {
+        let suffix = uuid::Uuid::new_v4();
+        let root = std::env::temp_dir().join(format!("rullst-tenant-file-{suffix}"));
+        std::fs::create_dir_all(&root).expect("storage root");
+        std::fs::write(root.join("tenants"), b"not a directory").expect("blocking file");
+        let acme = TenantStorage::from_context(
+            Storage::local(root.to_string_lossy()),
+            &TenantContext::try_new("acme").expect("valid tenant"),
+        );
+        assert!(matches!(
+            acme.get("secret.txt").await,
+            Err(StorageError::Io(_))
+        ));
+        assert!(matches!(
+            acme.delete("secret.txt").await,
+            Err(StorageError::Io(_))
+        ));
+        std::fs::remove_dir_all(root).expect("tenant storage cleanup");
+    }
 }
