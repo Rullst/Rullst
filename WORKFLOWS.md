@@ -579,8 +579,9 @@ before 13.0.0-alpha.1), the local whole-crate campaign that followed it
 (`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`), the
 security campaign (targeted runs of every `rullst-security` file), the
 `rullst-auth` campaign (targeted runs of every file outside the PostgreSQL
-adapters) and the `rullst-core` campaign (targeted runs of every file, with the
-Redis service) gave every missed mutant in their files a test, except these.
+adapters) and the first part of the `rullst-core` campaign (its security
+and correctness files and about half of the rest, with the Redis service)
+gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
