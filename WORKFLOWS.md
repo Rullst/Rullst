@@ -577,9 +577,10 @@ manual campaign's responsibility, through its
 The v13 focused campaign (targeted runs of security and correctness files
 before 13.0.0-alpha.1), the local whole-crate campaign that followed it
 (`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`), the
-security campaign (targeted runs of every `rullst-security` file) and the
+security campaign (targeted runs of every `rullst-security` file), the
 `rullst-auth` campaign (targeted runs of every file outside the PostgreSQL
-adapters) gave every missed mutant in their files a test, except these.
+adapters) and the `rullst-core` campaign (targeted runs of every file, with the
+Redis service) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
@@ -636,14 +637,40 @@ entry needs the same one-line justification.
 | `rullst-security/src/timing_guard.rs`: `TimingScope::finish`, `elapsed < target_duration` with `<=` | Sleeping for a zero remainder returns immediately. |
 | `rullst-security/src/login_guard.rs`: `record_login_failure`, the window match guard with `true` | `prune_expired` has just removed every counter whose last attempt is a window or more old. |
 | `rullst-security/src/rate_limit.rs`: `is_rate_limited_in`, the retention `<` with `<=` | Two `Instant::now()` readings would have to differ by exactly the window, and an entry kept at that instant restarts its count on its next use. |
+| `rullst-core/src/security/pii.rs`: `decode_json_char`, delete the `"`, `\`, `/`, `b`, `f`, `n`, `r` or `t` arm | Each of these escapes decodes to a character that, like the opaque stand-in, is neither a digit, a card separator, an address character nor `@`, and both keep the escape's original spelling. |
+| `rullst-core/src/security/pii.rs`: `mask_chars`, `idx - start` with `+` and `username_len > 1` with `>=` | A local part of at most one character has nothing to mask after its first character, and skipping to the end of the domain passes only domain characters, never another `@`. |
+| `rullst-core/src/security/pii.rs`: `mask_chars`, the domain slice start `idx + 1` with `idx * 1` or `idx - 1` | The domain holds a dot, so the leading `@` never reaches the top-level domain; when its only dots are trailing ones, the text after the last dot starts with `@` and fails both domain tests. |
+| `rullst-core/src/security/csrf_multipart.rs`: `scan`, `available < first.len()` with `>` | A prefix shorter than the first delimiter reaches the loop's two-byte read past its end, which returns the same `Incomplete`. |
+| `rullst-core/src/security/csrf.rs`: `is_csrf_exempt_path`, the first two `\|\|` with `&&` | `/robots.txt`, `/sitemap.xml` and `/favicon.ico` stay exempt through their `.txt`, `.xml` and `.ico` suffixes. |
+| `rullst-core/src/offline_sync/crypto.rs`: `OfflineSnapshotCipher::open`, `key_id_length == 0 \|\| key_id_length > MAX_KEY_ID_BYTES` with `&&` | `valid_key_id` rejects an empty or longer key id with the same `InvalidSnapshot`. |
+| `rullst-core/src/offline_sync/json_limit.rs`: the `writer.exceeded()` guards of `encode_bounded` and `validate_bounded`, and both writers' `exceeded`, with `true` | Offline state and payloads hold only strings, numbers and JSON values, so serialization fails only when a writer reports its limit. |
+| `rullst-core/src/queue/mod.rs`: the default `QueueDriver::push_at`, `available_at > SystemTime::now()`, and `Queue::dispatch_at`, `delay > MAX_SCHEDULE_DELAY`, each with `>=` | They differ only when the requested time equals a clock reading taken inside the call, which a caller cannot arrange. |
+| `rullst-core/src/queue/worker/execution.rs`: `record_outcome`, the `error.is_panic()` guard with `true` | `execute_job` handles every cancelled handler before it calls `record_outcome`, so the only join error left is a panic. |
+| `rullst-core/src/storage/tenant.rs`: `confine_local_root`, the `!create && NotFound` guard with `false` or without `!` | Below a missing tenant directory, `get`, `metadata` and `delete` then fail with the same `NotFound` that the operation itself reports; `put` creates the directory first. |
+| `rullst-core/src/cache/memory.rs`: `MemoStore::get`, `now < entry.expires_at`, and `MemoStore::set`, the expiry `retain`'s `<`, each with `<=` | An `Instant` reading would have to equal the entry's expiry to the nanosecond. |
+| `rullst-core/src/lifecycle.rs`: `begin_draining`, `in_flight_requests() == 0` with `!=`, and `release_request`, `&&` with `\|\|` | `wait_for_drain` waits only on a draining or stopped lifecycle and re-reads the count after every wake-up, so a wake-up that no waiter can receive, or an extra one, changes nothing. |
+| `rullst-core/src/storage/cloud/multipart/codec.rs`: `MultipartStorage::open`, `checkpoint.0.len() > MAX_TOKEN` with `==` or `>=`, and `bytes.len() < 28` with `<=` | No authentic checkpoint reaches 256 KiB (256 receipts and a 2,048-byte upload id stay under 180 KiB), and a 28-byte token has an empty plaintext; both fail with the same `InvalidCheckpoint`. |
+| `rullst-core/src/testing/snapshot.rs`: `line_diff`, the deletion test's `table[i * width + j + 1]` with `j * 1` | Without a match, `table[i][j]` is the larger of `table[i + 1][j]` and `table[i][j + 1]`, so `table[i + 1][j] >= table[i][j]` holds exactly when `table[i + 1][j] >= table[i][j + 1]`. |
+| `rullst-core/src/queue/deferral/planner.rs`: `lowest_intensity`, the tie-break `overlap_start < best_start` with `<=` | A tie at the same start stores the same start and value again. |
+| `rullst-core/src/live/recovery/types.rs`: the duplicate-free field visitor's `expecting` with `Ok(Default::default())` | `LiveCommand::decode` turns every deserialization error into the same `Invalid`, so the expectation text is never seen. |
+| `rullst-core/src/rpc.rs`: `request_contract_failure`, delete the `BodyTooLarge` arm | `to_bytes` already refuses a body over the same limit with the same 413 and code, so decoding never reports it. |
+| `rullst-core/src/rpc.rs`: `RpcFailure::from_detail` with `Default::default()` | Compiled only for `wasm32`. |
+| `rullst-core/src/rpc.rs`: the test helper `failure_for`, `64 * 1024` with `+` | Test code: every failure envelope it reads is far below 1,088 bytes. |
+| `rullst-core/src/storage/cloud/multipart/protocol.rs`: `parse`, delete the `allow_dtd` field | roxmltree's default `ParsingOptions` already rejects a DTD. |
+| `rullst-core/src/live/recovery/session.rs`: `run`, delete the `Ok(Ok(()))` arm | A session ends normally only when the peer closed: tungstenite answers a close frame itself, so the code chosen here never reaches the peer. |
+| `rullst-core/src/live/recovery/session.rs`: `send_snapshot`, `encoded.len() > 512 * 1024` with `==` or `>=` | A snapshot holds at most 64 KiB of HTML, which JSON escaping expands to under 400 KiB. |
+| `rullst-core/src/cache/memory/exact_json.rs`: `Display for Inexact` with `Ok(Default::default())` | `is_exact_json` only checks whether serialization succeeds; the error text is never formatted. |
+| `rullst-core/src/radar.rs`: `get_windows_memory_mb`, `get_windows_process_cpu_usage`, `filetime_100ns`, `calculate_windows_cpu_percent`, and the Windows and other-platform `get_process_cpu_usage` | Not compiled on Linux. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
 RASP decoder, the HTML snapshot normaliser and the accessibility scanner so
 that every step consumes input, and bounded the WAF linear-time test, which
-removed their timeouts. The remaining ones turn forward progress into a loop
-that never ends without allocating, in code every test of the file reaches,
-so no single test can fail first:
+removed their timeouts. The core campaign ran the queue worker, realtime,
+multipart CSRF, byteranges and long PII masking tests against a deadline
+instead, which turned their timeouts into caught mutants. The remaining ones
+turn forward progress into a loop that never ends without allocating, in code
+every test of the file reaches, so no single test can fail first:
 
 - `rullst-core/src/error_console/store.rs`: `Store::record` with
   `len() >= MAX_ENTRIES` replaced by `<` pops an empty queue forever.
@@ -662,6 +689,21 @@ so no single test can fail first:
   `rullst-security/src/dlp/masking.rs`: the AWS-key and database scans, where
   `cursor + offset` becomes `*` or `-`, or `+ scheme.len()` becomes `-`, and
   the scan restarts before the same match.
+- `rullst-core/src/security/pii.rs`: `measure_digit_run` returning `(0, 0)`,
+  `(0, 1)`, `(1, 0)` or `(1, 1)`, its `separators < 3` with `==` or `>`, or
+  its `end += 1` with `*=` or `-=`, and the address and JSON-string scans of
+  `mask_chars` and `mask_json_strings`, where `start -= 1` becomes `/=`,
+  `end += 1` or `idx += 1` becomes `*=`, or the dotted-domain `end += 1`
+  becomes `-=`, so the card, address or string scan never advances; and
+  `rullst-core/src/security/pii_byteranges.rs`: `Lines::next`, where the
+  next-line offset becomes `-` or `*`, as in the DLP reader above.
+- `rullst-core/src/server/dev_telemetry/recorder.rs`: `push_bounded` with
+  `entries.len() >= capacity` replaced by `<` pops an empty queue forever, in
+  code every recorded request or query reaches.
+- `rullst-core/src/scheduler.rs`: `shutdown_requested` returning `true` or
+  `false`, and `wait_for_shutdown` returning at once or without its `!`, so a
+  task loop never runs or never sees shutdown, and the scheduler, server and
+  supervision tests that start and stop a scheduler wait forever.
 - `rullst-security/src/login_guard/state.rs`: `pop_earliest` returning
   `None` or `Some(Default::default())`, or `make_room` with `&&` replaced by
   `||`, so pruning or eviction never removes an entry; and
