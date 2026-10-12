@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791786970193,
+  "lastUpdate": 1791810328401,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -13759,6 +13759,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 428,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e400005f1781b7d33376cf3ae88a1c6164b800f3",
+          "message": "Merge pull request #465 from Rullst/test/v13-core-mutation\n\ntest(core): kill surviving mutants in rullst-core (first pass)",
+          "timestamp": "2026-10-12T09:44:59-03:00",
+          "tree_id": "5664b830630b2717c6ca5f80435a68f14e3fe252",
+          "url": "https://github.com/Rullst/Rullst/commit/e400005f1781b7d33376cf3ae88a1c6164b800f3"
+        },
+        "date": 1791810327529,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1903,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 300,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 427,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
