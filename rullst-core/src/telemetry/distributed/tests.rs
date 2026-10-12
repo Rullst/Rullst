@@ -282,3 +282,32 @@ fn ca_bundles_may_fill_64_kib() {
     );
     assert!(offline_config().with_ca_certificate(Vec::new()).is_err());
 }
+
+#[tokio::test]
+async fn a_trusted_unsampled_parent_keeps_its_children_unsampled() {
+    let runtime = DistributedTelemetry::try_new(
+        TelemetryConfig::try_new("fixture", "mock_offline", ["operation"]).unwrap(),
+    )
+    .unwrap();
+    let unsampled = format!("{}-00", &PARENT[..52]);
+    let parent = TraceParent::try_new(unsampled.as_str()).unwrap();
+    assert_eq!(format!("{parent:?}"), "TraceParent([REDACTED])");
+    let subscriber = tracing_subscriber::registry().with(runtime.layer());
+    tracing::subscriber::with_default(subscriber, || {
+        let span = tracing::info_span!(parent:None,"operation");
+        parent.attach_to(&span).unwrap();
+        assert!(
+            TraceParent::capture(&span)
+                .unwrap()
+                .as_str()
+                .ends_with("-00")
+        );
+    });
+    runtime.flush().await.unwrap();
+    let _ = runtime.shutdown().await.unwrap();
+
+    // The separator after the trace id is required on its own.
+    let mut separator = PARENT.to_string();
+    separator.replace_range(35..36, "a");
+    assert!(TraceParent::try_new(separator).is_err());
+}
