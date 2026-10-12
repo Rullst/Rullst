@@ -258,4 +258,15 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn every_weekday_name_and_single_day_ranges_parse() {
+        use Weekday::*;
+        assert_eq!(weekdays("0 3 * * tue,wednesday,thurs", 3), [Wed, Thu, Tue]);
+        assert_eq!(weekdays("0 3 * * TUES", 1), [Tue]);
+        assert_eq!(weekdays("0 3 * * 3-3", 2), [Wed, Wed]);
+        assert_eq!(weekdays("0 3 * * 0-0", 2), [Sun, Sun]);
+        let error = CronSchedule::parse("0 3 * * funday").err().unwrap();
+        assert!(error.contains("`funday` is not a POSIX weekday"), "{error}");
+    }
 }
