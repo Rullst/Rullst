@@ -107,6 +107,7 @@ jobs:
       - name: Validate mutation artifact aggregation
         run: |
           python3 .github/test-mutation-inventory.py
+          python3 .github/test-mutation-contract.py
           bash .github/test-summarize-mutation-artifacts.sh
 
       - name: Validate exact-run mutation recovery planning

@@ -5,8 +5,11 @@ import argparse
 import os
 import re
 import subprocess
+import sys
 import time
 import uuid
+
+import mutation_contract
 
 
 IMAGE = "postgres@sha256:29342cb52157b098821961d2c14eec3c019071f56a5d559e990cf07cf541ea9b"
@@ -34,14 +37,17 @@ def database_url(name: str) -> str:
     return "postgres://postgres@" + binding + "/rullst_passkey_contract"
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage", action="store_true",
                         help="accumulate profiles with cargo llvm-cov --no-report")
     parser.add_argument("--mutants", metavar="REGEX", help="run a focused store mutation sample against the owned database")
+    parser.add_argument("--shard", metavar="K/N", help="with --mutants, test only this cargo-mutants shard")
     args = parser.parse_args()
     if args.coverage and args.mutants:
         parser.error("coverage and mutation runs are separate")
+    if args.shard and not args.mutants:
+        parser.error("--shard needs --mutants")
     name = "rullst-passkey-contract-" + uuid.uuid4().hex
     started = False
     try:
@@ -61,16 +67,14 @@ def main() -> None:
             "RULLST_PASSKEY_POSTGRES_PHASE": "exercise",
         })
         if args.mutants:
-            command = ["cargo", "mutants", "--no-config", "-p", "rullst-auth",
-                       "--features", "passkey-postgres", "--gitignore", "true", "--jobs", "1",
-                       "--cap-lints", "false", "--build-timeout", "180", "--timeout", "30",
-                       "--cargo-arg=--locked", "--cargo-arg=--offline", "--cargo-test-arg=--lib",
-                       "--file", "rullst-auth/src/auth/passkey/shared/manager.rs",
-                       "--file", "rullst-auth/src/auth/passkey/shared/postgres/operations.rs",
-                       "--re", args.mutants, "--caught", "--unviable",
-                       "--", "--", "--ignored", "--exact", "auth::passkey::shared::tests::postgres_contract"]
-            subprocess.run(command, env=env, check=True, timeout=1800)
-            return
+            # Exercise phase only; the runner recreates the database per binary.
+            return mutation_contract.run(
+                package="rullst-auth", features="passkey-postgres", default_features=True,
+                files=["rullst-auth/src/auth/passkey/shared/manager.rs",
+                       "rullst-auth/src/auth/passkey/shared/postgres/operations.rs"],
+                targets=["--lib"], tests=["auth::passkey::shared::tests::postgres_contract"],
+                regex=args.mutants, shard=args.shard, env=env, timeout=60,
+                reset_spec=mutation_contract.postgres(name, "rullst_passkey_contract"))
         command = (["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"])
         command += ["--locked", "-p", "rullst-auth",
                    "--no-default-features", "--features", "passkey-postgres",
@@ -86,6 +90,7 @@ def main() -> None:
         env["RULLST_PASSKEY_TEST_POSTGRES_URL"] = database_url(name)
         env["RULLST_PASSKEY_POSTGRES_PHASE"] = "restart"
         subprocess.run(command, env=env, check=True, timeout=1800)
+        return 0
     except (subprocess.SubprocessError, RuntimeError):
         if started:
             subprocess.run(["docker", "logs", "--tail", "60", name],
@@ -98,4 +103,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
