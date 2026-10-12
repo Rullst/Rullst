@@ -481,3 +481,7 @@ fn mask_chars(chars: &mut [char]) {
 #[cfg(test)]
 #[path = "pii_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "pii_boundary_tests.rs"]
+mod boundary_tests;

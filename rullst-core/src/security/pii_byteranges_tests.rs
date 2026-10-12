@@ -63,6 +63,18 @@ fn quoted_boundaries_preamble_padding_and_epilogue_are_read() {
     assert_eq!(split.outside, [&b"preamble\r\n"[..], &b"epilogue"[..]]);
 }
 
+/// The error of `split` on a helper thread, so a reader that stops making
+/// progress fails the test instead of hanging the test binary.
+fn split_error_within_budget(content_type: &'static str, text: String) -> Option<Malformed> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(split(content_type, text.as_bytes()).err());
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("splitting returns promptly")
+}
+
 #[test]
 fn bodies_that_cannot_be_split_exactly_are_malformed() {
     let oversized_header = format!("X-Pad: {}", "a".repeat(MAX_PART_HEADER_BYTES));
@@ -115,11 +127,12 @@ fn bodies_that_cannot_be_split_exactly_are_malformed() {
         (BYTERANGES, body(&[(&oversized_header, "x")], "\r\n")),
         (BYTERANGES, too_many),
     ];
-    for (content_type, text) in &cases {
+    for (content_type, text) in cases {
+        let description = format!("{content_type}: {text:.80}");
         assert_eq!(
-            split(content_type, text.as_bytes()).err(),
+            split_error_within_budget(content_type, text),
             Some(Malformed),
-            "{content_type}: {text:.80}"
+            "{description}"
         );
     }
 
@@ -211,4 +224,27 @@ fn splitting_is_linear_in_the_body_length() {
         "{:?}",
         started.elapsed()
     );
+}
+
+#[test]
+fn a_part_header_block_may_fill_eight_kibibytes() {
+    // `X-Pad: ` (7 bytes), the value, its CRLF and the empty line's CRLF.
+    let block = |value_len: usize| {
+        let text = body(
+            &[(&format!("X-Pad: {}", "a".repeat(value_len)), "x")],
+            "\r\n",
+        );
+        split(BYTERANGES, text.as_bytes()).map(|split| split.parts.len())
+    };
+    assert_eq!(block(8_181), Ok(1));
+    assert_eq!(block(8_182), Err(Malformed));
+}
+
+#[test]
+fn a_body_may_start_with_a_bare_line_feed() {
+    let text = "\n--THIS_SEPARATES\r\n\r\nx\r\n--THIS_SEPARATES--\r\n";
+    let split = split(BYTERANGES, text.as_bytes()).expect("well-formed body");
+    assert_eq!(split.parts.len(), 1);
+    assert_eq!(split.parts[0].body, b"x");
+    assert_eq!(split.outside, [&b"\n"[..], &b""[..]]);
 }
