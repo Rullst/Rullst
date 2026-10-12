@@ -285,7 +285,13 @@ fn in_memory_writes_prune_tokens_expiring_in_the_current_second() {
         if store.entry_count().unwrap() != 1 {
             continue;
         }
+        // Bounded, so a clock that never advances fails instead of hanging.
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
         while unix_time().expect("clock") < start + 1 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the clock must advance"
+            );
             std::thread::sleep(Duration::from_millis(5));
         }
         if checked == 0 {
