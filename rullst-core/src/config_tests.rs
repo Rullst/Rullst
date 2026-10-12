@@ -282,3 +282,29 @@ async fn environment_includes_the_dotenv_selector_a_server_read() {
         }
     }
 }
+
+#[test]
+fn malformed_cors_origins_fail_the_shape_check_first() {
+    let mut config = SecurityConfig::default();
+    for invalid in [
+        "ftp://academy.example",
+        "https://academy.example/path",
+        "https://academy.example?x=1",
+        "https://academy.example/",
+        "https://user@academy.example",
+    ] {
+        config.cors_allow_origins = vec![invalid.to_string()];
+        let error = config.validate().unwrap_err().to_string();
+        assert!(
+            error.contains("without path, query, credentials, wildcard, or trailing slash"),
+            "{invalid}: {error}"
+        );
+    }
+}
+
+#[test]
+fn the_root_path_is_not_a_signed_webhook_exemption() {
+    let mut config = SecurityConfig::default();
+    config.csrf_signed_webhook_paths = vec!["/".to_owned()];
+    assert!(config.validate().is_err());
+}

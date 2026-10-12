@@ -210,3 +210,62 @@ fn codec_enforces_version_and_size_before_application_processing() {
             .is_err()
     );
 }
+
+/// A payload whose serialization always fails.
+struct Unserializable;
+
+impl Serialize for Unserializable {
+    fn serialize<S: serde::Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
+        Err(serde::ser::Error::custom("not representable"))
+    }
+}
+
+#[test]
+fn versions_are_accepted_only_inside_the_inclusive_range() {
+    let wide = ClientContractPolicy::new(version(1), version(3), 256).expect("valid policy");
+    assert!(wide.validate_version(version(2)).is_ok());
+    let narrow = ClientContractPolicy::new(version(2), version(3), 256).expect("valid policy");
+    assert!(matches!(
+        narrow.validate_version(version(1)),
+        Err(ClientContractError::UnsupportedVersion { received: 1, .. })
+    ));
+}
+
+#[test]
+fn bodies_may_fill_the_limit_exactly() {
+    let offer = ClientVersionOffer::new([version(1)]).expect("bounded version offer");
+    let encoded = ClientContractPolicy::new(version(1), version(1), 1_024)
+        .expect("valid policy")
+        .encode_offer(&offer)
+        .expect("encoded offer");
+    let exact =
+        ClientContractPolicy::new(version(1), version(1), encoded.len()).expect("valid policy");
+    assert_eq!(
+        exact.encode_offer(&offer).expect("offer at the limit"),
+        encoded
+    );
+
+    assert!(encoded.len() < 64);
+    let padded = ClientContractPolicy::new(version(1), version(1), 64).expect("valid policy");
+    let mut body = encoded.clone();
+    body.resize(64, b' ');
+    assert_eq!(
+        padded.decode_offer(&body).expect("body at the limit"),
+        offer
+    );
+    body.push(b' ');
+    assert!(matches!(
+        padded.decode_offer(&body),
+        Err(ClientContractError::BodyTooLarge { maximum: 64 })
+    ));
+}
+
+#[test]
+fn payloads_that_cannot_be_serialized_are_not_reported_as_too_large() {
+    let policy = ClientContractPolicy::new(version(1), version(1), 256).expect("valid policy");
+    let request = ClientRequest::new(version(1), request_id(), Unserializable);
+    assert!(matches!(
+        policy.encode_request(&request),
+        Err(ClientContractError::EncodeJson(_))
+    ));
+}
