@@ -1,6 +1,8 @@
-//! Whether the installed subscriber keeps the ORM spans the query counts need.
+//! Whether the installed subscriber keeps the ORM spans the query counts
+//! need, and the recorder's uptime.
 
 use super::orm_spans_enabled;
+use super::recorder::Recorder;
 
 #[test]
 fn orm_spans_count_only_when_the_subscriber_keeps_info_spans() {
@@ -15,4 +17,11 @@ fn orm_spans_count_only_when_the_subscriber_keeps_info_spans() {
         verbose,
         orm_spans_enabled
     ));
+}
+
+#[test]
+fn uptime_counts_from_the_recorder_creation() {
+    let recorder = Recorder::new();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    assert!(recorder.uptime() >= std::time::Duration::from_millis(20));
 }
