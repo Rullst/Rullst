@@ -140,3 +140,38 @@ async fn redis_ttl_edges_behave_like_the_memory_driver() {
         cache.forget(&key).await.expect("cleanup");
     }
 }
+
+#[tokio::test]
+async fn redis_expires_ttls_only_within_the_millisecond_clock_range() {
+    let Some(redis) = live_redis().await else {
+        return;
+    };
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("test clock")
+        .as_nanos();
+    let hour = format!("ttl-hour-{unique}");
+    let far = format!("ttl-far-{unique}");
+    let cache = Cache::redis(redis.url).expect("live Redis cache");
+    cache.put(&hour, "v", Some(3_600)).await.expect("one hour");
+    // Beyond about 146 million years the value is stored without expiry.
+    cache
+        .put(&far, "v", Some(5_000_000_000_000_000))
+        .await
+        .expect("far TTL");
+
+    let inspection = cache.inspect(200).await.expect("Redis inspection");
+    let remaining = |key: &str| {
+        inspection
+            .entries()
+            .iter()
+            .find(|entry| entry.logical_key() == key)
+            .expect("metadata")
+            .remaining_ttl_ms()
+    };
+    assert!(remaining(&hour).is_some_and(|ms| ms <= 3_600_000));
+    assert_eq!(remaining(&far), None);
+
+    cache.forget(&hour).await.expect("cleanup");
+    cache.forget(&far).await.expect("cleanup");
+}
