@@ -566,9 +566,10 @@ manual campaign's responsibility.
 ### Accepted equivalent mutants
 
 The v13 focused campaign (targeted runs of security and correctness files
-before 13.0.0-alpha.1) and the local whole-crate campaign that followed it
-(`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`) gave
-every missed mutant in their files a test, except these.
+before 13.0.0-alpha.1), the local whole-crate campaign that followed it
+(`rullst-iot`, `rullst-privacy`, `rullst-labs`, `rullst-supervision`) and the
+`rullst-auth` campaign (targeted runs of every file outside the PostgreSQL
+adapters) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification.
@@ -602,6 +603,14 @@ entry needs the same one-line justification.
 | `rullst-supervision/src/sqlite/observations.rs`: `record_observation`, both source match guards with `true` | `record_browser` and `record_capture` pass only browser or capture observations with the browser source, and `analyze` only presence or audio findings with an adapter source. |
 | `rullst-supervision/src/sqlite/transaction.rs`: `Operation::begin`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
 | `rullst-supervision/src/sqlite/mod.rs`: `resolved_path`, both metadata match guards with `false` | `open` checks for a regular file again, `initialize` creates the file exclusively and fails on any existing entry, and every other metadata error also fails the open with the same `Storage`. |
+| `rullst-auth/src/auth/app_key.rs`: `parse_dotenv`, delete the `dotenvy::Error::Io` arm | The parser reads an in-memory `&str`, and valid UTF-8 read line by line cannot raise an I/O error. |
+| `rullst-auth/src/auth/passkey/ceremony.rs`: `ChallengeStore::issue`, `challenge.expires_at > now` with `>=` | It keeps only a challenge whose expiry equals a later `Instant::now()` reading to the nanosecond, which `consume` already rejects as expired. |
+| `rullst-auth/src/auth/passkey/shared/manager.rs`: `SharedPasskeyAuth::start_authenticate`, `allowed.is_empty() \|\| allowed.len() > MAX_CREDENTIALS` with `&&` | `CeremonyIntent::new` rejects an empty or 33-entry authentication allowlist with the same `InvalidInput` before the store is called. |
+| `rullst-auth/src/auth/passkey/shared/manager.rs`: `validate_passkey`, the `\|\|` before `first() != Some(&4)`, and `rullst-auth/src/auth/passkey/sqlite.rs`: `validate_passkey`, `\|\|`, each with `&&` | A key that `from_sec1_bytes` accepts has either 65 bytes and tag 4 or neither, so a key failing only one check fails parsing with the same error. |
+| `rullst-auth/src/auth/passkey/verification.rs`: `verify_assertion`, `FLAG_ATTESTED_CREDENTIAL_DATA \| FLAG_EXTENSION_DATA` with `^` | The flags occupy disjoint bits, so OR and XOR build the same mask. |
+| `rullst-auth/src/recovery/connection.rs`: the fallback `configure_postgres` and `configure_sqlite` with `Ok(())` | They compile only without `recovery-postgres` or without both SQLite families, which the all-feature build does not compile. |
+| `rullst-auth/src/recovery/email_login/delivery.rs`: `<impl Drop for WireNotice>::drop` with `()` | Zeroizing a buffer that is being freed has no effect safe code can observe. |
+| `rullst-auth/src/recovery/email_login/types.rs`: `safe_path`, `part == "." \|\| part == ".."` with `&&` | The byte allowlist that follows already rejects every `.`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
