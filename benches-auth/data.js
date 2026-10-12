@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791767948337,
+  "lastUpdate": 1791771040779,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16063,6 +16063,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3032,
             "range": "± 59",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c1e4fb9be8a4f16c0dc51549f0039faf8e3a979",
+          "message": "Merge pull request #462 from Rullst/test/v13-security-mutation\n\ntest(security): kill the surviving mutants of the security campaign",
+          "timestamp": "2026-10-11T22:49:08-03:00",
+          "tree_id": "cd5510b126ef9d33431955bc17366463df9e0029",
+          "url": "https://github.com/Rullst/Rullst/commit/5c1e4fb9be8a4f16c0dc51549f0039faf8e3a979"
+        },
+        "date": 1791771040054,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 974,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 760,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1745,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4440,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
