@@ -250,3 +250,8 @@ impl RecoveryLocale {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "crypto_tests.rs"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;

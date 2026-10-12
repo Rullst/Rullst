@@ -298,3 +298,7 @@ impl PasskeyAuth {
 mod negative_path_tests;
 #[path = "verification.rs"]
 mod verification;
+#[cfg(test)]
+#[path = "verification_tests.rs"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod verification_tests;

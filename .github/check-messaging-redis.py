@@ -6,9 +6,12 @@ from pathlib import Path
 import re
 import secrets
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
+
+import mutation_contract
 
 IMAGE = "redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf"
 PASSWORD = secrets.token_hex(32)
@@ -33,10 +36,28 @@ def endpoint(name, tls=False):
     return ("rediss://" if tls else "redis://") + binding
 
 
+CONTRACT_TESTS = ["actual_redis_contract_concurrency_and_fenced_redelivery",
+                  "actual_redis_latest_retry_purge_and_bounded_capacity",
+                  "faults::missing_state_and_partial_mutations_fail_closed",
+                  "faults::wrong_credentials_timeout_and_clock_regression_never_fall_back",
+                  "ordering::same_time_entries_are_delivered_in_sequence_order",
+                  "tls::verified_tls_rejects_untrusted_roots_and_wrong_hostnames",
+                  "outbox::remote_outbox_replay_converges_after_publish_before_ack",
+                  "bounds::byte_retention_reply_batches_and_expired_attempts_are_bounded"]
+RESTART_TEST = "actual_redis_restart_retains_receipts_groups_and_unacked_messages"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage", action="store_true")
+    parser.add_argument("--mutants", metavar="REGEX",
+                        help="mutate the Redis Streams adapter and run its exercise-phase contracts")
+    parser.add_argument("--shard", metavar="K/N", help="with --mutants, test only this cargo-mutants shard")
     args = parser.parse_args()
+    if args.coverage and args.mutants:
+        parser.error("coverage and mutation runs are separate")
+    if args.shard and not args.mutants:
+        parser.error("--shard needs --mutants")
     name = "rullst-messaging-" + uuid.uuid4().hex
     volume = name + "-data"
     created = False
@@ -79,17 +100,24 @@ def main():
                    RULLST_MESSAGING_TEST_REDIS_TLS_URL=endpoint(name, True),
                    RULLST_MESSAGING_TEST_REDIS_PASSWORD=PASSWORD,
                    RULLST_MESSAGING_TEST_REDIS_CA=str(certificate_dir / "ca.pem"))
+        if args.mutants:
+            with tempfile.TemporaryDirectory(prefix="rullst-redis-mutants-") as temporary:
+                # Exercise phase only: it rewrites the receipt, and the runner
+                # flushes the owned Redis before each test binary starts.
+                receipt = Path(temporary, "receipt")
+                receipt.touch(mode=0o600)
+                env.update(RULLST_REDIS_RESTART_RECEIPT=str(receipt),
+                           RULLST_REDIS_RESTART_PHASE="exercise")
+                return mutation_contract.run(
+                    package="rullst-messaging", features="redis-streams,orm-outbox",
+                    default_features=True, files=["rullst-messaging/src/redis_streams/**"],
+                    targets=["--test=redis_streams"], tests=CONTRACT_TESTS + [RESTART_TEST],
+                    regex=args.mutants, shard=args.shard, env=env, timeout=60,
+                    reset_spec=mutation_contract.redis(name, "RULLST_MESSAGING_TEST_REDIS_PASSWORD"))
         command = ["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"]
         command += ["--locked", "-p", "rullst-messaging", "--features", "redis-streams,orm-outbox",
                     "--test", "redis_streams"]
-        for test in ["actual_redis_contract_concurrency_and_fenced_redelivery",
-                     "actual_redis_latest_retry_purge_and_bounded_capacity",
-                     "faults::missing_state_and_partial_mutations_fail_closed",
-                     "faults::wrong_credentials_timeout_and_clock_regression_never_fall_back",
-                     "ordering::same_time_entries_are_delivered_in_sequence_order",
-                     "tls::verified_tls_rejects_untrusted_roots_and_wrong_hostnames",
-                     "outbox::remote_outbox_replay_converges_after_publish_before_ack",
-                     "bounds::byte_retention_reply_batches_and_expired_attempts_are_bounded"]:
+        for test in CONTRACT_TESTS:
             subprocess.run(command + ["--", "--ignored", "--exact", test],
                            env=env, check=True, timeout=1800)
         with tempfile.TemporaryDirectory(prefix="rullst-redis-restart-") as temporary:
@@ -97,8 +125,7 @@ def main():
             receipt.touch(mode=0o600)
             env.update(RULLST_REDIS_RESTART_RECEIPT=str(receipt),
                        RULLST_REDIS_RESTART_PHASE="exercise")
-            journey = command + ["--", "--ignored", "--exact",
-                                 "actual_redis_restart_retains_receipts_groups_and_unacked_messages"]
+            journey = command + ["--", "--ignored", "--exact", RESTART_TEST]
             subprocess.run(journey, env=env, check=True, timeout=1800)
             # Actual abrupt server restart, retaining only this fixture's AOF.
             subprocess.run(["docker", "restart", "--time", "0", name], check=True, timeout=60)
@@ -106,6 +133,7 @@ def main():
             env.update(RULLST_MESSAGING_TEST_REDIS_URL=endpoint(name),
                        RULLST_REDIS_RESTART_PHASE="restart")
             subprocess.run(journey, env=env, check=True, timeout=1800)
+        return 0
     finally:
         exists = subprocess.run(["docker", "container", "inspect", name],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -118,4 +146,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

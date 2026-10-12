@@ -34,3 +34,7 @@ async fn bounded<T>(
 fn now(clock: &impl AuthClock) -> Result<i64, RecoveryError> {
     super::timestamp(clock.now()?)
 }
+
+#[cfg(all(test, feature = "api-tokens-sqlite"))]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests;

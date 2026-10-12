@@ -88,3 +88,82 @@ fn shared_manager_refuses_volatile_or_mismatched_configuration() {
         assert!(CeremonyStoreConfig::new("epoch", capacity, lifetime).is_err());
     }
 }
+
+#[test]
+fn accessors_return_the_validated_values_and_debug_output_is_redacted() {
+    let config = CeremonyStoreConfig::new("epoch-1", 8, 30).unwrap();
+    assert_eq!(config.epoch(), "epoch-1");
+    assert_eq!(config.capacity(), 8);
+    assert_eq!(config.lifetime_seconds(), 30);
+    assert_eq!(
+        format!("{config:?}"),
+        r#"CeremonyStoreConfig { epoch: "[redacted]", capacity: 8, lifetime_seconds: 30 }"#
+    );
+    let binding = PasskeyBinding::new("tenant-a", "subject-a", "session-a", vec![1; 32]).unwrap();
+    assert_eq!(binding.tenant(), "tenant-a");
+    assert_eq!(binding.subject(), "subject-a");
+    assert_eq!(format!("{binding:?}"), "PasskeyBinding([redacted])");
+    let intent = CeremonyIntent::new(
+        [1; 32],
+        [2; 32],
+        CeremonyKind::Authentication,
+        vec![[3; 32], [4; 32]],
+    )
+    .unwrap();
+    assert_eq!(intent.credentials(), &[[3; 32], [4; 32]]);
+    assert_eq!(
+        format!("{intent:?}"),
+        "CeremonyIntent { kind: Authentication, .. }"
+    );
+    let consumed = ConsumedCeremony::from_stored(intent, 1_000, 1_300).unwrap();
+    assert_eq!(consumed.issued_at(), 1_000);
+    assert_eq!(consumed.expires_at(), 1_300);
+    assert_eq!(format!("{consumed:?}"), "ConsumedCeremony([redacted])");
+}
+
+#[test]
+fn stored_ceremony_and_reference_bounds_are_inclusive() {
+    let intent =
+        || CeremonyIntent::new([1; 32], [2; 32], CeremonyKind::Registration, vec![]).unwrap();
+    for (issued, expires) in [
+        (0, 1),
+        (0, 600),
+        (1_000, 1_600),
+        (253_402_300_199, 253_402_300_799),
+    ] {
+        let consumed = ConsumedCeremony::from_stored(intent(), issued, expires).unwrap();
+        assert_eq!(
+            (consumed.issued_at(), consumed.expires_at()),
+            (issued, expires)
+        );
+    }
+    for (issued, expires) in [
+        (-1, 10),
+        (10, 10),
+        (1_000, 999),
+        (0, 601),
+        (253_402_300_790, 253_402_300_800),
+    ] {
+        assert_eq!(
+            ConsumedCeremony::from_stored(intent(), issued, expires).unwrap_err(),
+            PasskeyCeremonyError::Corrupt
+        );
+    }
+    let longest = "r".repeat(128);
+    assert!(PasskeyBinding::new(longest.as_str(), "subject", "session", vec![1; 64]).is_ok());
+    assert!(CeremonyStoreConfig::new(longest.as_str(), 1, 1).is_ok());
+}
+
+#[test]
+fn system_clock_reports_the_current_unix_time() {
+    let now = SystemCeremonyClock.now().unwrap();
+    let reference = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    assert!(
+        (now - reference).abs() <= 5,
+        "clock is off by {}",
+        now - reference
+    );
+}

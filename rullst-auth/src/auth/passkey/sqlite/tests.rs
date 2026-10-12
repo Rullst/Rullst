@@ -335,3 +335,6 @@ async fn memory_and_existing_symlink_targets_are_rejected() {
     std::fs::remove_file(link).expect("remove link");
     std::fs::remove_file(target).expect("remove target");
 }
+
+#[path = "tests/boundaries.rs"]
+mod boundaries;
