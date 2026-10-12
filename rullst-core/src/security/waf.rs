@@ -17,6 +17,9 @@ mod detect;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+mod limits_tests;
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests;
 
 const MAX_INSPECTED_REQUEST_BYTES: usize = 1024 * 1024;

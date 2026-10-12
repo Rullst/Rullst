@@ -227,4 +227,74 @@ mod tests {
             tenant_namespaced_name("a%3Ab", "c")
         );
     }
+
+    #[test]
+    fn tenant_ids_may_be_up_to_128_bytes() {
+        assert!(TenantContext::try_new("t".repeat(128)).is_ok());
+        let long = "t".repeat(129);
+        assert_eq!(
+            TenantContext::try_new(long.clone()),
+            Err(TenantContextError::InvalidTenantId(long))
+        );
+    }
+
+    #[test]
+    fn the_default_context_is_the_chosen_or_the_only_tenant() {
+        let pair = TenantMembership::try_new(["acme", "globex"]);
+        assert_eq!(
+            pair.as_ref().map(TenantMembership::default_context),
+            Ok(None)
+        );
+        assert_eq!(
+            pair.clone().and_then(|pair| pair.with_default("initech")),
+            Err(TenantContextError::TenantNotInMembership(
+                "initech".to_string()
+            ))
+        );
+        assert_eq!(
+            pair.and_then(|pair| pair.with_default("globex"))
+                .map(|pair| pair.default_context()),
+            Ok(TenantContext::try_new("globex").ok())
+        );
+
+        let single = TenantMembership::try_new(["acme"]);
+        assert_eq!(
+            single.as_ref().map(TenantMembership::default_context),
+            Ok(TenantContext::try_new("acme").ok())
+        );
+        assert!(
+            single
+                .and_then(|single| single.with_default("acme"))
+                .is_ok()
+        );
+    }
+
+    #[tokio::test]
+    #[allow(clippy::expect_used)]
+    async fn the_strict_guard_applies_the_authenticated_default_tenant() {
+        use tower::ServiceExt;
+
+        let app = axum::Router::new()
+            .route(
+                "/",
+                axum::routing::get(
+                    |axum::Extension(context): axum::Extension<TenantContext>| async move {
+                        context.tenant_id
+                    },
+                ),
+            )
+            .layer(axum::middleware::from_fn(strict_tenant_guard_middleware));
+        let mut request = axum::http::Request::get("/")
+            .body(axum::body::Body::empty())
+            .expect("request");
+        request
+            .extensions_mut()
+            .insert(TenantMembership::try_new(["acme"]).expect("membership"));
+        let response = app.oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1_024)
+            .await
+            .expect("body");
+        assert_eq!(body.as_ref(), b"acme");
+    }
 }
