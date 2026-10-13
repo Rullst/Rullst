@@ -89,7 +89,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Set up Node for the development browser contract
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -155,7 +155,7 @@ jobs:
 
       - name: Set up Node for browser regressions
         if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -189,7 +189,7 @@ jobs:
 
       - name: Upload failed workspace test log
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: workspace-tests-${{ matrix.os }}-${{ matrix.shard }}
           path: workspace-tests-${{ matrix.shard }}.log
@@ -441,7 +441,7 @@ jobs:
 
       - name: Upload failed threat-model evidence log
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: threat-model-release-minimum-${{ matrix.shard }}
           path: threat-model-release-minimum.log
@@ -542,7 +542,7 @@ jobs:
           disable_annotations: true
 
       - name: Install Rust 1.96.0 (declared MSRV)
-        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # stable
         with:
           toolchain: "1.96.0"
 
@@ -662,7 +662,7 @@ jobs:
         run: cat quality-scorecard.md >>"$GITHUB_STEP_SUMMARY"
 
       - name: Upload scorecard artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quality-scorecard-${{ github.sha }}
           path: quality-scorecard.md
