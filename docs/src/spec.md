@@ -1436,7 +1436,10 @@ the same server-authoritative controls.
   admission, and the `Server` rate limiter and Traffic Shield, so `/ready` can
   return a bounded `503` during startup, dependency failure or drain while
   `/health` stays process-only. The JSON reports counts,
-  not labels or dependency errors. `Server::run_with_shutdown` accepts a
+  not labels or dependency errors. Its `version` is the framework version;
+  the v13 `health_router_with_version` and
+  `health_router_with_lifecycle_and_version` add the application's own
+  version as `app_version`. `Server::run_with_shutdown` accepts a
   caller-owned future; when it resolves, the lifecycle changes to draining
   before Axum waits for accepted requests and then becomes stopped. Dependency
   checks/timeouts, component updates, replica consensus, load-balancer timing,

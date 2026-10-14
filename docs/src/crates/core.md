@@ -187,7 +187,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
-  times out its own dependency checks.
+  times out its own dependency checks. The `version` field of both payloads is
+  the Rullst framework version. To report your application's version too, use
+  `health_router_with_version(env!("CARGO_PKG_VERSION"))` or
+  `health_router_with_lifecycle_and_version(lifecycle, env!("CARGO_PKG_VERSION"))`
+  (v13), which add it as `app_version`; any string works, such as a commit
+  hash read at startup.
 - **Interactive Scalar API Docs (`rullst::scalar`):** OpenAPI documentation UI
   mounted at `/docs`, with a pinned CDN asset and a status-only fallback. A
   missing or malformed `openapi.json` returns `503`.
