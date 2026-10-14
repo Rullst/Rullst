@@ -26,6 +26,11 @@ pub enum AuthError {
     #[error("Session token expired")]
     SessionExpired,
 
+    /// The session token carries an older session epoch than the one the
+    /// application stores for its user, so it was revoked.
+    #[error("Session token revoked")]
+    SessionRevoked,
+
     /// The application key `APP_KEY` is missing or has invalid format.
     #[error("APP_KEY configuration error: {0}")]
     MissingAppKey(String),
@@ -88,6 +93,10 @@ mod tests {
         assert_eq!(
             AuthError::SessionExpired.to_string(),
             "Session token expired"
+        );
+        assert_eq!(
+            AuthError::SessionRevoked.to_string(),
+            "Session token revoked"
         );
         assert_eq!(
             AuthError::MissingAppKey("not set".to_string()).to_string(),
