@@ -39,6 +39,36 @@ pub async fn search_users() -> Html<String> {
 already-escaped `html!` fragments. Do not wrap untrusted request data directly
 in `RawHtml`.
 
+### Composing views
+
+`html!` returns a plain `String`, and interpolating any `String` with `{value}`
+escapes it. That keeps user data safe, but it also means that a fragment built
+by another `html!` call is shown as text (`&lt;span …`) when you interpolate it
+directly. Wrap trusted fragments in `rullst::html::RawHtml`, or let a helper
+return `RawHtml` so callers cannot forget the wrapper:
+
+```rust
+use rullst::html;
+use rullst::html::RawHtml;
+
+fn badge(label: &str) -> RawHtml {
+    RawHtml(html! { <span class="badge">{label}</span> })
+}
+
+let name = "<Ana>";
+// Wrong: the `String` from `html!` is escaped again.
+let escaped = html! { <li>{html! { <b>"new"</b> }}</li> };
+assert_eq!(escaped, "<li>&lt;b&gt;new&lt;/b&gt;</li>");
+// Right: `name` is still escaped; the badge is inserted as markup.
+let row = html! { <li>{name}{badge("new")}</li> };
+assert_eq!(row, "<li>&lt;Ana&gt;<span class=\"badge\">new</span></li>");
+```
+
+Only wrap markup produced by `html!` or other code you control, never request
+data. A full page can start with `<!DOCTYPE html>`, which `html!` emits as
+written, and element names may be Rust keywords, such as SVG's
+`<use href="#icon" />`.
+
 ---
 
 ## 💻 Step 2: Wire HTMX Attributes in Front-End HTML
