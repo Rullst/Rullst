@@ -1477,6 +1477,17 @@ the same server-authoritative controls.
   content-hashed file name get `public, max-age=31536000, immutable`, other
   static files `no-cache` with `ServeDir`'s `ETag`/`Last-Modified` validators;
   see [static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers).
+* **Strict Transport Security (v13 prerelease):** `headers_middleware` adds
+  `Strict-Transport-Security` when the response has none, built from
+  `[security]` `hsts_max_age_seconds` (default 31,536,000),
+  `hsts_include_subdomains` (default `true`) and `hsts_preload` (default
+  `false`): `max-age=31536000; includeSubDomains` by default. `preload` is an
+  opt-in consent to the browsers' preload list; `SecurityConfig::validate`
+  (and therefore `Server` startup) rejects it without `includeSubDomains` or
+  with a max-age below 31,536,000. 13.0.0-alpha.1 always sent
+  `max-age=63072000; includeSubDomains; preload`.
+  `rullst_security::SecureHeadersConfig::default()` uses the same default
+  value.
 * **Double-Submit Form Contract:** `csrf_middleware` installs the exact
   request-scoped `CsrfToken` used by the CSRF cookie on eligible `GET` and
   `HEAD` requests (HEAD mirrors GET's headers, including a new cookie, so a

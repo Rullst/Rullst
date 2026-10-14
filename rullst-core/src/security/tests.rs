@@ -268,7 +268,7 @@ async fn test_headers_middleware_injects_security_headers() {
     assert_eq!(headers.get("X-XSS-Protection").unwrap(), "0");
     assert_eq!(
         headers.get("Strict-Transport-Security").unwrap(),
-        "max-age=63072000; includeSubDomains; preload"
+        "max-age=31536000; includeSubDomains"
     );
     assert_eq!(
         headers.get("Permissions-Policy").unwrap(),

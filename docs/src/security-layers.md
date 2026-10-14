@@ -142,8 +142,8 @@ Leave these out unless you have a specific reason:
 | | Core `headers_middleware` | `rullst_security::SecureHeadersLayer` |
 | :--- | :--- | :--- |
 | Mounted by | `Server` in staging/production; most blueprints also mount it on the router | You, as a Tower layer |
-| Configuration | `[security] csp` (template with `{NONCE}`) and `coep`; other values fixed | `SecureHeadersConfig`: every header value replaceable or omitted (`None`), CSP template or static CSP |
-| Headers | HSTS (two years, preload), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config |
+| Configuration | `[security] csp` (template with `{NONCE}`), `coep` and the `hsts_*` settings; other values fixed | `SecureHeadersConfig`: every header value replaceable or omitted (`None`), CSP template or static CSP |
+| Headers | HSTS (one year with `includeSubDomains`, no `preload`, by default), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config; the default HSTS value is the same |
 | Existing values | Adds each header only when the response has none; leaves all of them alone after an inner `SecureHeadersLayer` | Replaces the handler's values with its configured ones |
 | `Cache-Control` | Adds `no-store` when the handler set none | Not touched |
 | CSP nonce | `CspNonce` request extension | Same `CspNonce`, reused when one already exists |
@@ -167,6 +167,29 @@ plain Axum router that you serve without `Server`. An exact
 to one value. `CspSecurityLayer` (in `sanitizer`) is a smaller variant: default
 CSP, `X-Frame-Options`, `nosniff` and `Referrer-Policy` only; it does not set
 the marker, so the Core baseline keeps those four and adds the rest.
+
+#### Strict-Transport-Security
+
+The Core baseline sends `Strict-Transport-Security: max-age=31536000;
+includeSubDomains` unless the response already has the header. Three
+`[security]` settings choose another value:
+
+```toml
+[security]
+hsts_max_age_seconds = 63072000  # default 31536000 (one year); 0 clears the policy
+hsts_include_subdomains = true   # default true
+hsts_preload = true              # default false
+```
+
+`includeSubDomains` makes browsers refuse plain HTTP on every subdomain of the
+host for the whole max-age, so leave it on only when all of them serve HTTPS.
+`preload` asks to be listed in the HSTS preload list built into browsers once
+the domain is submitted there, and leaving that list takes months, so it is
+opt-in. Startup fails when `hsts_preload` is set without
+`hsts_include_subdomains` or with a max-age below 31536000, the list's own
+requirements. A handler that sets the header, or `SecureHeadersConfig::hsts`
+in `SecureHeadersLayer`, still wins over these settings. 13.0.0-alpha.1 and
+earlier always sent `max-age=63072000; includeSubDomains; preload`.
 
 **Not covered:** headers reduce browser-side risks (framing, MIME sniffing,
 inline script injection); they do not fix an XSS bug in a page that allows

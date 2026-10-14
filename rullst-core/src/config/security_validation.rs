@@ -1,11 +1,11 @@
 //! Validation of the `[security]` table: browser policy, CSRF webhook
-//! exemptions and the trusted-proxy settings.
+//! exemptions, HSTS and the trusted-proxy settings.
 
 use super::{ConfigError, SecurityConfig};
 
 impl SecurityConfig {
-    /// Validates browser security policy, exact-path CSRF webhook exemptions
-    /// and the trusted-proxy settings.
+    /// Validates browser security policy, exact-path CSRF webhook exemptions,
+    /// the HSTS preload requirements and the trusted-proxy settings.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if !matches!(self.csrf_same_site.as_str(), "Lax" | "Strict" | "None") {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
@@ -90,6 +90,15 @@ impl SecurityConfig {
                 )));
             }
         }
+        // The browsers' preload list only accepts `includeSubDomains` with a
+        // max-age of at least one year.
+        if self.hsts_preload
+            && !(self.hsts_include_subdomains && self.hsts_max_age_seconds >= 31_536_000)
+        {
+            return Err(ConfigError::InvalidSecurityConfiguration(
+                "hsts_preload requires hsts_include_subdomains = true and hsts_max_age_seconds of at least 31536000 (one year)".to_string(),
+            ));
+        }
         #[cfg(not(target_arch = "wasm32"))]
         crate::security::TrustedProxyConfig::from_security_config(self)
             .map_err(|error| ConfigError::InvalidSecurityConfiguration(error.to_string()))?;
@@ -122,3 +131,7 @@ fn is_serialized_origin(origin: &str, uri: &http::Uri) -> bool {
             host.to_ascii_lowercase()
         )
 }
+
+#[cfg(test)]
+#[path = "security_validation_tests.rs"]
+mod tests;

@@ -1,6 +1,10 @@
 //! Precedence of the Core security-header baseline over inner choices.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::field_reassign_with_default
+)]
 
 use super::headers::{CspNonce, SecurityHeadersApplied, headers_middleware};
 use axum::{
@@ -100,7 +104,7 @@ async fn unmarked_responses_get_every_default() {
         ("x-xss-protection", "0"),
         (
             "strict-transport-security",
-            "max-age=63072000; includeSubDomains; preload",
+            "max-age=31536000; includeSubDomains",
         ),
         (
             "permissions-policy",
@@ -245,4 +249,43 @@ fn an_explicit_no_referrer_survives_the_configured_referrer_policy() {
     let mut empty = HeaderMap::new();
     apply_referrer_policy(&mut empty, configured.clone());
     assert_eq!(empty[header::REFERRER_POLICY], configured);
+}
+
+/// The HSTS header the baseline sends for one `[security]` configuration.
+async fn hsts_for(max_age: u64, include_subdomains: bool, preload: bool) -> HeaderValue {
+    let mut security = crate::config::SecurityConfig::default();
+    security.hsts_max_age_seconds = max_age;
+    security.hsts_include_subdomains = include_subdomains;
+    security.hsts_preload = preload;
+    let app = Router::new()
+        .route("/", get(|| async { "page" }))
+        .layer(axum::middleware::from_fn(headers_middleware))
+        .layer(Extension(security));
+    let response = app
+        .oneshot(Request::get("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        response
+            .headers()
+            .get_all(header::STRICT_TRANSPORT_SECURITY)
+            .iter()
+            .count(),
+        1
+    );
+    response.headers()[header::STRICT_TRANSPORT_SECURITY].clone()
+}
+
+#[tokio::test]
+async fn hsts_follows_the_configured_settings() {
+    assert_eq!(
+        hsts_for(63_072_000, true, true).await,
+        "max-age=63072000; includeSubDomains; preload"
+    );
+    assert_eq!(
+        hsts_for(31_536_000, true, false).await,
+        "max-age=31536000; includeSubDomains"
+    );
+    assert_eq!(hsts_for(86_400, false, false).await, "max-age=86400");
+    assert_eq!(hsts_for(0, false, true).await, "max-age=0; preload");
 }

@@ -460,6 +460,13 @@ opt-in layers that overlap some of these. See
 [which security layer to use, and when](../security-layers.md) before you
 combine them.
 
+The secure headers include `Strict-Transport-Security: max-age=31536000;
+includeSubDomains`. `[security]` `hsts_max_age_seconds`,
+`hsts_include_subdomains` and `hsts_preload` change it; `preload` is opt-in
+and requires `includeSubDomains` and a max-age of at least one year, or the
+server refuses to start (see
+[Strict-Transport-Security](../security-layers.md#strict-transport-security)).
+
 ## 🔐 Security Audit & Reliability
 
 Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.
