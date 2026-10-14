@@ -467,6 +467,12 @@ and requires `includeSubDomains` and a max-age of at least one year, or the
 server refuses to start (see
 [Strict-Transport-Security](../security-layers.md#strict-transport-security)).
 
+The WAF refuses requests only in staging and production; in development it
+logs a `warn` event with the rule and path of each request it would refuse.
+`[security]` `waf_body_exempt_paths` lists exact paths whose bodies it does
+not inspect, for routes that accept text such as code samples (see
+[seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
+
 ## 🔐 Security Audit & Reliability
 
 Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.

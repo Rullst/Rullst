@@ -1488,6 +1488,16 @@ the same server-authoritative controls.
   `max-age=63072000; includeSubDomains; preload`.
   `rullst_security::SecureHeadersConfig::default()` uses the same default
   value.
+* **WAF Body Exemptions and Development Report (v13 prerelease):**
+  `[security]` `waf_body_exempt_paths` lists exact absolute paths (validated
+  like `csrf_signed_webhook_paths`; invalid entries fail startup) whose
+  request bodies `waf_middleware` neither reads nor inspects, a deliberate
+  per-route risk acceptance; their path, query, cookies, `Referer` and
+  `User-Agent` stay inspected. In development `apply_security_baseline`
+  mounts a report-only WAF instead of none: it applies the same rules,
+  passes every request (replaying bodies over the 1 MiB limit in full) and
+  logs a `warn` event (target `rullst::security::waf`) with only the rule
+  name and path for each request staging and production would refuse.
 * **Double-Submit Form Contract:** `csrf_middleware` installs the exact
   request-scoped `CsrfToken` used by the CSRF cookie on eligible `GET` and
   `HEAD` requests (HEAD mirrors GET's headers, including a new cookie, so a

@@ -150,7 +150,8 @@ script is required. JSON requests instead need the matching header, while the
 browser still sends the cookie. Do not forward tokens to third-party URLs.
 
 The development server does not automatically apply the production CSRF/WAF
-stack. For this extractor in development, explicitly compose
+stack; its WAF only logs the requests production would refuse. For this
+extractor in development, explicitly compose
 `rullst::server::from_fn(rullst::security::csrf_middleware)` on the application
 router, as the generated form-enabled starters do. Nested CSRF composition with
 the production server is request-idempotent. Do not make the extractor optional

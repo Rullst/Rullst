@@ -39,7 +39,7 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 
 | Blueprint | Mounted for you | Not mounted |
 | :--- | :--- | :--- |
-| Every blueprint | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured). | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any blueprint. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy --platform vps` writes its Caddy address into `[security] trusted_proxies`. |
+| Every blueprint | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any blueprint. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy --platform vps` writes its Caddy address into `[security] trusted_proxies`. |
 | Blank (full stack), SaaS, LMS, ERP | Core `csrf_middleware` and `headers_middleware` on the router too, so development behaves like production. | — |
 | Blank JSON API | Core `headers_middleware` on the router. The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. In staging and production the `Server` baseline requires CSRF on every other write route, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
 | Blog, Portfolio | Only the `Server` baseline (staging and production). | No router-level layers in development. |
@@ -200,7 +200,7 @@ HSTS has no effect until the first HTTPS response reaches the browser.
 
 | | Core `waf_middleware` | `rullst_security::RaspSecurityLayer` |
 | :--- | :--- | :--- |
-| Mounted by | `Server` in staging/production | You |
+| Mounted by | `Server` in staging/production; in development a report-only variant that logs instead of refusing | You |
 | Signatures | Injection structure, not keywords. SQL: a quote followed by `or`/`and` and a comparison or by a comment (`' or '1'='1`, `admin'--`), a `;` followed by a statement (`; drop table`, `; delete from`, `; select *`), `union [all] select`, and probes (`sleep(`, `benchmark(`, `waitfor delay`, `pg_sleep(`, `information_schema`, `@@version`, `xp_cmdshell`, `load_file(`, `into outfile`). Shell: `;`, `\|`, `&&`, a backtick or `$(` followed by a command name (`sh`, `bash`, `cat`, `ls`, `id`, `curl`, `wget`, `nc`, `rm`, `python`…). XSS (`<script`, `javascript:`, `onload=`, `onerror=`, `document.cookie`) and traversal (`../`, `..\`, `/etc/passwd`, `win.ini`) as substrings | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) |
 | Where it looks | Decoded path (traversal only), query, `Referer`, each cookie pair, `User-Agent` against a configurable blocklist (AI and SEO crawlers by default) | Full request target, every header except `Cookie` and `Authorization`, body; JSON keys and strings after decoding |
 | Bodies | `text/*`, JSON, XML, URL-encoded forms; identity encoding only (others get `415`); at most 1 MiB (`413`); invalid UTF-8 gets `400` | Same media types and limits |
@@ -212,6 +212,36 @@ words ("please select an option", "delete my account", "curl the API with your
 token") passes; only injection syntax around those words is refused.
 Parameterized SQL is the real defense against SQL injection, and shell-free
 process APIs against command injection.
+
+#### Seeing and accepting WAF false positives
+
+The WAF refuses requests only in staging and production. In development
+`Server` mounts the same rules in report-only mode: each request they would
+refuse passes, and a `tracing` warning from `rullst::security::waf` names the
+rule and the path, for example `rule="body-signature" path="/lessons/answers"`.
+The warning never includes the query, headers or body. The rules are
+`user-agent-blocklist`, `path-traversal`, `query-signature`,
+`referer-signature`, `cookie-signature`, `body-signature`, `body-encoding`,
+`body-too-large` and `body-not-utf8`.
+
+A route whose body must carry text the signatures refuse, such as code
+samples in a programming lesson (`../`, `javascript:`, `document.cookie`,
+`| grep`), can be exempted by exact path:
+
+```toml
+[security]
+waf_body_exempt_paths = ["/lessons/answers"]
+```
+
+The WAF then neither reads nor inspects bodies sent to that exact path, so it
+also stops checking their encoding and size; set a body limit on the route
+(`DefaultBodyLimit`). Its path, query string, cookies, `Referer` and
+`User-Agent` stay inspected, and CSRF still applies. Entries must be exact
+absolute paths: wildcards, route parameters (`{id}`, `:id`), queries,
+fragments, dot segments and duplicates fail validation, so the server refuses
+to start. Each entry is a deliberate risk acceptance for that route: the
+handler alone (parameterized SQL, output encoding, validation) must make the
+body safe.
 
 **Not covered by either:** `multipart/form-data` and other binary bodies,
 double-encoded or otherwise obfuscated payloads (HTML entities, Unicode

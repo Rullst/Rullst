@@ -227,6 +227,15 @@ pub struct SecurityConfig {
     /// webhook middleware authenticates them. Wildcards and route parameters are rejected.
     #[serde(default)]
     pub csrf_signed_webhook_paths: Vec<String>,
+    /// Exact request paths whose bodies the WAF neither reads nor inspects,
+    /// for routes that must accept free text its signatures refuse, such as
+    /// code samples. Each entry is a deliberate risk acceptance for that
+    /// route: only its handler (parameterized SQL, output encoding,
+    /// validation) protects it from what the body carries. The path, query
+    /// string, cookies, `Referer` and `User-Agent` stay inspected. Wildcards
+    /// and route parameters are rejected, as in `csrf_signed_webhook_paths`.
+    #[serde(default)]
+    pub waf_body_exempt_paths: Vec<String>,
     /// Reverse-proxy addresses or CIDR networks allowed to report the client
     /// address. Empty (the default) never reads forwarding headers. List only
     /// the real proxy networks: any host inside them can choose the client
@@ -316,6 +325,7 @@ impl Default for SecurityConfig {
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
             csrf_signed_webhook_paths: Vec::new(),
+            waf_body_exempt_paths: Vec::new(),
             trusted_proxies: Vec::new(),
             trusted_proxy_header: default_trusted_proxy_header(),
             trust_forwarded_proto: false,

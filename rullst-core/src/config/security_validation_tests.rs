@@ -1,4 +1,4 @@
-//! `[security]` settings added in v13: HSTS.
+//! `[security]` settings added in v13: HSTS and WAF body exemptions.
 
 #![allow(
     clippy::unwrap_used,
@@ -69,4 +69,58 @@ fn hsts_preload_needs_subdomains_and_one_year() {
             "max-age={max_age} includeSubDomains={include_subdomains}"
         );
     }
+}
+
+#[test]
+fn waf_body_exemptions_must_be_unique_exact_paths() {
+    let mut config = SecurityConfig::default();
+    assert!(config.waf_body_exempt_paths.is_empty());
+    config.waf_body_exempt_paths = vec!["/lessons/answers".to_owned(), "/snippets".to_owned()];
+    assert_eq!(config.validate(), Ok(()));
+
+    for invalid in [
+        "/",
+        "lessons/answers",
+        "/lessons/:id",
+        "/lessons/{id}",
+        "/lessons/}",
+        "/lessons/*rest",
+        "/lessons/answers?draft=1",
+        "/lessons/answers#top",
+        "/lessons/../admin",
+        "/lessons/./answers",
+    ] {
+        config.waf_body_exempt_paths = vec![invalid.to_owned()];
+        assert_eq!(
+            config.validate(),
+            Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "WAF body exemption `{invalid}` must be an exact absolute path"
+            ))),
+        );
+    }
+    config.waf_body_exempt_paths = vec!["/snippets".to_owned(), "/snippets".to_owned()];
+    assert_eq!(
+        config.validate(),
+        Err(ConfigError::InvalidSecurityConfiguration(
+            "duplicate WAF body exemption `/snippets`".to_string()
+        )),
+    );
+    // The webhook list keeps its own wording.
+    config.waf_body_exempt_paths.clear();
+    config.csrf_signed_webhook_paths = vec!["/hooks/*".to_owned()];
+    assert_eq!(
+        config.validate(),
+        Err(ConfigError::InvalidSecurityConfiguration(
+            "CSRF signed-webhook exemption `/hooks/*` must be an exact absolute path".to_string()
+        )),
+    );
+}
+
+#[test]
+fn waf_body_exemptions_are_read_from_the_security_table() {
+    let config =
+        RullstConfig::from_toml("[security]\nwaf_body_exempt_paths = [\"/lessons/answers\"]\n")
+            .unwrap()
+            .security;
+    assert_eq!(config.waf_body_exempt_paths, ["/lessons/answers"]);
 }

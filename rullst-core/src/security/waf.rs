@@ -3,7 +3,8 @@
 //! A coarse baseline: it refuses common injection *structures* (see the
 //! `detect` submodule) in the query, `Referer`, cookies and bounded textual
 //! bodies, and traversal in the path. Parameterized SQL, output encoding and
-//! typed validation remain the actual defenses.
+//! typed validation remain the actual defenses. The `report` submodule runs
+//! the same rules in development, where it only logs what it would refuse.
 
 use axum::{
     body::Body,
@@ -14,7 +15,13 @@ use axum::{
 };
 
 mod detect;
+mod report;
 
+pub(super) use report::waf_report_middleware;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod exemption_tests;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod limits_tests;
@@ -41,11 +48,84 @@ fn plain_response(status: StatusCode, message: &'static str) -> Response {
     response
 }
 
-fn forbidden_response() -> Response {
-    plain_response(
-        StatusCode::FORBIDDEN,
-        "Access Denied: Malicious pattern detected by Rullst Shield WAF.",
-    )
+/// A WAF rule a request breaks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Rule {
+    /// The `User-Agent` contains a `user_agent_blocklist` entry.
+    UserAgent,
+    /// The percent-decoded path contains a traversal signature.
+    PathTraversal,
+    /// The query string carries a signature.
+    Query,
+    /// The `Referer` carries a signature.
+    Referer,
+    /// A cookie pair carries a signature.
+    Cookie,
+    /// The textual body carries a signature.
+    Body,
+    /// The body is compressed or otherwise encoded.
+    BodyEncoding,
+    /// The declared `Content-Length` exceeds the inspection limit.
+    BodyTooLarge,
+    /// The body exceeds the inspection limit or could not be read.
+    BodyUnreadable,
+    /// The textual body is not UTF-8.
+    BodyNotUtf8,
+}
+
+impl Rule {
+    /// The rule's name in development logs.
+    fn name(self) -> &'static str {
+        match self {
+            Self::UserAgent => "user-agent-blocklist",
+            Self::PathTraversal => "path-traversal",
+            Self::Query => "query-signature",
+            Self::Referer => "referer-signature",
+            Self::Cookie => "cookie-signature",
+            Self::Body => "body-signature",
+            Self::BodyEncoding => "body-encoding",
+            Self::BodyTooLarge | Self::BodyUnreadable => "body-too-large",
+            Self::BodyNotUtf8 => "body-not-utf8",
+        }
+    }
+
+    /// The response staging and production send for this rule.
+    fn refusal(self) -> Response {
+        let (status, message) = match self {
+            Self::UserAgent => (
+                StatusCode::FORBIDDEN,
+                "Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF.",
+            ),
+            Self::PathTraversal | Self::Query | Self::Referer | Self::Cookie | Self::Body => (
+                StatusCode::FORBIDDEN,
+                "Access Denied: Malicious pattern detected by Rullst Shield WAF.",
+            ),
+            Self::BodyEncoding => (
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "Encoded request bodies cannot be inspected by the WAF.",
+            ),
+            Self::BodyTooLarge => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Request body exceeds the WAF inspection limit.",
+            ),
+            Self::BodyUnreadable => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Request body could not be inspected within the WAF limit.",
+            ),
+            Self::BodyNotUtf8 => (
+                StatusCode::BAD_REQUEST,
+                "Declared textual request body is not valid UTF-8.",
+            ),
+        };
+        plain_response(status, message)
+    }
+}
+
+/// The application's security configuration, else the process-global one.
+fn security_config(req: &Request) -> &crate::config::SecurityConfig {
+    req.extensions()
+        .get::<crate::config::SecurityConfig>()
+        .unwrap_or(&crate::config::RullstConfig::global().security)
 }
 
 fn should_inspect_body(headers: &HeaderMap) -> bool {
@@ -161,123 +241,125 @@ fn path_contains_traversal(path: &str) -> bool {
         .any(|pattern| decoded.contains(pattern))
 }
 
-async fn inspect_and_restore_body(req: Request) -> Result<Request, Box<Response>> {
-    if !should_inspect_body(req.headers()) {
-        return Ok(req);
+/// Whether the WAF reads this request's body: a declared textual media type
+/// on a path that `waf_body_exempt_paths` does not list.
+fn body_is_inspected(req: &Request) -> bool {
+    should_inspect_body(req.headers())
+        && !security_config(req)
+            .waf_body_exempt_paths
+            .iter()
+            .any(|path| path == req.uri().path())
+}
+
+/// The rule an inspected body breaks before it is read: an encoding or a
+/// declared length the WAF cannot inspect.
+fn screen_body_headers(headers: &HeaderMap) -> Option<Rule> {
+    if !has_identity_encoding(headers) {
+        return Some(Rule::BodyEncoding);
     }
+    declared_body_is_too_large(headers).then_some(Rule::BodyTooLarge)
+}
 
-    if !has_identity_encoding(req.headers()) {
-        return Err(Box::new(plain_response(
-            StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            "Encoded request bodies cannot be inspected by the WAF.",
-        )));
-    }
-
-    if declared_body_is_too_large(req.headers()) {
-        return Err(Box::new(plain_response(
-            StatusCode::PAYLOAD_TOO_LARGE,
-            "Request body exceeds the WAF inspection limit.",
-        )));
-    }
-
-    let (parts, body) = req.into_parts();
-    let bytes = axum::body::to_bytes(body, MAX_INSPECTED_REQUEST_BYTES)
-        .await
-        .map_err(|_| {
-            Box::new(plain_response(
-                StatusCode::PAYLOAD_TOO_LARGE,
-                "Request body could not be inspected within the WAF limit.",
-            ))
-        })?;
-
-    let payload = std::str::from_utf8(&bytes).map_err(|_| {
-        Box::new(plain_response(
-            StatusCode::BAD_REQUEST,
-            "Declared textual request body is not valid UTF-8.",
-        ))
-    })?;
-    let malicious = if body_is_json(&parts.headers) {
+/// The rule a complete inspected body breaks.
+fn screen_body_bytes(headers: &HeaderMap, bytes: &[u8]) -> Option<Rule> {
+    let Ok(payload) = std::str::from_utf8(bytes) else {
+        return Some(Rule::BodyNotUtf8);
+    };
+    let malicious = if body_is_json(headers) {
         json_contains_malicious_pattern(payload)
     } else {
         contains_malicious_pattern(payload)
     };
-    if malicious {
-        return Err(Box::new(forbidden_response()));
-    }
-
-    Ok(Request::from_parts(parts, Body::from(bytes)))
+    malicious.then_some(Rule::Body)
 }
 
-/// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
-pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
-    // 1. Inspect User-Agent for known bots or scrapers. Header values are
-    // decoded lossily: an obs-text byte (0x80-0xFF) that `to_str` rejects must
-    // not hide the rest of the value from inspection.
+/// The first rule that the request line or headers break: the `User-Agent`
+/// blocklist, traversal in the path, then signatures in the query, the
+/// `Referer` and each cookie pair.
+///
+/// Header values are decoded lossily: an obs-text byte (0x80-0xFF) that
+/// `to_str` rejects must not hide the rest of the value from inspection.
+fn screen_head(req: &Request) -> Option<Rule> {
     if let Some(ua) = req
         .headers()
         .get(header::USER_AGENT)
         .map(|value| String::from_utf8_lossy(value.as_bytes()))
     {
         let ua_lower = ua.to_lowercase();
-        let suspicious_agents = req
-            .extensions()
-            .get::<crate::config::SecurityConfig>()
-            .map(|cfg| cfg.user_agent_blocklist.clone())
-            .unwrap_or_else(|| {
-                crate::config::RullstConfig::global()
-                    .security
-                    .user_agent_blocklist
-                    .clone()
-            });
-
-        for agent in suspicious_agents {
-            if ua_lower.contains(&agent.to_lowercase()) {
-                return plain_response(
-                    StatusCode::FORBIDDEN,
-                    "Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF.",
-                );
-            }
+        if security_config(req)
+            .user_agent_blocklist
+            .iter()
+            .any(|agent| ua_lower.contains(&agent.to_lowercase()))
+        {
+            return Some(Rule::UserAgent);
         }
     }
 
-    // 2. Inspect the path, query parameters and selected headers for common
-    // attack vectors.
     if path_contains_traversal(req.uri().path()) {
-        return forbidden_response();
+        return Some(Rule::PathTraversal);
     }
-    if let Some(query) = req.uri().query() {
-        if contains_malicious_pattern(query) {
-            return forbidden_response();
-        }
+    if req.uri().query().is_some_and(contains_malicious_pattern) {
+        return Some(Rule::Query);
     }
-
-    if let Some(referer) = req
+    if req
         .headers()
         .get(header::REFERER)
-        .map(|value| String::from_utf8_lossy(value.as_bytes()))
-        && contains_malicious_pattern(&referer)
+        .is_some_and(|value| contains_malicious_pattern(&String::from_utf8_lossy(value.as_bytes())))
     {
-        return forbidden_response();
+        return Some(Rule::Referer);
     }
 
     // Each cookie pair is inspected on its own: the `; ` pair separator is
     // header syntax, so a later cookie named like a command (`ls`, `id`)
     // must not read as a chained shell command.
-    for cookies in req.headers().get_all(header::COOKIE) {
-        if String::from_utf8_lossy(cookies.as_bytes())
-            .split(';')
-            .any(|pair| contains_malicious_pattern(pair.trim()))
-        {
-            return forbidden_response();
-        }
+    req.headers()
+        .get_all(header::COOKIE)
+        .iter()
+        .any(|cookies| {
+            String::from_utf8_lossy(cookies.as_bytes())
+                .split(';')
+                .any(|pair| contains_malicious_pattern(pair.trim()))
+        })
+        .then_some(Rule::Cookie)
+}
+
+/// Inspects a bounded textual/JSON/form body, then rebuilds the exact
+/// request for downstream extractors. Unsupported encodings and over-limit
+/// text fail closed.
+async fn inspect_and_restore_body(req: Request) -> Result<Request, Rule> {
+    if !body_is_inspected(&req) {
+        return Ok(req);
+    }
+    if let Some(rule) = screen_body_headers(req.headers()) {
+        return Err(rule);
     }
 
-    // 3. Inspect bounded textual/JSON/form bodies, then reconstruct the exact request for
-    // downstream extractors. Unsupported encodings and over-limit text fail closed.
-    req = match inspect_and_restore_body(req).await {
-        Ok(req) => req,
-        Err(response) => return *response,
-    };
+    let (parts, body) = req.into_parts();
+    let bytes = axum::body::to_bytes(body, MAX_INSPECTED_REQUEST_BYTES)
+        .await
+        .map_err(|_| Rule::BodyUnreadable)?;
+    match screen_body_bytes(&parts.headers, &bytes) {
+        Some(rule) => Err(rule),
+        None => Ok(Request::from_parts(parts, Body::from(bytes))),
+    }
+}
 
-    next.run(req).await
+/// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
+///
+/// It refuses a request whose `User-Agent` matches `user_agent_blocklist`,
+/// whose path carries traversal, or whose query, `Referer`, cookies or
+/// bounded textual body (`text/*`, JSON, XML, URL-encoded forms, at most
+/// 1 MiB) carry an injection signature. Bodies on the exact paths listed in
+/// `waf_body_exempt_paths` are neither read nor inspected; everything else
+/// about those requests is. `Server` mounts it in staging and production; in
+/// development it mounts a report-only variant that logs, at `warn` level,
+/// the rule and path of each request this middleware would refuse.
+pub async fn waf_middleware(req: Request, next: Next) -> Response {
+    if let Some(rule) = screen_head(&req) {
+        return rule.refusal();
+    }
+    match inspect_and_restore_body(req).await {
+        Ok(req) => next.run(req).await,
+        Err(rule) => rule.refusal(),
+    }
 }

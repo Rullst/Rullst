@@ -221,6 +221,12 @@ pub(super) async fn read_token(
     ))
 }
 
+/// A body that replays `frames`, already read from `inner`, then the rest of
+/// `inner`. The WAF's development report reuses it for over-limit bodies.
+pub(super) fn replay(frames: VecDeque<Frame<Bytes>>, inner: Body) -> Body {
+    Body::new(ReplayBody { frames, inner })
+}
+
 /// Replays the frames read while looking for the token, then the rest of
 /// the original body.
 struct ReplayBody {

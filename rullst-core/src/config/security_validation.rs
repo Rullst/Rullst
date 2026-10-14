@@ -1,11 +1,12 @@
-//! Validation of the `[security]` table: browser policy, CSRF webhook
-//! exemptions, HSTS and the trusted-proxy settings.
+//! Validation of the `[security]` table: browser policy, CSRF webhook and
+//! WAF body exemptions, HSTS and the trusted-proxy settings.
 
 use super::{ConfigError, SecurityConfig};
 
 impl SecurityConfig {
-    /// Validates browser security policy, exact-path CSRF webhook exemptions,
-    /// the HSTS preload requirements and the trusted-proxy settings.
+    /// Validates browser security policy, exact-path CSRF webhook and WAF
+    /// body exemptions, the HSTS preload requirements and the trusted-proxy
+    /// settings.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if !matches!(self.csrf_same_site.as_str(), "Lax" | "Strict" | "None") {
             return Err(ConfigError::InvalidSecurityConfiguration(format!(
@@ -71,25 +72,11 @@ impl SecurityConfig {
                 )));
             }
         }
-        let mut unique_paths = std::collections::HashSet::new();
-        for path in &self.csrf_signed_webhook_paths {
-            let is_exact_absolute_path = path.starts_with('/')
-                && path.len() > 1
-                && !path.contains(['?', '#', '*', '{', '}', ':'])
-                && !path
-                    .split('/')
-                    .any(|segment| segment == ".." || segment == ".");
-            if !is_exact_absolute_path {
-                return Err(ConfigError::InvalidSecurityConfiguration(format!(
-                    "CSRF signed-webhook exemption `{path}` must be an exact absolute path"
-                )));
-            }
-            if !unique_paths.insert(path) {
-                return Err(ConfigError::InvalidSecurityConfiguration(format!(
-                    "duplicate CSRF signed-webhook exemption `{path}`"
-                )));
-            }
-        }
+        validate_exact_paths(
+            &self.csrf_signed_webhook_paths,
+            "CSRF signed-webhook exemption",
+        )?;
+        validate_exact_paths(&self.waf_body_exempt_paths, "WAF body exemption")?;
         // The browsers' preload list only accepts `includeSubDomains` with a
         // max-age of at least one year.
         if self.hsts_preload
@@ -104,6 +91,32 @@ impl SecurityConfig {
             .map_err(|error| ConfigError::InvalidSecurityConfiguration(error.to_string()))?;
         Ok(())
     }
+}
+
+/// Rejects a `paths` entry that is not one exact absolute path (no query,
+/// fragment, wildcard, route parameter or dot segment) and duplicates;
+/// `kind` names the setting in the error.
+fn validate_exact_paths(paths: &[String], kind: &str) -> Result<(), ConfigError> {
+    let mut unique_paths = std::collections::HashSet::new();
+    for path in paths {
+        let is_exact_absolute_path = path.starts_with('/')
+            && path.len() > 1
+            && !path.contains(['?', '#', '*', '{', '}', ':'])
+            && !path
+                .split('/')
+                .any(|segment| segment == ".." || segment == ".");
+        if !is_exact_absolute_path {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "{kind} `{path}` must be an exact absolute path"
+            )));
+        }
+        if !unique_paths.insert(path) {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "duplicate {kind} `{path}`"
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Whether `origin` is byte-for-byte the `Origin` a browser sends for `uri`:
