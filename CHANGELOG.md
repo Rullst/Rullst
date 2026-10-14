@@ -13,8 +13,9 @@ A prepared version section does not establish that its tag or crates exist.
 
 - `ammonia` is required at 4.2.3 or later (RUSTSEC-2021-0157, RUSTSEC-2021-0158:
   SVG animation tags and CSS `url("")` escaping in sanitized HTML), and the
-  lockfile moves `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338, -0340, -0343).
-  Applications should run `cargo update -p ammonia -p quinn-proto`.
+  lockfiles move `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338, -0340, -0343)
+  and `rustls` to 0.23.46 (RUSTSEC-2026-0346 to -0349). Applications should
+  run `cargo update -p ammonia -p quinn-proto -p rustls`.
 
 ## [12.3.0] - 2026-10-08
 
