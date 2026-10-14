@@ -86,7 +86,9 @@ generated API.
   `to_json()`, audit rows and committed events, are omitted from Scout
   documents, and stay encrypted in `save_to_redis` hashes. `SecretString`
   fields are redacted the same way, and `SecretString` serializes as an
-  encrypted envelope rather than plaintext.
+  encrypted envelope rather than plaintext. `RULLST_ENCRYPTION_KEY` (and its
+  `_KEY_ID`/`_KEYRING` companions) is read from the process environment, then
+  from `./.env`; see [field encryption](../tutorials/15-rullst-vault-encryption.md).
 - **Native relational enums:** `#[derive(Enum)]` owns one closed label mapping
   for SQLx, Serde and ORM values. `Blueprint::native_enum` emits a named,
   drift-checked PostgreSQL type with `strict-postgres`, inline MySQL/MariaDB

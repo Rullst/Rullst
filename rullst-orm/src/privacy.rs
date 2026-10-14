@@ -23,6 +23,7 @@ mod secret_serde;
 #[doc(hidden)]
 pub use secret_serde::with_redacted_secrets;
 pub use secret_serde::{deserialize_optional_plaintext_secret, deserialize_plaintext_secret};
+mod settings;
 mod sqlx_codec;
 
 /// A decrypted secret whose `Debug` output and serde form never contain the
@@ -278,18 +279,13 @@ fn decrypt_envelope(
     String::from_utf8(plaintext).map_err(|error| PrivacyError::Utf8Error(error.to_string()))
 }
 
-fn environment_variable(name: &str) -> Result<String, PrivacyError> {
-    std::env::var(name).map_err(|error| PrivacyError::EnvError(format!("{name}: {error}")))
-}
-
 fn current_key_id() -> Result<String, PrivacyError> {
-    match std::env::var(KEY_ID_ENV) {
-        Ok(key_id) => {
+    match settings::setting(KEY_ID_ENV)? {
+        Some(key_id) => {
             validate_key_id(&key_id)?;
             Ok(key_id)
         }
-        Err(std::env::VarError::NotPresent) => Ok(DEFAULT_KEY_ID.to_string()),
-        Err(error) => Err(PrivacyError::EnvError(format!("{KEY_ID_ENV}: {error}"))),
+        None => Ok(DEFAULT_KEY_ID.to_string()),
     }
 }
 
@@ -319,7 +315,7 @@ fn decode_configured_key(value: &str) -> Result<Vec<u8>, PrivacyError> {
 }
 
 fn current_key() -> Result<Vec<u8>, PrivacyError> {
-    decode_configured_key(&environment_variable(KEY_ENV)?)
+    decode_configured_key(&settings::required_setting(KEY_ENV)?)
 }
 
 fn parse_keyring(
@@ -337,7 +333,7 @@ fn configured_key(key_id: &str) -> Result<Vec<u8>, PrivacyError> {
         return current_key();
     }
 
-    let values = parse_keyring(&environment_variable(KEYRING_ENV)?)?;
+    let values = parse_keyring(&settings::required_setting(KEYRING_ENV)?)?;
     let key = values
         .get(key_id)
         .and_then(serde_json::Value::as_str)
@@ -355,10 +351,8 @@ fn decrypt_legacy_configured(encrypted: &str) -> Result<String, PrivacyError> {
         Err(error @ PrivacyError::DecryptionFailed(_)) => error,
         other => return other,
     };
-    let keyring = match std::env::var(KEYRING_ENV) {
-        Ok(keyring) => keyring,
-        Err(std::env::VarError::NotPresent) => return Err(rejected),
-        Err(error) => return Err(PrivacyError::EnvError(format!("{KEYRING_ENV}: {error}"))),
+    let Some(keyring) = settings::setting(KEYRING_ENV)? else {
+        return Err(rejected);
     };
     let values = parse_keyring(&keyring)?;
     let candidates = values.get(DEFAULT_KEY_ID).into_iter().chain(
@@ -381,6 +375,10 @@ fn decrypt_legacy_configured(encrypted: &str) -> Result<String, PrivacyError> {
 
 /// Encrypts an ORM model field using the configured current key and an
 /// authenticated table/column context.
+///
+/// `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and
+/// `RULLST_ENCRYPTION_KEYRING` are each read from the process environment,
+/// then from `./.env` (never loaded into the process environment).
 pub fn encrypt_model_field(
     plaintext: &str,
     table: &str,

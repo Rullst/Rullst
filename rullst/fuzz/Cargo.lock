@@ -2607,6 +2607,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "base64 0.23.1",
+ "dotenvy",
  "futures",
  "rand 0.10.2",
  "rullst-orm-macros",

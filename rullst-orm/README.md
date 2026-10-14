@@ -97,7 +97,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   plaintext), which the query cache stores and decrypts on a hit. That
   envelope is not bound to a record, so deserialize client input with
   `#[serde(deserialize_with = "rullst_orm::privacy::deserialize_plaintext_secret")]`,
-  which rejects envelopes instead of decrypting them.
+  which rejects envelopes instead of decrypting them. The key settings
+  (`RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`,
+  `RULLST_ENCRYPTION_KEYRING`) are read from the process environment, then
+  from `./.env`, which is never loaded into the process environment.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash
