@@ -9,7 +9,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_users_table"
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("users", |table| {
             table.id();
             table.string("name").not_null();
@@ -17,7 +17,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("users").await
     }
 }

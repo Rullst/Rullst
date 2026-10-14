@@ -94,8 +94,8 @@ pub(crate) fn render_migration(
 
 fn render_sqlx_migration(file_stem: &str, table_name: &str) -> String {
     format!(
-        r#"use rullst_orm::schema::{{Schema, Migration}};
-use rullst_orm::async_trait;
+        r#"use rullst::db::schema::{{Schema, Migration}};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -105,7 +105,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+    async fn up(&self) -> Result<(), rullst::orm::Error> {{
         Schema::create("{table_name}", |table| {{
             table.id();
             // Add your fields here (e.g. table.string("title");)
@@ -113,7 +113,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
+    async fn down(&self) -> Result<(), rullst::orm::Error> {{
         Schema::drop_if_exists("{table_name}").await
     }}
 }}
@@ -200,7 +200,7 @@ pub fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
     match project_orm_backend() {
         ProjectOrmBackend::Sqlx => {
             mod_content.push_str(
-                "\npub fn get_migrations() -> Vec<Box<dyn rullst_orm::schema::Migration>> {\n",
+                "\npub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {\n",
             );
             mod_content.push_str("    vec![\n");
             for m in &modules {

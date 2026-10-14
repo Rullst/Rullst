@@ -202,8 +202,8 @@ pub(crate) fn render_auto_migration(
     let down_body = down_queries.join("\n");
 
     Ok(Some(format!(
-        r#"use rullst_orm::schema::{{Schema, Migration}};
-use rullst_orm::async_trait;
+        r#"use rullst::db::schema::{{Schema, Migration}};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -213,12 +213,12 @@ impl Migration for MigrationImpl {{
         "{}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+    async fn up(&self) -> Result<(), rullst::orm::Error> {{
 {}
         Ok(())
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
+    async fn down(&self) -> Result<(), rullst::orm::Error> {{
 {}
         Ok(())
     }}

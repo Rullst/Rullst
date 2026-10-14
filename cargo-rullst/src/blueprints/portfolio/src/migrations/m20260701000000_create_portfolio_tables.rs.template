@@ -9,7 +9,7 @@ impl Migration for CreatePortfolioTables {
         "m20260701000000_create_portfolio_tables"
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("profiles", |table| {
             table.id();
             table.string("name").not_null();
@@ -96,7 +96,7 @@ impl Migration for CreatePortfolioTables {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("skills").await?;
         Schema::drop_if_exists("experiences").await?;
         Schema::drop_if_exists("projects").await?;

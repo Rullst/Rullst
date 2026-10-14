@@ -10,7 +10,7 @@ impl Migration for MigrationImpl {
         "m20260827000000_add_learning_access"
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("users", |table| {
             table.id();
             table.string("name").not_null();
@@ -70,7 +70,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("lesson_progress_events").await?;
         Schema::drop_if_exists("lesson_progress").await?;
         Schema::drop_if_exists("enrollments").await?;
