@@ -1,5 +1,5 @@
 #![cfg_attr(mutants, mutants::skip)]
-use proc_macro2::{Span, TokenStream, TokenTree};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
@@ -15,37 +15,22 @@ pub struct HtmlDocument {
     nodes: Vec<HtmlNode>,
 }
 
-fn starts_comment(input: ParseStream) -> bool {
-    input.peek(Token![<]) && input.peek2(Token![!])
-}
-
-fn parse_comment(input: ParseStream) -> Result<()> {
-    input.parse::<Token![<]>()?;
-    input.parse::<Token![!]>()?;
-    input.parse::<Token![-]>()?;
-    input.parse::<Token![-]>()?;
-
-    while !input.is_empty() {
-        if input.peek(Token![-]) && input.peek2(Token![-]) && input.peek3(Token![>]) {
-            input.parse::<Token![-]>()?;
-            input.parse::<Token![-]>()?;
-            input.parse::<Token![>]>()?;
-            return Ok(());
-        }
-        input.parse::<TokenTree>()?;
-    }
-
-    Err(syn::Error::new(
-        Span::call_site(),
-        "unterminated HTML comment; expected -->",
-    ))
-}
+#[path = "html_declarations.rs"]
+mod declarations;
+use declarations::{
+    misplaced_doctype, parse_comment, parse_doctype, starts_comment, starts_doctype,
+};
 
 impl Parse for HtmlDocument {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut nodes = Vec::new();
         while !input.is_empty() {
-            if starts_comment(input) {
+            if starts_doctype(input) {
+                if !nodes.is_empty() {
+                    return Err(misplaced_doctype(input));
+                }
+                nodes.push(parse_doctype(input)?);
+            } else if starts_comment(input) {
                 parse_comment(input)?;
             } else {
                 nodes.push(input.parse::<HtmlNode>()?);
@@ -159,7 +144,8 @@ impl Parse for HtmlNode {
 impl Parse for HtmlElement {
     fn parse(input: ParseStream) -> Result<Self> {
         input.parse::<Token![<]>()?;
-        let tag_name = input.parse::<Ident>()?;
+        // `parse_any` also accepts Rust keywords, such as SVG's `<use>`.
+        let tag_name = Ident::parse_any(input)?;
 
         let mut attributes = Vec::new();
         while !(input.peek(Token![>]) || input.peek(Token![/]) && input.peek2(Token![>])) {
@@ -183,6 +169,9 @@ impl Parse for HtmlElement {
             if input.peek(Token![<]) && input.peek2(Token![/]) {
                 break;
             }
+            if starts_doctype(input) {
+                return Err(misplaced_doctype(input));
+            }
             if starts_comment(input) {
                 parse_comment(input)?;
             } else {
@@ -192,7 +181,7 @@ impl Parse for HtmlElement {
 
         input.parse::<Token![<]>()?;
         input.parse::<Token![/]>()?;
-        let closing_tag = input.parse::<Ident>()?;
+        let closing_tag = Ident::parse_any(input)?;
         if closing_tag != tag_name {
             return Err(syn::Error::new(
                 closing_tag.span(),

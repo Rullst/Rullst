@@ -60,3 +60,19 @@ fn html_macro_accepts_and_strips_source_comments() {
 
     assert_eq!(result, "<main><p>Audited content</p></main>");
 }
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn html_macro_renders_a_doctype_keyword_elements_and_trusted_fragments() {
+    let title = "<Notes>";
+    let icon = html! { <svg><use href="#note" /></svg> };
+    let page = html! {
+        <!DOCTYPE html>
+        <html><body><h1>{title}</h1>{rullst::html::RawHtml(icon)}</body></html>
+    };
+
+    assert_eq!(
+        page,
+        "<!DOCTYPE html><html><body><h1>&lt;Notes&gt;</h1><svg><use href=\"#note\"></use></svg></body></html>"
+    );
+}
