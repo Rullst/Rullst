@@ -1760,6 +1760,18 @@ model lifecycle (tenant scope, policy, hooks, audit, cache). The driver
 contract runs that counter and the stale-handle overwrite on SQLite,
 PostgreSQL, MySQL and MariaDB.
 
+`From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
+`RecordNotFound`, a unique or primary-key violation to
+`UniqueViolation { constraint }` and a foreign-key violation to
+`ForeignKeyViolation { constraint }` (both v13, `#[non_exhaustive]` variants);
+every other database error stays `DatabaseError(String)`. `constraint` is the
+name PostgreSQL reports and `None` on SQLite and MySQL/MariaDB. Their `Display`
+names only the constraint, never the database message, which can quote the
+rejected value. Generated model writes and builders reach the caller through
+this conversion, and `Orm::raw` uses it too; `Orm::transaction`, generic over
+its closure's error type, still reports a failed closure as
+`DatabaseError("Transaction failed: ...")`.
+
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
 errors. Every SQLx model requires a persisted named `id` field; a model

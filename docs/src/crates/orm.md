@@ -275,6 +275,41 @@ async fn award_xp(student_id: i32, points: i32) -> Result<(), rullst_orm::Error>
 }
 ```
 
+### Database errors
+
+A unique or primary-key violation returns `Error::UniqueViolation`, and a
+foreign-key violation (a missing referenced row, or deleting a row that is
+still referenced) returns `Error::ForeignKeyViolation`. Generated writes, query
+builders and `Orm::raw` all map them; every other database failure stays
+`Error::DatabaseError(String)`. `constraint` holds the name PostgreSQL reports
+and is `None` on SQLite and MySQL/MariaDB. The message of these two errors
+names only the constraint, because the database's own text can quote the
+rejected value (MySQL reports `Duplicate entry 'alice@example.com'`).
+
+```rust,no_run
+use rullst_orm::{Error, FromRow, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "members")]
+pub struct Member {
+    pub id: i32,
+    pub email: String,
+}
+
+/// `Ok(None)` when the email is already registered.
+async fn register(email: String) -> Result<Option<Member>, Error> {
+    let mut member = Member { id: 0, email };
+    match member.save().await {
+        Ok(()) => Ok(Some(member)),
+        Err(Error::UniqueViolation { .. }) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+```
+
+Match the typed error where the write returns it: `Orm::transaction` reports a
+failed closure as `DatabaseError("Transaction failed: ...")`.
+
 ### Query row cap
 
 Generated builders start with a global row cap (`Orm::set_max_query_limit`,

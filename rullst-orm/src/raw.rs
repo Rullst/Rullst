@@ -60,8 +60,8 @@ impl RawQueryBuilder {
             }
         }
 
-        let results = crate::execute_query!(query, fetch_all, read_pool)
-            .map_err(|e| Error::DatabaseError(e.to_string()))?;
+        // `?` maps constraint violations to their typed `Error` variants.
+        let results = crate::execute_query!(query, fetch_all, read_pool)?;
         Ok(results)
     }
 
@@ -101,8 +101,24 @@ impl RawQueryBuilder {
             }
         }
 
-        let result = crate::execute_query!(query, execute, pool)
-            .map_err(|e| Error::DatabaseError(e.to_string()))?;
+        let result = crate::execute_query!(query, execute, pool)?;
         Ok(result.rows_affected())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Error, Orm};
+
+    // No test of the library initializes the ORM, so these reach the pool.
+    #[tokio::test]
+    async fn raw_queries_report_an_uninitialized_orm() {
+        let executed = Orm::raw("UPDATE t SET n = n + ?").bind(1).execute().await;
+        assert!(
+            matches!(executed, Err(Error::NotInitialized)),
+            "{executed:?}"
+        );
+        let mapped = Orm::raw("SELECT 1").map_to::<(i32,)>().await;
+        assert!(matches!(mapped, Err(Error::NotInitialized)), "{mapped:?}");
     }
 }

@@ -8,6 +8,7 @@ mod aggregate_counts;
 mod atomic_counters;
 mod bulk_delete;
 mod column_types;
+mod constraint_violations;
 mod id_only_rows;
 mod missing_rows;
 mod nested_transaction;
@@ -31,4 +32,5 @@ pub async fn exercise() {
     search_relevance::exercise().await;
     qualified_scopes::exercise().await;
     atomic_counters::exercise().await;
+    constraint_violations::exercise().await;
 }
