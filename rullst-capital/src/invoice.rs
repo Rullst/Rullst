@@ -356,6 +356,10 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+#[path = "invoice_tests.rs"]
+mod validation_tests;
+
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
