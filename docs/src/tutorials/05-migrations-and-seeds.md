@@ -96,10 +96,30 @@ fn within_transaction(&self) -> bool {
 ```
 
 Only statements that join that transaction are covered: `Schema` calls,
-`rullst_orm::execute_query!` and generated model methods. A query sent to
-`Orm::pool()` directly runs on another connection that cannot see the
-transaction's uncommitted tables, so keep the default `false` for such a
-migration. PostgreSQL and SQLite roll the DDL back with the record; MySQL and
+generated model methods, `rullst_orm::execute_query!` and raw SQL sent with
+`Orm::raw(sql).execute()` (or `.map_to()`). `Orm::raw` is the raw-SQL path that
+stays in the transaction:
+
+```rust,ignore
+async fn up(&self) -> Result<(), rullst_orm::Error> {
+    Schema::create("tags", |table| {
+        table.id();
+        table.string("name").not_null();
+    })
+    .await?;
+    // Runs in the migration's transaction, so it sees the new table and rolls
+    // back with it.
+    Orm::raw("CREATE UNIQUE INDEX tags_name_key ON tags (name)")
+        .execute()
+        .await?;
+    Ok(())
+}
+```
+
+A query sent to `Orm::pool()` directly, such as
+`sqlx::query(sql).execute(Orm::pool()?)`, runs on another connection that
+cannot see the transaction's uncommitted tables and does not roll back with
+it, so keep the default `false` for such a migration. PostgreSQL and SQLite roll the DDL back with the record; MySQL and
 MariaDB commit each DDL statement implicitly, so there only data changes after
 the last DDL statement are atomic with the record. Statements that refuse to
 run in a transaction block, such as PostgreSQL `CREATE INDEX CONCURRENTLY`,

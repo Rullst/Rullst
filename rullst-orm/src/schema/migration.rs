@@ -13,8 +13,11 @@ pub trait Migration: Send + Sync {
     /// between the two cannot leave the change applied but unrecorded.
     ///
     /// Only statements that join the task-scoped transaction are covered:
-    /// `Schema` calls, `execute_query!`/`dispatch_executor!` and generated
-    /// model methods. A query sent to `Orm::pool()` directly runs on another
+    /// `Schema` calls, generated model methods, `execute_query!`/
+    /// `dispatch_executor!`, and raw SQL sent with
+    /// `Orm::raw(sql).execute()` or `.map_to()`, which is the raw-SQL path
+    /// that stays in the transaction. A query sent to `Orm::pool()` directly,
+    /// such as `sqlx::query(sql).execute(Orm::pool()?)`, runs on another
     /// connection outside the transaction and cannot see its uncommitted
     /// tables, so a migration that uses one must keep the default `false`.
     /// PostgreSQL and SQLite roll DDL back with the transaction; MySQL and
