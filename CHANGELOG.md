@@ -23,6 +23,39 @@ A prepared version section does not establish that its tag or crates exist.
   example), as the release notes advise; a caret requirement also accepted
   later prereleases.
 
+### Fixes from alpha.1 dogfooding
+
+- ORM: a unique or primary-key violation now returns
+  `Error::UniqueViolation { constraint, .. }` and a foreign-key violation
+  `Error::ForeignKeyViolation { constraint, .. }`, from generated writes, query
+  builders and `Orm::raw`, instead of `Error::DatabaseError(String)`.
+  `constraint` is the name PostgreSQL reports (`None` on SQLite and
+  MySQL/MariaDB), and the message names only the constraint instead of
+  repeating the database's text, which could quote the rejected value. Code
+  that matched the `DatabaseError` text must match the variants;
+  `cargo rullst upgrade` reports it as `V13-ORM-CONSTRAINT-ERRORS`.
+- ORM: `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and
+  `RULLST_ENCRYPTION_KEYRING` are now also read from `.env` in the current
+  directory when the process environment does not set them, as `APP_KEY` is,
+  so `#[orm(encrypted)]` fields and `SecretString` work with a development
+  `.env`. The process environment still wins and the file is never loaded
+  into it.
+- ORM: query values accept `i64`, `u32` and `Option<T>`: `RullstValue` gains
+  `I64` and `Null`, so `where_eq("lesson_id", Some(3))`, `BIGINT` filters and
+  `Orm::raw(..).bind(None::<String>)` compile and bind on every driver (`None`
+  as a text-typed `NULL`). Small breaking change: `RullstValue` is now
+  `#[non_exhaustive]`, so a `match` on it needs a wildcard arm.
+- ORM: `db:seed` now refuses to run while a registered migration is pending
+  and names the first one, instead of failing inside a seeder with an error
+  such as `relation "users" does not exist`.
+- ORM docs: the generated `save()` rustdoc and the ORM guide say that `save()`
+  writes every column of the handle, so the last writer wins, and that an
+  insert sends every field; they show `update_partial()` for concurrent edits
+  and one atomic `Orm::raw("UPDATE ... SET xp = xp + ? ...")` for counters.
+  `Migration::within_transaction` and tutorial 05 name `Orm::raw(..).execute()`
+  as the raw-SQL path that stays in the migration's transaction, unlike
+  `Orm::pool()`.
+
 ### Mutation testing
 
 - Pull requests to `main` that change Rust run `mutants-pr.yml`, which
@@ -83,6 +116,9 @@ with the other Capital adapters.
   Labs never executes learner code; you bring your own runner.
 - `audit --report` is a bounded static check, not a certification: most ASVS
   Level 1 requirements are reported as `NOT EVALUATED`.
+- ORM: `Schema` has no UNIQUE, index, foreign-key or date/time column helpers,
+  and `timestamps()` creates `TEXT` columns; write such DDL with `Orm::raw`.
+  Generated inserts send every field, so database column defaults do not apply.
 - `footprint` reads Linux `/proc`; energy comes from RAPL or is a labelled
   estimate, and anything else is `NOT MEASURED`. Deferrable jobs ship no network
   carbon source and make no emissions claim. The N+1 panel does not attribute
