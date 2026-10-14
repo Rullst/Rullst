@@ -179,7 +179,8 @@ fn money_to_minor(value: f64, exponent: u32) -> Result<u64, crate::error::Capita
     }
     let scaled = value * 10_f64.powi(exponent as i32);
     let rounded = scaled.round();
-    if (scaled - rounded).abs() > 1e-7 || rounded > MAX_INVOICE_AMOUNT_MINOR as f64 {
+    if (scaled - rounded).abs() > 1e-7 || rounded < 1.0 || rounded > MAX_INVOICE_AMOUNT_MINOR as f64
+    {
         return Err(invalid_invoice(
             "amounts must fit 1 to 99,999,999 minor units with no more decimal places than the currency's ISO 4217 minor unit",
         ));

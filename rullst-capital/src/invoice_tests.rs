@@ -124,3 +124,18 @@ fn validated_html_renders_the_invoice() {
     assert!(html.contains(">49.90 BRL<"));
     assert!(html.contains("owner@example.com"));
 }
+
+#[test]
+fn an_amount_that_rounds_to_zero_minor_units_is_rejected() {
+    // 1e-7 yen and 5e-10 dollars are positive and within the rounding
+    // tolerance, but neither is a whole minor unit.
+    for (amounts, total, currency) in [([1.0, 1e-7], 1.0, "JPY"), ([1.0, 5e-10], 1.0, "USD")] {
+        assert!(
+            rejection(&invoice(&amounts, total, currency))
+                .starts_with("amounts must fit 1 to 99,999,999 minor units"),
+            "{currency}"
+        );
+    }
+    assert_eq!(invoice(&[0.01], 0.01, "USD").total_minor().unwrap(), 1);
+    assert_eq!(invoice(&[1.0], 1.0, "JPY").total_minor().unwrap(), 1);
+}
