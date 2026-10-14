@@ -4,10 +4,14 @@
 models. It provides server-rendered CRUD views, server-side field policies, RBAC enforcement,
 telemetry, and the optional AI assistant.
 
-The published 12.1.0 maintenance release fixes mobile drawer dismissal, keyboard
-focus and no-JavaScript navigation. Existing applications using the temporary
-`nexus_mobile_patch` HTML-rewriting workaround must remove that presentation
-patch when upgrading, while preserving their security layers. See the
+This README describes the v13 prerelease (`13.0.0-alpha.1`). Cargo never
+selects a prerelease on its own, so pin it exactly, for example
+`rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["nexus", "strict-postgres"] }`.
+
+Since 12.1.0, Nexus includes the fixes for mobile drawer dismissal, keyboard
+focus and no-JavaScript navigation. Applications upgrading from 12.0 that use
+the temporary `nexus_mobile_patch` HTML-rewriting workaround must remove that
+presentation patch, while preserving their security layers. See the
 [mobile migration checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/4-rullst-nexus.md#mobile-maintenance-in-1210).
 
 When used through the `rullst` umbrella with its `orm` and `nexus` features,
@@ -165,8 +169,8 @@ create it solely because an untrusted request supplied `X-Forwarded-Proto` or an
 header.
 
 ```rust
-use axum::{Extension, Router};
-use rullst_core::Server;
+use axum::Extension;
+use rullst_core::{Router, Server};
 use rullst_nexus::{
     Nexus, NexusAuthPolicy, NexusVerifiedTls,
 };
@@ -182,13 +186,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // This example assumes a trusted reverse proxy has already terminated and required TLS.
     // Insert the marker only at that trusted boundary.
     let app = Router::new()
-        .nest("/nexus", nexus)
+        .nest_axum("/nexus", nexus)
         .layer(Extension(NexusVerifiedTls::from_trusted_tls_termination()));
 
     Server::new(app).run(3000).await?;
     Ok(())
 }
 ```
+
+`try_build()` returns a plain `axum::Router`. Rullst's `Router` (re-exported as
+`rullst::Router`) mounts it with `nest_axum`, because its own `nest` accepts
+only another Rullst `Router`; in a plain Axum application use
+`axum::Router::nest("/nexus", nexus)`. Rullst's `Router` has no `with_state`:
+pass shared application state with `.layer(Extension(state))` and read it with
+the `Extension<T>` extractor.
+
+`local_development_or_basic_from_env()` fails closed: in a release build
+without the credentials it returns `NexusBuildError::MissingCredential`, so an
+application that propagates the error does not start. To serve the
+application without Nexus until the credentials are configured, match that
+variant and skip `nest_axum`; the
+[Nexus guide](https://github.com/Rullst/Rullst/blob/main/docs/src/4-rullst-nexus.md#serving-the-application-without-nexus)
+shows the pattern.
 
 Set unique values for `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` in the process environment
 or the project's `.env`; the password must contain at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, which the Basic Auth

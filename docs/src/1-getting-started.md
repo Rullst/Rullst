@@ -251,8 +251,12 @@ This convenience cannot be enabled in a release binary through `RULLST_ENV` or
 the legacy `APP_ENV` alias. A
 release build does not start the generated Studio task and requires unique
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` values before Nexus can be
-constructed. Put production Nexus behind a verified TLS boundary and explicit
-application authorization; do not expose Studio publicly.
+constructed. Without them the generated `router()` returns an error and the
+whole application refuses to start; to serve it without Nexus until they are
+set, see [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
+Put production Nexus behind a verified TLS boundary and explicit
+application authorization; do not expose Studio publicly. Studio has no
+production mode: it runs only in debug builds and on loopback.
 
 ## 5. Database configuration and specialized stores
 

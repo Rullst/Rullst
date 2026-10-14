@@ -176,6 +176,44 @@ is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-fre
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
 
+`Nexus::try_build()` returns a plain `axum::Router`. Mount it on a
+`rullst::Router` with `.nest_axum("/nexus", nexus)`, as above:
+`rullst::Router::nest` accepts only another `rullst::Router`. In a plain Axum
+application, `axum::Router::nest("/nexus", nexus)` is the equivalent.
+`rullst::Router` has no `with_state`; pass shared application state with
+`.layer(Extension(state))` (`rullst::web::axum::Extension`) and read it in
+handlers with the `Extension<T>` extractor.
+
+#### Serving the application without Nexus
+
+Because the helper fails closed, a release build without
+`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` returns an error from the
+generated `router()`, and the whole application refuses to start. To serve the
+application without Nexus until the credentials are configured, mount it only
+when its policy builds:
+
+```rust,no_run
+# #[cfg(feature = "nexus")]
+# fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
+use rullst::nexus::{Nexus, NexusAuthPolicy, NexusBuildError};
+
+let router = rullst::Router::new(); // your application's routes
+let router = match NexusAuthPolicy::local_development_or_basic_from_env() {
+    Ok(policy) => {
+        let nexus = Nexus::new().with_auth_policy(policy).try_build()?;
+        router.nest_axum("/nexus", nexus)
+    }
+    Err(NexusBuildError::MissingCredential { variable }) => {
+        eprintln!("Nexus is not mounted: {variable} is not set");
+        router
+    }
+    // A weak, placeholder or unreadable credential is still a startup error.
+    Err(error) => return Err(error.into()),
+};
+# Ok(router)
+# }
+```
+
 The debug policy also requires a local `Host` and, for unsafe methods, a
 same-origin `Origin`. Its responses carry `Referrer-Policy: same-origin` unless
 the application sets one; when a host layer imposes `no-referrer`, browsers send
