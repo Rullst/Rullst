@@ -468,7 +468,7 @@ the rule together.
 | Offline Redis mock | (b) review | `V13-REDIS-MOCK-TIE-ORDER` |  |
 | SQLite DSN paths | (c) none | — | Only stray files of earlier versions |
 | Auto-healing diagnostics | (b) review | `V13-AUTO-HEALING-DIAGNOSTICS` |  |
-| ORM migrations | (c) none | — | Existing migrations keep their behaviour |
+| ORM migrations | (c) none | — | Existing migrations keep their behaviour; `db:seed` refusing pending migrations is command behaviour |
 | ORM instance mutations | (b) review | `V13-ORM-MISSING-ROW` | Plain `delete()` calls are not located |
 | ORM encryption key settings | (c) none | — | Only `.env` entries that the process environment lacks change; `.env` is not read |
 | ORM sandbox tests | (a) must-change | `V13-ORM-SANDBOX-TEST` | Flags every sandbox test as review; `cargo check` reports the signatures that no longer compile |

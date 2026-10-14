@@ -189,7 +189,16 @@ reporting "Nothing to migrate." as a success.
 Then run:
 
 ```bash
+cargo rullst db:migrate
 cargo rullst db:seed
+```
+
+`db:seed` first checks the registered migrations against the `migrations`
+table. While one is pending it runs no seeder and fails, instead of letting a
+seeder fail on a table that does not exist yet:
+
+```text
+Validation error: 1 migration(s) pending, starting with `m20261012_create_users`: run `db:migrate` before `db:seed`
 ```
 
 Seeders execute sequentially. Make development/CI seeders idempotent if the
@@ -204,4 +213,5 @@ non-login fixture.
 - Migrations are Rust modules, not split `up/down` SQL files.
 - Migration names and order are generated deterministically from timestamps.
 - Batch tracking exists, but batch-wide transactional rollback is not implied.
-- `db:seed` executes only seeders explicitly registered with `artisan!`.
+- `db:seed` executes only seeders explicitly registered with `artisan!`, and
+  only after every registered migration is applied.
