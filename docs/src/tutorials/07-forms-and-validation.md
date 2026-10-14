@@ -149,6 +149,15 @@ both a normal URL-encoded form submission and HTMX; no global cookie-forwarding
 script is required. JSON requests instead need the matching header, while the
 browser still sends the cookie. Do not forward tokens to third-party URLs.
 
+Serve form pages from ordinary paths. A `GET` for a path that looks like a
+static file never creates the token or sets the cookie: `/robots.txt`,
+`/sitemap.xml`, `/favicon.ico`, anything under `/static/`, and any path ending
+in `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`, `.jpg`, `.jpeg`,
+`.svg`, `.webp` or `.wasm`. Since 13.0.0-alpha.2 such a page still receives
+`CsrfToken` when the browser already has a valid `rullst_csrf` cookie from
+another page, but on a first visit there is none, and the
+`Extension<CsrfToken>` extractor fails with `500`.
+
 The development server does not automatically apply the production CSRF/WAF
 stack; its WAF only logs the requests production would refuse. For this
 extractor in development, explicitly compose

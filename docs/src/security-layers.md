@@ -282,7 +282,7 @@ in the first place.
 
 | Control | Owner | Reduces | Mechanism | Does not protect against |
 | :--- | :--- | :--- | :--- | :--- |
-| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
+| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time. A `GET` for a static-looking path (`/robots.txt`, `/sitemap.xml`, `/favicon.ico`, `/static/*`, or a `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix) never mints the token; it only reuses an existing cookie's | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
 | Exact machine endpoints | Core | Webhook and API routes that must skip browser CSRF | Exact method and path, authenticated (bearer digest, signed-webhook or mTLS verifier) before the CSRF exemption applies | A weak verifier you supply; replay unless your verifier checks freshness |
 | Trusted-proxy resolution | Core | Spoofed `X-Forwarded-For` choosing the client identity | Forwarded headers read only from listed proxy networks, right to left | A listed proxy that forwards client headers unchanged; any host inside a listed network |
 | Tenant context | Core | Client-chosen tenant headers | Only tenant context inserted by your authentication middleware is used | Missing ownership checks in handlers |

@@ -1507,7 +1507,12 @@ the same server-authoritative controls.
   `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
   place its `_token` field before any file input: the middleware reads at most
   the first 64 KiB of that body to find the field, compares it in constant
-  time and then passes the whole body on unchanged. Nested application and `Server` baseline composition is
+  time and then passes the whole body on unchanged. A `GET` or `HEAD` for a
+  static-looking path (`/robots.txt`, `/sitemap.xml`, `/favicon.ico`,
+  `/static/*`, or a `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`,
+  `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix) never mints a token or
+  sets the cookie; since 13.0.0-alpha.2 it still receives the `CsrfToken` of
+  a valid existing cookie. Nested application and `Server` baseline composition is
   request-idempotent: exactly one CSRF layer owns token validation/cookie
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
