@@ -5,7 +5,13 @@ tools, and provides bounded static-analysis and deployment helpers.
 
 The CLI's `--help` output is authoritative for the installed version. This page
 documents the principal commands of the version 13 prerelease CLI and their
-security boundaries.
+security boundaries. Cargo never installs a prerelease unless you name it, so
+`cargo install cargo-rullst` installs the stable 12.x CLI; install this one
+with an exact version:
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+```
 
 `cargo-rullst` is a Core package. A few generators depend on outside toolchains
 or platforms and carry their own **Maturity** label below the command name:
@@ -508,7 +514,9 @@ This requires the exact release's `cli-manifest-TARGET.json`,
 The directory may contain other downloads; only these fixed names are read.
 No archive is extracted and no downloaded executable is run. Releases since
 12.1.0 publish this inventory for Linux x64 GNU, Windows x64 MSVC and macOS
-x64/ARM64; 12.0.0 has none, and no v13 release has been published yet.
+x64/ARM64; 12.0.0 has none. The 13.0.0-alpha.1 prerelease publishes it for
+the same targets; select it with `--to 13.0.0-alpha.1` and the
+major/prerelease opt-ins described below.
 
 The caller-installed GitHub CLI must be available through an absolute trusted
 PATH entry and support [attestation verification](https://cli.github.com/manual/gh_attestation_verify).

@@ -8,9 +8,21 @@ version and internal requirements. `rullst-privacy`, `rullst-supervision`,
 first published in 13.0.0-alpha.1. Privacy
 has explicit `privacy-*` umbrella features; Supervision, Media and Labs remain
 standalone opt-ins.
-All twenty packages are on crates.io as `13.0.0-alpha.1`. `cargo add rullst`
-still selects 12.3.0, so registry use requires an explicit opt-in such as
-`rullst = "13.0.0-alpha.1"`. Do not request v13 artifacts from
+All twenty packages are on crates.io as `13.0.0-alpha.1`. Cargo never selects
+a prerelease on its own, so `cargo add rullst` still selects 12.3.0: opt in with
+an exact requirement such as `rullst = "=13.0.0-alpha.1"`. A plain
+`"13.0.0-alpha.1"` is a caret requirement that also accepts later alphas, which
+may break the API. The 13.0.0-alpha.1 CLI still writes that caret form, so add
+the `=` to the `rullst` and `rullst-orm` lines of a project it generates. A
+hand-written manifest should also turn off the default features, which compile
+the SQLite, PostgreSQL and MySQL drivers, and select the database profile it
+uses, as `cargo rullst new` does:
+
+```toml
+rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["strict-postgres"] }
+```
+
+Do not request v13 artifacts from
 the stable updater before those artifacts have actually been published.
 
 This inventory covers the `13.0.0-alpha.1` development source. Revisit it as the remaining
@@ -254,19 +266,32 @@ updater's explicit `--allow-major` option, review/install its authenticated CLI,
 then start a **new invocation of that v13 CLI** for the project migration.
 Pre-release discovery also requires an exact `--to` and `--prerelease`.
 
-For a source evaluation today, build the CLI from the reviewed v13 checkout:
+To evaluate the published prerelease, install its CLI from crates.io. Cargo
+never selects a prerelease on its own (`cargo install cargo-rullst` installs
+12.x), so name the exact version:
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+rullst --version
+```
+
+The output must identify `13.0.0-alpha.1`. Pin the framework packages of the
+projects it generates with `=13.0.0-alpha.1`, as described at the top of this
+guide. Reinstall with `--force` to go back to 12.x (`--version '^12'`) or to
+move to a later prerelease.
+
+To evaluate unreleased `main` changes instead, build the CLI from the reviewed
+checkout:
 
 ```bash
 cargo build --locked -p cargo-rullst
 ./target/debug/rullst --version
 ```
 
-The output must identify `13.0.0-alpha.1`. Use that explicit executable path
-instead of assuming a `rullst` already on `PATH` is the same binary. This is a
-local source build, not authenticated published distribution evidence. Generated
-pre-release projects may refer to matching local framework packages; keep that
-checkout available and review those paths. The final package rehearsal must
-independently prove registry-based consumers.
+Use that explicit executable path instead of assuming a `rullst` already on
+`PATH` is the same binary. This is a local source build, not authenticated
+published distribution evidence. Generated projects then refer to the matching
+local framework packages; keep that checkout available and review those paths.
 
 ## Prepare, verify, review and apply
 

@@ -23,8 +23,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Download and run `rustup-init.exe` from the website.
 
 Next, install the stable **Rullst CLI** from the same release train as the
-framework. This book is built from `main`, where v13 is in development and not
-published, so request the v12 line explicitly:
+framework. This book is built from `main`, where v13 is in development, so
+request the v12 line explicitly:
 
 ```bash
 cargo install cargo-rullst --version '^12' --locked
@@ -33,6 +33,17 @@ cargo install cargo-rullst --version '^12' --locked
 The `^12` selector installs the latest stable v12 CLI. To reproduce a specific
 release, pass its full version, such as `--version 12.1.2`, after checking
 [publication status](v12.md).
+
+To evaluate the v13 prerelease instead, name its exact version. Cargo never
+selects a prerelease on its own, so neither a plain `cargo install
+cargo-rullst` nor `^13` installs it:
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+```
+
+Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.1"`); the
+[v13 migration guide](migration-v13.md) explains why and what changed.
 
 Source reviewers who intentionally need checkout-local changes can instead
 clone this repository and install the CLI from that exact checkout. On `main`
