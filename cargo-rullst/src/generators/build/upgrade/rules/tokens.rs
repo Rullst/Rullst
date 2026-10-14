@@ -48,6 +48,7 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("sorted_set_top", &REDIS_MOCK_ORDER),
     ("diagnose_sql_error", &AUTO_HEALING),
     ("force_delete", &ORM_MISSING_ROW),
+    ("DatabaseError", &ORM_CONSTRAINT_ERRORS),
     ("only_trashed", &ORM_ONLY_TRASHED),
     ("to_sql", &ORM_SQL_TEXT),
     ("compliance_schema", &PERSONAL_DATA_REPORT),
