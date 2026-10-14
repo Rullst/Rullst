@@ -154,7 +154,10 @@ generated API.
   model's `global_scope`.
 - **Transactional partial updates (v13 candidate):** `.update_partial()` merges
   selected values into a fresh row and performs its full save lifecycle, with
-  explicit transaction support. See [the contract and migration](../transactional-partial-updates.md).
+  explicit transaction support. Use it instead of `save()`, which writes the
+  whole row, when requests may edit the same row at the same time; see
+  [concurrent updates and counters](#concurrent-updates-and-counters) and
+  [the contract and migration](../transactional-partial-updates.md).
 - **Model policies:** `#[orm(policy = "MyPolicy")]` invokes the configured
   policy on generated create/update/delete/restore operations.
 - **Strict lazy-loading prevention:** the global toggle makes generated lazy
@@ -215,6 +218,59 @@ async fn main() -> Result<(), rullst_orm::Error> {
 
     println!("Found users: {:?}", active_users);
 
+    Ok(())
+}
+```
+
+### Concurrent updates and counters
+
+`save()` on a loaded model writes every persisted column of that handle, so the
+last writer wins: when two requests load the same row, change different fields
+and save, the second `save()` silently reverts the first one's change. An
+insert also sends every field, so database column defaults (such as
+`DEFAULT CURRENT_TIMESTAMP`) do not apply to model fields.
+
+- To change some fields of a row that other requests may edit, use
+  `update_partial()`. It reads the current row in a transaction (with
+  `SELECT ... FOR UPDATE` on PostgreSQL and MySQL/MariaDB), sets only the
+  fields you chose and saves through the normal policy, hooks, audit and cache
+  lifecycle. On SQLite a contended `update_partial()` can fail with a database
+  error instead of waiting; retry it. It merges fields, but it does not detect
+  two editors changing the same field: that needs a revision column checked by
+  the application.
+- For a counter, run one atomic statement with `Orm::raw`. Its values are
+  bound and it joins the active `Orm::transaction`, but it skips the model's
+  tenant scope, policy, hooks, audit and cache invalidation: add the tenant
+  condition yourself. Raw SQL uses the driver's own markers, `$1`, `$2` on
+  PostgreSQL and `?` on SQLite and MySQL/MariaDB.
+
+```rust,no_run
+use rullst_orm::{FromRow, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "students")]
+pub struct Student {
+    pub id: i32,
+    pub bio: String,
+    pub xp: i32,
+}
+
+/// Changes only `bio`: an XP award committed meanwhile is kept.
+async fn edit_bio(student: &mut Student, bio: String) -> Result<(), rullst_orm::Error> {
+    student.update_partial().bio(bio).save().await
+}
+
+/// Adds XP in one statement, so concurrent awards add up.
+async fn award_xp(student_id: i32, points: i32) -> Result<(), rullst_orm::Error> {
+    let sql = if Orm::driver()? == "postgres" {
+        "UPDATE students SET xp = xp + $1 WHERE id = $2"
+    } else {
+        "UPDATE students SET xp = xp + ? WHERE id = ?"
+    };
+    let changed = Orm::raw(sql).bind(points).bind(student_id).execute().await?;
+    if changed == 0 {
+        return Err(rullst_orm::Error::RecordNotFound);
+    }
     Ok(())
 }
 ```

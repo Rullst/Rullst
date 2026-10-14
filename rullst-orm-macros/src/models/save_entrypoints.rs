@@ -2,6 +2,22 @@ use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
+/// Rustdoc of the generated `save()`: a full-row write, and what to use for
+/// concurrent edits and counters instead.
+const SAVE_DOC: &str = "Inserts this model when `id` is `0`, otherwise updates its row.
+
+An update writes every persisted column of this handle, so the last writer wins: \
+a change made to the row since this handle was loaded is overwritten, even in a \
+column this code never touched. To change some fields of a row that other requests \
+may edit at the same time, use `update_partial()`, which merges the selected fields \
+into the freshly read row (locked with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB). \
+For a counter, run one atomic statement such as \
+`Orm::raw(\"UPDATE users SET xp = xp + ? WHERE id = ?\")` \
+(`$1`, `$2` on PostgreSQL); raw SQL skips the model's tenant scope, policy, hooks, \
+audit and cache invalidation.
+
+An insert also sends every field, so database column defaults do not apply.";
+
 pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
@@ -10,6 +26,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
 
     if !parsed.auditable {
         return quote! {
+            #[doc = #SAVE_DOC]
             #[rullst_orm::_tracing::instrument(
                 name = "rullst.orm.query",
                 target = "rullst_orm",
@@ -129,6 +146,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let revision_restore = revision_restore(table_name, &revision_lookup, &restored_after_fetch);
 
     quote! {
+        #[doc = #SAVE_DOC]
         #[rullst_orm::_tracing::instrument(
             name = "rullst.orm.query",
             target = "rullst_orm",
@@ -437,6 +455,38 @@ fn audit_after_tx(table_name: &str) -> TokenStream {
 #[cfg(test)]
 mod tests {
     use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn save_documents_the_full_row_write_on_every_model() {
+        for input in [
+            parse_quote! { struct Lesson { id: i32, title: String } },
+            parse_quote! {
+                #[orm(table = "lessons", auditable)]
+                struct Lesson { id: i32, title: String }
+            },
+        ] {
+            let input: DeriveInput = input;
+            let parsed = crate::parser::parse(&input).expect("parse model");
+            let generated = super::generate(&parsed).to_string();
+            let (before_save, _) = generated
+                .split_once("pub async fn save (& mut self)")
+                .expect("save()");
+            let doc = before_save
+                .rsplit_once("# [doc =")
+                .expect("save() rustdoc")
+                .1;
+            assert!(doc.contains("the last writer wins"), "{doc}");
+            assert!(doc.contains("use `update_partial()`"), "{doc}");
+            assert!(
+                doc.contains("UPDATE users SET xp = xp + ? WHERE id = ?"),
+                "{doc}"
+            );
+            assert!(
+                doc.contains("database column defaults do not apply"),
+                "{doc}"
+            );
+        }
+    }
 
     #[test]
     fn auditable_save_locks_its_pre_image_before_the_update() {

@@ -5,6 +5,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 mod aggregate_counts;
+mod atomic_counters;
 mod bulk_delete;
 mod column_types;
 mod id_only_rows;
@@ -29,4 +30,5 @@ pub async fn exercise() {
     id_only_rows::exercise().await;
     search_relevance::exercise().await;
     qualified_scopes::exercise().await;
+    atomic_counters::exercise().await;
 }

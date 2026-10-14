@@ -1747,6 +1747,19 @@ Ok(())
 }
 ```
 
+`save()` of a persisted model is a full-row `UPDATE` of every persisted column
+except the soft-delete marker, so the last writer wins: a column another writer
+changed after the handle was loaded is overwritten with the handle's value. An
+`INSERT` likewise binds every persisted field, so database column defaults
+do not apply to them. The generated `save()` rustdoc and the ORM guide name
+the two supported alternatives: `update_partial()` (§5.4.1), which merges
+selected fields into the freshly read and, on PostgreSQL and MySQL/MariaDB,
+locked row, and one atomic raw statement such as
+`UPDATE ... SET xp = xp + ? WHERE id = ?` for counters, which bypasses the
+model lifecycle (tenant scope, policy, hooks, audit, cache). The driver
+contract runs that counter and the stale-handle overwrite on SQLite,
+PostgreSQL, MySQL and MariaDB.
+
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
 errors. Every SQLx model requires a persisted named `id` field; a model
