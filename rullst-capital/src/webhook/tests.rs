@@ -227,3 +227,51 @@ fn replay_store_debug_does_not_print_the_ledger() {
     assert!(debug.contains("max_entries: 4"));
     assert!(!debug.contains("evt_debug_fixture"));
 }
+
+#[test]
+fn replay_store_bounds_are_inclusive_literal_limits() {
+    // Thirty days is the longest TTL; one more second is refused.
+    assert!(InMemoryWebhookReplayStore::new(1, Duration::from_secs(2_592_000)).is_ok());
+    assert!(InMemoryWebhookReplayStore::new(1, Duration::from_secs(2_592_001)).is_err());
+
+    let store = InMemoryWebhookReplayStore::new(8, Duration::from_secs(60)).unwrap();
+    assert!(matches!(
+        store.check_and_record(""),
+        Err(CapitalError::ConfigurationError(_))
+    ));
+    assert!(matches!(
+        store.check_and_record("k".repeat(129)),
+        Err(CapitalError::ConfigurationError(_))
+    ));
+    store.check_and_record("k".repeat(128)).unwrap();
+
+    // A replay payload holds 1 byte through 2 MiB.
+    assert!(matches!(
+        store.record_payload("stripe", b""),
+        Err(CapitalError::ConfigurationError(_))
+    ));
+    store
+        .record_payload("stripe", &vec![b'x'; 2_097_152])
+        .unwrap();
+    assert!(matches!(
+        store.record_payload("stripe", &vec![b'y'; 2_097_153]),
+        Err(CapitalError::ConfigurationError(_))
+    ));
+}
+
+#[test]
+fn replay_provider_names_are_bounded_ascii_identifiers() {
+    let store = InMemoryWebhookReplayStore::new(8, Duration::from_secs(60)).unwrap();
+    for provider in [String::new(), "p".repeat(65), "bad provider".to_string()] {
+        assert!(matches!(
+            store.record_payload(&provider, b"payload"),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+        assert!(matches!(
+            store.record_event_key(&provider, "evt_1"),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+    }
+    store.record_payload(&"p".repeat(64), b"payload").unwrap();
+    store.record_event_key("pay-pal_v2.0", "evt_1").unwrap();
+}
