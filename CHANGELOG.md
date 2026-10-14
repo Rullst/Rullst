@@ -23,6 +23,38 @@ A prepared version section does not establish that its tag or crates exist.
   example), as the release notes advise; a caret requirement also accepted
   later prereleases.
 
+### Fixes from alpha.1 dogfooding
+
+- Behaviour change: Core's staging and production headers send
+  `Strict-Transport-Security: max-age=31536000; includeSubDomains` instead of
+  `max-age=63072000; includeSubDomains; preload`, and
+  `rullst_security::SecureHeadersConfig::default()` matches it. The new
+  `[security]` settings `hsts_max_age_seconds`, `hsts_include_subdomains` and
+  `hsts_preload` choose the value; `preload` is opt-in, and the server refuses
+  to start when it lacks `includeSubDomains` or a max-age of at least one
+  year.
+- The new `[security]` setting `waf_body_exempt_paths` lists exact paths whose
+  request bodies the Core WAF does not inspect, for routes that accept text
+  such as code samples. Their path, query string, cookies, `Referer` and
+  `User-Agent` are still inspected, and each entry is validated like
+  `csrf_signed_webhook_paths`.
+- Behaviour change: in development `Server` runs the Core WAF in report-only
+  mode. Nothing is refused, but every request that staging and production
+  would refuse logs a `warn` event naming only the rule and the path, so false
+  positives show up before deployment.
+- A `GET` for a static-looking path (`.json`, `.txt`, `.xml`, `.css`, `.js`,
+  images, `/static/`…) now receives `CsrfToken` from an existing `rullst_csrf`
+  cookie, so such a page can render a form; it still never creates the
+  cookie. The `csrf_middleware` docs list those paths.
+- Behaviour change: Artisan commands (`db:*`, `studio`) no longer load `.env`
+  into the process environment, so they read settings exactly like `Server`
+  does. Migrations and seeders that read a `.env`-only value with
+  `std::env::var` must use `rullst::config::project_setting`.
+- `/health` and `/ready` document `version` as the framework version. The new
+  `health::health_router_with_version` and
+  `health::health_router_with_lifecycle_and_version` also report the
+  application's own version as `app_version`.
+
 ### Mutation testing
 
 - Pull requests to `main` that change Rust run `mutants-pr.yml`, which
