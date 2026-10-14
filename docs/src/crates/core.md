@@ -264,7 +264,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
 - **Project settings (v13 prerelease):** `config::project_setting(name)`
   (also `rullst::config::project_setting`) reads an application setting from
   the process environment first and then `./.env`, which never overrides the
-  environment and is never loaded into it. It returns `Ok(None)` when neither
+  environment and is never loaded into it, by `Server` or by Artisan
+  commands (`db:*`, `studio`); read `.env` values in migrations and seeders
+  with it rather than `std::env::var`. It returns `Ok(None)` when neither
   defines the name and fails with `ConfigError::Read`/`Parse` for an unreadable
   or malformed `.env`; errors never contain `.env` content. Nexus
   `basic_from_env` and generated billing code (`BILLING_*`) use it. The

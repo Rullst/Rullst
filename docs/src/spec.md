@@ -1528,6 +1528,11 @@ the same server-authoritative controls.
   seeder registry, so a `db:*` command it intercepts (because the application
   never called `artisan!`) exits with status 1 and names `rullst::artisan!`
   instead of reporting success for an empty registry; `studio` still runs.
+  Like `Server`, Artisan never loads `.env` into the process environment
+  (13.0.0-alpha.1 did after resolving the database), so a migration or seeder
+  reads other `.env` values with `rullst::config::project_setting` and behaves
+  the same under `cargo run` and `cargo run -- db:seed`; the legacy `studio`
+  page checks AI provider keys the same way.
   Rullst Studio reuses an existing ORM pool; only when none exists does its
   first database view resolve the current directory with this same resolver
   and initialize the pool once. Without a configured database Studio reports
@@ -1535,7 +1540,8 @@ the same server-authoritative controls.
 * **Application Settings (v13 prerelease):** `rullst::config::project_setting`
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded
-  into it. An unreadable or malformed `.env` is a `ConfigError` that never
+  into it, neither by `Server` nor by Artisan commands. An unreadable or
+  malformed `.env` is a `ConfigError` that never
   contains file content. Nexus `basic_from_env` reads its administrator
   credentials and generated billing code its `BILLING_*` settings through it;
   generated billing treats a production `RullstConfig::environment()` (or an

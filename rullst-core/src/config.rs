@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::{fmt, str::FromStr};
 
 #[cfg(not(target_arch = "wasm32"))]
-mod project_setting;
+pub(crate) mod project_setting;
 mod security_validation;
 
 #[cfg(not(target_arch = "wasm32"))]
