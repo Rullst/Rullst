@@ -22,7 +22,8 @@ pub(super) struct FileContext<'a> {
 pub(super) struct FileSummary {
     /// Line of the first `Server::new`/`Server::new_hot` call.
     pub server_start: Option<usize>,
-    /// The file names `health_router` or `health_router_with_lifecycle`.
+    /// The file names `health_router`, `health_router_with_lifecycle` or
+    /// one of their `_version` variants.
     pub mounts_health: bool,
 }
 

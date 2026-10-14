@@ -201,6 +201,10 @@ fn has_unknown_config(value: &toml::Table) -> bool {
                 "trusted_proxies",
                 "trusted_proxy_header",
                 "trust_forwarded_proto",
+                "waf_body_exempt_paths",
+                "hsts_max_age_seconds",
+                "hsts_include_subdomains",
+                "hsts_preload",
             ],
         ),
     ];
@@ -278,6 +282,18 @@ mod tests {
             hash_suffix.get("RULLST_ENV").map(String::as_str),
             Some("production#suffix")
         );
+    }
+
+    #[test]
+    fn every_core_security_setting_is_recognized() {
+        let document: toml::Table = toml::from_str(
+            "[security]\nwaf_body_exempt_paths = ['/lessons/answers']\nhsts_max_age_seconds = 63072000\nhsts_include_subdomains = true\nhsts_preload = true\ntrust_forwarded_proto = false\n",
+        )
+        .unwrap_or_else(|_| panic!("valid TOML"));
+        assert!(!has_unknown_config(&document));
+        let mistyped: toml::Table = toml::from_str("[security]\nhsts_preloaded = true\n")
+            .unwrap_or_else(|_| panic!("valid TOML"));
+        assert!(has_unknown_config(&mistyped));
     }
 
     #[test]
