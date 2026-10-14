@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency security
+
+- `ammonia` is required at 4.2.3 or later (RUSTSEC-2021-0157, RUSTSEC-2021-0158:
+  SVG animation tags and CSS `url("")` escaping in sanitized HTML), and the
+  lockfile moves `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338, -0340, -0343).
+  Applications should run `cargo update -p ammonia -p quinn-proto`.
+
 ### Fixes for 13.0.0-alpha.1 known issues
 
 - Core machine endpoints accept `{name}` placeholder segments after the first,
