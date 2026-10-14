@@ -38,7 +38,7 @@ fn router() -> Result<Router, Box<dyn std::error::Error>> {
 
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Run migrations on startup
+    // Runs an Artisan command such as `db:migrate` and exits; a plain start applies no migrations.
     rullst::artisan!(crate::migrations::get_migrations());
 
     let router = router()?;

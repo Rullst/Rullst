@@ -275,6 +275,9 @@ After generation, the default flow compiles the new application once and runs
 its initial migration. A clean first build can take several minutes for larger
 blueprints. Use `--skip-initial-migration` when the network database is not yet
 configured, then run `cargo rullst db:migrate` from the generated project.
+`cargo rullst dev` applies pending migrations when it starts, but a deployed
+server never does: run the binary's `db:migrate` command on each release, as
+described in [Before the first deploy](tutorials/26-one-click-paas-deploy.md#before-the-first-deploy).
 
 The non-interactive flags mirror the second step:
 

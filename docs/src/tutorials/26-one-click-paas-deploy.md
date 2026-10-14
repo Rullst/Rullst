@@ -23,6 +23,31 @@ application-specific review, and rollback planning:
 
 ---
 
+## Before the first deploy
+
+These staging and production defaults apply to both strategies:
+
+- **Migrations are a separate step.** The server never applies migrations by
+  itself: `Server::run` only opens the database pool, and `cargo rullst dev`
+  applies pending migrations only in development. Run the application
+  binary's `db:migrate` command once per release, before the new version
+  serves traffic: `/app/<name> db:migrate` in the generated image (it has no
+  shell), or `cargo run --release -- db:migrate` from a checkout. See the
+  [container lifecycle boundary](#container-lifecycle-boundary).
+- **Bind address.** With `RULLST_ENV=staging` or `production`, the server
+  listens on `0.0.0.0` unless `HOST` (or `RULLST_HOST`) is set in the process
+  environment or `.env`. Behind a reverse proxy on the same host, set
+  `HOST=127.0.0.1` so the plain-HTTP port is reachable only through the proxy
+  (Foundry does this for you). Inside a container keep `0.0.0.0` and publish
+  the port only to the proxy's network.
+- **Caching.** The security baseline adds `Cache-Control: no-store` to every
+  response without a `Cache-Control` of its own; the standard `/static` mount
+  sets its own. Downloads, feeds and other responses that browsers or a CDN
+  may cache must set the header themselves, for example
+  `Cache-Control: private, max-age=300`.
+
+---
+
 ## 🛠️ Strategy 1: PaaS Cloud Deploy Wizard (`cargo rullst deploy`)
 
 Launch the interactive PaaS deployment wizard:
