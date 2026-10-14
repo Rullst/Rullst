@@ -292,6 +292,7 @@ Use that explicit executable path instead of assuming a `rullst` already on
 `PATH` is the same binary. This is a local source build, not authenticated
 published distribution evidence. Generated projects then refer to the matching
 local framework packages; keep that checkout available and review those paths.
+The final package rehearsal must independently prove registry-based consumers.
 
 ## Prepare, verify, review and apply
 
