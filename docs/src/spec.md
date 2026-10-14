@@ -1892,6 +1892,18 @@ while portability and semantic review remain the model author's responsibility.
   make unknown columns unrepresentable on typed paths. String-column builders,
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
+* `RullstValue`, `#[non_exhaustive]` since v13, carries `String`, `Int`
+  (`i32`), `Float`, `Bool`, `I64` and `Null`. `i64` and `u32` convert to `I64`
+  and `Option<T>` to `T`'s value or `Null`; an integer literal stays `Int`.
+  Generated builders and `Orm::raw` bind every value through one hidden
+  `BindRullstValue` helper: `I64` as `i64` and `Null` as a text-typed SQL
+  `NULL`, which PostgreSQL accepts in a non-text column only through a cast.
+  A comparison with `Null` never matches (and PostgreSQL rejects it against a
+  non-text column), so `where_null` expresses that filter. Tenant IDs take the
+  same values: an `I64` tenant gets its own audit (`i64:`) and cache keys but
+  does not convert to an `i32` tenant field (generated queries fail with
+  `Validation`, §5.4), and a `Null` tenant fails the audit lookup with
+  `Validation`.
 * A per-column helper (`where_{column}`, `or_where_{column}`,
   `where_not_{column}`, `order_by_{column}`, `order_by_{column}_desc`) is not
   generated when its name equals a fixed builder method (for example

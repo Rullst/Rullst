@@ -17,6 +17,7 @@ mod qualified_scopes;
 mod search_relevance;
 mod soft_delete_lifecycle;
 mod timestamps;
+mod wide_values;
 
 /// Runs every driver-neutral contract against the initialized ORM.
 pub async fn exercise() {
@@ -33,4 +34,5 @@ pub async fn exercise() {
     qualified_scopes::exercise().await;
     atomic_counters::exercise().await;
     constraint_violations::exercise().await;
+    wide_values::exercise().await;
 }

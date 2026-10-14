@@ -1,3 +1,4 @@
+use crate::value::BindRullstValue;
 use crate::{Error, RullstValue};
 
 pub struct RawQueryBuilder {
@@ -44,20 +45,7 @@ impl RawQueryBuilder {
         let mut query =
             crate::_sqlx::query_as::<_, T>(crate::_sqlx::AssertSqlSafe(self.sql.as_str()));
         for binding in &self.bindings {
-            match binding {
-                RullstValue::String(s) => {
-                    query = query.bind(s.clone());
-                }
-                RullstValue::Int(i) => {
-                    query = query.bind(*i);
-                }
-                RullstValue::Float(f) => {
-                    query = query.bind(*f);
-                }
-                RullstValue::Bool(b) => {
-                    query = query.bind(*b);
-                }
-            }
+            query = query.bind_rullst_value(binding);
         }
 
         // `?` maps constraint violations to their typed `Error` variants.
@@ -85,20 +73,7 @@ impl RawQueryBuilder {
 
         let mut query = crate::_sqlx::query(crate::_sqlx::AssertSqlSafe(self.sql.as_str()));
         for binding in &self.bindings {
-            match binding {
-                RullstValue::String(s) => {
-                    query = query.bind(s.clone());
-                }
-                RullstValue::Int(i) => {
-                    query = query.bind(*i);
-                }
-                RullstValue::Float(f) => {
-                    query = query.bind(*f);
-                }
-                RullstValue::Bool(b) => {
-                    query = query.bind(*b);
-                }
-            }
+            query = query.bind_rullst_value(binding);
         }
 
         let result = crate::execute_query!(query, execute, pool)?;

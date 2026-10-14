@@ -312,6 +312,36 @@ async fn register(email: String) -> Result<Option<Member>, Error> {
 Match the typed error where the write returns it: `Orm::transaction` reports a
 failed closure as `DatabaseError("Transaction failed: ...")`.
 
+### Query values
+
+Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
+`with_tenant` take any value that converts into `RullstValue`: `String`/`&str`,
+`i32`, `i64`, `u32`, `f64`, `bool` and `Option` of those. `None` binds SQL
+`NULL`, typed as text: on PostgreSQL write `CAST($1 AS BIGINT)` to store it in
+a column of another type. A comparison with `NULL` never matches, so filter
+missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a
+`match` on it a wildcard arm.
+
+```rust,no_run
+use rullst_orm::{FromRow, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "progress")]
+pub struct Progress {
+    pub id: i32,
+    pub lesson_id: Option<i64>,
+    pub seconds: i64,
+}
+
+async fn for_lesson(lesson_id: Option<i64>) -> Result<Vec<Progress>, rullst_orm::Error> {
+    let query = Progress::query();
+    match lesson_id {
+        Some(lesson_id) => query.where_eq("lesson_id", lesson_id).get().await,
+        None => query.where_null("lesson_id").get().await,
+    }
+}
+```
+
 ### Query row cap
 
 Generated builders start with a global row cap (`Orm::set_max_query_limit`,
