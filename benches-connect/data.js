@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792071009699,
+  "lastUpdate": 1792080595632,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -10243,6 +10243,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 568,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88b93a71cf4df151685cf1af25a25e566503fa0a",
+          "message": "Merge pull request #498 from Rullst/docs/v13-storage-capabilities\n\ndocs(orm)!: one database capability table, honest Turso wizard text, drop the polyglot aggregate",
+          "timestamp": "2026-10-15T12:47:13-03:00",
+          "tree_id": "b77b4db8b429a0e6e80d781ddc5382f674b7a237",
+          "url": "https://github.com/Rullst/Rullst/commit/88b93a71cf4df151685cf1af25a25e566503fa0a"
+        },
+        "date": 1792080594376,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 462,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
