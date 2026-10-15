@@ -365,3 +365,65 @@ async fn malformed_dates_and_times_are_validation_errors() {
         );
     }
 }
+
+fn debug_values(values: &[RullstValue]) -> Vec<String> {
+    values.iter().map(|value| format!("{value:?}")).collect()
+}
+
+#[test]
+fn creates_number_placeholders_after_literals_and_bind_the_tenant_last() {
+    let entry = RegistryEntry {
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number),
+            FieldMeta::new("tenant_id", "Tenant", FieldKind::Text)
+                .readonly()
+                .hidden(),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new("active", "Active", FieldKind::Boolean),
+            FieldMeta::new("score", "Score", FieldKind::Number),
+        ],
+        ..single()
+    };
+    let form = || {
+        validated(
+            &entry,
+            &[("title", "Ada"), ("active", "1"), ("score", "4.5")],
+        )
+    };
+    let (sql, values) =
+        insert_sql(&entry, form(), Some("acme"), "postgres").expect("columns to write");
+    assert_eq!(
+        sql,
+        "INSERT INTO notes (title, active, score, tenant_id) \
+         VALUES ($1, '1', CAST($2 AS NUMERIC), $3)"
+    );
+    assert_eq!(
+        debug_values(&values),
+        ["String(\"Ada\")", "String(\"4.5\")", "String(\"acme\")"]
+    );
+
+    let (sql, values) = insert_sql(&entry, form(), None, "sqlite").expect("columns to write");
+    assert_eq!(
+        sql,
+        "INSERT INTO notes (title, active, score) VALUES (?, ?, ?)"
+    );
+    assert_eq!(
+        debug_values(&values),
+        ["String(\"Ada\")", "String(\"1\")", "String(\"4.5\")"]
+    );
+}
+
+#[test]
+fn creates_leave_blank_key_columns_to_the_database() {
+    let entry = composite();
+    let data = validated(&entry, &[("user_id", "3"), ("lesson_id", " ")]);
+    let (sql, values) = insert_sql(&entry, data, None, "postgres").expect("a column to write");
+    assert_eq!(
+        sql,
+        "INSERT INTO lesson_progress (user_id) VALUES (CAST($1 AS NUMERIC))"
+    );
+    assert_eq!(debug_values(&values), ["String(\"3\")"]);
+
+    let only_blank_key = validated(&entry, &[("lesson_id", " ")]);
+    assert!(insert_sql(&entry, only_blank_key, None, "sqlite").is_none());
+}

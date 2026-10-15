@@ -418,3 +418,31 @@ fn the_edit_form_reads_visible_non_password_fields() {
         "SELECT id FROM members WHERE id = $1 LIMIT 1"
     );
 }
+
+#[test]
+fn empty_values_get_the_input_of_their_kind() {
+    let relation = FieldKind::ForeignKey {
+        table: "teams",
+        label_col: "name",
+    };
+    for (kind, input_type) in [
+        (FieldKind::Text, "text"),
+        (FieldKind::Email, "email"),
+        (FieldKind::Url, "url"),
+        (FieldKind::Number, "number"),
+        (FieldKind::Integer { min: 0, max: 9 }, "number"),
+        (FieldKind::Date, "date"),
+        (FieldKind::DateTime, "datetime-local"),
+        (FieldKind::DateTimeUtc, "datetime-local"),
+        (FieldKind::Time, "time"),
+        (relation, "text"),
+    ] {
+        let html = widget(kind.clone(), StoredValue::Absent);
+        assert!(
+            html.starts_with(&format!(
+                "<input type=\"{input_type}\" name=\"field\" value=\"\""
+            )),
+            "{kind:?}: {html}"
+        );
+    }
+}

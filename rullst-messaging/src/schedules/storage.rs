@@ -232,4 +232,9 @@ mod tests {
         );
         assert_eq!(advance_clock(0, -1), Err(RecurringError::Clock));
     }
+
+    #[test]
+    fn a_namespace_may_start_at_time_zero() {
+        assert_eq!(advance_clock(0, 0), Ok(0));
+    }
 }

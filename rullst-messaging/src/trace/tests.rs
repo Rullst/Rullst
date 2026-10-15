@@ -91,3 +91,74 @@ async fn propagation_uses_only_allowlisted_headers_and_survives_delivery() {
         Some(context)
     );
 }
+
+#[test]
+fn traceparent_needs_each_of_its_three_separators() {
+    for index in [2, 35, 52] {
+        let mut bytes = TRACEPARENT.as_bytes().to_vec();
+        bytes[index] = b'a';
+        assert_eq!(
+            TraceContext::try_new(String::from_utf8(bytes).unwrap()).err(),
+            Some(invalid("traceparent must be canonical W3C version 00")),
+            "{index}"
+        );
+    }
+}
+
+#[test]
+fn tracestate_accepts_exactly_512_bytes_and_32_members() {
+    let bounds = Some(invalid("tracestate is outside the supported bounds"));
+    let state = |value: String| TraceContext::try_with_state(TRACEPARENT, value);
+    // 256 + 1 + 255 bytes.
+    let largest = format!("a={},b={}", "x".repeat(254), "x".repeat(253));
+    assert_eq!(largest.len(), 512);
+    assert!(state(largest.clone()).is_ok());
+    assert_eq!(state(format!("{largest}x")).err(), bounds);
+
+    let members = |count: usize| {
+        (0..count)
+            .map(|index| format!("k{index}=v"))
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    assert!(state(members(32)).is_ok());
+    assert_eq!(state(members(33)).err(), bounds);
+    assert_eq!(state(String::new()).err(), bounds);
+    assert_eq!(state(" vendor=value".to_owned()).err(), bounds);
+}
+
+#[test]
+fn tracestate_members_hold_one_to_256_bytes() {
+    let malformed = Some(invalid("tracestate member is malformed"));
+    let state = |value: String| TraceContext::try_with_state(TRACEPARENT, value);
+    assert!(state(format!("vendor={}", "x".repeat(256))).is_ok());
+    assert_eq!(
+        state(format!("vendor={}", "x".repeat(257))).err(),
+        malformed
+    );
+    assert_eq!(state("vendor=".to_owned()).err(), malformed);
+}
+
+#[test]
+fn tracestate_keys_accept_digits_and_the_four_symbols() {
+    for value in ["k0_-*/=v", "0tenant_-*/@sys0_-*/=v"] {
+        assert!(
+            TraceContext::try_with_state(TRACEPARENT, value).is_ok(),
+            "{value}"
+        );
+    }
+}
+
+#[test]
+fn debug_output_says_only_whether_a_tracestate_is_present() {
+    let plain = TraceContext::try_new(TRACEPARENT).unwrap();
+    assert_eq!(
+        format!("{plain:?}"),
+        "TraceContext { traceparent: \"[REDACTED]\", has_tracestate: false }"
+    );
+    let with_state = TraceContext::try_with_state(TRACEPARENT, "vendor=value").unwrap();
+    assert_eq!(
+        format!("{with_state:?}"),
+        "TraceContext { traceparent: \"[REDACTED]\", has_tracestate: true }"
+    );
+}

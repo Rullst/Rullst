@@ -1,6 +1,8 @@
 //! Durable SQLite broker with transactional at-least-once delivery state.
 
 mod admin;
+#[cfg(test)]
+mod broker_tests;
 mod codec;
 mod consume;
 mod publish;

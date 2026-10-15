@@ -64,3 +64,6 @@ impl fmt::Debug for RedisBroker {
             .finish_non_exhaustive()
     }
 }
+
+#[cfg(test)]
+mod tests;

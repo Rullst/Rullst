@@ -152,3 +152,7 @@ pub(crate) fn validate_header_value(value: &str) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod tests;

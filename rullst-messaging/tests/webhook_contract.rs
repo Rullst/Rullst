@@ -5,6 +5,8 @@ mod server;
 #[path = "webhook/support.rs"]
 mod support;
 use server::Receiver;
+#[path = "webhook/deadlines.rs"]
+mod deadlines;
 #[path = "webhook/failures.rs"]
 mod failures;
 #[path = "webhook/rotation.rs"]
