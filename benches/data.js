@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792033815250,
+  "lastUpdate": 1792042265017,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26603,6 +26603,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1888,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ceb296197c61c22ad6f4375844ee938b2d586883",
+          "message": "Merge pull request #478 from Rullst/dependabot/github_actions/main/ci-tools-c712fcbd93\n\nbuild(deps): Bump the ci-tools group across 1 directory with 12 updates",
+          "timestamp": "2026-10-15T02:20:22-03:00",
+          "tree_id": "2d42558f03d2b8408c4f4a56af87ef345b6732e9",
+          "url": "https://github.com/Rullst/Rullst/commit/ceb296197c61c22ad6f4375844ee938b2d586883"
+        },
+        "date": 1792042262761,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 728,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 980,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 639,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1949,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
