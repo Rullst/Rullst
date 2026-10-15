@@ -126,3 +126,32 @@ fn markup_rules_name_the_html_markup_migration_row() {
         assert_eq!(rule.kind, FindingKind::MustChange);
     }
 }
+
+#[test]
+fn raw_html_around_islands_and_mounted_live_components_must_change() {
+    let source = r#"
+#[island]
+fn counter(start: i32) -> String {
+    format!("<b>{start}</b>")
+}
+async fn page() -> Markup {
+    let mounted = rullst::live::Live::mount::<Counter>("/ws").await;
+    html! {
+        <main>
+            {RawHtml(counter(1))}
+            {RawHtml(mounted)}
+            {RawHtml(Live::mount::<Counter>("/ws").await)}
+            {RawHtml(mount_point())}
+        </main>
+    }
+}
+"#;
+    assert_eq!(
+        markup_findings(source),
+        vec![
+            ("V13-HTML-RAW-MARKUP", 10),
+            ("V13-HTML-RAW-MARKUP", 11),
+            ("V13-HTML-RAW-MARKUP", 12),
+        ]
+    );
+}

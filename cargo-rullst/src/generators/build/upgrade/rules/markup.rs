@@ -121,7 +121,19 @@ impl Functions<'_> {
 
 impl<'ast> Visit<'ast> for Functions<'_> {
     fn visit_item_fn(&mut self, item: &'ast syn::ItemFn) {
-        self.function(&item.sig, &item.block);
+        // A native `#[island]` function returns `Markup` in v13.
+        let island = item.attrs.iter().any(|attribute| {
+            attribute
+                .path()
+                .segments
+                .last()
+                .is_some_and(|segment| segment.ident == "island")
+        });
+        if island {
+            self.names.insert(item.sig.ident.to_string());
+        } else {
+            self.function(&item.sig, &item.block);
+        }
         visit::visit_item_fn(self, item);
     }
 
@@ -157,7 +169,8 @@ fn contains_html(expr: &Expr) -> bool {
 }
 
 /// `RawHtml(..)` and `RawHtml::new(..)` around `html!` output: an `html!`
-/// invocation, a call of a function found above, or a local bound to one.
+/// invocation, a call of a function found above, of an `#[island]` function
+/// or of `Live::mount`, or a local bound to one.
 struct Wrappers<'a> {
     functions: &'a BTreeSet<String>,
     /// `let` bindings of `html!` output, per enclosing function.
@@ -172,15 +185,35 @@ impl Wrappers<'_> {
             .is_some_and(|scope| scope.contains(name))
     }
 
+    /// A call of a function found above or of `Live::mount`, which returns
+    /// `Markup` in v13.
+    fn call_returns_markup(&self, call: &syn::ExprCall) -> bool {
+        let Expr::Path(path) = &*call.func else {
+            return false;
+        };
+        let names: Vec<String> = path
+            .path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect();
+        let mounts = matches!(
+            names.as_slice(),
+            [.., live, mount] if live == "Live" && mount == "mount"
+        );
+        mounts
+            || names
+                .last()
+                .is_some_and(|name| self.functions.contains(name))
+    }
+
     fn wraps_html(&self, expr: &Expr) -> bool {
         if contains_html(expr) {
             return true;
         }
         match expr {
-            Expr::Call(call) => matches!(&*call.func, Expr::Path(path)
-            if path.path.segments.last().is_some_and(|segment| {
-                self.functions.contains(&segment.ident.to_string())
-            })),
+            Expr::Call(call) => self.call_returns_markup(call),
+            Expr::Await(expr) => self.wraps_html(&expr.base),
             Expr::MethodCall(call) => {
                 self.functions.contains(&call.method.to_string()) || self.wraps_html(&call.receiver)
             }

@@ -425,7 +425,7 @@ the rule together.
 | LMS blueprint | (c) none | — | Generator output; existing applications keep their code |
 | Consumer generators | (c) none | — | Generator commands |
 | `html!` event handlers | (a) must-change | `V13-HTML-DYNAMIC-EVENT-HANDLER` |  |
-| `html!` returns `Markup` | (a) must-change | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP` | Located in function signatures and `RawHtml` calls, including `html!` bodies; a `String` collected from `html!` output is reported where `RawHtml` wraps it |
+| `html!` returns `Markup` | (a) must-change | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP` | Located in function signatures and `RawHtml` calls, including `html!` bodies; a `String` collected from `html!` output, an `#[island]` call or `Live::mount` output is reported where `RawHtml` wraps it |
 | Core request validation | (b) review | `V13-VALIDATION-STATUS` |  |
 | Core feature flags and scheduler | (b) review | `V13-SCHEDULER-WEEKDAYS` | A/B splits: the two feature-flag rules below; the bucket reassignment depends on flag configuration and is not located |
 | Memory feature-flag splits | (b) review | `V13-MEMORY-FEATURE-SPLITS` |  |
