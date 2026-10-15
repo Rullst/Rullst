@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792070934859,
+  "lastUpdate": 1792080525068,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16543,6 +16543,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4563,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88b93a71cf4df151685cf1af25a25e566503fa0a",
+          "message": "Merge pull request #498 from Rullst/docs/v13-storage-capabilities\n\ndocs(orm)!: one database capability table, honest Turso wizard text, drop the polyglot aggregate",
+          "timestamp": "2026-10-15T12:47:13-03:00",
+          "tree_id": "b77b4db8b429a0e6e80d781ddc5382f674b7a237",
+          "url": "https://github.com/Rullst/Rullst/commit/88b93a71cf4df151685cf1af25a25e566503fa0a"
+        },
+        "date": 1792080524017,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 931,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 765,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1721,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3023,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
