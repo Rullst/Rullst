@@ -270,7 +270,10 @@ rules! {
         "Add `#[orm(hidden)]` to the field.";
     EMPTY_TIMESTAMPS: "V13-EMPTY-TIMESTAMPS", Review, "Registration timestamps",
         "an empty `created_at`/`updated_at` replaces the column default because the ORM inserts every field",
-        "Store the current UTC time (`YYYY-MM-DD HH:MM:SS`) instead, as the new `utc_timestamp` helper does (see also Billing row timestamps).";
+        "Store the current UTC time instead, as the new `utc_timestamp` helper does (`Utc::now()`; see also Billing row timestamps and ORM date/time columns).";
+    TEXT_TIMESTAMPS: "V13-TEXT-TIMESTAMPS", Review, "ORM date/time columns",
+        "a `String` `created_at`/`updated_at` cannot decode the TIMESTAMPTZ/DATETIME(6) columns `timestamps()` creates with a strict driver feature",
+        "If this table's migration uses `timestamps()`, make the field `rullst::orm::chrono::DateTime<Utc>` (set with `Utc::now()`) or `Option<DateTime<Utc>>` with `#[orm(db_default)]`; keep `String` only on the SQLx Any pool or for a `string()` column.";
     UTF16_LENGTHS: "V13-UTF16-LENGTHS", Review, "Registration lengths",
         "registration limits are counted in UTF-8 bytes; v13 counts the forms' UTF-16 code units",
         "Copy `form_length` and `valid_password`: 120-character names and 12-character passwords in UTF-16 units, at most 72 password bytes.";

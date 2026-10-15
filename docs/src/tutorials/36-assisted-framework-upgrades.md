@@ -474,6 +474,8 @@ the rule together.
 | ORM encryption key settings | (c) none | — | Only `.env` entries that the process environment lacks change; `.env` is not read |
 | ORM constraint errors | (b) review | `V13-ORM-CONSTRAINT-ERRORS` | Code that matches `DatabaseError` |
 | ORM query values | (c) none | — | Only exhaustive `match`es on `RullstValue` break, and `cargo check` reports them |
+| ORM date/time columns | (b) review | `V13-TEXT-TIMESTAMPS` | `String` `created_at`/`updated_at` fields of SQLx models; whether the table's migration calls `timestamps()` is not checked |
+| Schema builder constraints | (c) none | — | Only `Column` struct literals break, and `cargo check` reports them |
 | ORM sandbox tests | (a) must-change | `V13-ORM-SANDBOX-TEST` | Flags every sandbox test as review; `cargo check` reports the signatures that no longer compile |
 | ORM model SQLx options | (a) must-change | `V13-ORM-SQLX-STRUCT-OPTION` |  |
 | ORM trashed scopes | (b) review | `V13-ORM-ONLY-TRASHED` |  |
