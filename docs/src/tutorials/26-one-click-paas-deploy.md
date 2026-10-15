@@ -27,12 +27,13 @@ application-specific review, and rollback planning:
 
 These staging and production defaults apply to both strategies:
 
-- **Migrations are a separate step.** The server never applies migrations by
-  itself: `Server::run` only opens the database pool, and `cargo rullst dev`
-  applies pending migrations only in development. Run the application
-  binary's `db:migrate` command once per release, before the new version
-  serves traffic: `/app/<name> db:migrate` in the generated image (it has no
-  shell), or `cargo run --release -- db:migrate` from a checkout. See the
+- **Migrations are a separate step by default.** `Server::run` only opens the
+  database pool, and `cargo rullst dev` applies pending migrations only in
+  development. Run the application binary's `db:migrate` command once per
+  release, before the new version serves traffic: `/app/<name> db:migrate` in
+  the generated image (it has no shell), or `cargo run --release -- db:migrate`
+  from a checkout. Since 13.0.0-alpha.2 the server can instead apply them at
+  startup: see [startup migrations](#startup-migrations) and the
   [container lifecycle boundary](#container-lifecycle-boundary).
 - **Bind address.** With `RULLST_ENV=staging` or `production`, the server
   listens on `0.0.0.0` unless `HOST` (or `RULLST_HOST`) is set in the process
@@ -106,13 +107,42 @@ uses `/app/data`; configure the target platform so that directory remains owned
 by UID/GID 10001 when attaching persistent storage.
 
 Apply migrations in one bounded pre-deployment job and start application
-replicas only after it succeeds. Automatically running migrations inside every
-replica creates an avoidable concurrent-startup race and is therefore not the
-default. The generated `fly.toml`, `railway.json` and `render.yaml` probe
+replicas only after it succeeds. Running migrations inside every replica is
+opt-in ([startup migrations](#startup-migrations)), not the default. The generated `fly.toml`, `railway.json` and `render.yaml` probe
 `/health` (Fly also `/ready`); starters created by `cargo rullst new` mount
 `rullst::health::health_router()` for both. An application created otherwise
 must mount those routes before configuring platform probes; a redirect to login
 is not a health signal.
+
+### Startup migrations
+
+Since 13.0.0-alpha.2 the server can apply pending migrations itself, after it
+opens the database pool and before it binds its port. It is off by default.
+Register the migrations and turn it on in code, per deployment, or both:
+
+```rust,ignore
+Server::new(router())
+    .with_migrations(crate::migrations::get_migrations())
+    .auto_migrate(true) // or leave it out and set RULLST_AUTO_MIGRATE=true
+    .run(3000)
+    .await?;
+```
+
+`RULLST_AUTO_MIGRATE` (`true` or `false`; `1`/`0`, `yes`/`no` and `on`/`off`
+also work), from the process environment and then `.env`, overrides
+`auto_migrate`, so a deployment that runs `db:migrate` as a separate job can
+set `RULLST_AUTO_MIGRATE=false`. Generated starters do not call
+`with_migrations` yet: add the line above to `src/main.rs`.
+
+Replicas that start together apply each migration once: the runner holds a
+PostgreSQL advisory lock or a MySQL/MariaDB `GET_LOCK` lock, and for an SQLite
+file an exclusive lock on `<database>.rullst-migrate.lock` (left on disk), while
+it reads and applies the pending migrations; the others wait and then find
+nothing to do. If a migration fails, or migrations are enabled without a
+registry or a database, the server does not start: `run` returns
+`ServerError::Migration` and the process exits with that error. A migration
+must still be safe for the previous release, which keeps serving until the new
+replicas are ready.
 
 ---
 

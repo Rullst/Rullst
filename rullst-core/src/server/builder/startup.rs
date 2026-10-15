@@ -41,6 +41,7 @@ impl Server {
         self.resolve_trusted_proxy(&app_config.security)?;
 
         self.init_database(&app_config, &dotenv).await?;
+        self.migrate_on_startup(&dotenv).await?;
         let addr = Self::setup_networking(port, app_config.app.port, environment, &dotenv)?;
         let mut scheduler_handle = self.start_scheduler()?;
         let shield_lifecycle = self.start_traffic_shield()?;

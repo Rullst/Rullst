@@ -1698,6 +1698,18 @@ the same server-authoritative controls.
   first database view resolve the current directory with this same resolver
   and initialize the pool once. Without a configured database Studio reports
   its database tools as unavailable and creates nothing.
+* **Startup Migrations (v13 prerelease):** `Server::auto_migrate(bool)` and
+  `RULLST_AUTO_MIGRATE` (`true`/`false`, `1`/`0`, `yes`/`no`, `on`/`off`;
+  the process environment, then `.env`, overrides the builder; default off)
+  apply the migrations registered with `Server::with_migrations` (feature
+  `orm`) after the pool opens and before binding, through the ORM `migrate`
+  command, in both the static and the hot-reload server. PostgreSQL and
+  MySQL/MariaDB runs hold the runner's advisory/`GET_LOCK` lock; an SQLite
+  file run also holds an exclusive OS lock on `<database>.rullst-migrate.lock`
+  (in-memory databases take none). A failed migration, a missing registry or
+  database, an unparsable value or an untakeable lock stops startup with
+  `ServerError::Migration` (or `ServerError::Configuration` for the value);
+  without the `orm` feature an enabled setting is `ServerError::Database`.
 * **Application Settings (v13 prerelease):** `rullst::config::project_setting`
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded
