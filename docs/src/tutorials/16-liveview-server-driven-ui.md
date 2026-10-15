@@ -74,10 +74,13 @@ This route fragment belongs in the same application module where
 `CounterComponent` is in scope:
 
 ```rust,ignore
+use rullst::html::Markup;
 use rullst::live::Live;
 use crate::live::counter_component::CounterComponent;
 
-pub async fn page_handler() -> String {
+// `Live::mount` returns `Markup`: return it as the page, or interpolate it
+// into an `html!` layout as `{component}`.
+pub async fn page_handler() -> Markup {
     Live::mount::<CounterComponent>("/ws/counter").await
 }
 ```

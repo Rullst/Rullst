@@ -79,15 +79,15 @@ Recorded screenshot; layout and controls can differ by version. [Development wor
 ## 🦀 Code that says what it does
 
 ```rust
-use rullst::{html, response::Html, routes, Server};
+use rullst::{html, routes, Markup, Server};
 
-async fn home() -> Html<String> {
-    Html(html! {
+async fn home() -> Markup {
+    html! {
         <div class="min-h-screen bg-slate-900 text-emerald-400 flex flex-col items-center justify-center font-sans">
             <h1 class="text-5xl font-extrabold mb-4">"Hello, Rullst! 📜🦀"</h1>
             <p class="text-slate-400 text-lg">"Your first typed route is running."</p>
         </div>
-    })
+    }
 }
 
 #[tokio::main]

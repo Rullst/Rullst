@@ -189,7 +189,8 @@ transaction with human and machine-readable reports. See the
 ### 7. Server-first UI with optional escalation
 
 The compile-time `html!` macro escapes supported dynamic text and attribute
-values, while `RawHtml` makes an unescaped boundary explicit. HTMX-oriented
+values and returns `Markup`, so views nest without re-escaping, while
+`RawHtml` makes an unescaped boundary for trusted outside HTML explicit. HTMX-oriented
 server rendering is the default path for applications that do not need a
 project-local SPA bundle.
 

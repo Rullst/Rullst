@@ -60,6 +60,7 @@ changes.
 
 ### 3.3. HTML Macro Rules (`html!`)
 - Boolean attributes inside the `html!` macro must be explicitly quoted (e.g. `required="true"`, `disabled="true"`).
+- `html!` returns `rullst::html::Markup`: declare view helpers `-> Markup` and interpolate them directly (`{badge}`); `String` values are always escaped. Reserve `RawHtml`/`Markup::from_trusted` for trusted HTML produced outside `html!`.
 - Prefer zero-bundle HTMX + Tailwind CSS server-side rendering over heavy client-side JS bundles.
 
 ### 3.4. Security & Cryptographic Invariants

@@ -14,59 +14,60 @@ serve that file itself. The application's CSP must permit it.
 In your controller or view:
 
 ```rust
-use axum::response::Html;
 use rullst::html;
-use rullst::html::RawHtml;
+use rullst::html::Markup;
 
-pub async fn search_users() -> Html<String> {
+pub async fn search_users() -> Markup {
     let results = vec!["Alice", "Bob", "Charlie"];
-    let rows = results
+    let rows: Markup = results
         .into_iter()
         .map(|name| html! {
             <li class="py-2 text-slate-200">{name}</li>
         })
-        .collect::<String>();
+        .collect();
 
-    Html(html! {
+    html! {
         <ul id="user-list" class="divide-y divide-slate-700">
-            {RawHtml(rows)}
+            {rows}
         </ul>
-    })
+    }
 }
 ```
 
-`RawHtml` is appropriate here only because `rows` is composed exclusively from
-already-escaped `html!` fragments. Do not wrap untrusted request data directly
-in `RawHtml`.
+`html!` returns `Markup`, escaped HTML that a handler can return directly
+(`text/html; charset=utf-8`). Each `name` is escaped, and the collected rows
+are inserted into the list as HTML.
 
 ### Composing views
 
-`html!` returns a plain `String`, and interpolating any `String` with `{value}`
-escapes it. That keeps user data safe, but it also means that a fragment built
-by another `html!` call is shown as text (`&lt;span …`) when you interpolate it
-directly. Wrap trusted fragments in `rullst::html::RawHtml`, or let a helper
-return `RawHtml` so callers cannot forget the wrapper:
+Interpolating a `Markup` inserts it as it is, so a view built by another
+`html!` call nests without a wrapper. A `String`, `&str` or number is always
+escaped, so request data stays text. Declare view helpers `-> Markup`, collect
+lists with `.collect::<Markup>()` and use `Option<Markup>` for parts that may
+be absent:
 
 ```rust
 use rullst::html;
-use rullst::html::RawHtml;
+use rullst::html::Markup;
 
-fn badge(label: &str) -> RawHtml {
-    RawHtml(html! { <span class="badge">{label}</span> })
+fn badge(label: &str) -> Markup {
+    html! { <span class="badge">{label}</span> }
 }
 
 let name = "<Ana>";
-// Wrong: the `String` from `html!` is escaped again.
-let escaped = html! { <li>{html! { <b>"new"</b> }}</li> };
-assert_eq!(escaped, "<li>&lt;b&gt;new&lt;/b&gt;</li>");
-// Right: `name` is still escaped; the badge is inserted as markup.
+let flagged = true;
+// `name` is escaped; the badge is inserted as HTML.
 let row = html! { <li>{name}{badge("new")}</li> };
 assert_eq!(row, "<li>&lt;Ana&gt;<span class=\"badge\">new</span></li>");
+// `None` renders nothing.
+let note = flagged.then(|| html! { <em>"flagged"</em> });
+assert_eq!(html! { <p>{note}</p> }, "<p><em>flagged</em></p>");
 ```
 
-Only wrap markup produced by `html!` or other code you control, never request
-data. A full page can start with `<!DOCTYPE html>`, which `html!` emits as
-written, and element names may be Rust keywords, such as SVG's
+`rullst::html::RawHtml` (or `Markup::from_trusted`) is only for trusted HTML
+produced outside `html!`, such as a sanitizer's output; never wrap request
+data in it. A full page can start with `<!DOCTYPE html>`, which `html!` emits
+as written, and element names may be Rust keywords, such as SVG's
 `<use href="#icon" />`.
 
 ---
@@ -119,7 +120,7 @@ placeholders: `mask_nonce()` writes `{NONCE}` for `nonce="…"` attributes and
 use rullst::html;
 use rullst::testing::{SnapshotOptions, assert_html_snapshot};
 
-fn search_form(nonce: &str, csrf_token: &str) -> String {
+fn search_form(nonce: &str, csrf_token: &str) -> rullst::html::Markup {
     html! {
         <form method="post" action="/search">
             <input type="hidden" name="_token" value={csrf_token} />

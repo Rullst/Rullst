@@ -147,7 +147,9 @@ What it does:
   and a plain form post a `303` redirect, so the forms work without
   JavaScript too.
 - `html!` escapes the values it interpolates: a note titled `Buy <milk>` is
-  rendered as `Buy &lt;milk&gt;`.
+  rendered as `Buy &lt;milk&gt;`. It returns `Markup`, so `note_form` and
+  the collected list items are inserted into the page as HTML, and the
+  handlers return the page directly.
 
 Now mount the routes in the `router()` function of `src/main.rs`. Add them
 **before** the `csrf_middleware` layer, so every form post needs the CSRF token
