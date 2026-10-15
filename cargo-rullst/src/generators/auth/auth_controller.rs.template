@@ -411,7 +411,8 @@ mod tests {
         let before = rullst::orm::chrono::Utc::now();
         let now = utc_timestamp();
         assert!(now >= before);
-        assert!(now.to_rfc3339() > "2026-01-01T00:00:00".to_string());
+        // Later than 2026-01-01T00:00:00Z.
+        assert!(now.timestamp() > 1_767_225_599);
     }
 
     #[test]
