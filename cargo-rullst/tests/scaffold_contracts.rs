@@ -329,7 +329,11 @@ fn blank_turso_reads_its_settings_without_loading_dotenv() {
 
             assert!(!sources.contains("dotenvy"));
             assert!(!sources.contains("init_from_env"));
-            for setting in ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "TURSO_OFFLINE_PATH"] {
+            for setting in [
+                "TURSO_DATABASE_URL",
+                "TURSO_AUTH_TOKEN",
+                "TURSO_OFFLINE_PATH",
+            ] {
                 assert!(
                     sources.contains(&format!("rullst::config::project_setting(\"{setting}\")?")),
                     "{setting}"
