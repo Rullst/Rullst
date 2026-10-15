@@ -54,7 +54,7 @@ jobs:
 
       - name: Retain independently verified fuzz evidence
         if: hashFiles('release-fuzz-evidence.json') != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-fuzz-evidence-${{ github.sha }}
           path: release-fuzz-evidence.json
@@ -104,7 +104,7 @@ jobs:
           cache: false
 
       - name: Install cargo-audit for release evidence
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-audit
 
@@ -225,7 +225,7 @@ jobs:
         run: python3 .github/check-admitted-archives.py target/package/checksums.txt
 
       - name: Preserve verified release artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: verified-crates
           path: |
@@ -249,7 +249,7 @@ jobs:
       id-token: write
     steps:
       - name: Download verified release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: verified-crates
           path: verified-crates
@@ -261,7 +261,7 @@ jobs:
           sha256sum --check evidence-checksums.txt
 
       - name: Download native CLI artifacts without executing them
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: cli-native-*
           path: native-cli
@@ -318,7 +318,7 @@ jobs:
           done
 
       - name: Retain portable release provenance
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-provenance
           path: |
@@ -348,7 +348,7 @@ jobs:
           build-warnings: ""
 
       - name: Download verified release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: verified-crates
           path: verified-crates
@@ -387,7 +387,7 @@ jobs:
             > publication-evidence/checksum.txt
 
       - name: Preserve prepublication ownership evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: publication-evidence
           path: publication-evidence/*
@@ -412,13 +412,13 @@ jobs:
           build-warnings: ""
 
       - name: Download verified release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: verified-crates
           path: verified-crates
 
       - name: Download prepublication ownership evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: publication-evidence
           path: publication-evidence
@@ -563,7 +563,7 @@ jobs:
       contents: write
     steps:
       - name: Download verified release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: verified-crates
           path: verified-crates
@@ -575,7 +575,7 @@ jobs:
           sha256sum --check evidence-checksums.txt
 
       - name: Download previously attested native CLI artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: cli-native-*
           path: native-cli
@@ -589,7 +589,7 @@ jobs:
           done
 
       - name: Download the original signed provenance bundle
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-provenance
           path: release-provenance
