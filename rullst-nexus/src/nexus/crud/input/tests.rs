@@ -6,6 +6,7 @@ fn entry() -> RegistryEntry {
         label: "Articles",
         icon: "A",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -29,6 +30,7 @@ fn semantic_entry() -> RegistryEntry {
         label: "Profiles",
         icon: "P",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number),
@@ -417,4 +419,27 @@ fn csrf_form_token_is_not_treated_as_a_model_field() {
     )
     .expect("token-only form");
     assert!(only_token.is_empty());
+}
+
+#[test]
+fn every_composite_key_column_is_entered_on_create_and_protected_on_update() {
+    let entry = RegistryEntry {
+        pk: "user_id",
+        pk_columns: vec!["user_id", "team_id"],
+        fields: vec![
+            FieldMeta::new("user_id", "User", FieldKind::Number),
+            FieldMeta::new("team_id", "Team", FieldKind::Number),
+            FieldMeta::new("role", "Role", FieldKind::Text),
+        ],
+        ..entry()
+    };
+    let pairs = |column: &str| vec![(column.to_owned(), "7".to_owned())];
+    for column in ["user_id", "team_id"] {
+        assert!(validate_form_values(&entry, pairs(column), FormMode::Create).is_ok());
+        assert!(matches!(
+            validate_form_values(&entry, pairs(column), FormMode::Update),
+            Err(FormInputError::UnknownOrProtectedField)
+        ));
+    }
+    assert!(validate_form_values(&entry, pairs("role"), FormMode::Update).is_ok());
 }

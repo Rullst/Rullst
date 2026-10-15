@@ -128,13 +128,22 @@ pub fn build_table_query(
         .collect();
     let mut select_cols: Vec<String> = readable.iter().map(|f| select_column(f, driver)).collect();
 
-    let clean_pk = sanitize_identifier(entry.pk);
-    if !readable
+    // Every key column is read, in key order before the fields, so each row
+    // has an address even when its key is not shown.
+    let key_columns: Vec<String> = entry
+        .key_columns()
         .iter()
-        .any(|f| sanitize_identifier(f.name) == clean_pk)
-    {
-        select_cols.insert(0, clean_pk.clone());
-    }
+        .map(|column| sanitize_identifier(column))
+        .collect();
+    let missing_keys = key_columns
+        .iter()
+        .filter(|column| {
+            !readable
+                .iter()
+                .any(|f| sanitize_identifier(f.name) == **column)
+        })
+        .cloned();
+    select_cols.splice(0..0, missing_keys);
 
     let mut select_list = select_cols.join(", ");
     if select_list.is_empty() {
@@ -207,7 +216,7 @@ pub fn build_table_query(
     // only the key and visible non-Password fields are sortable.
     let sort_col = sort_by
         .filter(|candidate| {
-            *candidate == entry.pk
+            entry.is_key_column(candidate)
                 || entry.fields.iter().any(|field| {
                     field.name == *candidate
                         && !field.hidden
@@ -220,12 +229,12 @@ pub fn build_table_query(
         .unwrap_or("DESC");
     let clean_sort_col = sanitize_identifier(sort_col);
     // A non-unique sort column has no stable order between separate page
-    // queries; the primary key breaks ties so rows neither repeat nor vanish.
-    let tie_breaker = if clean_sort_col == clean_pk {
-        String::new()
-    } else {
-        format!(", {clean_pk} {sort_dir}")
-    };
+    // queries; the key columns break ties so rows neither repeat nor vanish.
+    let tie_breaker = key_columns
+        .iter()
+        .filter(|column| **column != clean_sort_col)
+        .map(|column| format!(", {column} {sort_dir}"))
+        .collect::<String>();
 
     let _ = std::fmt::Write::write_fmt(
         &mut sql,
@@ -248,6 +257,7 @@ mod tests {
             label: "Records",
             icon: "R",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: Some("tenant_id"),
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -288,6 +298,7 @@ mod tests {
             label: "Accounts",
             icon: "A",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -318,6 +329,7 @@ mod tests {
             label: "Accounts",
             icon: "A",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number),
@@ -339,6 +351,7 @@ mod tests {
             label: "Orders",
             icon: "O",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -364,6 +377,7 @@ mod tests {
             label: "Users",
             icon: "U",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number)
@@ -412,6 +426,58 @@ mod tests {
         let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, Some("tenant-a"));
         assert!(
             sql.ends_with(" ORDER BY id DESC LIMIT 15 OFFSET 0"),
+            "{sql}"
+        );
+    }
+
+    #[test]
+    fn composite_keys_are_selected_in_key_order_and_break_ties() {
+        let entry = RegistryEntry {
+            table: "lesson_progress",
+            label: "Progress",
+            icon: "P",
+            pk: "user_id",
+            pk_columns: vec!["user_id", "lesson_id"],
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("user_id", "User", FieldKind::Number).hidden(),
+                FieldMeta::new("lesson_id", "Lesson", FieldKind::Number),
+                FieldMeta::new("percent", "Percent", FieldKind::Number),
+            ],
+        };
+        let visible = vec![&entry.fields[1], &entry.fields[2]];
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, None);
+        assert_eq!(
+            sql,
+            "SELECT user_id, lesson_id, percent FROM lesson_progress \
+             ORDER BY user_id DESC, lesson_id DESC LIMIT 15 OFFSET 0"
+        );
+
+        let only_percent = vec![&entry.fields[2]];
+        let (sql, _) = build_table_query(
+            &entry,
+            &only_percent,
+            "",
+            2,
+            Some("percent"),
+            Some("asc"),
+            None,
+        );
+        assert_eq!(
+            sql,
+            "SELECT user_id, lesson_id, percent FROM lesson_progress \
+             ORDER BY percent asc, user_id asc, lesson_id asc LIMIT 15 OFFSET 15"
+        );
+
+        // Any key column is sortable, even a hidden one.
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, Some("lesson_id"), None, None);
+        assert!(
+            sql.ends_with(" ORDER BY lesson_id DESC, user_id DESC LIMIT 15 OFFSET 0"),
+            "{sql}"
+        );
+        let (sql, _) = build_table_query(&entry, &visible, "", 1, Some("user_id"), None, None);
+        assert!(
+            sql.ends_with(" ORDER BY user_id DESC, lesson_id DESC LIMIT 15 OFFSET 0"),
             "{sql}"
         );
     }

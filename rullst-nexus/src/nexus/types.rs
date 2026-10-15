@@ -115,6 +115,18 @@ pub trait NexusModel: Send + Sync + 'static {
     fn nexus_pk() -> &'static str {
         "id"
     }
+    /// Every primary-key column, in key order (default: the single column of
+    /// [`Self::nexus_pk`]).
+    ///
+    /// Return two or more columns for a composite key, such as
+    /// `vec!["user_id", "lesson_id"]` for a `lesson_progress` table keyed by
+    /// both. The first column then takes the place of `nexus_pk()`. Each
+    /// column must be a registered field; at most 8 columns are accepted. A
+    /// record of a composite key is addressed by its values, each
+    /// percent-encoded and joined by `,` (see the Nexus guide).
+    fn nexus_pk_columns() -> Vec<&'static str> {
+        vec![Self::nexus_pk()]
+    }
     /// Optional text column used to scope every Nexus read and mutation to the
     /// authenticated [`rullst_core::security::TenantContext`].
     ///
@@ -133,9 +145,30 @@ pub struct RegistryEntry {
     pub table: &'static str,
     pub label: &'static str,
     pub icon: &'static str,
+    /// The primary-key column, or the first one of a composite key.
     pub pk: &'static str,
+    /// Every primary-key column in key order, `pk` first. Empty means the
+    /// single column `pk`. Added in v13.
+    pub pk_columns: Vec<&'static str>,
     pub tenant_column: Option<&'static str>,
     pub fields: Vec<FieldMeta>,
+}
+
+impl RegistryEntry {
+    /// The primary-key columns in key order: `pk_columns`, or `pk` alone when
+    /// that list is empty.
+    pub fn key_columns(&self) -> &[&'static str] {
+        if self.pk_columns.is_empty() {
+            std::slice::from_ref(&self.pk)
+        } else {
+            &self.pk_columns
+        }
+    }
+
+    /// Whether `column` is one of the primary-key columns.
+    pub fn is_key_column(&self, column: &str) -> bool {
+        self.key_columns().contains(&column)
+    }
 }
 
 /// Persistence policy for successful Nexus data mutations.

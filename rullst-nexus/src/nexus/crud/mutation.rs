@@ -5,9 +5,10 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
-use super::dialect::{RecordKey, ValueSql, placeholder, tenant_predicate, write_value_sql};
+use super::dialect::{ValueSql, placeholder, tenant_predicate, write_value_sql};
 use super::handlers::tenant_for_entry;
-use super::input::{FormInputError, FormMode, validate_form_values};
+use super::input::{FormInputError, FormMode, ValidatedFieldValue, validate_form_values};
+use super::key::{RecordKey, key_predicate, record_address};
 use super::query::sanitize_identifier;
 use crate::nexus::audit::{MutationAudit, append_mutation, auditable_record_key, correlation_id};
 use crate::nexus::{NexusAuditPolicy, NexusPrincipal, NexusState, RegistryEntry};
@@ -34,18 +35,11 @@ pub(super) async fn create_record(
     let mut keys = Vec::new();
     let mut expressions = Vec::new();
     let mut values: Vec<Option<String>> = Vec::new();
-    // A key the administrator entered is known before the INSERT, so the
-    // audit can name it. A numeric key must already be canonical (`RecordKey`
-    // rejects `01` or `1e3`, which the database may store differently).
-    let mut submitted_key = None;
+    let submitted_key = submitted_address(entry, &data);
     for value in data {
-        if value.field.name == entry.pk {
-            match value.value.as_deref() {
-                Some(key) if !key.trim().is_empty() => {
-                    submitted_key = RecordKey::parse(entry, key).map(|key| key.text().into_owned());
-                }
-                _ => continue,
-            }
+        // An empty key column is left to the database (an identity column).
+        if entry.is_key_column(value.field.name) && blank(value.value.as_deref()) {
+            continue;
         }
         keys.push(value.field.name);
         match write_value_sql(
@@ -170,24 +164,12 @@ pub(super) async fn update_record(
             ValueSql::Literal(literal) => updates.push(format!("{column} = {literal}")),
         }
     }
-    let pk_position = bound_values.len() + 1;
-    let tenant_predicate = tenant_id.map(|_| {
-        format!(
-            " AND {}",
-            tenant_predicate(
-                entry.tenant_column.unwrap_or_default(),
-                &placeholder(pk_position + 1, driver),
-                driver
-            )
-        )
-    });
-    let sql = format!(
-        "UPDATE {} SET {} WHERE {} = {}{}",
-        sanitize_identifier(entry.table),
-        updates.join(", "),
-        sanitize_identifier(entry.pk),
-        placeholder(pk_position, driver),
-        tenant_predicate.as_deref().unwrap_or_default()
+    let sql = update_sql(
+        entry,
+        &updates,
+        bound_values.len(),
+        tenant_id.is_some(),
+        driver,
     );
     let Some(pool) = rullst_core::db::safe_pool() else {
         return database_failure("update", entry.table);
@@ -225,7 +207,7 @@ pub(super) async fn update_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "update",
-                record_key: auditable_record_key(&record_key),
+                record_key: auditable_record_key(record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -244,7 +226,7 @@ pub(super) async fn update_record(
         "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
          &#9989; {} #{} updated successfully!</div>",
         rullst_core::html::escape_str(entry.label),
-        rullst_core::html::escape_str(&record_key)
+        rullst_core::html::escape_str(record_key)
     ))
     .into_response()
 }
@@ -265,23 +247,7 @@ pub(super) async fn delete_record(
         return record_not_found();
     };
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let tenant_predicate = tenant_id.map(|_| {
-        format!(
-            " AND {}",
-            tenant_predicate(
-                entry.tenant_column.unwrap_or_default(),
-                &placeholder(2, driver),
-                driver
-            )
-        )
-    });
-    let sql = format!(
-        "DELETE FROM {} WHERE {} = {}{}",
-        sanitize_identifier(entry.table),
-        sanitize_identifier(entry.pk),
-        placeholder(1, driver),
-        tenant_predicate.as_deref().unwrap_or_default()
-    );
+    let sql = delete_sql(entry, tenant_id.is_some(), driver);
     let Some(pool) = rullst_core::db::safe_pool() else {
         return database_failure("delete", entry.table);
     };
@@ -314,7 +280,7 @@ pub(super) async fn delete_record(
                 tenant_id,
                 table_name: entry.table,
                 action: "delete",
-                record_key: auditable_record_key(&record_key),
+                record_key: auditable_record_key(record_key),
                 record_count: result.rows_affected(),
                 correlation_id: correlation_id(headers).as_deref(),
             },
@@ -329,6 +295,84 @@ pub(super) async fn delete_record(
         return database_failure("delete", entry.table);
     }
     (StatusCode::OK, "Record deleted successfully.").into_response()
+}
+
+/// Whether a submitted key value is absent or only whitespace.
+fn blank(value: Option<&str>) -> bool {
+    value.is_none_or(|value| value.trim().is_empty())
+}
+
+/// The address of the record a create form names when the administrator
+/// entered every key column, so the audit can record it before the INSERT.
+/// A value that is not canonical for its column (`01` for an integer key,
+/// which the database may store as `1`) names no address.
+pub(super) fn submitted_address(
+    entry: &RegistryEntry,
+    data: &[ValidatedFieldValue<'_>],
+) -> Option<String> {
+    let values = entry
+        .key_columns()
+        .iter()
+        .map(|column| {
+            data.iter()
+                .find(|value| value.field.name == *column)
+                .and_then(|value| value.value.clone())
+                .filter(|value| !blank(Some(value)))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let address = record_address(&values);
+    RecordKey::parse(entry, &address)
+        .is_some()
+        .then_some(address)
+}
+
+/// `UPDATE … SET <assignments> WHERE <key>[ AND <tenant>]`. The key values
+/// are bound after the `bound` values of the assignments, then the tenant.
+pub(super) fn update_sql(
+    entry: &RegistryEntry,
+    assignments: &[String],
+    bound: usize,
+    tenant_scoped: bool,
+    driver: &str,
+) -> String {
+    format!(
+        "UPDATE {} SET {} WHERE {}{}",
+        sanitize_identifier(entry.table),
+        assignments.join(", "),
+        key_predicate(entry, bound + 1, driver),
+        tenant_scope(
+            entry,
+            bound + entry.key_columns().len() + 1,
+            tenant_scoped,
+            driver
+        )
+    )
+}
+
+/// `DELETE FROM … WHERE <key>[ AND <tenant>]`: the key values, then the tenant.
+pub(super) fn delete_sql(entry: &RegistryEntry, tenant_scoped: bool, driver: &str) -> String {
+    format!(
+        "DELETE FROM {} WHERE {}{}",
+        sanitize_identifier(entry.table),
+        key_predicate(entry, 1, driver),
+        tenant_scope(entry, entry.key_columns().len() + 1, tenant_scoped, driver)
+    )
+}
+
+/// ` AND <tenant> = <placeholder>` for a scoped request, else nothing.
+fn tenant_scope(
+    entry: &RegistryEntry,
+    position: usize,
+    tenant_scoped: bool,
+    driver: &str,
+) -> String {
+    match (entry.tenant_column, tenant_scoped) {
+        (Some(column), true) => format!(
+            " AND {}",
+            tenant_predicate(column, &placeholder(position, driver), driver)
+        ),
+        _ => String::new(),
+    }
 }
 
 fn record_not_found() -> Response {
@@ -368,12 +412,5 @@ fn audit_failure(operation: &'static str, table: &str) -> Response {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn placeholders_are_dialect_correct() {
-        assert_eq!(placeholder(3, "postgres"), "$3");
-        assert_eq!(placeholder(2, "sqlite"), "?");
-    }
-}
+#[path = "mutation_tests.rs"]
+mod tests;

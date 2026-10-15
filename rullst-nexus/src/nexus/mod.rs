@@ -56,11 +56,13 @@ impl Nexus {
     }
 
     pub fn register<M: NexusModel>(mut self) -> Self {
+        let pk_columns = M::nexus_pk_columns();
         self.registry.push(RegistryEntry {
             table: M::nexus_table(),
             label: M::nexus_label(),
             icon: M::nexus_icon(),
-            pk: M::nexus_pk(),
+            pk: pk_columns.first().copied().unwrap_or_else(M::nexus_pk),
+            pk_columns,
             tenant_column: M::nexus_tenant_column(),
             fields: M::nexus_fields(),
         });
@@ -268,6 +270,7 @@ mod tests {
                 label: "Users",
                 icon: "👤",
                 pk: "id",
+                pk_columns: Vec::new(),
                 tenant_column: None,
                 fields: vec![],
             }]),
@@ -288,6 +291,7 @@ mod tests {
                 label: "Users",
                 icon: "👤",
                 pk: "id",
+                pk_columns: Vec::new(),
                 tenant_column: None,
                 fields: vec![],
             }]),
@@ -455,5 +459,62 @@ mod tests {
     fn test_nexus_model_defaults() {
         assert_eq!(DummyModel::nexus_icon(), "&#128196;");
         assert_eq!(DummyModel::nexus_pk(), "id");
+        assert_eq!(DummyModel::nexus_pk_columns(), ["id"]);
+    }
+
+    struct Progress;
+    impl NexusModel for Progress {
+        fn nexus_table() -> &'static str {
+            "lesson_progress"
+        }
+        fn nexus_label() -> &'static str {
+            "Progress"
+        }
+        fn nexus_pk_columns() -> Vec<&'static str> {
+            vec!["user_id", "lesson_id"]
+        }
+        fn nexus_fields() -> Vec<FieldMeta> {
+            vec![
+                FieldMeta::new("user_id", "User", FieldKind::Number),
+                FieldMeta::new("lesson_id", "Lesson", FieldKind::Number),
+            ]
+        }
+    }
+
+    struct Slug;
+    impl NexusModel for Slug {
+        fn nexus_table() -> &'static str {
+            "pages"
+        }
+        fn nexus_label() -> &'static str {
+            "Pages"
+        }
+        fn nexus_pk() -> &'static str {
+            "slug"
+        }
+        fn nexus_pk_columns() -> Vec<&'static str> {
+            Vec::new()
+        }
+        fn nexus_fields() -> Vec<FieldMeta> {
+            vec![FieldMeta::new("slug", "Slug", FieldKind::Text)]
+        }
+    }
+
+    #[test]
+    fn registration_records_every_key_column_with_the_first_as_pk() {
+        let nexus = Nexus::new()
+            .register::<Progress>()
+            .register::<Slug>()
+            .register::<DummyModel>();
+        let progress = &nexus.registry[0];
+        assert_eq!(progress.pk, "user_id");
+        assert_eq!(progress.key_columns(), ["user_id", "lesson_id"]);
+        assert!(progress.is_key_column("lesson_id"));
+        assert!(!progress.is_key_column("id"));
+        // An empty list falls back to `nexus_pk()`.
+        let slug = &nexus.registry[1];
+        assert_eq!(slug.pk, "slug");
+        assert_eq!(slug.key_columns(), ["slug"]);
+        assert_eq!(nexus.registry[2].key_columns(), ["id"]);
     }
 }

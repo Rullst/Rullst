@@ -8,6 +8,7 @@ fn entry(fields: Vec<FieldMeta>) -> RegistryEntry {
         label: "Events",
         icon: "E",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields,
     }

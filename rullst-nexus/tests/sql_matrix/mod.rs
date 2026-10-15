@@ -3,6 +3,8 @@
 //! Typed columns, text keys, search case and the exact tenant scope all depend
 //! on the server's type system and collations, which SQLite cannot show.
 
+mod composite;
+
 use crate::support::{authenticated_test_router, local_request};
 use axum::{Extension, body::Body, http::StatusCode};
 use rullst_core::security::TenantContext;
@@ -78,7 +80,10 @@ impl NexusModel for Sku {
 }
 
 fn app() -> axum::Router {
-    let nexus = Nexus::new().register::<Product>().register::<Sku>();
+    let nexus = Nexus::new()
+        .register::<Product>()
+        .register::<Sku>()
+        .register::<composite::Progress>();
     authenticated_test_router(nexus).layer(Extension(
         TenantContext::try_new("acme").expect("valid tenant"),
     ))
@@ -182,11 +187,13 @@ pub async fn exercise(database_url: &str, driver: &str) {
         "INSERT INTO nexus_matrix_skus (sku, label) VALUES ('1001', 'original')",
     )
     .await;
+    composite::create_table(pool).await;
     let app = app();
 
     typed_columns_round_trip(&app, pool, driver).await;
     tenant_scope_is_exact(&app, pool, driver).await;
     text_keys_are_not_bound_as_integers(&app).await;
+    composite::composite_keys_round_trip(&app, pool, driver).await;
 }
 
 /// NEXUS-05 and NX2-04: numbers, relations and both Boolean column shapes

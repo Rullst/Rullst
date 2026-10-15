@@ -72,6 +72,7 @@ async fn stored_cells_remain_text_including_entity_prefixes() {
             label: "Cell fixture",
             icon: "",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -128,6 +129,7 @@ fn fixture_entry(value_kind: FieldKind) -> RegistryEntry {
         label: "Cell fixture",
         icon: "",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),

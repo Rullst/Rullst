@@ -76,7 +76,7 @@ pub(super) fn validate_form_values<'a>(
         };
         let protected = field.hidden
             || field.readonly
-            || matches!(mode, FormMode::Update) && field.name == entry.pk;
+            || matches!(mode, FormMode::Update) && entry.is_key_column(field.name);
         if protected {
             return Err(FormInputError::UnknownOrProtectedField);
         }
