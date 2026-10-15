@@ -9,7 +9,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use crate::nexus::crud::dialect::{RecordKey, placeholder, tenant_predicate};
+use crate::nexus::crud::dialect::{RecordKey, placeholder, select_column, tenant_predicate};
 use crate::nexus::crud::input::{datetime_local_value, is_local_date};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -95,7 +95,7 @@ async fn load_record(
         .fields
         .iter()
         .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
-        .map(|field| sanitize_identifier(field.name))
+        .map(|field| select_column(field, driver))
         .collect::<Vec<_>>();
     let select_list = if columns.is_empty() {
         sanitize_identifier(entry.pk)

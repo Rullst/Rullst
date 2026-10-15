@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use super::query::sanitize_identifier;
-use crate::nexus::types::{FieldKind, RegistryEntry};
+use crate::nexus::types::{FieldKind, FieldMeta, RegistryEntry};
 
 /// A query built from the ORM pool's database driver.
 pub(crate) type NexusQuery<'q> = rullst_orm::_sqlx::query::Query<
@@ -69,6 +69,23 @@ pub(crate) fn write_value_sql(
             ValueSql::Bind(format!("CAST({marker} AS BIGINT)"))
         }
         _ => ValueSql::Bind(marker),
+    }
+}
+
+/// The select-list entry that reads `field`. PostgreSQL and MySQL/MariaDB
+/// date and date-time columns are read as text: their native `DATE`,
+/// `TIMESTAMP` and `TIMESTAMPTZ` values do not decode as `String`, and the
+/// SQLx `Any` pool cannot decode them at all. A text column reads unchanged.
+pub(crate) fn select_column(field: &FieldMeta, driver: &str) -> String {
+    let column = sanitize_identifier(field.name);
+    match (&field.kind, driver) {
+        (FieldKind::Date | FieldKind::DateTime, "postgres") => {
+            format!("CAST({column} AS TEXT) AS {column}")
+        }
+        (FieldKind::Date | FieldKind::DateTime, "mysql") => {
+            format!("CAST({column} AS CHAR) AS {column}")
+        }
+        _ => column,
     }
 }
 
@@ -246,6 +263,32 @@ mod tests {
             RecordKey::parse(&unregistered, "012"),
             Some(RecordKey::Text("012"))
         );
+    }
+
+    #[test]
+    fn date_columns_are_selected_as_text_on_postgres_and_mysql() {
+        let created = crate::nexus::FieldMeta::new("created_at", "Created", FieldKind::DateTime);
+        let born = crate::nexus::FieldMeta::new("born_on", "Born", FieldKind::Date);
+        let title = crate::nexus::FieldMeta::new("title", "Title", FieldKind::Text);
+        assert_eq!(
+            select_column(&created, "postgres"),
+            "CAST(created_at AS TEXT) AS created_at"
+        );
+        assert_eq!(
+            select_column(&born, "postgres"),
+            "CAST(born_on AS TEXT) AS born_on"
+        );
+        assert_eq!(
+            select_column(&created, "mysql"),
+            "CAST(created_at AS CHAR) AS created_at"
+        );
+        assert_eq!(
+            select_column(&born, "mysql"),
+            "CAST(born_on AS CHAR) AS born_on"
+        );
+        assert_eq!(select_column(&created, "sqlite"), "created_at");
+        assert_eq!(select_column(&title, "postgres"), "title");
+        assert_eq!(select_column(&title, "mysql"), "title");
     }
 
     #[test]
