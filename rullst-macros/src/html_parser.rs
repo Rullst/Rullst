@@ -202,7 +202,14 @@ impl Parse for HtmlElement {
 }
 
 impl HtmlDocument {
+    /// Expands the document into a `rullst::html::Markup`: the rendered string
+    /// already escapes every interpolated value that is not itself markup.
     pub fn to_tokens(&self) -> TokenStream {
+        let rendered = self.render_tokens();
+        quote! { rullst::html::Markup::from_trusted(#rendered) }
+    }
+
+    fn render_tokens(&self) -> TokenStream {
         if self.nodes.len() == 1 {
             return self.nodes[0].to_tokens();
         }

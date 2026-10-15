@@ -4,13 +4,15 @@
 //! token stream (so comments and doc comments never match, and string
 //! literals only match string rules), including macro bodies such as
 //! `html!` and `routes!`; [`rust`] walks the syntax tree for structural
-//! rules (derive attributes, `match` arms, struct literals). [`files`]
+//! rules (derive attributes, `match` arms, struct literals) and [`markup`]
+//! the `html!` → `Markup` rules, which also read `html!` bodies. [`files`]
 //! inspects Cargo manifests and generated project files. Each finding names a
 //! stable rule code, a kind, a location and the first-column title of its
 //! row in `docs/src/migration-v13.md`.
 
 mod catalog;
 mod files;
+mod markup;
 mod rust;
 mod tokens;
 

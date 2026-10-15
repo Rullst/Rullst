@@ -3,7 +3,6 @@
 
 use axum::extract::Extension;
 use axum::http::StatusCode;
-use axum::response::Html;
 use rullst::html;
 use rullst::security::TenantContext;
 use rullst_orm::Orm;
@@ -121,7 +120,7 @@ impl PostRepository {
 /// Handler for the Repository ORM showcase route (`/posts/repository`).
 pub async fn repository_page(
     Extension(tenant): Extension<TenantContext>,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<html::Markup, StatusCode> {
     let nav = render_showcase_nav("/posts/repository");
     let head_assets = render_head_assets();
 
@@ -133,7 +132,7 @@ pub async fn repository_page(
         .await
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let rows_html: String = analytics
+    let rows_html: html::Markup = analytics
         .iter()
         .map(|a| {
             html! {
@@ -147,7 +146,7 @@ pub async fn repository_page(
         })
         .collect();
 
-    let post_rows_html: String = all_posts
+    let post_rows_html: html::Markup = all_posts
         .iter()
         .map(|p| {
             html! {
@@ -161,16 +160,16 @@ pub async fn repository_page(
         })
         .collect();
 
-    Ok(Html(html! {
+    Ok(html! {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst ORM - Repository & Data Mapper Pattern"</title>
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(nav) }
+                { nav }
                 <div class="container">
                     <div class="card">
                         <div class="card-header">
@@ -203,7 +202,7 @@ pub async fn repository_page(
                                 </tr>
                             </thead>
                             <tbody>
-                                { rullst::html::RawHtml(rows_html) }
+                                { rows_html }
                             </tbody>
                         </table>
 
@@ -218,7 +217,7 @@ pub async fn repository_page(
                                 </tr>
                             </thead>
                             <tbody>
-                                { rullst::html::RawHtml(post_rows_html) }
+                                { post_rows_html }
                             </tbody>
                         </table>
                     </div>
@@ -238,5 +237,5 @@ pub async fn repository_page(
                 </div>
             </body>
         </html>
-    }))
+    })
 }

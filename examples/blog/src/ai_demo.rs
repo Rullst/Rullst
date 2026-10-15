@@ -42,7 +42,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
     let head_assets = render_head_assets();
 
     let user_query = query.q.unwrap_or_default();
-    let mut search_results_html = String::new();
+    let mut search_results_html = html::Markup::default();
 
     if !user_query.trim().is_empty() {
         let q_vec = dummy_embed(&user_query);
@@ -76,7 +76,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
 
         scored_results.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
-        let items: String = scored_results
+        let items: html::Markup = scored_results
             .iter()
             .map(|(title, snippet, score)| {
                 let score_pct = (score * 100.0).round();
@@ -104,7 +104,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
                 <h3 class="results-heading">
                     "Semantic Vector Search Results for: " <span class="query-echo">{"\""}{&user_query}{"\""}</span>
                 </h3>
-                { rullst::html::RawHtml(items) }
+                { items }
             </div>
         };
     }
@@ -115,10 +115,10 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst AI - Provider-Agnostic Vector Semantic Search"</title>
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(nav) }
+                { nav }
                 <div class="container">
                     <div class="card">
                         <div class="card-header">
@@ -148,7 +148,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
                             </div>
                         </form>
 
-                        { rullst::html::RawHtml(search_results_html) }
+                        { search_results_html }
                     </div>
 
                     <div class="card">

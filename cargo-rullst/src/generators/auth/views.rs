@@ -5,23 +5,18 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-pub fn generate_auth_views() -> Result<(), Box<dyn std::error::Error>> {
-    let pages_dir = Path::new("src/pages");
-    fs::create_dir_all(pages_dir)?;
-    let pages_path = pages_dir.join("auth.rs");
-    let pages_template = r##"use rullst::html;
+/// The `src/pages/auth.rs` written by `cargo rullst auth`.
+pub(crate) const AUTH_VIEWS_TEMPLATE: &str = r##"use rullst::html;
 use rullst::server::Html;
 
 pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Html<String> {
-    let error_html = if let Some(err) = error {
+    let error_html = error.map(|err| {
         html! {
             <div class="error" role="alert">
                 {err}
             </div>
         }
-    } else {
-        String::new()
-    };
+    });
 
     Html(html! {
         <html lang="en">
@@ -33,7 +28,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Ht
             <body>
                 <div class="card">
                     <h1>"Welcome Back"</h1>
-                    { rullst::html::RawHtml(error_html) }
+                    { error_html }
                     <form method="post" action="/login">
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
@@ -49,19 +44,17 @@ pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Ht
                 </div>
             </body>
         </html>
-    })
+    }.into_string())
 }
 
 pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Html<String> {
-    let error_html = if let Some(err) = error {
+    let error_html = error.map(|err| {
         html! {
             <div class="error" role="alert">
                 {err}
             </div>
         }
-    } else {
-        String::new()
-    };
+    });
 
     Html(html! {
         <html lang="en">
@@ -73,7 +66,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) ->
             <body>
                 <div class="card">
                     <h1>"Create Account"</h1>
-                    { rullst::html::RawHtml(error_html) }
+                    { error_html }
                     <form method="post" action="/register">
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
@@ -93,7 +86,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) ->
                 </div>
             </body>
         </html>
-    })
+    }.into_string())
 }
 
 pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Html<String> {
@@ -111,10 +104,15 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Ht
                 </form>
             </body>
         </html>
-    })
+    }.into_string())
 }
 "##;
-    write_new(&pages_path, pages_template.as_bytes())?;
+
+pub fn generate_auth_views() -> Result<(), Box<dyn std::error::Error>> {
+    let pages_dir = Path::new("src/pages");
+    fs::create_dir_all(pages_dir)?;
+    let pages_path = pages_dir.join("auth.rs");
+    write_new(&pages_path, AUTH_VIEWS_TEMPLATE.as_bytes())?;
     println!("{}", "  ✨ Created 'auth' views.".green());
     register_mod_ast(&pages_dir.join("mod.rs"), "auth")?;
 

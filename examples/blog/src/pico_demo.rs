@@ -18,10 +18,10 @@ pub async fn render_pico_demo_page() -> Html<String> {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Pico.css &mdash; Zero-Build Semantic CSS Engine"</title>
                 <link rel="stylesheet" href="/assets/vendor/pico-2.1.1.slate.min.css" />
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(showcase_nav) }
+                { showcase_nav }
 
                 <div class="pico-container">
                     <div class="pico-hero">
@@ -115,5 +115,5 @@ pub async fn render_pico_demo_page() -> Html<String> {
         </html>
     };
 
-    Html(page_html)
+    Html(page_html.into_string())
 }

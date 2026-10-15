@@ -20,6 +20,10 @@ mod server_function;
 /// It compiles down to highly optimized string concatenations at compile time,
 /// and automatically escapes dynamic variables to prevent XSS.
 ///
+/// The result is a `rullst::html::Markup`: escaped HTML that a handler can
+/// return directly (`text/html; charset=utf-8`) and that another `html!`
+/// inserts as it is.
+///
 /// Dynamic URL attributes (`href`, `src`, `action`, …) render `#` for script or
 /// non-media `data:` URLs; dynamic `on*`/`hx-on*` values do not compile.
 ///
@@ -47,25 +51,25 @@ mod server_function;
 ///
 /// # Composing views
 ///
-/// `html!` returns a plain `String`, and interpolating any `String` with
-/// `{value}` escapes it. A fragment built by another `html!` call is therefore
-/// shown as text (`&lt;span …`) unless you wrap it in
-/// `rullst::html::RawHtml`, which inserts it unescaped. Wrap only fragments
-/// produced by `html!` or other trusted code, never request data.
+/// Interpolating a `Markup` built by another `html!` call inserts it as it
+/// is, while `String`, `&str` and numbers are escaped. `Option<T>` renders
+/// nothing for `None`, and an iterator of `Markup` collects into one `Markup`.
+/// `rullst::html::RawHtml` is only for trusted HTML produced outside `html!`,
+/// never for request data.
 ///
 /// ```rust,ignore
 /// use rullst::html;
-/// use rullst::html::RawHtml;
+/// use rullst::html::Markup;
 ///
-/// fn badge(label: &str) -> String {
+/// fn badge(label: &str) -> Markup {
 ///     html! { <span class="badge">{label}</span> }
 /// }
 ///
-/// let rows: String = ["Ana", "<Bob>"]
+/// let rows: Markup = ["Ana", "<Bob>"]
 ///     .iter()
-///     .map(|name| html! { <li>{name}{RawHtml(badge("new"))}</li> })
+///     .map(|name| html! { <li>{name}{badge("new")}</li> })
 ///     .collect();
-/// let list = html! { <ul>{RawHtml(rows)}</ul> };
+/// let list = html! { <ul>{rows}</ul> };
 /// assert_eq!(
 ///     list,
 ///     "<ul><li>Ana<span class=\"badge\">new</span></li>\
@@ -73,7 +77,7 @@ mod server_function;
 /// );
 /// ```
 ///
-/// This example is compiled and run as a doc test of `rullst::html::RawHtml`.
+/// This example is compiled and run as a doc test of `rullst::html::Markup`.
 #[proc_macro]
 pub fn html(input: TokenStream) -> TokenStream {
     let document = parse_macro_input!(input as html_parser::HtmlDocument);
@@ -89,6 +93,11 @@ pub fn html(input: TokenStream) -> TokenStream {
 ///
 /// Props that cannot be serialized to JSON leave `data-props` empty, so the
 /// server HTML renders without hydration instead of panicking.
+///
+/// On native builds the function returns `rullst::html::Markup`, so an
+/// island is interpolated into `html!` without escaping. The body is the
+/// component's trusted HTML (usually an `html!` result) and is inserted as it
+/// formats with `Display`.
 #[proc_macro_attribute]
 #[allow(clippy::collapsible_if)]
 pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -119,7 +128,7 @@ pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let expanded = quote::quote! {
         #[cfg(not(target_arch = "wasm32"))]
-        #vis fn #name(#(#arg_names: #arg_types),*) -> String {
+        #vis fn #name(#(#arg_names: #arg_types),*) -> rullst::html::Markup {
             let inner_html = {
                 #body
             };
@@ -141,12 +150,12 @@ pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
             let escaped_props = rullst::html::escape_str(&props_json);
 
-            format!(
+            rullst::html::Markup::from_trusted(format!(
                 "<div data-island=\"{}\" data-props=\"{}\">{}</div>",
                 stringify!(#name),
                 escaped_props,
                 inner_html
-            )
+            ))
         }
 
         #[cfg(target_arch = "wasm32")]

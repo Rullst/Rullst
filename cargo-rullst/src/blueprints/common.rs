@@ -134,7 +134,7 @@ pub fn frontend_page_imports(frontend_engine: &str) -> String {
 
 /// Generates the page renderer code block using Rullst's compile-time `html!` macro.
 pub fn render_page_layout(_frontend_engine: &str) -> String {
-    r#"pub fn render_layout(title: &str, body_html: &str) -> String {
+    r#"pub fn render_layout(title: &str, body: rullst::html::Markup) -> rullst::html::Markup {
     rullst::html! {
         <html lang="en" class="dark">
             <head>
@@ -144,7 +144,7 @@ pub fn render_page_layout(_frontend_engine: &str) -> String {
                 <title>{title}</title>
             </head>
             <body>
-                <div>{body_html}</div>
+                <div>{body}</div>
             </body>
         </html>
     }
@@ -179,4 +179,17 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         nexus_block = nexus_block,
         routes_block = routes_block,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_layout_takes_and_returns_markup() {
+        let layout = super::render_page_layout("Zero-Bundle HTMX");
+        assert!(layout.starts_with(
+            "pub fn render_layout(title: &str, body: rullst::html::Markup) -> rullst::html::Markup {"
+        ));
+        assert!(layout.contains("<div>{body}</div>"));
+        syn::parse_file(&layout).expect("the layout parses");
+    }
 }

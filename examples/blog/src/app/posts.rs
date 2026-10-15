@@ -5,10 +5,7 @@ use axum::http::StatusCode;
 use axum::{Extension, Form};
 use rullst::db::FromRow;
 use rullst::security::TenantContext;
-use rullst::{
-    html,
-    response::{Html, Redirect},
-};
+use rullst::{html, response::Redirect};
 use rullst_orm::with_tenant;
 
 // --- Post Model & Active Record Query Builder ---
@@ -193,7 +190,7 @@ pub async fn recent_posts(tenant_id: &str) -> Result<Vec<Post>, rullst_orm::Erro
     .await
 }
 
-fn render_post_list(posts: &[Post]) -> String {
+fn render_post_list(posts: &[Post]) -> html::Markup {
     if posts.is_empty() {
         html! {
             <div class="empty-state">
@@ -201,7 +198,7 @@ fn render_post_list(posts: &[Post]) -> String {
             </div>
         }
     } else {
-        let items: String = posts
+        let items: html::Markup = posts
             .iter()
             .map(|post| {
                 html! {
@@ -227,7 +224,7 @@ fn render_post_list(posts: &[Post]) -> String {
 pub async fn index(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
     Extension(tenant): Extension<TenantContext>,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<html::Markup, StatusCode> {
     let posts = recent_posts(&tenant.tenant_id)
         .await
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
@@ -235,16 +232,16 @@ pub async fn index(
     let head_assets = render_head_assets();
     let post_list_html = render_post_list(&posts);
 
-    Ok(Html(html! {
+    Ok(html! {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Sovereign SaaS Blog & Publisher"</title>
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(nav) }
+                { nav }
                 <div class="container">
                     <div class="card">
                         <div class="card-header">
@@ -278,13 +275,13 @@ pub async fn index(
                     <div class="card">
                         <h2 class="card-title">"Published Stories (Scoped by Tenant)"</h2>
                         <div>
-                            { rullst::html::RawHtml(post_list_html) }
+                            { post_list_html }
                         </div>
                     </div>
                 </div>
             </body>
         </html>
-    }))
+    })
 }
 
 /// Stores a new post via Active Record in the request's tenant.

@@ -13,7 +13,10 @@ pub trait RenderAdapter: Send + Sync {
     fn render_to_html(&self) -> String;
 }
 
-/// HTML adapter for raw HTML string responses (`rullst::html!`).
+/// HTML adapter for raw HTML string responses.
+///
+/// `rullst::html!` output is [`Markup`](crate::html::Markup), which is a
+/// response by itself; pass `markup.into_string()` to use this wrapper.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HtmlAdapter(pub String);
 

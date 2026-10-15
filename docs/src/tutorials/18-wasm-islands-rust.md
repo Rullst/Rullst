@@ -60,6 +60,11 @@ also declares the module in `src/islands/mod.rs`, adds `pub mod islands;` to
 `src/lib.rs` (creating that file when it is absent), and adds any missing
 `serde`, `serde_json`, `wasm-bindgen` and `web-sys` dependencies.
 
+On the server the island function returns `rullst::html::Markup`: the
+component's HTML wrapped in its `data-island` element. Place it in a page by
+interpolating the call inside `html!`, as `{interactive_chart(props)}`; it is
+inserted as HTML, not escaped.
+
 ## Build and load the artifact
 
 ```bash

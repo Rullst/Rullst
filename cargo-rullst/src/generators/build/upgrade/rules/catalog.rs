@@ -49,6 +49,12 @@ rules! {
     HTML_EVENT_HANDLER: "V13-HTML-DYNAMIC-EVENT-HANDLER", MustChange, "`html!` event handlers",
         "a dynamic value in an `on*`/`hx-on*` attribute of `html!` no longer compiles",
         "Use a static handler string, or move the handler into a nonce'd script with `addEventListener` and pass the value through a `data-*` attribute.";
+    HTML_MARKUP_RETURN: "V13-HTML-MARKUP-RETURN", MustChange, "`html!` returns `Markup`",
+        "`html!` now returns `rullst::html::Markup`; a function declared to return a `String` built by `html!` no longer compiles",
+        "Declare the function `-> Markup` (`use rullst::html::Markup;`) so other `html!` calls insert it without `RawHtml`; call `.into_string()` only where a `String` is really needed.";
+    HTML_RAW_MARKUP: "V13-HTML-RAW-MARKUP", MustChange, "`html!` returns `Markup`",
+        "`RawHtml` wraps `html!` output, which is now `Markup` and is inserted into other `html!` calls without it",
+        "Interpolate the `Markup` directly (`{badge}`), collect fragments with `.collect::<Markup>()` and keep `RawHtml` only for trusted HTML produced outside `html!`.";
     VALIDATION_STATUS: "V13-VALIDATION-STATUS", Review, "Core request validation",
         "`ValidatedForm`/`ValidatedJson` now answer 413/415 for oversized or wrong-type bodies and key nested errors by path",
         "Update clients and tests that expected 400 for these cases and nested error keys such as `address.zip` or `items[0].name`.";

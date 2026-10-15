@@ -4,7 +4,7 @@
 use rullst::html;
 
 /// Renders the universal Sovereign Showcase Header with navigation buttons.
-pub fn render_showcase_nav(active_route: &str) -> String {
+pub fn render_showcase_nav(active_route: &str) -> html::Markup {
     let routes = [
         (
             "/",
@@ -53,7 +53,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
         ),
     ];
 
-    let buttons_html: String = routes
+    let buttons_html: html::Markup = routes
         .iter()
         .map(|(path, label, title)| {
             let is_active = *path == active_route;
@@ -86,7 +86,8 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                 </a>
             },
         ]
-        .concat()
+        .into_iter()
+        .collect::<html::Markup>()
     } else {
         [
             html! {
@@ -100,7 +101,8 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                 </span>
             },
         ]
-        .concat()
+        .into_iter()
+        .collect::<html::Markup>()
     };
 
     html! {
@@ -120,18 +122,18 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                 </button>
 
                 <div class="showcase-nav-list desktop-nav">
-                    { rullst::html::RawHtml(buttons_html.clone()) }
+                    { &buttons_html }
                 </div>
                 <div class="showcase-portals desktop-nav">
-                    { rullst::html::RawHtml(portals_html.clone()) }
+                    { &portals_html }
                 </div>
 
                 <div id="showcase-drawer" class="showcase-mobile-drawer">
                     <div class="showcase-mobile-nav-list">
-                        { rullst::html::RawHtml(buttons_html) }
+                        { buttons_html }
                     </div>
                     <div class="showcase-mobile-portals">
-                        { rullst::html::RawHtml(portals_html) }
+                        { portals_html }
                     </div>
                 </div>
             </div>
@@ -144,7 +146,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
 /// The production Content Security Policy (`style-src 'self' 'nonce-…'`,
 /// `script-src 'self' 'nonce-…'`) admits these files without nonces or a
 /// relaxed policy; see [`crate::assets`].
-pub fn render_head_assets() -> String {
+pub fn render_head_assets() -> html::Markup {
     html! {
         <link rel="icon" type="image/png" href="/assets/rullst-logo.png" />
         <link rel="stylesheet" href="/assets/showcase.css" />

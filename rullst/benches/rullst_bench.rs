@@ -67,7 +67,7 @@ fn bench_html_macro(c: &mut Criterion) {
                 <div class="user-profile">
                     <h2>"Hello, "{name}"!"</h2>
                     <ul>
-                        { items.iter().map(|item| html! { <li>{item}</li> }).collect::<String>() }
+                        { items.iter().map(|item| html! { <li>{item}</li> }).collect::<rullst::html::Markup>() }
                     </ul>
                 </div>
             };

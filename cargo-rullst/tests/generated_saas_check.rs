@@ -301,7 +301,7 @@ fn start_generated_workers(
 // Mount the generated component the way `make:live` tells users to, so the
 // strict build checks that wiring instead of rejecting an unused struct.
 #[allow(dead_code)]
-async fn mount_generated_live_component() -> String {
+async fn mount_generated_live_component() -> rullst::html::Markup {
     rullst::live::Live::mount::<live::live_counter::LiveCounter>("/ws/live_counter").await
 }
 "#;

@@ -37,9 +37,41 @@ A prepared version section does not establish that its tag or crates exist.
   `<use href="#icon" />`, and a leading `<!DOCTYPE html>`, which it emits as
   written. Other `<!…>` declarations, or a doctype after other content, are
   compile errors.
-- The `html!` and `RawHtml` docs and the HTMX tutorial explain composing views:
-  `html!` returns a `String`, an interpolated `String` is escaped, and trusted
-  fragments are wrapped in `RawHtml`.
+- **Breaking:** `html!` returns `rullst::html::Markup` instead of `String`
+  (dogfooding #14). Interpolating a `Markup` inserts it as HTML, so a view
+  built by another `html!` call nests without `RawHtml` instead of showing up
+  as escaped text; `String`, `&str` and numbers are still escaped.
+  `Option<T>` renders nothing for `None`, an iterator of `Markup` collects
+  into one `Markup`, a `Markup` in an attribute value is escaped like text,
+  and a handler can return `Markup` directly
+  (`text/html; charset=utf-8`). `Markup` reads like a `&str` (`contains`,
+  `==` with strings, `Display`) and `.into_string()` returns the `String`;
+  only `Markup::from_trusted` and `RawHtml` turn a `String` into HTML.
+  Functions declared `-> String` that return `html!` and `RawHtml(html! {..})`
+  no longer compile; `cargo rullst upgrade` reports both
+  (`V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`):
+
+  ```rust
+  // Before
+  fn badge(label: &str) -> String {
+      html! { <span class="badge">{label}</span> }
+  }
+  let cell = html! { <td>{RawHtml(badge("new"))}</td> };
+
+  // After
+  fn badge(label: &str) -> Markup {
+      html! { <span class="badge">{label}</span> }
+  }
+  let cell = html! { <td>{badge("new")}</td> };
+  ```
+- `render_page` and `render_page_with_lang` take `impl Into<Markup>` instead
+  of `String`; pass `html!` output as before, or wrap other trusted HTML with
+  `Markup::from_trusted`. `Live::mount` and native `#[island]` functions
+  return `Markup`, a `#[live_component]` `render` method may return `Markup`
+  (or `String`), and `#[memoize]` caches functions that return `Markup`.
+- The `html!`, `Markup` and `RawHtml` docs, the spec, the HTMX tutorial, the
+  generated starters and `make:auth` views compose views with `Markup` and
+  keep `RawHtml` for trusted HTML produced outside `html!`.
 - The README, Getting Started, CLI reference and v13 migration guide show how
   to install the v13 CLI (`cargo install cargo-rullst --version =13.0.0-alpha.1
   --locked`) and pin v13 dependencies with `=`, with `default-features = false`

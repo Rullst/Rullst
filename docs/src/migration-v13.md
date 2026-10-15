@@ -56,6 +56,7 @@ Rows without rules still need a reading.
 | LMS blueprint | `--blueprint lms` now generates a small starter: catalog, modules, lessons, an accessible player, enrollment, owner-bound progress, login and a Nexus admin. The complete Academy scaffold (schools, roles, quizzes, activities, scores, automation, notifications, publication, privacy lifecycle) and `--lms-modules` were removed; existing generated applications keep their code. Registration no longer generates the school-membership hook, and the learner dashboard no longer claims a default demo school: it points to the course catalog. |
 | Consumer generators | `make:supervision` was removed with the complete Academy LMS it targeted; integrate `rullst-supervision` directly. `make:privacy` and `make:age-gate` now target only the SaaS starter (`--blueprint saas`, which requires `--tenant-ref`). |
 | `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. |
+| `html!` returns `Markup` | Since 13.0.0-alpha.2, `html!` returns `rullst::html::Markup` (escaped HTML) instead of `String`. Interpolating a `Markup` inserts it as HTML, so a fragment built by another `html!` call is no longer shown as escaped text and needs no `RawHtml`; `String`, `&str` and numbers are still escaped. A function declared `-> String` that returns `html!` no longer compiles: declare it `-> Markup`. `RawHtml(html! { .. })` no longer compiles: interpolate the `Markup` directly. Collect lists with `.collect::<Markup>()` (collecting `Markup` into a `String` does not compile) and use `Option<Markup>` for optional parts. `render_page`/`render_page_with_lang` take `impl Into<Markup>` (wrap a `String` of trusted HTML with `Markup::from_trusted`), and `Live::mount` and native `#[island]` functions return `Markup`. A handler can return `Markup` (`text/html; charset=utf-8`), `Html(html! { .. })` still compiles, `Markup` compares with and reads like a `&str`, and `.into_string()` returns the `String`. See [`html!` returns `Markup`](#html-returns-markup). |
 | Core request validation | `ValidatedForm`/`ValidatedJson` return 413 for oversized bodies and 415 for a wrong content type (HTMX requests receive the same code in `X-Rullst-Validation-Status`); other read failures stay 400. Nested errors are keyed `address.zip` and `items[0].name`, and `ValidationError` formatting no longer includes submitted values. Update clients or tests that expected 400 for these cases. |
 | Core feature flags and scheduler | A user outside a declared A/B split now resolves to `"disabled"` instead of falling through to the next driver, and a negative database `rollout_percentage` means 0%. `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) with the day-of-month OR day-of-week rule in UTC; review numeric weekdays in existing schedules. `RullstConfig::environment()` now reports the environment the Server enforces, including a value read from `.env`. Percentage rollouts and A/B variants of the Env, TOML, Memory and DB drivers use a versioned SHA-256 bucket hash instead of `std`'s `DefaultHasher`, so upgrading reassigns users to buckets once (percentages and variant weights are kept). End experiments whose assignment must not change before upgrading, and keep the period in which 12.x and 13 replicas both serve short, because they assign the same user differently. |
 | Memory feature-flag splits | A `MemoryFeatureDriver::override_variants` flag (including `FeatureManager::overrides()`) no longer reports `enabled`/`enabled_for` as true for everyone. Like the Env, TOML and DB drivers, `enabled_for` is true only for identifiers assigned a variant named `"enabled"`; like the Env and TOML drivers, `enabled` is false. Gate A/B code on `variant`. |
@@ -219,6 +220,57 @@ Rows without rules still need a reading.
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
 to 13 does not perform those application/database migrations.
+
+### `html!` returns `Markup`
+
+`cargo rullst upgrade` reports `V13-HTML-MARKUP-RETURN` for a function that
+declares a `String` (`String`, `Html<String>`, `Result<String, _>`) and
+returns `html!`, and `V13-HTML-RAW-MARKUP` for `RawHtml` around `html!`
+output. Before:
+
+```rust,ignore
+use rullst::html;
+use rullst::html::RawHtml;
+
+fn badge(label: &str) -> String {
+    html! { <span class="badge">{label}</span> }
+}
+
+fn rows(names: &[&str]) -> String {
+    let rows: String = names
+        .iter()
+        .map(|name| html! { <tr><td>{name}</td><td>{RawHtml(badge("new"))}</td></tr> })
+        .collect();
+    html! { <table>{RawHtml(rows)}</table> }
+}
+```
+
+After:
+
+```rust
+use rullst::html;
+use rullst::html::Markup;
+
+fn badge(label: &str) -> Markup {
+    html! { <span class="badge">{label}</span> }
+}
+
+fn rows(names: &[&str]) -> Markup {
+    let rows: Markup = names
+        .iter()
+        .map(|name| html! { <tr><td>{name}</td><td>{badge("new")}</td></tr> })
+        .collect();
+    html! { <table>{rows}</table> }
+}
+
+assert_eq!(
+    rows(&["<Ana>"]),
+    "<table><tr><td>&lt;Ana&gt;</td><td><span class=\"badge\">new</span></td></tr></table>"
+);
+```
+
+Keep `RawHtml` (or `Markup::from_trusted`) only for trusted HTML produced
+outside `html!`, such as a sanitizer's output, and never for request data.
 
 ### Projects generated by the 12.0 CLI
 

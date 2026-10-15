@@ -80,7 +80,10 @@ impl Live {
     /// Generates the wrapper `<div>` tag that activates the `hx-ext="ws"` HTMX extension.
     /// It pre-renders (`mount` + `render`) on the first load. Search-engine
     /// behavior still depends on the rendered document and deployment.
-    pub async fn mount<C: LiveComponent>(ws_path: &str) -> String {
+    ///
+    /// The result is [`Markup`](crate::html::Markup): interpolate it into
+    /// `html!` as it is, or return it from a handler.
+    pub async fn mount<C: LiveComponent>(ws_path: &str) -> crate::html::Markup {
         let mut comp = C::default();
         comp.mount().await;
         let html = comp.render();
@@ -93,11 +96,12 @@ impl Live {
             .replace('<', "&lt;")
             .replace('>', "&gt;");
 
-        // Wrap the component in an invisible div that instructs HTMX to open the WebSocket
-        format!(
+        // Wrap the component in an invisible div that instructs HTMX to open
+        // the WebSocket. `render` returns the component's own HTML.
+        crate::html::Markup::from_trusted(format!(
             "<div hx-ext=\"ws\" ws-connect=\"{}\">\n{}\n</div>",
             safe_path, html
-        )
+        ))
     }
 }
 
@@ -220,5 +224,10 @@ mod tests {
         assert!(html.contains("<h1>Live Demo</h1>"));
         assert_ne!(html, "xyzzy");
         assert_ne!(html, "");
+        // The mounted component is Markup, so a page inserts it as HTML.
+        assert_eq!(
+            crate::html! { <main>{html}</main> },
+            "<main><div hx-ext=\"ws\" ws-connect=\"/ws/demo?a=1&amp;b=2\">\n<h1>Live Demo</h1>\n</div></main>"
+        );
     }
 }

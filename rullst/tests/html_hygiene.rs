@@ -29,18 +29,20 @@ fn caller_string_is_borrowed_instead_of_capturing_generated_markup() {
 }
 
 #[test]
-fn closure_binding_keeps_escaped_content_and_explicit_raw_html_contract() {
+fn closure_binding_keeps_escaped_content_and_nested_markup() {
     let values = [Label { text: "<one>" }, Label { text: "&two" }];
-    let rows = values
+    let s = values
         .iter()
         .enumerate()
         .map(|(i, s)| html! { <li data-index={i}>{s.text}</li> })
-        .collect::<String>();
-    let s = html::RawHtml::new(rows);
+        .collect::<html::Markup>();
     assert_eq!(
         html! { <ul>{s}</ul> },
         "<ul><li data-index=\"0\">&lt;one&gt;</li><li data-index=\"1\">&amp;two</li></ul>"
     );
+    // A String taken out of the Markup is text again.
+    let s = html! { <b>"x"</b> }.into_string();
+    assert_eq!(html! { <p>{s}</p> }, "<p>&lt;b&gt;x&lt;/b&gt;</p>");
 }
 
 #[test]

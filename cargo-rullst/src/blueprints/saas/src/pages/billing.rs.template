@@ -1,7 +1,7 @@
 use rullst::html;
 use rullst::response::Html;
 
-fn pricing_navbar() -> String {
+fn pricing_navbar() -> html::Markup {
     html! {
         <nav class="pricing-nav" aria-label="Application links">
             <a href="/login" class="pricing-nav__link">"🔑 Login"</a>
@@ -14,7 +14,7 @@ fn pricing_navbar() -> String {
     }
 }
 
-fn pricing_setup_banner() -> String {
+fn pricing_setup_banner() -> html::Markup {
     html! {
         <div class="setup-banner">
             <div class="setup-banner-icon">"🚀"</div>
@@ -26,7 +26,7 @@ fn pricing_setup_banner() -> String {
     }
 }
 
-fn pricing_header() -> String {
+fn pricing_header() -> html::Markup {
     html! {
         <div class="header">
             <span class="badge">"Rullst Capital"</span>
@@ -36,7 +36,7 @@ fn pricing_header() -> String {
     }
 }
 
-fn pricing_plans(csrf_token: &str) -> String {
+fn pricing_plans(csrf_token: &str) -> html::Markup {
     html! {
         <div class="pricing-grid">
             <div class="pricing-card">
@@ -86,6 +86,7 @@ pub fn pricing_page(csrf_token: &str, _csp_nonce: &str) -> Html<String> {
     let banner_code = pricing_setup_banner();
 
     let document = html! {
+        <!DOCTYPE html>
         <html lang="en">
             <head>
                 <meta charset="UTF-8" />
@@ -98,13 +99,13 @@ pub fn pricing_page(csrf_token: &str, _csp_nonce: &str) -> Html<String> {
                 <div class="glow-bg"></div>
                 <div class="glow-bg-right"></div>
                 <div class="container">
-                    { rullst::html::RawHtml(pricing_navbar()) }
-                    { rullst::html::RawHtml(banner_code) }
-                    { rullst::html::RawHtml(pricing_header()) }
-                    { rullst::html::RawHtml(pricing_plans(csrf_token)) }
+                    { pricing_navbar() }
+                    { banner_code }
+                    { pricing_header() }
+                    { pricing_plans(csrf_token) }
                 </div>
             </body>
         </html>
     };
-    Html(format!("<!DOCTYPE html>{document}"))
+    Html(document.into_string())
 }

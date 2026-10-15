@@ -1,6 +1,6 @@
-use rullst::html::RawHtml;
+use rullst::html::Markup;
 use rullst::security::{CspNonce, CsrfToken};
-use rullst::server::{Extension, Html, IntoResponse, Path, Redirect, Response, StatusCode};
+use rullst::server::{Extension, IntoResponse, Path, Redirect, Response, StatusCode};
 use rullst::{html, HtmxRequest, HtmxResponse, Validate, ValidatedForm};
 use rullst_security::{RbacGuard, UserContext};
 use serde::Deserialize;
@@ -42,8 +42,9 @@ fn back_to_list(htmx: &HtmxRequest) -> Response {
     }
 }
 
-fn page(nonce: &CspNonce, title: &str, content: String) -> Html<String> {
-    Html(format!("<!DOCTYPE html>{}", html! {
+fn page(nonce: &CspNonce, title: &str, content: Markup) -> Markup {
+    html! {
+        <!DOCTYPE html>
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
@@ -52,12 +53,12 @@ fn page(nonce: &CspNonce, title: &str, content: String) -> Html<String> {
                 <link rel="stylesheet" href="/static/rullst.css" />
                 <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
             </head>
-            <body><main class="container">{RawHtml(content)}</main></body>
+            <body><main class="container">{content}</main></body>
         </html>
-    }))
+    }
 }
 
-fn note_form(action: &str, csrf: &CsrfToken, title: &str, body: &str, button: &str) -> String {
+fn note_form(action: &str, csrf: &CsrfToken, title: &str, body: &str, button: &str) -> Markup {
     html! {
         <form method="post" action={action} hx-post={action} hx-target="#errors">
             <input type="hidden" name="_token" value={csrf.as_str()} />
@@ -76,14 +77,14 @@ pub async fn index(
     Extension(user_id): Extension<i32>,
     Extension(csrf): Extension<CsrfToken>,
     Extension(nonce): Extension<CspNonce>,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<Markup, StatusCode> {
     let notes = Note::query()
         .where_eq("user_id", user_id)
         .order_by_desc("id")
         .get()
         .await
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-    let items: String = notes
+    let items: Markup = notes
         .iter()
         .map(|note| {
             let href = format!("/notes/{}", note.id);
@@ -92,9 +93,9 @@ pub async fn index(
         .collect();
     let content = html! {
         <h1>"My notes"</h1>
-        <ul id="notes">{RawHtml(items)}</ul>
+        <ul id="notes">{items}</ul>
         <h2>"New note"</h2>
-        {RawHtml(note_form("/notes", &csrf, "", "", "Add note"))}
+        {note_form("/notes", &csrf, "", "", "Add note")}
     };
     Ok(page(&nonce, "My notes", content))
 }
@@ -116,14 +117,14 @@ pub async fn show(
     Extension(user_id): Extension<i32>,
     Extension(csrf): Extension<CsrfToken>,
     Extension(nonce): Extension<CspNonce>,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<Markup, StatusCode> {
     let note = find_owned(user_id, id).await?;
     let action = format!("/notes/{id}");
     let delete = format!("/notes/{id}/delete");
     let content = html! {
         <p><a href="/notes">"← All notes"</a></p>
         <h1>{note.title.as_str()}</h1>
-        {RawHtml(note_form(&action, &csrf, &note.title, &note.body, "Save"))}
+        {note_form(&action, &csrf, &note.title, &note.body, "Save")}
         <form method="post" action={delete.as_str()}>
             <input type="hidden" name="_token" value={csrf.as_str()} />
             <button type="submit">"Delete"</button>

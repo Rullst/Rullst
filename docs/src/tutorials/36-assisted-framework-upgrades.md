@@ -397,14 +397,14 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (8 rows);
+  application source (9 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (93 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (54 rows).
 
-The catalog has 100 rules. A row can map to several rules and a rule to
+The catalog has 102 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -425,6 +425,7 @@ the rule together.
 | LMS blueprint | (c) none | — | Generator output; existing applications keep their code |
 | Consumer generators | (c) none | — | Generator commands |
 | `html!` event handlers | (a) must-change | `V13-HTML-DYNAMIC-EVENT-HANDLER` |  |
+| `html!` returns `Markup` | (a) must-change | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP` | Located in function signatures and `RawHtml` calls, including `html!` bodies; a `String` collected from `html!` output, an `#[island]` call or `Live::mount` output is reported where `RawHtml` wraps it |
 | Core request validation | (b) review | `V13-VALIDATION-STATUS` |  |
 | Core feature flags and scheduler | (b) review | `V13-SCHEDULER-WEEKDAYS` | A/B splits: the two feature-flag rules below; the bucket reassignment depends on flag configuration and is not located |
 | Memory feature-flag splits | (b) review | `V13-MEMORY-FEATURE-SPLITS` |  |

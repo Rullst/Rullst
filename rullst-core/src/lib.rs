@@ -160,6 +160,9 @@ pub mod response {
 }
 
 // Re-export HTMX primitives for convenience
+/// The escaped HTML type returned by `html!`.
+#[cfg(not(target_arch = "wasm32"))]
+pub use html::Markup;
 #[cfg(not(target_arch = "wasm32"))]
 pub use htmx::{HtmxRequest, HtmxResponse, render_page, render_page_with_lang};
 #[cfg(not(target_arch = "wasm32"))]

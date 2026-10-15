@@ -107,3 +107,27 @@ async fn path_qualified_live_event_markers_dispatch_their_handlers() {
         .await;
     assert_eq!(LiveComponent::render(&component), "1 1");
 }
+
+#[derive(Default)]
+struct Badge {
+    count: u32,
+}
+
+#[crate::live_component]
+impl Badge {
+    #[crate::live_event]
+    fn bump(&mut self) {
+        self.count += 1;
+    }
+
+    pub fn render(&self) -> crate::html::Markup {
+        crate::html! { <span id="badge">{self.count}</span> }
+    }
+}
+
+#[tokio::test]
+async fn render_methods_returning_markup_feed_the_live_component_trait() {
+    let mut badge = Badge::default();
+    badge.handle_event(json!({"rullst_event": "bump"})).await;
+    assert_eq!(LiveComponent::render(&badge), "<span id=\"badge\">1</span>");
+}
