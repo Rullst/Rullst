@@ -201,5 +201,40 @@ mod tests {
         assert!(validate_addresses(&[private], true).is_ok());
         assert!(validate_addresses(&[], false).is_err());
         assert!(validate_addresses(&[public; 17], false).is_err());
+        assert!(validate_addresses(&[public; 16], false).is_ok());
+    }
+
+    #[test]
+    fn ranges_next_to_denied_blocks_stay_public() {
+        // Each address shares only part of a denied prefix, so it is ordinary
+        // global unicast.
+        for value in [
+            "100.1.0.1",
+            "1.64.0.1",
+            "169.1.0.1",
+            "1.254.0.1",
+            "172.1.0.1",
+            "1.16.0.1",
+            "192.1.0.1",
+            "192.0.1.1",
+            "192.88.1.1",
+            "1.88.99.1",
+            "198.1.0.1",
+            "198.51.1.1",
+            "1.51.100.1",
+            "1.0.113.1",
+            "1.1.113.1",
+            "2401::1",
+            "2400::1",
+            "2001:200::1",
+            "2001:d00::1",
+            "2001:fb8::1",
+            "2003::1",
+            "2a02::1",
+            "2aff::1",
+            "3fff:1000::1",
+        ] {
+            assert!(public_address(value.parse().unwrap()), "{value}");
+        }
     }
 }
