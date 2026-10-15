@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792079816640,
+  "lastUpdate": 1792085942621,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26927,6 +26927,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1941,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ad1b2881063979202158e45f0ab70d8520a8ec0",
+          "message": "Merge pull request #499 from Rullst/feat/v13-i18n\n\nfeat(i18n): compile-time checked translation catalogs and locale negotiation",
+          "timestamp": "2026-10-15T14:31:52-03:00",
+          "tree_id": "75cb62375a49b93879e17ecb083ee8ef85e51fd6",
+          "url": "https://github.com/Rullst/Rullst/commit/5ad1b2881063979202158e45f0ab70d8520a8ec0"
+        },
+        "date": 1792085939496,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 785,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1022,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 398,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2016,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
