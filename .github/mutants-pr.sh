@@ -17,6 +17,12 @@ command=(cargo mutants --workspace --all-features --in-diff "$diff_file")
 while IFS= read -r glob; do
   command+=(--exclude "$glob")
 done < <(grep -vE '^[[:space:]]*(#|$)' "$root/.github/mutants-pr-exclude.txt")
+# Accepted equivalents (WORKFLOWS.md) are listed by their exact cargo-mutants
+# name, `file:line:col: description`. A line that moves is mutated again.
+while IFS= read -r name; do
+  escaped=$(printf '%s' "$name" | sed -e 's/[][\.*+?(){}|^$]/\\&/g')
+  command+=(--exclude-re "^${escaped}\$")
+done < <(grep -vE '^[[:space:]]*(#|$)' "$root/.github/mutants-pr-equivalents.txt")
 
 case "${1:-}" in
   list)
