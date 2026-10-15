@@ -1,6 +1,8 @@
 // cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, Nix, and Buildah configuration.
 
-use crate::blueprints::{BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::{
+    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
+};
 use crate::generators::project::PolyglotIntegration;
 use crate::generators::project::has_binary;
 use colored::*;
@@ -210,6 +212,19 @@ MAIL_FROM=
 # ── Public origin ──
 # Canonical HTTPS origin (no path) for the absolute URLs in robots.txt and
 # sitemap.xml, e.g. https://blog.example.com. Unset, neither lists a URL.
+RULLST_PUBLIC_ORIGIN=
+"#;
+        env_content.push_str(origin_template);
+        env_example_content.push_str(origin_template);
+    }
+
+    if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
+        // Reset links must never be built from the request's Host header.
+        let origin_template = r#"
+# ── Public origin ──
+# Canonical HTTPS origin (no path) that password reset emails link to, e.g.
+# https://app.example.com. Unset, development links use http://localhost:3000
+# and staging/production send no reset link.
 RULLST_PUBLIC_ORIGIN=
 "#;
         env_content.push_str(origin_template);

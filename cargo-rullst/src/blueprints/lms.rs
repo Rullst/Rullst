@@ -145,6 +145,21 @@ pub fn file_manifest(
         "src/controllers/auth_controller.rs",
         crate::generators::auth::controllers::render_auth_controller(None),
     ));
+    // Password change and reset by email; both end every other session.
+    manifest.push((
+        "src/controllers/password_controller.rs",
+        crate::generators::auth::passwords::render_password_controller(),
+    ));
+    manifest.push((
+        "src/models/password_reset.rs",
+        crate::generators::auth::passwords::render_password_reset_model(),
+    ));
+    manifest.push((
+        "src/migrations/m20260827000001_create_password_reset_tokens_table.rs",
+        crate::generators::auth::passwords::render_password_reset_migration(
+            "m20260827000001_create_password_reset_tokens_table",
+        ),
+    ));
     // The catalog and course pages followed by the CSP-compatible lesson player.
     manifest.push((
         "src/pages/lms.rs",

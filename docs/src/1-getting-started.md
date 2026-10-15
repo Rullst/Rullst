@@ -185,6 +185,8 @@ A small, readable learning foundation featuring:
 - An accessible server-rendered video/audio player with explicit source,
   caption and transcript admission rules.
 - Registration, login, enrollment and owner-bound, idempotent lesson progress.
+- Password change and password reset by email (single-use links built from
+  `RULLST_PUBLIC_ORIGIN`); both sign out the account's other sessions.
 - A Nexus admin for categories, courses, modules, lessons, users and enrollments.
 
 It remains a starter rather than a finished education product. Upload hosting,
@@ -197,7 +199,9 @@ complete Academy scaffold with this starter.
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
 An opinionated SaaS starting point, pre-wired with:
-- User authentication (login, signup, session management).
+- User authentication (login, signup, session management, sign out
+  everywhere, password change and password reset by email with links built
+  from `RULLST_PUBLIC_ORIGIN`).
 - Stripe pricing panels and subscription checkout views.
 - Secure user dashboard.
 

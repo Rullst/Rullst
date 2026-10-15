@@ -2,7 +2,9 @@
 // The model and migration templates live under `src/` beside this module.
 
 use crate::generators::{
-    ProjectOrmBackend, auth::models::with_session_epoch_methods, billing::render_billing_models,
+    ProjectOrmBackend,
+    auth::{models::with_session_epoch_methods, passwords},
+    billing::render_billing_models,
 };
 
 pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
@@ -17,6 +19,10 @@ pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
             "src/models/user.rs",
             with_session_epoch_methods(include_str!("src/models/user.rs.template")),
         ),
+        (
+            "src/models/password_reset.rs",
+            passwords::render_password_reset_model(),
+        ),
         ("src/models/subscription.rs", subscription_model),
         ("src/models/billing_customer.rs", billing_customer_model),
         (
@@ -27,6 +33,12 @@ pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
             "src/migrations/m20260601000000_create_users_table.rs",
             include_str!("src/migrations/m20260601000000_create_users_table.rs.template")
                 .to_string(),
+        ),
+        (
+            "src/migrations/m20260601000001_create_password_reset_tokens_table.rs",
+            passwords::render_password_reset_migration(
+                "m20260601000001_create_password_reset_tokens_table",
+            ),
         ),
         (
             "src/migrations/m20260601000002_create_subscriptions_table.rs",

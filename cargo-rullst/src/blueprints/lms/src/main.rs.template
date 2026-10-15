@@ -28,23 +28,35 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
         get("/login" => controllers::auth_controller::login_view),
         get("/register" => controllers::auth_controller::register_view),
         post("/logout" => controllers::auth_controller::logout),
+        get("/password/forgot" => controllers::password_controller::forgot_password_view),
+        get("/password/reset" => controllers::password_controller::reset_password_view),
     ]
     // Each credential submission runs Argon2id, so it is budgeted per client.
     .route("/login", rullst::routing::post(controllers::auth_controller::login_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    // Reset requests send mail and resets run Argon2id: both are budgeted per client.
+    .route("/password/forgot", rullst::routing::post(controllers::password_controller::forgot_password_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/password/reset", rullst::routing::post(controllers::password_controller::reset_password_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)));
     let learning = routes![
         get("/dashboard" => controllers::auth_controller::dashboard),
         // Bumps the account's session epoch: every device is signed out.
         post("/logout/everywhere" => controllers::auth_controller::logout_everywhere),
+        get("/password/change" => controllers::password_controller::change_password_view),
         // rullst-access: owner — the authenticated session owns the enrollment created by the service.
         post("/courses/{id}/enroll" => controllers::learning_controller::enroll),
         // rullst-access: owner — the handler requires the authenticated learner's active enrollment.
         get("/lessons/{id}/play" => controllers::learning_controller::play_lesson),
         // rullst-access: owner — progress is persisted only for the authenticated learner and lesson.
         post("/lessons/{id}/progress" => controllers::learning_controller::record_progress),
-    ].layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));
+    ]
+    // A password change bumps the session epoch: every other device is signed out.
+    .route("/password/change", rullst::routing::post(controllers::password_controller::change_password_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));
 
     Ok(public
         .merge_axum(learning.into_axum())

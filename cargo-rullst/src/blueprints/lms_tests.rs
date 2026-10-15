@@ -67,8 +67,10 @@ fn starter_is_small_explicit_and_excludes_academy_verticals() {
             "{excluded}"
         );
     }
+    // 27 files plus the password change/reset controller, its token model
+    // and its migration.
     assert!(
-        manifest.len() < 30,
+        manifest.len() <= 30,
         "starter emitted {} files",
         manifest.len()
     );

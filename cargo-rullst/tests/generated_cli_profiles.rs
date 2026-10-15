@@ -69,7 +69,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
         name: "lms-sqlite",
         group: ProfileGroup::Basic,
         arguments: &["--blueprint", "lms", "--database", "sqlite"],
-        required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth"],
+        required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth", "mail"],
         rejected_rullst_features: &["strict-postgres", "strict-mysql", "capital"],
         router_returns_result: None,
         run_tests: true,
@@ -78,7 +78,15 @@ const PROFILE_CASES: [ProfileCase; 7] = [
         name: "saas-sqlite",
         group: ProfileGroup::Basic,
         arguments: &["--blueprint", "saas", "--database", "sqlite"],
-        required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth", "capital"],
+        required_rullst_features: &[
+            "orm",
+            "strict-sqlite",
+            "studio",
+            "nexus",
+            "auth",
+            "mail",
+            "capital",
+        ],
         rejected_rullst_features: &["strict-postgres", "strict-mysql"],
         router_returns_result: None,
         run_tests: true,
@@ -394,7 +402,7 @@ fn blank_sqlite_auth_and_mfa_scaffolds_compile() {
     rullst(&project.path, &["auth".as_ref()]);
     rullst(&project.path, &["make:mfa".as_ref()]);
     let features = rullst_features(&project.path);
-    for required in ["orm", "auth", "security"] {
+    for required in ["orm", "auth", "mail", "security"] {
         assert!(features.iter().any(|feature| feature == required));
     }
 
