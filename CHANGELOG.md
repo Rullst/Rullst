@@ -23,6 +23,26 @@ A prepared version section does not establish that its tag or crates exist.
   example), as the release notes advise; a caret requirement also accepted
   later prereleases.
 
+### Fixes from alpha.1 dogfooding
+
+- `rullst-auth` login cookies can now be revoked.
+  `make_login_cookie_with_epoch(user_id, epoch, max_age)` and
+  `encrypt_session_with_epoch` put a per-user session epoch in the cookie;
+  `decrypt_session_claims` returns `SessionClaims`, whose `verify_epoch`
+  refuses a cookie carrying another epoch than the one the application stores
+  (`AuthError::SessionRevoked`). Incrementing the stored epoch ends every
+  cookie of that user. The cookie lifetime is configurable from 1 second to
+  400 days. `make_login_cookie` cookies are unchanged and decode as epoch 0;
+  `decrypt_session` rejects the new cookies.
+- New SaaS, LMS and `cargo rullst auth` projects can revoke sessions: a
+  `users.session_epoch` column, epoch cookies at sign-in and registration, the
+  epoch check in `auth_middleware`, `User::revoke_sessions` and a "Sign out
+  everywhere" button (`POST /logout/everywhere`). The `cargo rullst auth`
+  middleware now loads the user on every request, so the cookie of a deleted
+  account is refused. Existing projects are not changed; the
+  [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
+  lists the steps to adopt it.
+
 ### Mutation testing
 
 - Pull requests to `main` that change Rust run `mutants-pr.yml`, which
@@ -87,6 +107,11 @@ with the other Capital adapters.
   estimate, and anything else is `NOT MEASURED`. Deferrable jobs ship no network
   carbon source and make no emissions claim. The N+1 panel does not attribute
   raw statements or spawned work. The distroless image size is not yet measured.
+- Login cookies cannot be revoked. `make_login_cookie` sets a stateless
+  `rullst_session` cookie valid for 30 days: logout only clears the browser's
+  copy, a copied cookie keeps working until it expires, and a password reset
+  does not end other sessions. Only rotating `APP_KEY` does, for every user.
+  Server-side sessions need `SqlRecoveryStore`.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 
 ### Focused mutation testing

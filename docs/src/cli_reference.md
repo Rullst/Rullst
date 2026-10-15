@@ -1230,9 +1230,13 @@ responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
-- User model and migration with asynchronous Argon2 password hashing.
-- Auth Controllers (Login, Registration, Logout).
-- Encrypted-session middleware that inserts the signed-in user's id as `Extension<i32>`.
+- User model and migration with asynchronous Argon2 password hashing and a
+  `session_epoch` column.
+- Auth Controllers (Login, Registration, Logout, and `logout_everywhere`, which
+  increments the account's session epoch to end its session on every device).
+- Encrypted-session middleware that inserts the signed-in user's id as
+  `Extension<i32>` and refuses a cookie whose session epoch is no longer the
+  account's.
 - HTML Views for Login and Signup.
 
 It targets the SQLx ORM: Turso-primary projects are rejected. The command
@@ -1249,7 +1253,9 @@ migrations;` in `src/main.rs` or `src/lib.rs` plus a
 starters include), such as a `--no-database` starter, because nothing would
 compile or apply the users migration. Generated code names the ORM through the
 `rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
-routes and the security baseline remains application work.
+routes (including `POST /logout/everywhere` behind `auth_middleware`) and the
+security baseline remains application work, as does calling
+`User::revoke_sessions` after a password change or reset you add.
 
 ### `cargo rullst make:mfa`
 Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`
