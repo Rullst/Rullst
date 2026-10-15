@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791810085068,
+  "lastUpdate": 1792024695106,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -10033,6 +10033,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 500,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c58ce435788dc1320f57715c42255fcda90e53fc",
+          "message": "Merge pull request #471 from Rullst/fix/v13-rustsec-2026-10\n\nfix(deps): require ammonia 4.2.3 and update quinn-proto for RustSec advisories",
+          "timestamp": "2026-10-14T21:22:19-03:00",
+          "tree_id": "577bab648c86e9094fe63a069abd42b636c6f652",
+          "url": "https://github.com/Rullst/Rullst/commit/c58ce435788dc1320f57715c42255fcda90e53fc"
+        },
+        "date": 1792024694251,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 290,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
