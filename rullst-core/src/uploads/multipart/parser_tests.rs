@@ -260,6 +260,20 @@ fn many_tiny_parts_in_one_chunk_parse_in_linear_time() {
 }
 
 #[test]
+fn consumed_bytes_are_dropped_once_they_are_half_the_buffer() {
+    let mut parser = Parser::new("XyZ");
+    parser.buffer = vec![b'a'; 10];
+    parser.start = 4;
+    parser.push(b"b");
+    assert_eq!((parser.start, parser.buffer.len()), (4, 11));
+    parser.start = 5;
+    parser.buffer.truncate(10);
+    parser.push(b"b");
+    assert_eq!((parser.start, parser.buffer.len()), (0, 6));
+    assert_eq!(parser.pending(), b"aaaaab");
+}
+
+#[test]
 fn find_returns_the_first_complete_match() {
     assert_eq!(find(b"ab\r\n--XyZ", b"\r\n--XyZ"), Some(2));
     assert_eq!(find(b"\r\r\n--XyZ\r\n--XyZ", b"\r\n--XyZ"), Some(1));

@@ -61,8 +61,7 @@ fn malformed(reason: &'static str) -> MultipartError {
 
 impl Parser {
     pub(super) fn new(boundary: &str) -> Self {
-        let mut delimiter = Vec::with_capacity(boundary.len() + 4);
-        delimiter.extend_from_slice(b"\r\n--");
+        let mut delimiter = b"\r\n--".to_vec();
         delimiter.extend_from_slice(boundary.as_bytes());
         Self {
             delimiter,
@@ -78,7 +77,7 @@ impl Parser {
     /// Adds body bytes. Consumed bytes are dropped once they are at least
     /// half of the buffer, so each byte is moved a bounded number of times.
     pub(super) fn push(&mut self, bytes: &[u8]) {
-        if self.start > 0 && self.start >= self.buffer.len() / 2 {
+        if self.start >= self.buffer.len() / 2 {
             self.buffer.drain(..self.start);
             self.start = 0;
         }
