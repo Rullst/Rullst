@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792071275706,
+  "lastUpdate": 1792080848695,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14143,6 +14143,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 441,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88b93a71cf4df151685cf1af25a25e566503fa0a",
+          "message": "Merge pull request #498 from Rullst/docs/v13-storage-capabilities\n\ndocs(orm)!: one database capability table, honest Turso wizard text, drop the polyglot aggregate",
+          "timestamp": "2026-10-15T12:47:13-03:00",
+          "tree_id": "b77b4db8b429a0e6e80d781ddc5382f674b7a237",
+          "url": "https://github.com/Rullst/Rullst/commit/88b93a71cf4df151685cf1af25a25e566503fa0a"
+        },
+        "date": 1792080847657,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1468,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 249,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 382,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
