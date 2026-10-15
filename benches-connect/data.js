@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792056966472,
+  "lastUpdate": 1792071009699,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -10213,6 +10213,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 616,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7c487a7743f3d5028feeea84f89dce6d1729de4",
+          "message": "Merge pull request #495 from Rullst/feat/v13-html-attrs-scheduler-tz\n\nfeat(html,scheduler): valueless and conditional attributes, @if/@for, and time-zone schedules",
+          "timestamp": "2026-10-15T10:09:37-03:00",
+          "tree_id": "e109c9b55e7a69b389ed3f6f6d698fce7ff10eb3",
+          "url": "https://github.com/Rullst/Rullst/commit/d7c487a7743f3d5028feeea84f89dce6d1729de4"
+        },
+        "date": 1792071008945,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 568,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
