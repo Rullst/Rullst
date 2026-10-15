@@ -136,7 +136,9 @@ boundary.
   escapes dynamic values. It returns `Markup`, which a handler returns as
   `text/html` and another `html!` inserts as HTML. Rendering still performs
   the allocations/work implied by the generated template.
-- All boolean HTML attributes inside `html!` must be explicitly quoted (e.g. `required="true"`).
+- Boolean HTML attributes inside `html!` are written bare (`required`) or
+  conditionally (`checked?={is_done}` writes `checked` or nothing). Presence is
+  the value, so `disabled="false"` would still disable the control.
 - Fallible handlers can return `Result<Response, YourAppError>` using an
   application-defined error that converts the relevant typed framework/domain
   errors; server startup propagates `ServerError` with `?`.

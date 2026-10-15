@@ -59,7 +59,8 @@ changes.
 - Explicit concrete types improve compile-time optimization, inline expansion, and AI context tracking.
 
 ### 3.3. HTML Macro Rules (`html!`)
-- Boolean attributes inside the `html!` macro must be explicitly quoted (e.g. `required="true"`, `disabled="true"`).
+- Boolean attributes inside `html!` are written bare (`<input required disabled>`) or, when they depend on state, as conditional attributes: `checked?={is_done}` writes `checked` or nothing, and `title?={maybe_title}` omits the attribute for `None`. Presence is the value, so never write `disabled="false"`; `name={flag}` writes the text `"true"`/`"false"` (right for `aria-*`). The older quoted forms (`required="true"`) still compile.
+- Use `@if`/`@else if`/`@else` and `@for` inside `html!` for conditional and repeated nodes; use a `{match …}` expression returning `Markup` for other control flow.
 - `html!` returns `rullst::html::Markup`: declare view helpers `-> Markup` and interpolate them directly (`{badge}`); `String` values are always escaped. Reserve `RawHtml`/`Markup::from_trusted` for trusted HTML produced outside `html!`.
 - Prefer zero-bundle HTMX + Tailwind CSS server-side rendering over heavy client-side JS bundles.
 

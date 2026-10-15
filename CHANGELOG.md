@@ -72,6 +72,22 @@ A prepared version section does not establish that its tag or crates exist.
 - The `html!`, `Markup` and `RawHtml` docs, the spec, the HTMX tutorial, the
   generated starters and `make:auth` views compose views with `Markup` and
   keep `RawHtml` for trusted HTML produced outside `html!`.
+- `html!` accepts valueless attributes (dogfooding #15): `<input required
+  disabled>` is written as it is, and the quoted forms (`required="true"`)
+  still compile.
+- `html!` adds conditional attributes, `name?={value}` (dogfooding #15): a
+  `bool` writes the bare attribute or leaves it out
+  (`checked?={task.done}`), and an `Option<T>` writes `name="value"`, escaped
+  like `name={value}`, or leaves it out for `None`. Any other value type is a
+  compile error. One element now covers what needed two copies, and
+  `disabled="false"`, which browsers treat as disabled, is no longer needed.
+  `name={value}` is unchanged: a `bool` is still written as
+  `"true"`/`"false"` (as `aria-*` expects) and `None` as an empty value.
+- `html!` adds `@if`, `@else if`, `@else` (also `@if let`) and
+  `@for pattern in iterable` blocks whose bodies are `html!` nodes
+  (dogfooding #15). Other control flow, such as `match`, stays a `{…}`
+  expression returning `Markup`; `@match`, `@let` and a plain `else` after an
+  `@if` block are compile errors with a hint.
 - The README, Getting Started, CLI reference and v13 migration guide show how
   to install the v13 CLI (`cargo install cargo-rullst --version =13.0.0-alpha.1
   --locked`) and pin v13 dependencies with `=`, with `default-features = false`
@@ -168,6 +184,15 @@ A prepared version section does not establish that its tag or crates exist.
   account is refused. Existing projects are not changed; the
   [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
   lists the steps to adopt it.
+- New opt-in `scheduler-tz` feature (`rullst` and `rullst-core`, dogfooding
+  #29): `Scheduler::task_in_tz("0 7 * * *", "America/Sao_Paulo", handler)`
+  matches the cron fields against that IANA time zone's wall clock instead
+  of UTC. A time skipped by a daylight-saving gap runs when the gap ends, and
+  a repeated time runs once, at its first occurrence. An unknown zone is
+  rejected at registration with the new `SchedulerError::InvalidTimeZone`.
+  Zone rules come from the system database, with a copy bundled through the
+  new `jiff` dependency as a fallback. `Scheduler::task` is unchanged and
+  stays in UTC.
 - `rullst-auth` adds single-use password reset tokens for applications that
   keep their own users table: `PasswordResetToken::generate` draws 32 bytes
   from the operating system and writes them as 64 lowercase hex characters,

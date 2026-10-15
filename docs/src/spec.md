@@ -970,8 +970,9 @@ optional `schedules-postgres`, with an explicit facade feature. It coordinates
 bounded UTC cron occurrences across instances through one authoritative PostgreSQL
 database and relays them to the existing static `MessageBroker` contract. Core's
 process-local `Scheduler` retains its API; it evaluates POSIX five-field
-expressions in UTC (weekday 0/7=Sun, either restricted day field matches),
-unlike the projection below. A broker publication is
+expressions in UTC (weekday 0/7=Sun, either restricted day field matches), or
+in a named IANA zone through the opt-in `scheduler-tz` `task_in_tz` (section
+4.3), unlike the projection below. A broker publication is
 not proof of handler completion or an exactly-once external effect.
 
 Require a server-owned namespace, immutable limits and explicit encrypted storage
@@ -1691,6 +1692,31 @@ the same server-authoritative controls.
   `Markup::from_trusted`) is the explicit escape hatch for trusted HTML
   produced outside `html!`, such as a sanitizer's or renderer's output. It
   is never needed for `html!` output and must never wrap request data.
+* **Attributes:** `name="text"` is author-owned source and written as it is.
+  `name={value}` is always written with the value escaped: a `bool` as
+  `"true"`/`"false"` (what `aria-*` and `data-*` expect) and `None` as an
+  empty value. Since 13.0.0-alpha.2 a bare `name` (`<input required
+  disabled>`) is written without a value, and a conditional `name?={value}`
+  is decided at runtime through `rullst::html::OptionalAttribute`: a `bool`
+  writes the bare name or nothing, and an `Option<T>` writes `name="value"`,
+  escaped exactly like `name={value}` (URL attributes keep the scheme check
+  above), or nothing for `None`. Any other value type is a compile-time
+  error at the expression. HTML boolean attributes mean presence, so
+  `disabled="false"` still disables a control: use `disabled?={flag}`. The
+  quoted forms keep compiling. Attribute names are Rust identifiers (keywords
+  included) joined by `-`, so no quote, `=`, `>` or whitespace can reach the
+  output through a name; `:` and `@` name forms are not supported. A
+  conditional value on an event-handler attribute is rejected like a dynamic
+  one, while a bare handler name is static.
+* **Control flow:** Since 13.0.0-alpha.2, `@if condition { … }` (also
+  `@if let PATTERN = value`), `@else if …`, `@else { … }` and
+  `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
+  heads are parsed like Rust's own `if`/`for` heads and keep caller name
+  resolution. No other node can start with `@`, so the forms are
+  unambiguous. A plain `else` after an `@if` body and any other `@` form
+  (`@match`, `@let`, `@while`) are compile-time errors: `match` and other
+  control flow stay Rust expressions that return `Markup` inside `{…}`,
+  which keeps the grammar small without losing expressiveness.
 * **Element names and the doctype:** Element names (opening and closing) may
   be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
   letter case) is emitted as written; it must precede every other node
@@ -1724,6 +1750,22 @@ the same server-authoritative controls.
   // `rendered` is Markup: another html! inserts it without escaping it again.
   let card = html! { <section>{rendered}</section> };
   assert!(card.starts_with("<section><div class=\"user-badge\">"));
+
+  // Bare and conditional attributes, `@if` and `@for`.
+  let tasks = [("Write tests", true), ("<Ship>", false)];
+  let list = html! {
+      <ul>
+          @for (title, done) in tasks {
+              <li><input type="checkbox" disabled checked?={done} />{title}</li>
+          }
+      </ul>
+      @if tasks.is_empty() { <p>"Nothing to do"</p> }
+  };
+  assert_eq!(
+      list,
+      "<ul><li><input type=\"checkbox\" disabled checked />Write tests</li>\
+       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>"
+  );
   ```
 
 ### 4.3. Durable Queue Timing and Completion History
@@ -1740,6 +1782,19 @@ the same server-authoritative controls.
   `dispatch_at`, so stored rows and keys are unchanged; Core ships no network
   source and makes no emissions claim. `Scheduler::deferrable_task` applies the
   window rule to each tick within a maximum delay.
+* `Scheduler::task` matches POSIX five-field cron against UTC. The v13 opt-in
+  `scheduler-tz` Core/facade feature adds
+  `Scheduler::task_in_tz(expression, zone, handler)`, which matches the same
+  fields, day fields included, against the wall clock of an IANA time zone.
+  An unknown zone is rejected at registration with
+  `SchedulerError::InvalidTimeZone { zone, message }`. A wall time that a
+  daylight-saving gap skips runs at the first instant after the gap (several
+  skipped matches run once there); a wall time that a fold repeats runs once,
+  at its first occurrence, and no match in the repeated hour runs a second
+  time. Zone rules come from the system zoneinfo database when it has the
+  zone, otherwise from the database bundled with the `jiff` dependency. Fixed
+  instants in tests cover São Paulo, New York's gap and fold, and UTC
+  equivalence with `Scheduler::task`. `deferrable_task` has no time-zone form.
 * SQLite claims pending jobs in order of their due time, and an immediately
   dispatched job is due at its enqueue time. A scheduled job, or one handed
   back for lack of a handler, that became due earlier is therefore claimed

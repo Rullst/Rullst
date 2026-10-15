@@ -1,0 +1,5 @@
+error: a conditional attribute takes a `bool` or `Option` expression in braces, such as `checked?={is_set}`; write `checked="..."` or a bare `checked` for a fixed attribute
+ --> tests/ui/conditional_attribute_literal.rs:5:41
+  |
+5 |         <input type="checkbox" checked?="checked" />
+  |                                         ^^^^^^^^^
