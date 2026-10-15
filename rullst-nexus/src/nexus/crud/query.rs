@@ -312,6 +312,27 @@ mod tests {
     }
 
     #[test]
+    fn the_primary_key_is_selected_once_whether_or_not_it_is_visible() {
+        let entry = RegistryEntry {
+            table: "accounts",
+            label: "Accounts",
+            icon: "A",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number),
+                FieldMeta::new("name", "Name", FieldKind::Text),
+            ],
+        };
+        let without_key = vec![&entry.fields[1]];
+        let (sql, _) = build_table_query(&entry, &without_key, "", 1, None, None, None);
+        assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
+        let only_key = vec![&entry.fields[0]];
+        let (sql, _) = build_table_query(&entry, &only_key, "", 1, None, None, None);
+        assert!(sql.starts_with("SELECT id FROM accounts"), "{sql}");
+    }
+
+    #[test]
     fn search_without_a_searchable_column_matches_nothing() {
         let entry = RegistryEntry {
             table: "orders",
