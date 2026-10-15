@@ -96,6 +96,15 @@ fn a_time_skipped_by_spring_forward_runs_when_the_gap_ends() {
 }
 
 #[test]
+fn a_gap_in_a_zone_east_of_utc_also_runs_at_its_end() {
+    // Berlin, 2026-03-29: 02:00 CET jumps to 03:00 CEST (01:00 UTC).
+    assert_eq!(
+        runs("30 2 * * *", "Europe/Berlin", utc(2026, 3, 28, 12, 0), 2),
+        [utc(2026, 3, 29, 1, 0), utc(2026, 3, 30, 0, 30)]
+    );
+}
+
+#[test]
 fn a_time_repeated_by_fall_back_runs_once_at_its_first_occurrence() {
     // New York, 2026-11-01: 02:00 EDT falls back to 01:00 EST (06:00 UTC).
     assert_eq!(
