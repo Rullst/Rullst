@@ -176,8 +176,8 @@ A prepared version section does not establish that its tag or crates exist.
   `password_reset_digests_match` compares digests in constant time.
 - New SaaS, LMS and `cargo rullst auth` projects can change and reset
   passwords. *Change password* (`/password/change`, signed in) checks the
-  current password, applies the registration policy and keeps only the
-  browser that made the change signed in. *Forgot your password?*
+  current password, applies the registration policy, keeps only the browser
+  that made the change signed in and cancels a pending reset link. *Forgot your password?*
   (`/password/forgot`) gives the same answer whether or not the email has an
   account and emails a link that works once and expires after 30 minutes; a
   new request replaces the previous link. A completed reset signs out every

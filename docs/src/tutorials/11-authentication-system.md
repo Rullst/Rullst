@@ -158,7 +158,8 @@ edge.
   registration policy. `User::change_password` stores the new hash and
   increments the session epoch in one `UPDATE` that only applies while the
   account is still at the epoch of the asking cookie; that browser receives a
-  cookie with the new epoch and every other device is signed out.
+  cookie with the new epoch and every other device is signed out. A reset
+  link requested before the change stops working.
 - **Forgot password** (`/password/forgot`) answers with the same page, after at
   least 400 ms, whether or not the email has an account. For an account it
   creates a `PasswordResetToken` (32 random bytes from the operating system),

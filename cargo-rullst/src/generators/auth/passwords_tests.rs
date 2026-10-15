@@ -159,6 +159,13 @@ fn password_change_checks_the_current_password_and_keeps_this_session() {
             "Ok(cookie) => redirect_with_cookie(\"/password/change?changed=1\", &cookie),"
         )
     );
+    // A reset link requested before the change stops working.
+    assert!(controller.contains(
+        ".ok_or(PasswordError::SessionRevoked)?;\n    // A reset link requested before the change must not undo it.\n    if let Err(error) = password_reset::discard(user_id).await {"
+    ));
+    assert!(render_password_reset_model().contains(
+        "pub async fn discard(user_id: i32) -> Result<(), ResetError> {\n    let delete = dialect(\"DELETE FROM password_reset_tokens WHERE user_id = ?\")?;"
+    ));
     assert!(controller.contains(
         "Err(PasswordError::SessionRevoked) => {\n            redirect_with_cookie(\"/login\", &rullst_auth::make_logout_cookie())"
     ));

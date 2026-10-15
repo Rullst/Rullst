@@ -757,8 +757,9 @@ must match its confirmation.
   current password is incorrect". `User::change_password` stores the new hash
   and increments the epoch in one `UPDATE` that applies only while the account
   is still at the epoch of the asking cookie; that browser receives a cookie
-  with the new epoch, so only it stays signed in. A cookie revoked meanwhile
-  changes nothing and is sent to `/login`.
+  with the new epoch, so only it stays signed in, and the account's reset token
+  is deleted, so a link requested before the change no longer works. A cookie
+  revoked meanwhile changes nothing and is sent to `/login`.
 - `POST /password/forgot` answers with the same page, after at least 400 ms,
   whether or not the email has an account. For an account it issues a
   `PasswordResetToken` and stores only its digest with Unix-second expiry and

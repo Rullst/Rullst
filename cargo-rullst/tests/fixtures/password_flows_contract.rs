@@ -156,6 +156,11 @@ async fn generated_password_flows_contract() {
     assert_eq!(stored_epoch().await, 0);
     assert!(password_is(OLD_PASSWORD).await);
 
+    // A reset link requested before the change stops working after it.
+    post(app, "/password/forgot", None, &format!("_token={CSRF}&email={MEMBER}")).await;
+    let early = link_token(&mail_to(MEMBER, 1).await[0], "http://localhost:3000");
+    assert_eq!(reset_rows().await.len(), 1);
+
     let changed = post(app, "/password/change", Some(&laptop), &change(OLD_PASSWORD, NEW_PASSWORD, NEW_PASSWORD)).await;
     assert_eq!(changed.status, StatusCode::SEE_OTHER);
     assert_eq!(changed.header("location"), "/password/change?changed=1");
@@ -173,9 +178,11 @@ async fn generated_password_flows_contract() {
     assert_eq!(stale.status, StatusCode::SEE_OTHER);
     assert_eq!(stored_epoch().await, 1);
     assert!(get(app, "/password/change?changed=1", Some(&current)).await.body.contains("Your password was changed"));
-    let notices = mail_to(MEMBER, 1).await;
-    assert_eq!(notices.len(), 1);
-    assert!(notices[0].subject.ends_with(": Your password was changed"));
+    assert!(reset_rows().await.is_empty());
+    assert!(get(app, &format!("/password/reset?token={early}"), None).await.body.contains("invalid or has expired"));
+    let notices = mail_to(MEMBER, 2).await;
+    assert_eq!(notices.len(), 2);
+    assert!(notices[1].subject.ends_with(": Your password was changed"));
     MailTrap::clear();
 
     // Forgot password: an unknown email gets the same answer, no sooner.
