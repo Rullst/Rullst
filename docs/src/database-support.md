@@ -40,7 +40,7 @@ Notes:
 2. `#[derive(Orm)]` with `#[orm(backend = "turso")]` generates the `TursoModel`
    contract instead of SQLx code: `all`, `find`, `save`, `create`, `delete`,
    `count` and `paginate`, plus filtered reads through
-   `TursoOrm::repository::<Model>().query()` (`where_eq`, `order_by`, `limit`,
+   `TursoOrm::repository::<Model>()?.query()` (`where_eq`, `order_by`, `limit`,
    `offset`, `get`, `first`, `count`). It has no SQLx query builder, and the
    derive refuses relations, soft deletes, hooks, scopes, tenant columns,
    policies, auditing, Scout search and embeddings at compile time.
