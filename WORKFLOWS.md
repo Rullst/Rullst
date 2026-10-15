@@ -580,14 +580,13 @@ before 13.0.0-alpha.1), the local whole-crate campaign that followed it
 security campaign (targeted runs of every `rullst-security` file), the
 `rullst-auth` campaign (targeted runs of every file outside the PostgreSQL
 adapters), the first part of the `rullst-core` campaign (its security
-and correctness files and about half of the rest, with the Redis service)
-and the service-backed campaign (the `passkey-postgres`,
+and correctness files and about half of the rest, with the Redis service),
+the `rullst-capital` campaign (targeted runs of every file; mutants that
+only a live Stripe API response can reach are left to provider sandbox
+testing) and the service-backed campaign (the `passkey-postgres`,
 `auth-recovery-postgres`, `privacy-postgres` and `mail-postgres` contract
 runs, and targeted runs of the Redis rate limiter with the Redis service)
 gave every missed mutant in their files a test, except these.
-and the `rullst-capital` campaign (targeted runs of every file; mutants that
-only a live Stripe API response can reach are left to provider sandbox
-testing) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
