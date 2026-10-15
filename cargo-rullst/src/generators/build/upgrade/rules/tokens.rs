@@ -312,7 +312,10 @@ impl Scanner<'_, '_> {
             self.hit(&MAIL_REMOVED, at);
         }
         match name {
-            "health_router" | "health_router_with_lifecycle" => self.facts.mounts_health = true,
+            "health_router"
+            | "health_router_with_lifecycle"
+            | "health_router_with_version"
+            | "health_router_with_lifecycle_and_version" => self.facts.mounts_health = true,
             "protect_router" => self.facts.protects_router = true,
             _ => {}
         }

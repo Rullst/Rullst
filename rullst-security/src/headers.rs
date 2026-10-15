@@ -16,7 +16,9 @@ use tower::{Layer, Service};
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct SecureHeadersConfig {
-    /// Strict-Transport-Security (HSTS) header value.
+    /// Strict-Transport-Security (HSTS) header value. The default is
+    /// `max-age=31536000; includeSubDomains`; add `preload` only when the
+    /// domain is meant for the browsers' HSTS preload list.
     pub hsts: Option<String>,
     /// X-Frame-Options header value.
     pub frame_options: Option<String>,
@@ -42,7 +44,7 @@ pub struct SecureHeadersConfig {
 impl Default for SecureHeadersConfig {
     fn default() -> Self {
         Self {
-            hsts: Some("max-age=63072000; includeSubDomains; preload".to_string()),
+            hsts: Some("max-age=31536000; includeSubDomains".to_string()),
             frame_options: Some("DENY".to_string()),
             content_type_options: Some("nosniff".to_string()),
             referrer_policy: Some("strict-origin-when-cross-origin".to_string()),
@@ -226,7 +228,7 @@ mod tests {
     #[test]
     fn test_default_secure_headers_config() {
         let cfg = SecureHeadersConfig::default();
-        assert!(cfg.hsts.unwrap().contains("max-age="));
+        assert_eq!(cfg.hsts.unwrap(), "max-age=31536000; includeSubDomains");
         assert_eq!(cfg.frame_options.unwrap(), "DENY");
         assert_eq!(cfg.content_type_options.unwrap(), "nosniff");
         assert_eq!(cfg.coop.unwrap(), "same-origin");

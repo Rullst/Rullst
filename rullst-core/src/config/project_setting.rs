@@ -35,7 +35,11 @@ pub fn project_setting(name: &str) -> Result<Option<String>, ConfigError> {
     project_setting_in(Path::new("."), name)
 }
 
-fn project_setting_in(project_dir: &Path, name: &str) -> Result<Option<String>, ConfigError> {
+/// [`project_setting`] for the project in `project_dir`.
+pub(crate) fn project_setting_in(
+    project_dir: &Path,
+    name: &str,
+) -> Result<Option<String>, ConfigError> {
     if let Some(value) = read_environment_variable(name)? {
         return Ok(Some(value));
     }

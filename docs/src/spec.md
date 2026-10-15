@@ -1436,7 +1436,10 @@ the same server-authoritative controls.
   admission, and the `Server` rate limiter and Traffic Shield, so `/ready` can
   return a bounded `503` during startup, dependency failure or drain while
   `/health` stays process-only. The JSON reports counts,
-  not labels or dependency errors. `Server::run_with_shutdown` accepts a
+  not labels or dependency errors. Its `version` is the framework version;
+  the v13 `health_router_with_version` and
+  `health_router_with_lifecycle_and_version` add the application's own
+  version as `app_version`. `Server::run_with_shutdown` accepts a
   caller-owned future; when it resolves, the lifecycle changes to draining
   before Axum waits for accepted requests and then becomes stopped. Dependency
   checks/timeouts, component updates, replica consensus, load-balancer timing,
@@ -1477,6 +1480,27 @@ the same server-authoritative controls.
   content-hashed file name get `public, max-age=31536000, immutable`, other
   static files `no-cache` with `ServeDir`'s `ETag`/`Last-Modified` validators;
   see [static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers).
+* **Strict Transport Security (v13 prerelease):** `headers_middleware` adds
+  `Strict-Transport-Security` when the response has none, built from
+  `[security]` `hsts_max_age_seconds` (default 31,536,000),
+  `hsts_include_subdomains` (default `true`) and `hsts_preload` (default
+  `false`): `max-age=31536000; includeSubDomains` by default. `preload` is an
+  opt-in consent to the browsers' preload list; `SecurityConfig::validate`
+  (and therefore `Server` startup) rejects it without `includeSubDomains` or
+  with a max-age below 31,536,000. 13.0.0-alpha.1 always sent
+  `max-age=63072000; includeSubDomains; preload`.
+  `rullst_security::SecureHeadersConfig::default()` uses the same default
+  value.
+* **WAF Body Exemptions and Development Report (v13 prerelease):**
+  `[security]` `waf_body_exempt_paths` lists exact absolute paths (validated
+  like `csrf_signed_webhook_paths`; invalid entries fail startup) whose
+  request bodies `waf_middleware` neither reads nor inspects, a deliberate
+  per-route risk acceptance; their path, query, cookies, `Referer` and
+  `User-Agent` stay inspected. In development `apply_security_baseline`
+  mounts a report-only WAF instead of none: it applies the same rules,
+  passes every request (replaying bodies over the 1 MiB limit in full) and
+  logs a `warn` event (target `rullst::security::waf`) with only the rule
+  name and path for each request staging and production would refuse.
 * **Double-Submit Form Contract:** `csrf_middleware` installs the exact
   request-scoped `CsrfToken` used by the CSRF cookie on eligible `GET` and
   `HEAD` requests (HEAD mirrors GET's headers, including a new cookie, so a
@@ -1486,7 +1510,12 @@ the same server-authoritative controls.
   `X-CSRF-Token`. A `multipart/form-data` form (such as a file upload) must
   place its `_token` field before any file input: the middleware reads at most
   the first 64 KiB of that body to find the field, compares it in constant
-  time and then passes the whole body on unchanged. Nested application and `Server` baseline composition is
+  time and then passes the whole body on unchanged. A `GET` or `HEAD` for a
+  static-looking path (`/robots.txt`, `/sitemap.xml`, `/favicon.ico`,
+  `/static/*`, or a `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`,
+  `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix) never mints a token or
+  sets the cookie; since 13.0.0-alpha.2 it still receives the `CsrfToken` of
+  a valid existing cookie. Nested application and `Server` baseline composition is
   request-idempotent: exactly one CSRF layer owns token validation/cookie
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
@@ -1502,6 +1531,11 @@ the same server-authoritative controls.
   seeder registry, so a `db:*` command it intercepts (because the application
   never called `artisan!`) exits with status 1 and names `rullst::artisan!`
   instead of reporting success for an empty registry; `studio` still runs.
+  Like `Server`, Artisan never loads `.env` into the process environment
+  (13.0.0-alpha.1 did after resolving the database), so a migration or seeder
+  reads other `.env` values with `rullst::config::project_setting` and behaves
+  the same under `cargo run` and `cargo run -- db:seed`; the legacy `studio`
+  page checks AI provider keys the same way.
   Rullst Studio reuses an existing ORM pool; only when none exists does its
   first database view resolve the current directory with this same resolver
   and initialize the pool once. Without a configured database Studio reports
@@ -1509,7 +1543,8 @@ the same server-authoritative controls.
 * **Application Settings (v13 prerelease):** `rullst::config::project_setting`
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded
-  into it. An unreadable or malformed `.env` is a `ConfigError` that never
+  into it, neither by `Server` nor by Artisan commands. An unreadable or
+  malformed `.env` is a `ConfigError` that never
   contains file content. Nexus `basic_from_env` reads its administrator
   credentials and generated billing code its `BILLING_*` settings through it;
   generated billing treats a production `RullstConfig::environment()` (or an
