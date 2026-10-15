@@ -99,6 +99,7 @@ rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
+rullst-core|scheduler-tz
 rullst-core|storage-s3
 rullst-core|storage-multipart
 rullst-core|telemetry
@@ -181,6 +182,7 @@ rullst|queue-redis
 rullst|cache-redis
 rullst|redis
 rullst|offline-sync
+rullst|scheduler-tz
 rullst|storage-s3
 rullst|storage-multipart
 rullst|auth
