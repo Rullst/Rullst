@@ -9,8 +9,8 @@ pub enum HtmlNode {
     Element(HtmlElement),
     Text(LitStr),
     Block(Expr),
-    If(HtmlIf),
-    For(HtmlFor),
+    If(Box<HtmlIf>),
+    For(Box<HtmlFor>),
 }
 
 pub struct HtmlDocument {

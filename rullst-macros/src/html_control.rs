@@ -27,9 +27,9 @@ pub struct HtmlFor {
 pub(super) fn parse_control(input: ParseStream) -> Result<HtmlNode> {
     let at = input.parse::<Token![@]>()?;
     if input.peek(Token![if]) {
-        parse_if(input).map(HtmlNode::If)
+        parse_if(input).map(|node| HtmlNode::If(Box::new(node)))
     } else if input.peek(Token![for]) {
-        parse_for(input).map(HtmlNode::For)
+        parse_for(input).map(|node| HtmlNode::For(Box::new(node)))
     } else if input.peek(Token![else]) {
         Err(syn::Error::new(
             at.span,

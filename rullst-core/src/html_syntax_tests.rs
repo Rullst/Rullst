@@ -24,8 +24,10 @@ fn optional_attr_maps_bools_and_options_to_presence() {
     let flag = true;
     let reference: &&bool = &&flag;
     assert_eq!(optional_attr(reference), AttributePresence::Bare);
+    let title = Some(String::from("x"));
+    let borrowed: &Option<String> = &title;
     assert_eq!(
-        (&Some(String::from("x"))).attribute_presence(),
+        OptionalAttribute::attribute_presence(&borrowed),
         AttributePresence::Value(Cow::Borrowed("x"))
     );
 }
