@@ -1543,6 +1543,15 @@ the same server-authoritative controls.
   from CSS, but untrusted CSS can restyle or overlay the page and load remote
   resources, so pass only trusted or validated values.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
+* **Composition:** `html!` returns `String`, and an interpolated `String` is
+  escaped like any other value, so a fragment built by another `html!` call
+  must be wrapped in `RawHtml` to be inserted as markup. Only trusted
+  fragments may be wrapped.
+* **Element names and the doctype:** Element names (opening and closing) may
+  be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
+  letter case) is emitted as written; it must precede every other node
+  (comments, which produce no output, may come first), and other declarations
+  are compile-time errors.
 * **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
   function's `module_path!()`, name and attribute location plus the serialized
   arguments, so same-named functions in different modules, crates or `impl`

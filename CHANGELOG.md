@@ -31,6 +31,36 @@ A prepared version section does not establish that its tag or crates exist.
   example), as the release notes advise; a caret requirement also accepted
   later prereleases.
 
+### Fixes from alpha.1 dogfooding
+
+- `html!` accepts element names that are Rust keywords, such as SVG's
+  `<use href="#icon" />`, and a leading `<!DOCTYPE html>`, which it emits as
+  written. Other `<!…>` declarations, or a doctype after other content, are
+  compile errors.
+- The `html!` and `RawHtml` docs and the HTMX tutorial explain composing views:
+  `html!` returns a `String`, an interpolated `String` is escaped, and trusted
+  fragments are wrapped in `RawHtml`.
+- The README, Getting Started, CLI reference and v13 migration guide show how
+  to install the v13 CLI (`cargo install cargo-rullst --version =13.0.0-alpha.1
+  --locked`) and pin v13 dependencies with `=`, with `default-features = false`
+  and one database profile in a hand-written manifest. The ORM, Studio, Media,
+  telemetry, storage and Redis messaging docs pin `=13.0.0-alpha.1` instead of
+  12.1.0 or a caret requirement.
+- The Nexus docs mount the panel on a `rullst::Router` with `nest_axum`, pass
+  state through `Extension` (there is no `with_state`) and show how to start
+  without Nexus when a release build lacks `NEXUS_ADMIN_USERNAME`/`PASSWORD`.
+  The Nexus README example now compiles.
+- The deployment guide covers running `db:migrate` on each release (the server
+  never migrates by itself), `HOST=127.0.0.1` behind a reverse proxy on the
+  same host, and setting `Cache-Control` on cacheable responses; the Blog and
+  ERP starters no longer claim to run migrations on startup.
+- Migrations written by `make:migration`, `make:migration:auto`,
+  `make:model --migration` and the starters, and repository-mode
+  repositories, use `rullst::orm::Error` and `rullst::db::schema`; the
+  regenerated `src/migrations/mod.rs` names `rullst::db::schema::Migration`.
+  These are the same types as the `rullst_orm` paths, so existing files keep
+  compiling.
+
 ### Mutation testing
 
 - Pull requests to `main` that change Rust run `mutants-pr.yml`, which
@@ -96,6 +126,22 @@ with the other Capital adapters.
   carbon source and make no emissions claim. The N+1 panel does not attribute
   raw statements or spawned work. The distroless image size is not yet measured.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
+- The WAF runs only in staging and production. It inspects every text, JSON,
+  XML and form body (refusing one over 1 MiB), the query string and each
+  cookie, with no per-route exemption, and does not inspect
+  `multipart/form-data` bodies.
+- `html!` returns a `String`, so a fragment built by another `html!` call must
+  be wrapped in `RawHtml` to be inserted as markup.
+- The server never applies migrations; run `db:migrate` on each deploy.
+- The scheduler evaluates cron expressions in UTC only.
+- Nexus supports single-column primary keys only, and HTTP Basic Auth is its
+  only production access policy.
+- Studio runs only in debug builds and on loopback.
+- A Turso-primary project cannot use `Schema`, `artisan!`, `Server::with_db`,
+  Nexus or Studio.
+- The generated `Dockerfile` has no dependency cache layer, so a cold image
+  build compiles every dependency (10 to 25 minutes on small machines).
+- There is no translation (i18n) API and no multipart upload extractor.
 
 ### Focused mutation testing
 

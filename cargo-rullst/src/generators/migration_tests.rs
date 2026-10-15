@@ -15,6 +15,28 @@ fn turso_migration_template_is_reversible_and_panic_free() {
 }
 
 #[test]
+fn sqlx_migration_template_uses_the_facade_paths() {
+    let source = render_migration(
+        "m20261014000000_create_widgets",
+        "widgets",
+        ProjectOrmBackend::Sqlx,
+    );
+    for expected in [
+        "use rullst::db::schema::{Schema, Migration};",
+        "use rullst::db::async_trait;",
+        "\"m20261014000000_create_widgets\"",
+        "async fn up(&self) -> Result<(), rullst::orm::Error> {",
+        "Schema::create(\"widgets\", |table| {",
+        "async fn down(&self) -> Result<(), rullst::orm::Error> {",
+        "Schema::drop_if_exists(\"widgets\").await",
+    ] {
+        assert!(source.contains(expected), "{expected}\n{source}");
+    }
+    assert!(!source.contains("rullst_orm"), "{source}");
+    syn::parse_file(&source).expect("generated SQLx migration should parse");
+}
+
+#[test]
 fn framework_tables_and_comment_only_diffs_do_not_produce_migrations() {
     use super::super::schema_diff::{ParsedField, ParsedTable};
     let field = |name: &str| ParsedField {
@@ -113,6 +135,10 @@ fn auto_migration_for_a_new_table_parses_with_balanced_braces() {
     .expect("a missing table produces a migration");
     assert!(source.contains("Schema::create(\"posts\", |table| {"));
     assert!(source.contains("        }).await?;"));
+    assert!(source.contains("use rullst::db::schema::{Schema, Migration};"));
+    assert!(source.contains("async fn up(&self) -> Result<(), rullst::orm::Error> {"));
+    assert!(source.contains("async fn down(&self) -> Result<(), rullst::orm::Error> {"));
+    assert!(!source.contains("rullst_orm"), "{source}");
     assert!(!source.contains("}})"));
     syn::parse_file(&source).expect("generated auto migration should parse");
     assert!(

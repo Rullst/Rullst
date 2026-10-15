@@ -1,8 +1,11 @@
 # Rullst Studio 📊
 
 > [!IMPORTANT]
-> This page targets `12.1.0`. Check the [release record](../v12.md) for
-> publication status; use a path dependency only for checkout-local review.
+> This page describes the v13 prerelease, published as `13.0.0-alpha.1`. Cargo
+> never selects a prerelease on its own, so its dependency example pins that
+> version exactly; for the stable line use `rullst-studio@12` and check the
+> [release record](../v12.md). Use a path dependency only for checkout-local
+> review.
 
 `rullst-studio` is the built-in, local-first administration and monitoring
 dashboard for Rullst. It exposes bounded database, queue, cache and telemetry
@@ -50,12 +53,12 @@ views from the sources explicitly supplied by the application.
 
 ## 🚀 Quickstart
 
-Install the exact stable train with
-`cargo add rullst-studio@12.1.0`.
+Install the v13 prerelease with an exact pin:
+`cargo add rullst-studio@=13.0.0-alpha.1`.
 
 ### Launching the Studio
 
-The supported v12 mode is a standalone debug server. `run_studio` and
+The supported mode is a standalone debug server. `run_studio` and
 `Studio::into_router(LocalStudioAccess::loopback_only())` reject release builds
 and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
@@ -80,11 +83,11 @@ The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.
 
-The published `12.0.0` raw `data_browser::router()` omits the assets and Cache
-routes used by its layout; 12.1.0 adds them, and the full local builder is not
-affected. See the
-[12.1.0 composition fix and migration checklist](../3-rullst-studio.md#v1210-browser-composition-fix)
-before upgrading an embedded showcase with application-level workaround routes.
+Since 12.1.0, the raw `data_browser::router()` also serves the assets and
+Cache routes its layout uses (`12.0.0` omits them; the full local builder is
+not affected). When upgrading from 12.0 with application-level workaround
+routes, see the
+[12.1.0 composition fix and migration checklist](../3-rullst-studio.md#v1210-browser-composition-fix).
 
 **CLI Launch:**
 

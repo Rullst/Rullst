@@ -7,6 +7,41 @@ pub trait HtmlEscape {
 }
 
 /// A wrapper to mark a string as safe raw HTML that should NOT be escaped.
+///
+/// # Composing views
+///
+/// `html!` returns a plain `String`, and interpolating any `String` with
+/// `{value}` escapes it. A fragment built by another `html!` call is therefore
+/// shown as text (`&lt;span …`) unless you wrap it in `RawHtml`, which inserts
+/// it unescaped. Wrap only fragments produced by `html!` or other trusted
+/// code, never request data: `RawHtml` is the explicit trust boundary.
+///
+/// ```
+/// # extern crate rullst_core as rullst;
+/// use rullst::html;
+/// use rullst::html::RawHtml;
+///
+/// fn badge(label: &str) -> String {
+///     html! { <span class="badge">{label}</span> }
+/// }
+///
+/// // Without `RawHtml`, the inner fragment is escaped and shown as text.
+/// assert_eq!(
+///     html! { <p>{badge("new")}</p> },
+///     "<p>&lt;span class=&quot;badge&quot;&gt;new&lt;/span&gt;</p>"
+/// );
+///
+/// let rows: String = ["Ana", "<Bob>"]
+///     .iter()
+///     .map(|name| html! { <li>{name}{RawHtml(badge("new"))}</li> })
+///     .collect();
+/// let list = html! { <ul>{RawHtml(rows)}</ul> };
+/// assert_eq!(
+///     list,
+///     "<ul><li>Ana<span class=\"badge\">new</span></li>\
+///      <li>&lt;Bob&gt;<span class=\"badge\">new</span></li></ul>"
+/// );
+/// ```
 pub struct RawHtml(pub String);
 
 impl RawHtml {

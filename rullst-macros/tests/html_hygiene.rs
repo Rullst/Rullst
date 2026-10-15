@@ -118,3 +118,15 @@ fn url_attributes_keep_caller_bindings_temporaries_and_evaluation_order() {
         "<a href=\"attr:1\" data-index=\"attr:2\">text:3</a>"
     );
 }
+
+#[test]
+fn doctype_and_keyword_element_names_expand_to_markup() {
+    let s = Label { text: "caller" };
+    assert_eq!(
+        html! {
+            <!DOCTYPE html>
+            <html><body><svg><use href="#i" /></svg>{s.text}</body></html>
+        },
+        "<!DOCTYPE html><html><body><svg><use href=\"#i\"></use></svg>text:caller</body></html>"
+    );
+}

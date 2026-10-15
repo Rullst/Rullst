@@ -41,6 +41,39 @@ mod server_function;
 /// };
 /// assert!(page.contains("Olá, Mundo!"));
 /// ```
+///
+/// Element names may be Rust keywords, such as SVG's `<use href="#icon" />`.
+/// A document may start with `<!DOCTYPE html>`, which is emitted as written.
+///
+/// # Composing views
+///
+/// `html!` returns a plain `String`, and interpolating any `String` with
+/// `{value}` escapes it. A fragment built by another `html!` call is therefore
+/// shown as text (`&lt;span …`) unless you wrap it in
+/// `rullst::html::RawHtml`, which inserts it unescaped. Wrap only fragments
+/// produced by `html!` or other trusted code, never request data.
+///
+/// ```rust,ignore
+/// use rullst::html;
+/// use rullst::html::RawHtml;
+///
+/// fn badge(label: &str) -> String {
+///     html! { <span class="badge">{label}</span> }
+/// }
+///
+/// let rows: String = ["Ana", "<Bob>"]
+///     .iter()
+///     .map(|name| html! { <li>{name}{RawHtml(badge("new"))}</li> })
+///     .collect();
+/// let list = html! { <ul>{RawHtml(rows)}</ul> };
+/// assert_eq!(
+///     list,
+///     "<ul><li>Ana<span class=\"badge\">new</span></li>\
+///      <li>&lt;Bob&gt;<span class=\"badge\">new</span></li></ul>"
+/// );
+/// ```
+///
+/// This example is compiled and run as a doc test of `rullst::html::RawHtml`.
 #[proc_macro]
 pub fn html(input: TokenStream) -> TokenStream {
     let document = parse_macro_input!(input as html_parser::HtmlDocument);

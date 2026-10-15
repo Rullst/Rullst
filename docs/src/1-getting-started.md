@@ -23,8 +23,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Download and run `rustup-init.exe` from the website.
 
 Next, install the stable **Rullst CLI** from the same release train as the
-framework. This book is built from `main`, where v13 is in development and not
-published, so request the v12 line explicitly:
+framework. This book is built from `main`, where v13 is in development, so
+request the v12 line explicitly:
 
 ```bash
 cargo install cargo-rullst --version '^12' --locked
@@ -33,6 +33,17 @@ cargo install cargo-rullst --version '^12' --locked
 The `^12` selector installs the latest stable v12 CLI. To reproduce a specific
 release, pass its full version, such as `--version 12.1.2`, after checking
 [publication status](v12.md).
+
+To evaluate the v13 prerelease instead, name its exact version. Cargo never
+selects a prerelease on its own, so neither a plain `cargo install
+cargo-rullst` nor `^13` installs it:
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+```
+
+Pin the framework the same way in `Cargo.toml` (`"=13.0.0-alpha.1"`); the
+[v13 migration guide](migration-v13.md) explains why and what changed.
 
 Source reviewers who intentionally need checkout-local changes can instead
 clone this repository and install the CLI from that exact checkout. On `main`
@@ -240,8 +251,12 @@ This convenience cannot be enabled in a release binary through `RULLST_ENV` or
 the legacy `APP_ENV` alias. A
 release build does not start the generated Studio task and requires unique
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` values before Nexus can be
-constructed. Put production Nexus behind a verified TLS boundary and explicit
-application authorization; do not expose Studio publicly.
+constructed. Without them the generated `router()` returns an error and the
+whole application refuses to start; to serve it without Nexus until they are
+set, see [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
+Put production Nexus behind a verified TLS boundary and explicit
+application authorization; do not expose Studio publicly. Studio has no
+production mode: it runs only in debug builds and on loopback.
 
 ## 5. Database configuration and specialized stores
 
@@ -260,6 +275,9 @@ After generation, the default flow compiles the new application once and runs
 its initial migration. A clean first build can take several minutes for larger
 blueprints. Use `--skip-initial-migration` when the network database is not yet
 configured, then run `cargo rullst db:migrate` from the generated project.
+`cargo rullst dev` applies pending migrations when it starts, but a deployed
+server never does: run the binary's `db:migrate` command on each release, as
+described in [Before the first deploy](tutorials/26-one-click-paas-deploy.md#before-the-first-deploy).
 
 The non-interactive flags mirror the second step:
 

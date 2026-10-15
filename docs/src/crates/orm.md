@@ -12,11 +12,12 @@
 </div>
 
 > [!IMPORTANT]
-> The dependency examples target `12.1.0`, the published stable line; the rest
-> of this page describes the v13 prerelease source (see the
-> [v13 migration guide](../migration-v13.md)). Check the
-> [release record](../v12.md) for publication status; use a path dependency
-> only for checkout-local review.
+> This page describes the v13 prerelease source, and its dependency examples
+> pin the published `13.0.0-alpha.1` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.1"` would also accept later alphas
+> (see the [v13 migration guide](../migration-v13.md)). For the stable line,
+> use `rullst-orm@12` and check the [release record](../v12.md); use a path
+> dependency only for checkout-local review.
 
 🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/)** 🚀
 
@@ -168,10 +169,10 @@ generated API.
 
 ### Installation
 
-Install the exact stable train with:
+Install the v13 prerelease with an exact pin:
 
 ```bash
-cargo add rullst-orm@12.1.0
+cargo add rullst-orm@=13.0.0-alpha.1
 cargo add tokio -F full
 ```
 
@@ -257,7 +258,7 @@ native enums specifically require `strict-postgres`, because SQLx's dynamic
 `Any` driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "12.1.0", features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.1", features = ["strict-postgres"] }
 ```
 
 Derive one label contract and use it in schema code:

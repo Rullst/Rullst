@@ -215,8 +215,8 @@ pub struct Post {
 `src/migrations/mod.rs`. A create-table migration looks like:
 
 ```rust
-use rullst_orm::schema::{Schema, Migration};
-use rullst_orm::async_trait;
+use rullst::db::schema::{Schema, Migration};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -226,7 +226,7 @@ impl Migration for MigrationImpl {
         "m<timestamp>_create_posts" // the generated file stem
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("posts", |table| {
             table.id();
             table.string("title");
@@ -236,7 +236,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("posts").await
     }
 }

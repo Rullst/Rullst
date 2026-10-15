@@ -45,14 +45,17 @@ telemetry views from the sources explicitly supplied by the application.
 
 ## 🚀 Quickstart
 
-Add `rullst-studio` to your project:
+Add `rullst-studio` to your project. This README describes the v13
+prerelease; Cargo never selects a prerelease on its own, so pin it exactly
+(the stable line is `rullst-studio@12`):
 
-Install the exact stable train with
-`cargo add rullst-studio@12.1.0`.
+```bash
+cargo add rullst-studio@=13.0.0-alpha.1
+```
 
 ### Launching the Studio
 
-The supported v12 mode is a standalone debug server. `run_studio` and
+The supported mode is a standalone debug server. `run_studio` and
 `Studio::into_router(LocalStudioAccess::loopback_only())` reject release builds
 and requests whose direct peer is not verified as loopback (an IPv4-mapped
 peer such as `::ffff:127.0.0.1` from a dual-stack `::` listener counts as IPv4
@@ -85,12 +88,12 @@ The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.
 
-**Since the published 12.1.0 maintenance release:** the raw data-browser router now includes
-the same-origin CSS/client and an unconnected Cache page, including when nested
-under `/studio`. Published `12.0.0` omits those routes. An unconnected cache is
-reported as **Unavailable**, not fabricated telemetry. Existing applications
-must remove temporary asset/Cache `.route(...)` overrides before updating to
-avoid duplicate-route collisions; preserve their access-control layers. See the
+**Since 12.1.0:** the raw data-browser router includes the same-origin
+CSS/client and an unconnected Cache page, including when nested under
+`/studio`; `12.0.0` omits those routes. An unconnected cache is
+reported as **Unavailable**, not fabricated telemetry. Applications upgrading
+from 12.0 must remove temporary asset/Cache `.route(...)` overrides to avoid
+duplicate-route collisions; preserve their access-control layers. See the
 [migration checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/3-rullst-studio.md#v1210-browser-composition-fix).
 
 **CLI Launch:**

@@ -11,7 +11,7 @@ owner's account or production data.
 
 ```toml
 [dependencies]
-rullst = { version = "13.0.0-alpha.1", default-features = false, features = ["messaging-redis"] }
+rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["messaging-redis"] }
 ```
 
 This version is the 13.0.0-alpha.1 prerelease, which `cargo add rullst` does not

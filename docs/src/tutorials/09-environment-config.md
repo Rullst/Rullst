@@ -85,6 +85,12 @@ the browser then omits credentials from those cross-origin no-CORS requests.
 application threat-model review. COEP configuration never makes an arbitrary
 remote origin trustworthy.
 
+The same baseline adds `Cache-Control: no-store` to every response that has no
+`Cache-Control` header of its own, so pages with personal data are not stored
+by browsers or shared caches. Responses that should be cached, such as file
+downloads or calendar and RSS feeds, must set their own header; the standard
+`/static` mount already does.
+
 ---
 
 ## 💡 Key Takeaways

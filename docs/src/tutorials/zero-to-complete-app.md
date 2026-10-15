@@ -23,9 +23,13 @@ Install Rust from [rustup.rs](https://rustup.rs/), then the stable CLI:
 cargo install cargo-rullst --version '^12' --locked
 ```
 
-To follow the **New in 13.0** steps before that release is published, install
-the CLI from a `main` checkout instead, as described in
-[Getting Started](../1-getting-started.md#1-installation).
+To follow the **New in 13.0** steps, install the v13 prerelease CLI instead.
+Cargo never selects a prerelease on its own, so name the exact version, as
+described in [Getting Started](../1-getting-started.md#1-installation):
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+```
 
 ## 2. Create the app from the SaaS starter
 
