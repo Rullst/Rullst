@@ -1569,6 +1569,15 @@ the same server-authoritative controls.
   content-hashed file name get `public, max-age=31536000, immutable`, other
   static files `no-cache` with `ServeDir`'s `ETag`/`Last-Modified` validators;
   see [static assets](tutorials/10-static-assets-and-compression.md#step-3-cache-headers).
+  Since 13.0.0-alpha.2 `rullst::cache_control` offers explicit policies for
+  dynamic routes: `cache_control::public(max_age)` and `private(max_age)`
+  are layers that set `public, max-age=<seconds>` or `private,
+  max-age=<seconds>` on the `2xx`/`304` responses of the routes they wrap
+  when the response has no `Cache-Control` yet (errors keep `no-store`), and
+  `CacheControl` can also be returned from a handler as a response part. The
+  CSRF middleware never sets its cookie on a response that shared caches may
+  store (a `Cache-Control` with `public` or `s-maxage` and without `private`
+  or `no-store`).
 * **Strict Transport Security (v13 prerelease):** `headers_middleware` adds
   `Strict-Transport-Security` when the response has none, built from
   `[security]` `hsts_max_age_seconds` (default 31,536,000),

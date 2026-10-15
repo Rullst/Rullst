@@ -18,6 +18,8 @@ pub mod edge;
 pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod cache_control;
 /// Edge client components rendering module.
 pub mod client;
 /// Portable, versioned wire contract shared by web and platform clients.

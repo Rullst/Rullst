@@ -73,7 +73,9 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// still receives the [`CsrfToken`] from it, so a dynamic page with one of
 /// those suffixes can render a form; a first visit that lands there does not.
 /// The suffixes do not affect state-changing requests, which always need the
-/// token.
+/// token. Nor is the cookie set on a response that shared caches may store
+/// (a `Cache-Control` with `public` or `s-maxage` and without `private` or
+/// `no-store`, such as one labelled by [`crate::cache_control::public`]).
 ///
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
@@ -191,6 +193,11 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
             || super::secure_cookies::request_is_https(req.uri(), req.extensions());
 
         let mut response = next.run(req).await;
+        // A response that shared caches may store would hand this visitor's
+        // token to others, so it never sets the cookie.
+        if crate::cache_control::allows_shared_caching(response.headers()) {
+            return response;
+        }
 
         let secure_attr = if secure_cookie { "; Secure" } else { "" };
         if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
