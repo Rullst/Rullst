@@ -18,6 +18,10 @@ pub trait HtmlEscape {
 mod markup;
 pub use markup::Markup;
 
+#[path = "html_attribute.rs"]
+mod attribute;
+pub use attribute::{AttributePresence, OptionalAttribute, optional_attr};
+
 /// A wrapper to mark a string as safe raw HTML that should NOT be escaped.
 ///
 /// `RawHtml` is the explicit escape hatch for trusted HTML produced outside
@@ -202,6 +206,10 @@ mod tests {
 #[cfg(test)]
 #[path = "html_macro_tests.rs"]
 mod macro_tests;
+
+#[cfg(test)]
+#[path = "html_syntax_tests.rs"]
+mod syntax_tests;
 
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]

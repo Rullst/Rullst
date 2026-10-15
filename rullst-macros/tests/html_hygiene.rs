@@ -11,6 +11,40 @@ pub mod html {
         format!("attr:{value}")
     }
 
+    /// Stand-in for the presence of a conditional `name?={value}` attribute.
+    pub enum AttributePresence {
+        Absent,
+        Bare,
+        Value(String),
+    }
+
+    pub trait OptionalAttribute {
+        fn presence(&self) -> AttributePresence;
+    }
+
+    impl OptionalAttribute for bool {
+        fn presence(&self) -> AttributePresence {
+            if *self {
+                AttributePresence::Bare
+            } else {
+                AttributePresence::Absent
+            }
+        }
+    }
+
+    impl<T: std::fmt::Display> OptionalAttribute for Option<T> {
+        fn presence(&self) -> AttributePresence {
+            match self {
+                Some(value) => AttributePresence::Value(format!("opt:{value}")),
+                None => AttributePresence::Absent,
+            }
+        }
+    }
+
+    pub fn optional_attr<T: OptionalAttribute + ?Sized>(value: &T) -> AttributePresence {
+        value.presence()
+    }
+
     /// Stand-in for the escaped-HTML type every expansion returns.
     #[derive(Debug, PartialEq)]
     pub struct Markup(pub String);
@@ -151,4 +185,64 @@ fn doctype_and_keyword_element_names_expand_to_markup() {
         },
         "<!DOCTYPE html><html><body><svg><use href=\"#i\"></use></svg>text:caller</body></html>"
     );
+}
+
+#[test]
+fn bare_and_conditional_attributes_resolve_the_caller() {
+    // `value` is also the name of the generated match binding.
+    let value = Some("caller");
+    let s = true;
+    assert_eq!(
+        html! { <input required title?={value} checked?={s} hidden?={!s} /> },
+        "<input required title=\"opt:caller\" checked />"
+    );
+    let value: Option<&str> = None;
+    assert_eq!(
+        html! { <a href?={value} data-on?={value}>"x"</a> },
+        "<a>x</a>"
+    );
+    assert_eq!(
+        html! { <a href?={Some(format!("/{}", "caller"))}>"x"</a> },
+        "<a href=\"opt:/caller\">x</a>"
+    );
+}
+
+#[test]
+fn conditional_attributes_evaluate_once_in_source_order() {
+    let mut s = 0;
+    let output = html! {
+        <p data-a={{ s += 1; s }} data-b?={{ s += 1; Some(s) }} data-c?={{ s += 1; s > 5 }}>
+            {{ s += 1; s }}
+        </p>
+    };
+    assert_eq!(output, "<p data-a=\"attr:1\" data-b=\"opt:2\">text:4</p>");
+    assert_eq!(s, 4);
+}
+
+#[test]
+fn control_blocks_resolve_caller_bindings_named_like_the_buffer() {
+    let s = vec![Label { text: "a" }, Label { text: "b" }];
+    assert_eq!(
+        html! { <ul>@for s in &s { <li>{s.text}</li> }</ul> },
+        "<ul><li>text:a</li><li>text:b</li></ul>"
+    );
+    assert_eq!(
+        html! { @for (i, s) in s.iter().enumerate() { {i}{s.text} } },
+        "text:0text:atext:1text:b"
+    );
+    assert_eq!(
+        html! { @if s.is_empty() { "none" } @else if s.len() == 2 { {s[1].text} } @else { "many" } },
+        "text:b"
+    );
+    let s: Option<Label> = None;
+    assert_eq!(
+        html! { <p>@if let Some(s) = &s { {s.text} } @else { "no label" }</p> },
+        "<p>no label</p>"
+    );
+    let s = Some(Label { text: "caller" });
+    assert_eq!(
+        html! { <p>@if let Some(s) = &s { {s.text} } @else { "no label" }</p> },
+        "<p>text:caller</p>"
+    );
+    assert_eq!(s.map(|label| label.text), Some("caller"));
 }
