@@ -90,6 +90,10 @@ updates:
       # Held at =0.8.0-rc.4: sad-rsa 0.10.2 (via xml-sec) does not build with
       # rc.5; see rullst-capital/Cargo.toml on v12.
       - dependency-name: "pkcs1"
+      # Held at =0.1.17: with 0.1.19 the NFS-e DPS XMLDSig no longer verifies
+      # (rullst-capital fiscal journal/protocol tests, #484); the NFS-e stack
+      # is pinned exactly in rullst-capital/Cargo.toml on v12.
+      - dependency-name: "xml-sec"
     groups:
       opentelemetry-family:
         patterns:
