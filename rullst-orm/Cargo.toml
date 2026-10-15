@@ -68,7 +68,6 @@ pgvector = ["dep:pgvector"]
 # also depend on `rullst-ai`.
 ai = ["pgvector", "rullst-orm-macros/ai"]
 qdrant = ["dep:reqwest", "dep:url"]
-polyglot = ["mongodb", "duckdb", "turso", "surrealdb", "qdrant"]
 strict-postgres = ["sqlx/postgres"]
 strict-mysql = ["sqlx/mysql"]
 strict-sqlite = ["sqlx/sqlite"]

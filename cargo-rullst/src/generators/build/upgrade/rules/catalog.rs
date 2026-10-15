@@ -322,6 +322,9 @@ rules! {
     ORM_DEFAULT_FEATURES: "V13-ORM-DEFAULT-FEATURES", Review, "Generated `rullst-orm` dependency",
         "`rullst-orm` keeps its default `drivers-all`, adding every SQLx driver to a single-backend build",
         "Add `default-features = false` to the `rullst-orm` dependency and enable any other driver explicitly.";
+    POLYGLOT_FEATURE: "V13-POLYGLOT-FEATURE", MustChange, "ORM adapter aggregate features",
+        "the `orm-polyglot` (`rullst`) and `polyglot` (`rullst-orm`) features were removed; Cargo refuses a manifest that enables them",
+        "Enable only the adapters the application uses: `orm-turso`, `orm-mongodb`, `orm-duckdb`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `mongodb`, `duckdb`, `surrealdb` or `qdrant` on `rullst-orm`.";
     OMNI_RUNNER: "V13-OMNI-RUNNER", Review, "Omni desktop runner",
         "the Omni runtime does not print `Launching Omni interface...` before opening its window",
         "Add `println!(\"Launching Omni interface...\");` before `tauri::Builder::default()` in the desktop branch.";

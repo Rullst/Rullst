@@ -91,6 +91,9 @@ An explicit conditional-attribute API is a separate v13 ergonomics proposal.
 It must preserve escaping and distinguish actual HTML boolean attributes from
 string-valued `aria-*` and `data-*` attributes. Do not reinterpret all false
 values or silently change the stable macro's serialization behavior.
+13.0.0-alpha.2 provides it as `name?={value}` (a `bool` toggles presence, an
+`Option` omits the attribute for `None`) while `name={value}` keeps its
+serialization.
 
 ## Acceptance and evidence
 

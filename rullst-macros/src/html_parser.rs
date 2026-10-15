@@ -9,6 +9,8 @@ pub enum HtmlNode {
     Element(HtmlElement),
     Text(LitStr),
     Block(Expr),
+    If(Box<HtmlIf>),
+    For(Box<HtmlFor>),
 }
 
 pub struct HtmlDocument {
@@ -20,6 +22,14 @@ mod declarations;
 use declarations::{
     misplaced_doctype, parse_comment, parse_doctype, starts_comment, starts_doctype,
 };
+
+#[path = "html_attributes.rs"]
+mod attributes;
+use attributes::{HtmlAttribute, allows_data_urls, url_guard_tokens};
+
+#[path = "html_control.rs"]
+mod control;
+use control::{HtmlFor, HtmlIf};
 
 impl Parse for HtmlDocument {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -46,89 +56,15 @@ pub struct HtmlElement {
     pub children: Vec<HtmlNode>,
 }
 
-pub struct HtmlAttribute {
-    pub name: String,
-    pub value: HtmlAttrValue,
-}
-
-pub enum HtmlAttrValue {
-    Static(LitStr),
-    Dynamic(Box<Expr>),
-}
-
-/// Attributes whose value a browser follows as a URL. A dynamic value with a
-/// `javascript:`, `vbscript:` or (outside media elements) `data:` scheme is
-/// replaced by `#` at runtime.
-const URL_ATTRIBUTES: [&str; 13] = [
-    "action",
-    "background",
-    "cite",
-    "codebase",
-    "data",
-    "formaction",
-    "href",
-    "icon",
-    "longdesc",
-    "manifest",
-    "poster",
-    "src",
-    "usemap",
-];
-
-/// Media elements whose URL attributes may keep inline `data:` resources.
-const DATA_URL_ELEMENTS: [&str; 6] = ["audio", "image", "img", "source", "track", "video"];
-
-fn is_url_attribute(name: &str) -> bool {
-    URL_ATTRIBUTES
-        .iter()
-        .any(|attribute| name.eq_ignore_ascii_case(attribute))
-}
-
-/// Local helper emitted into elements with dynamic URL attributes. It returns
-/// the escaped value, or `#` for a script-capable scheme. It is generated
-/// inline instead of calling a runtime function, so the expansion works with
-/// any `rullst::html` version that provides `escape_attr`.
-///
-/// Like the URL parser, it skips leading C0 controls and spaces and ignores
-/// ASCII tab, LF and CR anywhere before reading the scheme. Every character
-/// that can appear in a scheme survives `escape_attr` unchanged, so checking
-/// the escaped value checks the URL the browser decodes. Entity references
-/// written inside an explicit `RawHtml` value are not decoded.
-fn url_guard_tokens() -> TokenStream {
-    quote! {
-        #[inline]
-        fn rullst_url_attr(value: &str, allow_data: bool) -> &str {
-            let mut scheme = [0u8; 10];
-            let mut len = 0usize;
-            for byte in value.bytes().skip_while(|byte| *byte <= b' ') {
-                match byte {
-                    b'\t' | b'\n' | b'\r' => {}
-                    b':' => {
-                        let scheme = &scheme[..len];
-                        let unsafe_scheme = scheme == b"javascript"
-                            || scheme == b"vbscript"
-                            || (!allow_data && scheme == b"data");
-                        return if unsafe_scheme { "#" } else { value };
-                    }
-                    b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'+' | b'-' | b'.'
-                        if len < scheme.len() =>
-                    {
-                        scheme[len] = byte.to_ascii_lowercase();
-                        len += 1;
-                    }
-                    _ => return value,
-                }
-            }
-            value
-        }
-    }
-}
-
 impl Parse for HtmlNode {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Token![<]) {
             let element = input.parse::<HtmlElement>()?;
             Ok(HtmlNode::Element(element))
+        } else if input.peek(Token![@]) {
+            control::parse_control(input)
+        } else if input.peek(Token![else]) {
+            Err(control::else_without_at(input))
         } else if input.peek(token::Brace) {
             let content;
             syn::braced!(content in input);
@@ -164,20 +100,7 @@ impl Parse for HtmlElement {
 
         input.parse::<Token![>]>()?;
 
-        let mut children = Vec::new();
-        while !input.is_empty() {
-            if input.peek(Token![<]) && input.peek2(Token![/]) {
-                break;
-            }
-            if starts_doctype(input) {
-                return Err(misplaced_doctype(input));
-            }
-            if starts_comment(input) {
-                parse_comment(input)?;
-            } else {
-                children.push(input.parse::<HtmlNode>()?);
-            }
-        }
+        let children = parse_children(input)?;
 
         input.parse::<Token![<]>()?;
         input.parse::<Token![/]>()?;
@@ -199,6 +122,25 @@ impl Parse for HtmlElement {
             children,
         })
     }
+}
+
+/// Parses child nodes until the input ends or a closing tag (`</`) follows.
+fn parse_children(input: ParseStream) -> Result<Vec<HtmlNode>> {
+    let mut children = Vec::new();
+    while !input.is_empty() {
+        if input.peek(Token![<]) && input.peek2(Token![/]) {
+            break;
+        }
+        if starts_doctype(input) {
+            return Err(misplaced_doctype(input));
+        }
+        if starts_comment(input) {
+            parse_comment(input)?;
+        } else {
+            children.push(input.parse::<HtmlNode>()?);
+        }
+    }
+    Ok(children)
 }
 
 impl HtmlDocument {
@@ -229,54 +171,6 @@ impl HtmlDocument {
     }
 }
 
-/// Attributes whose value is run as JavaScript: `on*` event handlers and
-/// htmx's `hx-on`/`hx-on-*` (also with a `data-` prefix).
-fn is_event_handler_attribute(name: &str) -> bool {
-    let name = name.to_ascii_lowercase();
-    let htmx = name.strip_prefix("data-").unwrap_or(&name);
-    (name.len() > 2 && name.starts_with("on") && !name.contains('-'))
-        || htmx == "hx-on"
-        || htmx.starts_with("hx-on-")
-}
-
-impl Parse for HtmlAttribute {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut name_parts = Vec::new();
-        let first = Ident::parse_any(input)?;
-        let name_span = first.span();
-        name_parts.push(first.to_string());
-
-        while input.peek(Token![-]) {
-            input.parse::<Token![-]>()?;
-            name_parts.push(Ident::parse_any(input)?.to_string());
-        }
-
-        let name = name_parts.join("-");
-        input.parse::<Token![=]>()?;
-        let value = if input.peek(token::Brace) {
-            let content;
-            syn::braced!(content in input);
-            let expr = content.parse::<Expr>()?;
-            HtmlAttrValue::Dynamic(Box::new(expr))
-        } else {
-            let lit = input.parse::<LitStr>()?;
-            HtmlAttrValue::Static(lit)
-        };
-        if matches!(value, HtmlAttrValue::Dynamic(_)) && is_event_handler_attribute(&name) {
-            return Err(syn::Error::new(
-                name_span,
-                format!(
-                    "dynamic `{name}` values are not allowed in html!: event-handler attributes \
-                     run their value as JavaScript, which HTML escaping cannot make safe; use a \
-                     static handler string, or attach the listener from a nonce'd script and \
-                     pass data through a `data-*` attribute"
-                ),
-            ));
-        }
-        Ok(HtmlAttribute { name, value })
-    }
-}
-
 impl HtmlNode {
     pub fn to_tokens(&self) -> TokenStream {
         match self {
@@ -288,6 +182,8 @@ impl HtmlNode {
             HtmlNode::Block(expr) => {
                 quote! { rullst::html::escape(&(#expr)) }
             }
+            HtmlNode::If(node) => node.to_tokens(),
+            HtmlNode::For(node) => node.to_tokens(),
         }
     }
 
@@ -295,7 +191,7 @@ impl HtmlNode {
         match self {
             HtmlNode::Element(el) => el.static_size(),
             HtmlNode::Text(txt) => txt.value().len(),
-            HtmlNode::Block(_) => 0,
+            HtmlNode::Block(_) | HtmlNode::If(_) | HtmlNode::For(_) => 0,
         }
     }
 }
@@ -306,10 +202,7 @@ impl HtmlElement {
         let mut size = tag.len() * 2 + 5; // <tag></tag>
 
         for attr in &self.attributes {
-            size += attr.name.len() + 4; //  name=""
-            if let HtmlAttrValue::Static(lit) = &attr.value {
-                size += lit.value().len();
-            }
+            size += attr.static_size();
         }
 
         for child in &self.children {
@@ -325,44 +218,13 @@ impl HtmlElement {
         // writes; interpolated caller expressions retain their original spans.
         let buffer = Ident::new("s", Span::mixed_site());
 
-        let allow_data_urls = DATA_URL_ELEMENTS
-            .iter()
-            .any(|element| tag.eq_ignore_ascii_case(element));
+        let allow_data_urls = allows_data_urls(&tag);
         let mut needs_url_guard = false;
         let mut attr_tokens = Vec::new();
         for attr in &self.attributes {
-            let attr_name = attr.name.to_string();
-            match &attr.value {
-                HtmlAttrValue::Static(lit) => {
-                    let val = lit.value();
-                    let static_attr = format!(" {}=\"{}\"", attr_name, val);
-                    attr_tokens.push(quote! {
-                        #buffer.push_str(#static_attr);
-                    });
-                }
-                HtmlAttrValue::Dynamic(expr) if is_url_attribute(&attr_name) => {
-                    needs_url_guard = true;
-                    let attr_prefix = format!(" {}=\"", attr_name);
-                    // One statement, so temporaries such as `format!(..)`
-                    // live until the value has been written.
-                    attr_tokens.push(quote! {
-                        #buffer.push_str(#attr_prefix);
-                        #buffer.push_str(rullst_url_attr(
-                            &rullst::html::escape_attr(&(#expr)),
-                            #allow_data_urls,
-                        ));
-                        #buffer.push_str("\"");
-                    });
-                }
-                HtmlAttrValue::Dynamic(expr) => {
-                    let attr_prefix = format!(" {}=\"", attr_name);
-                    attr_tokens.push(quote! {
-                        #buffer.push_str(#attr_prefix);
-                        #buffer.push_str(&rullst::html::escape_attr(&(#expr)));
-                        #buffer.push_str("\"");
-                    });
-                }
-            }
+            let (tokens, uses_url_guard) = attr.to_tokens(&buffer, allow_data_urls);
+            needs_url_guard |= uses_url_guard;
+            attr_tokens.push(tokens);
         }
         let url_guard = if needs_url_guard {
             url_guard_tokens()

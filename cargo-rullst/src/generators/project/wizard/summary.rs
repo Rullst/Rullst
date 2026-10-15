@@ -1,7 +1,7 @@
 //! Pure renderings of a plan: the review summary and the compact file tree.
 
-use super::catalog::{blueprint, database_name, feature_name};
-use super::plan::ProjectPlan;
+use super::catalog::{TURSO_PRIMARY_LIMITS, blueprint, database_name, feature_name};
+use super::plan::{Database, ProjectPlan};
 use crate::blueprints::BLANK_BLUEPRINT_ID;
 use crate::generators::project::ProjectIdentity;
 use crate::ui::screen::{Line, Tone};
@@ -249,6 +249,11 @@ pub(crate) fn summary(plan: &ProjectPlan, files: Option<&[String]>, port: u16) -
         "none"
     };
     answers.push(row("Database", Line::new().push(Tone::Value, database)));
+    if plan.database == Database::Provider("Turso") {
+        answers.push(indented(
+            Line::new().push(Tone::Warning, TURSO_PRIMARY_LIMITS),
+        ));
+    }
     let mut features: Vec<&str> = plan.features().into_iter().map(feature_name).collect();
     if plan.buildah {
         features.push("Buildah script");

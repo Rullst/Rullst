@@ -4,6 +4,7 @@
 
 use super::catalog::*;
 use super::{ManifestUpgradePlan, Rule, SourceFinding, WorkspaceFacts};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -94,6 +95,63 @@ fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
     Some((comparator.major, comparator.minor.unwrap_or(0)))
 }
 
+/// The aggregate feature v13 removed from a Rullst package
+/// (`V13-POLYGLOT-FEATURE`).
+fn removed_aggregate_feature(package: &str) -> Option<&'static str> {
+    match package {
+        "rullst" => Some("orm-polyglot"),
+        "rullst-orm" => Some("polyglot"),
+        _ => None,
+    }
+}
+
+/// Whether a dependency declaration enables its package's removed aggregate
+/// feature.
+fn enables_removed_aggregate(package: &str, declaration: &toml::Value) -> bool {
+    let Some(removed) = removed_aggregate_feature(package) else {
+        return false;
+    };
+    declaration
+        .get("features")
+        .and_then(toml::Value::as_array)
+        .is_some_and(|features| {
+            features
+                .iter()
+                .any(|feature| feature.as_str() == Some(removed))
+        })
+}
+
+/// The line of the first `[features]` entry that enables a removed aggregate
+/// feature through a dependency key, such as `"rullst/orm-polyglot"`.
+fn removed_aggregate_reference(
+    document: &toml::Value,
+    text: &str,
+    packages: &BTreeMap<String, String>,
+) -> Option<usize> {
+    let reference = document
+        .get("features")
+        .and_then(toml::Value::as_table)?
+        .values()
+        .filter_map(toml::Value::as_array)
+        .flatten()
+        .filter_map(toml::Value::as_str)
+        .find(|value| {
+            value.split_once('/').is_some_and(|(key, feature)| {
+                let key = key.strip_suffix('?').unwrap_or(key);
+                packages
+                    .get(key)
+                    .and_then(|package| removed_aggregate_feature(package))
+                    == Some(feature)
+            })
+        })?;
+    Some(
+        line_of(text, |line| {
+            !line.starts_with('#') && line.contains(reference)
+        })
+        .unwrap_or(1),
+    )
+}
+
 /// Manifest findings and the workspace facts that Rust rules depend on.
 pub(super) fn manifest_findings(
     plans: &[ManifestUpgradePlan],
@@ -104,7 +162,19 @@ pub(super) fn manifest_findings(
         let Ok(document) = toml::from_str::<toml::Value>(&plan.original) else {
             continue;
         };
-        for (key, package, declaration) in dependencies(&document) {
+        let declared = dependencies(&document);
+        let packages: BTreeMap<String, String> = declared
+            .iter()
+            .map(|(key, package, _)| (key.clone(), package.clone()))
+            .collect();
+        for (key, package, declaration) in declared {
+            if enables_removed_aggregate(&package, &declaration) {
+                findings.push(finding(
+                    &POLYGLOT_FEATURE,
+                    plan.path.clone(),
+                    dependency_line(&plan.original, &key),
+                ));
+            }
             let inherited = declaration
                 .get("workspace")
                 .and_then(toml::Value::as_bool)
@@ -139,6 +209,9 @@ pub(super) fn manifest_findings(
                 }
                 _ => {}
             }
+        }
+        if let Some(line) = removed_aggregate_reference(&document, &plan.original, &packages) {
+            findings.push(finding(&POLYGLOT_FEATURE, plan.path.clone(), line));
         }
     }
     (findings, facts)

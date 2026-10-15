@@ -42,7 +42,7 @@ Conventions to retain when adapting project instructions:
 ```markdown
 1. **Static Dispatch over Dynamic**: Prefer static dispatch (`impl Trait` or generics) over `dyn Trait` to ensure explicit concrete types for AI context tracking and optimization.
 2. **Explicit APIs**: Avoid hidden state. Every controller and middleware should be explicit in its arguments.
-3. **HTML Macros**: Boolean attributes in the `html!` macro must be quoted (e.g., `required="true"`).
+3. **HTML Macros**: Boolean attributes in the `html!` macro are bare (`required`) or conditional (`disabled?={is_locked}`); never `disabled="false"`, which still disables.
 4. **No Panics**: Never use `unwrap()` or `expect()` in production routes.
 ```
 

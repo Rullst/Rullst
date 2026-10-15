@@ -2,9 +2,11 @@
 ### *"Embedded Sensor Protocols, Ed25519 OTA Gate & Edge Computing for Rust"*
 
 > [!IMPORTANT]
-> The dependency example targets `12.1.0`. Check the [release record](../v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use a path dependency only when intentionally testing checkout-local changes.
+> This page describes the v13 prerelease, published as `13.0.0-alpha.1`. Cargo
+> never selects a prerelease on its own, so its dependency examples pin that
+> version exactly; for the stable line use `rullst-iot@12` and check the
+> [release record](../v12.md). Use a path dependency only for checkout-local
+> review. Commit `Cargo.lock` for reproducible builds.
 
 `rullst-iot` provides high-assurance telemetry models, bare-metal `#![no_std]`
 data structures and packet encoders, and a cryptographically verified
@@ -239,7 +241,7 @@ For local integration tests without physical hardware attached, enable the simul
 
 ```toml
 [dependencies]
-rullst-iot = { version = "12.1.0", features = ["experimental-simulators"] }
+rullst-iot = { version = "=13.0.0-alpha.1", features = ["experimental-simulators"] }
 ```
 
 This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution.

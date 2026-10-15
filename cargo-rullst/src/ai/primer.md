@@ -96,7 +96,7 @@ pub async fn index(Extension(csrf): Extension<CsrfToken>) -> impl IntoResponse {
             <h1 class="text-2xl font-bold">{title}</h1>
             <form method="post" action="/posts">
                 <input type="hidden" name="_token" value={csrf.as_str()} />
-                <input name="title" required="true" />
+                <input name="title" required />
                 <button type="submit">"Create"</button>
             </form>
         </main>
@@ -122,8 +122,13 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {
   (`href`, `src`, `action`, ...) also neutralise `javascript:` URLs.
 - Attribute values are quoted strings or `{expr}`: `class="card"`,
   `value={csrf.as_str()}`.
-- Boolean attributes must be written with an explicit quoted value:
-  `required="true"`, `disabled="true"`, `checked="true"`.
+- Boolean attributes are bare (`required`, `disabled`) or conditional:
+  `checked?={done}` writes `checked` or nothing, and `title?={maybe}` omits
+  the attribute for `None`. Never write `disabled="false"`: presence is the
+  value. `name={flag}` writes "true"/"false", which suits `aria-*` only.
+- `@if cond { ... } @else { ... }`, `@if let Some(x) = opt { ... }` and
+  `@for item in items { ... }` take html! nodes in their braces; use a
+  `{match ...}` expression returning `Markup` for other control flow.
 - A dynamic value for an `on*` or `hx-on*` attribute does not compile; keep
   event handlers static and pass data through `data-*` attributes.
 - `html!` returns `rullst::html::Markup`, which a handler can return directly
