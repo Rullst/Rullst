@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792080732726,
+  "lastUpdate": 1792086885940,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16074,6 +16074,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ad1b2881063979202158e45f0ab70d8520a8ec0",
+          "message": "Merge pull request #499 from Rullst/feat/v13-i18n\n\nfeat(i18n): compile-time checked translation catalogs and locale negotiation",
+          "timestamp": "2026-10-15T14:31:52-03:00",
+          "tree_id": "75cb62375a49b93879e17ecb083ee8ef85e51fd6",
+          "url": "https://github.com/Rullst/Rullst/commit/5ad1b2881063979202158e45f0ab70d8520a8ec0"
+        },
+        "date": 1792086885066,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5252,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 544,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           }
