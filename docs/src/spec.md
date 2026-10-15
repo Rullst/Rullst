@@ -917,8 +917,9 @@ optional `schedules-postgres`, with an explicit facade feature. It coordinates
 bounded UTC cron occurrences across instances through one authoritative PostgreSQL
 database and relays them to the existing static `MessageBroker` contract. Core's
 process-local `Scheduler` retains its API; it evaluates POSIX five-field
-expressions in UTC (weekday 0/7=Sun, either restricted day field matches),
-unlike the projection below. A broker publication is
+expressions in UTC (weekday 0/7=Sun, either restricted day field matches), or
+in a named IANA zone through the opt-in `scheduler-tz` `task_in_tz` (section
+4.3), unlike the projection below. A broker publication is
 not proof of handler completion or an exactly-once external effect.
 
 Require a server-owned namespace, immutable limits and explicit encrypted storage
@@ -1728,6 +1729,19 @@ the same server-authoritative controls.
   `dispatch_at`, so stored rows and keys are unchanged; Core ships no network
   source and makes no emissions claim. `Scheduler::deferrable_task` applies the
   window rule to each tick within a maximum delay.
+* `Scheduler::task` matches POSIX five-field cron against UTC. The v13 opt-in
+  `scheduler-tz` Core/facade feature adds
+  `Scheduler::task_in_tz(expression, zone, handler)`, which matches the same
+  fields, day fields included, against the wall clock of an IANA time zone.
+  An unknown zone is rejected at registration with
+  `SchedulerError::InvalidTimeZone { zone, message }`. A wall time that a
+  daylight-saving gap skips runs at the first instant after the gap (several
+  skipped matches run once there); a wall time that a fold repeats runs once,
+  at its first occurrence, and no match in the repeated hour runs a second
+  time. Zone rules come from the system zoneinfo database when it has the
+  zone, otherwise from the database bundled with the `jiff` dependency. Fixed
+  instants in tests cover São Paulo, New York's gap and fold, and UTC
+  equivalence with `Scheduler::task`. `deferrable_task` has no time-zone form.
 * SQLite claims pending jobs in order of their due time, and an immediately
   dispatched job is due at its enqueue time. A scheduled job, or one handed
   back for lack of a handler, that became due earlier is therefore claimed
