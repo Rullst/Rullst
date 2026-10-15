@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792054755298,
+  "lastUpdate": 1792056966472,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -10183,6 +10183,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 401,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8ae277200e4ca45ff49c9820f57eb39ec7b84e5",
+          "message": "Merge pull request #489 from Rullst/dependabot/cargo/main/tokio-tungstenite-0.30.0\n\nbuild(deps): Bump tokio-tungstenite from 0.29.0 to 0.30.0",
+          "timestamp": "2026-10-15T06:19:30-03:00",
+          "tree_id": "8fb7ef8a3128b469519799e85d150ce463f0b7dc",
+          "url": "https://github.com/Rullst/Rullst/commit/e8ae277200e4ca45ff49c9820f57eb39ec7b84e5"
+        },
+        "date": 1792056965838,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 616,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
