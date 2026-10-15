@@ -324,3 +324,6 @@ fn executable_magic(content: &[u8]) -> bool {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod policy_tests;

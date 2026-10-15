@@ -487,3 +487,7 @@ mod tests {
         assert!(!is_disposable_domain("outlook.com"));
     }
 }
+
+#[cfg(test)]
+#[path = "validator_tests.rs"]
+mod contract_tests;
