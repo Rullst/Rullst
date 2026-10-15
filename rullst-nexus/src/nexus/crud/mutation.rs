@@ -35,47 +35,10 @@ pub(super) async fn create_record(
     };
 
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let mut keys = Vec::new();
-    let mut expressions = Vec::new();
-    let mut values: Vec<RullstValue> = Vec::new();
     let submitted_key = submitted_address(entry, &data);
-    for value in data {
-        // An empty key column is left to the database (an identity column).
-        if entry.is_key_column(value.field.name) && blank(value.value.as_deref()) {
-            continue;
-        }
-        keys.push(value.field.name);
-        match write_value_sql(
-            &value.field.kind,
-            value.value.as_deref(),
-            values.len() + 1,
-            driver,
-        ) {
-            ValueSql::Bind(expression) => {
-                expressions.push(expression);
-                values.push(bound_value(&value, driver));
-            }
-            ValueSql::Literal(literal) => expressions.push(literal.to_string()),
-        }
-    }
-    if let (Some(tenant_column), Some(tenant_id)) = (entry.tenant_column, tenant_id) {
-        keys.push(tenant_column);
-        expressions.push(placeholder(values.len() + 1, driver));
-        values.push(RullstValue::String(tenant_id.to_string()));
-    }
-    if keys.is_empty() {
+    let Some((sql, values)) = insert_sql(entry, data, tenant_id, driver) else {
         return (StatusCode::BAD_REQUEST, "No writable values were provided.").into_response();
-    }
-
-    let sql = format!(
-        "INSERT INTO {} ({}) VALUES ({})",
-        sanitize_identifier(entry.table),
-        keys.iter()
-            .map(|key| sanitize_identifier(key))
-            .collect::<Vec<_>>()
-            .join(", "),
-        expressions.join(", ")
-    );
+    };
     let Some(pool) = rullst_core::db::safe_pool() else {
         return database_failure("create", entry.table);
     };
@@ -308,6 +271,58 @@ pub(super) fn bound_value(value: &ValidatedFieldValue<'_>, driver: &str) -> Rull
         (None, Some(text)) => RullstValue::String(text.clone()),
         (None, None) => RullstValue::Null,
     }
+}
+
+/// The `INSERT` of a create form and the values bound to it, in placeholder
+/// order, or `None` when no column would be written. An empty key column is
+/// left to the database (an identity column); a tenant-scoped request also
+/// writes the trusted tenant.
+pub(super) fn insert_sql(
+    entry: &RegistryEntry,
+    data: Vec<ValidatedFieldValue<'_>>,
+    tenant_id: Option<&str>,
+    driver: &str,
+) -> Option<(String, Vec<RullstValue>)> {
+    let mut columns = Vec::new();
+    let mut expressions = Vec::new();
+    let mut values: Vec<RullstValue> = Vec::new();
+    for value in data {
+        if entry.is_key_column(value.field.name) && blank(value.value.as_deref()) {
+            continue;
+        }
+        columns.push(value.field.name);
+        match write_value_sql(
+            &value.field.kind,
+            value.value.as_deref(),
+            values.len() + 1,
+            driver,
+        ) {
+            ValueSql::Bind(expression) => {
+                expressions.push(expression);
+                values.push(bound_value(&value, driver));
+            }
+            ValueSql::Literal(literal) => expressions.push(literal.to_string()),
+        }
+    }
+    if let (Some(tenant_column), Some(tenant_id)) = (entry.tenant_column, tenant_id) {
+        columns.push(tenant_column);
+        expressions.push(placeholder(values.len() + 1, driver));
+        values.push(RullstValue::String(tenant_id.to_string()));
+    }
+    if columns.is_empty() {
+        return None;
+    }
+    let sql = format!(
+        "INSERT INTO {} ({}) VALUES ({})",
+        sanitize_identifier(entry.table),
+        columns
+            .iter()
+            .map(|column| sanitize_identifier(column))
+            .collect::<Vec<_>>()
+            .join(", "),
+        expressions.join(", ")
+    );
+    Some((sql, values))
 }
 
 /// Whether a submitted key value is absent or only whitespace.
