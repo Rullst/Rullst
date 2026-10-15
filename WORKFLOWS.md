@@ -662,6 +662,8 @@ entry needs the same one-line justification.
 | `rullst-core/src/live/recovery/session.rs`: `send_snapshot`, `encoded.len() > 512 * 1024` with `==` or `>=` | A snapshot holds at most 64 KiB of HTML, which JSON escaping expands to under 400 KiB. |
 | `rullst-core/src/cache/memory/exact_json.rs`: `Display for Inexact` with `Ok(Default::default())` | `is_exact_json` only checks whether serialization succeeds; the error text is never formatted. |
 | `rullst-core/src/radar.rs`: `get_windows_memory_mb`, `get_windows_process_cpu_usage`, `filetime_100ns`, `calculate_windows_cpu_percent`, and the Windows and other-platform `get_process_cpu_usage` | Not compiled on Linux. |
+| `rullst-orm/src/value.rs`: the SQLx `Any` pool's `temporal::date_time`, `naive_date_time`, `date` and `time` with `String::new()` or `"xyzzy".into()` | They exist only without a strict driver feature, and the all-feature build selects the PostgreSQL pool; `the_any_pool_binds_dates_as_iso_text` checks their exact text in default-feature builds. |
+| `rullst-orm/src/schema/schema_builder.rs`: `prepare_postgres_enums`, delete `!` in the `!definitions.is_empty()` guard | That guard exists only without `strict-postgres`, which the all-feature build enables; `postgres_enum_preparation_validates_before_any_statement` covers it in default-feature builds. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
