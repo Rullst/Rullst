@@ -57,6 +57,42 @@ fn only_successful_and_not_modified_responses_without_a_policy_are_labelled() {
     assert_eq!(headers[header::CACHE_CONTROL], "no-cache");
 }
 
+/// An inner service whose readiness is fixed, to observe what the layer
+/// reports.
+#[derive(Clone)]
+struct Readiness(Poll<Result<(), &'static str>>);
+
+impl tower_service::Service<Request<()>> for Readiness {
+    type Response = Response<()>;
+    type Error = &'static str;
+    type Future = std::future::Ready<Result<Response<()>, &'static str>>;
+
+    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), &'static str>> {
+        self.0
+    }
+
+    fn call(&mut self, _: Request<()>) -> Self::Future {
+        std::future::ready(Ok(Response::new(())))
+    }
+}
+
+#[test]
+fn the_layer_reports_the_inner_services_readiness() {
+    use tower_layer::Layer;
+    use tower_service::Service;
+    let mut context = Context::from_waker(std::task::Waker::noop());
+    let layer = public(Duration::from_secs(1));
+    let mut pending = layer.layer(Readiness(Poll::Pending));
+    assert_eq!(pending.poll_ready(&mut context), Poll::Pending);
+    let mut failing = layer.layer(Readiness(Poll::Ready(Err("overloaded"))));
+    assert_eq!(
+        failing.poll_ready(&mut context),
+        Poll::Ready(Err("overloaded"))
+    );
+    let mut ready = layer.layer(Readiness(Poll::Ready(Ok(()))));
+    assert_eq!(ready.poll_ready(&mut context), Poll::Ready(Ok(())));
+}
+
 #[test]
 fn shared_caching_needs_public_or_s_maxage_without_private_or_no_store() {
     for (values, shared) in [

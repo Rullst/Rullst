@@ -56,11 +56,12 @@ impl Sniffer {
         {
             return Some(true);
         }
-        // A signature longer than the bytes read so far may still match.
+        // A signature that the bytes read so far start may still match. One
+        // no longer than them would already have matched above.
         let pending = !ended
-            && signatures.iter().any(|signature| {
-                signature.len() > self.head.len() && signature.starts_with(&self.head)
-            });
+            && signatures
+                .iter()
+                .any(|signature| signature.starts_with(&self.head));
         if pending { None } else { Some(false) }
     }
 

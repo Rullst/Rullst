@@ -109,6 +109,12 @@ fn signatures_decide_as_soon_as_the_bytes_allow() {
     );
     assert_eq!(sniffed(&[b"\x89P"]).admits(&either, false), None);
     assert_eq!(sniffed(&[b"GIF8"]).admits(&either, false), Some(false));
+    // Bytes as long as a signature decide it, whether or not more follow.
+    let exact = policy().expect_signature(*b"%PDF-");
+    assert_eq!(sniffed(&[b"%PDF-"]).admits(&exact, false), Some(true));
+    assert_eq!(sniffed(&[b"%PDF+"]).admits(&exact, false), Some(false));
+    assert_eq!(sniffed(&[b"%PDF"]).admits(&exact, false), None);
+    assert_eq!(sniffed(&[]).admits(&exact, false), None);
     // A 64-byte signature is checked in full.
     let long = policy().expect_signature(vec![b'a'; 64]);
     assert_eq!(sniffed(&[&[b'a'; 63]]).admits(&long, false), None);

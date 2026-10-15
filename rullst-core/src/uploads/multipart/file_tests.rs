@@ -230,6 +230,27 @@ async fn persist_targets_are_validated() {
     assert!(validate_target(Path::new("bare-name.bin")).await.is_ok());
 }
 
+#[test]
+fn only_an_existing_target_stops_a_failed_link_and_other_failures_copy() {
+    assert_eq!(link_outcome(Ok(())), Linked::Done);
+    assert_eq!(
+        link_outcome(Err(std::io::Error::from(ErrorKind::AlreadyExists))),
+        Linked::TargetExists
+    );
+    for kind in [
+        ErrorKind::CrossesDevices,
+        ErrorKind::Unsupported,
+        ErrorKind::PermissionDenied,
+        ErrorKind::Other,
+    ] {
+        assert_eq!(
+            link_outcome(Err(std::io::Error::from(kind))),
+            Linked::CopyInstead,
+            "{kind:?}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn a_failed_copy_removes_the_partial_target() {
     let dir = tempfile::tempdir().unwrap();

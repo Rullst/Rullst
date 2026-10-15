@@ -263,15 +263,34 @@ impl UploadedFile {
         validate_target(target).await?;
         match &self.storage {
             Storage::Memory(bytes) => write_new(target, bytes).await,
-            Storage::Disk(temp) => match tokio::fs::hard_link(&temp.0, target).await {
-                Ok(()) => Ok(()),
-                Err(error) if error.kind() == ErrorKind::AlreadyExists => {
-                    Err(MultipartError::PersistTargetExists)
+            Storage::Disk(temp) => {
+                match link_outcome(tokio::fs::hard_link(&temp.0, target).await) {
+                    Linked::Done => Ok(()),
+                    Linked::TargetExists => Err(MultipartError::PersistTargetExists),
+                    Linked::CopyInstead => copy_new(&temp.0, target).await,
                 }
-                // Another file system, or one without hard links.
-                Err(_) => copy_new(&temp.0, target).await,
-            },
+            }
         }
+    }
+}
+
+/// What the result of hard-linking a temporary file to its target means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Linked {
+    /// The target now names the file.
+    Done,
+    /// The target exists; it is never replaced.
+    TargetExists,
+    /// No link is possible here (another file system, or one without hard
+    /// links): copy instead.
+    CopyInstead,
+}
+
+fn link_outcome(result: std::io::Result<()>) -> Linked {
+    match result {
+        Ok(()) => Linked::Done,
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => Linked::TargetExists,
+        Err(_) => Linked::CopyInstead,
     }
 }
 
