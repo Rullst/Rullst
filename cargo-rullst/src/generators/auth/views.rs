@@ -105,6 +105,10 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Ht
                     <input type="hidden" name="_token" value={csrf_token} />
                     <button type="submit">"Sign Out"</button>
                 </form>
+                <form method="post" action="/logout/everywhere">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <button type="submit">"Sign Out Everywhere"</button>
+                </form>
             </body>
         </html>
     })

@@ -30,8 +30,9 @@ unknown emails alike.
 
 ## Encrypted sessions
 
-`make_login_cookie` and `decrypt_session` use a versioned AES-256-GCM envelope with
-authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
+`make_login_cookie`, `make_login_cookie_with_epoch` and their decoders
+`decrypt_session` and `decrypt_session_claims` use a versioned AES-256-GCM
+envelope with authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
 must not be a documented placeholder, and must satisfy the entropy check.
 
 The cookie helpers select `Secure` from `RULLST_ENV`, then `APP_ENV`, then `.env`, then
@@ -54,6 +55,75 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
     decrypt_session(token, &get_app_key()?)
 }
 ```
+
+### What the stateless cookie can and cannot do
+
+The server keeps no list of sessions. A `rullst_session` token holds only the
+user id, its expiry and, for the epoch cookies below, a session epoch, sealed
+with `APP_KEY`:
+
+- It proves the server issued the cookie, expires on its own, and stops
+  working once the application changes the user's stored session epoch.
+- It cannot end one device's session while keeping the others, list active
+  sessions, or be revoked without that stored epoch. `make_logout_cookie`
+  only asks the browser to delete its copy: a copied cookie stays valid until
+  it expires (30 days for `make_login_cookie`), the epoch changes, or
+  `APP_KEY` is rotated, which signs out every user.
+
+For server-side sessions that can be listed and revoked one at a time, use
+`recovery::SqlRecoveryStore` (`recovery-sqlite` or `recovery-postgres`; see
+[active-session management](../session-management.md)).
+
+### Revocable cookies: the session epoch
+
+Store a session epoch per user, an integer starting at 0, put it in the cookie
+at sign-in and compare it on every request:
+
+```rust,no_run
+use rullst_auth::{
+    AuthError, DEFAULT_SESSION_MAX_AGE, decrypt_session_claims, get_app_key,
+    make_login_cookie_with_epoch,
+};
+
+/// At sign-in: the cookie carries the user's current epoch.
+fn sign_in(user_id: i32, stored_epoch: u64) -> Result<String, AuthError> {
+    make_login_cookie_with_epoch(user_id, stored_epoch, DEFAULT_SESSION_MAX_AGE)
+}
+
+/// On every request: `token` is the value `extract_session_cookie` returns and
+/// `stored_epoch` loads the user's current epoch.
+fn signed_in_user(
+    token: &str,
+    stored_epoch: impl Fn(i32) -> Option<u64>,
+) -> Result<i32, AuthError> {
+    let claims = decrypt_session_claims(token, &get_app_key()?)?;
+    let current = stored_epoch(claims.user_id).ok_or(AuthError::SessionRevoked)?;
+    claims.verify_epoch(current) // `AuthError::SessionRevoked` on a mismatch
+}
+```
+
+To sign out every device, increment the stored epoch in one statement
+(`UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?`) when the
+user chooses "sign out everywhere", after a password change or reset, and when
+the account is deactivated or deleted. Issue a new cookie with the new epoch
+if the current browser should stay signed in.
+
+- `max_age` is counted in whole seconds, from 1 second to 400 days
+  (`MAX_SESSION_MAX_AGE`), and sets both the token expiry and the cookie
+  `Max-Age`. A shorter lifetime limits how long a copied cookie works if
+  nobody revokes it.
+- `decrypt_session_claims` also accepts cookies made by `make_login_cookie`
+  and `encrypt_session`, as epoch 0: start stored epochs at 0 and existing
+  sessions keep working, until the first bump revokes them.
+- `decrypt_session` rejects epoch cookies, so a route that still calls it
+  fails closed instead of skipping the epoch check.
+- `rullst-auth` has no session middleware: the application loads the stored
+  epoch, which costs one lookup per request.
+
+`cargo rullst auth` and the SaaS and LMS starters generate this wiring: a
+`users.session_epoch` column, epoch cookies at sign-in and registration, the
+check in `auth_middleware`, `User::revoke_sessions` and a
+`POST /logout/everywhere` route.
 
 ## Optional v13 account features
 

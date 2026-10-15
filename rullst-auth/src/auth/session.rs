@@ -13,7 +13,7 @@ use std::convert::TryInto;
 
 pub(super) const SESSION_TOKEN_PREFIX: &str = "v1.";
 pub(super) const SESSION_AAD: &[u8] = b"rullst.session.v1";
-const MAX_SESSION_COOKIE_BYTES: usize = 4096;
+pub(super) const MAX_SESSION_COOKIE_BYTES: usize = 4096;
 pub(super) const LOGOUT_COOKIE: &str = "rullst_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
 pub(super) const SECURE_LOGOUT_COOKIE: &str = "rullst_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure";
 
@@ -42,10 +42,6 @@ pub(super) fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, AuthError> {
 pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, AuthError> {
     let cipher = derive_cipher(app_key)?;
 
-    let mut nonce_bytes = [0u8; 12];
-    rand::fill(&mut nonce_bytes);
-    let nonce = Nonce::from(nonce_bytes);
-
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?
@@ -53,27 +49,15 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, AuthError
     let exp = now + (30 * 24 * 60 * 60); // 30 days
 
     let payload = format!("{}|{}", user_id, exp);
-    let ciphertext = cipher
-        .encrypt(
-            &nonce,
-            Payload {
-                msg: payload.as_bytes(),
-                aad: SESSION_AAD,
-            },
-        )
-        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?;
-
-    let mut combined = Vec::new();
-    combined.extend_from_slice(&nonce_bytes);
-    combined.extend_from_slice(&ciphertext);
-
-    Ok(format!(
-        "{SESSION_TOKEN_PREFIX}{}",
-        general_purpose::URL_SAFE_NO_PAD.encode(&combined)
-    ))
+    seal_envelope(&cipher, SESSION_TOKEN_PREFIX, SESSION_AAD, &payload)
 }
 
 /// Decrypts a secure base64-encoded string back into a user_id.
+///
+/// Only `v1.` tokens are accepted: a token made by
+/// [`encrypt_session_with_epoch`](super::encrypt_session_with_epoch) fails with
+/// "Unsupported session token version", so a route that still calls this
+/// function cannot skip the session-epoch check.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
     let cipher = derive_cipher(app_key)?;
@@ -81,34 +65,7 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
     let encoded = token.strip_prefix(SESSION_TOKEN_PREFIX).ok_or_else(|| {
         AuthError::SessionDecryptionError("Unsupported session token version".to_string())
     })?;
-    let combined = general_purpose::URL_SAFE_NO_PAD
-        .decode(encoded)
-        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
-
-    if combined.len() < 28 {
-        return Err(AuthError::SessionDecryptionError(
-            "Invalid token length".to_string(),
-        ));
-    }
-
-    let nonce_bytes: [u8; 12] = combined[..12]
-        .try_into()
-        .map_err(|_| AuthError::SessionDecryptionError("Invalid token length".to_string()))?;
-    let nonce = Nonce::from(nonce_bytes);
-    let ciphertext = &combined[12..];
-
-    let plaintext = cipher
-        .decrypt(
-            &nonce,
-            Payload {
-                msg: ciphertext,
-                aad: SESSION_AAD,
-            },
-        )
-        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
-
-    let payload_str = String::from_utf8(plaintext)
-        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
+    let payload_str = open_envelope(&cipher, encoded, SESSION_AAD)?;
 
     let (user_id_str, exp_str) = payload_str.split_once('|').ok_or_else(|| {
         AuthError::SessionDecryptionError("Invalid versioned session payload".to_string())
@@ -127,6 +84,67 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
     user_id_str
         .parse::<i32>()
         .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
+}
+
+/// Encrypts `payload` with a fresh random nonce, authenticating `aad`, and
+/// returns `prefix` followed by base64url(nonce || ciphertext).
+pub(super) fn seal_envelope(
+    cipher: &Aes256Gcm,
+    prefix: &str,
+    aad: &[u8],
+    payload: &str,
+) -> Result<String, AuthError> {
+    let mut nonce_bytes = [0u8; 12];
+    rand::fill(&mut nonce_bytes);
+    let ciphertext = cipher
+        .encrypt(
+            &Nonce::from(nonce_bytes),
+            Payload {
+                msg: payload.as_bytes(),
+                aad,
+            },
+        )
+        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?;
+
+    let mut combined = nonce_bytes.to_vec();
+    combined.extend_from_slice(&ciphertext);
+    Ok(format!(
+        "{prefix}{}",
+        general_purpose::URL_SAFE_NO_PAD.encode(&combined)
+    ))
+}
+
+/// Authenticates base64url(nonce || ciphertext) against `aad` and returns the
+/// UTF-8 payload. Every failure is a `SessionDecryptionError`.
+pub(super) fn open_envelope(
+    cipher: &Aes256Gcm,
+    encoded: &str,
+    aad: &[u8],
+) -> Result<String, AuthError> {
+    let combined = general_purpose::URL_SAFE_NO_PAD
+        .decode(encoded)
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
+
+    if combined.len() < 28 {
+        return Err(AuthError::SessionDecryptionError(
+            "Invalid token length".to_string(),
+        ));
+    }
+
+    let nonce_bytes: [u8; 12] = combined[..12]
+        .try_into()
+        .map_err(|_| AuthError::SessionDecryptionError("Invalid token length".to_string()))?;
+    let plaintext = cipher
+        .decrypt(
+            &Nonce::from(nonce_bytes),
+            Payload {
+                msg: &combined[12..],
+                aad,
+            },
+        )
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
+
+    String::from_utf8(plaintext).map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
 }
 
 /// Extracts the secure session cookie value from the request's Cookie headers.
@@ -161,20 +179,38 @@ pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
 }
 
 /// Generates the standard HTTP header string to set the encrypted session cookie on the client.
+///
+/// The cookie lasts 30 days and carries no session epoch, so it stays valid
+/// until it expires or `APP_KEY` changes. Use
+/// [`make_login_cookie_with_epoch`](super::make_login_cookie_with_epoch) for
+/// cookies the application can revoke.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn make_login_cookie(user_id: i32) -> Result<String, AuthError> {
     let app_key = get_app_key()?;
     let encrypted = encrypt_session(user_id, &app_key)?;
     // Set a HttpOnly, Secure (if not local), SameSite=Lax cookie valid for 30 days
-    let secure_attr = if detect_environment()?.requires_secure_defaults() {
+    Ok(login_cookie_value(
+        &encrypted,
+        2_592_000,
+        detect_environment()?.requires_secure_defaults(),
+    ))
+}
+
+/// The `Set-Cookie` value for a login token: HttpOnly, SameSite=Lax, `Secure`
+/// when the environment requires secure defaults.
+pub(super) fn login_cookie_value(
+    token: &str,
+    max_age_seconds: u64,
+    requires_secure_defaults: bool,
+) -> String {
+    let secure_attr = if requires_secure_defaults {
         "; Secure"
     } else {
         ""
     };
-    Ok(format!(
-        "rullst_session={}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000{}",
-        encrypted, secure_attr
-    ))
+    format!(
+        "rullst_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age_seconds}{secure_attr}"
+    )
 }
 
 /// Generates the standard HTTP header string to delete/clear the session cookie on the client.
