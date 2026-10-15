@@ -31,7 +31,7 @@ rullst-auth = { workspace = true }
 rullst-security = { workspace = true }
 rullst-ai = { workspace = true }
 axum = { workspace = true }
-ammonia = "4.0.0"
+ammonia = "4.2.3"
 base64 = { workspace = true }
 subtle = { workspace = true }
 serde = { workspace = true }
