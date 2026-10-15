@@ -1,8 +1,11 @@
 //! Server-side upload admission and quarantine contracts.
 //!
-//! This module validates a bounded in-memory object before storage. It does not
-//! implement multipart streaming, sandboxed document parsing, or a production
-//! malware engine; applications must provide those boundaries separately.
+//! [`UploadPolicy`] validates a bounded in-memory object before storage.
+//! [`Multipart`] reads a `multipart/form-data` request with explicit limits,
+//! streaming each file to memory or a temporary file and recognizing its
+//! content from the same signatures (see [`MultipartPolicy`]). Neither
+//! parses documents in a sandbox or runs a production malware engine;
+//! applications must provide those boundaries separately.
 
 /// Upload validation and scan failures.
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
@@ -407,6 +410,10 @@ fn encode_hex(bytes: &[u8]) -> String {
     }
     output
 }
+
+mod multipart;
+
+pub use multipart::{Multipart, MultipartError, MultipartPolicy, UploadForm, UploadedFile};
 
 #[cfg(test)]
 #[path = "uploads_tests.rs"]

@@ -59,7 +59,8 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// read `_token`. A `multipart/form-data` body, such as a file upload, is read
 /// only until its first `_token` field ends, at most 64 KiB, so that field
 /// must precede the file inputs; the whole body then reaches the handler
-/// unchanged.
+/// unchanged. A multipart body without a readable `_token` field is refused
+/// with a `403` that names this rule.
 ///
 /// A `GET` or `HEAD` whose path looks like a static file never mints a token
 /// or sets the cookie: `/robots.txt`, `/sitemap.xml`, `/favicon.ico`, anything
@@ -294,10 +295,15 @@ async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
         else {
             return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
         };
-        if let Some(token) = body_token
-            && token.len() == cookie_token.len()
-            && token.ct_eq(cookie_token.as_bytes()).into()
-        {
+        let Some(token) = body_token else {
+            // Name the ordering rule: the token may follow the file inputs.
+            return (
+                StatusCode::FORBIDDEN,
+                super::csrf_multipart::MULTIPART_TOKEN_ORDER_MESSAGE,
+            )
+                .into_response();
+        };
+        if token.len() == cookie_token.len() && token.ct_eq(cookie_token.as_bytes()).into() {
             parts.extensions.insert(CsrfToken(cookie_token));
             return next.run(Request::from_parts(parts, body)).await;
         }

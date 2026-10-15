@@ -13,7 +13,12 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// Longest multipart body prefix read while looking for `_token`.
-pub(super) const MAX_TOKEN_PREFIX_BYTES: usize = 64 * 1024;
+pub(crate) const MAX_TOKEN_PREFIX_BYTES: usize = 64 * 1024;
+
+/// The `403` body when a multipart form has no `_token` field the CSRF check
+/// can read. [`crate::uploads::Multipart`] answers a form whose `_token`
+/// arrives too late with the same text in every environment.
+pub(crate) const MULTIPART_TOKEN_ORDER_MESSAGE: &str = "Missing CSRF token: a multipart/form-data form must send its _token field before any file field (the CSRF check reads only the first 64 KiB of the body), or send the X-CSRF-Token header";
 /// Longest accepted `_token` value, matching the CSRF cookie bound.
 const MAX_TOKEN_BYTES: usize = 128;
 
@@ -21,7 +26,7 @@ const MAX_TOKEN_BYTES: usize = 128;
 ///
 /// The boundary must satisfy RFC 2046: 1-70 characters from its `bchars`
 /// set, not ending in a space. A malformed or repeated parameter fails.
-pub(super) fn form_data_boundary(content_type: &str) -> Option<&str> {
+pub(crate) fn form_data_boundary(content_type: &str) -> Option<&str> {
     multipart_boundary(content_type, "multipart/form-data")
 }
 
