@@ -147,7 +147,7 @@ pub(super) fn normalize(kind: &FieldKind, value: String) -> Option<(String, Opti
 /// most millisecond precision; `None` for a finer value.
 fn input_time(time: NaiveTime) -> Option<String> {
     let nanos = time.nanosecond();
-    if nanos % 1_000_000 != 0 {
+    if !nanos.is_multiple_of(1_000_000) {
         return None;
     }
     let seconds = time.format("%H:%M:%S").to_string();
