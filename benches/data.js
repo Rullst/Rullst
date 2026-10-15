@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792049939200,
+  "lastUpdate": 1792054057942,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26711,6 +26711,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1969,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bb3f6a3a3649d7a030e3a4bac22840ff634c30e",
+          "message": "Merge pull request #487 from Rullst/feat/v13-html-markup\n\nfeat(html)!: html! returns a Markup type so nested views render as HTML",
+          "timestamp": "2026-10-15T05:39:27-03:00",
+          "tree_id": "4b7eedbaabcdeb27fedd2c9067cd5e9c6d9cd5bb",
+          "url": "https://github.com/Rullst/Rullst/commit/5bb3f6a3a3649d7a030e3a4bac22840ff634c30e"
+        },
+        "date": 1792054055805,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 608,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 787,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 310,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1775,
+            "range": "± 60",
             "unit": "ns/iter"
           }
         ]
