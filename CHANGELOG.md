@@ -202,6 +202,13 @@ A prepared version section does not establish that its tag or crates exist.
   PostgreSQL wrappers and the Redis messaging wrapper mutate their adapter
   files and run their contract tests against the server they own, which is
   reset before every test binary.
+- **rullst-capital:** `Invoice` validation (`validate`, `total_minor`,
+  `try_generate_html`, PDF rendering, `bind_succeeded_charge`) now rejects an
+  item amount or total that rounds to zero minor units (for example
+  `0.0000000005` USD) with `CapitalError::InvalidInvoice`; such items
+  previously passed as 0 minor units. The mutation campaign added tests across
+  the crate, and the Stripe subscription fixture test now fails within 10
+  seconds instead of hanging.
 
 ### OpenSSF Silver evidence
 
