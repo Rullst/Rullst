@@ -306,6 +306,41 @@ fn blank_hot_reload_uses_the_host_verified_database_state() {
 }
 
 #[test]
+fn blank_turso_reads_its_settings_without_loading_dotenv() {
+    // The Turso starter called `dotenvy::dotenv()`, exporting `.env` into the
+    // process, unlike every other starter.
+    for api in [false, true] {
+        for hot_reload in [false, true] {
+            let files = blueprints::blank::file_manifest(
+                "turso-app",
+                "turso_app",
+                api,
+                hot_reload,
+                true,
+                "Turso Active Record",
+                "Zero-Bundle HTMX",
+            );
+            let sources = files
+                .iter()
+                .filter(|(path, _)| path.ends_with(".rs"))
+                .map(|(_, source)| source.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            assert!(!sources.contains("dotenvy"));
+            assert!(!sources.contains("init_from_env"));
+            for setting in ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "TURSO_OFFLINE_PATH"] {
+                assert!(
+                    sources.contains(&format!("rullst::config::project_setting(\"{setting}\")?")),
+                    "{setting}"
+                );
+            }
+            assert!(sources.contains("TursoOrm::init(turso).await?;"));
+        }
+    }
+}
+
+#[test]
 fn blank_html_profiles_emit_a_same_origin_stylesheet() {
     for hot_reload in [false, true] {
         let files = blueprints::blank::file_manifest(
