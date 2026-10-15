@@ -116,3 +116,7 @@ const fn invalid_key(reason: &'static str) -> MessagingError {
         reason,
     }
 }
+
+#[cfg(test)]
+#[path = "storage_keys_tests.rs"]
+mod tests;
