@@ -177,3 +177,45 @@ fn markup_rules_name_the_html_markup_migration_row() {
         assert_eq!(rule.kind, FindingKind::MustChange);
     }
 }
+
+/// The framework's own generated views already return `Markup`, so a fresh
+/// v13 project gets no `html!` migration finding.
+#[test]
+fn generated_starters_and_auth_views_have_no_markup_findings() {
+    use crate::blueprints::{blank, blog, erp, lms, portfolio, saas};
+
+    let (orm, frontend) = ("Active Record", "Zero-Bundle HTMX");
+    let mut sources = vec![(
+        "auth/views".to_string(),
+        crate::generators::auth::views::AUTH_VIEWS_TEMPLATE.to_string(),
+    )];
+    for hot in [false, true] {
+        for (name, manifest) in [
+            (
+                "blank",
+                blank::file_manifest("demo", "demo", false, hot, true, orm, frontend),
+            ),
+            ("lms", lms::file_manifest("demo", hot, orm, frontend)),
+            ("saas", saas::file_manifest("demo", hot, orm, frontend)),
+            ("blog", blog::file_manifest("demo", hot, orm, frontend)),
+            (
+                "portfolio",
+                portfolio::file_manifest("demo", hot, orm, frontend),
+            ),
+            ("erp", erp::file_manifest("demo", hot, orm, frontend)),
+        ] {
+            sources.extend(
+                manifest
+                    .into_iter()
+                    .filter(|(path, _)| path.ends_with(".rs"))
+                    .map(|(path, source)| (format!("{name}/{path}"), source)),
+            );
+        }
+    }
+    let mut scanned_views = 0;
+    for (path, source) in &sources {
+        scanned_views += usize::from(source.contains("html!"));
+        assert_eq!(markup_findings(source), vec![], "{path}");
+    }
+    assert!(scanned_views >= 8, "only {scanned_views} sources use html!");
+}
