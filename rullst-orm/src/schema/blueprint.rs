@@ -1,62 +1,20 @@
 use super::column::{Column, ColumnDefault, validate_text_literal};
-use super::enums::{DatabaseEnum, NativeEnumDefinition, quoted_label, validate_native_enum};
-use super::validation::validate_identifier;
+use super::column_types::DriverType;
+use super::constraints::{Check, ForeignKey, Index, IndexKind};
+use super::enums::{DatabaseEnum, NativeEnumDefinition, validate_native_enum};
 use crate::Error;
 
 pub struct Blueprint {
     pub columns: Vec<Column>,
-    native_enum_columns: Vec<(String, NativeEnumDefinition)>,
+    pub(super) native_enum_columns: Vec<(String, NativeEnumDefinition)>,
     /// `enum_col` columns with a variant that is not a safe DDL literal;
     /// reported by `build` because `enum_col` itself cannot fail.
-    invalid_enum_columns: Vec<String>,
+    pub(super) invalid_enum_columns: Vec<String>,
     /// Columns whose DDL type is chosen per driver when the schema is built.
     driver_typed_columns: Vec<(String, DriverType)>,
-}
-
-/// A logical column type whose DDL spelling differs between drivers.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum DriverType {
-    /// An `f64` column: `REAL` is only single precision on PostgreSQL.
-    Double,
-    /// A `bool` column: PostgreSQL has no implicit integer/boolean casts.
-    Boolean,
-}
-
-impl DriverType {
-    /// The type recorded in [`Column::col_type`] when the column is added.
-    fn portable(self) -> &'static str {
-        match self {
-            Self::Double => "REAL",
-            Self::Boolean => "INTEGER",
-        }
-    }
-
-    fn for_driver(self, driver: &str) -> &'static str {
-        match (self, driver) {
-            (Self::Double, "postgres") => "DOUBLE PRECISION",
-            (Self::Double, "mysql") => "DOUBLE",
-            (Self::Double, _) => "REAL",
-            (Self::Boolean, "postgres") => "BOOLEAN",
-            (Self::Boolean, _) => "INTEGER",
-        }
-    }
-
-    /// Renders a column default, spelling `0`/`1` as a PostgreSQL boolean.
-    fn default_sql(
-        self,
-        driver: &str,
-        default: &ColumnDefault,
-        column: &str,
-    ) -> Result<String, Error> {
-        match (self, driver, default) {
-            (Self::Boolean, "postgres", ColumnDefault::Integer(0)) => Ok("FALSE".to_string()),
-            (Self::Boolean, "postgres", ColumnDefault::Integer(1)) => Ok("TRUE".to_string()),
-            (Self::Boolean, "postgres", ColumnDefault::Integer(_)) => Err(Error::Validation(
-                format!("DEFAULT of boolean column `{column}` must be 0 or 1"),
-            )),
-            _ => Ok(default.to_sql()),
-        }
-    }
+    pub(super) indexes: Vec<Index>,
+    pub(super) foreign_keys: Vec<ForeignKey>,
+    pub(super) checks: Vec<Check>,
 }
 
 impl Default for Blueprint {
@@ -72,6 +30,9 @@ impl Blueprint {
             native_enum_columns: vec![],
             invalid_enum_columns: vec![],
             driver_typed_columns: vec![],
+            indexes: vec![],
+            foreign_keys: vec![],
+            checks: vec![],
         }
     }
 
@@ -82,7 +43,7 @@ impl Blueprint {
 
     /// The driver-specific type of a column added by a typed helper, unless
     /// the caller has since replaced its `col_type`.
-    fn driver_type(&self, col: &Column) -> Option<DriverType> {
+    pub(super) fn driver_type(&self, col: &Column) -> Option<DriverType> {
         self.driver_typed_columns
             .iter()
             .rev()
@@ -99,6 +60,7 @@ impl Blueprint {
             is_primary_key: true,
             is_auto_increment: true,
             default_value: None,
+            is_unique: false,
         });
         let len = self.columns.len();
         &mut self.columns[len - 1]
@@ -146,6 +108,45 @@ impl Blueprint {
     pub fn vector(&mut self, name: &str, dimensions: usize) -> &mut Column {
         let col_type = format!("VECTOR({})", dimensions);
         self.add_column(name, &col_type)
+    }
+
+    /// Adds a calendar-date column for a `chrono::NaiveDate` field: `DATE` on
+    /// PostgreSQL and MySQL/MariaDB, ISO-8601 `TEXT` (`YYYY-MM-DD`) on SQLite.
+    ///
+    /// PostgreSQL and MySQL/MariaDB date/time columns need a strict driver
+    /// feature (`strict-postgres`, `strict-mysql`): `Schema::create` rejects
+    /// them on the SQLx `Any` pool, which cannot read them. A
+    /// `ColumnDefault::CurrentTimestamp` default is today's UTC date.
+    /// Added in v13.
+    pub fn date(&mut self, name: &str) -> &mut Column {
+        self.add_driver_typed_column(name, DriverType::Date)
+    }
+
+    /// Adds a time-of-day column for a `chrono::NaiveTime` field: `TIME` on
+    /// PostgreSQL, `TIME(6)` on MySQL/MariaDB and `TEXT` (`HH:MM:SS[.f]`) on
+    /// SQLite. See [`Blueprint::date`] for the driver requirement. Added in v13.
+    pub fn time(&mut self, name: &str) -> &mut Column {
+        self.add_driver_typed_column(name, DriverType::Time)
+    }
+
+    /// Adds a date-and-time column without a zone for a
+    /// `chrono::NaiveDateTime` field: `TIMESTAMP` on PostgreSQL,
+    /// `DATETIME(6)` on MySQL/MariaDB and `TEXT` (`YYYY-MM-DD HH:MM:SS[.f]`)
+    /// on SQLite. A `ColumnDefault::CurrentTimestamp` default is the current
+    /// UTC wall time. See [`Blueprint::date`] for the driver requirement.
+    /// Added in v13.
+    pub fn timestamp(&mut self, name: &str) -> &mut Column {
+        self.add_driver_typed_column(name, DriverType::Timestamp)
+    }
+
+    /// Adds a UTC-instant column for a `chrono::DateTime<Utc>` field:
+    /// `TIMESTAMPTZ` on PostgreSQL, `DATETIME(6)` holding UTC on
+    /// MySQL/MariaDB (whose `TIMESTAMP` ends in 2038; SQLx sets the session
+    /// time zone to `+00:00`) and RFC 3339 `TEXT`
+    /// (`YYYY-MM-DDTHH:MM:SS[.f]+00:00`, which sorts as text) on SQLite. See
+    /// [`Blueprint::date`] for the driver requirement. Added in v13.
+    pub fn timestamp_tz(&mut self, name: &str) -> &mut Column {
+        self.add_driver_typed_column(name, DriverType::TimestampTz)
     }
 
     /// Adds a `TEXT` column restricted to `variants` by a `CHECK` constraint.
@@ -213,89 +214,99 @@ impl Blueprint {
         self.columns[len - 1].nullable();
     }
 
+    /// Adds a table-level `UNIQUE (columns)` constraint, named
+    /// `<table>_<columns>_unique` unless [`Index::name`] sets one. It is
+    /// part of `CREATE TABLE`; MySQL/MariaDB cannot make a `TEXT` column
+    /// unique (see [`Column::unique`]). Added in v13.
+    pub fn unique(&mut self, columns: &[&str]) -> &mut Index {
+        self.add_index(columns, IndexKind::UniqueConstraint)
+    }
+
+    /// Adds an index named `<table>_<columns>_index` unless [`Index::name`]
+    /// sets one: `CREATE INDEX IF NOT EXISTS` after `CREATE TABLE` on
+    /// PostgreSQL and SQLite, an `INDEX` clause of `CREATE TABLE` on
+    /// MySQL/MariaDB, which cannot index a `TEXT` column. Added in v13.
+    pub fn index(&mut self, columns: &[&str]) -> &mut Index {
+        self.add_index(columns, IndexKind::Plain)
+    }
+
+    /// Like [`Blueprint::index`] for a `UNIQUE` index, named
+    /// `<table>_<columns>_unique` by default. Added in v13.
+    pub fn unique_index(&mut self, columns: &[&str]) -> &mut Index {
+        self.add_index(columns, IndexKind::Unique)
+    }
+
+    fn add_index(&mut self, columns: &[&str], kind: IndexKind) -> &mut Index {
+        self.indexes.push(Index::new(columns, kind));
+        let len = self.indexes.len();
+        &mut self.indexes[len - 1]
+    }
+
+    /// Adds a foreign key on an existing column of this blueprint, named
+    /// `<table>_<column>_foreign` unless [`ForeignKey::name`] sets one:
+    ///
+    /// ```rust,no_run
+    /// # use rullst_orm::schema::{Blueprint, ForeignKeyAction};
+    /// # fn up(table: &mut Blueprint) {
+    /// table.integer("user_id").not_null();
+    /// table
+    ///     .foreign("user_id")
+    ///     .references("users", "id")
+    ///     .on_delete(ForeignKeyAction::Cascade);
+    /// # }
+    /// ```
+    ///
+    /// The column type must match the referenced one (`id()` is `INTEGER`).
+    /// SQLite enforces foreign keys only with `PRAGMA foreign_keys = ON`,
+    /// which SQLx enables on every connection it opens. Added in v13.
+    pub fn foreign(&mut self, column: impl Into<String>) -> &mut ForeignKey {
+        self.foreign_keys.push(ForeignKey::new(column.into()));
+        let len = self.foreign_keys.len();
+        &mut self.foreign_keys[len - 1]
+    }
+
+    /// Adds an `INTEGER NOT NULL` column and a foreign key from it to
+    /// `table(id)`, the key of [`Blueprint::id`]:
+    /// `table.foreign_id("user_id", "users").on_delete(ForeignKeyAction::Cascade)`.
+    /// For a nullable key, declare the column with [`Blueprint::integer`] and
+    /// use [`Blueprint::foreign`]. Added in v13.
+    pub fn foreign_id(
+        &mut self,
+        column: impl Into<String>,
+        table: impl Into<String>,
+    ) -> &mut ForeignKey {
+        let column = column.into();
+        self.integer(&column).not_null();
+        let foreign = self.foreign(column);
+        foreign.references(table, "id");
+        foreign
+    }
+
+    /// Adds a table-level `CHECK (expression)` constraint.
+    ///
+    /// The expression is trusted developer SQL: it is emitted as written, so
+    /// never build it from request data. Building fails when it is empty,
+    /// longer than 512 bytes, contains `;`, a comment, `\`, `$`, a backtick
+    /// or a control character, or has unbalanced parentheses or quotes.
+    /// MySQL enforces CHECK from 8.0.16 and MariaDB from 10.2.1; older
+    /// servers parse and ignore it. Added in v13.
+    pub fn check(&mut self, expression: impl Into<String>) -> &mut Check {
+        self.checks.push(Check::new(expression.into()));
+        let len = self.checks.len();
+        &mut self.checks[len - 1]
+    }
+
+    /// The column definitions and table constraints of a `CREATE TABLE`
+    /// statement for the connected driver. Indexes that PostgreSQL and SQLite
+    /// create with separate statements are not included; constraint names
+    /// that default to `<table>_...` are left to the database.
     #[cfg_attr(test, mutants::skip)]
     pub fn build(&self) -> Result<String, Error> {
         self.build_for_driver(crate::Orm::driver()?)
     }
 
     pub(crate) fn build_for_driver(&self, driver: &str) -> Result<String, Error> {
-        if let Some(column) = self.invalid_enum_columns.first() {
-            return Err(Error::Validation(format!(
-                "enum_col `{column}` variants must not contain backslashes or control characters"
-            )));
-        }
-        let mut defs = vec![];
-        for col in &self.columns {
-            // Defensive re-validation: column names must always be safe
-            // identifiers regardless of how the Column was constructed.
-            validate_identifier(&col.name)?;
-
-            let driver_type = self.driver_type(col);
-            let mut col_type_str = if let Some((_, definition)) = self
-                .native_enum_columns
-                .iter()
-                .find(|(column, _)| column == &col.name)
-            {
-                validate_native_enum(definition.type_name, definition.variants)?;
-                let labels = definition
-                    .variants
-                    .iter()
-                    .map(|variant| quoted_label(variant))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                match driver {
-                    "postgres" => format!("\"{}\"", definition.type_name),
-                    "mysql" => format!("ENUM({labels})"),
-                    _ => format!("TEXT CHECK({} IN ({labels}))", col.name),
-                }
-            } else if let Some(kind) = driver_type {
-                kind.for_driver(driver).to_string()
-            } else {
-                col.col_type.clone()
-            };
-            if driver == "postgres" && col.is_auto_increment {
-                if col.col_type == "INTEGER" || col.col_type == "INT" {
-                    col_type_str = "SERIAL".to_string();
-                } else if col.col_type == "BIGINT" {
-                    col_type_str = "BIGSERIAL".to_string();
-                }
-            }
-
-            let mut def = format!("{} {}", col.name, col_type_str);
-            if col.is_primary_key {
-                def.push_str(" PRIMARY KEY");
-            }
-            if col.is_auto_increment {
-                if driver == "sqlite" {
-                    def.push_str(" AUTOINCREMENT");
-                } else if driver == "mysql" {
-                    def.push_str(" AUTO_INCREMENT");
-                }
-            }
-            if !col.is_nullable && !col.is_primary_key {
-                def.push_str(" NOT NULL");
-            }
-            if let Some(default) = &col.default_value {
-                use std::fmt::Write;
-                if let ColumnDefault::Text(text) = default {
-                    validate_text_literal(text, &format!("DEFAULT of column `{}`", col.name))?;
-                }
-                let default_sql = match driver_type {
-                    Some(kind) => kind.default_sql(driver, default, &col.name)?,
-                    None => default.to_sql(),
-                };
-                if driver == "mysql"
-                    && *default != ColumnDefault::Null
-                    && mysql_requires_expression_default(&col_type_str)
-                {
-                    let _ = write!(def, " DEFAULT ({default_sql})");
-                } else {
-                    let _ = write!(def, " DEFAULT {default_sql}");
-                }
-            }
-            defs.push(def);
-        }
-        Ok(defs.join(",\n    "))
+        self.render(None, driver, crate::database::ANY_POOL)
     }
 
     pub(super) fn postgres_enum_definitions(&self) -> Result<Vec<NativeEnumDefinition>, Error> {
@@ -315,28 +326,4 @@ impl Blueprint {
         }
         Ok(definitions.into_values().collect())
     }
-}
-
-/// MySQL accepts a DEFAULT on BLOB, TEXT, GEOMETRY and JSON columns only as a
-/// parenthesized expression, even for a literal value (MySQL 8.0.13+).
-/// MariaDB 10.2.1+ accepts the same expression form.
-fn mysql_requires_expression_default(col_type: &str) -> bool {
-    let base = col_type
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .next()
-        .unwrap_or_default()
-        .to_ascii_uppercase();
-    matches!(
-        base.as_str(),
-        "TEXT"
-            | "TINYTEXT"
-            | "MEDIUMTEXT"
-            | "LONGTEXT"
-            | "BLOB"
-            | "TINYBLOB"
-            | "MEDIUMBLOB"
-            | "LONGBLOB"
-            | "JSON"
-            | "GEOMETRY"
-    )
 }

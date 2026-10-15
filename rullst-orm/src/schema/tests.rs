@@ -346,6 +346,10 @@ fn test_column_builder_methods() {
 
     col.default(ColumnDefault::Integer(18));
     assert_eq!(col.default_value, Some(ColumnDefault::Integer(18)));
+
+    assert!(!col.is_unique);
+    col.unique();
+    assert!(col.is_unique);
 }
 
 #[test]
