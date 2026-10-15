@@ -170,3 +170,10 @@ async fn markup_responds_as_utf8_html() {
         ("text/html; charset=utf-8".to_owned(), "<p>x</p>".to_owned())
     );
 }
+
+#[tokio::test]
+async fn markup_converts_into_a_body_with_its_exact_bytes() {
+    let body = axum::body::Body::from(html! { <p>"Olá"</p> });
+    let bytes = axum::body::to_bytes(body, 1024).await.unwrap();
+    assert_eq!(&bytes[..], "<p>Olá</p>".as_bytes());
+}
