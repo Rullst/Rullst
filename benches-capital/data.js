@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792080945251,
+  "lastUpdate": 1792087094588,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12246,6 +12246,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ad1b2881063979202158e45f0ab70d8520a8ec0",
+          "message": "Merge pull request #499 from Rullst/feat/v13-i18n\n\nfeat(i18n): compile-time checked translation catalogs and locale negotiation",
+          "timestamp": "2026-10-15T14:31:52-03:00",
+          "tree_id": "75cb62375a49b93879e17ecb083ee8ef85e51fd6",
+          "url": "https://github.com/Rullst/Rullst/commit/5ad1b2881063979202158e45f0ab70d8520a8ec0"
+        },
+        "date": 1792087093646,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
