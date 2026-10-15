@@ -199,7 +199,8 @@ A prepared version section does not establish that its tag or crates exist.
   indexes with `CREATE INDEX IF NOT EXISTS` after the table; MySQL/MariaDB
   declare them in `CREATE TABLE` and reject a key on a `TEXT` column before any
   DDL runs. Violations surface as `Error::UniqueViolation` and
-  `Error::ForeignKeyViolation`.
+  `Error::ForeignKeyViolation`. `Column` gains the public field `is_unique`,
+  so a `Column { .. }` struct literal must set it (prefer `Column::new`).
 - New `Schema::table("posts", |table| ...)` adds columns, indexes, unique
   constraints, foreign keys and checks to an existing table. SQLite turns a
   unique constraint into a unique index and a foreign key on a newly added
