@@ -210,6 +210,7 @@ not establish that an empty message was transmitted.
 | `CSRF token cookie missing` | The POST's Cookie header: the cookie may be absent, duplicated or malformed. Check that the preceding GET set it, that the browser accepted it, and that scheme/host/path and credential settings match. A hidden field cannot replace the cookie. |
 | `Invalid or missing CSRF token` | The form's `_token` value and URL-encoded content type. Confirm the input belongs to the submitted form and matches the current cookie. |
 | `Invalid CSRF token` | The explicit header, which takes precedence over the form. Remove a stale custom header rather than expecting the valid form field to override it. |
+| `Missing CSRF token: a multipart/form-data form must send its _token field before any file field …` | A file-upload form whose hidden `_token` input comes after a file input (or after 64 KiB of other fields). Move `_token` to the top of the form or send `X-CSRF-Token`; see [form uploads](../form-uploads.md#csrf). |
 
 Do not log token values or session cookies. `HX-Request: true` is not a security
 exemption. Public browser chat endpoints retain CSRF and need separate abuse,

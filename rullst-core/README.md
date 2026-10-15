@@ -116,6 +116,14 @@
   requests, times them out, and detects stalled cursors. Applications still own
   Keychain/Keystore access, atomic platform persistence, authenticated HTTP,
   retry, and background scheduling.
+- **Form file uploads (v13):** `uploads::Multipart` reads a
+  `multipart/form-data` request under an explicit `MultipartPolicy` (file,
+  body, count, field and name limits, an idle timeout), streams each file to
+  memory or a private temporary file removed on drop unless
+  `persist_to` keeps it, recognizes content from its bytes rather than the
+  declared type, and applies the CSRF ordering rule and the WAF's field
+  signatures. See the
+  [form uploads guide](https://github.com/Rullst/Rullst/blob/main/docs/src/form-uploads.md).
 - **Private Object Storage Candidate (v13):** The optional `storage-s3` feature
   adds bounded S3/R2 upload, download, metadata, deletion and short-lived signed
   GET URLs to the existing storage and tenant APIs. Configuration is explicit;
