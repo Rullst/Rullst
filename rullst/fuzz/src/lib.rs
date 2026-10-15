@@ -19,15 +19,34 @@ pub fn session(data: &[u8]) -> i32 {
         let _ = rullst::auth::decrypt_session(text, TEST_KEY);
         // Reach the decoder even when mutations have not discovered the prefix.
         let _ = rullst::auth::decrypt_session(&format!("v1.{text}"), TEST_KEY);
+        let _ = rullst::auth::decrypt_session_claims(text, TEST_KEY);
+        let _ = rullst::auth::decrypt_session_claims(&format!("v2.{text}"), TEST_KEY);
     }
     let token = rullst::auth::encrypt_session(42, TEST_KEY).expect("valid fixture key");
     let user = rullst::auth::decrypt_session(&token, TEST_KEY).expect("valid session round trip");
-    let mut forged = token.into_bytes();
-    // The first encoded nonce character carries real bits, not padding bits.
-    forged[3] = if forged[3] == b'A' { b'B' } else { b'A' };
-    let forged = String::from_utf8(forged).expect("token remains ASCII");
-    assert!(rullst::auth::decrypt_session(&forged, TEST_KEY).is_err());
+    assert!(rullst::auth::decrypt_session(&forged_nonce(&token), TEST_KEY).is_err());
+
+    let epoch_token = rullst::auth::encrypt_session_with_epoch(
+        42,
+        u64::MAX,
+        rullst::auth::DEFAULT_SESSION_MAX_AGE,
+        TEST_KEY,
+    )
+    .expect("valid fixture key");
+    let claims = rullst::auth::decrypt_session_claims(&epoch_token, TEST_KEY)
+        .expect("valid epoch session round trip");
+    assert_eq!(claims.verify_epoch(u64::MAX), Ok(user));
+    assert!(claims.verify_epoch(0).is_err());
+    assert!(rullst::auth::decrypt_session_claims(&forged_nonce(&epoch_token), TEST_KEY).is_err());
     user
+}
+
+/// The token with its first encoded nonce character changed; that character
+/// carries real bits, not padding bits.
+fn forged_nonce(token: &str) -> String {
+    let mut forged = token.as_bytes().to_vec();
+    forged[3] = if forged[3] == b'A' { b'B' } else { b'A' };
+    String::from_utf8(forged).expect("token remains ASCII")
 }
 
 pub fn config(text: &str) -> (Option<Vec<u8>>, bool) {

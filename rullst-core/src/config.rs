@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::{fmt, str::FromStr};
 
 #[cfg(not(target_arch = "wasm32"))]
-mod project_setting;
+pub(crate) mod project_setting;
 mod security_validation;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -227,6 +227,15 @@ pub struct SecurityConfig {
     /// webhook middleware authenticates them. Wildcards and route parameters are rejected.
     #[serde(default)]
     pub csrf_signed_webhook_paths: Vec<String>,
+    /// Exact request paths whose bodies the WAF neither reads nor inspects,
+    /// for routes that must accept free text its signatures refuse, such as
+    /// code samples. Each entry is a deliberate risk acceptance for that
+    /// route: only its handler (parameterized SQL, output encoding,
+    /// validation) protects it from what the body carries. The path, query
+    /// string, cookies, `Referer` and `User-Agent` stay inspected. Wildcards
+    /// and route parameters are rejected, as in `csrf_signed_webhook_paths`.
+    #[serde(default)]
+    pub waf_body_exempt_paths: Vec<String>,
     /// Reverse-proxy addresses or CIDR networks allowed to report the client
     /// address. Empty (the default) never reads forwarding headers. List only
     /// the real proxy networks: any host inside them can choose the client
@@ -241,6 +250,22 @@ pub struct SecurityConfig {
     /// `Forwarded: proto=`). Enable only when every trusted proxy overwrites it.
     #[serde(default = "default_false")]
     pub trust_forwarded_proto: bool,
+    /// `max-age` of the `Strict-Transport-Security` header, in seconds: how
+    /// long browsers keep using HTTPS for the host. Default 31,536,000 (one
+    /// year); `0` tells browsers to forget the policy.
+    #[serde(default = "default_hsts_max_age_seconds")]
+    pub hsts_max_age_seconds: u64,
+    /// Add `includeSubDomains` to HSTS (default `true`), so browsers also use
+    /// HTTPS for every subdomain of the host.
+    #[serde(default = "default_true")]
+    pub hsts_include_subdomains: bool,
+    /// Add `preload` to HSTS (default `false`). This consents to the browsers'
+    /// built-in HSTS preload list once the domain is submitted there, which is
+    /// slow to undo; [`SecurityConfig::validate`] requires
+    /// `hsts_include_subdomains` and a `hsts_max_age_seconds` of at least
+    /// 31,536,000 with it, as the list does.
+    #[serde(default = "default_false")]
+    pub hsts_preload: bool,
 }
 
 /// Strict default CSP template. `{NONCE}` is replaced by the secure headers middleware for each
@@ -280,6 +305,15 @@ fn default_false() -> bool {
     false
 }
 
+fn default_true() -> bool {
+    true
+}
+
+/// One year, the HSTS `max-age` most deployments use.
+fn default_hsts_max_age_seconds() -> u64 {
+    31_536_000
+}
+
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
@@ -291,9 +325,13 @@ impl Default for SecurityConfig {
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
             csrf_signed_webhook_paths: Vec::new(),
+            waf_body_exempt_paths: Vec::new(),
             trusted_proxies: Vec::new(),
             trusted_proxy_header: default_trusted_proxy_header(),
             trust_forwarded_proto: false,
+            hsts_max_age_seconds: default_hsts_max_age_seconds(),
+            hsts_include_subdomains: true,
+            hsts_preload: false,
         }
     }
 }

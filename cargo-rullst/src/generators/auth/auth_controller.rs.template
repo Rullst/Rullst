@@ -176,6 +176,15 @@ fn get_csp_nonce(nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str 
         .unwrap_or_default()
 }
 
+/// A 30-day login cookie carrying the account's current session epoch, so
+/// `User::revoke_sessions` can end it before it expires.
+fn login_cookie(user: &User) -> Result<String, rullst_auth::AuthError> {
+    let epoch = user
+        .current_session_epoch()
+        .ok_or(rullst_auth::AuthError::SessionRevoked)?;
+    rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)
+}
+
 fn redirect_with_cookie(target: &'static str, cookie: &str) -> Response {
     let Ok(header_value) = rullst::server::HeaderValue::from_bytes(cookie.as_bytes()) else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session cookie").into_response();
@@ -240,7 +249,7 @@ pub async fn login_submit(
             .into_response();
     };
 
-    match rullst_auth::make_login_cookie(user.id) {
+    match login_cookie(&user) {
         Ok(cookie) => redirect_with_cookie("/dashboard", &cookie),
         Err(error) => {
             eprintln!("Session creation failed: {error}");
@@ -328,6 +337,8 @@ pub async fn register_submit(
         oauth_id: None,
         updated_at: created_at.clone(),
         created_at,
+        // The column defaults to 0; ORM writes skip this field.
+        session_epoch: 0,
     };
     let original_id = user.id;
     let mut transaction = match rullst::db::Orm::begin_transaction().await {
@@ -359,7 +370,7 @@ pub async fn register_submit(
         return auth::register_page(&token, Some("Error creating account"), nonce).into_response();
     }
 
-    match rullst_auth::make_login_cookie(user.id) {
+    match login_cookie(&user) {
         Ok(cookie) => redirect_with_cookie("/dashboard", &cookie),
         Err(error) => {
             eprintln!("Session creation failed: {error}");
@@ -368,8 +379,23 @@ pub async fn register_submit(
     }
 }
 
+/// Clears this browser's cookie. A copy of it stays valid until it expires or
+/// the account's session epoch changes; `logout_everywhere` changes it.
 pub async fn logout() -> Response {
     redirect_with_cookie("/login", &rullst_auth::make_logout_cookie())
+}
+
+/// `POST /logout/everywhere`, behind `auth_middleware` and CSRF: bumps the
+/// account's session epoch, which signs out every device, then clears this
+/// browser's cookie.
+pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {
+    match User::revoke_sessions(user_id).await {
+        Ok(()) => redirect_with_cookie("/login", &rullst_auth::make_logout_cookie()),
+        Err(error) => {
+            eprintln!("Session revocation failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
+    }
 }
 
 pub async fn dashboard(

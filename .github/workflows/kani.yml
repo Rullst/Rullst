@@ -53,7 +53,7 @@ jobs:
           cargo package -p kani-verifier
 
       - name: Upload immutable Kani bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kani-development-bundle-${{ env.KANI_SOURCE_REV }}
           path: .kani-source/kani-latest-x86_64-unknown-linux-gnu.tar.gz
@@ -61,7 +61,7 @@ jobs:
           retention-days: 7
 
       - name: Upload immutable Kani installer
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kani-development-installer-${{ env.KANI_SOURCE_REV }}
           path: .kani-source/target/package/kani-verifier-${{ env.KANI_CRATE_VERSION }}.crate
@@ -123,13 +123,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download immutable Kani bundle
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: kani-development-bundle-${{ env.KANI_SOURCE_REV }}
           path: ${{ runner.temp }}/kani-bundle
 
       - name: Download immutable Kani installer
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: kani-development-installer-${{ env.KANI_SOURCE_REV }}
           path: ${{ runner.temp }}/kani-installer

@@ -5,8 +5,10 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 mod aggregate_counts;
+mod atomic_counters;
 mod bulk_delete;
 mod column_types;
+mod constraint_violations;
 mod id_only_rows;
 mod missing_rows;
 mod nested_transaction;
@@ -15,6 +17,7 @@ mod qualified_scopes;
 mod search_relevance;
 mod soft_delete_lifecycle;
 mod timestamps;
+mod wide_values;
 
 /// Runs every driver-neutral contract against the initialized ORM.
 pub async fn exercise() {
@@ -29,4 +32,7 @@ pub async fn exercise() {
     id_only_rows::exercise().await;
     search_relevance::exercise().await;
     qualified_scopes::exercise().await;
+    atomic_counters::exercise().await;
+    constraint_violations::exercise().await;
+    wide_values::exercise().await;
 }

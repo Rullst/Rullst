@@ -1,7 +1,9 @@
 // cargo-rullst/src/blueprints/saas/models.rs — Database models and migrations for SaaS blueprint.
 // The model and migration templates live under `src/` beside this module.
 
-use crate::generators::{ProjectOrmBackend, billing::render_billing_models};
+use crate::generators::{
+    ProjectOrmBackend, auth::models::with_session_epoch_methods, billing::render_billing_models,
+};
 
 pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
     // Share persistence methods with make:billing so placeholder dialects and
@@ -13,7 +15,7 @@ pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
     vec![
         (
             "src/models/user.rs",
-            include_str!("src/models/user.rs.template").to_string(),
+            with_session_epoch_methods(include_str!("src/models/user.rs.template")),
         ),
         ("src/models/subscription.rs", subscription_model),
         ("src/models/billing_customer.rs", billing_customer_model),

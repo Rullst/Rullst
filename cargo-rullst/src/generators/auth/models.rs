@@ -10,7 +10,7 @@ use std::path::Path;
 /// The `User` model written by `cargo rullst auth`.
 const USER_MODEL_SOURCE: &str = r##"use rullst::db::{Orm, FromRow};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Default, FromRow, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -21,6 +21,10 @@ pub struct User {
     pub oauth_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    // Login cookies carry the epoch they were issued with. ORM writes skip
+    // this column, so a full-row save never undoes `revoke_sessions`.
+    #[orm(skip)]
+    pub session_epoch: i64,
 }
 
 impl User {
@@ -30,8 +34,53 @@ impl User {
             .first()
             .await
     }
-}
+__RULLST_SESSION_EPOCH_METHODS__}
 "##;
+
+/// The session-epoch methods shared by the `make:auth`, SaaS and LMS `User`
+/// models, which the shared auth controller and middlewares call.
+pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
+    /// The epoch to put in this account's login cookies, or `None` when the
+    /// column holds a negative value, which no generated code writes.
+    pub fn current_session_epoch(&self) -> Option<u64> {
+        u64::try_from(self.session_epoch).ok()
+    }
+
+    /// Whether a decoded login cookie was issued for this account at its
+    /// current session epoch.
+    pub fn accepts_session(&self, claims: &rullst::auth::SessionClaims) -> bool {
+        claims.user_id == self.id
+            && self
+                .current_session_epoch()
+                .is_some_and(|epoch| claims.verify_epoch(epoch).is_ok())
+    }
+
+    /// Signs out every device of this account: one UPDATE increments
+    /// `session_epoch`, so each login cookie issued before stops matching.
+    /// "Sign out everywhere" calls it; call it too after a password change
+    /// or reset and when you deactivate or delete the account.
+    pub async fn revoke_sessions(id: i32) -> Result<(), rullst::orm::Error> {
+        let increment = if rullst::db::Orm::driver()? == "postgres" {
+            "UPDATE users SET session_epoch = session_epoch + 1 WHERE id = $1"
+        } else {
+            "UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?"
+        };
+        rullst::db::sqlx::query(increment)
+            .bind(id)
+            .execute(rullst::db::Orm::pool()?)
+            .await?;
+        Ok(())
+    }
+"##;
+
+/// Marker in the starter `User` model templates replaced by
+/// [`SESSION_EPOCH_METHODS`].
+pub(crate) const SESSION_EPOCH_MARKER: &str = "__RULLST_SESSION_EPOCH_METHODS__";
+
+/// A `User` model template with the session-epoch methods in place.
+pub(crate) fn with_session_epoch_methods(template: &str) -> String {
+    template.replace(SESSION_EPOCH_MARKER, SESSION_EPOCH_METHODS)
+}
 
 pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create User Migration
@@ -53,7 +102,10 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("user.rs");
-    write_new(&model_path, USER_MODEL_SOURCE.as_bytes())?;
+    write_new(
+        &model_path,
+        with_session_epoch_methods(USER_MODEL_SOURCE).as_bytes(),
+    )?;
     println!("{}", "  ✨ Created 'User' model.".green());
     register_mod_ast(&models_dir.join("mod.rs"), "user")?;
 
@@ -64,7 +116,7 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
 fn user_migration_source(file_stem: &str) -> String {
     format!(
         r##"use rullst::db::{{Orm, sqlx}};
-use rullst::db::schema::{{Schema, Migration}};
+use rullst::db::schema::{{ColumnDefault, Schema, Migration}};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;
@@ -86,6 +138,8 @@ impl Migration for MigrationImpl {{
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();
             table.timestamps();
+            // Bumped to revoke every login cookie of the account.
+            table.big_integer("session_epoch").not_null().default(ColumnDefault::Integer(0));
         }}).await?;
         sqlx::query("CREATE UNIQUE INDEX users_email_unique ON users(email)")
             .execute(Orm::pool()?)
@@ -118,12 +172,44 @@ mod tests {
     }
 
     #[test]
+    fn users_store_a_session_epoch_that_orm_writes_never_touch() {
+        let migration = user_migration_source("m20260101000000_create_users_table");
+        assert!(migration.contains("use rullst::db::schema::{ColumnDefault, Schema, Migration};"));
+        assert!(migration.contains(
+            "table.big_integer(\"session_epoch\").not_null().default(ColumnDefault::Integer(0));"
+        ));
+        let model = with_session_epoch_methods(USER_MODEL_SOURCE);
+        assert!(!model.contains(SESSION_EPOCH_MARKER));
+        assert!(model.contains("    #[orm(skip)]\n    pub session_epoch: i64,\n}"));
+        // The ORM derive fills skipped fields from `Default`.
+        assert!(model.contains("#[derive(Debug, Clone, Default, FromRow, Orm)]"));
+        assert!(model.contains("pub fn current_session_epoch(&self) -> Option<u64> {"));
+        assert!(
+            model.contains(
+                "pub async fn revoke_sessions(id: i32) -> Result<(), rullst::orm::Error> {"
+            )
+        );
+        assert_eq!(
+            model
+                .matches("session_epoch = session_epoch + 1 WHERE id = ")
+                .count(),
+            2
+        );
+        assert!(!USER_MODEL_SOURCE.contains("UPDATE users"));
+        assert_eq!(
+            with_session_epoch_methods("a__RULLST_SESSION_EPOCH_METHODS__b"),
+            format!("a{SESSION_EPOCH_METHODS}b")
+        );
+    }
+
+    #[test]
     fn account_sources_name_the_orm_through_the_rullst_facade() {
         // `cargo rullst auth` enables the `orm` feature but adds no direct
         // `rullst-orm` dependency.
         let migration = user_migration_source("m20260101000000_create_users_table");
         let controller = crate::generators::auth::controllers::render_auth_controller(None);
-        for source in [USER_MODEL_SOURCE, migration.as_str(), controller.as_str()] {
+        let model = with_session_epoch_methods(USER_MODEL_SOURCE);
+        for source in [model.as_str(), migration.as_str(), controller.as_str()] {
             assert!(!source.contains("rullst_orm"), "{source}");
             syn::parse_file(source).expect("account source must parse");
         }

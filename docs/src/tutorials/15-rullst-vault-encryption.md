@@ -20,6 +20,16 @@ raw value containing exactly 32 UTF-8 bytes. A secret manager or KMS-backed
 deployment adapter should inject it at runtime. Rullst does not provide key
 custody.
 
+`RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and
+`RULLST_ENCRYPTION_KEYRING` are each read from the process environment first
+and, when the process does not set them, from `.env` in the current working
+directory, the precedence `APP_KEY` and `rullst::config::project_setting` use.
+The file is read on each lookup and never loaded into the process
+environment. In development a line such as
+`RULLST_ENCRYPTION_KEY=base64:...` in the project's `.env` is therefore
+enough; keep `.env` out of version control and inject the key through the
+environment in production.
+
 ## 2. Mark model fields
 
 ```rust

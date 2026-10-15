@@ -17,7 +17,10 @@ password verification, cookies and account migration. Run `migrate()` during a
 controlled deployment before using the new library: it adds a session-details
 table and an expiry index. Existing opaque sessions continue working and report
 unknown creation/label values if they predate those details. Encrypted-only
-cookies and independently issued JWTs require their own adoption/revocation path.
+`rullst_session` cookies are revoked through their own per-user
+[session epoch](crates/auth.md#revocable-cookies-the-session-epoch), which ends
+all of a user's cookies at once, and independently issued JWTs through their
+own revocation store.
 
 Stores are application/tenant boundaries selected by trusted server
 configuration, with separate databases and keys. A browser cannot choose a

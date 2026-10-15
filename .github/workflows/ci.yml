@@ -107,11 +107,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Install pinned documentation builder
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: mdbook@0.5.4
       - name: Set up browser-test runtime
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
       - name: Validate rendered content and real browser behavior
@@ -155,7 +155,7 @@ jobs:
         run: bash .github/check-package-reproducibility.sh rullst-macros rullst-orm-macros
 
       - name: Set up Node for the development browser contract
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -226,7 +226,7 @@ jobs:
 
       - name: Set up Node for browser and typed API regressions
         if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1' || env.RULLST_API_CONTRACT_TESTS == '1'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -287,7 +287,7 @@ jobs:
 
       - name: Upload failed workspace test log
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: workspace-tests-${{ matrix.os }}-${{ matrix.shard }}
           path: workspace-tests-${{ matrix.shard }}.log
@@ -296,7 +296,7 @@ jobs:
 
       - name: Retain bounded SaaS journey evidence
         if: always() && matrix.shard == 'cli-saas-journey'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: saas-journey-${{ matrix.os }}
           path: saas-journey-result.json
@@ -383,7 +383,7 @@ jobs:
 
       - name: Set up Node for the shared passkey browser contract
         if: matrix.feature == 'strict-postgres'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -615,7 +615,7 @@ jobs:
 
       - name: Upload failed threat-model evidence log
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: threat-model-release-minimum-${{ matrix.shard }}
           path: threat-model-release-minimum.log
@@ -728,7 +728,7 @@ jobs:
           disable_annotations: true
 
       - name: Install Rust 1.96.0 (declared MSRV)
-        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # stable
         with:
           toolchain: "1.96.0"
 
@@ -807,7 +807,7 @@ jobs:
         run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package
 
       - name: Preserve the tested archive checksums for release reuse
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packaged-checksums
           path: packaged-checksums.txt
@@ -862,7 +862,7 @@ jobs:
         run: cat quality-scorecard.md >>"$GITHUB_STEP_SUMMARY"
 
       - name: Upload scorecard artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: quality-scorecard-${{ github.sha }}
           path: quality-scorecard.md

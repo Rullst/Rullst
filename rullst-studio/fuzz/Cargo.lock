@@ -1412,9 +1412,9 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.58.4"
+version = "0.58.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5761b0ca0a31464030d7c2a98087fde3124ebb5e09b5a112cdb815f03b8ee150"
+checksum = "f622c574a29fb3034a0a90645afee194dfedc75fc124228801b6e77041075bd1"
 dependencies = [
  "ahash",
  "bytecount",
@@ -2279,6 +2279,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "base64 0.23.1",
+ "dotenvy",
  "futures",
  "rand 0.10.2",
  "rullst-orm-macros",

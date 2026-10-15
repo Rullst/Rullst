@@ -5,9 +5,17 @@
 
 use axum::response::Html;
 use std::fmt::Write as _;
+use std::path::Path;
 
+/// Whether an AI provider key is set for the project in the working directory.
 pub(crate) fn is_ai_configured() -> bool {
-    let _ = dotenvy::dotenv();
+    is_ai_configured_in(Path::new("."))
+}
+
+/// Whether the process environment, else `project_dir/.env`, sets a non-blank
+/// AI provider key. `.env` is read like `project_setting` reads it, never
+/// loaded into the process environment; an unreadable one counts as unset.
+pub(crate) fn is_ai_configured_in(project_dir: &Path) -> bool {
     [
         "GEMINI_API_KEY",
         "OPENAI_API_KEY",
@@ -15,7 +23,10 @@ pub(crate) fn is_ai_configured() -> bool {
         "DEEPSEEK_API_KEY",
     ]
     .iter()
-    .any(|key| std::env::var(key).is_ok_and(|value| !value.trim().is_empty()))
+    .any(|key| {
+        crate::config::project_setting::project_setting_in(project_dir, key)
+            .is_ok_and(|value| value.is_some_and(|value| !value.trim().is_empty()))
+    })
 }
 
 fn layout(title: &str, body: String) -> Html<String> {

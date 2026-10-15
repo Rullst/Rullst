@@ -103,6 +103,22 @@ def validate_workflow_build_targets() -> None:
                 )
 
 
+def validate_dependabot_directories(directories: set[str]) -> None:
+    """Every fuzz workspace lockfile must be in Dependabot's main cargo update."""
+    path = ROOT / ".github" / "dependabot.yml"
+    try:
+        config = path.read_text(encoding="utf-8")
+    except OSError as error:
+        fail(f"cannot read .github/dependabot.yml: {error}")
+    listed = set(re.findall(r'^\s+- "/([^"]+)"\s*$', config, flags=re.MULTILINE))
+    missing = sorted(directories - listed)
+    if missing:
+        fail(
+            "the main cargo entry in .github/dependabot.yml must list every fuzz "
+            f"workspace under directories; missing: {missing}"
+        )
+
+
 def main() -> None:
     validate_workflow_build_targets()
     declared_list = load_declared()
@@ -119,6 +135,8 @@ def main() -> None:
         if stale:
             print(f"stale matrix entries: {stale}", file=sys.stderr)
         raise SystemExit(1)
+
+    validate_dependabot_directories({directory for directory, _ in declared})
 
     print(
         f"validated {len(declared)} fuzz targets across "

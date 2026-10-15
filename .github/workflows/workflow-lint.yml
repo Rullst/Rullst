@@ -54,7 +54,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retain the source-bound observation
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: verification-plan-${{ github.sha }}
           path: ${{ runner.temp }}/verification-plan.json
@@ -89,7 +89,7 @@ jobs:
           python3 .github/validate-action-pins.py
 
       - name: Parse workflows and enforce immutable Action references
-        uses: zgosalvez/github-actions-ensure-sha-pinned-actions@62574f011e0d1967d555a862bd28a7abba8684fe # v5.0.9
+        uses: zgosalvez/github-actions-ensure-sha-pinned-actions@c4e71056006d29f90204b2d063be337109507d62 # v5.0.10
 
       - name: Validate shared fuzz target inventory
         run: python3 .github/validate-fuzz-targets.py

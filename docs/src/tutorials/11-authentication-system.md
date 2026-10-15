@@ -50,6 +50,7 @@ mapping is:
 ```rust,ignore
 use rullst::{routes, routing::post, server::from_fn};
 use crate::controllers::auth_controller;
+use crate::middlewares::auth_middleware::auth_middleware;
 
 let public_auth = routes![
     get("/login" => auth_controller::login_view),
@@ -61,6 +62,13 @@ let public_auth = routes![
     .layer(from_fn(auth_controller::credential_rate_limit)))
 .route("/register", post(auth_controller::register_submit)
     .layer(from_fn(auth_controller::credential_rate_limit)));
+
+let signed_in = routes![
+    get("/dashboard" => auth_controller::dashboard),
+    // Ends the session on every device.
+    post("/logout/everywhere" => auth_controller::logout_everywhere),
+]
+.layer(from_fn(auth_middleware));
 ```
 
 `credential_rate_limit` allows ten submissions per minute for each connecting
@@ -80,9 +88,9 @@ cargo rullst db:migrate
 cargo rullst dev
 ```
 
-Before production, exercise registration, login, logout, invalid credentials,
-duplicate email, expired/tampered cookies, CSRF failure, rate limiting, and key
-rotation. Configure a strong `APP_KEY` through a secret manager and HTTPS at the
+Before production, exercise registration, login, logout, sign-out everywhere,
+invalid credentials, duplicate email, expired/tampered/revoked cookies, CSRF
+failure, rate limiting, and key rotation. Configure a strong `APP_KEY` through a secret manager and HTTPS at the
 edge.
 
 ---
@@ -99,8 +107,16 @@ edge.
   obvious account-enumeration timing difference.
 - Session values use authenticated encryption and are emitted as cookie headers
   through `rullst-auth` helpers.
+- The `users.session_epoch` column (0 for a new account) goes into every login
+  cookie, and `auth_middleware` refuses a cookie whose epoch differs.
+  `User::revoke_sessions` increments it in one `UPDATE`, ending every cookie of
+  the account; the *Sign out everywhere* button (`logout_everywhere`) calls it.
+  Plain logout clears only the current browser's cookie. Call
+  `User::revoke_sessions` too from the password change or reset you add, and
+  when you deactivate an account. See
+  [encrypted sessions](../crates/auth.md#revocable-cookies-the-session-epoch).
 
 These controls do not replace application review. Add account verification,
-password reset/recovery, abuse controls, audit policy, MFA/passkeys, session
-revocation, and privacy/retention behavior according to the product's threat
-model.
+password change and reset/recovery, abuse controls, audit policy, MFA/passkeys,
+per-device session management, and privacy/retention behavior according to the
+product's threat model.

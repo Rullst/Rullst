@@ -82,7 +82,10 @@ pub(crate) type ArtisanRegistry = Option<(Vec<Box<dyn Migration>>, Vec<Box<dyn S
 ///
 /// The database URL is resolved exactly like [`crate::Server`] does: the
 /// process `DATABASE_URL`, then `DATABASE_URL` in `./.env` (never overriding
-/// the process environment), then `[database].url` in `Rullst.toml`. A `db:*`
+/// the process environment), then `[database].url` in `Rullst.toml`. Like
+/// `Server`, this never loads `.env` into the process environment, so
+/// migrations and seeders read other `.env` values with
+/// [`crate::config::project_setting`], not `std::env::var`. A `db:*`
 /// command without a configured database fails instead of creating a local
 /// SQLite file. When a requested command runs, the process exits with status 0
 /// on success and 1 on any failure, including database initialization.
@@ -170,9 +173,9 @@ pub(crate) async fn run_artisan_command(
         None => return Err(ArtisanError::DatabaseNotConfigured(command.to_string())),
     }
 
-    // Migrations and seeders may read other `.env` values. Values already in
-    // the process environment always win, matching the URL resolution above.
-    let _ = dotenvy::from_path(project_dir.join(".env"));
+    // `.env` is never loaded into the process environment, as in `Server`:
+    // migrations and seeders read its other values with
+    // `rullst::config::project_setting`.
 
     if command == "studio" {
         return start_studio_server().await.map_err(ArtisanError::Studio);
