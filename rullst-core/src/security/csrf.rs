@@ -61,6 +61,16 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// must precede the file inputs; the whole body then reaches the handler
 /// unchanged.
 ///
+/// A `GET` or `HEAD` whose path looks like a static file never mints a token
+/// or sets the cookie: `/robots.txt`, `/sitemap.xml`, `/favicon.ico`, anything
+/// under `/static/`, and any path ending in `.txt`, `.xml`, `.ico`, `.json`,
+/// `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm`. When
+/// the browser already sends a valid `rullst_csrf` cookie, such a request
+/// still receives the [`CsrfToken`] from it, so a dynamic page with one of
+/// those suffixes can render a form; a first visit that lands there does not.
+/// The suffixes do not affect state-changing requests, which always need the
+/// token.
+///
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
 /// [`crate::Server`] later composes the production security baseline around it.
@@ -134,14 +144,15 @@ pub(crate) fn is_csrf_exempt_path(path: &str) -> bool {
 }
 
 async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
-    if is_csrf_exempt_path(req.uri().path()) {
-        return next.run(req).await;
-    }
-
     let cookie_token = csrf_token_from_cookies(req.headers());
 
     if let Some(token) = cookie_token {
         req.extensions_mut().insert(CsrfToken(token));
+        return next.run(req).await;
+    }
+
+    // Static-looking paths never mint a token or set the cookie.
+    if is_csrf_exempt_path(req.uri().path()) {
         return next.run(req).await;
     }
 
@@ -298,3 +309,7 @@ async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
 #[cfg(test)]
 #[path = "csrf_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "csrf_static_path_tests.rs"]
+mod static_path_tests;

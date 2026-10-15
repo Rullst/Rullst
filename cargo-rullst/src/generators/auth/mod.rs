@@ -57,9 +57,11 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
     println!(
-        "👉 Mount the login/register/logout routes behind the CSRF and security baseline, and protect private routes with auth_middleware."
+        "👉 Mount the login/register/logout routes behind the CSRF and security baseline, and protect private routes and POST /logout/everywhere (logout_everywhere) with auth_middleware."
     );
-    println!("👉 Run `cargo rullst db:migrate` to create the users table.");
+    println!(
+        "👉 Run `cargo rullst db:migrate` to create the users table. Call User::revoke_sessions after a password change or reset and when you deactivate an account."
+    );
     Ok(())
 }
 

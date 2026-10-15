@@ -5,28 +5,39 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-const AUTH_MIDDLEWARE_TEMPLATE: &str = r##"use rullst::server::{
-    Request,
-    Next,
-    Response, Redirect, IntoResponse, StatusCode,
-};
+const AUTH_MIDDLEWARE_TEMPLATE: &str = r##"use crate::models::user::User;
+use rullst::server::{IntoResponse, Next, Redirect, Request, Response, StatusCode};
 
+/// Resolves the signed-in user from the `rullst_session` cookie and inserts
+/// their id as `Extension<i32>`. A cookie counts only while it carries the
+/// account's current `session_epoch`, so `User::revoke_sessions` signs out
+/// every device.
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
-    let headers = req.headers();
-    if let Some(cookie) = rullst::auth::extract_session_cookie(headers) {
-        let app_key = match rullst::auth::get_app_key() {
-            Ok(key) => key,
-            Err(error) => {
-                eprintln!("Authentication middleware configuration error: {error}");
-                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
-        };
-        if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {
-            req.extensions_mut().insert(user_id);
-            return next.run(req).await;
+    let Some(cookie) = rullst::auth::extract_session_cookie(req.headers()) else {
+        return Redirect::to("/login").into_response();
+    };
+    let app_key = match rullst::auth::get_app_key() {
+        Ok(key) => key,
+        Err(error) => {
+            eprintln!("Authentication middleware configuration error: {error}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+    let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) else {
+        return Redirect::to("/login").into_response();
+    };
+    match User::find(claims.user_id).await {
+        Ok(Some(user)) if user.accepts_session(&claims) => {
+            req.extensions_mut().insert(user.id);
+            next.run(req).await
+        }
+        // Unknown account or revoked cookie.
+        Ok(_) => Redirect::to("/login").into_response(),
+        Err(error) => {
+            eprintln!("Authentication user query failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
     }
-    Redirect::to("/login").into_response()
 }
 "##;
 
@@ -104,6 +115,34 @@ mod tests {
         assert!(!source.contains(".unwrap("));
         assert!(!source.contains(".expect("));
         assert!(!source.contains("panic!("));
+    }
+
+    #[test]
+    fn generated_login_cookies_are_revocable_by_session_epoch() {
+        let controller = render_auth_controller(None);
+        // Both sign-in paths issue the epoch cookie; none issues the
+        // irrevocable 30-day cookie any more.
+        assert_eq!(controller.matches("match login_cookie(&user) {").count(), 2);
+        assert!(!controller.contains("rullst_auth::make_login_cookie("));
+        assert!(controller.contains(
+            "rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)"
+        ));
+        assert!(controller.contains("        session_epoch: 0,\n    };"));
+        assert!(controller.contains(
+            "pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {\n    match User::revoke_sessions(user_id).await {"
+        ));
+
+        syn::parse_file(AUTH_MIDDLEWARE_TEMPLATE).expect("auth middleware must parse");
+        assert!(
+            AUTH_MIDDLEWARE_TEMPLATE
+                .contains("rullst::auth::decrypt_session_claims(&cookie, &app_key)")
+        );
+        assert!(
+            AUTH_MIDDLEWARE_TEMPLATE
+                .contains("Ok(Some(user)) if user.accepts_session(&claims) => {")
+        );
+        assert!(!AUTH_MIDDLEWARE_TEMPLATE.contains("decrypt_session(&"));
+        assert!(!AUTH_MIDDLEWARE_TEMPLATE.contains(".unwrap("));
     }
 
     #[test]

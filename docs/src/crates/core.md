@@ -187,7 +187,12 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   `init_radar` was called earlier; without a `Server`, call them yourself. The opt-in
   `health_router_with_lifecycle` returns readiness from the same bounded state
   that gates Server request admission; the application still performs and
-  times out its own dependency checks.
+  times out its own dependency checks. The `version` field of both payloads is
+  the Rullst framework version. To report your application's version too, use
+  `health_router_with_version(env!("CARGO_PKG_VERSION"))` or
+  `health_router_with_lifecycle_and_version(lifecycle, env!("CARGO_PKG_VERSION"))`
+  (v13), which add it as `app_version`; any string works, such as a commit
+  hash read at startup.
 - **Interactive Scalar API Docs (`rullst::scalar`):** OpenAPI documentation UI
   mounted at `/docs`, with a pinned CDN asset and a status-only fallback. A
   missing or malformed `openapi.json` returns `503`.
@@ -264,7 +269,9 @@ exercises this boundary through a real proxy; full hosted admission remains pend
 - **Project settings (v13 prerelease):** `config::project_setting(name)`
   (also `rullst::config::project_setting`) reads an application setting from
   the process environment first and then `./.env`, which never overrides the
-  environment and is never loaded into it. It returns `Ok(None)` when neither
+  environment and is never loaded into it, by `Server` or by Artisan
+  commands (`db:*`, `studio`); read `.env` values in migrations and seeders
+  with it rather than `std::env::var`. It returns `Ok(None)` when neither
   defines the name and fails with `ConfigError::Read`/`Parse` for an unreadable
   or malformed `.env`; errors never contain `.env` content. Nexus
   `basic_from_env` and generated billing code (`BILLING_*`) use it. The
@@ -459,6 +466,19 @@ CORS allowlist, a bounded WAF, double-submit CSRF and, when
 opt-in layers that overlap some of these. See
 [which security layer to use, and when](../security-layers.md) before you
 combine them.
+
+The secure headers include `Strict-Transport-Security: max-age=31536000;
+includeSubDomains`. `[security]` `hsts_max_age_seconds`,
+`hsts_include_subdomains` and `hsts_preload` change it; `preload` is opt-in
+and requires `includeSubDomains` and a max-age of at least one year, or the
+server refuses to start (see
+[Strict-Transport-Security](../security-layers.md#strict-transport-security)).
+
+The WAF refuses requests only in staging and production; in development it
+logs a `warn` event with the rule and path of each request it would refuse.
+`[security]` `waf_body_exempt_paths` lists exact paths whose bodies it does
+not inspect, for routes that accept text such as code samples (see
+[seeing and accepting WAF false positives](../security-layers.md#seeing-and-accepting-waf-false-positives)).
 
 ## 🔐 Security Audit & Reliability
 

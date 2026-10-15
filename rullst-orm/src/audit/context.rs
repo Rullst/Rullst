@@ -193,6 +193,12 @@ fn active_tenant_key() -> Result<Option<String>, crate::Error> {
             ));
         }
         RullstValue::Bool(value) => format!("bool:{value}"),
+        RullstValue::I64(value) => format!("i64:{value}"),
+        RullstValue::Null => {
+            return Err(crate::Error::Validation(
+                "audit tenant ID must not be NULL".to_string(),
+            ));
+        }
     };
     if key.len() > MAX_TENANT_KEY_BYTES {
         return Err(crate::Error::Validation(
@@ -244,5 +250,16 @@ mod tests {
         assert_eq!(metadata.actor_kind, "service");
         assert_eq!(metadata.actor_id, "worker-7");
         assert_eq!(metadata.tenant_key.as_deref(), Some("string:tenant-a"));
+    }
+
+    #[tokio::test]
+    async fn wide_and_null_tenants_have_their_own_audit_keys() {
+        let wide = crate::with_tenant(5_000_000_000_i64, async { active_tenant_key() }).await;
+        assert_eq!(wide.unwrap().as_deref(), Some("i64:5000000000"));
+        let null = crate::with_tenant(None::<i64>, async { active_tenant_key() }).await;
+        assert!(
+            matches!(&null, Err(crate::Error::Validation(message)) if message == "audit tenant ID must not be NULL"),
+            "{null:?}"
+        );
     }
 }

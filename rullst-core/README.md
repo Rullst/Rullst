@@ -175,7 +175,9 @@ Studio converts it into a process-bound opaque token before rendering it.
 
 For orchestrated deployments, construct `ApplicationLifecycle`, mount
 `health_router_with_lifecycle(lifecycle.clone())`, then pass the same value to
-`Server::with_lifecycle`. The server marks startup complete after binding,
+`Server::with_lifecycle`. The probes' `version` is the framework version;
+`health_router_with_lifecycle_and_version(lifecycle.clone(), env!("CARGO_PKG_VERSION"))`
+also reports the application's version as `app_version`. The server marks startup complete after binding,
 begins drain before Axum waits for accepted requests, and marks startup failure
 or termination as stopped. `run_with_shutdown` permits a caller-owned trigger.
 Admission follows the ordinary response body through completion, error or drop,

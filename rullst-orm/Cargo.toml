@@ -40,6 +40,8 @@ tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 syn = { version = "3.0.5", features = ["full", "extra-traits"] }
 thiserror = { workspace = true }
+# Reads `RULLST_ENCRYPTION_KEY*` from `./.env` when the process lacks them.
+dotenvy = { workspace = true }
 sha2 = { workspace = true, optional = true }
 zeroize = { workspace = true }
 # Resolution guard for the SQLx -> unicode-normalization graph. Keep this

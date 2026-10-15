@@ -289,6 +289,8 @@ fn update_value(digest: &mut Sha256, value: &RullstValue) {
         RullstValue::Int(value) => update_field(digest, 11, &value.to_be_bytes()),
         RullstValue::Float(value) => update_field(digest, 12, &value.to_bits().to_be_bytes()),
         RullstValue::Bool(value) => update_field(digest, 13, &[*value as u8]),
+        RullstValue::I64(value) => update_field(digest, 14, &value.to_be_bytes()),
+        RullstValue::Null => update_field(digest, 15, &[]),
     }
 }
 
@@ -350,6 +352,27 @@ mod tests {
         assert_eq!(first, repeated);
         assert!(first.starts_with("rullst:orm:cache:v4:academy:global:table-"));
         assert_ne!(first, typed);
+    }
+
+    #[test]
+    fn wide_integers_and_nulls_have_their_own_cache_keys() {
+        let key = |value: RullstValue| {
+            build_key("academy", None, "users", "SELECT *", &[value]).expect("cache key")
+        };
+        let narrow = key(RullstValue::Int(12));
+        let wide = key(RullstValue::I64(12));
+        assert_ne!(narrow, wide);
+        assert_eq!(wide, key(RullstValue::I64(12)));
+        assert_ne!(wide, key(RullstValue::I64(13)));
+        let null = key(RullstValue::Null);
+        assert_ne!(null, key(RullstValue::String(String::new())));
+        assert_ne!(
+            null,
+            build_key("academy", None, "users", "SELECT *", &[]).expect("no bindings")
+        );
+        let tenant =
+            |value: RullstValue| index_key("academy", Some(&value), "users").expect("index");
+        assert_ne!(tenant(RullstValue::Int(7)), tenant(RullstValue::I64(7)));
     }
 
     #[test]

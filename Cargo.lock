@@ -6572,6 +6572,7 @@ dependencies = [
  "base64 0.23.1",
  "criterion",
  "diesel",
+ "dotenvy",
  "duckdb",
  "futures",
  "mongodb",

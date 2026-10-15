@@ -2,8 +2,15 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use crate::lifecycle::{ApplicationLifecycle, ReadinessSnapshot};
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{
+    Json, Router,
+    extract::{FromRef, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -36,7 +43,9 @@ pub(crate) fn recorded_boot_time() -> u64 {
 pub struct HealthProbeResponse {
     /// Service health status ("UP", "DOWN", or "DEGRADED").
     pub status: &'static str,
-    /// Framework / App version string.
+    /// Version of the Rullst framework (`rullst-core`), not of the
+    /// application. [`health_router_with_version`] also reports the
+    /// application's own version, as `app_version`.
     pub version: &'static str,
     /// Application uptime in seconds.
     pub uptime_seconds: u64,
@@ -50,7 +59,9 @@ pub struct HealthProbeResponse {
 pub struct ReadinessProbeResponse {
     /// Readiness status (`UP` only while every bounded gate is ready).
     pub status: &'static str,
-    /// Framework / App version string.
+    /// Version of the Rullst framework (`rullst-core`), not of the
+    /// application. [`health_router_with_lifecycle_and_version`] also reports
+    /// the application's own version, as `app_version`.
     pub version: &'static str,
     /// Application uptime in seconds.
     pub uptime_seconds: u64,
@@ -104,9 +115,8 @@ pub async fn readiness_handler() -> impl IntoResponse {
     (StatusCode::OK, Json(payload))
 }
 
-async fn lifecycle_readiness_handler(
-    State(lifecycle): State<ApplicationLifecycle>,
-) -> impl IntoResponse {
+/// The readiness status and payload of `lifecycle` now.
+fn lifecycle_readiness(lifecycle: &ApplicationLifecycle) -> (StatusCode, ReadinessProbeResponse) {
     let (now, uptime) = time_snapshot();
     let snapshot = lifecycle.snapshot();
     let status = if snapshot.ready {
@@ -121,7 +131,64 @@ async fn lifecycle_readiness_handler(
         timestamp: now,
         lifecycle: snapshot,
     };
+    (status, payload)
+}
+
+async fn lifecycle_readiness_handler(
+    State(lifecycle): State<ApplicationLifecycle>,
+) -> impl IntoResponse {
+    let (status, payload) = lifecycle_readiness(&lifecycle);
     (status, Json(payload))
+}
+
+/// The application's own version, reported as `app_version`.
+#[derive(Clone)]
+struct AppVersion(Arc<str>);
+
+/// Router state of [`health_router_with_lifecycle_and_version`].
+#[derive(Clone)]
+struct VersionedLifecycle {
+    lifecycle: ApplicationLifecycle,
+    app_version: AppVersion,
+}
+
+impl FromRef<VersionedLifecycle> for AppVersion {
+    fn from_ref(state: &VersionedLifecycle) -> Self {
+        state.app_version.clone()
+    }
+}
+
+/// A probe payload followed by the application's version.
+#[derive(Serialize)]
+struct WithAppVersion<'a, T> {
+    #[serde(flatten)]
+    probe: T,
+    app_version: &'a str,
+}
+
+/// Process-only `/health` and `/ready` that also report `app_version`.
+async fn versioned_process_probe(State(app_version): State<AppVersion>) -> Response {
+    let (now, uptime) = time_snapshot();
+    let probe = HealthProbeResponse {
+        status: "UP",
+        version: env!("CARGO_PKG_VERSION"),
+        uptime_seconds: uptime,
+        timestamp: now,
+    };
+    Json(WithAppVersion {
+        probe,
+        app_version: &app_version.0,
+    })
+    .into_response()
+}
+
+async fn versioned_lifecycle_readiness(State(state): State<VersionedLifecycle>) -> Response {
+    let (status, probe) = lifecycle_readiness(&state.lifecycle);
+    let payload = WithAppVersion {
+        probe,
+        app_version: &state.app_version.0,
+    };
+    (status, Json(payload)).into_response()
 }
 
 /// Returns an Axum `Router` mounting `/health` and `/ready` health probe routes.
@@ -141,6 +208,38 @@ pub fn health_router_with_lifecycle(lifecycle: ApplicationLifecycle) -> Router {
         .route("/health", get(liveness_handler))
         .route("/ready", get(lifecycle_readiness_handler))
         .with_state(lifecycle)
+}
+
+/// Returns [`health_router`]'s `/health` and `/ready`, whose JSON also
+/// carries the application's own version as `app_version`; `version` stays
+/// the framework version. Added in v13.
+///
+/// ```no_run
+/// let probes = rullst_core::health::health_router_with_version(env!("CARGO_PKG_VERSION"));
+/// ```
+pub fn health_router_with_version(app_version: impl Into<String>) -> Router {
+    let app_version = AppVersion(Arc::from(app_version.into()));
+    Router::new()
+        .route("/health", get(versioned_process_probe))
+        .route("/ready", get(versioned_process_probe))
+        .with_state(app_version)
+}
+
+/// Returns [`health_router_with_lifecycle`]'s `/health` and `/ready`, whose
+/// JSON also carries the application's own version as `app_version`;
+/// `version` stays the framework version. Added in v13.
+pub fn health_router_with_lifecycle_and_version(
+    lifecycle: ApplicationLifecycle,
+    app_version: impl Into<String>,
+) -> Router {
+    let app_version = AppVersion(Arc::from(app_version.into()));
+    Router::new()
+        .route("/health", get(versioned_process_probe))
+        .route("/ready", get(versioned_lifecycle_readiness))
+        .with_state(VersionedLifecycle {
+            lifecycle,
+            app_version,
+        })
 }
 
 #[cfg(test)]
@@ -237,5 +336,64 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(liveness.status(), StatusCode::OK);
+    }
+
+    /// Status and JSON body of one `GET` on `app`.
+    async fn probe(app: &Router, path: &str) -> (StatusCode, serde_json::Value) {
+        let response = app
+            .clone()
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let status = response.status();
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&body).unwrap())
+    }
+
+    #[tokio::test]
+    async fn probes_report_the_application_version_next_to_the_framework_version() {
+        let app = health_router_with_version(String::from("2.4.1+abc123"));
+        for path in ["/health", "/ready"] {
+            let (status, body) = probe(&app, path).await;
+            assert_eq!(status, StatusCode::OK, "{path}");
+            assert_eq!(body["status"], "UP", "{path}");
+            assert_eq!(body["app_version"], "2.4.1+abc123", "{path}");
+            assert_eq!(body["version"], env!("CARGO_PKG_VERSION"), "{path}");
+            assert!(body["uptime_seconds"].is_u64(), "{path}");
+            assert!(
+                body["timestamp"].as_u64().is_some_and(|now| now > 0),
+                "{path}"
+            );
+        }
+        // The original routers keep reporting only the framework version.
+        let (_, body) = probe(&health_router(), "/health").await;
+        assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
+        assert!(body.get("app_version").is_none());
+    }
+
+    #[tokio::test]
+    async fn lifecycle_probes_report_the_application_version() {
+        let lifecycle = ApplicationLifecycle::new();
+        let app = health_router_with_lifecycle_and_version(lifecycle.clone(), "7.0.0");
+
+        let (status, body) = probe(&app, "/ready").await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["status"], "DOWN");
+        assert_eq!(body["phase"], "starting");
+        assert_eq!(body["app_version"], "7.0.0");
+        assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
+
+        lifecycle.mark_ready().unwrap();
+        let (status, body) = probe(&app, "/ready").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "UP");
+        assert_eq!(body["app_version"], "7.0.0");
+
+        let (status, body) = probe(&app, "/health").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "UP");
+        assert_eq!(body["app_version"], "7.0.0");
     }
 }
