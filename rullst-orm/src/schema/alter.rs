@@ -182,3 +182,7 @@ impl Blueprint {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "alter_tests.rs"]
+mod tests;
