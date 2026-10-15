@@ -5,7 +5,7 @@ use super::*;
 fn markup_findings(source: &str) -> Vec<(&'static str, usize)> {
     scan_with(source, "views.rs", &WorkspaceFacts::default())
         .into_iter()
-        .filter(|(code, _)| code.starts_with("V13-HTML-MARKUP") || *code == "V13-HTML-RAW-MARKUP")
+        .filter(|(code, _)| *code == "V13-HTML-MARKUP-RETURN" || *code == "V13-HTML-RAW-MARKUP")
         .collect()
 }
 
@@ -40,6 +40,13 @@ impl Card {
 trait View {
     fn view(&self) -> String { { html! { <i>"v"</i> } } }
 }
+fn parenthesized() -> String { (html! { <p>"p"</p> }) }
+fn two_returns(first: bool) -> String {
+    if first {
+        return html! { <a>"1"</a> };
+    }
+    return html! { <a>"2"</a> };
+}
 "#;
     assert_eq!(
         markup_findings(source),
@@ -50,6 +57,8 @@ trait View {
             ("V13-HTML-MARKUP-RETURN", 12),
             ("V13-HTML-MARKUP-RETURN", 20),
             ("V13-HTML-MARKUP-RETURN", 28),
+            ("V13-HTML-MARKUP-RETURN", 30),
+            ("V13-HTML-MARKUP-RETURN", 31),
         ]
     );
 }
@@ -72,6 +81,12 @@ fn statement() -> String {
     html! { <p>"discarded"</p> };
     String::new()
 }
+fn trailing_statement() -> String {
+    todo();
+    html! { <p>"discarded"</p> };
+}
+fn ok_text() -> Result<String, Error> { Ok(String::new()) }
+fn converted() -> String { into_text(html! { <p>"x"</p> }) }
 fn unit() { html! { <p>"x"</p> }; }
 fn other() -> String { other! { <p>"x"</p> } }
 fn trusted(markdown: &str) -> Markup {
@@ -92,12 +107,15 @@ fn table(rows: &[Row]) -> Markup {
     let cells = rows.iter().map(|row| html! { <td>{row.name}</td> }).collect::<String>();
     let direct = RawHtml(html! { <b>"b"</b> });
     let trusted = RawHtml::new(load_trusted());
+    let typed: String = rows.iter().map(|row| html! { <th>{row.name}</th> }).collect();
     html! {
         <table>
             <tr>{RawHtml(cells)}</tr>
             <tr>{rullst::html::RawHtml::new(badge("new"))}</tr>
             <tr>{RawHtml(&cells)}{trusted}</tr>
             <tr title={RawHtml(badge("x"))}>{ html! { <td>{RawHtml(cells.clone())}</td> } }</tr>
+            <tr>{RawHtml((typed))}</tr>
+            <tr>{RawHtml([html! { <td>"1"</td> }, html! { <td>"2"</td> }].concat())}</tr>
         </table>
     }
 }
@@ -110,21 +128,14 @@ fn other_scope(cells: String) -> Markup {
         vec![
             ("V13-HTML-MARKUP-RETURN", 2),
             ("V13-HTML-RAW-MARKUP", 7),
-            ("V13-HTML-RAW-MARKUP", 11),
             ("V13-HTML-RAW-MARKUP", 12),
             ("V13-HTML-RAW-MARKUP", 13),
             ("V13-HTML-RAW-MARKUP", 14),
+            ("V13-HTML-RAW-MARKUP", 15),
+            ("V13-HTML-RAW-MARKUP", 16),
+            ("V13-HTML-RAW-MARKUP", 17),
         ]
     );
-}
-
-#[test]
-fn markup_rules_name_the_html_markup_migration_row() {
-    for code in ["V13-HTML-MARKUP-RETURN", "V13-HTML-RAW-MARKUP"] {
-        let rule = CATALOG.iter().find(|rule| rule.code == code).unwrap();
-        assert_eq!(rule.row, "`html!` returns `Markup`");
-        assert_eq!(rule.kind, FindingKind::MustChange);
-    }
 }
 
 #[test]
@@ -142,6 +153,8 @@ async fn page() -> Markup {
             {RawHtml(mounted)}
             {RawHtml(Live::mount::<Counter>("/ws").await)}
             {RawHtml(mount_point())}
+            {RawHtml(Cache::mount(1))}
+            {RawHtml(Live::render(1))}
         </main>
     }
 }
@@ -154,4 +167,13 @@ async fn page() -> Markup {
             ("V13-HTML-RAW-MARKUP", 12),
         ]
     );
+}
+
+#[test]
+fn markup_rules_name_the_html_markup_migration_row() {
+    for code in ["V13-HTML-MARKUP-RETURN", "V13-HTML-RAW-MARKUP"] {
+        let rule = CATALOG.iter().find(|rule| rule.code == code).unwrap();
+        assert_eq!(rule.row, "`html!` returns `Markup`");
+        assert_eq!(rule.kind, FindingKind::MustChange);
+    }
 }

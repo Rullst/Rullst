@@ -49,7 +49,8 @@ fn block_returns_html(block: &syn::Block) -> bool {
 }
 
 /// `expr` evaluates to an `html!` result, possibly through `if`, `match`, a
-/// block or an `Ok(..)`, `Some(..)` or `Html(..)` wrapper.
+/// block or an `Ok(..)`, `Some(..)` or `Html(..)` wrapper. `return`
+/// expressions are found by [`Returns`].
 fn returns_html(expr: &Expr) -> bool {
     match expr {
         Expr::Macro(expr) => is_html(&expr.mac),
@@ -63,7 +64,6 @@ fn returns_html(expr: &Expr) -> bool {
         }
         Expr::Match(expr) => expr.arms.iter().any(|arm| returns_html(&arm.body)),
         Expr::Paren(expr) => returns_html(&expr.expr),
-        Expr::Return(expr) => expr.expr.as_deref().is_some_and(returns_html),
         Expr::Call(call) => {
             let wrapper = matches!(&*call.func, Expr::Path(path)
             if path.path.segments.last().is_some_and(|segment| {
