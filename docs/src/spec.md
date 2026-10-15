@@ -1638,6 +1638,31 @@ the same server-authoritative controls.
   `Markup::from_trusted`) is the explicit escape hatch for trusted HTML
   produced outside `html!`, such as a sanitizer's or renderer's output. It
   is never needed for `html!` output and must never wrap request data.
+* **Attributes:** `name="text"` is author-owned source and written as it is.
+  `name={value}` is always written with the value escaped: a `bool` as
+  `"true"`/`"false"` (what `aria-*` and `data-*` expect) and `None` as an
+  empty value. Since 13.0.0-alpha.2 a bare `name` (`<input required
+  disabled>`) is written without a value, and a conditional `name?={value}`
+  is decided at runtime through `rullst::html::OptionalAttribute`: a `bool`
+  writes the bare name or nothing, and an `Option<T>` writes `name="value"`,
+  escaped exactly like `name={value}` (URL attributes keep the scheme check
+  above), or nothing for `None`. Any other value type is a compile-time
+  error at the expression. HTML boolean attributes mean presence, so
+  `disabled="false"` still disables a control: use `disabled?={flag}`. The
+  quoted forms keep compiling. Attribute names are Rust identifiers (keywords
+  included) joined by `-`, so no quote, `=`, `>` or whitespace can reach the
+  output through a name; `:` and `@` name forms are not supported. A
+  conditional value on an event-handler attribute is rejected like a dynamic
+  one, while a bare handler name is static.
+* **Control flow:** Since 13.0.0-alpha.2, `@if condition { … }` (also
+  `@if let PATTERN = value`), `@else if …`, `@else { … }` and
+  `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
+  heads are parsed like Rust's own `if`/`for` heads and keep caller name
+  resolution. No other node can start with `@`, so the forms are
+  unambiguous. A plain `else` after an `@if` body and any other `@` form
+  (`@match`, `@let`, `@while`) are compile-time errors: `match` and other
+  control flow stay Rust expressions that return `Markup` inside `{…}`,
+  which keeps the grammar small without losing expressiveness.
 * **Element names and the doctype:** Element names (opening and closing) may
   be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
   letter case) is emitted as written; it must precede every other node
@@ -1671,6 +1696,22 @@ the same server-authoritative controls.
   // `rendered` is Markup: another html! inserts it without escaping it again.
   let card = html! { <section>{rendered}</section> };
   assert!(card.starts_with("<section><div class=\"user-badge\">"));
+
+  // Bare and conditional attributes, `@if` and `@for`.
+  let tasks = [("Write tests", true), ("<Ship>", false)];
+  let list = html! {
+      <ul>
+          @for (title, done) in tasks {
+              <li><input type="checkbox" disabled checked?={done} />{title}</li>
+          }
+      </ul>
+      @if tasks.is_empty() { <p>"Nothing to do"</p> }
+  };
+  assert_eq!(
+      list,
+      "<ul><li><input type=\"checkbox\" disabled checked />Write tests</li>\
+       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>"
+  );
   ```
 
 ### 4.3. Durable Queue Timing and Completion History

@@ -1531,8 +1531,8 @@ cargo rullst ai review [--staged | --base <REF> | --include-untracked] [--json] 
   unsent files are listed). The model checks correctness, security (SQLx
   parameters, CSRF, ownership checks and `rullst-access` classifications,
   constant-time signature checks), panics in production paths, missing tests
-  and Rullst rules such as quoted `html!` boolean attributes. Findings print
-  with `file:line`, severity and a suggested fix, or as the
+  and Rullst rules such as bare or conditional `html!` boolean attributes.
+  Findings print with `file:line`, severity and a suggested fix, or as the
   `rullst.ai-review.v1` JSON document with `--json` (`files.reviewed`,
   `files.omitted`, `files.truncated`, `redactions`, `findings[]` with `file`,
   `line`, `severity`, `title`, `detail`, `suggestion`, `summary`,
