@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792086689408,
+  "lastUpdate": 1792103329381,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16639,6 +16639,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 5100,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16647b9064d5517f3dc755bceb0c471f8f2ff269",
+          "message": "Merge pull request #503 from Rullst/test/v13-messaging-mutation\n\ntest(messaging): kill surviving mutants across webhooks, storage, schedules and Redis Streams",
+          "timestamp": "2026-10-15T19:10:27-03:00",
+          "tree_id": "20576ae64e48d7176c69d8764a866aca4ca71ecc",
+          "url": "https://github.com/Rullst/Rullst/commit/16647b9064d5517f3dc755bceb0c471f8f2ff269"
+        },
+        "date": 1792103328756,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 973,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 818,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1808,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4581,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
