@@ -54,6 +54,10 @@ fn every_value_binds_exactly_one_parameter() {
         RullstValue::Bool(true),
         RullstValue::I64(5_000_000_000),
         RullstValue::Null,
+        RullstValue::DateTime(instant()),
+        RullstValue::NaiveDateTime(instant().naive_utc()),
+        RullstValue::Date(instant().date_naive()),
+        RullstValue::Time(instant().time()),
     ];
     let mut query = sqlx::query::<crate::RullstDatabase>(sqlx::AssertSqlSafe("SELECT 1"));
     let mut query_as =
@@ -62,6 +66,75 @@ fn every_value_binds_exactly_one_parameter() {
         query = query.bind_rullst_value(value);
         query_as = query_as.bind_rullst_value(value);
     }
-    assert_eq!(query.take_arguments().unwrap().unwrap().len(), 6);
-    assert_eq!(query_as.take_arguments().unwrap().unwrap().len(), 6);
+    assert_eq!(query.take_arguments().unwrap().unwrap().len(), 10);
+    assert_eq!(query_as.take_arguments().unwrap().unwrap().len(), 10);
+}
+
+fn instant() -> chrono::DateTime<chrono::Utc> {
+    use chrono::TimeZone;
+    chrono::Utc
+        .with_ymd_and_hms(2026, 10, 15, 9, 30, 0)
+        .single()
+        .unwrap()
+        + chrono::Duration::milliseconds(500)
+}
+
+#[test]
+fn chrono_values_convert_to_their_own_variants() {
+    let at = instant();
+    assert!(matches!(RullstValue::from(at), RullstValue::DateTime(value) if value == at));
+    assert!(
+        matches!(RullstValue::from(at.naive_utc()), RullstValue::NaiveDateTime(value) if value == at.naive_utc())
+    );
+    assert!(
+        matches!(RullstValue::from(at.date_naive()), RullstValue::Date(value) if value == at.date_naive())
+    );
+    assert!(matches!(RullstValue::from(at.time()), RullstValue::Time(value) if value == at.time()));
+    assert!(matches!(
+        RullstValue::from(Some(at)),
+        RullstValue::DateTime(_)
+    ));
+    assert!(matches!(
+        RullstValue::from(None::<chrono::NaiveDate>),
+        RullstValue::Null
+    ));
+}
+
+/// The `Any` pool binds the ISO-8601 text SQLx writes to SQLite.
+#[cfg(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)))]
+#[test]
+fn the_any_pool_binds_dates_as_iso_text() {
+    let at = instant();
+    assert_eq!(
+        super::temporal::date_time(&at),
+        "2026-10-15T09:30:00.500+00:00"
+    );
+    assert_eq!(
+        super::temporal::naive_date_time(&at.naive_utc()),
+        "2026-10-15 09:30:00.500"
+    );
+    assert_eq!(super::temporal::date(&at.date_naive()), "2026-10-15");
+    assert_eq!(super::temporal::time(&at.time()), "09:30:00.500");
+}
+
+/// Strict pools bind SQLx's own `chrono` codecs.
+#[cfg(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+))]
+#[test]
+fn strict_pools_bind_dates_natively() {
+    let at = instant();
+    assert_eq!(super::temporal::date_time(&at), at);
+    assert_eq!(
+        super::temporal::naive_date_time(&at.naive_utc()),
+        at.naive_utc()
+    );
+    assert_eq!(super::temporal::date(&at.date_naive()), at.date_naive());
+    assert_eq!(super::temporal::time(&at.time()), at.time());
 }
