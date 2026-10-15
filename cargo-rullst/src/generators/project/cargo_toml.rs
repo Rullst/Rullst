@@ -125,7 +125,8 @@ pub fn build_cargo_toml(
         rullst_features.push("nexus");
     }
     if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
-        rullst_features.push("auth");
+        // `mail` sends the password reset links and password-changed notices.
+        rullst_features.extend(["auth", "mail"]);
     }
     if blueprint_selection == SAAS_BLUEPRINT_ID {
         rullst_features.push("capital");

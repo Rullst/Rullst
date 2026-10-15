@@ -1,5 +1,6 @@
 //! Real generated SaaS/auth/database with an explicit test-only provider adapter,
-//! plus the generated session-epoch revocation of login cookies.
+//! plus the generated session-epoch revocation of login cookies and the
+//! password change and reset flows.
 use cargo_rullst::{blueprints, generators::project::cargo_toml::build_cargo_toml};
 use std::{
     fs,
@@ -70,6 +71,17 @@ fn generated_saas_authorizes_only_current_bound_subscriptions() {
         "\n#[cfg(test)]\n#[path = \"session_epoch_contract.rs\"]\nmod session_epoch_contract;\n",
     );
     fs::write(path, source).unwrap();
+    fs::write(
+        root.join("src/controllers/password_flows_contract.rs"),
+        include_str!("fixtures/password_flows_contract.rs"),
+    )
+    .unwrap();
+    let path = root.join("src/controllers/password_controller.rs");
+    let mut source = fs::read_to_string(&path).unwrap();
+    source.push_str(
+        "\n#[cfg(test)]\n#[path = \"password_flows_contract.rs\"]\nmod password_flows_contract;\n",
+    );
+    fs::write(path, source).unwrap();
     // The hot-reload blueprint compiles controllers in both the library and
     // binary test targets. Both must use the actual generated library router.
     let path = root.join("src/main.rs");
@@ -121,6 +133,17 @@ fn generated_saas_authorizes_only_current_bound_subscriptions() {
         String::from_utf8_lossy(&revocation.stdout)
             .contains("test middlewares::auth_middleware::session_epoch_contract::generated_session_epoch_contract ... ok"),
         "the session epoch contract did not run"
+    );
+    // Password change and reset end every other session and use single-use tokens.
+    let passwords = success(
+        contract("generated_password_flows_contract")
+            .output()
+            .unwrap(),
+    );
+    assert!(
+        String::from_utf8_lossy(&passwords.stdout)
+            .contains("test controllers::password_controller::password_flows_contract::generated_password_flows_contract ... ok"),
+        "the password flows contract did not run"
     );
     success(
         Command::new("cargo")

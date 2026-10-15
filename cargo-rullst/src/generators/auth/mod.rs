@@ -3,6 +3,7 @@
 pub mod controllers;
 pub mod mfa;
 pub mod models;
+pub(crate) mod passwords;
 pub mod views;
 
 use crate::generators::chat::ensure_rullst_features;
@@ -16,9 +17,11 @@ use std::io::{Error as IoError, ErrorKind};
 use std::path::{Path, PathBuf};
 
 /// Application files owned by the authentication scaffold.
-const AUTH_OUTPUTS: [&str; 4] = [
+const AUTH_OUTPUTS: [&str; 6] = [
     "src/models/user.rs",
+    "src/models/password_reset.rs",
     "src/controllers/auth_controller.rs",
+    "src/controllers/password_controller.rs",
     "src/middlewares/auth_middleware.rs",
     "src/pages/auth.rs",
 ];
@@ -33,7 +36,8 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     let root_module = project_root_module()?;
     let manifest_path = Path::new("Cargo.toml");
     let manifest = fs::read_to_string(manifest_path)?;
-    let updated_manifest = ensure_rullst_features(&manifest, &["orm", "auth"])?;
+    // `mail` sends the password reset links and password-changed notices.
+    let updated_manifest = ensure_rullst_features(&manifest, &["orm", "auth", "mail"])?;
 
     println!(
         "{}",
@@ -43,6 +47,7 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     models::generate_user_model_and_migration()?;
+    passwords::generate_password_flows(&chrono::Local::now().format("%Y%m%d%H%M%S").to_string())?;
     controllers::generate_auth_controllers()?;
     views::generate_auth_views()?;
     fs::write(manifest_path, updated_manifest)?;
@@ -60,7 +65,13 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
         "👉 Mount the login/register/logout routes behind the CSRF and security baseline, and protect private routes and POST /logout/everywhere (logout_everywhere) with auth_middleware."
     );
     println!(
-        "👉 Run `cargo rullst db:migrate` to create the users table. Call User::revoke_sessions after a password change or reset and when you deactivate an account."
+        "👉 Mount password_controller's /password/forgot and /password/reset (GET view, POST submit) and, behind auth_middleware, /password/change; put credential_rate_limit on the POST routes."
+    );
+    println!(
+        "👉 Set RULLST_PUBLIC_ORIGIN (the HTTPS origin reset links use), MAIL_DRIVER and MAIL_FROM before production."
+    );
+    println!(
+        "👉 Run `cargo rullst db:migrate` to create the users and password_reset_tokens tables. Call User::revoke_sessions when you deactivate an account."
     );
     Ok(())
 }
@@ -120,6 +131,16 @@ fn reject_existing_outputs() -> Result<(), IoError> {
         &outputs,
         "; integrate authentication into the existing files manually",
     )?;
+    let resets = existing_migrations(&[passwords::MIGRATION_SUFFIX.to_string()])?;
+    if let Some(existing) = resets.first() {
+        return Err(IoError::new(
+            ErrorKind::AlreadyExists,
+            format!(
+                "refusing to add a second password_reset_tokens migration: {} already creates it",
+                existing.display()
+            ),
+        ));
+    }
     let users = existing_migrations(&[
         "_create_users.rs".to_string(),
         "_create_users_table.rs".to_string(),
