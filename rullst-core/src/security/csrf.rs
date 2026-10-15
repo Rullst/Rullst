@@ -53,7 +53,10 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// route extracting `Extension<CsrfToken>` also answers HEAD. `OPTIONS` and
 /// `TRACE` pass through, while state-changing requests must match the
 /// `rullst_csrf` cookie token with either the `X-CSRF-Token` header or form
-/// `_token` field.
+/// `_token` field. The cookie carries `Secure` in staging and production, and
+/// in any environment when the request arrived over HTTPS (an `https`
+/// request URI, or `https` reported by a trusted proxy through
+/// [`super::TrustedProxyLayer`] with `trust_forwarded_proto`).
 ///
 /// An `application/x-www-form-urlencoded` body is buffered (up to 1 MiB) to
 /// read `_token`. A `multipart/form-data` body, such as a file upload, is read
@@ -174,6 +177,7 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
                 },
                 |cfg| cfg.csrf_same_site.clone(),
             );
+        // `Secure` in staging and production, and over HTTPS everywhere.
         let secure_cookie = req
             .extensions()
             .get::<crate::config::Environment>()
@@ -183,7 +187,8 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
                 crate::config::Environment::detect(None)
                     .map(crate::config::Environment::requires_secure_defaults)
                     .unwrap_or(true)
-            });
+            })
+            || super::secure_cookies::request_is_https(req.uri(), req.extensions());
 
         let mut response = next.run(req).await;
 

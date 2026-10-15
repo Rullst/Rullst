@@ -10,6 +10,7 @@ mod headers;
 mod machine;
 mod media_type;
 mod pii;
+mod secure_cookies;
 mod tenant_guard;
 mod trusted_proxy;
 mod waf;

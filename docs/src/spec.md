@@ -1617,6 +1617,17 @@ the same server-authoritative controls.
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
   not be confused with an authentication or session cookie.
+* **Secure Framework Cookies over HTTPS (v13 prerelease):** the `rullst_csrf`
+  cookie carries `Secure` in staging and production and, since
+  13.0.0-alpha.2, in any environment when the request arrived over HTTPS: an
+  `https` request URI (HTTP/2 over TLS or an absolute-form target) or a
+  `ClientAddr::forwarded_proto` of `https`, which only `TrustedProxyLayer`
+  sets for a trusted peer with `trust_forwarded_proto`; a forwarding header
+  from any other peer is ignored. `apply_security_baseline` (and so `Server`)
+  mounts a layer outside CSRF in every environment that appends `; Secure` to
+  each `Set-Cookie` of a `rullst_*` cookie (such as the `rullst_session`
+  cookie of `rullst-auth`) without it on a response to such a request. Other
+  cookies are untouched and `Secure` is never removed.
 * **Multipart Form Uploads (v13 prerelease):** `uploads::Multipart` is an
   axum extractor for `multipart/form-data` (a missing or malformed boundary is
   `NotMultipart`, 415); `Multipart::read(&MultipartPolicy)` parses the body
