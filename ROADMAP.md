@@ -706,6 +706,45 @@ features, and they add no milestone to the counts above.
   output and add nginx, with the readiness/drain and trusted-proxy contracts
   that `rullst-core` already exposes.
 
+### Planned after 13.0.0-alpha.2
+
+Recorded on 15 October 2026 with the maintainer. These are planned work items
+for the v13 prerelease cycle, not shipped features, and they add no milestone
+to the counts above.
+
+- **Studio as a production monitor for several projects.** Today Studio is a
+  development tool: it runs inside the application process in debug builds,
+  listens only on `127.0.0.1:5555` and reads that process's own telemetry,
+  queues, cache and local database. The only production-facing piece is the
+  signed, push-only trace ingestion of M35. The plan keeps every development
+  page and adds a remote mode in three phases:
+  1. A read-only production monitoring endpoint in the application, behind the
+     application's own login policy (the policy the Nexus package for alpha.2
+     adds) or a dedicated token. It reports request rate, latency, errors,
+     queue depth and failures, and N+1 findings, never database rows, `.env`
+     values or configuration secrets.
+  2. A standalone Studio "remote projects" mode on the developer's machine: a
+     project list with a switcher, per-project credentials encrypted locally,
+     and the monitoring pages (radar, traces, jobs, security radar) reading
+     the selected project's endpoint. Studio stays bound to loopback; it only
+     connects outwards. Reaching private networks is left to established
+     tools (WireGuard, Tailscale, an SSH tunnel), which the guide documents
+     instead of Studio implementing VPN access.
+  3. History and alerts.
+  The data browser, `.env` viewer, AI and API playgrounds and migration pages
+  stay local-only, because in production they would expose secrets and
+  personal data or run arbitrary operations. The work needs a threat-model
+  update before phase 1 ships. Estimated at three to four focused packages
+  plus mutation tests.
+- **Turso/libSQL beyond the blank and API starters.** Turso can be the primary
+  database only in those starters and does not work with `#[derive(Orm)]`,
+  `Schema`, `artisan!`, `Server::with_db`, Nexus or Studio; alpha.2 states
+  this in the `new` wizard and a capability table. A partial bridge (`Schema`
+  emitting Turso migrations, `#[derive(Orm)]` also generating the Turso model)
+  is a candidate for a 13.x release if users ask for it. Full parity, which
+  would let the ORM core run on a backend other than SQLx, is deferred to a
+  later major release because it would put the SQLx drivers at risk.
+
 ### Published and planned release lines
 
 | Version | Status | Honest scope |
