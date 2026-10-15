@@ -3,7 +3,22 @@ version: 2
 # This configuration takes effect from the repository default branch.
 updates:
   - package-ecosystem: "cargo"
-    directory: "/"
+    # The fuzz workspaces keep their own Cargo.lock, which CI resolves with
+    # --locked; listing them here puts their lockfile updates in the same
+    # grouped pull request as the root lockfile.
+    directories:
+      - "/"
+      - "/rullst-ai/fuzz"
+      - "/rullst-capital/fuzz"
+      - "/rullst-connect/fuzz"
+      - "/rullst-iot/fuzz"
+      - "/rullst-mail/fuzz"
+      - "/rullst-nexus/fuzz"
+      - "/rullst-orm/fuzz"
+      - "/rullst-privacy/fuzz"
+      - "/rullst-security/fuzz"
+      - "/rullst-studio/fuzz"
+      - "/rullst/fuzz"
     target-branch: "main"
     schedule:
       interval: "weekly"
