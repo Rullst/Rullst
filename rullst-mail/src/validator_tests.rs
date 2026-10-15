@@ -22,6 +22,19 @@ fn a_domain_without_a_dot_is_missing() {
 }
 
 #[test]
+fn a_domain_may_neither_start_nor_end_with_a_dot() {
+    for email in ["user@.example.com", "user@example.com."] {
+        assert!(
+            matches!(
+                validate_email_syntax(email),
+                Err(DeliverabilityError::InvalidSyntax(_))
+            ),
+            "{email}"
+        );
+    }
+}
+
+#[test]
 fn errors_describe_the_failed_rule() {
     assert_eq!(
         DeliverabilityError::InvalidSyntax("Email is empty".into()).to_string(),
