@@ -3,7 +3,22 @@ version: 2
 # This configuration takes effect from the repository default branch.
 updates:
   - package-ecosystem: "cargo"
-    directory: "/"
+    # The fuzz workspaces keep their own Cargo.lock, which CI resolves with
+    # --locked; listing them here puts their lockfile updates in the same
+    # grouped pull request as the root lockfile.
+    directories:
+      - "/"
+      - "/rullst-ai/fuzz"
+      - "/rullst-capital/fuzz"
+      - "/rullst-connect/fuzz"
+      - "/rullst-iot/fuzz"
+      - "/rullst-mail/fuzz"
+      - "/rullst-nexus/fuzz"
+      - "/rullst-orm/fuzz"
+      - "/rullst-privacy/fuzz"
+      - "/rullst-security/fuzz"
+      - "/rullst-studio/fuzz"
+      - "/rullst/fuzz"
     target-branch: "main"
     schedule:
       interval: "weekly"
@@ -72,6 +87,9 @@ updates:
           - "version-update:semver-major"
       # Held for Smithy JSON 0.63 compatibility; see rullst-mail/Cargo.toml.
       - dependency-name: "aws-smithy-types"
+      # Held at =0.8.0-rc.4: sad-rsa 0.10.2 (via xml-sec) does not build with
+      # rc.5; see rullst-capital/Cargo.toml on v12.
+      - dependency-name: "pkcs1"
     groups:
       opentelemetry-family:
         patterns:
