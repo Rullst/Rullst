@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792087094588,
+  "lastUpdate": 1792103740701,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12288,6 +12288,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16647b9064d5517f3dc755bceb0c471f8f2ff269",
+          "message": "Merge pull request #503 from Rullst/test/v13-messaging-mutation\n\ntest(messaging): kill surviving mutants across webhooks, storage, schedules and Redis Streams",
+          "timestamp": "2026-10-15T19:10:27-03:00",
+          "tree_id": "20576ae64e48d7176c69d8764a866aca4ca71ecc",
+          "url": "https://github.com/Rullst/Rullst/commit/16647b9064d5517f3dc755bceb0c471f8f2ff269"
+        },
+        "date": 1792103740098,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
