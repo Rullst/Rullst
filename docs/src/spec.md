@@ -1368,7 +1368,8 @@ explicit application work.
 `Invoice::generate_html` remains the source-compatible escaped HTML renderer.
 Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
 accepts only bounded finite positive values with at most two decimal places,
-converts them to integer minor units, and requires the exact item sum.
+converts them to 1 to 99,999,999 integer minor units, and requires the exact
+item sum.
 
 The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its
 embedded Helvetica subset supports WinAnsi text; other scripts require a

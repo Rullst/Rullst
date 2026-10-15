@@ -215,7 +215,8 @@ fn money_to_minor(value: f64) -> Result<u64, crate::error::CapitalError> {
     }
     let scaled = value * 100.0;
     let rounded = scaled.round();
-    if (scaled - rounded).abs() > 1e-7 || rounded > MAX_INVOICE_AMOUNT_MINOR as f64 {
+    if (scaled - rounded).abs() > 1e-7 || rounded < 1.0 || rounded > MAX_INVOICE_AMOUNT_MINOR as f64
+    {
         return Err(invalid_invoice(
             "amounts must fit 1 to 99,999,999 minor units with at most two decimal places",
         ));
@@ -362,6 +363,41 @@ mod tests {
                 Err(crate::error::CapitalError::InvalidInvoice(_))
             ));
         }
+    }
+
+    #[test]
+    fn an_amount_that_rounds_to_zero_minor_units_is_rejected() {
+        // 5e-10 is positive and within the rounding tolerance, but it is not
+        // a whole minor unit.
+        let invoice = Invoice {
+            items: vec![
+                InvoiceItem {
+                    description: "Plan".to_string(),
+                    amount: 1.0,
+                },
+                InvoiceItem {
+                    description: "Rounding".to_string(),
+                    amount: 5e-10,
+                },
+            ],
+            total: 1.0,
+            ..valid_invoice()
+        };
+        match invoice.total_minor() {
+            Err(crate::error::CapitalError::InvalidInvoice(message)) => {
+                assert!(message.starts_with("amounts must fit 1 to 99,999,999 minor units"));
+            }
+            other => panic!("expected an invalid invoice, got {other:?}"),
+        }
+        let smallest = Invoice {
+            items: vec![InvoiceItem {
+                description: "Plan".to_string(),
+                amount: 0.01,
+            }],
+            total: 0.01,
+            ..valid_invoice()
+        };
+        assert_eq!(smallest.total_minor().unwrap(), 1);
     }
 }
 

@@ -17,6 +17,15 @@ A prepared version section does not establish that its tag or crates exist.
   and `rustls` to 0.23.46 (RUSTSEC-2026-0346 to -0349). Applications should
   run `cargo update -p ammonia -p quinn-proto -p rustls`.
 
+### Fixed
+
+- `rullst-capital`: invoice validation (`Invoice::validate`, `total_minor`,
+  `try_generate_html`, PDF rendering and `bind_succeeded_charge`) rejects an
+  item amount or total that rounds to zero minor units, such as
+  `0.0000000005`, with `CapitalError::InvalidInvoice`, as its error message
+  already stated. Such an item used to pass as 0 minor units. Amounts of at
+  least `0.01` are unchanged.
+
 ## [12.3.0] - 2026-10-08
 
 Compatible minor release on `v12`. It deprecates the public APIs that Rullst
