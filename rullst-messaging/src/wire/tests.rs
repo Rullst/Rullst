@@ -96,3 +96,70 @@ fn compatibility_digest_and_secret_free_errors_are_stable() {
         WireEnvelopeCodec::decode(b"private-payload", &config).expect_err("malformed frame");
     assert!(!error.to_string().contains("private-payload"));
 }
+
+/// Every field at its bound: 32 headers of 256 bytes and a 16-byte payload.
+fn maximal(published_at_ms: i64, payload_bytes: usize) -> MessageEnvelope {
+    let mut headers = MessageHeaders::new();
+    for index in 0..32 {
+        headers
+            .try_insert(format!("h{index:02}"), "v".repeat(253))
+            .expect("bounded header");
+    }
+    MessageEnvelope::from_stored(StoredEnvelopeParts {
+        id: MessageId::from_stored("msg_0123456789abcdef0123456789abcdef".to_string())
+            .expect("message id"),
+        namespace: Namespace::try_new("n".repeat(128)).expect("namespace"),
+        topic: TopicName::try_new("t".repeat(255)).expect("topic"),
+        event_kind: EventKind::try_new("e".repeat(128)).expect("event kind"),
+        content_type: ContentType::try_new(format!("a/{}", "b".repeat(125))).expect("type"),
+        headers,
+        payload: vec![7; payload_bytes],
+        published_at_ms,
+    })
+}
+
+fn sixteen_byte_config(namespace: String) -> BrokerConfig {
+    BrokerConfig::try_new(namespace)
+        .and_then(|config| config.with_limits(1, 1, 1, 16))
+        .expect("config")
+}
+
+#[test]
+fn the_largest_envelope_fills_the_frame_bound_exactly() {
+    let config = sixteen_byte_config("n".repeat(128));
+    let envelope = maximal(0, 16);
+    let frame = WireEnvelopeCodec::encode(&envelope, &config).expect("encode");
+    assert_eq!(frame.len(), 9_042);
+    assert_eq!(WireEnvelopeCodec::decode(&frame, &config), Ok(envelope));
+
+    // One byte more than any valid frame is refused before its version is read.
+    let mut oversized = b"RLMWIRE\x02".to_vec();
+    oversized.resize(9_043, 0);
+    assert_eq!(
+        WireEnvelopeCodec::decode(&oversized, &config),
+        Err(MessagingError::InvalidWireEnvelope)
+    );
+    oversized.truncate(9_042);
+    assert_eq!(
+        WireEnvelopeCodec::decode(&oversized, &config),
+        Err(MessagingError::UnsupportedWireVersion)
+    );
+}
+
+#[test]
+fn encoding_requires_the_namespace_a_valid_time_and_a_bounded_payload() {
+    let config = sixteen_byte_config("n".repeat(128));
+    let other = sixteen_byte_config("other".to_string());
+    assert_eq!(
+        WireEnvelopeCodec::encode(&maximal(0, 16), &other),
+        Err(MessagingError::InvalidWireEnvelope)
+    );
+    assert_eq!(
+        WireEnvelopeCodec::encode(&maximal(-1, 16), &config),
+        Err(MessagingError::InvalidWireEnvelope)
+    );
+    assert_eq!(
+        WireEnvelopeCodec::encode(&maximal(0, 17), &config),
+        Err(MessagingError::InvalidWireEnvelope)
+    );
+}

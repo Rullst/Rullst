@@ -244,4 +244,100 @@ mod tests {
         assert_eq!(longest.len(), 64 + 1 + 128);
         assert!(crate::IdempotencyKey::try_new(longest).is_ok());
     }
+
+    fn claim() -> ClaimedOutboxEvent {
+        ClaimedOutboxEvent {
+            id: 7,
+            stream: "tenant-a".to_owned(),
+            event_key: "order-42".to_owned(),
+            event_kind: "order.ready".to_owned(),
+            payload_json: "{\"id\":42}".to_owned(),
+            attempts: 1,
+            claim_key: "claim-0123".to_owned(),
+            claim_expires_at_epoch: 1_800_000_000,
+        }
+    }
+
+    fn relay() -> OrmOutboxRelay<crate::InMemoryBroker> {
+        let broker = crate::InMemoryBroker::new(crate::BrokerConfig::try_new("relay").unwrap());
+        OrmOutboxRelay::try_new("tenant-a", "events", broker).unwrap()
+    }
+
+    #[tokio::test]
+    async fn claims_publish_up_to_one_mib_of_json() {
+        let relay = relay();
+        assert_eq!(relay.stream(), "tenant-a");
+        let mut large = claim();
+        large.payload_json = format!("\"{}\"", "a".repeat(4_096));
+        assert!(relay.publish_claim(&large).await.is_ok());
+        let mut too_large = claim();
+        too_large.payload_json = format!("\"{}\"", "a".repeat(1_048_575));
+        assert!(matches!(
+            relay.publish_claim(&too_large).await,
+            Err(OrmOutboxRelayError::InvalidClaim { .. })
+        ));
+    }
+
+    #[tokio::test]
+    async fn every_claim_field_is_checked_on_its_own() {
+        let relay = relay();
+        assert!(relay.publish_claim(&claim()).await.is_ok());
+        let metadata = OrmOutboxRelayError::InvalidClaim {
+            source: MessagingError::Invalid {
+                field: "ORM outbox claim",
+                reason: "claim metadata or JSON payload is invalid",
+            },
+        };
+        let changes: [fn(&mut ClaimedOutboxEvent); 9] = [
+            |claim| claim.stream = "tenant-b".to_owned(),
+            |claim| claim.id = 0,
+            |claim| claim.attempts = 0,
+            |claim| claim.attempts = 101,
+            |claim| claim.claim_expires_at_epoch = 0,
+            |claim| claim.claim_key = String::new(),
+            |claim| claim.claim_key = "claim key".to_owned(),
+            |claim| claim.claim_key = "k".repeat(129),
+            |claim| claim.payload_json = "not json".to_owned(),
+        ];
+        for (index, change) in changes.into_iter().enumerate() {
+            let mut changed = claim();
+            change(&mut changed);
+            assert_eq!(
+                relay.publish_claim(&changed).await,
+                Err(metadata.clone()),
+                "{index}"
+            );
+        }
+        let mut longest_key = claim();
+        longest_key.claim_key = "k".repeat(128);
+        assert!(relay.publish_claim(&longest_key).await.is_ok());
+    }
+
+    #[test]
+    fn receipts_and_errors_report_what_happened() {
+        let publication = PublishReceipt::new(
+            crate::MessageId::from_stored("msg_0123456789abcdef0123456789abcdef".to_owned())
+                .unwrap(),
+            false,
+            1_800_000_000_000,
+        );
+        let receipt = OutboxRelayReceipt {
+            publication: publication.clone(),
+            outbox_acknowledged: false,
+        };
+        assert!(!receipt.outbox_acknowledged());
+        let unavailable = OrmOutboxRelayError::AcknowledgementUnavailable {
+            publication: publication.clone(),
+        };
+        assert_eq!(unavailable.accepted_publication(), Some(&publication));
+        // `type_name` output is not a stable format, so only its type is checked.
+        let debug = format!("{:?}", relay());
+        assert!(
+            debug.starts_with(
+                "OrmOutboxRelay { stream: \"[REDACTED]\", topic: TopicName(\"events\"), broker: \""
+            ),
+            "{debug}"
+        );
+        assert!(debug.contains("InMemoryBroker"), "{debug}");
+    }
 }

@@ -380,3 +380,7 @@ impl BrokerConfig {
         self.max_payload_bytes
     }
 }
+
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod tests;

@@ -21,3 +21,15 @@ impl Clock for SystemClock {
         i64::try_from(elapsed.as_millis()).map_err(|_| MessagingError::ClockOutOfRange)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_system_clock_reads_wall_time() {
+        let now = SystemClock.now_millis().expect("system time after 1970");
+        // 2023-11-14T22:13:20Z: earlier than any build of this crate.
+        assert!(now > 1_700_000_000_000, "{now}");
+    }
+}
