@@ -101,7 +101,6 @@ for example, adds only SQLite).
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
 | `orm-qdrant` | no | `orm` plus bounded dense-vector Qdrant HTTP operations and offline fallback |
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
-| `orm-polyglot` | no | Convenience feature enabling MongoDB, DuckDB, Turso, SurrealDB and Qdrant adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
@@ -247,7 +246,6 @@ false` and forward `drivers-all` or a `strict-*` backend explicitly.
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
 | `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
-| `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, `surrealdb`, and `qdrant` |
 | `ai` | `pgvector` plus the generated `save_with_embedding` for `#[orm(embedding_for = "...")]` models; the application also depends on `rullst-ai` |
 | `strict-postgres` | The PostgreSQL driver plus concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | The MySQL driver plus concrete MySQL paths when PostgreSQL is not also selected |

@@ -397,7 +397,7 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (9 rows);
+  application source (10 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
   the affected API, feature or configuration, which the rules locate (93 rows);
 - **(c) none**: no application impact, or not detectable in the application
@@ -562,6 +562,7 @@ the rule together.
 | Interactive `new --api` | (c) none | — | CLI |
 | CLI `new` wizard | (c) none | — | CLI |
 | Generated `rullst-orm` dependency | (b) review | `V13-ORM-DEFAULT-FEATURES` |  |
+| ORM adapter aggregate features | (a) must-change | — | Cargo refuses the removed feature name |
 | Omni desktop runner | (b) review | `V13-OMNI-RUNNER` |  |
 | Omni managed backend | (b) review | `V13-OMNI-BACKEND` |  |
 | Starter page language | (b) review | `V13-RENDER-PAGE-LANGUAGE` |  |

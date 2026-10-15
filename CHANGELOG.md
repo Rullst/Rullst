@@ -189,6 +189,14 @@ A prepared version section does not establish that its tag or crates exist.
   projects are not changed; the
   [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
   lists the steps to add the flows.
+- **Breaking:** the `orm-polyglot` feature of `rullst` and the `polyglot`
+  feature of `rullst-orm` are removed (dogfooding #4). They enabled every
+  optional storage adapter at once, including DuckDB's bundled C++ build,
+  which made the first build much slower. A manifest that names them no longer
+  resolves: list the adapters the application uses instead (`orm-turso`,
+  `orm-mongodb`, `orm-duckdb`, `orm-surrealdb`, `orm-qdrant`, or `turso`,
+  `mongodb`, `duckdb`, `surrealdb`, `qdrant` on `rullst-orm`). The individual
+  features are unchanged.
 
 ### Mutation testing
 

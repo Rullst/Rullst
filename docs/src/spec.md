@@ -2507,9 +2507,11 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.8. Polyglot Persistence Boundary
 
-* Optional persistence adapters are disabled by default and selected with
-  `mongodb`, `duckdb`, `turso`, `surrealdb`, `qdrant`, or the `polyglot` convenience
-  feature. The umbrella crate exposes matching `orm-*` features.
+* Optional persistence adapters are disabled by default and selected one at a
+  time with `mongodb`, `duckdb`, `turso`, `surrealdb` or `qdrant`; the umbrella
+  crate exposes matching `orm-*` features. 13.0 removed the `polyglot` and
+  `orm-polyglot` aggregates, which enabled every adapter at once, including
+  DuckDB's bundled C++ build.
 * `DocumentRepository<T>` provides create, find, replace, delete, and
   deterministic bounded listing. Collection names, document IDs, offsets and
   limits are validated before reaching a driver.

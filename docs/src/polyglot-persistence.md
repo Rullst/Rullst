@@ -23,9 +23,10 @@ rullst = { version = "12.1.0", features = ["orm-mongodb"] }
 ```
 
 Available umbrella features are `orm-turso`, `orm-mongodb`, `orm-duckdb`,
-`orm-surrealdb`, `orm-qdrant`, `orm-redis`, and the convenience
-`orm-polyglot`. Direct `rullst-orm` users select `turso`, `mongodb`, `duckdb`,
-`surrealdb`, `qdrant`, `redis`, or `polyglot`.
+`orm-surrealdb`, `orm-qdrant` and `orm-redis`. Direct `rullst-orm` users select
+`turso`, `mongodb`, `duckdb`, `surrealdb`, `qdrant` or `redis`. There is no
+feature that enables them all: 13.0 removed the `polyglot` and `orm-polyglot`
+aggregates, so list the adapters the application uses.
 
 Features are additive. Prefer one adapter unless the application genuinely
 uses several, and inspect the final dependency graph with:
