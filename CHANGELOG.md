@@ -214,6 +214,47 @@ A prepared version section does not establish that its tag or crates exist.
   projects are not changed; the
   [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
   lists the steps to add the flows.
+- New translation API, `rullst::i18n` (dogfooding #16).
+  `rullst::i18n::catalog!(default = "en")` loads one TOML catalog per locale
+  (`locales/en.toml`, `locales/pt-BR.toml`) when the crate compiles and fails
+  the build when a key is missing from a locale or its placeholders differ
+  between locales. It defines `LOCALES` and a `t!(locale, "key", name =
+  value)` macro whose unknown keys (with a "did you mean" suggestion) and
+  missing or unexpected arguments are compile errors. `t!` returns plain text
+  that `html!` escapes; only keys ending in `_html` are trusted HTML, with
+  their arguments escaped. Plural messages take `count = n` and select `one`
+  or `other` with documented rules for English, Spanish, Portuguese (`pt-BR`
+  and `pt-PT`), French, German, Italian, Dutch, Japanese, Chinese and Korean.
+  See the [translations guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
+- New locale negotiation for that API: `.layer(LOCALES.layer())` gives
+  handlers a `Locale` extractor chosen from the `rullst_locale` cookie, then
+  `Accept-Language` (weights, language fallback such as `pt-PT` to `pt-BR`,
+  bounded parsing), then the default; pass `locale.tag()` to
+  `render_page_with_lang` for `<html lang>`. `LOCALES.switch_route()` is a
+  `POST` form route that accepts only supported locales, stores the cookie
+  and redirects only to local paths; the CSRF middleware protects it like
+  any other form. `Locales::new` offers the same negotiation and switch to
+  applications that keep their own message tables.
+- **Breaking:** the `orm-polyglot` feature of `rullst` and the `polyglot`
+  feature of `rullst-orm` are removed (dogfooding #4). They enabled every
+  optional storage adapter at once, including DuckDB's bundled C++ build,
+  which made the first build much slower. A manifest that names them no longer
+  resolves: list the adapters the application uses instead (`orm-turso`,
+  `orm-mongodb`, `orm-duckdb`, `orm-surrealdb`, `orm-qdrant`, or `turso`,
+  `mongodb`, `duckdb`, `surrealdb`, `qdrant` on `rullst-orm`). The individual
+  features are unchanged. `cargo rullst upgrade` reports a manifest that still
+  names them (`V13-POLYGLOT-FEATURE`).
+- `cargo rullst new` says what Turso and the side stores are before you choose
+  (dogfooding #33). The Turso primary choice in the wizard, its `--database
+  turso` help and the review/dry-run screen read "Blank/API only; no Nexus,
+  Studio, Schema or SQLx ORM"; `--turso`, `--mongodb`, `--duckdb`,
+  `--surrealdb`, `--qdrant` and the Redis choice are described as side stores.
+  The new [Database Support](https://github.com/Rullst/Rullst/blob/main/docs/src/database-support.md)
+  page has one table of what SQLite, PostgreSQL, MySQL/MariaDB, Turso, MongoDB,
+  DuckDB, SurrealDB, Qdrant and Redis data each work with (primary database,
+  `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`, `Server::with_db`, Nexus,
+  Studio, transactions, starters) and which CI test runs each against a real
+  server. Generated projects are unchanged.
 
 ### Mutation testing
 
@@ -227,6 +268,13 @@ A prepared version section does not establish that its tag or crates exist.
   PostgreSQL wrappers and the Redis messaging wrapper mutate their adapter
   files and run their contract tests against the server they own, which is
   reset before every test binary.
+- **rullst-capital:** `Invoice` validation (`validate`, `total_minor`,
+  `try_generate_html`, PDF rendering, `bind_succeeded_charge`) now rejects an
+  item amount or total that rounds to zero minor units (for example
+  `0.0000000005` USD) with `CapitalError::InvalidInvoice`; such items
+  previously passed as 0 minor units. The mutation campaign added tests across
+  the crate, and the Stripe subscription fixture test now fails within 10
+  seconds instead of hanging.
 
 ### OpenSSF Silver evidence
 
@@ -300,7 +348,10 @@ with the other Capital adapters.
   only production access policy.
 - Studio runs only in debug builds and on loopback.
 - A Turso-primary project cannot use `Schema`, `artisan!`, `Server::with_db`,
-  Nexus or Studio.
+  Nexus or Studio's database pages, and `#[derive(Orm)]` with
+  `#[orm(backend = "turso")]` generates only the separate `TursoModel` API
+  (no SQLx query builder, relations, hooks or scopes). Turso is the primary
+  database of the Blank starter only.
 - The generated `Dockerfile` has no dependency cache layer, so a cold image
   build compiles every dependency (10 to 25 minutes on small machines).
 - There is no translation (i18n) API and no multipart upload extractor.

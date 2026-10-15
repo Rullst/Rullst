@@ -150,3 +150,54 @@ async fn mock_reads_are_deterministic_non_entitled_and_rejected_as_real_evidence
         assert!(first.require_real().is_err());
     }
 }
+
+#[tokio::test]
+async fn allowed_price_catalog_is_one_to_64_valid_price_ids() {
+    let provider = super::super::StripeProvider::new("mock_key", "mock_webhook");
+    let catalog: Vec<String> = (0..65).map(|index| format!("price_{index}")).collect();
+    let prices: Vec<&str> = catalog.iter().map(String::as_str).collect();
+    for allowed in [&prices[..1], &prices[..64]] {
+        let snapshot = provider
+            .retrieve_subscription_with_allowed_prices(&lookup(), allowed)
+            .await
+            .unwrap();
+        assert_eq!(snapshot.source(), StripeSubscriptionSource::Mock);
+    }
+    for allowed in [
+        &[][..],
+        &prices[..],
+        &["prod_other"][..],
+        &["price_ok", "price_../x"][..],
+    ] {
+        assert!(
+            provider
+                .retrieve_subscription_with_allowed_prices(&lookup(), allowed)
+                .await
+                .is_err(),
+            "{}",
+            allowed.len()
+        );
+    }
+}
+
+#[test]
+fn lookup_mode_and_debug_output_are_observable() {
+    let live = StripeSubscriptionLookup::new(
+        "sub_lookup",
+        "cus_lookup",
+        "owner_lookup",
+        "price_lookup",
+        true,
+    )
+    .unwrap();
+    assert!(live.livemode());
+    let debug = format!("{live:?}");
+    assert!(debug.starts_with("StripeSubscriptionLookup"), "{debug}");
+    assert!(debug.contains("livemode: true"), "{debug}");
+    assert!(!debug.contains("owner_lookup"), "{debug}");
+    let snapshot = parse_response(&lookup(), &body()).unwrap();
+    let debug = format!("{snapshot:?}");
+    assert!(debug.starts_with("StripeSubscriptionSnapshot"), "{debug}");
+    assert!(debug.contains("source: Retrieved"), "{debug}");
+    assert!(debug.contains("livemode: Some(false)"), "{debug}");
+}

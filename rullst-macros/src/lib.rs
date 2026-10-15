@@ -8,6 +8,7 @@ use syn::parse_macro_input;
 #[cfg(test)]
 mod billable_tests;
 mod html_parser;
+mod i18n;
 mod live_parser;
 mod memoize;
 #[cfg(test)]
@@ -122,6 +123,19 @@ pub fn html(input: TokenStream) -> TokenStream {
     let document = parse_macro_input!(input as html_parser::HtmlDocument);
     let expanded = document.to_tokens();
     expanded.into()
+}
+
+#[doc = include_str!("i18n/catalog.md")]
+#[proc_macro]
+pub fn i18n_catalog(input: TokenStream) -> TokenStream {
+    i18n::expand_catalog(input.into()).into()
+}
+
+/// Expands a `t!` call against the catalog that `catalog!` encoded into it.
+#[doc(hidden)]
+#[proc_macro]
+pub fn __i18n_translate(input: TokenStream) -> TokenStream {
+    i18n::expand_translate(input.into()).into()
 }
 
 /// Proc macro attribute to define a Wasm Island client component.

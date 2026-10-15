@@ -167,4 +167,28 @@ mod tests {
         assert_eq!(bounded[0].id.chars().count(), 128);
         assert_eq!(bounded[0].payload_snippet.chars().count(), 2_048);
     }
+
+    #[test]
+    fn recent_events_keep_the_newest_hundred() {
+        let manager = RevenueDashboardManager::new();
+        let record = |index: u64| WebhookEventRecord {
+            id: format!("evt_{index}"),
+            provider: "stripe".to_string(),
+            event_type: "invoice.paid".to_string(),
+            status: "processed".to_string(),
+            timestamp: index,
+            payload_snippet: "{}".to_string(),
+        };
+        for index in 1..=100 {
+            manager.record_event(record(index));
+        }
+        let events = manager.get_recent_events(200);
+        assert_eq!(events.len(), 100);
+        assert_eq!(events[99].id, "evt_1");
+        manager.record_event(record(101));
+        let events = manager.get_recent_events(200);
+        assert_eq!(events.len(), 100);
+        assert_eq!(events[0].id, "evt_101");
+        assert_eq!(events[99].id, "evt_2");
+    }
 }

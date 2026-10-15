@@ -179,3 +179,23 @@ fn invalid_provisioning_inputs_fail_before_network_dispatch() {
             .is_err()
     );
 }
+
+#[test]
+fn contact_email_reaches_254_bytes_and_debug_names_the_types() {
+    let longest = format!("{}@example.io", "a".repeat(243));
+    assert_eq!(longest.len(), 254);
+    assert_eq!(
+        request().with_email(longest.clone()).unwrap().email(),
+        Some(longest.as_str())
+    );
+    assert!(request().with_email(format!("a{longest}")).is_err());
+    let debug = format!("{:?}", request());
+    assert!(debug.starts_with("StripeCustomerRequest"), "{debug}");
+    assert!(!debug.contains("owner_fixture"), "{debug}");
+    let receipt = parse_response(&request(), &response(), Some(false)).unwrap();
+    let debug = format!("{receipt:?}");
+    assert!(debug.starts_with("StripeCustomerReceipt"), "{debug}");
+    assert!(debug.contains("status: Created"), "{debug}");
+    assert!(debug.contains("livemode: Some(false)"), "{debug}");
+    assert!(!debug.contains("cus_fixture"), "{debug}");
+}

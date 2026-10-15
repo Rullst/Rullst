@@ -192,6 +192,25 @@ mod tests {
     }
 
     #[test]
+    fn paid_invoice_exposes_the_bound_receipt_and_a_versioned_delivery_key() {
+        let paid = invoice()
+            .bind_succeeded_charge(&receipt(ChargeStatus::Succeeded))
+            .expect("paid invoice");
+        assert_eq!(paid.provider(), "fixture");
+        assert_eq!(paid.charge_id(), "charge_42");
+        // SHA-256 over the NUL-terminated v1 tag, invoice ID, provider, charge
+        // ID and currency, then the amount as a big-endian u64.
+        assert_eq!(
+            paid.delivery_key(),
+            "paid_invoice_c34f7d631521d5083e873556696a32714a760ea801981088dfe39c6fb1cc5e8f"
+        );
+        let debug = format!("{paid:?}");
+        assert!(debug.starts_with("PaidInvoice"), "{debug}");
+        assert!(debug.contains("invoice_id: \"INV-42\""), "{debug}");
+        assert!(debug.contains("provider: \"fixture\""), "{debug}");
+    }
+
+    #[test]
     fn zero_and_three_decimal_currencies_bind_in_provider_minor_units() {
         for (total, currency, amount_minor) in [(2_500.0, "JPY", 2_500), (12.34, "KWD", 12_340)] {
             let invoice = Invoice {

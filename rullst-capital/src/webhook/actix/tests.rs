@@ -175,3 +175,48 @@ async fn middleware_bounds_the_request_body_before_verification() {
         StatusCode::PAYLOAD_TOO_LARGE
     );
 }
+
+#[tokio::test]
+async fn middleware_accepts_one_standard_header_and_a_two_mebibyte_body() {
+    for name in ["webhook-id", "webhook-timestamp", "webhook-signature"] {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(state()))
+                .wrap(actix_web::middleware::from_fn(
+                    verify_webhook_actix_with_state,
+                ))
+                .route("/webhook", web::post().to(verified_handler)),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/webhook")
+            .insert_header(("stripe-signature", "mock_actix_signature"))
+            .insert_header((name, "only"))
+            .set_payload(payload())
+            .to_request();
+        assert_eq!(
+            test::call_service(&app, request).await.status(),
+            StatusCode::NO_CONTENT,
+            "{name}"
+        );
+    }
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state()))
+            .wrap(actix_web::middleware::from_fn(
+                verify_webhook_actix_with_state,
+            ))
+            .route("/webhook", web::post().to(verified_handler)),
+    )
+    .await;
+    let request = test::TestRequest::post()
+        .uri("/webhook")
+        .insert_header(("stripe-signature", "wrong"))
+        .set_payload(vec![b'x'; 2_097_152])
+        .to_request();
+    assert_eq!(
+        test::call_service(&app, request).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+}

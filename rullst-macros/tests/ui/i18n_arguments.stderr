@@ -1,0 +1,11 @@
+error: missing argument `name` for `dashboard.greeting`; it takes name
+  --> tests/ui/i18n_arguments.rs:19:20
+   |
+19 |     let _ = t!((), "dashboard.greeting");
+   |                    ^^^^^^^^^^^^^^^^^^^^
+
+error: `name` is not a placeholder of `nav.home`; it takes no arguments
+  --> tests/ui/i18n_arguments.rs:20:32
+   |
+20 |     let _ = t!((), "nav.home", name = "Ana");
+   |                                ^^^^

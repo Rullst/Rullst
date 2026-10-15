@@ -10,6 +10,12 @@
   a 256 KiB body ceiling, correlation checks, same-origin paths, CSRF header
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
+- **Translations and Locales (v13):** `rullst::i18n::catalog!` loads one
+  TOML catalog per locale at compile time and fails the build on missing keys
+  or mismatched placeholders; the generated `t!` returns text that `html!`
+  escapes, with `one`/`other` plurals. `Locales` negotiates the locale from a
+  cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
+  `POST` switch route. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
 - **Distributed Tracing Candidate (v13):** Optional `telemetry::distributed`
   adds explicit parent trust, approved operation labels, minimized OTLP export
@@ -139,15 +145,16 @@ Most developers will not depend on `rullst-core` directly, as it is re-exported 
 
 If you are developing a plugin or advanced middleware for the Rullst ecosystem, you can add it explicitly:
 
-Install the exact stable train with
-`cargo add rullst-core@12.1.0`.
+This README describes the v13 prerelease; Cargo never selects a
+prerelease on its own, so pin it exactly (the stable line is `rullst-core@12`):
+`cargo add rullst-core@=13.0.0-alpha.1`.
 
 Core is runtime-only by default. Add just the database capabilities the
 application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.1.0", features = ["orm", "queue-sqlite", "offline-sync"] }
+rullst-core = { version = "=13.0.0-alpha.1", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
 Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`,
