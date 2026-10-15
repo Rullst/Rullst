@@ -17,6 +17,9 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
         .iter()
         .zip(&parsed.normal_fields_types)
         .filter(|(field, _)| *field != "id" && *field != parsed.tenant_column.as_str())
+        // A full-row save never writes an `#[orm(db_default)]` column, so a
+        // setter for it would silently do nothing.
+        .filter(|(field, _)| !parsed.db_default_fields.contains(field))
         .collect();
     let declarations = fields
         .iter()
@@ -246,6 +249,17 @@ mod tests {
         assert!(builder.contains("save : Option < String >"));
         assert!(!builder.contains("pub fn save (mut self"));
         assert!(method.to_string().contains("__rullst_model : self"));
+    }
+
+    #[test]
+    fn db_default_fields_get_no_partial_setter() {
+        let input: DeriveInput = parse_quote! {
+            struct Note { id: i32, title: String, #[orm(db_default)] created_at: Option<String> }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let builder = super::generate_update_builder(&parsed).0.to_string();
+        assert!(builder.contains("pub fn title (mut self"), "{builder}");
+        assert!(!builder.contains("created_at"), "{builder}");
     }
 
     #[test]

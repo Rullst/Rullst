@@ -158,6 +158,27 @@ fn generates_readonly_hidden_tenant_scope_from_orm_metadata() {
     assert!(tenant_field.contains("readonly : true"));
 }
 
+#[test]
+fn db_default_columns_are_read_only_in_nexus() {
+    let input: DeriveInput = parse_quote! {
+        #[orm(table = "notes")]
+        struct Note {
+            id: i32,
+            title: String,
+            #[orm(db_default)]
+            published_at: Option<DateTime<Utc>>,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    let published = field_meta(&output, "published_at").expect("published_at metadata");
+    assert!(published.contains("FieldKind :: DateTime"), "{published}");
+    assert!(published.ends_with("readonly : true"), "{published}");
+    let title = field_meta(&output, "title").expect("title metadata");
+    assert!(title.ends_with("readonly : false"), "{title}");
+}
+
 /// The generated `FieldMeta` of `name` up to its `readonly` flag, or `None`
 /// when it is not emitted. (A kind such as `Integer { .. }` has its own braces.)
 fn field_meta(output: &str, name: &str) -> Option<String> {

@@ -54,7 +54,12 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     // stale handle must not undelete (or delete) its row through save().
     let soft_delete_column = parsed.soft_delete_column();
 
-    for field_name in normal_fields {
+    // `#[orm(db_default)]` columns are left to the database: its DEFAULT on
+    // INSERT, and the stored value (or a trigger) on UPDATE.
+    for field_name in normal_fields
+        .iter()
+        .filter(|field| !parsed.db_default_fields.contains(field))
+    {
         let field_name_str = field_name.to_string();
         if field_name_str != "id" {
             insert_columns.push(field_name_str.clone());
@@ -312,5 +317,46 @@ mod tests {
             ". bind (self . extra . clone () . map (rullst_orm :: _sqlx :: types :: Json))"
         ));
         assert!(generated.contains(". bind (self . name . clone ())"));
+    }
+
+    #[test]
+    fn db_default_fields_are_left_to_the_database() {
+        let input: DeriveInput = parse_quote! {
+            struct Note {
+                id: i32,
+                title: String,
+                #[orm(db_default)]
+                created_at: Option<DateTime<Utc>>,
+                updated_at: Option<DateTime<Utc>>,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate_save_method(&parsed).to_string();
+        assert!(
+            generated
+                .contains("\"INSERT INTO notes (title, updated_at) VALUES (?, ?) RETURNING id\""),
+            "{generated}"
+        );
+        assert!(
+            generated.contains("\"INSERT INTO notes (title, updated_at) VALUES (?, ?)\""),
+            "{generated}"
+        );
+        assert!(
+            generated.contains("\"title = ?, updated_at = ?\""),
+            "{generated}"
+        );
+        assert!(!generated.contains("self . created_at"), "{generated}");
+
+        // Only database defaults: `DEFAULT VALUES`, like an id-only model.
+        let input: DeriveInput = parse_quote! {
+            struct Ping { id: i32, #[orm(db_default)] seen_at: Option<DateTime<Utc>> }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let generated = super::generate_save_method(&parsed).to_string();
+        assert!(
+            generated.contains("\"INSERT INTO pings DEFAULT VALUES RETURNING id\""),
+            "{generated}"
+        );
+        assert!(generated.contains("\"id = id\""), "{generated}");
     }
 }
