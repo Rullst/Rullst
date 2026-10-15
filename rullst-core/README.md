@@ -10,6 +10,12 @@
   a 256 KiB body ceiling, correlation checks, same-origin paths, CSRF header
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
+- **Translations and Locales (v13):** `rullst::i18n::catalog!` loads one
+  TOML catalog per locale at compile time and fails the build on missing keys
+  or mismatched placeholders; the generated `t!` returns text that `html!`
+  escapes, with `one`/`other` plurals. `Locales` negotiates the locale from a
+  cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
+  `POST` switch route. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
 - **Distributed Tracing Candidate (v13):** Optional `telemetry::distributed`
   adds explicit parent trust, approved operation labels, minimized OTLP export

@@ -121,6 +121,54 @@ async fn the_negotiated_locale_sets_html_lang() {
     assert!(page.contains("<h1>Olá, Ana!</h1>"), "{page}");
 }
 
+/// The language menu from the guide (`docs/src/i18n.md`).
+async fn menu(
+    locale: Locale,
+    axum::Extension(csrf): axum::Extension<rullst::security::CsrfToken>,
+) -> Markup {
+    html! {
+        <form method="post" action="/locale">
+            <input type="hidden" name="_token" value={csrf.as_str()} />
+            <input type="hidden" name="next" value="/" />
+            <label>{t!(locale, "nav.language")}
+                <select name="locale">
+                    @for option in LOCALES.iter() {
+                        <option value={option.tag()} selected?={option == locale}>{option.tag()}</option>
+                    }
+                </select>
+            </label>
+            <button>"OK"</button>
+        </form>
+    }
+}
+
+#[tokio::test]
+async fn the_language_menu_marks_the_current_locale() {
+    let app = rullst::Router::new()
+        .route("/menu", axum::routing::get(menu))
+        .layer(LOCALES.layer())
+        .into_axum()
+        .layer(axum::middleware::from_fn(rullst::security::csrf_middleware))
+        .layer(axum::Extension(Environment::Development));
+    let request = Request::get("/menu")
+        .header(header::COOKIE, "rullst_csrf=token123; rullst_locale=es")
+        .body(Body::empty())
+        .unwrap();
+    let page = body(app.oneshot(request).await.unwrap()).await;
+    assert!(page.contains("value=\"token123\""), "{page}");
+    assert!(
+        page.contains("<label>Idioma<select name=\"locale\">"),
+        "{page}"
+    );
+    assert!(
+        page.contains(
+            "<option value=\"en\">en</option><option value=\"es\" selected>es</option>\
+             <option value=\"pt-BR\">pt-BR</option>"
+        ),
+        "{page}"
+    );
+}
+
 fn switch_app() -> axum::Router {
     rullst::Router::new()
         .route("/locale", LOCALES.switch_route())

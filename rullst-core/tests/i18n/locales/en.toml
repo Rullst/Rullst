@@ -1,4 +1,7 @@
 # Fixture catalog for tests/i18n_catalog.rs.
+[nav]
+language = "Language"
+
 [dashboard]
 title = "Dashboard"
 greeting = "Hello, {name}!"

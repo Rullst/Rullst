@@ -214,6 +214,27 @@ A prepared version section does not establish that its tag or crates exist.
   projects are not changed; the
   [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
   lists the steps to add the flows.
+- New translation API, `rullst::i18n` (dogfooding #16).
+  `rullst::i18n::catalog!(default = "en")` loads one TOML catalog per locale
+  (`locales/en.toml`, `locales/pt-BR.toml`) when the crate compiles and fails
+  the build when a key is missing from a locale or its placeholders differ
+  between locales. It defines `LOCALES` and a `t!(locale, "key", name =
+  value)` macro whose unknown keys (with a "did you mean" suggestion) and
+  missing or unexpected arguments are compile errors. `t!` returns plain text
+  that `html!` escapes; only keys ending in `_html` are trusted HTML, with
+  their arguments escaped. Plural messages take `count = n` and select `one`
+  or `other` with documented rules for English, Spanish, Portuguese (`pt-BR`
+  and `pt-PT`), French, German, Italian, Dutch, Japanese, Chinese and Korean.
+  See the [translations guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
+- New locale negotiation for that API: `.layer(LOCALES.layer())` gives
+  handlers a `Locale` extractor chosen from the `rullst_locale` cookie, then
+  `Accept-Language` (weights, language fallback such as `pt-PT` to `pt-BR`,
+  bounded parsing), then the default; pass `locale.tag()` to
+  `render_page_with_lang` for `<html lang>`. `LOCALES.switch_route()` is a
+  `POST` form route that accepts only supported locales, stores the cookie
+  and redirects only to local paths; the CSRF middleware protects it like
+  any other form. `Locales::new` offers the same negotiation and switch to
+  applications that keep their own message tables.
 
 ### Mutation testing
 

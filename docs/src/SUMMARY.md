@@ -96,6 +96,7 @@
 - [Generated Project Instructions & Context](project-context.md)
 - [Terminal AI Assistant](ai-assistant.md)
 - [Schema-First Rust & TypeScript APIs](typed-api.md)
+- [Translations and Locales](i18n.md)
 - [Active Sessions and Remote Logout](session-management.md)
   - [Email login](email-login.md)
   - [Scoped API tokens](api-tokens.md)
