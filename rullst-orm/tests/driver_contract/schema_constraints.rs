@@ -258,4 +258,27 @@ async fn alter(driver: &str) {
     } else {
         checked.unwrap_or_else(|error| panic!("{driver} added CHECK: {error}"));
     }
+
+    // An added SQLite column holds one REFERENCES clause; a second foreign
+    // key on it is refused instead of dropped, and nothing runs.
+    if driver == "sqlite" {
+        let twice = Schema::table("contract_books", |table| {
+            table.integer("translator_id");
+            table
+                .foreign("translator_id")
+                .references("contract_authors", "id");
+            table
+                .foreign("translator_id")
+                .references("contract_books", "id");
+        })
+        .await;
+        assert!(
+            matches!(&twice, Err(Error::UnsupportedSchemaChange { driver, .. }) if driver == "sqlite"),
+            "{twice:?}"
+        );
+        let column = Orm::raw("SELECT translator_id FROM contract_books")
+            .execute()
+            .await;
+        assert!(column.is_err(), "the column must not have been added");
+    }
 }

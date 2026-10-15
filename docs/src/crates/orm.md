@@ -513,7 +513,7 @@ SQLite cannot add a constraint to an existing table. There a unique
 constraint, or a `unique()` column, becomes the equivalent unique index, and a
 foreign key on a column added in the same call becomes that column's
 `REFERENCES` clause (the column must be nullable without a default). Any other
-foreign key, a CHECK, a primary-key column, a `NOT NULL` column without a
+foreign key (on an existing column, or a second one on the same new column), a CHECK, a primary-key column, a `NOT NULL` column without a
 default or a current-time default returns `Error::UnsupportedSchemaChange`
 before any statement runs; rebuild such a table with a new `Schema::create`.
 MySQL/MariaDB commit each DDL statement on its own, so a failure there can leave

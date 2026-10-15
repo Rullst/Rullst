@@ -17,7 +17,8 @@ impl Schema {
     /// constraint, or a `unique()` column, becomes the equivalent
     /// `CREATE UNIQUE INDEX`, and a foreign key on a column added in the same
     /// call becomes that column's `REFERENCES` clause (the column must then
-    /// be nullable without a default). Any other SQLite foreign key, a CHECK,
+    /// be nullable without a default). Any other SQLite foreign key (on an
+    /// existing column, or a second one on the same new column), a CHECK,
     /// a primary-key column, a `NOT NULL` column without a default or a
     /// `CURRENT_TIMESTAMP` default fails with
     /// [`Error::UnsupportedSchemaChange`] before any statement runs.
@@ -167,6 +168,16 @@ impl Blueprint {
             && !matches!(column.default_value, None | Some(ColumnDefault::Null))
         {
             Some("a foreign-key column with a non-NULL default")
+        } else if self
+            .foreign_keys
+            .iter()
+            .filter(|foreign| foreign.column == column.name)
+            .count()
+            > 1
+        {
+            // An added column has one `REFERENCES` clause; a second key would
+            // be dropped silently.
+            Some("a column with more than one foreign key")
         } else {
             None
         };

@@ -77,7 +77,7 @@ fn sqlite_alters_tables_with_column_references_and_unique_indexes() {
 
 #[test]
 fn sqlite_alter_returns_a_typed_error_for_changes_it_cannot_make() {
-    let unsupported: [fn(&mut Blueprint); 7] = [
+    let unsupported: [fn(&mut Blueprint); 8] = [
         |table| {
             table.foreign("author_id").references("users", "id");
         },
@@ -104,6 +104,11 @@ fn sqlite_alter_returns_a_typed_error_for_changes_it_cannot_make() {
                 .timestamp_tz("seen_at")
                 .default(ColumnDefault::CurrentTimestamp);
         },
+        |table| {
+            table.integer("author_id");
+            table.foreign("author_id").references("users", "id");
+            table.foreign("author_id").references("authors", "id");
+        },
     ];
     for declare in unsupported {
         let mut table = Blueprint::new();
@@ -116,6 +121,32 @@ fn sqlite_alter_returns_a_typed_error_for_changes_it_cannot_make() {
             "SQLite must refuse the change"
         );
     }
+    // A second foreign key on one added column is refused, not dropped:
+    // nothing is returned to run.
+    let mut twice = Blueprint::new();
+    twice.integer("author_id");
+    twice
+        .foreign("author_id")
+        .references("users", "id")
+        .name("posts_author_user_fk");
+    twice
+        .foreign("author_id")
+        .references("authors", "id")
+        .name("posts_author_author_fk");
+    assert!(matches!(
+        twice.alter_statements("posts", "sqlite", false),
+        Err(Error::UnsupportedSchemaChange { ref driver, ref change })
+            if driver == "sqlite" && change.contains("more than one foreign key") && change.contains("author_id")
+    ));
+    // PostgreSQL adds both keys.
+    assert_eq!(
+        twice
+            .alter_statements("posts", "postgres", false)
+            .expect("PostgreSQL keeps both keys")
+            .len(),
+        3
+    );
+
     // A NOT NULL column with a default can be added.
     let mut table = Blueprint::new();
     table

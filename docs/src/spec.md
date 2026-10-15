@@ -1495,7 +1495,8 @@ each DDL statement). SQLite cannot add a constraint to an existing table: a
 unique constraint or `unique()` column becomes the equivalent `CREATE UNIQUE
 INDEX`, and a foreign key on a column added in the same call becomes that
 column's `REFERENCES` clause (the column must then be nullable without a
-non-`NULL` default). A SQLite foreign key on an existing column, a CHECK, a
+non-`NULL` default). A SQLite foreign key on an existing column, a second
+foreign key on the same new column (one `REFERENCES` clause fits), a CHECK, a
 primary-key column, a `NOT NULL` column without a default and a current-time
 default return `Error::UnsupportedSchemaChange { driver, change }` before any
 statement runs.
