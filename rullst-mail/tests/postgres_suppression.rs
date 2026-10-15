@@ -6,6 +6,8 @@ mod failures;
 mod lifecycle;
 #[path = "suppression_postgres/support.rs"]
 mod support;
+#[path = "suppression_postgres/tampering.rs"]
+mod tampering;
 #[path = "suppression_postgres/worker.rs"]
 mod worker;
 use support::*;
@@ -33,5 +35,6 @@ async fn postgres_suppression_contract() {
     let url = url();
     lifecycle::run(&url).await;
     failures::run(&url).await;
+    tampering::run(&url).await;
     worker::run(&url).await;
 }

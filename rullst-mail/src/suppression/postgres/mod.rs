@@ -26,8 +26,17 @@ async fn bounded<T>(
 }
 
 fn now() -> Result<i64, SuppressionError> {
-    i64::try_from(super::unix_time()?)
+    clock_seconds(super::unix_time()?)
+}
+
+/// Accepts a Unix time in `1..=i64::MAX - 300`, so the future-skew allowance
+/// cannot overflow.
+fn clock_seconds(value: u64) -> Result<i64, SuppressionError> {
+    i64::try_from(value)
         .ok()
         .filter(|value| *value > 0 && *value <= i64::MAX - 300)
         .ok_or(SuppressionError::InvalidConfiguration("server clock"))
 }
+
+#[cfg(test)]
+mod tests;
