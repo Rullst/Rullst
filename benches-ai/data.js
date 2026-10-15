@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792034871750,
+  "lastUpdate": 1792043313847,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -13903,6 +13903,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 358,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ceb296197c61c22ad6f4375844ee938b2d586883",
+          "message": "Merge pull request #478 from Rullst/dependabot/github_actions/main/ci-tools-c712fcbd93\n\nbuild(deps): Bump the ci-tools group across 1 directory with 12 updates",
+          "timestamp": "2026-10-15T02:20:22-03:00",
+          "tree_id": "2d42558f03d2b8408c4f4a56af87ef345b6732e9",
+          "url": "https://github.com/Rullst/Rullst/commit/ceb296197c61c22ad6f4375844ee938b2d586883"
+        },
+        "date": 1792043313287,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1785,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 314,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 423,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
