@@ -46,6 +46,9 @@ pub struct ParsedModel {
     pub secret_fields: Vec<syn::Ident>,
     /// Persisted `#[sqlx(json)]` fields and whether they are `json(nullable)`.
     pub json_fields: Vec<(syn::Ident, bool)>,
+    /// Persisted `#[orm(db_default)]` fields: generated INSERT and full-row
+    /// UPDATE statements leave them to the database.
+    pub db_default_fields: Vec<syn::Ident>,
     /// Fields tagged with `#[orm(skip)]` or `#[sqlx(skip)]`. They are
     /// still part of the struct but excluded from generated INSERT /
     /// UPDATE statements, the `*Column` enum and JSON serialisation.
@@ -146,6 +149,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut masked_fields = vec![];
     let mut secret_fields = vec![];
     let mut json_fields = vec![];
+    let mut db_default_fields = vec![];
     let mut skipped_fields = vec![];
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
@@ -259,6 +263,15 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             }
             if let Some(nullable) = field_attributes.sqlx_json {
                 json_fields.push((field_name.clone(), nullable));
+            }
+            if field_attributes.is_db_default {
+                if field_name_str == "id" || field_name_str == model_attributes.tenant_column {
+                    return Err(syn::Error::new(
+                        field_span,
+                        "db_default cannot apply to `id` or the tenant column",
+                    ));
+                }
+                db_default_fields.push(field_name.clone());
             }
             if field_attributes.is_hidden {
                 hidden_fields.push(field_name);
@@ -447,6 +460,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         masked_fields,
         secret_fields,
         json_fields,
+        db_default_fields,
         skipped_fields,
         relations,
         has_soft_deletes,

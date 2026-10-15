@@ -112,6 +112,55 @@ pub struct Holder {
     );
 }
 
+/// `String` timestamps of SQLx models point to the date/time row; chrono
+/// fields, other names and Turso models do not.
+#[test]
+fn text_timestamps_of_sqlx_models_are_reviewed() {
+    let source = r#"
+#[derive(Debug, FromRow, Orm)]
+#[orm(table = "posts")]
+pub struct Post {
+    pub id: i32,
+    pub created_at: String,
+    pub updated_at: Option<String>,
+}
+"#;
+    assert_eq!(
+        scan_with(source, "post.rs", &WorkspaceFacts::default()),
+        [("V13-TEXT-TIMESTAMPS", 6)]
+    );
+    assert_only(
+        r#"
+#[derive(Debug, FromRow, Orm)]
+pub struct Post {
+    pub id: i32,
+    pub created_at: DateTime<Utc>,
+    #[orm(db_default)]
+    pub updated_at: Option<rullst::orm::chrono::DateTime<Utc>>,
+    pub published_at: String,
+    pub deleted_at: Option<String>,
+}
+#[derive(Debug, rullst_orm::Orm)]
+#[orm(table = "notes", backend = "turso")]
+pub struct Note {
+    pub id: i64,
+    pub created_at: String,
+}
+#[derive(Debug, TursoModel)]
+pub struct Event {
+    pub id: i64,
+    pub updated_at: String,
+}
+#[derive(Debug, Deserialize)]
+pub struct Form {
+    pub created_at: String,
+    pub updated_at: Option<Vec<String>>,
+}
+"#,
+        &[],
+    );
+}
+
 /// Removed Capital providers, payouts and NFS-e types point to their row; the
 /// providers that v13 keeps do not.
 #[test]

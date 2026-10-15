@@ -93,9 +93,15 @@ so there Nexus writes `number` and `integer` values through `NUMERIC`, relation 
 are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
 `'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
 and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
-are written as text, so keep dates, date-times, JSON and enum values in text
-columns, as Rullst's schema builder does; native `DATE`, `TIMESTAMP`, `JSONB`,
-`UUID` or enum columns are not supported by Nexus.
+are written as text, so keep editable dates, date-times, JSON and enum values in
+text columns; native `JSONB`, `UUID` or enum columns are not supported by Nexus.
+Lists and edit forms read date and date-time fields as text (`CAST(... AS
+TEXT)` on PostgreSQL, `CAST(... AS CHAR)` on MySQL/MariaDB), so native `DATE`,
+`TIMESTAMP` and `TIMESTAMPTZ` columns, such as the `timestamps()` columns of a
+strict driver pool, display. A write of such a field is still text, which
+MySQL/MariaDB and SQLite convert but PostgreSQL rejects, so keep native
+date/time fields read-only there: generated `created_at`/`updated_at`
+metadata and `#[orm(db_default)]` fields already are.
 
 The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 `/edit` for the form), so a key named `new`, `search` or `batch` never collides

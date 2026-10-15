@@ -291,6 +291,22 @@ fn update_value(digest: &mut Sha256, value: &RullstValue) {
         RullstValue::Bool(value) => update_field(digest, 13, &[*value as u8]),
         RullstValue::I64(value) => update_field(digest, 14, &value.to_be_bytes()),
         RullstValue::Null => update_field(digest, 15, &[]),
+        RullstValue::DateTime(value) => update_field(
+            digest,
+            16,
+            value
+                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, true)
+                .as_bytes(),
+        ),
+        RullstValue::NaiveDateTime(value) => {
+            update_field(digest, 17, value.format("%F %T%.9f").to_string().as_bytes())
+        }
+        RullstValue::Date(value) => {
+            update_field(digest, 18, value.format("%F").to_string().as_bytes())
+        }
+        RullstValue::Time(value) => {
+            update_field(digest, 19, value.format("%T%.9f").to_string().as_bytes())
+        }
     }
 }
 
@@ -373,6 +389,45 @@ mod tests {
         let tenant =
             |value: RullstValue| index_key("academy", Some(&value), "users").expect("index");
         assert_ne!(tenant(RullstValue::Int(7)), tenant(RullstValue::I64(7)));
+    }
+
+    #[test]
+    fn date_and_time_values_have_their_own_cache_keys() {
+        use chrono::{NaiveDate, NaiveTime, TimeZone, Utc};
+        let key = |value: RullstValue| {
+            build_key("academy", None, "users", "SELECT *", &[value]).expect("cache key")
+        };
+        let date = NaiveDate::from_ymd_opt(2026, 10, 15).expect("date");
+        let time = NaiveTime::from_hms_nano_opt(9, 30, 0, 5).expect("time");
+        let naive = date.and_time(time);
+        let instant = Utc.from_utc_datetime(&naive);
+        let keys = [
+            key(RullstValue::DateTime(instant)),
+            key(RullstValue::NaiveDateTime(naive)),
+            key(RullstValue::Date(date)),
+            key(RullstValue::Time(time)),
+            key(RullstValue::String("2026-10-15".to_string())),
+        ];
+        for (index, first) in keys.iter().enumerate() {
+            for second in &keys[index + 1..] {
+                assert_ne!(first, second);
+            }
+        }
+        assert_eq!(keys[0], key(RullstValue::DateTime(instant)));
+        let later = NaiveTime::from_hms_nano_opt(9, 30, 0, 6).expect("time");
+        assert_ne!(
+            keys[0],
+            key(RullstValue::DateTime(
+                Utc.from_utc_datetime(&date.and_time(later))
+            ))
+        );
+        assert_ne!(
+            keys[1],
+            key(RullstValue::NaiveDateTime(date.and_time(later)))
+        );
+        assert_ne!(keys[3], key(RullstValue::Time(later)));
+        let next_day = NaiveDate::from_ymd_opt(2026, 10, 16).expect("date");
+        assert_ne!(keys[2], key(RullstValue::Date(next_day)));
     }
 
     #[test]

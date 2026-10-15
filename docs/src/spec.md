@@ -1443,13 +1443,87 @@ deployment order, dependent-object removal and rollback remain explicit,
 reviewed migration work. The schema helper does not auto-migrate an existing
 type or infer application compatibility.
 
-`Blueprint::timestamps()` adds nullable `created_at`/`updated_at` `TEXT`
-columns that default to the current timestamp on every SQLx driver. SQLite and
-PostgreSQL receive `DEFAULT CURRENT_TIMESTAMP`. MySQL/MariaDB accept a default
-on `TEXT`, `BLOB`, `JSON` or `GEOMETRY` columns only as an expression, so the
-builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
-non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
-The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
+`Blueprint::timestamps()` adds nullable `created_at`/`updated_at` columns
+that default to the database's current time. With a strict driver feature they
+are `timestamp_tz()` columns (below), read as `chrono::DateTime<Utc>`. The SQLx
+`Any` pool cannot read date/time values, so there they stay `TEXT` columns for
+`String` fields: SQLite and PostgreSQL receive `DEFAULT CURRENT_TIMESTAMP`, and
+MySQL/MariaDB, which accept a default on `TEXT`, `BLOB`, `JSON` or `GEOMETRY`
+columns only as an expression, receive `DEFAULT (CURRENT_TIMESTAMP)`; the
+builder parenthesizes every other non-`NULL` default on those column types
+(MySQL 8.0.13+, MariaDB 10.2.1+). The strict-pool columns are a v13 change;
+alpha.1 created `TEXT` on every pool.
+
+### Schema constraints, indexes and date/time columns
+
+The `Blueprint` declares constraints and indexes next to the columns, and every
+table, column, constraint and index name passes the identifier grammar
+(`validate_table_name`); constraint and index names are at most 63 bytes so
+PostgreSQL never truncates them.
+
+- `Column::unique()` emits a column-level `UNIQUE`. `unique(&[cols])` emits
+  `CONSTRAINT <table>_<cols>_unique UNIQUE (...)` inside `CREATE TABLE`.
+- `index(&[cols])` and `unique_index(&[cols])` (`<table>_<cols>_index` /
+  `_unique`) run as `CREATE [UNIQUE] INDEX IF NOT EXISTS` after `CREATE TABLE`
+  on PostgreSQL and SQLite and are `INDEX` clauses of `CREATE TABLE` on
+  MySQL/MariaDB, which has no `IF NOT EXISTS` for indexes.
+- `foreign(col).references(table, col)` emits `CONSTRAINT <table>_<col>_foreign
+  FOREIGN KEY ... REFERENCES` with the quoted, PostgreSQL-folded referenced
+  table and optional `ON DELETE`/`ON UPDATE` `CASCADE`, `RESTRICT`, `SET NULL`
+  or `NO ACTION`; `foreign_id(col, table)` also adds the `INTEGER NOT NULL`
+  column and references `table(id)`. `SET NULL` on a `NOT NULL` column fails the
+  build.
+- `check(expr)` emits `CHECK (expr)`. The expression is trusted developer SQL:
+  the build rejects an empty or longer than 512-byte expression and one with
+  `;`, `--`, `/*`, `*/`, `\`, `$`, a backtick, a control character, unbalanced
+  parentheses or an unterminated quote, so it cannot leave its clause; it is
+  never built from request data. MySQL enforces CHECK from 8.0.16, MariaDB
+  from 10.2.1.
+- On MySQL/MariaDB a key (column `UNIQUE`, unique constraint, index or foreign
+  key) on a column whose type is `TEXT`, `BLOB` or `JSON` fails the build:
+  those servers index such columns only by a prefix, which would make a unique
+  key compare only the prefix.
+
+`Schema::create` validates every statement before running the first. Without a
+table name, `Blueprint::build()` leaves the default constraint names to the
+database and omits the separate PostgreSQL/SQLite index statements.
+
+`Schema::table` alters an existing table: `ALTER TABLE ... ADD COLUMN` per
+column, then `ADD CONSTRAINT ... UNIQUE`, `CREATE [UNIQUE] INDEX`, `ADD
+CONSTRAINT ... FOREIGN KEY` and `ADD CHECK`, all validated first and run in
+order in the task-scoped transaction when one is active (MySQL/MariaDB commit
+each DDL statement). SQLite cannot add a constraint to an existing table: a
+unique constraint or `unique()` column becomes the equivalent `CREATE UNIQUE
+INDEX`, and a foreign key on a column added in the same call becomes that
+column's `REFERENCES` clause (the column must then be nullable without a
+non-`NULL` default). A SQLite foreign key on an existing column, a second
+foreign key on the same new column (one `REFERENCES` clause fits), a CHECK, a
+primary-key column, a `NOT NULL` column without a default and a current-time
+default return `Error::UnsupportedSchemaChange { driver, change }` before any
+statement runs.
+
+`date()`, `time()`, `timestamp()` and `timestamp_tz()` are columns for
+`chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields
+(`rullst_orm::chrono`): `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` on
+PostgreSQL; `DATE`, `TIME(6)` and `DATETIME(6)` (a UTC instant for
+`timestamp_tz`, because `TIMESTAMP` ends in 2038, with SQLx setting the session
+time zone to `+00:00`) on MySQL/MariaDB; and ISO-8601 `TEXT` on SQLite in the
+forms SQLx writes (`YYYY-MM-DD`, `HH:MM:SS[.f]`, `YYYY-MM-DD HH:MM:SS[.f]`,
+`YYYY-MM-DDTHH:MM:SS[.f]+00:00`), so values of one column sort as text. A
+`ColumnDefault::CurrentTimestamp` default is the current UTC time in the
+column's form (`CURRENT_TIMESTAMP` for `TIMESTAMPTZ`, `CURRENT_TIMESTAMP AT
+TIME ZONE 'UTC'` for the zone-less PostgreSQL types, `CURRENT_TIMESTAMP(6)`,
+`(CURRENT_DATE)` or `(CURRENT_TIME(6))` on MySQL/MariaDB, and on SQLite
+`strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now')` for `timestamp_tz`). These
+columns and `chrono` fields need a strict driver feature: on the SQLx `Any`
+pool `Schema::create`/`Schema::table` reject the native helpers on PostgreSQL
+and MySQL/MariaDB with `Error::Validation` before DDL, because a table holding
+such a column could not be read. `RullstValue` gains `DateTime`,
+`NaiveDateTime`, `Date` and `Time` variants, bound through SQLx's `chrono`
+codecs on strict pools and as that ISO-8601 text on the `Any` pool.
+`soft_deletes()` keeps a `TEXT` `deleted_at` column. The Turso adapter
+(`TursoMigration`, `TursoModel`) writes its own SQL, so none of these builders
+or date/time codecs apply to it; its timestamps stay text.
 
 `Blueprint::float` is an `f64` column on every driver: `DOUBLE PRECISION` on
 PostgreSQL (whose `REAL` is single precision and cannot decode as `f64`),
@@ -2046,7 +2120,13 @@ Ok(())
 except the soft-delete marker, so the last writer wins: a column another writer
 changed after the handle was loaded is overwritten with the handle's value. An
 `INSERT` likewise binds every persisted field, so database column defaults
-do not apply to them. The generated `save()` rustdoc and the ORM guide name
+do not apply to them, except to fields marked `#[orm(db_default)]` (v13): the
+generated `INSERT` omits them, so the column `DEFAULT` applies, and the
+full-row `UPDATE` never writes them, so the stored value stays; the handle
+keeps its own value until the row is read again, `update_partial()` has no
+setter for them and `#[derive(Nexus)]` shows them read-only. The option is
+rejected on `id`, the tenant column, relations, skipped and encrypted fields,
+and by Turso-primary models. The generated `save()` rustdoc and the ORM guide name
 the two supported alternatives: `update_partial()` (§5.4.1), which merges
 selected fields into the freshly read and, on PostgreSQL and MySQL/MariaDB,
 locked row, and one atomic raw statement such as

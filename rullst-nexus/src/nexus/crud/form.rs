@@ -9,7 +9,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use crate::nexus::crud::dialect::{RecordKey, placeholder, tenant_predicate};
+use crate::nexus::crud::dialect::{RecordKey, placeholder, select_column, tenant_predicate};
 use crate::nexus::crud::input::{datetime_local_value, is_local_date};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -83,6 +83,22 @@ pub async fn render_record_form(
 /// Loads the columns the edit form shows: registered fields that are neither
 /// hidden nor `Password`, so undeclared columns and stored secrets are never
 /// read.
+/// The columns the edit form reads: every visible field except passwords,
+/// whose stored value never reaches the browser, or the record key alone.
+fn record_select_list(entry: &RegistryEntry, driver: &str) -> String {
+    let columns = entry
+        .fields
+        .iter()
+        .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
+        .map(|field| select_column(field, driver))
+        .collect::<Vec<_>>();
+    if columns.is_empty() {
+        sanitize_identifier(entry.pk)
+    } else {
+        columns.join(", ")
+    }
+}
+
 async fn load_record(
     entry: &RegistryEntry,
     id: &str,
@@ -91,17 +107,7 @@ async fn load_record(
     let key = RecordKey::parse(entry, id).ok_or(RecordFormError::NotFound)?;
     let pool = rullst_core::db::safe_pool().ok_or(RecordFormError::Unavailable)?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let columns = entry
-        .fields
-        .iter()
-        .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
-        .map(|field| sanitize_identifier(field.name))
-        .collect::<Vec<_>>();
-    let select_list = if columns.is_empty() {
-        sanitize_identifier(entry.pk)
-    } else {
-        columns.join(", ")
-    };
+    let select_list = record_select_list(entry, driver);
     let tenant_predicate = match (entry.tenant_column, tenant_id) {
         (Some(column), Some(_)) => {
             format!(

@@ -222,3 +222,32 @@ fn integer_widgets_step_by_one_within_their_bounds() {
         "{html}"
     );
 }
+
+#[test]
+fn the_edit_form_reads_visible_non_password_fields() {
+    let mut entry = RegistryEntry {
+        table: "members",
+        label: "Members",
+        icon: "M",
+        pk: "id",
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number),
+            FieldMeta::new("name", "Name", FieldKind::Text),
+            FieldMeta::new("api_key", "API key", FieldKind::Password),
+            FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+            FieldMeta::new("created_at", "Created", FieldKind::DateTime).readonly(),
+        ],
+    };
+    assert_eq!(
+        record_select_list(&entry, "postgres"),
+        "id, name, CAST(created_at AS TEXT) AS created_at"
+    );
+    assert_eq!(record_select_list(&entry, "sqlite"), "id, name, created_at");
+    // With nothing readable, the form still reads the record key.
+    entry.fields = vec![
+        FieldMeta::new("api_key", "API key", FieldKind::Password),
+        FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+    ];
+    assert_eq!(record_select_list(&entry, "postgres"), "id");
+}

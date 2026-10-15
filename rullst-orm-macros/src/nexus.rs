@@ -129,6 +129,9 @@ fn parse_field_options(field: &syn::Field) -> syn::Result<FieldOptions> {
                 options.masked = true;
             } else if meta.path.is_ident("encrypted") {
                 options.encrypted = true;
+            } else if meta.path.is_ident("db_default") {
+                // Generated writes leave the column to the database.
+                options.readonly = true;
             } else {
                 options.relation |= ORM_RELATIONS.iter().any(|key| meta.path.is_ident(key));
                 skip_orm_option(&meta)?;

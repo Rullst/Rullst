@@ -533,6 +533,11 @@ fn extracted_rust_templates_parse_after_substitution() {
                     "__PERSIST_BILLING_UPDATE__",
                     include_str!("../src/generators/billing_persist_sqlx.rs.template"),
                 )
+                .replace(
+                    "__UTC_TIMESTAMP_FN__",
+                    include_str!("../src/generators/billing_timestamp_sqlx.rs.template"),
+                )
+                .replace("__UPDATED_AT__", "updated_at: created_at")
                 .replace("__FOREIGN_KEY__", "user_id")
                 .replace("__OWNER_ID_TYPE__", "i32"),
         ),
@@ -543,6 +548,11 @@ fn extracted_rust_templates_parse_after_substitution() {
                     "__PERSIST_BILLING_UPDATE__",
                     include_str!("../src/generators/billing_persist_turso.rs.template"),
                 )
+                .replace(
+                    "__UTC_TIMESTAMP_FN__",
+                    include_str!("../src/generators/billing_timestamp_turso.rs.template"),
+                )
+                .replace("__UPDATED_AT__", "updated_at: created_at.clone()")
                 .replace("__FOREIGN_KEY__", "team_id")
                 .replace("__OWNER_ID_TYPE__", "i64"),
         ),

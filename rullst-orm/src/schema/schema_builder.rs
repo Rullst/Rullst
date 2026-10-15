@@ -10,6 +10,10 @@ use crate::Error;
 pub struct Schema;
 
 impl Schema {
+    /// Creates `table_name` from the blueprint (`CREATE TABLE IF NOT EXISTS`),
+    /// then, on PostgreSQL and SQLite, its indexes (`CREATE INDEX IF NOT
+    /// EXISTS`). Every statement is built and validated before the first one
+    /// runs; they run in the task-scoped transaction when one is active.
     pub async fn create<F>(table_name: &str, callback: F) -> Result<(), Error>
     where
         F: FnOnce(&mut Blueprint),
@@ -19,38 +23,13 @@ impl Schema {
         let mut blueprint = Blueprint::new();
         callback(&mut blueprint);
 
-        // build() returns Result so any column-name or default issues
+        // Building returns Result so any column-name or default issues
         // surface as errors rather than producing malformed SQL.
-        let columns_sql = blueprint.build()?;
-
         let driver = crate::Orm::driver()?;
-        if driver == "postgres" {
-            let definitions = blueprint.postgres_enum_definitions()?;
-            #[cfg(not(feature = "strict-postgres"))]
-            if !definitions.is_empty() {
-                return Err(Error::Validation(
-                    "PostgreSQL native enums require the `strict-postgres` feature because SQLx Any cannot decode custom PostgreSQL types"
-                        .to_string(),
-                ));
-            }
-            #[cfg(feature = "strict-postgres")]
-            for definition in definitions {
-                ensure_postgres_enum(&definition).await?;
-            }
-        }
-        let escaped_table = quoted_table(driver, table_name);
-
-        let sql = format!(
-            "CREATE TABLE IF NOT EXISTS {} (\n    {}\n);",
-            escaped_table, columns_sql
-        );
-
-        let mut query_builder = sqlx::query_builder::QueryBuilder::new("");
-        query_builder.push(&sql);
-        let query = query_builder.build();
-        crate::execute_query!(query, execute, pool)?;
-
-        Ok(())
+        let statements =
+            blueprint.create_statements(table_name, driver, crate::database::ANY_POOL)?;
+        prepare_postgres_enums(&blueprint, driver).await?;
+        execute_statements(&statements).await
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -86,12 +65,44 @@ impl Schema {
     }
 }
 
+/// Creates (or drift-checks) the PostgreSQL enum types a blueprint uses.
+pub(super) async fn prepare_postgres_enums(
+    blueprint: &Blueprint,
+    driver: &str,
+) -> Result<(), Error> {
+    if driver != "postgres" {
+        return Ok(());
+    }
+    let definitions = blueprint.postgres_enum_definitions()?;
+    #[cfg(not(feature = "strict-postgres"))]
+    if !definitions.is_empty() {
+        return Err(Error::Validation(
+            "PostgreSQL native enums require the `strict-postgres` feature because SQLx Any cannot decode custom PostgreSQL types"
+                .to_string(),
+        ));
+    }
+    #[cfg(feature = "strict-postgres")]
+    for definition in definitions {
+        ensure_postgres_enum(&definition).await?;
+    }
+    Ok(())
+}
+
+/// Runs validated DDL statements in order.
+pub(super) async fn execute_statements(statements: &[String]) -> Result<(), Error> {
+    for sql in statements {
+        let query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
+        crate::execute_query!(query, execute, pool)?;
+    }
+    Ok(())
+}
+
 /// Quotes a validated table name for the DDL dialect. PostgreSQL folds the
 /// unquoted names that generated model SQL uses to lower case, so the quoted
 /// DDL name is folded the same way and `Schema::create("UserProfiles")`
 /// creates the `userprofiles` relation that `SELECT * FROM UserProfiles`
 /// resolves to. Quoting still admits reserved words such as `order`.
-fn quoted_table(driver: &str, table_name: &str) -> String {
+pub(super) fn quoted_table(driver: &str, table_name: &str) -> String {
     match driver {
         "mysql" => format!("`{table_name}`"),
         "postgres" => format!("\"{}\"", table_name.to_ascii_lowercase()),

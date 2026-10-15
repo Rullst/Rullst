@@ -1,6 +1,6 @@
 //! Query building and parameter extraction for Nexus CRUD.
 
-use super::dialect::{contains_pattern, search_predicate, tenant_predicate};
+use super::dialect::{contains_pattern, search_predicate, select_column, tenant_predicate};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use serde::Deserialize;
 
@@ -119,15 +119,20 @@ pub fn build_table_query(
     let page = page.max(1);
     let offset = page.saturating_sub(1).saturating_mul(limit);
 
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     // Password values are never rendered, so they are never read either.
-    let mut select_cols: Vec<String> = visible_fields
+    let readable: Vec<&FieldMeta> = visible_fields
         .iter()
+        .copied()
         .filter(|f| !matches!(f.kind, FieldKind::Password))
-        .map(|f| sanitize_identifier(f.name))
         .collect();
+    let mut select_cols: Vec<String> = readable.iter().map(|f| select_column(f, driver)).collect();
 
     let clean_pk = sanitize_identifier(entry.pk);
-    if !select_cols.contains(&clean_pk) {
+    if !readable
+        .iter()
+        .any(|f| sanitize_identifier(f.name) == clean_pk)
+    {
         select_cols.insert(0, clean_pk.clone());
     }
 
@@ -139,7 +144,6 @@ pub fn build_table_query(
     let mut sql = format!("SELECT {} FROM {}", select_list, clean_table);
     let mut binds = Vec::new();
 
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let mut predicates = Vec::new();
     if !q.is_empty() {
         let text_fields: Vec<String> = entry
@@ -305,6 +309,27 @@ mod tests {
         assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
         assert!(!sql.contains("api_key"), "{sql}");
         assert!(sql.contains("ORDER BY id asc"), "{sql}");
+    }
+
+    #[test]
+    fn the_primary_key_is_selected_once_whether_or_not_it_is_visible() {
+        let entry = RegistryEntry {
+            table: "accounts",
+            label: "Accounts",
+            icon: "A",
+            pk: "id",
+            tenant_column: None,
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number),
+                FieldMeta::new("name", "Name", FieldKind::Text),
+            ],
+        };
+        let without_key = vec![&entry.fields[1]];
+        let (sql, _) = build_table_query(&entry, &without_key, "", 1, None, None, None);
+        assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
+        let only_key = vec![&entry.fields[0]];
+        let (sql, _) = build_table_query(&entry, &only_key, "", 1, None, None, None);
+        assert!(sql.starts_with("SELECT id FROM accounts"), "{sql}");
     }
 
     #[test]

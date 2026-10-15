@@ -136,7 +136,7 @@ impl Visitor<'_, '_> {
         self.out.add(rule, line);
     }
 
-    fn orm_model(&mut self, item: &syn::ItemStruct) {
+    fn orm_model(&mut self, item: &syn::ItemStruct, turso_model: bool) {
         for (key, _, at) in entries(&item.attrs, "sqlx") {
             if key != "default" {
                 self.hit(&ORM_SQLX_STRUCT_OPTION, at);
@@ -161,9 +161,23 @@ impl Visitor<'_, '_> {
                 }
             }
         }
+        // Turso models keep `CURRENT_TIMESTAMP` text.
+        let turso = turso_model
+            || model
+                .iter()
+                .any(|(key, value, _)| key == "backend" && value.as_deref() == Some("turso"));
         for field in &item.fields {
             let options = entries(&field.attrs, "orm");
             let at = field_line(field);
+            if !turso
+                && field
+                    .ident
+                    .as_ref()
+                    .is_some_and(|name| name == "created_at" || name == "updated_at")
+                && is_string_type(&field.ty)
+            {
+                self.hit(&TEXT_TIMESTAMPS, at);
+            }
             let relation = options
                 .iter()
                 .find(|(key, _, _)| {
@@ -303,6 +317,24 @@ fn catches_all(pattern: &Pat) -> bool {
     }
 }
 
+/// `String` or `Option<String>`, by the last path segment.
+fn is_string_type(field_type: &syn::Type) -> bool {
+    let syn::Type::Path(path) = field_type else {
+        return false;
+    };
+    let Some(segment) = path.path.segments.last() else {
+        return false;
+    };
+    match &segment.arguments {
+        syn::PathArguments::None => segment.ident == "String",
+        syn::PathArguments::AngleBracketed(arguments) if segment.ident == "Option" => {
+            matches!(arguments.args.first(), Some(syn::GenericArgument::Type(inner))
+                if arguments.args.len() == 1 && is_string_type(inner))
+        }
+        _ => false,
+    }
+}
+
 fn is_empty_string(expr: &Expr) -> bool {
     let empty_literal = |expr: &Expr| matches!(expr, Expr::Lit(literal) if matches!(&literal.lit, Lit::Str(text) if text.value().is_empty()));
     match expr {
@@ -333,7 +365,7 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
         let has_derive = |name: &str| derived.iter().any(|derive| derive == name);
         if matches!(item.fields, Fields::Named(_)) {
             if has_derive("Orm") || has_derive("TursoModel") {
-                self.orm_model(item);
+                self.orm_model(item, has_derive("TursoModel"));
             }
             if has_derive("Nexus") {
                 self.nexus_model(item);

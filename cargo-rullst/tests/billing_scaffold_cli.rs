@@ -64,6 +64,20 @@ fn contract_source(database: &str) -> String {
     } else {
         r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await?;"#
     };
+    // SQLx `timestamps()` columns hold `chrono` instants; Turso keeps text.
+    let (now, customer_stamps, subscription_stamps) = if database == "turso" {
+        (
+            "String::new()",
+            "assert_eq!((first.created_at.len(), first.updated_at.len()), (19, 19), \"customer timestamps\");",
+            "assert_eq!((subscription.created_at.len(), subscription.updated_at.len()), (19, 19), \"subscription timestamps\");",
+        )
+    } else {
+        (
+            "rullst::orm::chrono::Utc::now()",
+            "assert!(first.created_at.timestamp() > 1_767_225_599 && first.updated_at == first.created_at, \"customer timestamps\");",
+            "assert!(subscription.created_at.timestamp() > 1_767_225_599 && subscription.updated_at == subscription.created_at, \"subscription timestamps\");",
+        )
+    };
     let execute_sql = if database == "turso" {
         r#"rullst::orm::polyglot::TursoOrm::store()?.execute(
             rullst::orm::polyglot::TursoStatement::new(statement, vec![])?
@@ -117,8 +131,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         workspace_id: 7,
         email: "owner@example.com".to_string(),
         customer_id: None,
-        created_at: String::new(),
-        updated_at: String::new(),
+        created_at: {now},
+        updated_at: {now},
     }};
     owner.save().await?;
 
@@ -135,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     ).await;
     assert_eq!(checkout.status(), StatusCode::SEE_OTHER);
     let first = BillingCustomer::find_by_email("first@example.com").await?.ok_or("checkout created no customer")?;
-    assert_eq!((first.created_at.len(), first.updated_at.len()), (19, 19), "customer timestamps");
+    {customer_stamps}
 
     let event = WebhookEvent {{
         subscription_id: "sub_contract".to_string(),
@@ -152,15 +166,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .ok_or("subscription was not persisted")?;
     assert_eq!(subscription.workspace_id, 7);
     assert_eq!(subscription.customer_id, "cus_owner");
-    assert_eq!((subscription.created_at.len(), subscription.updated_at.len()), (19, 19), "subscription timestamps");
+    {subscription_stamps}
 
     let mut other = BillingCustomer {{
         id: 0,
         workspace_id: 9,
         email: "other@example.com".to_string(),
         customer_id: None,
-        created_at: String::new(),
-        updated_at: String::new(),
+        created_at: {now},
+        updated_at: {now},
     }};
     other.save().await?;
     let unknown_plan = WebhookEvent {{
@@ -195,7 +209,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         let owner_id = 20 + index;
         let mut customer = BillingCustomer {{
             id: 0, workspace_id: owner_id, email: email.clone(), customer_id: None,
-            created_at: String::new(), updated_at: String::new(),
+            created_at: {now}, updated_at: {now},
         }};
         customer.save().await?;
         execute_sql(&format!("CREATE TRIGGER reject_billing_update BEFORE {{operation}} ON {{table}} BEGIN SELECT RAISE(ABORT, 'injected billing failure'); END")).await?;

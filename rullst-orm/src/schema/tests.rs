@@ -117,30 +117,22 @@ fn test_timestamps_adds_columns() {
     let mut bp = Blueprint::new();
     bp.timestamps();
     assert_eq!(bp.columns.len(), 2);
-    assert_eq!(bp.columns[0].name, "created_at");
-    assert_eq!(bp.columns[0].col_type, "TEXT");
-    assert!(bp.columns[0].is_nullable);
-    assert_eq!(
-        bp.columns[0].default_value,
-        Some(ColumnDefault::CurrentTimestamp)
-    );
-
-    assert_eq!(bp.columns[1].name, "updated_at");
-    assert_eq!(bp.columns[1].col_type, "TEXT");
-    assert!(bp.columns[1].is_nullable);
-    assert_eq!(
-        bp.columns[1].default_value,
-        Some(ColumnDefault::CurrentTimestamp)
-    );
+    for (column, name) in bp.columns.iter().zip(["created_at", "updated_at"]) {
+        assert_eq!(column.name, name);
+        assert_eq!(column.col_type, "TIMESTAMPTZ");
+        assert!(column.is_nullable);
+        assert_eq!(column.default_value, Some(ColumnDefault::CurrentTimestamp));
+    }
 }
 
 #[test]
 fn timestamps_use_a_mysql_expression_default_and_keep_other_drivers() {
+    // The SQLx `Any` pool keeps the alpha.1 TEXT timestamps.
     let mut bp = Blueprint::new();
     bp.id();
     bp.timestamps();
 
-    let mysql = bp.build_for_driver("mysql").expect("MySQL DDL");
+    let mysql = bp.render(None, "mysql", true).expect("MySQL DDL");
     assert!(
         mysql.contains("created_at TEXT DEFAULT (CURRENT_TIMESTAMP)"),
         "{mysql}"
@@ -152,7 +144,7 @@ fn timestamps_use_a_mysql_expression_default_and_keep_other_drivers() {
     assert!(!mysql.contains("TEXT DEFAULT CURRENT_TIMESTAMP"), "{mysql}");
 
     for driver in ["sqlite", "postgres"] {
-        let sql = bp.build_for_driver(driver).expect("DDL");
+        let sql = bp.render(None, driver, true).expect("DDL");
         assert!(
             sql.contains("created_at TEXT DEFAULT CURRENT_TIMESTAMP"),
             "{driver}: {sql}"
@@ -346,6 +338,10 @@ fn test_column_builder_methods() {
 
     col.default(ColumnDefault::Integer(18));
     assert_eq!(col.default_value, Some(ColumnDefault::Integer(18)));
+
+    assert!(!col.is_unique);
+    col.unique();
+    assert!(col.is_unique);
 }
 
 #[test]

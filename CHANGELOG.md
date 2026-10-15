@@ -235,6 +235,50 @@ A prepared version section does not establish that its tag or crates exist.
   and redirects only to local paths; the CSRF middleware protects it like
   any other form. `Locales::new` offers the same negotiation and switch to
   applications that keep their own message tables.
+- The ORM schema builder declares constraints and indexes (dogfooding #5):
+  `Column::unique()`, table-level `unique(&[...])`, `index(&[...])` and
+  `unique_index(&[...])` (with optional `.name(...)`), foreign keys with
+  `foreign("user_id").references("users", "id").on_delete(ForeignKeyAction::Cascade)`
+  (`Restrict`, `SetNull`, `NoAction`, `on_update`) or the
+  `foreign_id("user_id", "users")` shortcut, and a validated
+  `check("price >= 0")` of trusted developer SQL. PostgreSQL and SQLite create
+  indexes with `CREATE INDEX IF NOT EXISTS` after the table; MySQL/MariaDB
+  declare them in `CREATE TABLE` and reject a key on a `TEXT` column before any
+  DDL runs. Violations surface as `Error::UniqueViolation` and
+  `Error::ForeignKeyViolation`. `Column` gains the public field `is_unique`,
+  so a `Column { .. }` struct literal must set it (prefer `Column::new`).
+- New `Schema::table("posts", |table| ...)` adds columns, indexes, unique
+  constraints, foreign keys and checks to an existing table. SQLite turns a
+  unique constraint into a unique index and a foreign key on a newly added
+  column into its `REFERENCES` clause; a change SQLite cannot make returns the
+  new `Error::UnsupportedSchemaChange` before any statement runs.
+- New date/time columns `date()`, `time()`, `timestamp()` and `timestamp_tz()`
+  (dogfooding #11): `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` on PostgreSQL,
+  `DATE`/`TIME(6)`/`DATETIME(6)` (UTC) on MySQL/MariaDB and ISO-8601 text that
+  sorts by time on SQLite. `#[derive(Orm)]` models read and write
+  `chrono::DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and `NaiveTime` fields
+  (and `Option` of them), re-exported as `rullst_orm::chrono`, and
+  `RullstValue` gains matching variants, so `where_gt("starts_at", Utc::now())`
+  compiles. These need a strict driver feature (`strict-postgres`,
+  `strict-mysql`, `strict-sqlite`); on the SQLx `Any` pool the native helpers
+  fail on PostgreSQL and MySQL/MariaDB with `Error::Validation`, because that
+  pool cannot read date/time values.
+- **Breaking:** with a strict driver feature, `Blueprint::timestamps()` now
+  creates `timestamp_tz()` columns (`TIMESTAMPTZ`, `DATETIME(6)`, RFC 3339 text
+  on SQLite) instead of `TEXT`, so `created_at`/`updated_at` fields of new
+  tables must be `DateTime<Utc>` on PostgreSQL and MySQL/MariaDB. Existing
+  columns are not altered; the `Any` pool keeps `TEXT`. `cargo rullst upgrade`
+  reports `String` timestamps of SQLx models (`V13-TEXT-TIMESTAMPS`).
+- New `#[orm(db_default)]` field option: generated `INSERT`s leave the column
+  to its database default and `save()` never overwrites it (dogfooding #9's
+  `created_at` case).
+- **Breaking:** SaaS, LMS, `make:auth` and SQLx `make:billing` generate
+  `created_at`/`updated_at` as `DateTime<Utc>`; `utc_timestamp()`,
+  `User::change_password` and `password_reset::redeem` take that type, and
+  `make:migration:auto` declares `chrono` fields with the new date/time
+  helpers. Existing projects keep their code until edited.
+- Nexus lists and forms read date and date-time fields as text on PostgreSQL
+  and MySQL/MariaDB, so native date/time columns display instead of `-`.
 - **Breaking:** the `orm-polyglot` feature of `rullst` and the `polyglot`
   feature of `rullst-orm` are removed (dogfooding #4). They enabled every
   optional storage adapter at once, including DuckDB's bundled C++ build,

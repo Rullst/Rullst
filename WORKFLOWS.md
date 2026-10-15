@@ -670,6 +670,8 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-capital/src/invoice/pdf.rs`: `render_pdf`, `bytes.len() > MAX_PDF_BYTES` with `==` or `>=`, and the `\|\|` with `&&` | The embedded font is at most 8 MiB and a bounded invoice adds well under 1 MiB, so the document never reaches 16 MiB, and printpdf always writes the `%PDF-` header. |
 | `rullst-capital/src/providers/mod.rs`: `http_client` with a leaked default client | Adapters only build requests with it; `execute` always sends them through the bounded client from `http::client`. |
 | `rullst-capital/src/providers/stripe.rs`: `create_customer_portal`, `\|\|` with `&&` | `require_mock_operation` accepts the same empty and `mock_*` keys and the same fixture URL is returned; every other key fails there with the same error. |
+| `rullst-orm/src/value.rs`: the SQLx `Any` pool's `temporal::date_time`, `naive_date_time`, `date` and `time` with `String::new()` or `"xyzzy".into()` | They exist only without a strict driver feature, and the all-feature build selects the PostgreSQL pool; `the_any_pool_binds_dates_as_iso_text` checks their exact text in default-feature builds. |
+| `rullst-orm/src/schema/schema_builder.rs`: `prepare_postgres_enums`, delete `!` in the `!definitions.is_empty()` guard | That guard exists only without `strict-postgres`, which the all-feature build enables; `postgres_enum_preparation_validates_before_any_statement` covers it in default-feature builds. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
