@@ -395,6 +395,7 @@ mod tests {
             // A tab indents to the next multiple of four columns.
             format!("text\n\n\t{image}\n"),
             format!("text\n\n     \t{image}\n"),
+            format!("text\n\n{}\t{image}\n", " ".repeat(20)),
             // A fence at column 0 still opens next to a list item.
             format!("- item\n\n```\n{image}\n```\n"),
             // These lines are paragraphs, not list items.
