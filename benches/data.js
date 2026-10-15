@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792085942621,
+  "lastUpdate": 1792102592058,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26981,6 +26981,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2016,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16647b9064d5517f3dc755bceb0c471f8f2ff269",
+          "message": "Merge pull request #503 from Rullst/test/v13-messaging-mutation\n\ntest(messaging): kill surviving mutants across webhooks, storage, schedules and Redis Streams",
+          "timestamp": "2026-10-15T19:10:27-03:00",
+          "tree_id": "20576ae64e48d7176c69d8764a866aca4ca71ecc",
+          "url": "https://github.com/Rullst/Rullst/commit/16647b9064d5517f3dc755bceb0c471f8f2ff269"
+        },
+        "date": 1792102589550,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 755,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1027,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 370,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1970,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
