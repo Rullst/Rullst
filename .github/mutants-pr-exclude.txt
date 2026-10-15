@@ -1,13 +1,21 @@
 # Globs the pull-request mutation gate (mutants-pr.yml) does not mutate.
 #
-# Each file below is exercised only by a wrapper that owns a disposable
-# database or broker, so a plain `cargo test` reports its mutants as missed.
+# Each file below is either test-only code or exercised only by a wrapper that
+# owns a disposable database or broker, so a plain `cargo test` reports its
+# mutants as missed.
 # Redis contracts that read RULLST_TEST_REDIS_URL are not listed: the gate
 # provides that service. Keep this list to such files; everything else is
 # tested.
 
 # Generated-project integration suites are too slow to rerun per mutant.
 cargo-rullst/**
+
+# Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;`.
+# cargo-mutants does not see the `cfg(test)` on the parent's declaration and
+# would mutate test helpers. (`*_test.rs` is not listed: rullst-orm-macros'
+# `sandbox_test.rs` is production code.)
+**/*_tests.rs
+**/tests.rs
 
 # PostgreSQL: .github/check-passkey-postgres.py, check-privacy-postgres.py
 # and check-mail-postgres.py.
