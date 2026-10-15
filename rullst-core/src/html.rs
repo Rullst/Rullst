@@ -6,40 +6,28 @@ pub trait HtmlEscape {
     fn escape_html(&self) -> Cow<'_, str>;
 }
 
+#[path = "html_markup.rs"]
+mod markup;
+pub use markup::Markup;
+
 /// A wrapper to mark a string as safe raw HTML that should NOT be escaped.
 ///
-/// # Composing views
-///
-/// `html!` returns a plain `String`, and interpolating any `String` with
-/// `{value}` escapes it. A fragment built by another `html!` call is therefore
-/// shown as text (`&lt;span …`) unless you wrap it in `RawHtml`, which inserts
-/// it unescaped. Wrap only fragments produced by `html!` or other trusted
-/// code, never request data: `RawHtml` is the explicit trust boundary.
+/// `RawHtml` is the explicit escape hatch for trusted HTML produced outside
+/// `html!`, such as the output of a Markdown renderer or a sanitizer. A
+/// fragment built by another `html!` call is a [`Markup`] and is inserted as
+/// it is without `RawHtml`. Never wrap request data: `RawHtml` trusts its
+/// input.
 ///
 /// ```
 /// # extern crate rullst_core as rullst;
 /// use rullst::html;
 /// use rullst::html::RawHtml;
 ///
-/// fn badge(label: &str) -> String {
-///     html! { <span class="badge">{label}</span> }
-/// }
-///
-/// // Without `RawHtml`, the inner fragment is escaped and shown as text.
+/// // HTML from a trusted renderer, not built by `html!`.
+/// let rendered = String::from("<em>reviewed</em>");
 /// assert_eq!(
-///     html! { <p>{badge("new")}</p> },
-///     "<p>&lt;span class=&quot;badge&quot;&gt;new&lt;/span&gt;</p>"
-/// );
-///
-/// let rows: String = ["Ana", "<Bob>"]
-///     .iter()
-///     .map(|name| html! { <li>{name}{RawHtml(badge("new"))}</li> })
-///     .collect();
-/// let list = html! { <ul>{RawHtml(rows)}</ul> };
-/// assert_eq!(
-///     list,
-///     "<ul><li>Ana<span class=\"badge\">new</span></li>\
-///      <li>&lt;Bob&gt;<span class=\"badge\">new</span></li></ul>"
+///     html! { <p>{RawHtml(rendered)}</p> },
+///     "<p><em>reviewed</em></p>"
 /// );
 /// ```
 pub struct RawHtml(pub String);
@@ -80,6 +68,16 @@ impl<'a> HtmlEscape for Cow<'a, str> {
 impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
     fn escape_html(&self) -> Cow<'_, str> {
         (*self).escape_html()
+    }
+}
+
+/// `None` renders nothing; `Some(value)` renders `value` as usual.
+impl<T: HtmlEscape> HtmlEscape for Option<T> {
+    fn escape_html(&self) -> Cow<'_, str> {
+        match self {
+            Some(value) => value.escape_html(),
+            None => Cow::Borrowed(""),
+        }
     }
 }
 

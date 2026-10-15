@@ -10,6 +10,28 @@ pub mod html {
     pub fn escape_attr(value: &impl std::fmt::Display) -> String {
         format!("attr:{value}")
     }
+
+    /// Stand-in for the escaped-HTML type every expansion returns.
+    #[derive(Debug, PartialEq)]
+    pub struct Markup(pub String);
+
+    impl Markup {
+        pub fn from_trusted(html: impl Into<String>) -> Self {
+            Self(html.into())
+        }
+    }
+
+    impl std::fmt::Display for Markup {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str(&self.0)
+        }
+    }
+
+    impl PartialEq<&str> for Markup {
+        fn eq(&self, other: &&str) -> bool {
+            self.0 == *other
+        }
+    }
 }
 
 use rullst_macros::html;
@@ -69,7 +91,7 @@ fn iterator_binding_and_nested_macro_invocation_remain_in_caller_scope() {
     let rows = labels
         .iter()
         .enumerate()
-        .map(|(i, s)| html! { <li data-index={i}>{s.text}</li> })
+        .map(|(i, s)| html! { <li data-index={i}>{s.text}</li> }.0)
         .collect::<String>();
     assert_eq!(
         rows,

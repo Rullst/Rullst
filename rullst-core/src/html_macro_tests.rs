@@ -39,6 +39,22 @@ fn island_renders_without_hydration_props_instead_of_panicking() {
     );
 }
 
+#[crate::island]
+fn label_island(label: String) -> crate::html::Markup {
+    crate::html! { <b>{label}</b> }
+}
+
+#[test]
+fn islands_return_markup_that_pages_insert_as_html() {
+    let page = crate::html! { <main>{label_island("<x>".to_string())}{wide_counter(1)}</main> };
+    assert_eq!(
+        page,
+        "<main><div data-island=\"label_island\" data-props=\"{&quot;label&quot;:&quot;&lt;x&gt;&quot;}\">\
+         <b>&lt;x&gt;</b></div>\
+         <div data-island=\"wide_counter\" data-props=\"{&quot;start&quot;:1}\"><b>1</b></div></main>"
+    );
+}
+
 const SCRIPT_URLS: [&str; 8] = [
     "javascript:alert(1)",
     " JaVaScRiPt:alert(1)",
