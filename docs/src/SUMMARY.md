@@ -3,6 +3,7 @@
 - [Welcome to Rullst](index.md)
 - [Start Here: Your First Idea in Rust](start-here.md)
 - [📖 Getting Started & Blueprints Showcase](1-getting-started.md)
+- [Database Support](database-support.md)
 - [API Reference & REST Learning Path](api-reference.md)
 - [Why Rullst?](why-Rullst.md)
 - [💡 The Rullst Philosophy](philosophy.md)

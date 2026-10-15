@@ -2562,9 +2562,28 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.8. Polyglot Persistence Boundary
 
-* Optional persistence adapters are disabled by default and selected with
-  `mongodb`, `duckdb`, `turso`, `surrealdb`, `qdrant`, or the `polyglot` convenience
-  feature. The umbrella crate exposes matching `orm-*` features.
+* Optional persistence adapters are disabled by default and selected one at a
+  time with `mongodb`, `duckdb`, `turso`, `surrealdb` or `qdrant`; the umbrella
+  crate exposes matching `orm-*` features. 13.0 removed the `polyglot` and
+  `orm-polyglot` aggregates, which enabled every adapter at once, including
+  DuckDB's bundled C++ build.
+* Only the SQLx backends (SQLite, PostgreSQL, MySQL/MariaDB) integrate with the
+  `#[derive(Orm)]` query builder, `Schema`, `artisan!`/`db:*`,
+  `Server::with_db`, Nexus and Studio's database pages, and every
+  `cargo rullst new` starter accepts them. Turso/libSQL is the primary database
+  of the Blank starter only: `#[orm(backend = "turso")]` derives the separate
+  `TursoModel` API, migrations are SQL `TursoMigration`s, the starter answers
+  `db:migrate`/`db:rollback`/`db:status` itself and `TursoStore::transaction`
+  runs atomic statement batches; it integrates with none of the SQLx parts
+  above. MongoDB, DuckDB, SurrealDB, Qdrant and Redis data structures are side
+  stores with their own APIs and no transactions. `cargo rullst new` states
+  these limits next to the Turso and side-store choices in the wizard, in
+  `--help` and on the review/dry-run screen. Live CI contracts are
+  `matrix_postgres`, `matrix_mysql`, `matrix_mariadb`, `matrix_turso`,
+  `matrix_mongodb`, `matrix_surrealdb`, `matrix_qdrant` and
+  `matrix_redis_data`; SQLite and DuckDB run in-process. The
+  [Database Support](database-support.md) table is the user-facing statement
+  of this boundary and must change with it.
 * `DocumentRepository<T>` provides create, find, replace, delete, and
   deterministic bounded listing. Collection names, document IDs, offsets and
   limits are validated before reaching a driver.

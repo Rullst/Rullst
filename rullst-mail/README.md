@@ -438,11 +438,13 @@ let alert_msg = MailFactory::fake_security_alert("eve@example.com", "Unrecognize
 
 ### 10. Native AWS SES v2 with SigV4
 
-Enable the opt-in official SDK transport:
+Enable the opt-in official SDK transport (this README describes the v13
+prerelease, so the version is pinned exactly; the stable line is
+`rullst-mail@12`):
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12.1.0", features = ["aws-ses"] }
+rullst-mail = { version = "=13.0.0-alpha.1", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

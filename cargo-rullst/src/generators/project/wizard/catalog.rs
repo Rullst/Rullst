@@ -101,12 +101,13 @@ const SQLX_DATABASES: [DatabaseOption; 4] = [
     ),
 ];
 
+/// What a Turso primary does not integrate with, shown next to its choice
+/// and on the review screen (`docs/src/database-support.md` has the table).
+pub(crate) const TURSO_PRIMARY_LIMITS: &str =
+    "Blank/API only; no Nexus, Studio, Schema or SQLx ORM";
+
 const BLANK_ONLY_DATABASES: [DatabaseOption; 2] = [
-    provider(
-        "Turso",
-        "Turso / libSQL",
-        "edge SQL; Blank and API starters only",
-    ),
+    provider("Turso", "Turso / libSQL", TURSO_PRIMARY_LIMITS),
     DatabaseOption {
         database: Database::None,
         name: "No database",
@@ -153,7 +154,7 @@ pub(crate) const FEATURES: [(Feature, &str, &str); 9] = [
     (
         Feature::Redis,
         "Redis adapters",
-        "queues, cache and ORM; needs explicit configuration",
+        "queues, cache and a Redis-structures side store",
     ),
     (
         Feature::Docker,
@@ -168,27 +169,27 @@ pub(crate) const FEATURES: [(Feature, &str, &str); 9] = [
     (
         Feature::Storage(PolyglotIntegration::Turso),
         "Turso / libSQL add-on",
-        "edge SQL beside the primary database",
+        "side store: edge SQL; not the primary database",
     ),
     (
         Feature::Storage(PolyglotIntegration::MongoDb),
         "MongoDB",
-        "document CRUD",
+        "side store: document CRUD",
     ),
     (
         Feature::Storage(PolyglotIntegration::DuckDb),
         "DuckDB",
-        "in-process analytics; longer first build",
+        "side store: analytics; longer first build",
     ),
     (
         Feature::Storage(PolyglotIntegration::SurrealDb),
         "SurrealDB",
-        "documents and read-only graph queries",
+        "side store: documents, read-only graph queries",
     ),
     (
         Feature::Storage(PolyglotIntegration::Qdrant),
         "Qdrant",
-        "dense-vector search",
+        "side store: dense-vector search",
     ),
 ];
 
@@ -199,6 +200,10 @@ pub(crate) fn feature_name(feature: Feature) -> &'static str {
         .find(|(candidate, ..)| *candidate == feature)
         .map_or("", |(_, name, _)| name)
 }
+
+#[cfg(test)]
+#[path = "catalog_tests.rs"]
+mod tests;
 
 /// Optional storage adapters in the order generation lists them.
 pub(crate) fn storage_order() -> impl Iterator<Item = PolyglotIntegration> {
