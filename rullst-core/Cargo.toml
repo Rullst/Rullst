@@ -26,6 +26,7 @@ redis = ["queue-redis", "cache-redis"]
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 offline-sync = ["dep:aes-gcm", "dep:zeroize"]
+scheduler-tz = ["dep:jiff"]
 storage-s3 = ["dep:aws-credential-types", "dep:aws-sigv4", "dep:reqwest"]
 storage-multipart = ["storage-s3", "dep:roxmltree", "dep:zeroize"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:opentelemetry-http", "dep:opentelemetry-proto", "dep:prost", "dep:reqwest", "reqwest/blocking"]
@@ -72,6 +73,9 @@ base64 = { workspace = true }
 uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
 dashmap = { workspace = true }
 cron = "0.17.0"
+# IANA time zones for `Scheduler::task_in_tz`: the system zoneinfo database,
+# with the bundled copy as a fallback for images without one.
+jiff = { version = "0.2.35", optional = true, default-features = false, features = ["std", "tzdb-zoneinfo", "tzdb-bundle-always"] }
 chrono = { workspace = true, features = ["clock"] }
 validator = { workspace = true, features = ["derive"] }
 libloading = { workspace = true }

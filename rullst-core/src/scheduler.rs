@@ -8,6 +8,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+use time_zone::TaskSchedule;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
@@ -61,6 +62,16 @@ pub enum SchedulerError {
     /// task timeout. Added in v13.
     #[error("invalid scheduler configuration: {0}")]
     InvalidConfiguration(String),
+    /// A time-zone name that the IANA time-zone database does not contain,
+    /// returned by `Scheduler::task_in_tz` (feature `scheduler-tz`). Added in
+    /// v13.
+    #[error("unknown time zone '{zone}': {message}")]
+    InvalidTimeZone {
+        /// The rejected time-zone name.
+        zone: String,
+        /// Why the name was rejected.
+        message: String,
+    },
 }
 
 /// Action taken after a timeout, panic, or unexpected cancellation.
@@ -81,10 +92,13 @@ pub type ScheduledHandler =
 #[path = "scheduler_cron.rs"]
 mod cron_expression;
 
+#[path = "scheduler_zone.rs"]
+mod time_zone;
+
 /// A single scheduled task with a cron expression and async handler.
 pub struct ScheduledTask {
     label: String,
-    schedule: CronSchedule,
+    schedule: TaskSchedule,
     handler: ScheduledHandler,
     deferral: Option<ScheduleDeferral>,
 }
@@ -135,7 +149,9 @@ impl Scheduler {
     /// and day-of-week are restricted (neither starts with `*`), the task runs
     /// on a day matching either field; otherwise both must match. Minute,
     /// hour, day-of-month and month use the usual ranges, names, lists and
-    /// steps. There is no seconds or year field and no time-zone selection.
+    /// steps. There is no seconds or year field; with the `scheduler-tz`
+    /// feature, `Scheduler::task_in_tz` evaluates the fields in a named time
+    /// zone instead of UTC.
     ///
     /// # Errors
     /// Returns [`SchedulerError::InvalidCron`] when the expression does not
@@ -151,7 +167,7 @@ impl Scheduler {
 
         self.tasks.push(ScheduledTask {
             label: cron_expr.to_string(),
-            schedule,
+            schedule: schedule.into(),
             handler: boxed,
             deferral: None,
         });
@@ -393,7 +409,7 @@ fn deferred_start(
 /// last fired, so one cron instant never runs twice even when the wall clock
 /// lags the monotonic timer.
 fn next_occurrence(
-    schedule: &CronSchedule,
+    schedule: &TaskSchedule,
     now: chrono::DateTime<chrono::Utc>,
     last_fired: Option<chrono::DateTime<chrono::Utc>>,
 ) -> Option<chrono::DateTime<chrono::Utc>> {

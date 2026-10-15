@@ -86,9 +86,13 @@
   HTMX requests their error fragment with `200 OK` plus an
   `X-Rullst-Validation-Status` header carrying the REST status; other clients
   keep `400`, `413`, `415` or `422` JSON.
-- **POSIX Cron in UTC:** `Scheduler::task` evaluates five-field POSIX
-  expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and names, and a day
-  matching either restricted day field runs the task.
+- **POSIX Cron in UTC or a Named Time Zone:** `Scheduler::task` evaluates
+  five-field POSIX expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and
+  names, and a day matching either restricted day field runs the task. With
+  the optional `scheduler-tz` feature (v13), `Scheduler::task_in_tz(expr,
+  "America/Sao_Paulo", handler)` matches the fields against that IANA zone's
+  wall clock; a time skipped by a daylight-saving gap runs when the gap ends
+  and a repeated time runs once, at its first occurrence.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.
@@ -146,8 +150,8 @@ application needs:
 rullst-core = { version = "12.1.0", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
-Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`, or
-`telemetry` only when that integration is required. `orm` adds no SQLx driver:
+Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`,
+`scheduler-tz` or `telemetry` only when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
 SQLite). The primary `rullst` crate keeps `orm`, `drivers-all` and
 `queue-sqlite` in its default feature set for application compatibility.
