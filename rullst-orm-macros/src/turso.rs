@@ -265,6 +265,7 @@ fn validate(parsed: &ParsedModel, input: &DeriveInput) -> Result<(), syn::Error>
         || !parsed.after_delete.is_empty()
         || !parsed.after_fetch.is_empty()
         || !parsed.rag_context_fields.is_empty()
+        || !parsed.db_default_fields.is_empty()
         || parsed.embedding_for.is_some();
     if unsupported_model_behavior {
         return Err(syn::Error::new_spanned(
@@ -302,5 +303,20 @@ mod tests {
         let parsed =
             parser::parse(&soft_delete).expect("model should parse before backend validation");
         assert!(generate(&parsed, &soft_delete).is_err());
+
+        // The Turso codec writes every field, so it cannot honor db_default.
+        let db_default: DeriveInput = parse_quote! {
+            #[orm(table = "users", backend = "turso")]
+            struct User { id: i64, #[orm(db_default)] created_at: Option<String> }
+        };
+        let parsed =
+            parser::parse(&db_default).expect("model should parse before backend validation");
+        assert!(generate(&parsed, &db_default).is_err());
+        let plain: DeriveInput = parse_quote! {
+            #[orm(table = "users", backend = "turso")]
+            struct User { id: i64, created_at: Option<String> }
+        };
+        let parsed = parser::parse(&plain).expect("plain Turso model");
+        assert!(generate(&parsed, &plain).is_ok());
     }
 }

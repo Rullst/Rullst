@@ -53,7 +53,8 @@ column also needs `#[sqlx(skip)]` (the two may be combined) or
 and `to_json()` but leaves it out of the generated `INSERT` (so the column
 `DEFAULT` applies) and of the full-row `UPDATE` of `save()`; `update_partial()`
 gets no setter for it and `#[derive(Nexus)]` shows it read-only. It is rejected
-on `id`, the tenant column, relations, skipped and encrypted fields. `chrono`
+on `id`, the tenant column, relations, skipped and encrypted fields, and by
+Turso-primary models, whose codec writes every field. `chrono`
 date/time fields (`DateTime<Utc>`, `NaiveDateTime`, `NaiveDate`, `NaiveTime`)
 bind through SQLx's codecs, which exist only for the strict driver features.
 A `#[sqlx(json)]` field is decoded through SQLx `Json`

@@ -1987,7 +1987,8 @@ generated `INSERT` omits them, so the column `DEFAULT` applies, and the
 full-row `UPDATE` never writes them, so the stored value stays; the handle
 keeps its own value until the row is read again, `update_partial()` has no
 setter for them and `#[derive(Nexus)]` shows them read-only. The option is
-rejected on `id`, the tenant column, relations, skipped and encrypted fields. The generated `save()` rustdoc and the ORM guide name
+rejected on `id`, the tenant column, relations, skipped and encrypted fields,
+and by Turso-primary models. The generated `save()` rustdoc and the ORM guide name
 the two supported alternatives: `update_partial()` (§5.4.1), which merges
 selected fields into the freshly read and, on PostgreSQL and MySQL/MariaDB,
 locked row, and one atomic raw statement such as
