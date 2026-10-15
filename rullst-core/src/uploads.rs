@@ -322,32 +322,62 @@ fn extension_matches(file_name: &str, kind: UploadKind) -> bool {
     }
 }
 
-fn detect_kind(bytes: &[u8]) -> Result<UploadKind, UploadError> {
+/// Bytes [`detect_binary_kind`] needs to recognize every binary kind.
+const BINARY_SIGNATURE_BYTES: usize = 12;
+
+/// Recognizes a binary kind by its signature. `bytes` may be just the start
+/// of an object, at least its first [`BINARY_SIGNATURE_BYTES`] bytes (or all
+/// of a shorter object).
+fn detect_binary_kind(bytes: &[u8]) -> Option<UploadKind> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-        return Ok(UploadKind::Png);
+        return Some(UploadKind::Png);
     }
     if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
-        return Ok(UploadKind::Jpeg);
+        return Some(UploadKind::Jpeg);
     }
     if bytes.starts_with(b"%PDF-") {
-        return Ok(UploadKind::Pdf);
+        return Some(UploadKind::Pdf);
     }
-    if bytes.len() >= 12 && bytes.get(4..8) == Some(b"ftyp") {
-        return Ok(UploadKind::Mp4);
+    if bytes.len() >= BINARY_SIGNATURE_BYTES && bytes.get(4..8) == Some(b"ftyp") {
+        return Some(UploadKind::Mp4);
     }
     if bytes.starts_with(&[0x1a, 0x45, 0xdf, 0xa3]) {
-        return Ok(UploadKind::WebM);
+        return Some(UploadKind::WebM);
+    }
+    None
+}
+
+fn detect_kind(bytes: &[u8]) -> Result<UploadKind, UploadError> {
+    if let Some(kind) = detect_binary_kind(bytes) {
+        return Ok(kind);
     }
     let text = std::str::from_utf8(bytes).map_err(|_| UploadError::MediaTypeDenied)?;
-    if text.chars().any(|character| {
-        character == '\0' || (character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
-    }) {
+    if text.chars().any(is_denied_text_character) {
         return Err(UploadError::MediaTypeDenied);
     }
-    if starts_with_markup(text) || text.to_ascii_lowercase().contains("javascript:") {
+    if starts_with_markup(text) || text.to_ascii_lowercase().contains(ACTIVE_SCHEME) {
         return Err(UploadError::ActiveContentDenied);
     }
     Ok(UploadKind::PlainText)
+}
+
+/// Scheme whose presence anywhere (in any ASCII case) makes text active.
+const ACTIVE_SCHEME: &str = "javascript:";
+
+/// NUL and control characters other than line feed, carriage return and tab.
+fn is_denied_text_character(character: char) -> bool {
+    character == '\0' || (character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
+}
+
+/// Characters skipped before the first significant character of text.
+fn is_insignificant_lead(character: char) -> bool {
+    character.is_whitespace()
+        || matches!(character, '\u{FEFF}' | '\u{200B}'..='\u{200D}' | '\u{2060}')
+}
+
+/// Whether `character`, right after a leading `<`, makes the text markup.
+fn opens_markup(character: char) -> bool {
+    character.is_ascii_alphabetic() || matches!(character, '!' | '?' | '/')
 }
 
 /// Returns whether the first significant character opens markup.
@@ -360,16 +390,8 @@ fn detect_kind(bytes: &[u8]) -> Result<UploadKind, UploadError> {
 /// SVG/HTML behind it. UTF-16 text is rejected earlier as invalid UTF-8 or
 /// for its NUL bytes. The scan is linear in the skipped prefix.
 fn starts_with_markup(text: &str) -> bool {
-    let mut characters = text
-        .trim_start_matches(|character: char| {
-            character.is_whitespace()
-                || matches!(character, '\u{FEFF}' | '\u{200B}'..='\u{200D}' | '\u{2060}')
-        })
-        .chars();
-    characters.next() == Some('<')
-        && characters.next().is_some_and(|character| {
-            character.is_ascii_alphabetic() || matches!(character, '!' | '?' | '/')
-        })
+    let mut characters = text.trim_start_matches(is_insignificant_lead).chars();
+    characters.next() == Some('<') && characters.next().is_some_and(opens_markup)
 }
 
 fn valid_evidence(value: &str) -> bool {
@@ -387,97 +409,8 @@ fn encode_hex(bytes: &[u8]) -> String {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-
-    fn text_policy() -> UploadPolicy {
-        UploadPolicy::try_new(1_024, [UploadKind::PlainText]).expect("test upload policy")
-    }
-
-    #[test]
-    // TM-ACADEMY-09
-    fn upload_policy_rejects_spoofing_active_content_and_unsafe_names() {
-        let policy = text_policy();
-        assert!(matches!(
-            policy.admit(
-                "school-1",
-                "note.txt",
-                "text/plain",
-                b"<svg onload=alert(1)>"
-            ),
-            Err(UploadError::ActiveContentDenied)
-        ));
-        assert!(matches!(
-            policy.admit("school-1", "../note.txt", "text/plain", b"safe"),
-            Err(UploadError::InvalidFileName)
-        ));
-        assert!(matches!(
-            policy.admit("school-1", "note.pdf", "application/pdf", b"plain text"),
-            Err(UploadError::MediaTypeDenied)
-        ));
-        assert!(matches!(
-            policy.admit("../school", "note.txt", "text/plain", b"safe"),
-            Err(UploadError::InvalidTenant)
-        ));
-        for dot_only in [".", "..", "..."] {
-            assert!(matches!(
-                policy.admit(dot_only, "note.txt", "text/plain", b"safe"),
-                Err(UploadError::InvalidTenant)
-            ));
-        }
-    }
-
-    #[test]
-    fn quarantine_requires_a_clean_digest_bound_scan() {
-        let policy = text_policy();
-        let bytes = b"bounded learner submission";
-        let admitted = policy
-            .admit("school-1", "answer.txt", "text/plain", bytes)
-            .expect("admitted text");
-        assert!(
-            admitted
-                .quarantine_key()
-                .starts_with("quarantine/school-1/")
-        );
-        let verdict = OfflineMockScanner
-            .scan(&admitted, bytes)
-            .expect("offline clean scan");
-        let released = admitted.release(verdict).expect("clean release");
-        assert!(released.object_key.starts_with("accepted/school-1/"));
-        assert_eq!(released.byte_len, bytes.len());
-
-        let infected_bytes = b"EICAR deterministic fixture";
-        let infected = policy
-            .admit("school-1", "fixture.txt", "text/plain", infected_bytes)
-            .expect("admitted infected fixture");
-        let verdict = OfflineMockScanner
-            .scan(&infected, infected_bytes)
-            .expect("offline infected scan");
-        assert!(matches!(
-            infected.release(verdict),
-            Err(UploadError::MalwareDetected)
-        ));
-    }
-
-    #[test]
-    fn unavailable_or_tampered_scan_fails_closed() {
-        let admitted = text_policy()
-            .admit("school-1", "answer.txt", "text/plain", b"original")
-            .expect("admitted text");
-        assert!(matches!(
-            OfflineMockScanner.scan(&admitted, b"changed"),
-            Err(UploadError::InvalidSize | UploadError::ScanUnavailable)
-        ));
-        assert!(matches!(
-            admitted.release(ScanVerdict::Unavailable {
-                engine: "scanner".to_string(),
-                reason: "offline".to_string(),
-            }),
-            Err(UploadError::ScanUnavailable)
-        ));
-    }
-}
+#[path = "uploads_tests.rs"]
+mod tests;
 
 #[cfg(test)]
 #[path = "uploads_contract_tests.rs"]
