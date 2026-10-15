@@ -9,8 +9,11 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use crate::nexus::crud::dialect::{RecordKey, placeholder, select_column, tenant_predicate};
-use crate::nexus::crud::input::{datetime_local_value, is_local_date};
+use crate::nexus::crud::dialect::{placeholder, select_column, tenant_predicate};
+use crate::nexus::crud::input::{
+    datetime_local_value, is_local_date, time_input_value, utc_input_value,
+};
+use crate::nexus::crud::key::{RecordKey, key_predicate};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use rullst_core::html::escape_str;
@@ -83,22 +86,6 @@ pub async fn render_record_form(
 /// Loads the columns the edit form shows: registered fields that are neither
 /// hidden nor `Password`, so undeclared columns and stored secrets are never
 /// read.
-/// The columns the edit form reads: every visible field except passwords,
-/// whose stored value never reaches the browser, or the record key alone.
-fn record_select_list(entry: &RegistryEntry, driver: &str) -> String {
-    let columns = entry
-        .fields
-        .iter()
-        .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
-        .map(|field| select_column(field, driver))
-        .collect::<Vec<_>>();
-    if columns.is_empty() {
-        sanitize_identifier(entry.pk)
-    } else {
-        columns.join(", ")
-    }
-}
-
 async fn load_record(
     entry: &RegistryEntry,
     id: &str,
@@ -107,23 +94,7 @@ async fn load_record(
     let key = RecordKey::parse(entry, id).ok_or(RecordFormError::NotFound)?;
     let pool = rullst_core::db::safe_pool().ok_or(RecordFormError::Unavailable)?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let select_list = record_select_list(entry, driver);
-    let tenant_predicate = match (entry.tenant_column, tenant_id) {
-        (Some(column), Some(_)) => {
-            format!(
-                " AND {}",
-                tenant_predicate(column, &placeholder(2, driver), driver)
-            )
-        }
-        (Some(_), None) => " AND 1 = 0".to_string(),
-        (None, _) => String::new(),
-    };
-    let sql = format!(
-        "SELECT {select_list} FROM {} WHERE {} = {}{tenant_predicate} LIMIT 1",
-        sanitize_identifier(entry.table),
-        sanitize_identifier(entry.pk),
-        placeholder(1, driver),
-    );
+    let sql = record_sql(entry, tenant_id.is_some(), driver);
     let mut query = key.bind(rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(
         sql.as_str(),
     )));
@@ -140,6 +111,42 @@ async fn load_record(
             Err(RecordFormError::Unavailable)
         }
     }
+}
+
+/// The query that loads one record by its key; the key values are bound
+/// first, then the tenant. A tenant-scoped model without a tenant matches
+/// nothing.
+pub(super) fn record_sql(entry: &RegistryEntry, tenant_scoped: bool, driver: &str) -> String {
+    let columns = entry
+        .fields
+        .iter()
+        .filter(|field| !field.hidden && !matches!(field.kind, FieldKind::Password))
+        .map(|field| select_column(field, driver))
+        .collect::<Vec<_>>();
+    let select_list = if columns.is_empty() {
+        entry
+            .key_columns()
+            .iter()
+            .map(|column| sanitize_identifier(column))
+            .collect::<Vec<_>>()
+            .join(", ")
+    } else {
+        columns.join(", ")
+    };
+    let key_width = entry.key_columns().len();
+    let tenant_predicate = match (entry.tenant_column, tenant_scoped) {
+        (Some(column), true) => format!(
+            " AND {}",
+            tenant_predicate(column, &placeholder(key_width + 1, driver), driver)
+        ),
+        (Some(_), false) => " AND 1 = 0".to_string(),
+        (None, _) => String::new(),
+    };
+    format!(
+        "SELECT {select_list} FROM {} WHERE {}{tenant_predicate} LIMIT 1",
+        sanitize_identifier(entry.table),
+        key_predicate(entry, 1, driver),
+    )
 }
 
 /// Renders the create form (`record_id` is `None`) or the edit form for an
@@ -171,7 +178,6 @@ pub(super) fn form_html(
     };
 
     let t = entry.table;
-    let pk = entry.pk;
 
     use rullst_orm::_sqlx::{Row, ValueRef};
 
@@ -212,11 +218,17 @@ pub(super) fn form_html(
                     },
                 };
 
-                let input_widget = render_field_widget(f, &stored, is_edit, pk);
+                let input_widget = render_field_widget(f, &stored, is_edit, entry.key_columns());
+                // The picker shows the UTC wall time; say so.
+                let zone = if matches!(f.kind, FieldKind::DateTimeUtc) {
+                    " (UTC)"
+                } else {
+                    ""
+                };
                 let _ = write!(
                     acc,
                     "<div class=\"nexus-form-group\">\
-                 <label class=\"nexus-label\">{}</label>\
+                 <label class=\"nexus-label\">{}{zone}</label>\
                  {input_widget}\
                  </div>",
                     escape_str(f.label)
@@ -262,10 +274,10 @@ pub(super) fn render_field_widget(
     f: &FieldMeta,
     stored: &StoredValue,
     is_edit: bool,
-    pk: &str,
+    key_columns: &[&str],
 ) -> String {
     let safe_fname = escape_str(f.name);
-    let is_readonly = f.readonly || (is_edit && f.name == pk);
+    let is_readonly = f.readonly || (is_edit && key_columns.contains(&f.name));
     let readonly_attr = if is_readonly { " readonly" } else { "" };
     // `readonly` does not apply to checkboxes or selects: they would stay
     // interactive while their unnamed value is never submitted.
@@ -380,7 +392,8 @@ fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
             FieldKind::Url => shown("url"),
             FieldKind::Number | FieldKind::Integer { .. } => shown("number"),
             FieldKind::Date => shown("date"),
-            FieldKind::DateTime => shown("datetime-local"),
+            FieldKind::DateTime | FieldKind::DateTimeUtc => shown("datetime-local"),
+            FieldKind::Time => shown("time"),
             _ => shown("text"),
         };
     }
@@ -393,6 +406,14 @@ fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
         FieldKind::Date if is_local_date(text) => shown("date"),
         FieldKind::DateTime => match datetime_local_value(text) {
             Some(local) => ("datetime-local", local),
+            None => shown("text"),
+        },
+        FieldKind::DateTimeUtc => match utc_input_value(text) {
+            Some(utc) => ("datetime-local", utc),
+            None => shown("text"),
+        },
+        FieldKind::Time => match time_input_value(text) {
+            Some(time) => ("time", time),
             None => shown("text"),
         },
         _ => shown("text"),

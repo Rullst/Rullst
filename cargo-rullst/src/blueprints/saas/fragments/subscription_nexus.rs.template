@@ -14,8 +14,8 @@ impl NexusModel for Subscription {
             FieldMeta { name: "plan_id", label: "Plan ID", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "status", label: "Status", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "ends_at", label: "Ends At", kind: FieldKind::Number, hidden: false, readonly: false },
-            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTime, hidden: false, readonly: true },
-            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTime, hidden: false, readonly: true },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
         ]
     }
 }

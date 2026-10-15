@@ -45,6 +45,7 @@ fn nexus_shell_renders_and_checks_mobile_browser_when_requested() {
             label: "Projects",
             icon: "📁",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![],
         }]),

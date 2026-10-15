@@ -5,6 +5,7 @@ mod dialect;
 mod form;
 pub mod handlers;
 mod input;
+mod key;
 mod mutation;
 pub mod proofs;
 pub mod query;

@@ -835,7 +835,7 @@ It runs only at the root of a Rullst project (a `Cargo.toml` whose
 | `mail` | `mail` | `MAIL_FROM`, `# MAIL_DRIVER`, `# RESEND_API_KEY` | `make:mail Welcome`, `dev` |
 | `auth` | `auth` | `APP_KEY` placeholder | `auth`, `make:mfa` |
 | `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `ai connect` |
-| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds) | `dev`, then `/nexus` |
+| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds unless Nexus uses the application's sign-in, `NexusAuthPolicy::application`) | `dev`, then `/nexus` |
 | `studio` | `studio` | none | `dev`, then `http://127.0.0.1:5555` |
 
 Running it again changes nothing and reports that the capability is already

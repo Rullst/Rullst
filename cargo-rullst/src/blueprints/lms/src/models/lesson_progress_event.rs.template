@@ -33,8 +33,8 @@ impl NexusModel for LessonProgressEvent {
             FieldMeta { name: "current_percent", label: "Current %", kind: FieldKind::Number, hidden: false, readonly: true },
             FieldMeta { name: "event_kind", label: "Kind", kind: FieldKind::Text, hidden: false, readonly: true },
             FieldMeta { name: "reason", label: "Reason", kind: FieldKind::Textarea, hidden: false, readonly: true },
-            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTime, hidden: false, readonly: true },
-            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTime, hidden: false, readonly: true },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
         ]
     }
 }

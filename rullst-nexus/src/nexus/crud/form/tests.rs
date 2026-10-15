@@ -1,7 +1,12 @@
 use super::*;
 
 fn widget(kind: FieldKind, stored: StoredValue) -> String {
-    render_field_widget(&FieldMeta::new("field", "Field", kind), &stored, true, "id")
+    render_field_widget(
+        &FieldMeta::new("field", "Field", kind),
+        &stored,
+        true,
+        &["id"],
+    )
 }
 
 fn value(text: &str) -> StoredValue {
@@ -12,7 +17,7 @@ fn value(text: &str) -> StoredValue {
 fn password_widgets_are_never_prefilled() {
     let field = FieldMeta::new("api_key", "API key", FieldKind::Password);
     for is_edit in [false, true] {
-        let html = render_field_widget(&field, &value("stored-sample-value"), is_edit, "id");
+        let html = render_field_widget(&field, &value("stored-sample-value"), is_edit, &["id"]);
         assert!(html.contains("type=\"password\""));
         assert!(html.contains("value=\"\""));
         assert!(html.contains("autocomplete=\"new-password\""));
@@ -95,7 +100,7 @@ fn enum_keeps_null_and_unregistered_values_without_submitting_a_default() {
         &FieldMeta::new("field", "Field", kind),
         &StoredValue::Absent,
         false,
-        "id",
+        &["id"],
     );
     assert!(!html.contains("selected"));
     assert!(
@@ -110,6 +115,7 @@ async fn forms_declare_their_mode_for_change_only_submission() {
         label: "Articles",
         icon: "A",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![FieldMeta::new("title", "Title", FieldKind::Text)],
     };
@@ -132,6 +138,7 @@ async fn unloadable_records_render_an_error_instead_of_an_empty_edit_form() {
         label: "Articles",
         icon: "A",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -160,18 +167,18 @@ fn readonly_checkboxes_and_selects_are_disabled_rather_than_interactive() {
     };
     for (kind, stored) in [(FieldKind::Boolean, "1"), (enum_kind, "draft")] {
         let field = FieldMeta::new("locked", "Locked", kind.clone()).readonly();
-        let html = render_field_widget(&field, &value(stored), true, "id");
+        let html = render_field_widget(&field, &value(stored), true, &["id"]);
         assert!(!html.contains("name=\"locked\""), "{kind:?}");
         assert!(html.contains(" disabled"), "{kind:?}");
         assert!(!html.contains(" readonly"), "{kind:?}");
 
         let editable = FieldMeta::new("open", "Open", kind.clone());
-        let html = render_field_widget(&editable, &value(stored), true, "id");
+        let html = render_field_widget(&editable, &value(stored), true, &["id"]);
         assert!(html.contains("name=\"open\""), "{kind:?}");
         assert!(!html.contains("disabled"), "{kind:?}");
     }
     let text = FieldMeta::new("title", "Title", FieldKind::Text).readonly();
-    let html = render_field_widget(&text, &value("kept"), true, "id");
+    let html = render_field_widget(&text, &value("kept"), true, &["id"]);
     assert!(html.contains(" readonly") && !html.contains("disabled"));
 }
 
@@ -223,6 +230,159 @@ fn integer_widgets_step_by_one_within_their_bounds() {
     );
 }
 
+fn progress(tenant_column: Option<&'static str>) -> RegistryEntry {
+    let mut fields = vec![
+        FieldMeta::new("user_id", "User", FieldKind::Number),
+        FieldMeta::new("lesson_id", "Lesson", FieldKind::Text),
+        FieldMeta::new("percent", "Percent", FieldKind::Number),
+        FieldMeta::new("secret", "Secret", FieldKind::Password),
+    ];
+    if let Some(column) = tenant_column {
+        fields.push(
+            FieldMeta::new(column, "Tenant", FieldKind::Text)
+                .readonly()
+                .hidden(),
+        );
+    }
+    RegistryEntry {
+        table: "lesson_progress",
+        label: "Progress",
+        icon: "P",
+        pk: "user_id",
+        pk_columns: vec!["user_id", "lesson_id"],
+        tenant_column,
+        fields,
+    }
+}
+
+#[test]
+fn records_are_loaded_by_every_key_column_then_the_tenant() {
+    assert_eq!(
+        record_sql(&progress(None), false, "sqlite"),
+        "SELECT user_id, lesson_id, percent FROM lesson_progress \
+         WHERE user_id = ? AND lesson_id = ? LIMIT 1"
+    );
+    assert_eq!(
+        record_sql(&progress(Some("tenant_id")), true, "postgres"),
+        "SELECT user_id, lesson_id, percent FROM lesson_progress \
+         WHERE user_id = $1 AND lesson_id = $2 AND tenant_id = $3 LIMIT 1"
+    );
+    assert_eq!(
+        record_sql(&progress(Some("tenant_id")), false, "postgres"),
+        "SELECT user_id, lesson_id, percent FROM lesson_progress \
+         WHERE user_id = $1 AND lesson_id = $2 AND 1 = 0 LIMIT 1"
+    );
+
+    // Without a visible field only the key is read, to prove the record exists.
+    let mut keys_only = progress(None);
+    for field in &mut keys_only.fields {
+        field.hidden = true;
+    }
+    assert_eq!(
+        record_sql(&keys_only, false, "mysql"),
+        "SELECT user_id, lesson_id FROM lesson_progress \
+         WHERE user_id = ? AND lesson_id = ? LIMIT 1"
+    );
+    let single = RegistryEntry {
+        pk: "id",
+        pk_columns: Vec::new(),
+        fields: vec![FieldMeta::new("id", "ID", FieldKind::Number).hidden()],
+        ..progress(Some("tenant_id"))
+    };
+    assert_eq!(
+        record_sql(&single, true, "postgres"),
+        "SELECT id FROM lesson_progress WHERE id = $1 AND tenant_id = $2 LIMIT 1"
+    );
+}
+
+#[test]
+fn every_key_column_is_read_only_on_edit_and_the_address_is_encoded() {
+    let entry = progress(None);
+    let edit = form_html(&entry, Some("3,a%2Cb"), None);
+    assert!(
+        edit.contains("data-nexus-action=\"/nexus/table/lesson_progress/record/3%2Ca%252Cb\""),
+        "{edit}"
+    );
+    for (column, editable) in [("user_id", false), ("lesson_id", false), ("percent", true)] {
+        assert_eq!(
+            edit.contains(&format!("name=\"{column}\"")),
+            editable,
+            "{column}"
+        );
+    }
+    let create = form_html(&entry, None, None);
+    for column in ["user_id", "lesson_id", "percent"] {
+        assert!(create.contains(&format!("name=\"{column}\"")), "{column}");
+    }
+    let field = FieldMeta::new("lesson_id", "Lesson", FieldKind::Text);
+    let key = render_field_widget(&field, &value("x"), true, &["user_id", "lesson_id"]);
+    assert!(key.contains(" readonly") && !key.contains("name="), "{key}");
+    let other = render_field_widget(&field, &value("x"), true, &["user_id"]);
+    assert!(other.contains("name=\"lesson_id\"") && !other.contains(" readonly"));
+}
+
+#[test]
+fn time_and_utc_fields_use_pickers_only_for_values_they_hold_exactly() {
+    let html = widget(FieldKind::Time, StoredValue::Absent);
+    assert!(
+        html.contains("type=\"time\" name=\"field\" value=\"\""),
+        "{html}"
+    );
+    let html = widget(FieldKind::Time, value("09:30:00.500000"));
+    assert!(
+        html.contains("type=\"time\" name=\"field\" value=\"09:30:00.500\""),
+        "{html}"
+    );
+    let html = widget(FieldKind::Time, value("09:30:00.123456"));
+    assert!(
+        html.contains("type=\"text\" name=\"field\" value=\"09:30:00.123456\""),
+        "{html}"
+    );
+
+    let html = widget(FieldKind::DateTimeUtc, StoredValue::Absent);
+    assert!(
+        html.contains("type=\"datetime-local\" name=\"field\" value=\"\""),
+        "{html}"
+    );
+    // PostgreSQL's text of a TIMESTAMPTZ, shown as its UTC wall time.
+    let html = widget(FieldKind::DateTimeUtc, value("2026-10-15 11:30:00+02"));
+    assert!(
+        html.contains("type=\"datetime-local\" name=\"field\" value=\"2026-10-15T09:30:00\""),
+        "{html}"
+    );
+    let stored = "2026-10-15 09:30:00.123456+00";
+    let html = widget(FieldKind::DateTimeUtc, value(stored));
+    assert!(
+        html.contains(&format!("type=\"text\" name=\"field\" value=\"{stored}\"")),
+        "{html}"
+    );
+}
+
+#[test]
+fn utc_fields_are_labelled_as_utc() {
+    let entry = RegistryEntry {
+        table: "payments",
+        label: "Payments",
+        icon: "P",
+        pk: "id",
+        pk_columns: Vec::new(),
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("paid_at", "Paid at", FieldKind::DateTimeUtc),
+            FieldMeta::new("due_on", "Due on", FieldKind::Date),
+        ],
+    };
+    let html = form_html(&entry, None, None);
+    assert!(
+        html.contains("<label class=\"nexus-label\">Paid at (UTC)</label>"),
+        "{html}"
+    );
+    assert!(
+        html.contains("<label class=\"nexus-label\">Due on</label>"),
+        "{html}"
+    );
+}
+
 #[test]
 fn the_edit_form_reads_visible_non_password_fields() {
     let mut entry = RegistryEntry {
@@ -230,6 +390,7 @@ fn the_edit_form_reads_visible_non_password_fields() {
         label: "Members",
         icon: "M",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number),
@@ -240,14 +401,20 @@ fn the_edit_form_reads_visible_non_password_fields() {
         ],
     };
     assert_eq!(
-        record_select_list(&entry, "postgres"),
-        "id, name, CAST(created_at AS TEXT) AS created_at"
+        record_sql(&entry, false, "postgres"),
+        "SELECT id, name, CAST(created_at AS TEXT) AS created_at FROM members WHERE id = $1 LIMIT 1"
     );
-    assert_eq!(record_select_list(&entry, "sqlite"), "id, name, created_at");
+    assert_eq!(
+        record_sql(&entry, false, "sqlite"),
+        "SELECT id, name, created_at FROM members WHERE id = ? LIMIT 1"
+    );
     // With nothing readable, the form still reads the record key.
     entry.fields = vec![
         FieldMeta::new("api_key", "API key", FieldKind::Password),
         FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
     ];
-    assert_eq!(record_select_list(&entry, "postgres"), "id");
+    assert_eq!(
+        record_sql(&entry, false, "postgres"),
+        "SELECT id FROM members WHERE id = $1 LIMIT 1"
+    );
 }

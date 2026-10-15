@@ -24,6 +24,12 @@ pub struct User {
     // MySQL/MariaDB and RFC 3339 text on SQLite.
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // Lets this account into Nexus (`/nexus`) under the application's
+    // sign-in. ORM writes skip this column, so neither a form nor a full-row
+    // save grants it: set it to true with your database client for the first
+    // administrator, who can then grant others in Nexus.
+    #[orm(skip)]
+    pub is_admin: bool,
     // Login cookies carry the epoch they were issued with. ORM writes skip
     // this column, so a full-row save never undoes `revoke_sessions`.
     #[orm(skip)]
@@ -172,6 +178,8 @@ impl Migration for MigrationImpl {{
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();
             table.timestamps();
+            // Grants Nexus under the application's sign-in; see the User model.
+            table.boolean("is_admin").not_null().default(ColumnDefault::Integer(0));
             // Bumped to revoke every login cookie of the account.
             table.big_integer("session_epoch").not_null().default(ColumnDefault::Integer(0));
         }}).await?;

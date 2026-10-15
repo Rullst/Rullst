@@ -8,7 +8,12 @@ pub mod pages;
 pub mod services;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    // Loopback access in debug builds; in release builds the signed-in users
+    // whose `is_admin` is true (src/middlewares/nexus_access.rs), with no
+    // NEXUS_ADMIN_* credentials.
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_application(
+        middlewares::nexus_access::NexusAdmins,
+    );
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("LMS Admin")

@@ -73,12 +73,35 @@ value that is not a registered option (kept selected but disabled), a date-time
 with an offset (shown as text), a text, e-mail or URL value with line breaks
 or other control characters (shown read-only; declare `kind = "textarea"` to
 edit multi-line text) or a value that cannot be decoded. Emptying a
-number, relation, date, date-time, enum or JSON field stores NULL; emptying a
+number, relation, date, time, date-time, enum or JSON field stores NULL; emptying a
 text, textarea, e-mail or URL field stores an empty string. A database
-`NOT NULL` constraint therefore rejects clearing a required typed column. A
-saved local date-time is stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text
-`CURRENT_TIMESTAMP` and SQLx write, so text comparisons and ordering agree with
-application rows; a value with an offset is stored as entered.
+`NOT NULL` constraint therefore rejects clearing a required typed column.
+
+### Dates and times
+
+Each date and time field is parsed by its kind and written as a typed value, so
+native `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` columns accept it as well
+as text columns. A malformed value is a `422` validation error that names the
+field.
+
+| Kind (derived from) | Input | Accepted value | Stored in a text column |
+| :--- | :--- | :--- | :--- |
+| `date` (`NaiveDate`) | `date` | `YYYY-MM-DD`, year 0001 to 9999 | `YYYY-MM-DD` |
+| `time` (`NaiveTime`) | `time` | `HH:MM`, `HH:MM:SS` or with a fraction of up to 9 digits | `HH:MM:SS[.fraction]` |
+| `datetime` (`NaiveDateTime`) | `datetime-local` | a local `YYYY-MM-DDTHH:MM[:SS[.fraction]]` (or a space for `T`) | `YYYY-MM-DD HH:MM:SS[.fraction]` |
+| `datetime_utc` (`DateTime<Utc>`) | `datetime-local`, labelled `(UTC)` | as `datetime`, read as UTC; `Z`, `±HH:MM` or `±HH` is converted to UTC | RFC 3339, `2026-10-15T09:30:00+00:00` |
+
+A `datetime-local` input has no time zone, so a `datetime_utc` field shows and
+accepts the UTC wall time: an administrator in UTC−3 who wants 09:30 local time
+enters 12:30. The stored instant is shown converted to UTC whatever offset the
+database reports (PostgreSQL's `+00`, an RFC 3339 offset, or a MySQL/MariaDB
+`DATETIME` holding UTC). A value either picker cannot hold exactly (finer than
+milliseconds, or outside the years 0001 to 9999) is shown in a text input.
+
+The `datetime` form of a text column is the text `CURRENT_TIMESTAMP` and SQLx
+write, so text comparisons and ordering agree with application rows. A
+`datetime` value with an offset can only come from a text column and is stored
+as entered.
 
 In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
 or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
@@ -88,20 +111,19 @@ Opening the edit form of a missing, other-tenant or misspelled key returns
 `404` (and a failed query `500`) instead of an empty editable form. The form
 reads only the registered visible, non-password columns.
 
-Form values are bound as text. PostgreSQL has no assignment cast from text,
+Other form values are bound as text. PostgreSQL has no assignment cast from text,
 so there Nexus writes `number` and `integer` values through `NUMERIC`, relation values that
-are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
-`'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
-and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
-are written as text, so keep editable dates, date-times, JSON and enum values in
-text columns; native `JSONB`, `UUID` or enum columns are not supported by Nexus.
-Lists and edit forms read date and date-time fields as text (`CAST(... AS
-TEXT)` on PostgreSQL, `CAST(... AS CHAR)` on MySQL/MariaDB), so native `DATE`,
-`TIMESTAMP` and `TIMESTAMPTZ` columns, such as the `timestamps()` columns of a
-strict driver pool, display. A write of such a field is still text, which
-MySQL/MariaDB and SQLite convert but PostgreSQL rejects, so keep native
-date/time fields read-only there: generated `created_at`/`updated_at`
-metadata and `#[orm(db_default)]` fields already are.
+are canonical integers (or empty) through `BIGINT`, Booleans as untyped
+`'0'`/`'1'` literals, and dates and times (and their NULL) through `DATE`,
+`TIME`, `TIMESTAMP` or `TIMESTAMPTZ` casts: integer, numeric, floating-point,
+`BOOLEAN` and date/time columns, the `INTEGER` columns of `Blueprint::boolean`
+and text columns all accept them. MySQL/MariaDB receive a `datetime_utc` value
+as its UTC wall time, which their `DATETIME` columns hold. Other kinds are
+written as text, so keep editable JSON and enum values in text columns; native
+`JSONB`, `UUID` or enum columns are not supported by Nexus. Lists and edit
+forms read date and time fields as text (`CAST(... AS TEXT)` on PostgreSQL,
+`CAST(... AS CHAR)` on MySQL/MariaDB), so native columns, such as the
+`timestamps()` columns of a strict driver pool, display.
 
 The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 `/edit` for the form), so a key named `new`, `search` or `batch` never collides
@@ -111,6 +133,37 @@ other keys.
 Record keys follow the registered primary-key kind: a `number`, `integer` (or
 relation) key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
+
+### Composite primary keys
+
+A table keyed by several columns, such as `lesson_progress (user_id,
+lesson_id)`, lists them all, in key order:
+
+```rust,ignore
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[orm(table = "lesson_progress")]
+#[nexus(primary_key = "user_id, lesson_id")]
+pub struct LessonProgress {
+    pub user_id: i32,
+    pub lesson_id: i32,
+    pub percent: i32,
+}
+```
+
+Annotating each key field with `#[nexus(primary_key)]` declares the same key
+(in field order); a manual `NexusModel` returns the columns from
+`nexus_pk_columns()`. A key has at most 8 columns, each a registered field
+other than the tenant column. Every key column is entered on create (even an
+integer one), read-only on edit, and part of every read, update, delete and
+batch predicate.
+
+A record is addressed by its key values in key order, each percent-encoded
+(every byte except ASCII letters, digits and `-_.~`) and joined by `,`: user 7
+and lesson `intro` are `7,intro`, and a text value `a,b` becomes `a%2Cb`. The
+URL encodes that address once more (`/nexus/table/lesson_progress/record/7%2Cintro`),
+and the audit records it as the record key. Only the canonical spelling with
+one value per key column names a record; integer columns still need canonical
+integers.
 
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
 visible text, textarea, e-mail and URL columns. It is case-insensitive on
@@ -143,16 +196,18 @@ On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
   `#[nexus(kind = ...)]` deliberately shows them.
 
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
-`#[nexus(primary_key = "uuid")]` on the struct for another key. An annotated
-field is the key even when the struct also has an `id` field, which then stays
-an ordinary column; annotating two fields, or a field other than the
-struct-level key, is a compile error. An integer key is treated as
-database-generated, so it is hidden and read-only; any other key (a UUID or
-code) is listed and entered in the create form, and stays read-only on edit.
+`#[nexus(primary_key = "uuid")]` on the struct for another key, and several
+annotated fields or a comma-separated list for a
+[composite key](#composite-primary-keys). An annotated field is the key even
+when the struct also has an `id` field, which then stays an ordinary column;
+annotations that differ from the struct-level list are a compile error. A
+single integer key is treated as database-generated, so it is hidden and
+read-only; any other key (a UUID or code) is listed and entered in the create
+form, and stays read-only on edit.
 Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
-`url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
-widget kinds. A `hidden` field is left out of the list, search, sorting and the
+`url`, `number`, `boolean`, `date`, `datetime`, `time`, `datetime_utc`,
+`password`, `json`, and `enum` widget kinds. A `hidden` field is left out of the list, search, sorting and the
 create/edit forms, and a submitted value for it is rejected; `readonly` keeps a
 field visible but rejects submitted values. Implementing `NexusModel` manually
 remains available when an application needs metadata that cannot be derived.
@@ -190,13 +245,77 @@ application, `axum::Router::nest("/nexus", nexus)` is the equivalent.
 `.layer(Extension(state))` (`rullst::web::axum::Extension`) and read it in
 handlers with the `Extension<T>` extractor.
 
+#### Using the application's sign-in
+
+An application with its own login can let it decide instead, so an
+administrator who is already signed in is not asked to sign in again.
+Implement `NexusAuthorizer`: Nexus calls it on every request, with the
+request's method, URI, headers and extensions, before reading or rendering any
+data.
+
+```rust,ignore
+use rullst::nexus::{NexusAccess, NexusAuthPolicy, NexusAuthorizer, NexusAuthorizerError};
+use rullst::web::axum::http::request::Parts;
+
+struct Admins;
+
+impl NexusAuthorizer for Admins {
+    async fn authorize(&self, request: &Parts) -> Result<NexusAccess, NexusAuthorizerError> {
+        // Look the session up as your auth middleware does.
+        let Some(user) = current_user(&request.headers).await? else {
+            return Ok(NexusAccess::SignIn);
+        };
+        Ok(if user.is_admin {
+            NexusAccess::allow(format!("user:{}", user.id))
+        } else {
+            NexusAccess::Deny
+        })
+    }
+}
+
+let nexus = rullst::nexus::Nexus::new()
+    .with_auth_policy(NexusAuthPolicy::application(Admins))
+    .register::<models::user::User>()
+    .try_build()?;
+```
+
+| Answer | Response |
+| :--- | :--- |
+| `NexusAccess::allow(actor_id)` | the request proceeds; `actor_id` names the administrator in the mutation audit (1 to 255 bytes, no surrounding whitespace or control characters, else `503`) |
+| `NexusAccess::SignIn` | a page request (`GET`/`HEAD` without `HX-Request`) is redirected (`303`) to `/login`; fragments and other methods get `401` with `HX-Redirect: /login`, which htmx and Nexus's script follow |
+| `NexusAccess::Deny` | `403` |
+| `Err(NexusAuthorizerError::new(reason))` | `503`; Nexus logs the reason and never admits the request |
+
+Use `NexusAuthPolicy::Application(NexusApplicationAuth::new(Admins).with_login_path("/account/sign-in"))`
+for another login page; it must be a local path (one leading `/`, at most 512
+visible ASCII characters, no `\`), or `try_build()` returns
+`NexusBuildError::InvalidLoginPath`. Because the check runs on every request, a
+signed-out or demoted administrator loses access on the next one. The policy
+does not need TLS evidence (your session cookie's `Secure` flag is the
+application's concern); CSRF protection, the administrator role layer, tenant
+scoping and the audit stay as with every policy.
+`NexusAuthPolicy::local_development_or_application(Admins)` keeps the
+credential-free loopback policy in debug builds.
+
+The SaaS and LMS starters use it. Their `src/middlewares/nexus_access.rs`
+admits the user of the epoch-checked login cookie whose `users.is_admin` column
+is true, so signing out everywhere or a password change also ends Nexus
+access. `is_admin` defaults to false and ORM writes skip it, so neither a form
+nor a full-row `save()` grants it. Grant the first administrator with your
+database client, for example
+`UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`; that
+administrator can then grant others from the Users model in Nexus. `make:auth`
+users get the same column, ready for `NexusAuthPolicy::application`.
+
 #### Serving the application without Nexus
 
 Because the helper fails closed, a release build without
-`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` returns an error from the
-generated `router()`, and the whole application refuses to start. To serve the
-application without Nexus until the credentials are configured, mount it only
-when its policy builds:
+`NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` cannot build Nexus. The Blog,
+Portfolio and ERP starters then start without `/nexus` (the ERP, whose back
+office shares the Nexus policy, serves only `/health` and `/ready`) and print
+one line naming the variables; a weak, placeholder or unreadable credential
+still stops startup. In your own application, mount Nexus only when its policy
+builds:
 
 ```rust,no_run
 # #[cfg(feature = "nexus")]
@@ -210,7 +329,10 @@ let router = match NexusAuthPolicy::local_development_or_basic_from_env() {
         router.nest_axum("/nexus", nexus)
     }
     Err(NexusBuildError::MissingCredential { variable }) => {
-        eprintln!("Nexus is not mounted: {variable} is not set");
+        eprintln!(
+            "Nexus is not mounted at /nexus: {variable} is not set; set \
+             NEXUS_ADMIN_USERNAME and NEXUS_ADMIN_PASSWORD to enable it"
+        );
         router
     }
     // A weak, placeholder or unreadable credential is still a startup error.

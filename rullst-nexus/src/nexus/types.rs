@@ -33,12 +33,26 @@ pub enum FieldKind {
     },
     /// A boolean checkbox.
     Boolean,
-    /// Date picker (YYYY-MM-DD).
+    /// Date picker (`YYYY-MM-DD`, year 0001 to 9999), for `date()` columns
+    /// and `chrono::NaiveDate` fields. The value is bound as a date, so a
+    /// native `DATE` column accepts it.
     Date,
-    /// Date + time picker (`datetime-local`). A local value is stored as
-    /// `YYYY-MM-DD HH:MM:SS[.fraction]`, the text form of `CURRENT_TIMESTAMP`;
-    /// a value with a `Z` or `±HH:MM` offset is stored as entered.
+    /// Date + time picker (`datetime-local`), for `timestamp()` columns,
+    /// `chrono::NaiveDateTime` fields and text date-time columns. A local
+    /// value is bound as a date-time without a zone; a text column stores it
+    /// as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text form of
+    /// `CURRENT_TIMESTAMP`. A value with a `Z` or `±HH:MM` offset is bound as
+    /// text, as entered, so only a text column accepts it.
     DateTime,
+    /// Time-of-day picker (`HH:MM[:SS[.fraction]]`), for `time()` columns and
+    /// `chrono::NaiveTime` fields; bound as a time. Added in v13.
+    Time,
+    /// A UTC instant, for `timestamp_tz()` columns and `chrono::DateTime<Utc>`
+    /// fields. The `datetime-local` input shows and accepts the UTC wall
+    /// time, labelled `(UTC)`: a value without an offset is UTC, and one with
+    /// `Z`, `±HH:MM` or `±HH` (typed in the text input shown for a value the
+    /// picker cannot hold) is converted to UTC. Added in v13.
+    DateTimeUtc,
     /// A password or secret field that hides its value.
     ///
     /// The list shows a fixed mask, the column is neither selected for the
@@ -115,6 +129,18 @@ pub trait NexusModel: Send + Sync + 'static {
     fn nexus_pk() -> &'static str {
         "id"
     }
+    /// Every primary-key column, in key order (default: the single column of
+    /// [`Self::nexus_pk`]).
+    ///
+    /// Return two or more columns for a composite key, such as
+    /// `vec!["user_id", "lesson_id"]` for a `lesson_progress` table keyed by
+    /// both. The first column then takes the place of `nexus_pk()`. Each
+    /// column must be a registered field; at most 8 columns are accepted. A
+    /// record of a composite key is addressed by its values, each
+    /// percent-encoded and joined by `,` (see the Nexus guide).
+    fn nexus_pk_columns() -> Vec<&'static str> {
+        vec![Self::nexus_pk()]
+    }
     /// Optional text column used to scope every Nexus read and mutation to the
     /// authenticated [`rullst_core::security::TenantContext`].
     ///
@@ -133,9 +159,30 @@ pub struct RegistryEntry {
     pub table: &'static str,
     pub label: &'static str,
     pub icon: &'static str,
+    /// The primary-key column, or the first one of a composite key.
     pub pk: &'static str,
+    /// Every primary-key column in key order, `pk` first. Empty means the
+    /// single column `pk`. Added in v13.
+    pub pk_columns: Vec<&'static str>,
     pub tenant_column: Option<&'static str>,
     pub fields: Vec<FieldMeta>,
+}
+
+impl RegistryEntry {
+    /// The primary-key columns in key order: `pk_columns`, or `pk` alone when
+    /// that list is empty.
+    pub fn key_columns(&self) -> &[&'static str] {
+        if self.pk_columns.is_empty() {
+            std::slice::from_ref(&self.pk)
+        } else {
+            &self.pk_columns
+        }
+    }
+
+    /// Whether `column` is one of the primary-key columns.
+    pub fn is_key_column(&self, column: &str) -> bool {
+        self.key_columns().contains(&column)
+    }
 }
 
 /// Persistence policy for successful Nexus data mutations.

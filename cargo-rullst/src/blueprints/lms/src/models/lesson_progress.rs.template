@@ -38,8 +38,8 @@ impl NexusModel for LessonProgress {
             FieldMeta { name: "lesson_id", label: "Lesson", kind: FieldKind::ForeignKey { table: "lessons", label_col: "title" }, hidden: false, readonly: true },
             FieldMeta { name: "progress_percent", label: "Progress %", kind: FieldKind::Number, hidden: false, readonly: false },
             FieldMeta { name: "completed", label: "Completed", kind: FieldKind::Number, hidden: false, readonly: false },
-            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTime, hidden: false, readonly: true },
-            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTime, hidden: false, readonly: true },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
         ]
     }
 }
