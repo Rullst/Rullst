@@ -1,0 +1,12 @@
+# Fixture catalog for tests/i18n_catalog.rs.
+[dashboard]
+title = "Painel"
+greeting = "Olá, {name}!"
+compare = "{a} < {b} & {{chaves}}"
+
+[inbox.unread]
+one = "Você tem {count} mensagem não lida"
+other = "Você tem {count} mensagens não lidas"
+
+[legal]
+terms_html = "Aceito os <a href=\"/terms\">termos</a>, {name}"
