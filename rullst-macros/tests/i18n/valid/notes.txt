@@ -1,0 +1,1 @@
+Not a catalog: only *.toml files are read.

@@ -1,0 +1,5 @@
+error: unknown translation key `nav.hone`; did you mean `nav.home`?
+  --> tests/ui/i18n_unknown_key.rs:19:20
+   |
+19 |     let _ = t!((), "nav.hone");
+   |                    ^^^^^^^^^^
