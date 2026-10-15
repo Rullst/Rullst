@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791809367163,
+  "lastUpdate": 1792024056109,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26495,6 +26495,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2259,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c58ce435788dc1320f57715c42255fcda90e53fc",
+          "message": "Merge pull request #471 from Rullst/fix/v13-rustsec-2026-10\n\nfix(deps): require ammonia 4.2.3 and update quinn-proto for RustSec advisories",
+          "timestamp": "2026-10-14T21:22:19-03:00",
+          "tree_id": "577bab648c86e9094fe63a069abd42b636c6f652",
+          "url": "https://github.com/Rullst/Rullst/commit/c58ce435788dc1320f57715c42255fcda90e53fc"
+        },
+        "date": 1792024053692,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 408,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 585,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 422,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1176,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
