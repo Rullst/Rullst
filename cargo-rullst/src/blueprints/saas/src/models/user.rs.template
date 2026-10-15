@@ -1,7 +1,7 @@
 use rullst::db::{Orm, FromRow};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, Default, FromRow, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -15,6 +15,10 @@ pub struct User {
     pub oauth_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    // Login cookies carry the epoch they were issued with. ORM writes skip
+    // this column, so a full-row save never undoes `revoke_sessions`.
+    #[orm(skip)]
+    pub session_epoch: i64,
 }
 
 impl User {
@@ -24,7 +28,7 @@ impl User {
             .first()
             .await
     }
-}
+__RULLST_SESSION_EPOCH_METHODS__}
 
 impl NexusModel for User {
     fn nexus_table() -> &'static str { "users" }

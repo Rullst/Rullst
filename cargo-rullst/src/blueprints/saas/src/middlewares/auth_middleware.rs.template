@@ -6,6 +6,9 @@ use rullst::server::{
 use crate::controllers::billing_controller::BillingIdentity;
 use crate::models::user::User;
 
+/// Resolves the signed-in user from the `rullst_session` cookie. A cookie
+/// counts only while it carries the account's current `session_epoch`, so
+/// `User::revoke_sessions` signs out every device.
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     let headers = req.headers();
     if let Some(cookie) = rullst::auth::extract_session_cookie(headers) {
@@ -16,17 +19,18 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
                 return StatusCode::INTERNAL_SERVER_ERROR.into_response();
             }
         };
-        if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {
-            match User::find(user_id).await {
-                Ok(Some(user)) => {
-                    req.extensions_mut().insert(user_id);
+        if let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) {
+            match User::find(claims.user_id).await {
+                Ok(Some(user)) if user.accepts_session(&claims) => {
+                    req.extensions_mut().insert(user.id);
                     req.extensions_mut().insert(BillingIdentity {
-                        owner_id: user_id,
+                        owner_id: user.id,
                         email: user.email.trim().to_ascii_lowercase(),
                     });
                     return next.run(req).await;
                 }
-                Ok(None) => {}
+                // Unknown account or revoked cookie.
+                Ok(_) => {}
                 Err(error) => {
                     eprintln!("Authentication user query failed: {error}");
                     return StatusCode::SERVICE_UNAVAILABLE.into_response();

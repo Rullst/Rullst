@@ -73,6 +73,12 @@ restart loop. `/ready` returns `503` during startup, while any registered
 component is unavailable, during drain, and after stop. The JSON carries only
 aggregate counts; it never emits the component labels or their error messages.
 
+The `version` field of both probes is the Rullst framework version. To see
+which build of your application a Pod runs, use
+`health_router_with_lifecycle_and_version(lifecycle.clone(), env!("CARGO_PKG_VERSION"))`
+(or `health_router_with_version` instead of `health_router`), which adds that
+string as `app_version`.
+
 The component registry is immutable, accepts at most 32 validated labels, and
 does not execute probes by itself. The application must perform bounded,
 timeout-protected checks and update each bit. `Server` marks startup complete

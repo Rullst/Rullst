@@ -134,12 +134,7 @@ pub fn generate_delete_all_methods(parsed: &ParsedModel) -> TokenStream {
         let result = {
             let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
             for binding in query_bindings {
-                match binding {
-                    rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                    rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                    rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                    rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                }
+                query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
             }
             let timeout = rullst_orm::schema::get_query_timeout();
             if let Some(t) = timeout {

@@ -13,8 +13,11 @@ pub trait Migration: Send + Sync {
     /// between the two cannot leave the change applied but unrecorded.
     ///
     /// Only statements that join the task-scoped transaction are covered:
-    /// `Schema` calls, `execute_query!`/`dispatch_executor!` and generated
-    /// model methods. A query sent to `Orm::pool()` directly runs on another
+    /// `Schema` calls, generated model methods, `execute_query!`/
+    /// `dispatch_executor!`, and raw SQL sent with
+    /// `Orm::raw(sql).execute()` or `.map_to()`, which is the raw-SQL path
+    /// that stays in the transaction. A query sent to `Orm::pool()` directly,
+    /// such as `sqlx::query(sql).execute(Orm::pool()?)`, runs on another
     /// connection outside the transaction and cannot see its uncommitted
     /// tables, so a migration that uses one must keep the default `false`.
     /// PostgreSQL and SQLite roll DDL back with the transaction; MySQL and
@@ -67,6 +70,7 @@ pub async fn run_artisan_with_args(
             status_migrations(migrations).await?;
         }
         "db:seed" => {
+            ensure_migrated_before_seeding(&migrations).await?;
             println!("Seeding database...");
             crate::Orm::seed(seeders).await?;
             println!("Database seeded successfully!");
@@ -118,24 +122,56 @@ async fn migrations_table_exists(pool: &crate::RullstPool, driver: &str) -> Resu
     }
 }
 
+/// The names recorded in the `migrations` table; none before the first run.
+#[cfg_attr(test, mutants::skip)]
+async fn executed_migration_names(
+    pool: &crate::RullstPool,
+    driver: &str,
+) -> Result<std::collections::HashSet<String>, Error> {
+    if !migrations_table_exists(pool, driver).await? {
+        return Ok(std::collections::HashSet::new());
+    }
+    let executed: Vec<(String,)> = sqlx::query_as("SELECT migration FROM migrations")
+        .fetch_all(pool)
+        .await?;
+    Ok(executed.into_iter().map(|(m,)| m).collect())
+}
+
+/// Refuses `db:seed` while a registered migration is pending, instead of
+/// letting a seeder fail on a table that does not exist yet.
+async fn ensure_migrated_before_seeding(migrations: &[Box<dyn Migration>]) -> Result<(), Error> {
+    if migrations.is_empty() {
+        return Ok(());
+    }
+    let pool = crate::Orm::try_pool()?;
+    let driver = crate::Orm::try_driver()?;
+    let executed = executed_migration_names(pool, driver).await?;
+    pending_before_seed(migrations, &executed)
+}
+
+fn pending_before_seed(
+    migrations: &[Box<dyn Migration>],
+    executed: &std::collections::HashSet<String>,
+) -> Result<(), Error> {
+    let mut pending = migrations
+        .iter()
+        .map(|migration| migration.name())
+        .filter(|name| !executed.contains(*name));
+    let Some(first) = pending.next() else {
+        return Ok(());
+    };
+    Err(Error::Validation(format!(
+        "{} migration(s) pending, starting with `{first}`: run `db:migrate` before `db:seed`",
+        pending.count() + 1
+    )))
+}
+
 #[cfg_attr(test, mutants::skip)]
 async fn status_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
     let pool = crate::Orm::try_pool()?;
     let driver = crate::Orm::try_driver()?;
 
-    let table_exists = migrations_table_exists(pool, driver).await?;
-
-    let executed_set = if table_exists {
-        let executed: Vec<(String,)> = sqlx::query_as("SELECT migration FROM migrations")
-            .fetch_all(pool)
-            .await?;
-        executed
-            .into_iter()
-            .map(|(m,)| m)
-            .collect::<std::collections::HashSet<String>>()
-    } else {
-        std::collections::HashSet::new()
-    };
+    let executed_set = executed_migration_names(pool, driver).await?;
 
     let name_header = "Migration Name";
     let status_header = "Status";
@@ -415,3 +451,7 @@ async fn rollback_last_batch(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "migration_tests.rs"]
+mod tests;

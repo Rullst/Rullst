@@ -39,7 +39,10 @@ pub enum SecurityBaselineError {
 /// Applies the canonical runtime-owned browser security baseline.
 ///
 /// In staging/production the outer-to-inner order is secure headers → CORS →
-/// WAF/RASP → CSRF → optional response PII masking → handler. Configuration and
+/// WAF/RASP → CSRF → optional response PII masking → handler. In development
+/// only CORS and a report-only WAF run: it logs, at `warn` level, the rule and
+/// path of each request that staging and production would refuse, without
+/// refusing it. Configuration and
 /// environment extensions are installed outside those layers so every
 /// middleware observes the exact application configuration rather than a
 /// process-global fallback. Session, authentication, tenancy and authorization
@@ -62,6 +65,9 @@ pub fn apply_security_baseline(
         app = app
             .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
             .layer(axum::middleware::from_fn(crate::security::waf_middleware));
+    } else if environment.allows_development_tools() {
+        // Development only logs what the WAF would refuse in production.
+        app = app.layer(axum::middleware::from_fn(super::waf::waf_report_middleware));
     }
 
     if !security.cors_allow_origins.is_empty() {

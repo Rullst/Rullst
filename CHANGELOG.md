@@ -92,6 +92,82 @@ A prepared version section does not establish that its tag or crates exist.
   regenerated `src/migrations/mod.rs` names `rullst::db::schema::Migration`.
   These are the same types as the `rullst_orm` paths, so existing files keep
   compiling.
+- ORM: a unique or primary-key violation now returns
+  `Error::UniqueViolation { constraint, .. }` and a foreign-key violation
+  `Error::ForeignKeyViolation { constraint, .. }`, from generated writes, query
+  builders and `Orm::raw`, instead of `Error::DatabaseError(String)`.
+  `constraint` is the name PostgreSQL reports (`None` on SQLite and
+  MySQL/MariaDB), and the message names only the constraint instead of
+  repeating the database's text, which could quote the rejected value. Code
+  that matched the `DatabaseError` text must match the variants;
+  `cargo rullst upgrade` reports it as `V13-ORM-CONSTRAINT-ERRORS`.
+- ORM: `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and
+  `RULLST_ENCRYPTION_KEYRING` are now also read from `.env` in the current
+  directory when the process environment does not set them, as `APP_KEY` is,
+  so `#[orm(encrypted)]` fields and `SecretString` work with a development
+  `.env`. The process environment still wins and the file is never loaded
+  into it.
+- ORM: query values accept `i64`, `u32` and `Option<T>`: `RullstValue` gains
+  `I64` and `Null`, so `where_eq("lesson_id", Some(3))`, `BIGINT` filters and
+  `Orm::raw(..).bind(None::<String>)` compile and bind on every driver (`None`
+  as a text-typed `NULL`). Small breaking change: `RullstValue` is now
+  `#[non_exhaustive]`, so a `match` on it needs a wildcard arm.
+- ORM: `db:seed` now refuses to run while a registered migration is pending
+  and names the first one, instead of failing inside a seeder with an error
+  such as `relation "users" does not exist`.
+- ORM docs: the generated `save()` rustdoc and the ORM guide say that `save()`
+  writes every column of the handle, so the last writer wins, and that an
+  insert sends every field; they show `update_partial()` for concurrent edits
+  and one atomic `Orm::raw("UPDATE ... SET xp = xp + ? ...")` for counters.
+  `Migration::within_transaction` and tutorial 05 name `Orm::raw(..).execute()`
+  as the raw-SQL path that stays in the migration's transaction, unlike
+  `Orm::pool()`.
+- Behaviour change: Core's staging and production headers send
+  `Strict-Transport-Security: max-age=31536000; includeSubDomains` instead of
+  `max-age=63072000; includeSubDomains; preload`, and
+  `rullst_security::SecureHeadersConfig::default()` matches it. The new
+  `[security]` settings `hsts_max_age_seconds`, `hsts_include_subdomains` and
+  `hsts_preload` choose the value; `preload` is opt-in, and the server refuses
+  to start when it lacks `includeSubDomains` or a max-age of at least one
+  year.
+- The new `[security]` setting `waf_body_exempt_paths` lists exact paths whose
+  request bodies the Core WAF does not inspect, for routes that accept text
+  such as code samples. Their path, query string, cookies, `Referer` and
+  `User-Agent` are still inspected, and each entry is validated like
+  `csrf_signed_webhook_paths`.
+- Behaviour change: in development `Server` runs the Core WAF in report-only
+  mode. Nothing is refused, but every request that staging and production
+  would refuse logs a `warn` event naming only the rule and the path, so false
+  positives show up before deployment.
+- A `GET` for a static-looking path (`.json`, `.txt`, `.xml`, `.css`, `.js`,
+  images, `/static/`…) now receives `CsrfToken` from an existing `rullst_csrf`
+  cookie, so such a page can render a form; it still never creates the
+  cookie. The `csrf_middleware` docs list those paths.
+- Behaviour change: Artisan commands (`db:*`, `studio`) no longer load `.env`
+  into the process environment, so they read settings exactly like `Server`
+  does. Migrations and seeders that read a `.env`-only value with
+  `std::env::var` must use `rullst::config::project_setting`.
+- `/health` and `/ready` document `version` as the framework version. The new
+  `health::health_router_with_version` and
+  `health::health_router_with_lifecycle_and_version` also report the
+  application's own version as `app_version`.
+- `rullst-auth` login cookies can now be revoked.
+  `make_login_cookie_with_epoch(user_id, epoch, max_age)` and
+  `encrypt_session_with_epoch` put a per-user session epoch in the cookie;
+  `decrypt_session_claims` returns `SessionClaims`, whose `verify_epoch`
+  refuses a cookie carrying another epoch than the one the application stores
+  (`AuthError::SessionRevoked`). Incrementing the stored epoch ends every
+  cookie of that user. The cookie lifetime is configurable from 1 second to
+  400 days. `make_login_cookie` cookies are unchanged and decode as epoch 0;
+  `decrypt_session` rejects the new cookies.
+- New SaaS, LMS and `cargo rullst auth` projects can revoke sessions: a
+  `users.session_epoch` column, epoch cookies at sign-in and registration, the
+  epoch check in `auth_middleware`, `User::revoke_sessions` and a "Sign out
+  everywhere" button (`POST /logout/everywhere`). The `cargo rullst auth`
+  middleware now loads the user on every request, so the cookie of a deleted
+  account is refused. Existing projects are not changed; the
+  [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
+  lists the steps to adopt it.
 
 ### Mutation testing
 
@@ -153,10 +229,18 @@ with the other Capital adapters.
   Labs never executes learner code; you bring your own runner.
 - `audit --report` is a bounded static check, not a certification: most ASVS
   Level 1 requirements are reported as `NOT EVALUATED`.
+- ORM: `Schema` has no UNIQUE, index, foreign-key or date/time column helpers,
+  and `timestamps()` creates `TEXT` columns; write such DDL with `Orm::raw`.
+  Generated inserts send every field, so database column defaults do not apply.
 - `footprint` reads Linux `/proc`; energy comes from RAPL or is a labelled
   estimate, and anything else is `NOT MEASURED`. Deferrable jobs ship no network
   carbon source and make no emissions claim. The N+1 panel does not attribute
   raw statements or spawned work. The distroless image size is not yet measured.
+- Login cookies cannot be revoked. `make_login_cookie` sets a stateless
+  `rullst_session` cookie valid for 30 days: logout only clears the browser's
+  copy, a copied cookie keeps working until it expires, and a password reset
+  does not end other sessions. Only rotating `APP_KEY` does, for every user.
+  Server-side sessions need `SqlRecoveryStore`.
 - Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
 - The WAF runs only in staging and production. It inspects every text, JSON,
   XML and form body (refusing one over 1 MiB), the query string and each

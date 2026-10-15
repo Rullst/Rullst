@@ -121,11 +121,12 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
              <a href="http://127.0.0.1:5555" target="_blank" class="btn-nexus">📊 Local Studio</a>
              <form method="post" action="/logout" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Logout</button></form>
+             <form method="post" action="/logout/everywhere" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Sign out everywhere</button></form>
            </div>
          </div>
          <div class="container">
            <h1>Welcome, __RULLST_USER_NAME__</h1>
-           <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID in an encrypted session cookie.</p>
+           <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID and session epoch in an encrypted session cookie; signing out everywhere revokes every copy.</p>
            <div class="grid">
              <div class="card">
                <h3 class="subscription">💳 Subscription</h3>
