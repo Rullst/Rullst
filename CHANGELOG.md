@@ -198,6 +198,17 @@ A prepared version section does not establish that its tag or crates exist.
   `mongodb`, `duckdb`, `surrealdb`, `qdrant` on `rullst-orm`). The individual
   features are unchanged. `cargo rullst upgrade` reports a manifest that still
   names them (`V13-POLYGLOT-FEATURE`).
+- `cargo rullst new` says what Turso and the side stores are before you choose
+  (dogfooding #33). The Turso primary choice in the wizard, its `--database
+  turso` help and the review/dry-run screen read "Blank/API only; no Nexus,
+  Studio, Schema or SQLx ORM"; `--turso`, `--mongodb`, `--duckdb`,
+  `--surrealdb`, `--qdrant` and the Redis choice are described as side stores.
+  The new [Database Support](https://github.com/Rullst/Rullst/blob/main/docs/src/database-support.md)
+  page has one table of what SQLite, PostgreSQL, MySQL/MariaDB, Turso, MongoDB,
+  DuckDB, SurrealDB, Qdrant and Redis data each work with (primary database,
+  `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`, `Server::with_db`, Nexus,
+  Studio, transactions, starters) and which CI test runs each against a real
+  server. Generated projects are unchanged.
 
 ### Mutation testing
 
@@ -284,7 +295,10 @@ with the other Capital adapters.
   only production access policy.
 - Studio runs only in debug builds and on loopback.
 - A Turso-primary project cannot use `Schema`, `artisan!`, `Server::with_db`,
-  Nexus or Studio.
+  Nexus or Studio's database pages, and `#[derive(Orm)]` with
+  `#[orm(backend = "turso")]` generates only the separate `TursoModel` API
+  (no SQLx query builder, relations, hooks or scopes). Turso is the primary
+  database of the Blank starter only.
 - The generated `Dockerfile` has no dependency cache layer, so a cold image
   build compiles every dependency (10 to 25 minutes on small machines).
 - There is no translation (i18n) API and no multipart upload extractor.

@@ -2521,7 +2521,9 @@ while portability and semantic review remain the model author's responsibility.
   `db:migrate`/`db:rollback`/`db:status` itself and `TursoStore::transaction`
   runs atomic statement batches; it integrates with none of the SQLx parts
   above. MongoDB, DuckDB, SurrealDB, Qdrant and Redis data structures are side
-  stores with their own APIs and no transactions. Live CI contracts are
+  stores with their own APIs and no transactions. `cargo rullst new` states
+  these limits next to the Turso and side-store choices in the wizard, in
+  `--help` and on the review/dry-run screen. Live CI contracts are
   `matrix_postgres`, `matrix_mysql`, `matrix_mariadb`, `matrix_turso`,
   `matrix_mongodb`, `matrix_surrealdb`, `matrix_qdrant` and
   `matrix_redis_data`; SQLite and DuckDB run in-process. The
