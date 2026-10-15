@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792042905922,
+  "lastUpdate": 1792050564893,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -26335,6 +26335,78 @@ window.BENCHMARK_DATA = {
             "name": "generate_csrf_token_32_chars",
             "value": 130,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f98a1b57c211482f9bd253ec707dcdd403cbc00e",
+          "message": "Merge pull request #486 from Rullst/ci/dependabot-v12-xml-sec-hold\n\nci(dependabot): hold xml-sec on v12 at the 0.1.17 pin",
+          "timestamp": "2026-10-15T04:31:45-03:00",
+          "tree_id": "5a29135712cb1a34c34b9683e6bd3fd68cfe7ecb",
+          "url": "https://github.com/Rullst/Rullst/commit/f98a1b57c211482f9bd253ec707dcdd403cbc00e"
+        },
+        "date": 1792050563980,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 197,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 62,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 190,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 203,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 184,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 167,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 129,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
