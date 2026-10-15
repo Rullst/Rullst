@@ -153,8 +153,11 @@ mod tests {
         assert!(!source.contains("created_at: String::new()"));
         assert!(!source.contains("updated_at: String::new()"));
         assert!(source.contains("let created_at = utc_timestamp();"));
-        assert!(source.contains("updated_at: created_at.clone(),\n        created_at,\n"));
-        assert!(source.contains("fn registration_timestamps_use_the_current_timestamp_text()"));
+        assert!(source.contains("updated_at: created_at,\n        created_at,\n"));
+        assert!(source.contains(
+            "pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {\n    rullst::orm::chrono::Utc::now()\n}"
+        ));
+        assert!(source.contains("fn registration_timestamps_are_current_utc_instants()"));
     }
 
     #[test]

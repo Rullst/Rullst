@@ -128,7 +128,7 @@ async fn generated_password_flows_contract() {
     }
     let old_hash = rullst::auth::hash_password(OLD_PASSWORD).unwrap();
     rullst::db::sqlx::query("INSERT INTO users (id,name,email,password_hash,created_at,updated_at) VALUES (?,?,?,?,?,?)")
-        .bind(1).bind("Member").bind(MEMBER).bind(old_hash).bind("2026-10-15").bind("2026-10-15")
+        .bind(1).bind("Member").bind(MEMBER).bind(old_hash).bind("2026-10-15T00:00:00+00:00").bind("2026-10-15T00:00:00+00:00")
         .execute(rullst::orm::Orm::pool().unwrap()).await.unwrap();
     rullst::mail::Mail::set_driver(Box::new(MemoryDriver::new()));
     MailTrap::clear();

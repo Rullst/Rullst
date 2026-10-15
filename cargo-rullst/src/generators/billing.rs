@@ -19,6 +19,8 @@ const TURSO_CUSTOMER_MODEL: &str = include_str!("billing_customer_turso.rs.templ
 const SQLX_MIGRATION: &str = include_str!("billing_migration_sqlx.rs.template");
 const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template");
 const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
+const SQLX_TIMESTAMP: &str = include_str!("billing_timestamp_sqlx.rs.template");
+const TURSO_TIMESTAMP: &str = include_str!("billing_timestamp_turso.rs.template");
 const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
 const FIXED_OUTPUTS: [&str; 10] = [
@@ -45,6 +47,22 @@ pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBa
             match backend {
                 ProjectOrmBackend::Sqlx => SQLX_PERSIST,
                 ProjectOrmBackend::Turso => TURSO_PERSIST,
+            },
+        )
+        // SQLx `timestamps()` columns hold `chrono` instants; Turso keeps the
+        // `CURRENT_TIMESTAMP` text.
+        .replace(
+            "__UTC_TIMESTAMP_FN__",
+            match backend {
+                ProjectOrmBackend::Sqlx => SQLX_TIMESTAMP,
+                ProjectOrmBackend::Turso => TURSO_TIMESTAMP,
+            },
+        )
+        .replace(
+            "__UPDATED_AT__",
+            match backend {
+                ProjectOrmBackend::Sqlx => "updated_at: created_at",
+                ProjectOrmBackend::Turso => "updated_at: created_at.clone()",
             },
         )
         .replace("__FOREIGN_KEY__", foreign_key)
