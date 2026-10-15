@@ -248,6 +248,28 @@ async fn creating_a_composite_record_accepts_every_key_column() {
     )
     .await;
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Entered key values are written: a form of only the key reaches the
+    // (absent) database, while blank key columns are left to it.
+    let response = create_record(
+        &state,
+        &entry,
+        &principal(),
+        None,
+        &headers,
+        form(&[("user_id", "3"), ("lesson_id", "x")]),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let response = create_record(
+        &state,
+        &entry,
+        &principal(),
+        None,
+        &headers,
+        form(&[("lesson_id", " ")]),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[test]

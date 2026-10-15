@@ -370,6 +370,21 @@ mod tests {
             )
         );
         assert_eq!(
+            build_batch_sql(&entry, "delete", 1, "postgres", true).as_deref(),
+            Some(
+                "DELETE FROM memberships WHERE ((user_id = $1 AND team_id = $2)) \
+                 AND tenant_id = $3"
+            )
+        );
+        assert_eq!(
+            build_batch_sql(&entry, "delete", 3, "postgres", true).as_deref(),
+            Some(
+                "DELETE FROM memberships WHERE ((user_id = $1 AND team_id = $2) \
+                 OR (user_id = $3 AND team_id = $4) OR (user_id = $5 AND team_id = $6)) \
+                 AND tenant_id = $7"
+            )
+        );
+        assert_eq!(
             build_batch_sql(&entry, "deactivate", 1, "sqlite", false).as_deref(),
             Some(
                 "UPDATE memberships SET is_active = FALSE \

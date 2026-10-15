@@ -127,3 +127,74 @@ fn integer_fields_accept_only_whole_numbers_in_range() {
     // A floating-point field keeps accepting fractions.
     assert_eq!(stored(&entry, "ratio", "2.5").as_deref(), Some("2.5"));
 }
+
+#[test]
+fn time_and_utc_values_are_validated_and_canonical() {
+    let entry = entry(vec![
+        FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+        FieldMeta::new("opens_at", "Opens", FieldKind::Time),
+        FieldMeta::new("paid_at", "Paid", FieldKind::DateTimeUtc),
+    ]);
+    let values = validate_form_values(
+        &entry,
+        vec![
+            ("opens_at".to_owned(), "08:05".to_owned()),
+            ("paid_at".to_owned(), "2026-10-15T09:30-03:00".to_owned()),
+        ],
+        FormMode::Update,
+    )
+    .expect("valid time and instant");
+    assert_eq!(values[0].value.as_deref(), Some("08:05:00"));
+    assert_eq!(
+        values[1].value.as_deref(),
+        Some("2026-10-15T12:30:00+00:00")
+    );
+    assert!(values.iter().all(|value| value.typed.is_some()));
+
+    // Emptied, they are NULL on update and the column default on create.
+    let emptied = || {
+        vec![
+            ("opens_at".to_owned(), String::new()),
+            ("paid_at".to_owned(), String::new()),
+        ]
+    };
+    let update = validate_form_values(&entry, emptied(), FormMode::Update).expect("valid");
+    assert!(
+        update
+            .iter()
+            .all(|value| value.value.is_none() && value.typed.is_none())
+    );
+    assert!(
+        validate_form_values(&entry, emptied(), FormMode::Create)
+            .expect("valid")
+            .is_empty()
+    );
+
+    for (field, invalid) in [
+        ("opens_at", "8:05"),
+        ("opens_at", "08:05 PM"),
+        ("paid_at", "2026-10-15"),
+        ("paid_at", "2026-10-15T09:30+0300"),
+    ] {
+        assert!(
+            matches!(
+                validate_form_values(
+                    &entry,
+                    vec![(field.to_owned(), invalid.to_owned())],
+                    FormMode::Update
+                ),
+                Err(FormInputError::InvalidField { .. })
+            ),
+            "{field} accepted {invalid}"
+        );
+    }
+    // Text values bind as text.
+    let profile = self::entry(vec![FieldMeta::new("name", "Name", FieldKind::Text)]);
+    let text = validate_form_values(
+        &profile,
+        vec![("name".to_owned(), "Ada".to_owned())],
+        FormMode::Update,
+    )
+    .expect("valid");
+    assert!(text[0].typed.is_none());
+}

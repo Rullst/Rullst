@@ -80,3 +80,7 @@ pub(super) fn resolve_primary_key(
         ),
     ))
 }
+
+#[cfg(test)]
+#[path = "primary_key_tests.rs"]
+mod tests;

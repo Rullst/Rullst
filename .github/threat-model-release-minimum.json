@@ -224,7 +224,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "nexus::crud::query::tests::scoped_query_without_context_is_empty_by_construction",
-      "source": "rullst-nexus/src/nexus/crud/query.rs",
+      "source": "rullst-nexus/src/nexus/crud/query_tests.rs",
       "marker": "TM-NEXUS-02"
     },
     {
