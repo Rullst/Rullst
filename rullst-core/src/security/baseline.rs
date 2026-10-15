@@ -39,10 +39,15 @@ pub enum SecurityBaselineError {
 /// Applies the canonical runtime-owned browser security baseline.
 ///
 /// In staging/production the outer-to-inner order is secure headers → CORS →
-/// WAF/RASP → CSRF → optional response PII masking → handler. In development
-/// only CORS and a report-only WAF run: it logs, at `warn` level, the rule and
-/// path of each request that staging and production would refuse, without
-/// refusing it. Configuration and
+/// secure framework cookies → WAF/RASP → CSRF → optional response PII
+/// masking → handler. In development only CORS, secure framework cookies and
+/// a report-only WAF run: it logs, at `warn` level, the rule and path of each
+/// request that staging and production would refuse, without refusing it.
+/// In every environment, the secure framework cookies layer adds `Secure` to
+/// the `rullst_*` cookies (session, CSRF) of a response to a request that
+/// arrived over HTTPS: an `https` request URI, or `X-Forwarded-Proto: https`
+/// accepted by [`super::TrustedProxyLayer`] from a trusted proxy with
+/// `trust_forwarded_proto`. Configuration and
 /// environment extensions are installed outside those layers so every
 /// middleware observes the exact application configuration rather than a
 /// process-global fallback. Session, authentication, tenancy and authorization
@@ -69,6 +74,10 @@ pub fn apply_security_baseline(
         // Development only logs what the WAF would refuse in production.
         app = app.layer(axum::middleware::from_fn(super::waf::waf_report_middleware));
     }
+    // Outside CSRF, so the cookie it mints is covered too.
+    app = app.layer(axum::middleware::from_fn(
+        super::secure_cookies::secure_framework_cookies,
+    ));
 
     if !security.cors_allow_origins.is_empty() {
         let origins = security

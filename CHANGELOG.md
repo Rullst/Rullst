@@ -214,6 +214,54 @@ A prepared version section does not establish that its tag or crates exist.
   projects are not changed; the
   [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
   lists the steps to add the flows.
+- Core adds `rullst::uploads::Multipart`, an extractor for file-upload forms
+  (`multipart/form-data`). `multipart.read(&MultipartPolicy)` enforces
+  explicit limits with safe defaults (10 MiB per file, 16 MiB per body, 4
+  files, 32 fields of 64 KiB, 128-byte field names, 30 s of body inactivity)
+  and stops reading at the first one exceeded with a typed `MultipartError`
+  (413, 400 or 408). Files stay in memory up to 32 KiB and then stream to a
+  private (`0600`) temporary file in a configurable directory, removed when
+  dropped unless `persist_to(path)` keeps it; `persist_to` never overwrites.
+  `allowed_kinds` and `expect_signature(b"%PDF-")` check the bytes, not the
+  declared type, and the client file name is display metadata only. Where
+  the WAF runs, each text field is checked with its signatures (refused in
+  staging and production, logged in development). See the
+  [form uploads guide](https://github.com/Rullst/Rullst/blob/main/docs/src/form-uploads.md).
+- Behaviour change: a multipart form whose `_token` field the CSRF check
+  cannot read (it must come before any file input, within the first 64 KiB)
+  is refused with a 403 that says so, instead of `Invalid or missing CSRF
+  token`. Forms read with `Multipart` get the same 403 in development, where
+  the CSRF middleware is not mounted, so the mistake shows up before a
+  deployment.
+- Behaviour change: the CSRF cookie, and every `rullst_*` cookie such as the
+  login session passing through `Server`, now carries `Secure` in any
+  environment when the request arrived over HTTPS (an `https` request URI,
+  or `X-Forwarded-Proto: https` from a proxy in `[security] trusted_proxies`
+  with `trust_forwarded_proto = true`), not only when `RULLST_ENV` is
+  staging or production. `Secure` is never removed.
+- `Server::with_migrations(...)` plus `.auto_migrate(true)` or
+  `RULLST_AUTO_MIGRATE=true` applies pending migrations at startup, before
+  the server binds; it is off by default. Replicas starting together migrate
+  once (PostgreSQL advisory lock, MySQL `GET_LOCK`, an SQLite lock file), and
+  a failed migration stops startup with `ServerError::Migration`. Generated
+  starters do not register their migrations yet; see the
+  [deploy guide](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/26-one-click-paas-deploy.md#startup-migrations).
+- `rullst::cache_control::public(max_age)` and `private(max_age)` let a
+  download or feed route be cached while every other response keeps
+  `Cache-Control: no-store`; they label only successful responses without a
+  policy of their own. Behaviour change: the CSRF middleware no longer sets
+  its cookie on a response that shared caches may store (`public` or
+  `s-maxage`).
+- The startup line names the listen address and, when it is `0.0.0.0` (the
+  staging and production default) with a trusted reverse proxy configured,
+  suggests `HOST=127.0.0.1`. The default bind address is unchanged.
+- The Foundry Caddyfile sends `Strict-Transport-Security:
+  max-age=31536000; includeSubDomains` like the Core baseline, without
+  `preload`.
+- The Turso blank starter reads `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and
+  `TURSO_OFFLINE_PATH` with `rullst::config::project_setting` instead of
+  loading `.env` into the process with `dotenvy`, like every other starter,
+  and no longer depends on `dotenvy`.
 - New translation API, `rullst::i18n` (dogfooding #16).
   `rullst::i18n::catalog!(default = "en")` loads one TOML catalog per locale
   (`locales/en.toml`, `locales/pt-BR.toml`) when the crate compiles and fails

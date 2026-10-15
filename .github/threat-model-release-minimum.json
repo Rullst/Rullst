@@ -566,7 +566,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "uploads::tests::upload_policy_rejects_spoofing_active_content_and_unsafe_names",
-      "source": "rullst-core/src/uploads.rs",
+      "source": "rullst-core/src/uploads_tests.rs",
       "marker": "TM-ACADEMY-09"
     },
     {

@@ -76,6 +76,17 @@ fn the_application_listens_only_on_loopback_unless_host_is_configured() {
 }
 
 #[test]
+fn the_caddy_site_sends_the_core_hsts_default_without_preload() {
+    // The Caddyfile sent `preload`, which consents to the browsers' preload
+    // list, while the Core baseline no longer does.
+    let command = render_configure_command(&test_config("true"), "demo", DIGEST);
+    assert!(
+        command.contains("Strict-Transport-Security \"max-age=31536000; includeSubDomains\"\n")
+    );
+    assert!(!command.contains("preload"));
+}
+
+#[test]
 fn provisioning_requires_reviewed_tools_and_uses_an_app_specific_root() {
     let command = render_provision_command(&test_config("false"));
     assert!(command.contains("command -v curl"));

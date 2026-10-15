@@ -243,7 +243,11 @@ to start. Each entry is a deliberate risk acceptance for that route: the
 handler alone (parameterized SQL, output encoding, validation) must make the
 body safe.
 
-**Not covered by either:** `multipart/form-data` and other binary bodies,
+**Not covered by either:** binary bodies, `multipart/form-data` file contents
+and file names, multipart text fields that are not read with
+`rullst::uploads::Multipart` (which applies the Core WAF signatures to each
+field it reads; RASP does not inspect multipart at all; see
+[form uploads](form-uploads.md#waf)),
 double-encoded or otherwise obfuscated payloads (HTML entities, Unicode
 escapes outside JSON strings, and in RASP SQL comments between keywords),
 payloads split across fields, injections that need no quote, `;` or

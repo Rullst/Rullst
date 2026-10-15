@@ -102,6 +102,7 @@
   - [Email login](email-login.md)
   - [Scoped API tokens](api-tokens.md)
 - [Shared Passkey Ceremony Contract](shared-passkey-ceremonies.md)
+- [Form File Uploads](form-uploads.md)
 - [Private S3/R2 Object Storage](private-object-storage.md)
 - [Resumable private multipart uploads](private-multipart-uploads.md)
 - [Shared mail suppression](shared-mail-suppression.md)
