@@ -4,6 +4,7 @@ use super::*;
 
 mod data;
 mod files;
+mod markup;
 mod scanner;
 
 /// Codes and lines found in one Rust source.
@@ -110,7 +111,9 @@ fn review_rules_report_the_first_location_and_must_change_every_one() {
         vec![
             ("V13-MODEL-ALL", 1),
             ("V13-HTML-DYNAMIC-EVENT-HANDLER", 3),
+            ("V13-HTML-MARKUP-RETURN", 3),
             ("V13-HTML-DYNAMIC-EVENT-HANDLER", 4),
+            ("V13-HTML-MARKUP-RETURN", 4),
         ]
     );
 }

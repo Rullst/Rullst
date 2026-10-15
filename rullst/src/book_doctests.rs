@@ -29,6 +29,7 @@ tutorial!(
     "../../docs/src/transactional-partial-updates.md"
 );
 tutorial!(live_recovery, "../../docs/src/live-recovery.md");
+tutorial!(migration_v13, "../../docs/src/migration-v13.md");
 tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
 
 tutorial!(
