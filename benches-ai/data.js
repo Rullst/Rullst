@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792043313847,
+  "lastUpdate": 1792050993763,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -13951,6 +13951,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 423,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f98a1b57c211482f9bd253ec707dcdd403cbc00e",
+          "message": "Merge pull request #486 from Rullst/ci/dependabot-v12-xml-sec-hold\n\nci(dependabot): hold xml-sec on v12 at the 0.1.17 pin",
+          "timestamp": "2026-10-15T04:31:45-03:00",
+          "tree_id": "5a29135712cb1a34c34b9683e6bd3fd68cfe7ecb",
+          "url": "https://github.com/Rullst/Rullst/commit/f98a1b57c211482f9bd253ec707dcdd403cbc00e"
+        },
+        "date": 1792050992620,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1708,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 304,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 423,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
