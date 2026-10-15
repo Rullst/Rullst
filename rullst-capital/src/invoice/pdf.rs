@@ -307,6 +307,24 @@ mod tests {
     }
 
     #[test]
+    fn a_custom_font_document_may_exceed_one_mebibyte() {
+        // Font parsers ignore bytes after the last table, but the whole font
+        // program is embedded, and pseudo-random bytes do not compress.
+        let mut font = BuiltinFont::Helvetica.get_subset_font().bytes;
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        font.extend((0..1_200_000).map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state.to_le_bytes()[0]
+        }));
+        let bytes = invoice("Subscription")
+            .generate_pdf_with_font(&font)
+            .expect("a document below 16 MiB");
+        assert!(bytes.len() > 1_100_000, "{}", bytes.len());
+    }
+
+    #[test]
     fn wrapped_description_keeps_its_amount_on_the_first_line() {
         let description = format!("{}{}", "a".repeat(64), "tail");
         let bytes = invoice(&description).generate_pdf().expect("bounded PDF");
