@@ -43,6 +43,25 @@ fn strings_stay_escaped_next_to_markup() {
 }
 
 #[test]
+fn markup_in_an_attribute_value_is_escaped_like_text() {
+    // Unescaped, the quotes of the inner markup would end `title` and turn
+    // `onmouseover=alert(1)//` into an event handler.
+    let tip = html! { <b title={"onmouseover=alert(1)//"}>"x"</b> };
+    let expected =
+        "<a title=\"&lt;b title=&quot;onmouseover=alert(1)//&quot;&gt;x&lt;/b&gt;\">y</a>";
+    assert_eq!(html! { <a title={&tip}>"y"</a> }, expected);
+    assert_eq!(html! { <a title={Some(&tip)}>"y"</a> }, expected);
+    assert_eq!(html! { <a title={tip}>"y"</a> }, expected);
+    assert_eq!(
+        html! { <a title={None::<Markup>}>"y"</a> },
+        "<a title=\"\">y</a>"
+    );
+    // Text is escaped the same way in both contexts.
+    assert_eq!(Some("<\"").escape_attribute(), "&lt;&quot;");
+    assert_eq!(None::<&str>.escape_attribute(), "");
+}
+
+#[test]
 fn raw_html_and_from_trusted_insert_trusted_html() {
     let trusted = String::from("<em>reviewed</em>");
     assert_eq!(

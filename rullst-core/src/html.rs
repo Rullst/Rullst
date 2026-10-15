@@ -4,6 +4,14 @@ use std::borrow::Cow;
 pub trait HtmlEscape {
     /// Escapes characters in `self` so they can be rendered safely as HTML.
     fn escape_html(&self) -> Cow<'_, str>;
+
+    /// Escapes `self` for a double-quoted attribute value, as `html!` does for
+    /// `name={value}`. Defaults to [`HtmlEscape::escape_html`]; a [`Markup`]
+    /// is escaped here like text, because HTML inserted into an attribute
+    /// value could end the attribute.
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        self.escape_html()
+    }
 }
 
 #[path = "html_markup.rs"]
@@ -69,6 +77,10 @@ impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
     fn escape_html(&self) -> Cow<'_, str> {
         (*self).escape_html()
     }
+
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        (*self).escape_attribute()
+    }
 }
 
 /// `None` renders nothing; `Some(value)` renders `value` as usual.
@@ -76,6 +88,13 @@ impl<T: HtmlEscape> HtmlEscape for Option<T> {
     fn escape_html(&self) -> Cow<'_, str> {
         match self {
             Some(value) => value.escape_html(),
+            None => Cow::Borrowed(""),
+        }
+    }
+
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        match self {
+            Some(value) => value.escape_attribute(),
             None => Cow::Borrowed(""),
         }
     }
@@ -139,10 +158,11 @@ pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
 }
 
-/// Helper function to escape attribute values
+/// Helper function to escape attribute values (see
+/// [`HtmlEscape::escape_attribute`]).
 #[inline(always)]
 pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
-    val.escape_html()
+    val.escape_attribute()
 }
 
 #[cfg(test)]

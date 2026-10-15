@@ -13,7 +13,9 @@ use super::{HtmlEscape, RawHtml};
 /// `{value}` inside another `html!` inserts it as it is, so views compose
 /// without wrappers. `String`, `&str`, numbers and other values are still
 /// escaped, `Option<T>` renders nothing for `None`, and an iterator of
-/// `Markup` collects into one `Markup`.
+/// `Markup` collects into one `Markup`. In an attribute value
+/// (`title={markup}`) a `Markup` is escaped like text, since HTML there
+/// could end the attribute.
 ///
 /// # Composing views
 ///
@@ -89,6 +91,12 @@ impl Markup {
 impl HtmlEscape for Markup {
     fn escape_html(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.0)
+    }
+
+    // HTML is never valid inside an attribute value, and its quotes could end
+    // the attribute: escape it like text there.
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        super::escape_str(&self.0)
     }
 }
 
