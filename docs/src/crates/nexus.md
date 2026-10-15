@@ -38,6 +38,15 @@ let app = axum::Router::new().nest("/nexus", nexus);
 # }
 ```
 
+That is the plain-Axum form. On a `rullst::Router`, as in the generated
+starters, mount it with `.nest_axum("/nexus", nexus)`: `rullst::Router::nest`
+accepts only another `rullst::Router`, and there is no `with_state` (pass
+shared state with `.layer(Extension(state))`). A release build without the
+credentials makes `local_development_or_basic_from_env()` return
+`NexusBuildError::MissingCredential`; the
+[Nexus guide](../4-rullst-nexus.md#serving-the-application-without-nexus)
+shows how to start the application without Nexus in that case.
+
 The serving boundary must preserve the socket address, for example with Axum's
 `into_make_service_with_connect_info::<SocketAddr>()`. Basic Auth additionally
 requires the application-owned `NexusVerifiedTls` capability inserted only after

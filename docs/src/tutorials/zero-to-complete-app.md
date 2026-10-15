@@ -23,9 +23,13 @@ Install Rust from [rustup.rs](https://rustup.rs/), then the stable CLI:
 cargo install cargo-rullst --version '^12' --locked
 ```
 
-To follow the **New in 13.0** steps before that release is published, install
-the CLI from a `main` checkout instead, as described in
-[Getting Started](../1-getting-started.md#1-installation).
+To follow the **New in 13.0** steps, install the v13 prerelease CLI instead.
+Cargo never selects a prerelease on its own, so name the exact version, as
+described in [Getting Started](../1-getting-started.md#1-installation):
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+```
 
 ## 2. Create the app from the SaaS starter
 
@@ -143,14 +147,16 @@ What it does:
   and a plain form post a `303` redirect, so the forms work without
   JavaScript too.
 - `html!` escapes the values it interpolates: a note titled `Buy <milk>` is
-  rendered as `Buy &lt;milk&gt;`.
+  rendered as `Buy &lt;milk&gt;`. It returns `Markup`, so `note_form` and
+  the collected list items are inserted into the page as HTML, and the
+  handlers return the page directly.
 
 Now mount the routes in the `router()` function of `src/main.rs`. Add them
 **before** the `csrf_middleware` layer, so every form post needs the CSRF token
 the pages include, and wrap each one in the starter's `auth_middleware`:
 
 ```rust,ignore
-{{#include zero-to-complete-app/main.rs:41:52}}
+{{#include zero-to-complete-app/main.rs:57:68}}
 ```
 
 The whole file is in [`zero-to-complete-app/main.rs`](zero-to-complete-app/main.rs).
@@ -162,7 +168,14 @@ More on [HTMX rendering](06-htmx-zero-bundle.md),
 
 Sign-in comes from the starter: `/register` and `/login` set an encrypted
 session cookie, and `auth_middleware` turns it into the user id that the
-handlers read as `Extension<i32>`. Anyone else is redirected to `/login`.
+handlers read as `Extension<i32>`. Anyone else is redirected to `/login`. The
+cookie carries the account's session epoch: the dashboard's *Sign out
+everywhere* button (`POST /logout/everywhere`) increments it, which ends the
+session on every device. The starter also has *Change password*
+(`/password/change`), which keeps only the current browser signed in, and
+*Forgot your password?* (`/password/forgot`), which emails a single-use link
+that expires in 30 minutes; see
+[Tutorial 11](11-authentication-system.md#what-the-scaffold-currently-enforces).
 
 Being signed in is not enough to open a note, though: `/notes/{id}` must
 check that the note belongs to that user. Otherwise anyone could read another

@@ -40,6 +40,10 @@ pub fn file_manifest(
         render_auth_controller(None),
     ));
     manifest.push((
+        "src/controllers/password_controller.rs",
+        crate::generators::auth::passwords::render_password_controller(),
+    ));
+    manifest.push((
         "src/controllers/billing_controller.rs",
         render_billing_controller("user_id", ProjectOrmBackend::Sqlx),
     ));

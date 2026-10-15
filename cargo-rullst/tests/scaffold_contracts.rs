@@ -562,6 +562,21 @@ fn extracted_rust_templates_parse_after_substitution() {
             ),
         ),
         (
+            "password controller",
+            include_str!("../src/generators/auth/password_controller.rs.template").to_string(),
+        ),
+        (
+            "password reset model",
+            include_str!("../src/generators/auth/password_reset_model.rs.template").to_string(),
+        ),
+        (
+            "password reset migration",
+            include_str!("../src/generators/auth/password_reset_migration.rs.template").replace(
+                "__MIGRATION_NAME__",
+                "m20261001000000_create_password_reset_tokens_table",
+            ),
+        ),
+        (
             "CORS middleware",
             include_str!("../src/generators/cors_middleware.rs.template").to_string(),
         ),

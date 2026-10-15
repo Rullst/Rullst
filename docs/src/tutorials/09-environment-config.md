@@ -23,7 +23,9 @@ use rullst_core::config::RullstConfig;
 
 fn report_environment() -> Result<(), Box<dyn std::error::Error>> {
     let environment = RullstConfig::global().environment()?;
-    let database_is_configured = std::env::var_os("DATABASE_URL").is_some();
+    // The process environment first, then `./.env`, as `Server` reads it.
+    let database_is_configured =
+        rullst_core::config::project_setting("DATABASE_URL")?.is_some();
 
     println!(
         "Booting Rullst in {environment} mode; database configured: {database_is_configured}"
@@ -36,8 +38,13 @@ Do not log `DATABASE_URL`: it commonly embeds a username and password. Report
 only whether configuration is present, and redact sensitive fields in structured
 telemetry.
 
-The generated server bootstrap loads `.env` before applying its runtime policy.
-Standalone utilities must load a dotenv file themselves or receive exported
+The generated server bootstrap reads `.env` before applying its runtime policy.
+Neither `Server` nor the Artisan commands (`db:migrate`, `db:seed`, `studio`)
+load `.env` into the process environment, so `std::env::var` sees only real
+process variables there; read application settings with
+`rullst::config::project_setting`, which checks the process environment and
+then `./.env`, and behaves the same in the server and in a seeder. Standalone
+utilities must load a dotenv file themselves or receive exported
 process variables. Environment precedence is exact: the process `RULLST_ENV`,
 legacy `APP_ENV`, then `RULLST_ENV` or `APP_ENV` in `.env`, then `[app].env` in
 `Rullst.toml`. `Server` never exports `.env` into the process environment;
@@ -84,6 +91,12 @@ the browser then omits credentials from those cross-origin no-CORS requests.
 `unsafe-none` lowers cross-origin isolation and should be chosen only after an
 application threat-model review. COEP configuration never makes an arbitrary
 remote origin trustworthy.
+
+The same baseline adds `Cache-Control: no-store` to every response that has no
+`Cache-Control` header of its own, so pages with personal data are not stored
+by browsers or shared caches. Responses that should be cached, such as file
+downloads or calendar and RSS feeds, must set their own header; the standard
+`/static` mount already does.
 
 ---
 

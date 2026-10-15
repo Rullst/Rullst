@@ -95,11 +95,29 @@ pub fn apply_referrer_policy(headers: &mut HeaderMap, configured: HeaderValue) {
     headers.insert(header::REFERRER_POLICY, policy);
 }
 
+/// The `Strict-Transport-Security` value that `config` selects, for example
+/// `max-age=31536000; includeSubDomains` with the defaults.
+fn strict_transport_security(config: &crate::config::SecurityConfig) -> String {
+    let mut value = format!("max-age={}", config.hsts_max_age_seconds);
+    if config.hsts_include_subdomains {
+        value.push_str("; includeSubDomains");
+    }
+    if config.hsts_preload {
+        value.push_str("; preload");
+    }
+    value
+}
+
 /// Middleware that adds strict security headers and exposes a matching CSP nonce to handlers.
 ///
 /// Each header is added only when the response has none, so an explicit value from a handler
 /// or an inner layer wins over this baseline. A response marked with [`SecurityHeadersApplied`]
 /// keeps exactly the security headers the inner layer chose.
+///
+/// `Strict-Transport-Security` comes from the `hsts_max_age_seconds`,
+/// `hsts_include_subdomains` and `hsts_preload` settings of
+/// [`crate::config::SecurityConfig`] (`[security]` in `Rullst.toml`); the
+/// default is `max-age=31536000; includeSubDomains`, without `preload`.
 pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
     let configured_csp = req
         .extensions()
@@ -111,6 +129,11 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
         .get::<crate::config::SecurityConfig>()
         .map(|config| config.coep.clone())
         .unwrap_or_else(|| crate::config::RullstConfig::global().security.coep.clone());
+    let configured_hsts = strict_transport_security(
+        req.extensions()
+            .get::<crate::config::SecurityConfig>()
+            .unwrap_or(&crate::config::RullstConfig::global().security),
+    );
     // Reuse a nonce installed by an outer security layer. Generated applications and
     // integrations may compose more than one header layer; replacing the request nonce here
     // would make the renderer use a different value from the final CSP response header.
@@ -138,10 +161,6 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
         // The legacy XSS auditor has caused response mutation vulnerabilities in old browsers.
         (HeaderName::from_static("x-xss-protection"), "0"),
         (
-            header::STRICT_TRANSPORT_SECURITY,
-            "max-age=63072000; includeSubDomains; preload",
-        ),
-        (
             HeaderName::from_static("permissions-policy"),
             "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
         ),
@@ -158,6 +177,11 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
         headers
             .entry(name)
             .or_insert(HeaderValue::from_static(value));
+    }
+    if let Ok(hsts) = HeaderValue::from_str(&configured_hsts) {
+        headers
+            .entry(header::STRICT_TRANSPORT_SECURITY)
+            .or_insert(hsts);
     }
     // An explicit policy wins, but an exact `no-referrer` among several values is still
     // normalized to that single restriction.

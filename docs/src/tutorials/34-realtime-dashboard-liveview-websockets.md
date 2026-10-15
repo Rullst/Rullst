@@ -69,10 +69,11 @@ impl LiveComponent for AnalyticsDashboard {
 ## 💻 Step 2: Render in View Page
 
 ```rust,ignore
+use rullst::html::Markup;
 use rullst::live::Live;
 use crate::live::analytics_dashboard::AnalyticsDashboard;
 
-pub async fn analytics_page() -> String {
+pub async fn analytics_page() -> Markup {
     Live::mount::<AnalyticsDashboard>("/ws/analytics").await
 }
 ```

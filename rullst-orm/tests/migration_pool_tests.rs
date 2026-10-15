@@ -219,6 +219,20 @@ async fn test_migration_and_pool_suite() {
     .await;
     assert!(res.is_ok());
 
+    // 3b. Seeding before migrating names the pending migration and runs no
+    // seeder (DummySeeder would fail on the missing table).
+    let res = run_artisan_with_args(
+        &["artisan".into(), "db:seed".into()],
+        vec![Box::new(DummyMigration)],
+        vec![Box::new(DummySeeder)],
+    )
+    .await;
+    assert!(
+        matches!(&res, Err(Error::Validation(message)) if message
+            == "1 migration(s) pending, starting with `m20260820_000001_create_dummy_table`: run `db:migrate` before `db:seed`"),
+        "{res:?}"
+    );
+
     // 4. Run migrations
     let res = run_artisan_with_args(
         &["artisan".into(), "migrate".into()],
@@ -246,14 +260,14 @@ async fn test_migration_and_pool_suite() {
     .await;
     assert!(res.is_ok());
 
-    // 7. Seed database
+    // 7. Seed database once its migrations are applied
     let res = run_artisan_with_args(
         &["artisan".into(), "db:seed".into()],
-        vec![],
+        vec![Box::new(DummyMigration)],
         vec![Box::new(DummySeeder)],
     )
     .await;
-    assert!(res.is_ok());
+    assert!(res.is_ok(), "{res:?}");
 
     // 8. Rollback migrations
     let res = run_artisan_with_args(

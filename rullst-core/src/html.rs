@@ -4,9 +4,40 @@ use std::borrow::Cow;
 pub trait HtmlEscape {
     /// Escapes characters in `self` so they can be rendered safely as HTML.
     fn escape_html(&self) -> Cow<'_, str>;
+
+    /// Escapes `self` for a double-quoted attribute value, as `html!` does for
+    /// `name={value}`. Defaults to [`HtmlEscape::escape_html`]; a [`Markup`]
+    /// is escaped here like text, because HTML inserted into an attribute
+    /// value could end the attribute.
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        self.escape_html()
+    }
 }
 
+#[path = "html_markup.rs"]
+mod markup;
+pub use markup::Markup;
+
 /// A wrapper to mark a string as safe raw HTML that should NOT be escaped.
+///
+/// `RawHtml` is the explicit escape hatch for trusted HTML produced outside
+/// `html!`, such as the output of a Markdown renderer or a sanitizer. A
+/// fragment built by another `html!` call is a [`Markup`] and is inserted as
+/// it is without `RawHtml`. Never wrap request data: `RawHtml` trusts its
+/// input.
+///
+/// ```
+/// # extern crate rullst_core as rullst;
+/// use rullst::html;
+/// use rullst::html::RawHtml;
+///
+/// // HTML from a trusted renderer, not built by `html!`.
+/// let rendered = String::from("<em>reviewed</em>");
+/// assert_eq!(
+///     html! { <p>{RawHtml(rendered)}</p> },
+///     "<p><em>reviewed</em></p>"
+/// );
+/// ```
 pub struct RawHtml(pub String);
 
 impl RawHtml {
@@ -45,6 +76,27 @@ impl<'a> HtmlEscape for Cow<'a, str> {
 impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
     fn escape_html(&self) -> Cow<'_, str> {
         (*self).escape_html()
+    }
+
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        (*self).escape_attribute()
+    }
+}
+
+/// `None` renders nothing; `Some(value)` renders `value` as usual.
+impl<T: HtmlEscape> HtmlEscape for Option<T> {
+    fn escape_html(&self) -> Cow<'_, str> {
+        match self {
+            Some(value) => value.escape_html(),
+            None => Cow::Borrowed(""),
+        }
+    }
+
+    fn escape_attribute(&self) -> Cow<'_, str> {
+        match self {
+            Some(value) => value.escape_attribute(),
+            None => Cow::Borrowed(""),
+        }
     }
 }
 
@@ -106,10 +158,11 @@ pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
 }
 
-/// Helper function to escape attribute values
+/// Helper function to escape attribute values (see
+/// [`HtmlEscape::escape_attribute`]).
 #[inline(always)]
 pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
-    val.escape_html()
+    val.escape_attribute()
 }
 
 #[cfg(test)]

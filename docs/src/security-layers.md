@@ -39,7 +39,7 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 
 | Blueprint | Mounted for you | Not mounted |
 | :--- | :--- | :--- |
-| Every blueprint | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured). | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any blueprint. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy --platform vps` writes its Caddy address into `[security] trusted_proxies`. |
+| Every blueprint | `Server` applies the Core baseline in **staging and production**: secure headers, CORS (only when `cors_allow_origins` is set), WAF and CSRF. PII masking stays off unless `enable_pii_masking = true`. In **development** the baseline adds only CORS (and machine-endpoint authentication when configured) and a report-only WAF that logs what it would refuse. | No `rullst-security` middleware layer (RASP, DLP, `SecureHeadersLayer`, honeypot, CSWSH, schema guard) is mounted by any blueprint. No global rate limit or Traffic Shield is configured. Trusted proxies are configured only when `cargo rullst deploy --platform vps` writes its Caddy address into `[security] trusted_proxies`. |
 | Blank (full stack), SaaS, LMS, ERP | Core `csrf_middleware` and `headers_middleware` on the router too, so development behaves like production. | — |
 | Blank JSON API | Core `headers_middleware` on the router. The example write route `POST /api/messages` is an exact machine endpoint (`Server::with_machine_endpoints`): clients send `Authorization: Bearer <API_TOKEN>` (a random value in the generated `.env`), requests with cookies are refused, and startup fails without `API_TOKEN`. | No CSRF layer on the router. In staging and production the `Server` baseline requires CSRF on every other write route, so add each new JSON write route to `machine_endpoints()` in `src/main.rs` (a `{id}` segment covers routes such as `PUT /api/posts/{id}`), or send the double-submit token from a browser. `make:controller --api` prints these lines. |
 | Blog, Portfolio | Only the `Server` baseline (staging and production). | No router-level layers in development. |
@@ -142,8 +142,8 @@ Leave these out unless you have a specific reason:
 | | Core `headers_middleware` | `rullst_security::SecureHeadersLayer` |
 | :--- | :--- | :--- |
 | Mounted by | `Server` in staging/production; most blueprints also mount it on the router | You, as a Tower layer |
-| Configuration | `[security] csp` (template with `{NONCE}`) and `coep`; other values fixed | `SecureHeadersConfig`: every header value replaceable or omitted (`None`), CSP template or static CSP |
-| Headers | HSTS (two years, preload), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config |
+| Configuration | `[security] csp` (template with `{NONCE}`), `coep` and the `hsts_*` settings; other values fixed | `SecureHeadersConfig`: every header value replaceable or omitted (`None`), CSP template or static CSP |
+| Headers | HSTS (one year with `includeSubDomains`, no `preload`, by default), `X-Frame-Options: DENY`, `nosniff`, `X-XSS-Protection: 0`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP, COEP, CSP | The same set, from the config; the default HSTS value is the same |
 | Existing values | Adds each header only when the response has none; leaves all of them alone after an inner `SecureHeadersLayer` | Replaces the handler's values with its configured ones |
 | `Cache-Control` | Adds `no-store` when the handler set none | Not touched |
 | CSP nonce | `CspNonce` request extension | Same `CspNonce`, reused when one already exists |
@@ -168,6 +168,29 @@ to one value. `CspSecurityLayer` (in `sanitizer`) is a smaller variant: default
 CSP, `X-Frame-Options`, `nosniff` and `Referrer-Policy` only; it does not set
 the marker, so the Core baseline keeps those four and adds the rest.
 
+#### Strict-Transport-Security
+
+The Core baseline sends `Strict-Transport-Security: max-age=31536000;
+includeSubDomains` unless the response already has the header. Three
+`[security]` settings choose another value:
+
+```toml
+[security]
+hsts_max_age_seconds = 63072000  # default 31536000 (one year); 0 clears the policy
+hsts_include_subdomains = true   # default true
+hsts_preload = true              # default false
+```
+
+`includeSubDomains` makes browsers refuse plain HTTP on every subdomain of the
+host for the whole max-age, so leave it on only when all of them serve HTTPS.
+`preload` asks to be listed in the HSTS preload list built into browsers once
+the domain is submitted there, and leaving that list takes months, so it is
+opt-in. Startup fails when `hsts_preload` is set without
+`hsts_include_subdomains` or with a max-age below 31536000, the list's own
+requirements. A handler that sets the header, or `SecureHeadersConfig::hsts`
+in `SecureHeadersLayer`, still wins over these settings. 13.0.0-alpha.1 and
+earlier always sent `max-age=63072000; includeSubDomains; preload`.
+
 **Not covered:** headers reduce browser-side risks (framing, MIME sniffing,
 inline script injection); they do not fix an XSS bug in a page that allows
 `'unsafe-inline'` or a trusted script host that serves attacker content, and
@@ -177,7 +200,7 @@ HSTS has no effect until the first HTTPS response reaches the browser.
 
 | | Core `waf_middleware` | `rullst_security::RaspSecurityLayer` |
 | :--- | :--- | :--- |
-| Mounted by | `Server` in staging/production | You |
+| Mounted by | `Server` in staging/production; in development a report-only variant that logs instead of refusing | You |
 | Signatures | Injection structure, not keywords. SQL: a quote followed by `or`/`and` and a comparison or by a comment (`' or '1'='1`, `admin'--`), a `;` followed by a statement (`; drop table`, `; delete from`, `; select *`), `union [all] select`, and probes (`sleep(`, `benchmark(`, `waitfor delay`, `pg_sleep(`, `information_schema`, `@@version`, `xp_cmdshell`, `load_file(`, `into outfile`). Shell: `;`, `\|`, `&&`, a backtick or `$(` followed by a command name (`sh`, `bash`, `cat`, `ls`, `id`, `curl`, `wget`, `nc`, `rm`, `python`…). XSS (`<script`, `javascript:`, `onload=`, `onerror=`, `document.cookie`) and traversal (`../`, `..\`, `/etc/passwd`, `win.ini`) as substrings | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) | More specific phrases: SQL (`union select`, `' or '1'='1`, `sleep(`, `information_schema`…), traversal, SSRF hosts (`169.254.169.254`, `metadata.google.internal`), shell (`cmd.exe`, `/bin/sh`…), JNDI (`${jndi:`…) |
 | Where it looks | Decoded path (traversal only), query, `Referer`, each cookie pair, `User-Agent` against a configurable blocklist (AI and SEO crawlers by default) | Full request target, every header except `Cookie` and `Authorization`, body; JSON keys and strings after decoding |
 | Bodies | `text/*`, JSON, XML, URL-encoded forms; identity encoding only (others get `415`); at most 1 MiB (`413`); invalid UTF-8 gets `400` | Same media types and limits |
@@ -189,6 +212,36 @@ words ("please select an option", "delete my account", "curl the API with your
 token") passes; only injection syntax around those words is refused.
 Parameterized SQL is the real defense against SQL injection, and shell-free
 process APIs against command injection.
+
+#### Seeing and accepting WAF false positives
+
+The WAF refuses requests only in staging and production. In development
+`Server` mounts the same rules in report-only mode: each request they would
+refuse passes, and a `tracing` warning from `rullst::security::waf` names the
+rule and the path, for example `rule="body-signature" path="/lessons/answers"`.
+The warning never includes the query, headers or body. The rules are
+`user-agent-blocklist`, `path-traversal`, `query-signature`,
+`referer-signature`, `cookie-signature`, `body-signature`, `body-encoding`,
+`body-too-large` and `body-not-utf8`.
+
+A route whose body must carry text the signatures refuse, such as code
+samples in a programming lesson (`../`, `javascript:`, `document.cookie`,
+`| grep`), can be exempted by exact path:
+
+```toml
+[security]
+waf_body_exempt_paths = ["/lessons/answers"]
+```
+
+The WAF then neither reads nor inspects bodies sent to that exact path, so it
+also stops checking their encoding and size; set a body limit on the route
+(`DefaultBodyLimit`). Its path, query string, cookies, `Referer` and
+`User-Agent` stay inspected, and CSRF still applies. Entries must be exact
+absolute paths: wildcards, route parameters (`{id}`, `:id`), queries,
+fragments, dot segments and duplicates fail validation, so the server refuses
+to start. Each entry is a deliberate risk acceptance for that route: the
+handler alone (parameterized SQL, output encoding, validation) must make the
+body safe.
 
 **Not covered by either:** `multipart/form-data` and other binary bodies,
 double-encoded or otherwise obfuscated payloads (HTML entities, Unicode
@@ -229,7 +282,7 @@ in the first place.
 
 | Control | Owner | Reduces | Mechanism | Does not protect against |
 | :--- | :--- | :--- | :--- | :--- |
-| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
+| Double-submit CSRF | Core | Cross-site form and fetch writes using ambient cookies | `rullst_csrf` cookie must match `X-CSRF-Token` or the `_token` form field, compared in constant time. A `GET` for a static-looking path (`/robots.txt`, `/sitemap.xml`, `/favicon.ico`, `/static/*`, or a `.txt`, `.xml`, `.ico`, `.json`, `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` or `.wasm` suffix) never mints the token; it only reuses an existing cookie's | State changes in `GET` handlers; a sibling subdomain that can set cookies; an XSS bug that reads the token; WebSocket upgrades |
 | Exact machine endpoints | Core | Webhook and API routes that must skip browser CSRF | Exact method and path, authenticated (bearer digest, signed-webhook or mTLS verifier) before the CSRF exemption applies | A weak verifier you supply; replay unless your verifier checks freshness |
 | Trusted-proxy resolution | Core | Spoofed `X-Forwarded-For` choosing the client identity | Forwarded headers read only from listed proxy networks, right to left | A listed proxy that forwards client headers unchanged; any host inside a listed network |
 | Tenant context | Core | Client-chosen tenant headers | Only tenant context inserted by your authentication middleware is used | Missing ownership checks in handlers |

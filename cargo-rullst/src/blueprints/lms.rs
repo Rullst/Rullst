@@ -5,7 +5,7 @@
 use super::common;
 
 /// Files every LMS variant emits unchanged.
-const COMMON_FILES: [(&str, &str); 23] = [
+const COMMON_FILES: [(&str, &str); 22] = [
     (
         "src/controllers/learning_controller.rs",
         include_str!("lms/src/controllers/learning_controller.rs.template"),
@@ -72,10 +72,6 @@ const COMMON_FILES: [(&str, &str); 23] = [
         include_str!("lms/src/models/mod.rs.template"),
     ),
     (
-        "src/models/user.rs",
-        include_str!("lms/src/models/user.rs.template"),
-    ),
-    (
         "src/pages/auth.rs",
         include_str!("lms/src/pages/auth.rs.template"),
     ),
@@ -137,11 +133,32 @@ pub fn file_manifest(
             .iter()
             .map(|(path, template)| (*path, (*template).to_string())),
     );
+    manifest.push((
+        "src/models/user.rs",
+        crate::generators::auth::models::with_session_epoch_methods(include_str!(
+            "lms/src/models/user.rs.template"
+        )),
+    ));
     // Registration creates only the account: the starter has no schools or
     // memberships, and learners enroll in courses from the catalog.
     manifest.push((
         "src/controllers/auth_controller.rs",
         crate::generators::auth::controllers::render_auth_controller(None),
+    ));
+    // Password change and reset by email; both end every other session.
+    manifest.push((
+        "src/controllers/password_controller.rs",
+        crate::generators::auth::passwords::render_password_controller(),
+    ));
+    manifest.push((
+        "src/models/password_reset.rs",
+        crate::generators::auth::passwords::render_password_reset_model(),
+    ));
+    manifest.push((
+        "src/migrations/m20260827000001_create_password_reset_tokens_table.rs",
+        crate::generators::auth::passwords::render_password_reset_migration(
+            "m20260827000001_create_password_reset_tokens_table",
+        ),
     ));
     // The catalog and course pages followed by the CSP-compatible lesson player.
     manifest.push((

@@ -1,90 +1,148 @@
+use rullst::html;
+use rullst::html::Markup;
 use rullst::response::Html;
 
-pub fn login_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> Html<String> {
-    let error_html = if let Some(err) = error {
-        format!("<div class=\"error\" role=\"alert\">{}</div>", rullst::html::escape_str(err))
-    } else {
-        String::new()
-    };
+/// The card layout of the sign-in, registration and password pages.
+const CARD_STYLES: &str = "
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+body { background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2.5rem; width: 100%; max-width: 420px; text-align: center; }
+h1 { font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700; }
+.form-group { margin-bottom: 1.25rem; text-align: left; }
+label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.4rem; }
+input { width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.95rem; }
+input:focus { outline: none; border-color: #10b981; }
+.btn-primary { width: 100%; padding: 0.85rem; border-radius: 0.5rem; background: #10b981; color: #000; font-weight: 700; border: none; cursor: pointer; font-size: 1rem; margin-top: 0.5rem; }
+.btn-primary:hover { background: #34d399; }
+.links { margin-top: 1.5rem; font-size: 0.85rem; color: #9ca3af; }
+.links a { color: #10b981; text-decoration: none; }
+.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }
+.notice { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.25); color: #6ee7b7; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }
+";
 
-    Html(format!(
-        "<!DOCTYPE html><html lang=\"en\" class=\"dark\"><head>\
-         <meta charset=\"utf-8\" />\
-         <link rel=\"icon\" type=\"image/png\" href=\"/static/rullst.png\" />\
-         <title>Login &mdash; Rullst SaaS</title>\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
-         <style nonce=\"{}\">\
-         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }}\
-         body {{ background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}\
-         .card {{ background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2.5rem; width: 100%; max-width: 420px; text-align: center; }}\
-         h1 {{ font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700; }}\
-         .form-group {{ margin-bottom: 1.25rem; text-align: left; }}\
-         label {{ display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.4rem; }}\
-         input {{ width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.95rem; }}\
-         input:focus {{ outline: none; border-color: #10b981; }}\
-         .btn-primary {{ width: 100%; padding: 0.85rem; border-radius: 0.5rem; background: #10b981; color: #000; font-weight: 700; border: none; cursor: pointer; font-size: 1rem; margin-top: 0.5rem; }}\
-         .btn-primary:hover {{ background: #34d399; }}\
-         .links {{ margin-top: 1.5rem; font-size: 0.85rem; color: #9ca3af; }}\
-         .links a {{ color: #10b981; text-decoration: none; }}\
-         .error {{ background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }}\
-         </style></head><body>\
-         <div class=\"card\"><h1>Welcome Back</h1>{}\
-         <form method=\"POST\" action=\"/login\">\
-         <input type=\"hidden\" name=\"_token\" value=\"{}\" />\
-         <div class=\"form-group\"><label>Email</label><input type=\"email\" name=\"email\" placeholder=\"you@example.com\" required /></div>\
-         <div class=\"form-group\"><label>Password</label><input type=\"password\" name=\"password\" placeholder=\"••••••••\" required /></div>\
-         <button type=\"submit\" class=\"btn-primary\">Sign In</button>\
-         </form>\
-         <div class=\"links\">Don't have an account? <a href=\"/register\">Register</a> | <a href=\"/\">Pricing</a></div>\
-         </div></body></html>",
-        rullst::html::escape_str(csp_nonce),
-        error_html,
-        rullst::html::escape_str(csrf_token)
-    ))
+fn card_page(title: &str, heading: &str, content: Markup, csp_nonce: &str) -> Markup {
+    html! {
+        <!DOCTYPE html>
+        <html lang="en" class="dark">
+            <head>
+                <meta charset="utf-8" />
+                <link rel="icon" type="image/png" href="/static/rullst.png" />
+                <title>{title} " — Rullst SaaS"</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <style nonce={csp_nonce}>{CARD_STYLES}</style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>{heading}</h1>
+                    {content}
+                </div>
+            </body>
+        </html>
+    }
 }
 
-pub fn register_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> Html<String> {
-    let error_html = if let Some(err) = error {
-        format!("<div class=\"error\" role=\"alert\">{}</div>", rullst::html::escape_str(err))
-    } else {
-        String::new()
-    };
+fn alert(error: Option<&str>) -> Option<Markup> {
+    error.map(|message| html! { <div class="error" role="alert">{message}</div> })
+}
 
-    Html(format!(
-        "<!DOCTYPE html><html lang=\"en\" class=\"dark\"><head>\
-         <meta charset=\"utf-8\" />\
-         <link rel=\"icon\" type=\"image/png\" href=\"/static/rullst.png\" />\
-         <title>Register &mdash; Rullst SaaS</title>\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
-         <style nonce=\"{}\">\
-         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }}\
-         body {{ background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}\
-         .card {{ background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2.5rem; width: 100%; max-width: 420px; text-align: center; }}\
-         h1 {{ font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700; }}\
-         .form-group {{ margin-bottom: 1.25rem; text-align: left; }}\
-         label {{ display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.4rem; }}\
-         input {{ width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.95rem; }}\
-         input:focus {{ outline: none; border-color: #10b981; }}\
-         .btn-primary {{ width: 100%; padding: 0.85rem; border-radius: 0.5rem; background: #10b981; color: #000; font-weight: 700; border: none; cursor: pointer; font-size: 1rem; margin-top: 0.5rem; }}\
-         .btn-primary:hover {{ background: #34d399; }}\
-         .links {{ margin-top: 1.5rem; font-size: 0.85rem; color: #9ca3af; }}\
-         .links a {{ color: #10b981; text-decoration: none; }}\
-         .error {{ background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }}\
-         </style></head><body>\
-         <div class=\"card\"><h1>Create Account</h1>{}\
-         <form method=\"POST\" action=\"/register\">\
-         <input type=\"hidden\" name=\"_token\" value=\"{}\" />\
-         <div class=\"form-group\"><label>Name</label><input type=\"text\" name=\"name\" placeholder=\"John Doe\" required /></div>\
-         <div class=\"form-group\"><label>Email</label><input type=\"email\" name=\"email\" placeholder=\"you@example.com\" required /></div>\
-         <div class=\"form-group\"><label>Password</label><input type=\"password\" name=\"password\" placeholder=\"••••••••\" required /></div>\
-         <button type=\"submit\" class=\"btn-primary\">Register</button>\
-         </form>\
-         <div class=\"links\">Already have an account? <a href=\"/login\">Sign In</a> | <a href=\"/\">Pricing</a></div>\
-         </div></body></html>",
-        rullst::html::escape_str(csp_nonce),
-        error_html,
-        rullst::html::escape_str(csrf_token)
-    ))
+fn status(notice: Option<&str>) -> Option<Markup> {
+    notice.map(|message| html! { <div class="notice" role="status">{message}</div> })
+}
+
+/// The new-password and confirmation fields of the change and reset forms.
+fn new_password_fields() -> Markup {
+    html! {
+        <div class="form-group"><label for="password">"New password"</label><input type="password" id="password" name="password" minlength="12" maxlength="72" autocomplete="new-password" required="required" /></div>
+        <div class="form-group"><label for="password_confirmation">"Confirm new password"</label><input type="password" id="password_confirmation" name="password_confirmation" minlength="12" maxlength="72" autocomplete="new-password" required="required" /></div>
+    }
+}
+
+pub fn login_page(
+    csrf_token: &str,
+    error: Option<&str>,
+    notice: Option<&str>,
+    csp_nonce: &str,
+) -> Markup {
+    card_page("Login", "Welcome Back", html! {
+        {status(notice)}
+        {alert(error)}
+        <form method="POST" action="/login">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <div class="form-group"><label for="email">"Email"</label><input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required="required" /></div>
+            <div class="form-group"><label for="password">"Password"</label><input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required="required" /></div>
+            <button type="submit" class="btn-primary">"Sign In"</button>
+        </form>
+        <div class="links"><a href="/password/forgot">"Forgot your password?"</a></div>
+        <div class="links">"Don't have an account? " <a href="/register">"Register"</a> " | " <a href="/">"Pricing"</a></div>
+    }, csp_nonce)
+}
+
+pub fn register_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> Markup {
+    card_page("Register", "Create Account", html! {
+        {alert(error)}
+        <form method="POST" action="/register">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <div class="form-group"><label for="name">"Name"</label><input type="text" id="name" name="name" placeholder="John Doe" required="required" /></div>
+            <div class="form-group"><label for="email">"Email"</label><input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required="required" /></div>
+            <div class="form-group"><label for="password">"Password"</label><input type="password" id="password" name="password" placeholder="••••••••" minlength="12" maxlength="72" autocomplete="new-password" required="required" /></div>
+            <button type="submit" class="btn-primary">"Register"</button>
+        </form>
+        <div class="links">"Already have an account? " <a href="/login">"Sign In"</a> " | " <a href="/">"Pricing"</a></div>
+    }, csp_nonce)
+}
+
+pub fn forgot_password_page(
+    csrf_token: &str,
+    error: Option<&str>,
+    notice: Option<&str>,
+    csp_nonce: &str,
+) -> Markup {
+    card_page("Forgot password", "Reset your password", html! {
+        {status(notice)}
+        {alert(error)}
+        <form method="POST" action="/password/forgot">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <div class="form-group"><label for="email">"Email"</label><input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required="required" /></div>
+            <button type="submit" class="btn-primary">"Email me a reset link"</button>
+        </form>
+        <div class="links"><a href="/login">"Back to sign in"</a></div>
+    }, csp_nonce)
+}
+
+pub fn reset_password_page(
+    csrf_token: &str,
+    token: &str,
+    error: Option<&str>,
+    csp_nonce: &str,
+) -> Markup {
+    card_page("New password", "Choose a new password", html! {
+        {alert(error)}
+        <form method="POST" action="/password/reset">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <input type="hidden" name="token" value={token} />
+            {new_password_fields()}
+            <button type="submit" class="btn-primary">"Set new password"</button>
+        </form>
+    }, csp_nonce)
+}
+
+pub fn change_password_page(
+    csrf_token: &str,
+    error: Option<&str>,
+    notice: Option<&str>,
+    csp_nonce: &str,
+) -> Markup {
+    card_page("Change password", "Change password", html! {
+        {status(notice)}
+        {alert(error)}
+        <form method="POST" action="/password/change">
+            <input type="hidden" name="_token" value={csrf_token} />
+            <div class="form-group"><label for="current_password">"Current password"</label><input type="password" id="current_password" name="current_password" autocomplete="current-password" required="required" /></div>
+            {new_password_fields()}
+            <button type="submit" class="btn-primary">"Change password"</button>
+        </form>
+        <div class="links"><a href="/dashboard">"Back to dashboard"</a></div>
+    }, csp_nonce)
 }
 
 pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Html<String> {
@@ -120,12 +178,14 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Htm
            <div>
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
              <a href="http://127.0.0.1:5555" target="_blank" class="btn-nexus">📊 Local Studio</a>
+             <a href="/password/change" class="btn-nexus">🔑 Change password</a>
              <form method="post" action="/logout" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Logout</button></form>
+             <form method="post" action="/logout/everywhere" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Sign out everywhere</button></form>
            </div>
          </div>
          <div class="container">
            <h1>Welcome, __RULLST_USER_NAME__</h1>
-           <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID in an encrypted session cookie.</p>
+           <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID and session epoch in an encrypted session cookie; signing out everywhere revokes every copy.</p>
            <div class="grid">
              <div class="card">
                <h3 class="subscription">💳 Subscription</h3>

@@ -69,15 +69,15 @@ API, not a promise of ongoing maintenance or a deployment recommendation.
 Replace `src/main.rs` with:
 
 ```rust,no_run
-use rullst::{html, response::Html, routes, Server};
+use rullst::{html, routes, Markup, Server};
 
-async fn home() -> Html<String> {
-    Html(html! {
+async fn home() -> Markup {
+    html! {
         <div class="min-h-screen bg-slate-900 text-emerald-400 flex flex-col items-center justify-center font-sans">
             <h1 class="text-5xl font-extrabold mb-4">"Hello, Rullst! 📜🦀"</h1>
             <p class="text-slate-400 text-lg">"Your first typed route is running."</p>
         </div>
-    })
+    }
 }
 
 #[tokio::main]
@@ -133,8 +133,9 @@ boundary.
 ## Key takeaways
 
 - The `rullst::html!` macro generates ordinary Rust string-building code and
-  escapes dynamic values. Rendering still performs the allocations/work implied
-  by the generated template.
+  escapes dynamic values. It returns `Markup`, which a handler returns as
+  `text/html` and another `html!` inserts as HTML. Rendering still performs
+  the allocations/work implied by the generated template.
 - All boolean HTML attributes inside `html!` must be explicitly quoted (e.g. `required="true"`).
 - Fallible handlers can return `Result<Response, YourAppError>` using an
   application-defined error that converts the relevant typed framework/domain

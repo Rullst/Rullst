@@ -397,14 +397,14 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (8 rows);
+  application source (9 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (92 rows);
+  the affected API, feature or configuration, which the rules locate (93 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (52 rows).
+  of inputs that previously failed) (54 rows).
 
-The catalog has 99 rules. A row can map to several rules and a rule to
+The catalog has 102 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
@@ -425,6 +425,7 @@ the rule together.
 | LMS blueprint | (c) none | — | Generator output; existing applications keep their code |
 | Consumer generators | (c) none | — | Generator commands |
 | `html!` event handlers | (a) must-change | `V13-HTML-DYNAMIC-EVENT-HANDLER` |  |
+| `html!` returns `Markup` | (a) must-change | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP` | Located in function signatures and `RawHtml` calls, including `html!` bodies; a `String` collected from `html!` output, an `#[island]` call or `Live::mount` output is reported where `RawHtml` wraps it |
 | Core request validation | (b) review | `V13-VALIDATION-STATUS` |  |
 | Core feature flags and scheduler | (b) review | `V13-SCHEDULER-WEEKDAYS` | A/B splits: the two feature-flag rules below; the bucket reassignment depends on flag configuration and is not located |
 | Memory feature-flag splits | (b) review | `V13-MEMORY-FEATURE-SPLITS` |  |
@@ -468,8 +469,11 @@ the rule together.
 | Offline Redis mock | (b) review | `V13-REDIS-MOCK-TIE-ORDER` |  |
 | SQLite DSN paths | (c) none | — | Only stray files of earlier versions |
 | Auto-healing diagnostics | (b) review | `V13-AUTO-HEALING-DIAGNOSTICS` |  |
-| ORM migrations | (c) none | — | Existing migrations keep their behaviour |
+| ORM migrations | (c) none | — | Existing migrations keep their behaviour; `db:seed` refusing pending migrations is command behaviour |
 | ORM instance mutations | (b) review | `V13-ORM-MISSING-ROW` | Plain `delete()` calls are not located |
+| ORM encryption key settings | (c) none | — | Only `.env` entries that the process environment lacks change; `.env` is not read |
+| ORM constraint errors | (b) review | `V13-ORM-CONSTRAINT-ERRORS` | Code that matches `DatabaseError` |
+| ORM query values | (c) none | — | Only exhaustive `match`es on `RullstValue` break, and `cargo check` reports them |
 | ORM sandbox tests | (a) must-change | `V13-ORM-SANDBOX-TEST` | Flags every sandbox test as review; `cargo check` reports the signatures that no longer compile |
 | ORM model SQLx options | (a) must-change | `V13-ORM-SQLX-STRUCT-OPTION` |  |
 | ORM trashed scopes | (b) review | `V13-ORM-ONLY-TRASHED` |  |

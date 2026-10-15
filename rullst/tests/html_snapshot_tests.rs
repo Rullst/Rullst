@@ -26,24 +26,21 @@ fn test_html_macro_snapshot_dynamic() {
             <header>
                 <h2>"Welcome, "{user_name}</h2>
                 {
-                    if is_admin {
-                        html! { <span class="badge">"Admin"</span> }
-                    } else {
-                        String::new()
-                    }
+                    is_admin.then(|| html! { <span class="badge">"Admin"</span> })
                 }
             </header>
             <ul class="features">
                 {
                     items.iter().map(|item| html! {
                         <li>{item}</li>
-                    }).collect::<String>()
+                    }).collect::<rullst::html::Markup>()
                 }
             </ul>
         </div>
     };
 
-    insta::assert_snapshot!(result, @"<div class=\"dashboard\"><header><h2>Welcome, Alice</h2>&lt;span class=&quot;badge&quot;&gt;Admin&lt;/span&gt;</header><ul class=\"features\">&lt;li&gt;Rust&lt;/li&gt;&lt;li&gt;Security&lt;/li&gt;&lt;li&gt;Performance&lt;/li&gt;</ul></div>");
+    // Nested `html!` output is inserted as HTML; interpolated text is escaped.
+    insta::assert_snapshot!(result, @"<div class=\"dashboard\"><header><h2>Welcome, Alice</h2><span class=\"badge\">Admin</span></header><ul class=\"features\"><li>Rust</li><li>Security</li><li>Performance</li></ul></div>");
 }
 
 #[test]
@@ -59,4 +56,21 @@ fn html_macro_accepts_and_strips_source_comments() {
     };
 
     assert_eq!(result, "<main><p>Audited content</p></main>");
+}
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn html_macro_renders_a_doctype_keyword_elements_and_nested_views() {
+    let title = "<Notes>";
+    let icon = html! { <svg><use href="#note" /></svg> };
+    let trusted = rullst::html::RawHtml::new("<hr>");
+    let page = html! {
+        <!DOCTYPE html>
+        <html><body><h1>{title}</h1>{icon}{trusted}</body></html>
+    };
+
+    assert_eq!(
+        page,
+        "<!DOCTYPE html><html><body><h1>&lt;Notes&gt;</h1><svg><use href=\"#note\"></use></svg><hr></body></html>"
+    );
 }

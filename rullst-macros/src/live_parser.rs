@@ -69,7 +69,7 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
             if !has_render {
                 return Error::new_spanned(
                     item_impl,
-                    "#[live_component] impl block must contain a `pub fn render(&self) -> String` method",
+                    "#[live_component] impl block must contain a `pub fn render(&self) -> Markup` (or `-> String`) method",
                 )
                 .to_compile_error();
             }
@@ -109,8 +109,10 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                         }
                     }
 
+                    // The inherent `render` may return `Markup` (from
+                    // `html!`) or a `String` of HTML.
                     fn render(&self) -> String {
-                        self.render()
+                        ::core::convert::Into::<::std::string::String>::into(self.render())
                     }
                 }
             };

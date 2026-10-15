@@ -4,6 +4,7 @@ use super::*;
 
 mod data;
 mod files;
+mod markup;
 mod scanner;
 
 /// Codes and lines found in one Rust source.
@@ -110,8 +111,25 @@ fn review_rules_report_the_first_location_and_must_change_every_one() {
         vec![
             ("V13-MODEL-ALL", 1),
             ("V13-HTML-DYNAMIC-EVENT-HANDLER", 3),
+            ("V13-HTML-MARKUP-RETURN", 3),
             ("V13-HTML-DYNAMIC-EVENT-HANDLER", 4),
+            ("V13-HTML-MARKUP-RETURN", 4),
         ]
+    );
+}
+
+#[test]
+fn matching_database_error_text_is_reviewed() {
+    assert_only(
+        r#"
+async fn register(user: &mut User) -> Result<bool, rullst::orm::Error> {
+    match user.save().await {
+        Err(rullst::orm::Error::DatabaseError(message)) if message.contains("UNIQUE") => Ok(false),
+        other => other.map(|()| true),
+    }
+}
+"#,
+        &["V13-ORM-CONSTRAINT-ERRORS"],
     );
 }
 
@@ -482,13 +500,20 @@ fn unparsable_sources_are_listed_instead_of_scanned() {
         .collect();
     assert_eq!(codes, vec!["V13-HEALTH-PROBES"]);
 
-    std::fs::write(
-        root.join("src/health.rs"),
-        "pub fn probes() -> Router { rullst::health::health_router() }\n",
-    )
-    .unwrap();
-    let mut scan = SourceScan::default();
-    scan_package(&root, &WorkspaceFacts::default(), &mut scan).unwrap();
-    assert!(scan.findings.is_empty(), "{:?}", scan.findings);
+    // Each router, including those reporting the application version, mounts the probes.
+    for call in [
+        "health_router()",
+        "health_router_with_version(\"1.0.0\")",
+        "health_router_with_lifecycle_and_version(lifecycle, \"1.0.0\")",
+    ] {
+        std::fs::write(
+            root.join("src/health.rs"),
+            format!("pub fn probes() -> Router {{ rullst::health::{call} }}\n"),
+        )
+        .unwrap();
+        let mut scan = SourceScan::default();
+        scan_package(&root, &WorkspaceFacts::default(), &mut scan).unwrap();
+        assert!(scan.findings.is_empty(), "{call}: {:?}", scan.findings);
+    }
     std::fs::remove_dir_all(root).unwrap();
 }

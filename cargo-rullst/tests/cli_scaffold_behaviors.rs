@@ -194,6 +194,18 @@ fn auth_resource_and_service_scaffolds_compose_in_one_project() {
         fs::read_to_string(project.root.join("src/migrations/mod.rs")).expect("migration registry");
     assert!(migrations.contains("get_migrations"));
     assert!(migrations.contains("products"));
+    assert!(migrations.contains("Vec<Box<dyn rullst::db::schema::Migration>>"));
+    let lookup = fs::read_dir(project.root.join("src/migrations"))
+        .expect("migration directory")
+        .map(|entry| entry.expect("migration entry").path())
+        .find(|path| {
+            path.to_string_lossy()
+                .ends_with("_add_lookup_to_products.rs")
+        })
+        .expect("make:migration output");
+    let lookup = fs::read_to_string(lookup).expect("generated migration");
+    assert!(lookup.contains("async fn up(&self) -> Result<(), rullst::orm::Error> {"));
+    assert!(!lookup.contains("rullst_orm"), "{lookup}");
 }
 
 #[test]

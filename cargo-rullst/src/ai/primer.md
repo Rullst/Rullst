@@ -126,17 +126,22 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {
   `required="true"`, `disabled="true"`, `checked="true"`.
 - A dynamic value for an `on*` or `hx-on*` attribute does not compile; keep
   event handlers static and pass data through `data-*` attributes.
-- `html!` returns a `String`. To nest fragments (for example a list), build
-  each item with `html!`, collect them into a `String`, and embed the result
-  with `{rullst::html::RawHtml(items)}`. Only wrap HTML produced by `html!`
-  or other trusted code in `RawHtml`; never user input.
+- `html!` returns `rullst::html::Markup`, which a handler can return directly
+  (`text/html`). Interpolating a `Markup` inserts it as HTML, so views nest:
+  declare view functions `-> Markup`, collect lists with
+  `.collect::<Markup>()` and use `Option<Markup>` for optional parts. Strings
+  are always escaped. `rullst::html::RawHtml` is only for trusted HTML made
+  outside `html!` (a sanitizer's output, say); never user input.
 
 ```rust
-let rows: String = posts
-    .iter()
-    .map(|post| html! { <li>{post.title.as_str()}</li> })
-    .collect();
-let page = html! { <ul>{rullst::html::RawHtml(rows)}</ul> };
+use rullst::html::Markup;
+
+fn item(title: &str) -> Markup {
+    html! { <li>{title}</li> }
+}
+
+let rows: Markup = posts.iter().map(|post| item(&post.title)).collect();
+let page = html! { <ul>{rows}</ul> };
 ```
 
 ## HTMX and pages
@@ -215,8 +220,8 @@ pub struct Post {
 `src/migrations/mod.rs`. A create-table migration looks like:
 
 ```rust
-use rullst_orm::schema::{Schema, Migration};
-use rullst_orm::async_trait;
+use rullst::db::schema::{Schema, Migration};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -226,7 +231,7 @@ impl Migration for MigrationImpl {
         "m<timestamp>_create_posts" // the generated file stem
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("posts", |table| {
             table.id();
             table.string("title");
@@ -236,7 +241,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("posts").await
     }
 }

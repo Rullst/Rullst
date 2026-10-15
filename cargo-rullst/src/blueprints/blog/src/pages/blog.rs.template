@@ -1,6 +1,6 @@
 __FE_IMPORTS__use crate::models::post::Post;
 
-pub fn index_page(posts: rullst_orm::PaginationResult<Post>, csp_nonce: &str) -> String {
+pub fn index_page(posts: rullst_orm::PaginationResult<Post>, csp_nonce: &str) -> html::Markup {
     let newer = (posts.current_page > 1).then(|| posts.current_page - 1);
     let older = (posts.current_page < posts.last_page).then(|| posts.current_page + 1);
     html! {
@@ -52,17 +52,17 @@ pub fn index_page(posts: rullst_orm::PaginationResult<Post>, csp_nonce: &str) ->
                         </div>
                     </header>
                     <div class="post-list">
-                        { rullst::html::RawHtml::new(posts.data.into_iter().map(|p| html! {
+                        { posts.data.into_iter().map(|p| html! {
                             <div class="card">
                                 <h2>{&p.title}</h2>
                                 <p>{p.content.chars().take(100).collect::<String>()} "..."</p>
                                 <a class="read-more" href={format!("/posts/{}", p.slug)}>"Read full post &rarr;"</a>
                             </div>
-                        }).collect::<Vec<_>>().join("")) }
+                        }).collect::<html::Markup>() }
                     </div>
                     <nav class="pager" aria-label="Pagination">
-                        <span>{ rullst::html::RawHtml::new(newer.map_or_else(String::new, |page| html! { <a href={format!("/?page={page}")}>"&larr; Newer posts"</a> })) }</span>
-                        <span>{ rullst::html::RawHtml::new(older.map_or_else(String::new, |page| html! { <a href={format!("/?page={page}")}>"Older posts &rarr;"</a> })) }</span>
+                        <span>{ newer.map(|page| html! { <a href={format!("/?page={page}")}>"&larr; Newer posts"</a> }) }</span>
+                        <span>{ older.map(|page| html! { <a href={format!("/?page={page}")}>"Older posts &rarr;"</a> }) }</span>
                     </nav>
                 </div>
             </body>
@@ -70,7 +70,7 @@ pub fn index_page(posts: rullst_orm::PaginationResult<Post>, csp_nonce: &str) ->
     }
 }
 
-pub fn detail_page(post: Post, csp_nonce: &str) -> String {
+pub fn detail_page(post: Post, csp_nonce: &str) -> html::Markup {
     html! {
         <html lang="en" class="dark">
             <head>

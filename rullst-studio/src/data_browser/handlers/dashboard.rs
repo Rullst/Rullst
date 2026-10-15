@@ -41,7 +41,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
             if is_htmx {
                 return Html(error_html).into_response();
             } else {
-                return Html(studio_layout(error_html, None, &[])).into_response();
+                return Html(studio_layout(error_html.into_string(), None, &[])).into_response();
             }
         }
     };

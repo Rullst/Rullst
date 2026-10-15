@@ -29,7 +29,7 @@ fuzz_target!(|data: &[u8]| {
                 {
                     let (mut parts, _) = req.into_parts();
                     let Ok(req_htmx) = HtmxRequest::from_request_parts(&mut parts, &()).await;
-                    let _ = render_page(&req_htmx, s, s.to_string());
+                    let _ = render_page(&req_htmx, s, rullst::html::Markup::from_trusted(s));
                 }
             });
     }

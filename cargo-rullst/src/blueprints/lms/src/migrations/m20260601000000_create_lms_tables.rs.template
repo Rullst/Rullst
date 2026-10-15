@@ -9,7 +9,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_lms_tables"
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("categories", |table| {
             table.id();
             table.string("name").not_null();
@@ -88,7 +88,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("lessons").await?;
         Schema::drop_if_exists("course_modules").await?;
         Schema::drop_if_exists("courses").await?;

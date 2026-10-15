@@ -303,6 +303,19 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     );
     assert!(!starter.path("src/models/user.rs").exists());
 
+    let resets = Project::with_migration_runner();
+    fs::create_dir_all(resets.path("src/migrations")).expect("migrations directory");
+    let tokens = "// existing reset tokens table\n";
+    let reset_migration = "src/migrations/m20260601000001_create_password_reset_tokens_table.rs";
+    fs::write(resets.path(reset_migration), tokens).expect("reset migration");
+    let refused = resets.fails(&["auth"]);
+    assert!(
+        refused.contains("second password_reset_tokens migration"),
+        "{refused}"
+    );
+    assert_unchanged(&resets, reset_migration, tokens);
+    assert!(!resets.path("src/models/user.rs").exists());
+
     let repeated = Project::with_migration_runner();
     repeated.succeeds(&["auth"]);
     let controller = repeated.read("src/controllers/auth_controller.rs");
@@ -310,6 +323,12 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
     assert_eq!(
         repeated
             .migrations_ending_with("_create_users_table.rs")
+            .len(),
+        1
+    );
+    assert_eq!(
+        repeated
+            .migrations_ending_with("_create_password_reset_tokens_table.rs")
             .len(),
         1
     );
@@ -324,7 +343,7 @@ fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
     let features = manifest["dependencies"]["rullst"]["features"]
         .as_array()
         .expect("rullst features");
-    for feature in ["orm", "auth"] {
+    for feature in ["orm", "auth", "mail"] {
         assert!(features.iter().any(|value| value.as_str() == Some(feature)));
     }
     let root = project.read("src/main.rs");
@@ -333,12 +352,25 @@ fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
     }
     for (index, module) in [
         ("src/controllers/mod.rs", "auth_controller"),
+        ("src/controllers/mod.rs", "password_controller"),
         ("src/middlewares/mod.rs", "auth_middleware"),
         ("src/models/mod.rs", "user"),
+        ("src/models/mod.rs", "password_reset"),
         ("src/pages/mod.rs", "auth"),
     ] {
         assert!(project.read(index).contains(&format!("pub mod {module};")));
     }
+    let resets = project.migrations_ending_with("_create_password_reset_tokens_table.rs");
+    assert_eq!(resets.len(), 1);
+    let reset_module = resets[0]
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .expect("migration name");
+    assert!(
+        project
+            .read("src/migrations/mod.rs")
+            .contains(&format!("{reset_module}::MigrationImpl"))
+    );
     syn::parse_file(&root).expect("registered root module parses");
 
     let turso = Project::new();

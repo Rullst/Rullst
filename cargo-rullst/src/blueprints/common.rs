@@ -39,7 +39,7 @@ use rullst::db::{{Orm, sqlx}};
 pub struct {model_name}Repository;
 
 impl {model_name}Repository {{
-    pub async fn find_all() -> Result<Vec<{model_name}>, rullst_orm::error::RullstError> {{
+    pub async fn find_all() -> Result<Vec<{model_name}>, rullst::orm::Error> {{
         let pool = Orm::pool()?;
         let rows = sqlx::query_as::<_, {model_name}>("SELECT * FROM {table}")
             .fetch_all(pool)
@@ -47,7 +47,7 @@ impl {model_name}Repository {{
         Ok(rows)
     }}
 
-    pub async fn find_by_id(id: i64) -> Result<Option<{model_name}>, rullst_orm::error::RullstError> {{
+    pub async fn find_by_id(id: i64) -> Result<Option<{model_name}>, rullst::orm::Error> {{
         let pool = Orm::pool()?;
         let row = sqlx::query_as::<_, {model_name}>("SELECT * FROM {table} WHERE id = ?")
             .bind(id)
@@ -56,7 +56,7 @@ impl {model_name}Repository {{
         Ok(row)
     }}
 
-    pub async fn count() -> Result<i64, rullst_orm::error::RullstError> {{
+    pub async fn count() -> Result<i64, rullst::orm::Error> {{
         let pool = Orm::pool()?;
         let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM {table}")
             .fetch_one(pool)
@@ -134,7 +134,7 @@ pub fn frontend_page_imports(frontend_engine: &str) -> String {
 
 /// Generates the page renderer code block using Rullst's compile-time `html!` macro.
 pub fn render_page_layout(_frontend_engine: &str) -> String {
-    r#"pub fn render_layout(title: &str, body_html: &str) -> String {
+    r#"pub fn render_layout(title: &str, body: rullst::html::Markup) -> rullst::html::Markup {
     rullst::html! {
         <html lang="en" class="dark">
             <head>
@@ -144,7 +144,7 @@ pub fn render_page_layout(_frontend_engine: &str) -> String {
                 <title>{title}</title>
             </head>
             <body>
-                <div>{body_html}</div>
+                <div>{body}</div>
             </body>
         </html>
     }
@@ -179,4 +179,17 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         nexus_block = nexus_block,
         routes_block = routes_block,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_layout_takes_and_returns_markup() {
+        let layout = super::render_page_layout("Zero-Bundle HTMX");
+        assert!(layout.starts_with(
+            "pub fn render_layout(title: &str, body: rullst::html::Markup) -> rullst::html::Markup {"
+        ));
+        assert!(layout.contains("<div>{body}</div>"));
+        syn::parse_file(&layout).expect("the layout parses");
+    }
 }

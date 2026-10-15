@@ -79,15 +79,15 @@ Recorded screenshot; layout and controls can differ by version. [Development wor
 ## 🦀 Code that says what it does
 
 ```rust
-use rullst::{html, response::Html, routes, Server};
+use rullst::{html, routes, Markup, Server};
 
-async fn home() -> Html<String> {
-    Html(html! {
+async fn home() -> Markup {
+    html! {
         <div class="min-h-screen bg-slate-900 text-emerald-400 flex flex-col items-center justify-center font-sans">
             <h1 class="text-5xl font-extrabold mb-4">"Hello, Rullst! 📜🦀"</h1>
             <p class="text-slate-400 text-lg">"Your first typed route is running."</p>
         </div>
-    })
+    }
 }
 
 #[tokio::main]
@@ -384,8 +384,27 @@ migrate production data. [Assisted upgrade tutorial](https://rullst.github.io/Ru
 This `main` branch is where **v13** is being built (`13.0.0-alpha.1`). The
 commands above install the stable **v12** line, maintained on the
 [`v12`](https://github.com/Rullst/Rullst/tree/v12) branch; v5 is no longer maintained.
-The first v13 prerelease, `13.0.0-alpha.1`, is on crates.io; `cargo add rullst`
-still selects 12.3.0, so opt in explicitly with `rullst = "13.0.0-alpha.1"`.
+The first v13 prerelease, `13.0.0-alpha.1`, is on crates.io. Cargo never
+selects a prerelease on its own, so `cargo install cargo-rullst` and
+`cargo add rullst` still pick 12.x. To try v13, name the exact prerelease:
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+```
+
+In a hand-written `Cargo.toml`, pin it with `=` too: a plain
+`"13.0.0-alpha.1"` is a caret requirement that also accepts later alphas,
+which may break the API. The default features compile the SQLite, PostgreSQL
+and MySQL drivers, so turn them off and select the database profile you use
+(plus capabilities such as `auth` or `nexus`):
+
+```toml
+rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["strict-postgres"] }
+```
+
+`cargo rullst new` already turns the default features off; the 13.0.0-alpha.1
+CLI writes the version without `=`, so add it to the `rullst` and `rullst-orm`
+lines of a project it generates (later prereleases write it).
 
 In development for v13: email login and scoped API tokens, active-session
 management with remote logout, private S3/R2 storage with resumable uploads,

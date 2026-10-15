@@ -114,12 +114,7 @@ pub fn generate_execution_methods(
             let mut results: Vec<#name> = {
                 let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in &query_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
+                    query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
                 }
                 let timeout = rullst_orm::schema::get_query_timeout();
                 if let Some(t) = timeout {
@@ -193,12 +188,7 @@ pub fn generate_execution_methods(
             let total_row: (i64,) = rullst_orm::dispatch_executor!(read_pool, |pool| {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (i64,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in &count_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
+                    query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
                 }
                 let timeout = rullst_orm::schema::get_query_timeout();
                 if let Some(t) = timeout {
@@ -257,12 +247,7 @@ pub fn generate_execution_methods(
             let row: (i64,) = rullst_orm::dispatch_executor!(read_pool, |pool| {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (i64,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in &count_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
+                    query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
                 }
                 let timeout = rullst_orm::schema::get_query_timeout();
                 if let Some(t) = timeout {
@@ -306,12 +291,7 @@ pub fn generate_execution_methods(
                 let pool = rullst_orm::Orm::try_read_pool()?;
                 let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in &query_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
+                    query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
                 }
 
                 let mut db_stream = query.fetch(pool);
@@ -347,12 +327,7 @@ pub fn generate_execution_methods(
 
                 let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in &query_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
+                    query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
                 }
 
                 let mut db_stream = query.fetch(&mut **tx);

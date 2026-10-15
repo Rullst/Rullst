@@ -8,9 +8,21 @@ version and internal requirements. `rullst-privacy`, `rullst-supervision`,
 first published in 13.0.0-alpha.1. Privacy
 has explicit `privacy-*` umbrella features; Supervision, Media and Labs remain
 standalone opt-ins.
-All twenty packages are on crates.io as `13.0.0-alpha.1`. `cargo add rullst`
-still selects 12.3.0, so registry use requires an explicit opt-in such as
-`rullst = "13.0.0-alpha.1"`. Do not request v13 artifacts from
+All twenty packages are on crates.io as `13.0.0-alpha.1`. Cargo never selects
+a prerelease on its own, so `cargo add rullst` still selects 12.3.0: opt in with
+an exact requirement such as `rullst = "=13.0.0-alpha.1"`. A plain
+`"13.0.0-alpha.1"` is a caret requirement that also accepts later alphas, which
+may break the API. The 13.0.0-alpha.1 CLI still writes that caret form, so add
+the `=` to the `rullst` and `rullst-orm` lines of a project it generates. A
+hand-written manifest should also turn off the default features, which compile
+the SQLite, PostgreSQL and MySQL drivers, and select the database profile it
+uses, as `cargo rullst new` does:
+
+```toml
+rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["strict-postgres"] }
+```
+
+Do not request v13 artifacts from
 the stable updater before those artifacts have actually been published.
 
 This inventory covers the `13.0.0-alpha.1` development source. Revisit it as the remaining
@@ -44,6 +56,7 @@ Rows without rules still need a reading.
 | LMS blueprint | `--blueprint lms` now generates a small starter: catalog, modules, lessons, an accessible player, enrollment, owner-bound progress, login and a Nexus admin. The complete Academy scaffold (schools, roles, quizzes, activities, scores, automation, notifications, publication, privacy lifecycle) and `--lms-modules` were removed; existing generated applications keep their code. Registration no longer generates the school-membership hook, and the learner dashboard no longer claims a default demo school: it points to the course catalog. |
 | Consumer generators | `make:supervision` was removed with the complete Academy LMS it targeted; integrate `rullst-supervision` directly. `make:privacy` and `make:age-gate` now target only the SaaS starter (`--blueprint saas`, which requires `--tenant-ref`). |
 | `html!` event handlers | A dynamic value in an `on*`, `hx-on` or `hx-on-*` attribute (for example `onclick={handler}`) no longer compiles, because escaping cannot make data safe inside JavaScript. Static handler strings still compile; move data-driven handlers into a nonce'd script with `addEventListener` and pass values through `data-*` attributes. The default CSP already blocked such inline handlers. |
+| `html!` returns `Markup` | Since 13.0.0-alpha.2, `html!` returns `rullst::html::Markup` (escaped HTML) instead of `String`. Interpolating a `Markup` inserts it as HTML, so a fragment built by another `html!` call is no longer shown as escaped text and needs no `RawHtml`; `String`, `&str` and numbers are still escaped. A function declared `-> String` that returns `html!` no longer compiles: declare it `-> Markup`. `RawHtml(html! { .. })` no longer compiles: interpolate the `Markup` directly. Collect lists with `.collect::<Markup>()` (collecting `Markup` into a `String` does not compile) and use `Option<Markup>` for optional parts. `render_page`/`render_page_with_lang` take `impl Into<Markup>` (wrap a `String` of trusted HTML with `Markup::from_trusted`), and `Live::mount` and native `#[island]` functions return `Markup`. A handler can return `Markup` (`text/html; charset=utf-8`), `Html(html! { .. })` still compiles, `Markup` compares with and reads like a `&str`, and `.into_string()` returns the `String`. See [`html!` returns `Markup`](#html-returns-markup). |
 | Core request validation | `ValidatedForm`/`ValidatedJson` return 413 for oversized bodies and 415 for a wrong content type (HTMX requests receive the same code in `X-Rullst-Validation-Status`); other read failures stay 400. Nested errors are keyed `address.zip` and `items[0].name`, and `ValidationError` formatting no longer includes submitted values. Update clients or tests that expected 400 for these cases. |
 | Core feature flags and scheduler | A user outside a declared A/B split now resolves to `"disabled"` instead of falling through to the next driver, and a negative database `rollout_percentage` means 0%. `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) with the day-of-month OR day-of-week rule in UTC; review numeric weekdays in existing schedules. `RullstConfig::environment()` now reports the environment the Server enforces, including a value read from `.env`. Percentage rollouts and A/B variants of the Env, TOML, Memory and DB drivers use a versioned SHA-256 bucket hash instead of `std`'s `DefaultHasher`, so upgrading reassigns users to buckets once (percentages and variant weights are kept). End experiments whose assignment must not change before upgrading, and keep the period in which 12.x and 13 replicas both serve short, because they assign the same user differently. |
 | Memory feature-flag splits | A `MemoryFeatureDriver::override_variants` flag (including `FeatureManager::overrides()`) no longer reports `enabled`/`enabled_for` as true for everyone. Like the Env, TOML and DB drivers, `enabled_for` is true only for identifiers assigned a variant named `"enabled"`; like the Env and TOML drivers, `enabled` is false. Gate A/B code on `variant`. |
@@ -87,8 +100,11 @@ Rows without rules still need a reading.
 | Offline Redis mock | The offline `RedisDataStore` mock returns equal `sorted_set_top` scores in descending lexicographic member order, like Redis `ZREVRANGE`, instead of ascending order. Update tests that relied on the old tie order. |
 | SQLite DSN paths | The missing-file preparation before connecting percent-decodes the SQLite DSN path as SQLx does, so `sqlite://data%20dir/app.db` creates `data dir/app.db`, the file SQLx opens, instead of a stray `data%20dir/app.db`. Stray encoded-name files left by earlier versions can be removed. |
 | Auto-healing diagnostics | `SchemaErrorInterceptor::diagnose_sql_error` returns `None` for constraint violations, `already exists` errors, other messages that merely mention a relation, and names that are not plain identifiers. Missing-table suggestions use SQLite or MySQL DDL when the message comes from those drivers, and SQLite `no such column` and MySQL `Unknown column`/`Table ... doesn't exist` messages are recognized. |
-| ORM migrations | The `Migration` trait gains `within_transaction()` (default `false`, v13 prerelease API). Returning `true` makes the runner apply `up()`/`down()` and its `migrations` record in one `Orm::transaction`; only statements that join it (`Schema`, `execute_query!`, generated model methods) are covered, and MySQL/MariaDB DDL still commits implicitly. The template written by the ORM artisan `make:migration` now opts in, so such a migration that sends queries to `Orm::pool()` directly must return `false`. Existing migrations keep the separate statements. |
+| ORM migrations | The `Migration` trait gains `within_transaction()` (default `false`, v13 prerelease API). Returning `true` makes the runner apply `up()`/`down()` and its `migrations` record in one `Orm::transaction`; only statements that join it (`Schema`, `Orm::raw(..).execute()`, `execute_query!`, generated model methods) are covered, and MySQL/MariaDB DDL still commits implicitly. The template written by the ORM artisan `make:migration` now opts in, so such a migration that sends queries to `Orm::pool()` directly must return `false`. Existing migrations keep the separate statements. `db:seed` now fails, without running any seeder, while a migration registered with `artisan!` is not recorded in the `migrations` table; run `db:migrate` first. |
 | ORM instance mutations | `save()` of a row deleted after it was loaded, and `delete()`/`force_delete()` of a missing row, now fail with `RecordNotFound` (tenant models keep their tenant-scope `Validation` error) instead of returning `Ok` and running observers, audit and post-commit effects. A second soft `delete()` of a trashed row fails the same way instead of re-stamping its deletion time, and `restore()` of a missing or live row is a no-op on every model. `cascade_soft_delete` now also trashes children that the child model's `global_scope` hides. A model whose only persisted field is `id` can now be inserted. An auditable `save()` locks the row it diffs (`FOR UPDATE` on PostgreSQL/MySQL), `deleted`/`force_deleted`/`restored` audit entries record the persisted row instead of the in-memory handle, and that read, revision restores, `restore()` re-reads and `belongs_to_many` pivot loads now fail with the configured query timeout instead of waiting indefinitely. Callers that deleted idempotently must accept `RecordNotFound`. |
+| ORM constraint errors | A unique or primary-key violation now returns `Error::UniqueViolation { constraint, .. }` and a foreign-key violation `Error::ForeignKeyViolation { constraint, .. }`, from generated writes, query builders and `Orm::raw`, instead of `Error::DatabaseError(String)`. Their message names only the constraint (PostgreSQL) instead of quoting the database's text, so code that matched `DatabaseError` or searched the message for `UNIQUE constraint failed`, `duplicate key` or `Duplicate entry` must match the variants instead. Errors returned by `Orm::transaction` itself are unchanged. |
+| ORM encryption key settings | `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and `RULLST_ENCRYPTION_KEYRING` are now also read from `.env` in the current working directory when the process environment does not set them, as `APP_KEY` already was; the process environment still wins and the file is never exported. A `.env` that sets them now takes effect for `#[orm(encrypted)]` fields and `SecretString`, so remove stale entries; a malformed `.env` now fails such a lookup when the process lacks the variable. |
+| ORM query values | `RullstValue` is now `#[non_exhaustive]` and gains `I64(i64)` and `Null`, so a `match` on it outside the ORM needs a wildcard arm. `i64` and `u32` values now convert to `I64` (bound as `BIGINT`) and `Option<T>` to `T`'s value or `Null`, so `where_eq("lesson_id", Some(3))` and `BIGINT` filters compile. `Null` binds as a text-typed `NULL`; on PostgreSQL cast it for a column of another type, and filter missing values with `where_null`. Integer literals still convert to `Int` (`i32`). |
 | ORM sandbox tests | `#[rullst_orm::test]` keeps the function's declared return type and returns the body's value after the rollback, so a test returning `Err` now fails instead of passing. A test whose declared type does not match its body, or is not a `Termination` type such as `Result<(), E: Debug>`, no longer compiles; fix the signature. Post-commit effects of sandboxed writes (`committed` observers, cache invalidation, Redis events, Scout) no longer run, because the sandbox never commits; assert them in a test that commits through `Orm::transaction`. |
 | ORM model SQLx options | A struct-level `#[sqlx(...)]` option other than `default` on a `#[derive(Orm)]` model, such as `rename_all = "camelCase"`, no longer compiles: `FromRow` decoded the renamed columns while generated SQL used the field names, so writes or reads failed at runtime. Name the fields after their columns instead. |
 | ORM trashed scopes | `only_trashed()` on a model without soft deletes now fails with `Validation` instead of returning, counting or bulk-deleting every live row as if it were trashed (an "empty trash" `only_trashed().delete_all()` deleted the whole table). Remove the call, or give the model a `deleted_at` field or `#[orm(soft_delete)]`. |
@@ -170,6 +186,8 @@ Rows without rules still need a reading.
 | Registration timestamps | SaaS, LMS and `make:auth` registration now stores the current UTC time (`YYYY-MM-DD HH:MM:SS`, the text `CURRENT_TIMESTAMP` stores) in `created_at`/`updated_at`. It previously stored empty strings, which replaced the column default because the ORM inserts every field. Existing applications can copy `utc_timestamp` from a new controller; rows created earlier keep their empty timestamps until updated. |
 | Billing row timestamps | SaaS and `make:billing` controllers now store the current UTC time in `created_at`/`updated_at` of the billing customer they create on a first checkout and of a new subscription (SQLx), instead of empty strings that replaced the column default because the ORM inserts every field. Existing applications can copy `utc_timestamp` from a new controller. |
 | Registration lengths | SaaS, LMS and `make:auth` registration count the 120-character name limit and the 12-character password minimum in UTF-16 code units, as the forms' `minlength`/`maxlength` do, instead of UTF-8 bytes. The password maximum stays at the 72 bytes that `rullst::auth::hash_password` accepts, and the error message now says so. Long non-ASCII names are no longer rejected, while a non-ASCII password shorter than 12 characters (for example six Cyrillic letters, 12 bytes) is now refused. Existing sign-ins are unaffected. Existing applications can copy `form_length` and `valid_password`. |
+| Revocable login sessions | Additive: `rullst-auth` adds `make_login_cookie_with_epoch(user_id, epoch, max_age)`, `encrypt_session_with_epoch`, `decrypt_session_claims`, `SessionClaims` (`verify_epoch`), `DEFAULT_SESSION_MAX_AGE`, `MAX_SESSION_MAX_AGE` and `AuthError::SessionRevoked`. `make_login_cookie` cookies keep their format, 30-day lifetime and validity; `decrypt_session` rejects the new `v2.` tokens. New SaaS, LMS and `cargo rullst auth` projects store `users.session_epoch` (`BIGINT NOT NULL DEFAULT 0`, `#[orm(skip)]` on the model), issue epoch cookies, refuse a cookie with another epoch in `auth_middleware` (the `cargo rullst auth` middleware now loads the user on every request) and mount `POST /logout/everywhere`, which increments the epoch. To adopt in an existing application, add the column with a migration and the `#[orm(skip)] pub session_epoch: i64` field (models with skipped fields derive `Default`), issue cookies with `make_login_cookie_with_epoch`, decode them with `decrypt_session_claims` and `verify_epoch`, and increment the column in one `UPDATE` for sign-out everywhere, password changes and resets, and deactivation. Existing cookies decode as epoch 0 and keep working until the first increment. `make:age-gate` and `make:privacy` accept only authentication files equal to this release's SaaS starter, so a SaaS application generated by 13.0.0-alpha.1 must adopt the new `auth_middleware.rs` and `auth_controller.rs` first. See [encrypted sessions](crates/auth.md#revocable-cookies-the-session-epoch). |
+| Password change and reset | Additive: `rullst-auth` adds `PasswordResetToken` (`generate`, `expose`, `digest`), `password_reset_token_digest` and `password_reset_digests_match`. New SaaS, LMS and `cargo rullst auth` projects get `src/controllers/password_controller.rs` (`/password/change` behind `auth_middleware`, `/password/forgot` and `/password/reset`, every submission behind CSRF and `credential_rate_limit`), `src/models/password_reset.rs`, a `password_reset_tokens` migration, `User::change_password`, the `forgot_password_page`, `reset_password_page` and `change_password_page` views, a `notice` argument on `login_page` (shown on `/login?reset=done`) and the `mail` feature; the SaaS and LMS `.env` list `RULLST_PUBLIC_ORIGIN`. A change keeps only the asking browser signed in; a reset signs out every device and signs nobody in. To add the flows to an existing application that already uses session epochs, copy those three files and the migration (named after your users migration) from a new project of the same starter, add `User::change_password` to the user model, the three views and the login `notice` to `src/pages/auth.rs`, register the modules and routes as the new router does, make the `auth_controller` helpers that `password_controller` imports `pub(crate)`, enable the `mail` feature, and set `RULLST_PUBLIC_ORIGIN`, `MAIL_DRIVER` and `MAIL_FROM` for staging and production. See [Tutorial 11](tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces). |
 | VPS deploy proxy | `deploy --platform vps` now attaches both services to an `edge` compose network pinned to `172.31.250.0/24`, gives Caddy `172.31.250.10`, and adds that address to `[security] trusted_proxies` in `Rullst.toml` (creating it if needed) before a missing `Dockerfile` is scaffolded. Clients behind Caddy no longer share one rate-limit bucket, such as the starters' login/registration budget. Existing `docker-compose.prod.yml` files are kept: add the network and address yourself, or move the file aside and rerun the command. An existing `trusted_proxies` list is not changed. Fly.io, Railway and Render print a notice while no trusted proxy is configured. |
 | Blank database status | The Blank starter's public home page (HTML and JSON API, SQLx and Turso-primary) probes the database with a one-row `User::query().first()` instead of `User::all()`, which read up to 1,000 SQLx or 10,000 Turso rows per request. Existing applications can make the same one-line change. |
 | Portfolio profile | The Portfolio page shows the first profile by id instead of `Profile::find(1)`, returns `404` when none exists instead of a hard-coded placeholder person with `200`, and returns a logged `503` when a profile, project, experience or skill query fails instead of empty sections. Repository-mode `ProfileRepository::get` now returns `Result<Option<Profile>, rullst_orm::Error>` and the other repositories' `all` return `Result<Vec<_>, _>`. The seeded profile's e-mail is `hello@example.com`. Existing applications must copy the controller (and repositories) to adopt this. |
@@ -196,10 +214,65 @@ Rows without rules still need a reading.
 | Repository examples | The blog showcase selects its database like `Server` and Artisan (`DATABASE_URL`, `.env`, then `Rullst.toml`, now `sqlite://blog.db?mode=rwc`) and should be started from `examples/blog`. `Post` uses fail-closed `tenant_column` with the request's `TenantContext`, and `/posts/repository` lists only the selected tenant. Its Nexus registration now declares `nexus_tenant_column`, so `/nexus` lists, searches, creates and changes posts only in the request tenant (another tenant's record is `404`) and hides `tenant_id`, which a form can no longer submit (`422`). `/pricing`, `/billing` and `/checkout` read provider credential presence (process environment, then `.env`) once at start-up instead of re-reading `.env` on every request, so a credential added later appears after a restart. Stories are bounded (120/4,000 characters, 100 per tenant, 64 KiB forms; 422, 403 or 413), listings show the newest 20, startup seeding no longer deletes posts that resemble old seeds, and pages render under the unrelaxed production CSP with same-origin assets (`/omni` no longer frames the app). The non-working Wasm island page, the Tauri 1.5 shell and the Dioxus `omni-app` were removed; use `cargo rullst make:island`/`make:omni`. In the SaaS example, note bodies with control characters receive 422 instead of 503, and `membership.py` rejects tenants made only of dots. |
 | Windows paths in CLI and console output | Generator refusals (`make:k8s`, `dockerize`, `introspect` and the other no-clobber outputs), `audit` IDOR, unsafe-code and listener findings (and the compliance report built from them) and the development panic console now name files with `/` separators on Windows as well (`k8s/deployment.yaml`, not `k8s\deployment.yaml`). Adjust scripts that matched the backslash spelling. |
 | Consumer scaffolds under symlinked directories | `make:age-gate` and `make:privacy` now inspect only the entries below the project directory for symlinks, so a project reached through a symlinked parent (macOS `/var` → `/private/var`, a Windows junction) is accepted. A symlink inside the project is still refused, as is a planned path outside it. |
+| Core HSTS default | From 13.0.0-alpha.2 the staging and production header baseline sends `Strict-Transport-Security: max-age=31536000; includeSubDomains` instead of `max-age=63072000; includeSubDomains; preload`, and `rullst_security::SecureHeadersConfig::default()` uses the same value. `preload` consents to the browsers' preload list, so it is now opt-in: set `[security]` `hsts_preload = true` (with `hsts_max_age_seconds` of at least `31536000` and `hsts_include_subdomains = true`, or the server refuses to start) to keep sending it. `hsts_max_age_seconds = 63072000` restores the two-year max-age. |
+| Artisan and `.env` | From 13.0.0-alpha.2 `db:migrate`, `db:rollback`, `db:status`, `db:seed` and `studio` (through `rullst::artisan!`, `check_and_run_artisan` or `Server::run`) no longer load `.env` into the process environment, matching `Server`. `DATABASE_URL` is still read from `.env`. A migration or seeder that called `std::env::var` for a value that only `.env` defines must call `rullst::config::project_setting` instead, which reads the process environment and then `./.env`. |
+| Core WAF in development | From 13.0.0-alpha.2 `Server` in development (and `apply_security_baseline` with `Environment::Development`) runs the WAF rules in report-only mode: no request is refused, but each one staging and production would refuse logs a `warn` event (target `rullst::security::waf`) with the rule and path, and textual request bodies are buffered (bodies over 1 MiB are replayed in full). The new `[security]` `waf_body_exempt_paths` exempts the bodies of exact paths from inspection in every environment. |
+| CSRF token on static-looking paths | From 13.0.0-alpha.2 a `GET` or `HEAD` for a path such as `/report.json` or `/static/page` receives `CsrfToken` when the browser sends a valid `rullst_csrf` cookie; it still never mints a token or sets the cookie there. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
 to 13 does not perform those application/database migrations.
+
+### `html!` returns `Markup`
+
+`cargo rullst upgrade` reports `V13-HTML-MARKUP-RETURN` for a function that
+declares a `String` (`String`, `Html<String>`, `Result<String, _>`) and
+returns `html!`, and `V13-HTML-RAW-MARKUP` for `RawHtml` around `html!`
+output. Before:
+
+```rust,ignore
+use rullst::html;
+use rullst::html::RawHtml;
+
+fn badge(label: &str) -> String {
+    html! { <span class="badge">{label}</span> }
+}
+
+fn rows(names: &[&str]) -> String {
+    let rows: String = names
+        .iter()
+        .map(|name| html! { <tr><td>{name}</td><td>{RawHtml(badge("new"))}</td></tr> })
+        .collect();
+    html! { <table>{RawHtml(rows)}</table> }
+}
+```
+
+After:
+
+```rust
+use rullst::html;
+use rullst::html::Markup;
+
+fn badge(label: &str) -> Markup {
+    html! { <span class="badge">{label}</span> }
+}
+
+fn rows(names: &[&str]) -> Markup {
+    let rows: Markup = names
+        .iter()
+        .map(|name| html! { <tr><td>{name}</td><td>{badge("new")}</td></tr> })
+        .collect();
+    html! { <table>{rows}</table> }
+}
+
+assert_eq!(
+    rows(&["<Ana>"]),
+    "<table><tr><td>&lt;Ana&gt;</td><td><span class=\"badge\">new</span></td></tr></table>"
+);
+```
+
+Keep `RawHtml` (or `Markup::from_trusted`) only for trusted HTML produced
+outside `html!`, such as a sanitizer's output, and never for request data.
 
 ### Projects generated by the 12.0 CLI
 
@@ -255,19 +328,33 @@ updater's explicit `--allow-major` option, review/install its authenticated CLI,
 then start a **new invocation of that v13 CLI** for the project migration.
 Pre-release discovery also requires an exact `--to` and `--prerelease`.
 
-For a source evaluation today, build the CLI from the reviewed v13 checkout:
+To evaluate the published prerelease, install its CLI from crates.io. Cargo
+never selects a prerelease on its own (`cargo install cargo-rullst` installs
+12.x), so name the exact version:
+
+```bash
+cargo install cargo-rullst --version =13.0.0-alpha.1 --locked
+rullst --version
+```
+
+The output must identify `13.0.0-alpha.1`. Pin the framework packages of the
+projects it generates with `=13.0.0-alpha.1`, as described at the top of this
+guide. Reinstall with `--force` to go back to 12.x (`--version '^12'`) or to
+move to a later prerelease.
+
+To evaluate unreleased `main` changes instead, build the CLI from the reviewed
+checkout:
 
 ```bash
 cargo build --locked -p cargo-rullst
 ./target/debug/rullst --version
 ```
 
-The output must identify `13.0.0-alpha.1`. Use that explicit executable path
-instead of assuming a `rullst` already on `PATH` is the same binary. This is a
-local source build, not authenticated published distribution evidence. Generated
-pre-release projects may refer to matching local framework packages; keep that
-checkout available and review those paths. The final package rehearsal must
-independently prove registry-based consumers.
+Use that explicit executable path instead of assuming a `rullst` already on
+`PATH` is the same binary. This is a local source build, not authenticated
+published distribution evidence. Generated projects then refer to the matching
+local framework packages; keep that checkout available and review those paths.
+The final package rehearsal must independently prove registry-based consumers.
 
 ## Prepare, verify, review and apply
 

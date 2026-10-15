@@ -56,13 +56,14 @@ pub(crate) fn expand_memoize(input_fn: &syn::ItemFn) -> proc_macro2::TokenStream
                 )
             });
 
-            // Check if it exists in the global Rullst memory cache
+            // Check if it exists in the global Rullst memory cache. Serde
+            // results are stored as JSON and `Markup` as its HTML.
             if let Some(cache_key) = &cache_key {
                 if let Some(cached) = rullst::cache::memory::get(cache_key) {
-                    // If it's a String (HTML output), we can downcast or deserialize it.
-                    // For simplicity, we assume String return types.
-                    if let Ok(cached_str) = serde_json::from_str::<#output_type>(&cached) {
-                        return cached_str;
+                    if let Some(cached) =
+                        <#output_type as rullst::cache::memory::MemoValue>::from_memo(&cached)
+                    {
+                        return cached;
                     }
                 }
             }
@@ -72,10 +73,8 @@ pub(crate) fn expand_memoize(input_fn: &syn::ItemFn) -> proc_macro2::TokenStream
 
             // Store it in the cache, unless reading it back would change it.
             if let Some(cache_key) = &cache_key {
-                if rullst::cache::memory::is_exact_json(&result) {
-                    if let Ok(serialized) = serde_json::to_string(&result) {
-                        rullst::cache::memory::set(cache_key, &serialized);
-                    }
+                if let Some(serialized) = rullst::cache::memory::MemoValue::to_memo(&result) {
+                    rullst::cache::memory::set(cache_key, &serialized);
                 }
             }
 

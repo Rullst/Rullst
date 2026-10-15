@@ -8,8 +8,8 @@ pub fn index_page(
     query: &str,
     selected_category: Option<i32>,
     csp_nonce: &str,
-) -> String {
-    let category_input = selected_category.map_or_else(String::new, |category| {
+) -> html::Markup {
+    let category_input = selected_category.map(|category| {
         html! {
             <input type="hidden" name="category" value={category.to_string()} />
         }
@@ -26,8 +26,7 @@ pub fn index_page(
                 <a class={class} href={format!("/?category={}", category.id)}>{&category.name}</a>
             }
         })
-        .collect::<Vec<_>>()
-        .join("");
+        .collect::<html::Markup>();
     let course_cards = if courses.is_empty() {
         html! {
             <div class="empty" role="status">
@@ -49,8 +48,7 @@ pub fn index_page(
                     </div>
                 </article>
             })
-            .collect::<Vec<_>>()
-            .join("")
+            .collect::<html::Markup>()
     };
     let summary = match (query.is_empty(), selected_category) {
         (true, None) => format!("{} courses available", courses.len()),
@@ -118,16 +116,16 @@ pub fn index_page(
                         <form class="search" method="get" action="/" role="search">
                             <label for="catalog-query">"Search course titles"</label>
                             <input id="catalog-query" type="search" name="q" value={query} maxlength="100" autocomplete="off" />
-                            {rullst::html::RawHtml(category_input)}
+                            {category_input}
                             <button type="submit">"Search"</button>
                         </form>
                         <nav class="chips" aria-label="Course categories">
                             <a class={if selected_category.is_none() { "chip current" } else { "chip" }} href="/">"All courses"</a>
-                            {rullst::html::RawHtml(category_links)}
+                            {category_links}
                         </nav>
                         <p class="summary" aria-live="polite">{summary}</p>
                         <div class="courses-grid">
-                            {rullst::html::RawHtml(course_cards)}
+                            {course_cards}
                         </div>
                     </main>
                 </div>
@@ -141,7 +139,7 @@ pub fn course_detail_page(
     lessons: Vec<Lesson>,
     csrf_token: &str,
     csp_nonce: &str,
-) -> String {
+) -> html::Markup {
     let lesson_items = if lessons.is_empty() {
         html! {
             <li class="empty-lesson">"No published lessons are available yet."</li>
@@ -157,8 +155,7 @@ pub fn course_detail_page(
                     </a>
                 </li>
             })
-            .collect::<Vec<_>>()
-            .join("")
+            .collect::<html::Markup>()
     };
     html! {
         <html lang="en" class="dark">
@@ -201,7 +198,7 @@ pub fn course_detail_page(
                             <button type="submit">"Enroll or resume"</button>
                         </form>
                         <h2>"Lessons"</h2>
-                        <ul>{rullst::html::RawHtml(lesson_items)}</ul>
+                        <ul>{lesson_items}</ul>
                     </aside>
                     <main>
                         <section class="notice">
@@ -265,7 +262,7 @@ pub fn lesson_player_page(
     csrf_token: &str,
     progress_key: &str,
     csp_nonce: &str,
-) -> Result<String, LessonMediaError> {
+) -> Result<html::Markup, LessonMediaError> {
     if !valid_media_source(media_url) {
         return Err(LessonMediaError::InvalidSource);
     }
@@ -330,7 +327,7 @@ pub fn lesson_player_page(
                 <main>
                     <a href={format!("/courses/{course_id}")}>"← Back to course"</a>
                     <article class="player-card">
-                        {rullst::html::RawHtml(media_player)}
+                        {media_player}
                         <div class="info">
                             <h1>{title}</h1>
                             <p class="notice">"This development fixture may require an explicit media-src policy. Production applications must provide approved same-origin or signed media and verify caption/transcript quality."</p>

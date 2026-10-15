@@ -23,6 +23,8 @@ fn router() -> Result<Router, Box<dyn std::error::Error>> {
         get("/login" => controllers::auth_controller::login_view),
         get("/register" => controllers::auth_controller::register_view),
         post("/logout" => controllers::auth_controller::logout),
+        get("/password/forgot" => controllers::password_controller::forgot_password_view),
+        get("/password/reset" => controllers::password_controller::reset_password_view),
     ];
 
     // Each credential submission runs Argon2id, so it is budgeted per client.
@@ -30,7 +32,21 @@ fn router() -> Result<Router, Box<dyn std::error::Error>> {
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
     .route("/register", rullst::routing::post(controllers::auth_controller::register_submit)
         .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    // Reset requests send mail and resets run Argon2id: both are budgeted per client.
+    .route("/password/forgot", rullst::routing::post(controllers::password_controller::forgot_password_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    .route("/password/reset", rullst::routing::post(controllers::password_controller::reset_password_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit)))
+    // A password change bumps the session epoch: every other device is signed out.
+    .route("/password/change", rullst::routing::get(controllers::password_controller::change_password_view)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/password/change", rullst::routing::post(controllers::password_controller::change_password_submit)
+        .layer(rullst::server::from_fn(controllers::auth_controller::credential_rate_limit))
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    // Bumps the account's session epoch: every device is signed out.
+    .route("/logout/everywhere", rullst::routing::post(controllers::auth_controller::logout_everywhere)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/reports/billing", rullst::routing::get(controllers::billing_controller::billing_report)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))

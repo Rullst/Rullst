@@ -48,6 +48,7 @@ const IDENT_RULES: &[(&str, &Rule)] = &[
     ("sorted_set_top", &REDIS_MOCK_ORDER),
     ("diagnose_sql_error", &AUTO_HEALING),
     ("force_delete", &ORM_MISSING_ROW),
+    ("DatabaseError", &ORM_CONSTRAINT_ERRORS),
     ("only_trashed", &ORM_ONLY_TRASHED),
     ("to_sql", &ORM_SQL_TEXT),
     ("compliance_schema", &PERSONAL_DATA_REPORT),
@@ -311,7 +312,10 @@ impl Scanner<'_, '_> {
             self.hit(&MAIL_REMOVED, at);
         }
         match name {
-            "health_router" | "health_router_with_lifecycle" => self.facts.mounts_health = true,
+            "health_router"
+            | "health_router_with_lifecycle"
+            | "health_router_with_version"
+            | "health_router_with_lifecycle_and_version" => self.facts.mounts_health = true,
             "protect_router" => self.facts.protects_router = true,
             _ => {}
         }

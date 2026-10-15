@@ -3,7 +3,7 @@
 //! Attributes are read here explicitly; [`super::tokens`] skips them.
 
 use super::catalog::*;
-use super::{Collector, Rule, WorkspaceFacts, tokens};
+use super::{Collector, Rule, WorkspaceFacts, markup, tokens};
 use quote::ToTokens;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -22,7 +22,8 @@ pub(super) struct FileContext<'a> {
 pub(super) struct FileSummary {
     /// Line of the first `Server::new`/`Server::new_hot` call.
     pub server_start: Option<usize>,
-    /// The file names `health_router` or `health_router_with_lifecycle`.
+    /// The file names `health_router`, `health_router_with_lifecycle` or
+    /// one of their `_version` variants.
     pub mounts_health: bool,
 }
 
@@ -34,6 +35,7 @@ pub(super) fn scan_source(
     let file = syn::parse_file(context.text)?;
     let mut visitor = Visitor { context, out };
     visitor.visit_file(&file);
+    markup::scan(&file, visitor.out);
     let facts = tokens::scan(file.to_token_stream(), context, visitor.out);
     if facts.protects_router
         && let Some(line) = facts.root_route
@@ -116,7 +118,7 @@ fn has_key(entries: &[(String, Option<String>, usize)], keys: &[&str]) -> bool {
 }
 
 /// Whether the tokens contain the identifier `name`.
-fn mentions(tokens: proc_macro2::TokenStream, name: &str) -> bool {
+pub(super) fn mentions(tokens: proc_macro2::TokenStream, name: &str) -> bool {
     tokens.into_iter().any(|tree| match tree {
         proc_macro2::TokenTree::Ident(ident) => ident == name,
         proc_macro2::TokenTree::Group(group) => mentions(group.stream(), name),
