@@ -25,8 +25,8 @@ impl NexusModel for CourseModule {
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "position", label: "Position", kind: FieldKind::Number, hidden: false, readonly: false },
             FieldMeta { name: "status", label: "Status", kind: FieldKind::Enum { options: vec!["draft", "published", "archived"] }, hidden: false, readonly: false },
-            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTime, hidden: false, readonly: true },
-            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTime, hidden: false, readonly: true },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
         ]
     }
 }

@@ -21,6 +21,8 @@ impl Migration for MigrationImpl {
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();
             table.timestamps();
+            // Grants Nexus under the application's sign-in; see the User model.
+            table.boolean("is_admin").not_null().default(ColumnDefault::Integer(0));
             // Bumped to revoke every login cookie of the account.
             table.big_integer("session_epoch").not_null().default(ColumnDefault::Integer(0));
         }).await?;

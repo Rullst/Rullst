@@ -61,6 +61,10 @@ pub fn file_manifest(
         "src/middlewares/mod.rs",
         include_str!("src/middlewares/mod.rs.template").to_string(),
     ));
+    manifest.push((
+        "src/middlewares/nexus_access.rs",
+        common::NEXUS_ACCESS.to_string(),
+    ));
 
     // 3. Pages Auth
     manifest.push((

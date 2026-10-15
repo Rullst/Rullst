@@ -172,12 +172,29 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 .map(|(_, contents)| contents.as_str())
                                 .collect::<Vec<_>>()
                                 .join("\n");
-                            if spec.id != BLANK_BLUEPRINT_ID {
+                            if spec.id == SAAS_BLUEPRINT_ID || spec.id == LMS_BLUEPRINT_ID {
+                                // Release builds admit the application's own
+                                // administrators: no NEXUS_ADMIN_* credentials.
+                                assert!(
+                                    rust_sources.contains(
+                                        "NexusAuthPolicy::local_development_or_application(\n        middlewares::nexus_access::NexusAdmins,"
+                                    ) && rust_sources.contains("Ok(Some(user)) if user.accepts_session(&claims) => Ok(if user.is_admin {"),
+                                    "{case}: Nexus local/application access policy drifted"
+                                );
+                            } else if spec.id != BLANK_BLUEPRINT_ID {
                                 assert!(
                                     rust_sources.contains(
                                         "NexusAuthPolicy::local_development_or_basic_from_env()"
                                     ),
                                     "{case}: Nexus local/release access policy drifted"
+                                );
+                                // Missing credentials leave Nexus unmounted
+                                // instead of stopping the application.
+                                assert!(
+                                    rust_sources.contains(
+                                        "Err(rullst::nexus::NexusBuildError::MissingCredential { variable }) => {\n            eprintln!("
+                                    ),
+                                    "{case}: a release build without Nexus credentials must still start"
                                 );
                             }
                             assert!(
