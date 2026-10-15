@@ -317,7 +317,9 @@ failed closure as `DatabaseError("Transaction failed: ...")`.
 
 Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
 `with_tenant` take any value that converts into `RullstValue`: `String`/`&str`,
-`i32`, `i64`, `u32`, `f64`, `bool` and `Option` of those. `None` binds SQL
+`i32`, `i64`, `u32`, `f64`, `bool`, the `chrono` types `DateTime<Utc>`,
+`NaiveDateTime`, `NaiveDate` and `NaiveTime` (see
+[date and time columns](#date-and-time-columns)) and `Option` of those. `None` binds SQL
 `NULL`, typed as text: on PostgreSQL write `CAST($1 AS BIGINT)` to store it in
 a column of another type. A comparison with `NULL` never matches, so filter
 missing values with `where_null`. `RullstValue` is `#[non_exhaustive]`; give a
@@ -425,12 +427,170 @@ because a text parameter has no operator against a named enum type. This
 covers `where_eq`, `where_in`, the generated `where_<column>` helpers and
 their `or_`/`not_` variants; `where_like` and raw SQL are unchanged.
 
-`table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
-that default to the current timestamp. MySQL/MariaDB reject a literal default
-on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
-builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
-defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
-SQLite and PostgreSQL DDL is unchanged.
+### Constraints, indexes and foreign keys
+
+`Schema::create` declares unique constraints, indexes, foreign keys and CHECK
+constraints next to the columns. Every name is validated with the identifier
+grammar before it reaches DDL:
+
+```rust,no_run
+use rullst_orm::schema::{Blueprint, ColumnDefault, ForeignKeyAction, Schema};
+
+# async fn create_schema() -> Result<(), rullst_orm::Error> {
+Schema::create("enrollments", |table: &mut Blueprint| {
+    table.id();
+    // An `INTEGER NOT NULL` column referencing `users(id)`.
+    table
+        .foreign_id("user_id", "users")
+        .on_delete(ForeignKeyAction::Cascade);
+    table.integer("course_id").not_null();
+    table
+        .foreign("course_id")
+        .references("courses", "id")
+        .on_delete(ForeignKeyAction::Restrict);
+    // MySQL/MariaDB cannot index a TEXT column: give indexed strings a length.
+    table.string("code").not_null().unique().col_type = "VARCHAR(64)".to_string();
+    table.integer("progress").not_null().default(ColumnDefault::Integer(0));
+    table.unique(&["user_id", "course_id"]);
+    table.index(&["course_id", "progress"]).name("enrollments_course_progress");
+    table.check("progress BETWEEN 0 AND 100");
+    table.timestamps();
+}).await?;
+# Ok(())
+# }
+```
+
+- `Column::unique()` adds a column-level `UNIQUE`; `unique(&[...])` a table
+  constraint named `<table>_<columns>_unique` unless `.name(...)` sets one.
+- `index(&[...])` and `unique_index(&[...])` are `CREATE [UNIQUE] INDEX IF NOT
+  EXISTS <table>_<columns>_index|_unique` statements after `CREATE TABLE` on
+  PostgreSQL and SQLite, and `INDEX` clauses of `CREATE TABLE` on
+  MySQL/MariaDB (which has no `IF NOT EXISTS` for indexes). Names are at most
+  63 bytes, so PostgreSQL never truncates them; a longer default name fails and
+  asks for `.name(...)`.
+- `foreign(column).references(table, column)` adds `<table>_<column>_foreign`
+  with optional `on_delete`/`on_update` (`Cascade`, `Restrict`, `SetNull`,
+  `NoAction`). `foreign_id(column, table)` also adds the `INTEGER NOT NULL`
+  column and references `table(id)`. The column type must match the referenced
+  one (`id()` is `INTEGER`), `SetNull` needs a nullable column, and SQLite
+  enforces foreign keys only with `PRAGMA foreign_keys = ON`, which SQLx sets
+  on every connection it opens.
+- `check(expression)` adds `CHECK (expression)`. The expression is trusted
+  developer SQL emitted as written: building fails when it is empty, longer
+  than 512 bytes, or contains `;`, a comment, `\`, `$`, a backtick, a control
+  character or unbalanced parentheses or quotes, but never build it from
+  request data. MySQL enforces CHECK from 8.0.16 and MariaDB from 10.2.1.
+- On MySQL/MariaDB a unique, index or foreign-key column whose type is `TEXT`,
+  `BLOB` or `JSON` (a plain `string()`, or `timestamps()` on the `Any` pool)
+  fails before any DDL runs: set a bounded `col_type` such as `VARCHAR(255)`.
+
+A unique or foreign-key violation from a later write returns
+`Error::UniqueViolation`/`Error::ForeignKeyViolation`; PostgreSQL reports the
+constraint name.
+
+`Schema::table` alters an existing table with the same builders: it adds the
+blueprint's columns (`ALTER TABLE ... ADD COLUMN`), then its unique
+constraints, indexes, foreign keys and checks, all validated before the first
+statement runs:
+
+```rust,no_run
+use rullst_orm::schema::{Blueprint, ForeignKeyAction, Schema};
+
+# async fn add_reviewer() -> Result<(), rullst_orm::Error> {
+Schema::table("posts", |table: &mut Blueprint| {
+    table.integer("reviewer_id");
+    table
+        .foreign("reviewer_id")
+        .references("users", "id")
+        .on_delete(ForeignKeyAction::SetNull);
+    table.index(&["reviewer_id"]);
+}).await?;
+# Ok(())
+# }
+```
+
+SQLite cannot add a constraint to an existing table. There a unique
+constraint, or a `unique()` column, becomes the equivalent unique index, and a
+foreign key on a column added in the same call becomes that column's
+`REFERENCES` clause (the column must be nullable without a default). Any other
+foreign key, a CHECK, a primary-key column, a `NOT NULL` column without a
+default or a current-time default returns `Error::UnsupportedSchemaChange`
+before any statement runs; rebuild such a table with a new `Schema::create`.
+MySQL/MariaDB commit each DDL statement on its own, so a failure there can leave
+the earlier statements applied.
+
+### Date and time columns
+
+`date()`, `time()`, `timestamp()` and `timestamp_tz()` hold `chrono` values
+(re-exported as `rullst_orm::chrono`, and in the facade as
+`rullst::orm::chrono`):
+
+| Helper | Rust field | PostgreSQL | MySQL/MariaDB | SQLite (ISO-8601 text) |
+| :--- | :--- | :--- | :--- | :--- |
+| `date` | `NaiveDate` | `DATE` | `DATE` | `2026-10-15` |
+| `time` | `NaiveTime` | `TIME` | `TIME(6)` | `09:30:00.500` |
+| `timestamp` | `NaiveDateTime` | `TIMESTAMP` | `DATETIME(6)` | `2026-10-15 09:30:00.500` |
+| `timestamp_tz` | `DateTime<Utc>` | `TIMESTAMPTZ` | `DATETIME(6)` (UTC) | `2026-10-15T09:30:00.500+00:00` |
+
+MySQL/MariaDB store a UTC instant in `DATETIME(6)` because their `TIMESTAMP`
+ends in 2038; SQLx sets the session time zone to `+00:00`, so values and
+`CURRENT_TIMESTAMP` defaults are UTC (other clients see the same UTC wall
+time). A `ColumnDefault::CurrentTimestamp` default is the current UTC time in
+the column's own form: `CURRENT_TIMESTAMP` on a PostgreSQL `TIMESTAMPTZ`, the
+UTC wall time (`CURRENT_TIMESTAMP AT TIME ZONE 'UTC'`) on the zone-less types,
+`CURRENT_TIMESTAMP(6)`, `(CURRENT_DATE)` or `(CURRENT_TIME(6))` on
+MySQL/MariaDB, and on SQLite the same text SQLx writes, so stored values of one
+column compare and sort as text (`strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now')`
+for `timestamp_tz`).
+
+`table.timestamps()` adds nullable `created_at`/`updated_at` `timestamp_tz()`
+columns that default to the current time. Model fields, filters and ordering
+use the `chrono` types; `RullstValue` converts them (`where_gt("starts_at",
+Utc::now())`), and `#[orm(db_default)]` leaves a column to its database
+default:
+
+```rust,ignore
+// Needs a strict driver feature (see below).
+use rullst_orm::chrono::{DateTime, NaiveDate, Utc};
+use rullst_orm::{FromRow, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "events")]
+pub struct Event {
+    pub id: i32,
+    pub starts_at: DateTime<Utc>,
+    pub day: NaiveDate,
+    pub ends_at: Option<DateTime<Utc>>,
+    // Never written by `save()`: INSERT keeps the column DEFAULT and UPDATE
+    // keeps the stored value. The handle keeps its own value (here `None`)
+    // until the row is read again.
+    #[orm(db_default)]
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: DateTime<Utc>,
+}
+```
+
+`#[orm(db_default)]` fields are left out of the generated `INSERT` and of the
+full-row `UPDATE` of `save()`, `update_partial()` has no setter for them and
+`#[derive(Nexus)]` shows them read-only. Set an `updated_at` without it
+yourself (`Utc::now()`) or maintain it with a trigger.
+
+Date/time columns and `chrono` fields need a strict driver feature
+(`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects
+use). SQLx's dynamic `Any` pool, selected by the `drivers-all` default without a
+strict feature, carries only integer, float, text and blob values: it cannot
+decode a `chrono` field, and it cannot read a PostgreSQL or MySQL/MariaDB
+`DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` column at all. On that pool
+`Schema::create` and `Schema::table` reject those helpers on PostgreSQL and
+MySQL/MariaDB with `Error::Validation`, SQLite keeps its ISO-8601 text for
+`String` fields, chrono filter values bind as that same text, and
+`timestamps()` keeps the alpha.1 `TEXT DEFAULT CURRENT_TIMESTAMP` columns
+(`DEFAULT (CURRENT_TIMESTAMP)` on MySQL/MariaDB, which accept a default on
+`TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns only as an expression; other
+non-`NULL` defaults on those types are wrapped the same way, MySQL 8.0.13+,
+MariaDB 10.2.1+). `soft_deletes()` stays a `TEXT` `deleted_at` column on every
+pool; declare `timestamp_tz("deleted_at")` for a native one. The Turso adapter
+does not use the Blueprint and keeps text timestamps.
 
 `table.float(...)` and `table.boolean(...)` map to `f64` and `bool` model
 fields. PostgreSQL receives `DOUBLE PRECISION` and `BOOLEAN` (an integer

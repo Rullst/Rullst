@@ -23,7 +23,7 @@ pub enum RullstValue {
     Null,
     /// A UTC instant, for `timestamp_tz()` columns. With a strict driver
     /// feature it is bound as SQLx's `DateTime<Utc>`; the SQLx `Any` pool
-    /// binds RFC 3339 text (`2026-10-15T09:30:00.5+00:00`), the form a
+    /// binds RFC 3339 text (`2026-10-15T09:30:00.500+00:00`), the form a
     /// SQLite `timestamp_tz()` column stores. Added in v13.
     DateTime(chrono::DateTime<chrono::Utc>),
     /// A date and time without a zone, for `timestamp()` columns; text

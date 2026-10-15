@@ -16,7 +16,7 @@ The command creates `src/migrations/m<timestamp>_create_products_table.rs` and
 regenerates `src/migrations/mod.rs`. Edit the generated `up` and `down` methods:
 
 ```rust,no_run
-use rullst_orm::{async_trait, schema::{Migration, Schema}};
+use rullst_orm::{async_trait, schema::{ForeignKeyAction, Migration, Schema}};
 
 pub struct MigrationImpl;
 
@@ -30,7 +30,16 @@ impl Migration for MigrationImpl {
         Schema::create("products", |table| {
             table.id();
             table.string("name").not_null();
+            // MySQL/MariaDB cannot index a TEXT column, so the indexed SKU
+            // has a bounded type.
+            table.string("sku").not_null().unique().col_type = "VARCHAR(64)".to_string();
+            table
+                .foreign_id("category_id", "categories")
+                .on_delete(ForeignKeyAction::Restrict);
             table.integer("price_cents").not_null();
+            table.check("price_cents >= 0");
+            table.date("available_on");
+            table.index(&["category_id", "available_on"]);
             table.timestamps();
         })
         .await
@@ -45,11 +54,46 @@ impl Migration for MigrationImpl {
 Keep the generated timestamp/name in `name()`; the runner uses that stable value
 to record migration state.
 
-`table.timestamps()` creates nullable `created_at`/`updated_at` text columns
-that default to the current timestamp. On MySQL/MariaDB the builder emits the
-expression form `DEFAULT (CURRENT_TIMESTAMP)`, which those servers require for
-text columns (MySQL 8.0.13+, MariaDB 10.2.1+); SQLite and PostgreSQL use the
-plain `DEFAULT CURRENT_TIMESTAMP`.
+`unique()`, `index(...)`, `foreign_id(...)`/`foreign(...)` and `check(...)`
+declare constraints and indexes with the table (see the
+[ORM guide](../crates/orm.md#constraints-indexes-and-foreign-keys) for every
+option and the generated names). PostgreSQL and SQLite create the indexes with
+`CREATE INDEX IF NOT EXISTS` right after the table; MySQL/MariaDB declare them
+inside `CREATE TABLE`.
+
+`table.timestamps()` creates nullable `created_at`/`updated_at` UTC-instant
+columns that default to the current time: `TIMESTAMPTZ` on PostgreSQL,
+`DATETIME(6)` on MySQL/MariaDB and RFC 3339 text on SQLite. Read them as
+`rullst::orm::chrono::DateTime<Utc>` model fields. `date()`, `time()`,
+`timestamp()` and `timestamp_tz()` add single date/time columns for
+`NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields. They need
+a strict driver feature (`strict-postgres`, `strict-mysql` or `strict-sqlite`),
+which `cargo rullst new` selects: the multi-driver SQLx `Any` pool cannot read
+date/time values, so with it `timestamps()` keeps `TEXT` columns for `String`
+fields and the other date/time helpers fail on PostgreSQL and MySQL/MariaDB.
+
+To change an existing table, use `Schema::table`:
+
+```rust,no_run
+use rullst_orm::schema::{ForeignKeyAction, Schema};
+
+# async fn up() -> Result<(), rullst_orm::Error> {
+Schema::table("products", |table| {
+    table.integer("supplier_id");
+    table
+        .foreign("supplier_id")
+        .references("suppliers", "id")
+        .on_delete(ForeignKeyAction::SetNull);
+    table.unique_index(&["name", "supplier_id"]);
+})
+.await
+# }
+```
+
+SQLite cannot add constraints to an existing table: a foreign key works there
+only on a nullable column added in the same call, and a CHECK, a foreign key on
+an existing column or a `NOT NULL` column without a default return
+`Error::UnsupportedSchemaChange` before anything runs.
 
 `table.float(...)` maps to an `f64` model field: it emits `DOUBLE PRECISION` on
 PostgreSQL, `DOUBLE` on MySQL/MariaDB and `REAL` on SQLite. PostgreSQL columns
