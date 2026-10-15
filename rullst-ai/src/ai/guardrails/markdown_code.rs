@@ -371,5 +371,48 @@ mod tests {
         ] {
             assert!(blank_code(text).contains("![x](//e.x/y)"), "{text:?}");
         }
+        // A closing run does not open the next span.
+        assert_eq!(blank_code("`a` ![x](//e.x/y) `b`"), "` ` ![x](//e.x/y) ` `");
+    }
+
+    #[test]
+    fn a_final_line_ending_adds_no_empty_line() {
+        assert_eq!(lines("a\n\r\n"), ["a\n", "\r\n"]);
+        assert!(lines("").is_empty());
+    }
+
+    #[test]
+    fn indentation_fences_and_containers_follow_commonmark() {
+        let image = "![a](//evil.example/x)";
+        for text in [
+            // Fences may be indented by up to three spaces.
+            format!("  ```\n{image}\n  ```\n"),
+            format!("   ```\n{image}\n   ```\n"),
+            format!("```\n{image}\n   ```\n"),
+            // A blank or four-space line inside the block does not close it.
+            format!("```\n\n{image}\n```\n"),
+            format!("```\n    ```\n{image}\n```\n"),
+            // A tab indents to the next multiple of four columns.
+            format!("text\n\n\t{image}\n"),
+            format!("text\n\n     \t{image}\n"),
+            // A fence at column 0 still opens next to a list item.
+            format!("- item\n\n```\n{image}\n```\n"),
+            // These lines are paragraphs, not list items.
+            format!(". x\n\n    {image}\n"),
+            format!("3.14 is pi\n\n    {image}\n"),
+            format!("1\n\n    {image}\n"),
+        ] {
+            assert!(!blank_code(&text).contains("evil"), "{text:?}");
+        }
+        for text in [
+            format!("> quote\n\n    {image}\n"),
+            format!("1. item\n\n    {image}\n"),
+            // A four-space fence cannot interrupt a paragraph.
+            format!("intro\n    ```\n{image}\n```\n"),
+            // The scan resumes after a closed block.
+            format!("```\nx\n```\n{image}\n```\ny\n```\n"),
+        ] {
+            assert!(blank_code(&text).contains("evil"), "{text:?}");
+        }
     }
 }
