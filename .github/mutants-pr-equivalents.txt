@@ -1,0 +1,22 @@
+# Accepted equivalent mutants the pull-request gate (mutants-pr.yml) skips.
+#
+# One exact cargo-mutants name per line: `file:line:col: description`, as the
+# gate prints it. Each entry needs a row with its justification in WORKFLOWS.md
+# "Accepted equivalent mutants". The match is exact, so an entry stops applying
+# when its line moves and the mutant is tested again; update or delete it then.
+
+# rullst-capital money_to_minor: after the `rounded >= 1` check, only amounts
+# that round to zero can hit exactly 1e-7, and those are rejected either way.
+rullst-capital/src/invoice.rs:182:33: replace > with >= in money_to_minor
+
+# rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
+# absent from the gate's --all-features build; default-feature tests cover them.
+rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums
+rullst-orm/src/value.rs:78:9: replace temporal::date_time -> String with String::new()
+rullst-orm/src/value.rs:78:9: replace temporal::date_time -> String with "xyzzy".into()
+rullst-orm/src/value.rs:82:9: replace temporal::naive_date_time -> String with String::new()
+rullst-orm/src/value.rs:82:9: replace temporal::naive_date_time -> String with "xyzzy".into()
+rullst-orm/src/value.rs:86:9: replace temporal::date -> String with String::new()
+rullst-orm/src/value.rs:86:9: replace temporal::date -> String with "xyzzy".into()
+rullst-orm/src/value.rs:90:9: replace temporal::time -> String with String::new()
+rullst-orm/src/value.rs:90:9: replace temporal::time -> String with "xyzzy".into()

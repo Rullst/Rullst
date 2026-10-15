@@ -103,6 +103,55 @@ inherited = { workspace = true, package = "rullst-orm" }
 }
 
 #[test]
+fn manifests_report_the_removed_aggregate_adapter_features() {
+    let manifest = r#"[package]
+name = "app"
+
+[dependencies]
+rullst = { version = "12.1.2", default-features = false, features = ["orm-polyglot"] }
+other = { version = "1", features = ["polyglot", "orm-polyglot"] }
+
+[dependencies.orm]
+package = "rullst-orm"
+version = "12.1.2"
+default-features = false
+features = ["strict-sqlite", "polyglot"]
+
+[features]
+# edge = ["orm?/polyglot"] enabled every adapter
+edge = ["orm?/polyglot"]
+"#;
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
+    // Dependency tables may iterate in key order, so compare by line.
+    let mut found: Vec<_> = findings
+        .iter()
+        .map(|finding| (finding.rule.code, finding.line))
+        .collect();
+    found.sort_by_key(|(_, line)| *line);
+    assert_eq!(
+        found,
+        vec![
+            ("V13-POLYGLOT-FEATURE", 5),
+            ("V13-POLYGLOT-FEATURE", 8),
+            ("V13-POLYGLOT-FEATURE", 16)
+        ]
+    );
+
+    // Each package has its own name for the removed feature; the individual
+    // adapters and unrelated packages are fine.
+    let current = r#"[dependencies]
+rullst = { version = "13.0.0-alpha.1", features = ["polyglot", "orm-mongodb"] }
+rullst-orm = { version = "13.0.0-alpha.1", default-features = false, features = ["orm-polyglot", "turso"] }
+plain = "1"
+
+[features]
+mixed = ["rullst/polyglot", "rullst-orm/orm-polyglot", "unknown/orm-polyglot", "dep:plain", "orm-polyglot"]
+"#;
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), current)]);
+    assert!(findings.is_empty(), "{findings:?}");
+}
+
+#[test]
 fn generated_project_files_are_reviewed() {
     let project = Project::new();
     project

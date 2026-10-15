@@ -20,6 +20,8 @@ proc-macro = true
 syn = { version = "3.0.5", features = ["full", "extra-traits"] }
 quote = "1.0.45"
 proc-macro2 = "1.0.106"
+# Parses translation catalogs for `rullst::i18n::catalog!` at compile time.
+toml = { workspace = true }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(mutants)'] }

@@ -1,0 +1,12 @@
+[nav]
+home = "Home"
+
+[dashboard]
+greeting = "Hello, {name}!"
+
+[inbox.unread]
+one = "You have one unread message"
+other = "You have {count} unread messages"
+
+[legal]
+terms_html = "I accept the <a href=\"/terms\">terms</a>, {name}"

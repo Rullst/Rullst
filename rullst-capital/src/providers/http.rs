@@ -171,6 +171,7 @@ mod tests {
             "https://checkout.example/session?id=1"
         );
         for invalid in [
+            "https://checkout.example/a b",
             "http://checkout.example/session",
             "https://user:pass@checkout.example/session",
             "\nhttps://checkout.example/session",
@@ -264,6 +265,11 @@ mod tests {
                 .route(
                     "/oversized",
                     get(|| async { "x".repeat(MAX_RESPONSE_BYTES + 1) }),
+                )
+                .route(
+                    "/exact",
+                    // A JSON string of exactly 1 MiB, quotes included.
+                    get(|| async { format!("\"{}\"", "x".repeat(1_048_574)) }),
                 );
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
                 .await
@@ -397,6 +403,12 @@ mod tests {
                 .expect_err("oversized JSON must fail"),
             );
             assert_eq!(oversized.kind(), ProviderFailureKind::ResponseTooLarge);
+
+            let exact: String =
+                send_json(client.get(format!("{base}/exact")), "fixture", "checkout")
+                    .await
+                    .expect("a 1 MiB response is within the limit");
+            assert_eq!(exact.len(), 1_048_574);
             server.abort();
         }
     }

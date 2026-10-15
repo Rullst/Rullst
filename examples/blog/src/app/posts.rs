@@ -261,11 +261,11 @@ pub async fn index(
                             <h3 class="form-heading">"Publish a New Story (Active Record)"</h3>
                             <div class="form-field">
                                 <label for="post-title" class="form-label">"Article Title"</label>
-                                <input id="post-title" type="text" name="title" maxlength="120" placeholder="e.g. Memory Safety with Rust 2024" required="required" class="form-input" />
+                                <input id="post-title" type="text" name="title" maxlength="120" placeholder="e.g. Memory Safety with Rust 2024" required class="form-input" />
                             </div>
                             <div class="form-field">
                                 <label for="post-body" class="form-label">"Content (Markdown/Text)"</label>
-                                <textarea id="post-body" name="body" rows="4" maxlength="4000" placeholder="Write your post content here..." required="required" class="form-input"></textarea>
+                                <textarea id="post-body" name="body" rows="4" maxlength="4000" placeholder="Write your post content here..." required class="form-input"></textarea>
                             </div>
                             <p class="form-hint">"Titles up to 120 characters, bodies up to 4,000. Each tenant keeps at most 100 stories; the newest 20 are listed below."</p>
                             <button type="submit" class="btn">"Publish Article"</button>

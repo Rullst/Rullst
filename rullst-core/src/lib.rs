@@ -51,6 +51,8 @@ pub mod html;
 /// HTMX helpers for rapid reactive UI design.
 pub mod htmx;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod i18n;
+#[cfg(not(target_arch = "wasm32"))]
 /// Process readiness and graceful request-drain coordination.
 pub mod lifecycle;
 #[cfg(not(target_arch = "wasm32"))]

@@ -396,6 +396,35 @@ mod tests {
     }
 
     #[test]
+    fn timestamp_window_is_five_minutes_and_milliseconds_are_opt_in() {
+        assert_eq!(DEFAULT_WEBHOOK_TOLERANCE, Duration::from_secs(300));
+        let now = 1_800_000_000;
+        let fresh = |timestamp: &str, milliseconds: bool| {
+            ensure_fresh_timestamp(
+                "fixture",
+                timestamp,
+                now,
+                DEFAULT_WEBHOOK_TOLERANCE,
+                milliseconds,
+            )
+        };
+        for timestamp in ["1799999700", "1800000300"] {
+            fresh(timestamp, false).unwrap();
+        }
+        assert!(matches!(
+            fresh("1799999699", false),
+            Err(CapitalError::StaleWebhook(_))
+        ));
+        // Milliseconds are scaled only when the protocol allows them.
+        fresh("1800000000000", true).unwrap();
+        fresh("1800000000", true).unwrap();
+        assert!(matches!(
+            fresh("1800000000000", false),
+            Err(CapitalError::StaleWebhook(_))
+        ));
+    }
+
+    #[test]
     fn test_global_providers_initialization() {
         let stripe = StripeProvider::new("mock_key", "sec_stripe");
         init_provider(Box::new(stripe));

@@ -133,7 +133,7 @@ pub async fn message_form(
               hx-post="/messages" hx-target="#message-result" hx-swap="innerHTML">
             <input type="hidden" name="_token" value={csrf.as_str()} />
             <label for="message">"Message"</label>
-            <input id="message" name="message" required="true" maxlength="600" />
+            <input id="message" name="message" required maxlength="600" />
             <button type="submit">"Send"</button>
         </form>
         <div id="message-result" role="status" aria-live="polite"></div>

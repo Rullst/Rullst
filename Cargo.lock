@@ -3899,6 +3899,7 @@ dependencies = [
  "defmt",
  "jiff-core",
  "jiff-static",
+ "jiff-tzdb",
  "jiff-tzdb-platform",
  "log",
  "portable-atomic",
@@ -6439,6 +6440,7 @@ dependencies = [
  "getrandom 0.4.3",
  "http 1.5.0",
  "http-body",
+ "jiff",
  "js-sys",
  "libloading",
  "opentelemetry",
@@ -6515,6 +6517,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.8",
+ "toml",
  "trybuild",
 ]
 

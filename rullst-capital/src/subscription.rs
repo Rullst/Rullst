@@ -156,4 +156,26 @@ mod tests {
         assert!(TrialExtension::from_days_at(1, -1).is_err());
         assert!(TrialExtension::from_days_at(1, i64::MAX).is_err());
     }
+
+    #[test]
+    fn coupon_and_trial_limits_are_inclusive() {
+        let longest = "C".repeat(256);
+        assert_eq!(
+            CouponCode::try_new(longest.clone()).unwrap().as_str(),
+            longest
+        );
+        assert!(CouponCode::try_new("C".repeat(257)).is_err());
+        assert_eq!(
+            format!("{:?}", CouponCode::try_new("PROMO").unwrap()),
+            "CouponCode([REDACTED])"
+        );
+        assert_eq!(
+            TrialExtension::from_days_at(730, 0).unwrap().ends_at(),
+            63_072_000
+        );
+        assert_eq!(
+            TrialExtension::from_days_at(1, 0).unwrap().ends_at(),
+            86_400
+        );
+    }
 }

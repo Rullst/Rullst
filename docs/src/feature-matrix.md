@@ -101,7 +101,6 @@ for example, adds only SQLite).
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
 | `orm-qdrant` | no | `orm` plus bounded dense-vector Qdrant HTTP operations and offline fallback |
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
-| `orm-polyglot` | no | Convenience feature enabling MongoDB, DuckDB, Turso, SurrealDB and Qdrant adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
@@ -143,6 +142,7 @@ for example, adds only SQLite).
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `offline-sync` | no | Native bounded offline queue, explicit conflict state machine, account-bound encrypted snapshots, and static-dispatch push/pull orchestration; platform storage and concrete transport remain application responsibilities |
+| `scheduler-tz` | no | v13: `Scheduler::task_in_tz`, cron tasks in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
@@ -214,6 +214,7 @@ Default features: none.
 | `cache-redis` | Redis-backed cache storage |
 | `redis` | Convenience alias for both Redis queue and cache backends |
 | `offline-sync` | Native bounded offline state, AES-256-GCM snapshots, and timeout/budget/cursor-checked transport orchestration; excludes platform storage and a concrete authenticated transport |
+| `scheduler-tz` | v13: `Scheduler::task_in_tz` for cron tasks in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
 | `storage-s3` | v13 candidate: bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs |
 | `storage-multipart` | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
 | `studio` | Integration marker used by the umbrella Studio boundary; it adds no dependency by itself |
@@ -247,7 +248,6 @@ false` and forward `drivers-all` or a `strict-*` backend explicitly.
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
 | `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
-| `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, `surrealdb`, and `qdrant` |
 | `ai` | `pgvector` plus the generated `save_with_embedding` for `#[orm(embedding_for = "...")]` models; the application also depends on `rullst-ai` |
 | `strict-postgres` | The PostgreSQL driver plus concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | The MySQL driver plus concrete MySQL paths when PostgreSQL is not also selected |

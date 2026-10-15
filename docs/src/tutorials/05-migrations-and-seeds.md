@@ -2,7 +2,9 @@
 
 Rullst uses timestamped Rust migration modules for SQLx-primary projects. Turso
 primary projects receive explicit, reversible `TursoMigration` statements
-instead. This tutorial shows the SQLx path.
+instead. This tutorial shows the SQLx path: `Schema` works with SQLite,
+PostgreSQL and MySQL/MariaDB only, as [Database Support](../database-support.md)
+lists.
 
 ---
 

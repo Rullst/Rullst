@@ -50,19 +50,19 @@ pub enum Commands {
         /// Skips the best-effort initial database migration after scaffolding
         #[arg(long)]
         skip_initial_migration: bool,
-        /// Enables the Turso/libSQL edge SQL adapter and offline development fallback
+        /// Adds Turso/libSQL as a side store (edge SQL) beside the primary database
         #[arg(long)]
         turso: bool,
-        /// Enables the MongoDB document adapter
+        /// Adds MongoDB as a side store (document CRUD)
         #[arg(long)]
         mongodb: bool,
-        /// Enables the DuckDB analytics adapter
+        /// Adds DuckDB as a side store (in-process analytics; longer first build)
         #[arg(long)]
         duckdb: bool,
-        /// Enables the SurrealDB document and graph adapter
+        /// Adds SurrealDB as a side store (documents and read-only graph queries)
         #[arg(long)]
         surrealdb: bool,
-        /// Enables the bounded Qdrant dense-vector adapter
+        /// Adds Qdrant as a side store (dense-vector search)
         #[arg(long)]
         qdrant: bool,
     },

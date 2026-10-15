@@ -1,0 +1,5 @@
+error: `dashboard.greeting` has different placeholders: tests/i18n/placeholder_mismatch/en.toml uses {name} but tests/i18n/placeholder_mismatch/pt-BR.toml uses {nome}
+  --> tests/ui/i18n_placeholder_mismatch.rs:16:52
+   |
+16 | rullst_macros::i18n_catalog!(default = "en", dir = "tests/i18n/placeholder_mismatch");
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

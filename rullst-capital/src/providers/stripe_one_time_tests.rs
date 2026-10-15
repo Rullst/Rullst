@@ -141,3 +141,77 @@ async fn one_time_mock_never_grants_paid_provenance() {
     assert_eq!(receipt.state(), StripeOneTimePaymentState::Mock);
     assert_eq!(receipt.livemode(), None);
 }
+
+#[test]
+fn credential_mode_must_match_the_provider_object() {
+    assert!(verify_mode("sk_test_fixture", &json!({"livemode": false})).is_ok());
+    assert!(verify_mode("sk_live_fixture", &json!({"livemode": true})).is_ok());
+    for (key, object) in [
+        ("sk_test_fixture", json!({"livemode": true})),
+        ("sk_live_fixture", json!({"livemode": false})),
+        ("sk_test_fixture", json!({})),
+        ("pk_test_fixture", json!({"livemode": false})),
+    ] {
+        assert!(verify_mode(key, &object).is_err(), "{key} {object}");
+    }
+}
+
+#[test]
+fn each_session_binding_is_checked_on_its_own() {
+    let request = request();
+    for (pointer, value) in [
+        ("/object", json!("payment_intent")),
+        ("/mode", json!("subscription")),
+        ("/subscription", json!("sub_other")),
+        ("/success_url", json!("https://app.example/other")),
+        ("/cancel_url", json!("https://app.example/other")),
+        ("/line_items/has_more", json!(true)),
+        ("/line_items/data/0/quantity", json!(2)),
+        ("/payment_intent/object", json!("setup_intent")),
+        ("/payment_intent/status", json!("processing")),
+        ("/payment_intent/livemode", json!(true)),
+        ("/payment_intent/latest_charge/object", json!("refund")),
+        ("/payment_intent/latest_charge/amount_captured", json!(1)),
+        ("/payment_intent/latest_charge/currency", json!("usd")),
+    ] {
+        let mut invalid = paid();
+        *invalid.pointer_mut(pointer).unwrap() = value;
+        assert!(
+            parse_receipt("cs_test_once", &request, &invalid).is_err(),
+            "{pointer}"
+        );
+    }
+}
+
+#[test]
+fn expired_unpaid_session_is_reported_as_expired() {
+    let mut expired = session();
+    expired["status"] = json!("expired");
+    let receipt = parse_receipt("cs_test_once", &request(), &expired).unwrap();
+    assert_eq!(receipt.state(), StripeOneTimePaymentState::Expired);
+    assert_eq!(receipt.payment_intent_id(), None);
+    expired["payment_status"] = json!("paid");
+    assert!(parse_receipt("cs_test_once", &request(), &expired).is_err());
+}
+
+#[test]
+fn paid_receipt_exposes_its_bound_identity() {
+    let request = request();
+    // SHA-256 of the payment-checkout v1 tag, the subscription-checkout
+    // request digest (API version 2025-03-31.basil), the amount as a
+    // big-endian u64 and the currency.
+    let expected = "8d16e5f076107c498efd4fa80bda8900272a6913131c6c89e0cbfa8af6feac29";
+    assert_eq!(hex::encode(request.request_digest()), expected);
+    let receipt = parse_receipt("cs_test_once", &request, &paid()).unwrap();
+    assert_eq!(receipt.session_id(), "cs_test_once");
+    assert_eq!(receipt.payment_intent_id(), Some("pi_once"));
+    assert_eq!(receipt.livemode(), Some(false));
+    assert_eq!(hex::encode(receipt.request_digest()), expected);
+    let debug = format!("{receipt:?}");
+    assert!(debug.starts_with("StripeOneTimeReceipt"), "{debug}");
+    assert!(debug.contains("state: Paid"), "{debug}");
+    assert!(debug.contains("livemode: Some(false)"), "{debug}");
+    let debug = format!("{request:?}");
+    assert!(debug.starts_with("StripePaymentCheckoutRequest"), "{debug}");
+    assert!(!debug.contains("opaque_owner"), "{debug}");
+}

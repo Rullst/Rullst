@@ -1,0 +1,5 @@
+error: tests/i18n/missing_key/pt-BR.toml: missing key `nav.about` (defined in tests/i18n/missing_key/en.toml)
+  --> tests/ui/i18n_missing_key.rs:16:52
+   |
+16 | rullst_macros::i18n_catalog!(default = "en", dir = "tests/i18n/missing_key");
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^

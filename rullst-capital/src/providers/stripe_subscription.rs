@@ -185,7 +185,7 @@ mod tests {
         apply_coupon_at("sk_fixture", &endpoint, "sub_123", "BLACK_FRIDAY")
             .await
             .expect("coupon update");
-        let coupon = receiver.recv().await.expect("coupon request");
+        let coupon = next_request(&mut receiver).await.expect("coupon request");
         assert_eq!(coupon.id, "sub_123");
         assert_eq!(coupon.authorization.as_deref(), Some("Bearer sk_fixture"));
         assert_eq!(
@@ -200,7 +200,7 @@ mod tests {
         extend_trial_at("sk_fixture", &endpoint, "sub_123", 1_900_000_000)
             .await
             .expect("trial update");
-        let trial = receiver.recv().await.expect("trial request");
+        let trial = next_request(&mut receiver).await.expect("trial request");
         assert_eq!(trial.body, "trial_end=1900000000");
 
         let mismatched = serde_json::json!({
@@ -220,7 +220,9 @@ mod tests {
             .await
             .expect_err("oversized response must fail closed");
         assert!(oversized.to_string().contains("exceeded 1 MiB"));
-        let _ = receiver.recv().await.expect("oversized request");
+        let _ = next_request(&mut receiver)
+            .await
+            .expect("oversized request");
 
         assert!(
             apply_coupon_at("sk_fixture", &endpoint, "../sub", "CODE")
@@ -238,6 +240,25 @@ mod tests {
                 .is_err()
         );
         server.abort();
+    }
+
+    #[test]
+    fn endpoint_appends_one_validated_path_segment() {
+        assert_eq!(
+            subscription_endpoint("https://api.example/v1/subscriptions", "sub_123").unwrap(),
+            "https://api.example/v1/subscriptions/sub_123"
+        );
+        assert!(subscription_endpoint("https://api.example/v1/subscriptions", "../x").is_err());
+    }
+
+    // A request that never arrives fails the test instead of hanging it.
+    async fn next_request(
+        receiver: &mut mpsc::UnboundedReceiver<CapturedRequest>,
+    ) -> Option<CapturedRequest> {
+        tokio::time::timeout(std::time::Duration::from_secs(10), receiver.recv())
+            .await
+            .ok()
+            .flatten()
     }
 
     fn header(headers: &HeaderMap, name: &str) -> Option<String> {
