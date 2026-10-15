@@ -1,0 +1,5 @@
+error: write `@else` after an `@if` block in html!
+ --> tests/ui/control_else_without_at.rs:7:64
+  |
+7 |             @if signed_in { <a href="/logout">"Sign out"</a> } else { <a href="/login">"Sign in"</a> }
+  |                                                                ^^^^

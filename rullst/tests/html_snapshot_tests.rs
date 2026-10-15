@@ -74,3 +74,35 @@ fn html_macro_renders_a_doctype_keyword_elements_and_nested_views() {
         "<!DOCTYPE html><html><body><h1>&lt;Notes&gt;</h1><svg><use href=\"#note\"></use></svg><hr></body></html>"
     );
 }
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn html_macro_renders_bare_and_conditional_attributes_and_control_blocks() {
+    // The `html!` documentation example in rullst-macros.
+    let user: Option<&str> = Some("Ana");
+    let items: Vec<&str> = "a b".split(' ').collect();
+    let page = html! {
+        @if let Some(name) = user { <p>"Hi " {name}</p> } @else { <a href="/login">"Sign in"</a> }
+        <ul>
+            @for (index, item) in items.iter().enumerate() {
+                <li aria-current?={(index == 0).then_some("true")}>{item}</li>
+            }
+        </ul>
+        <button disabled?={items.is_empty()}>"Export"</button>
+    };
+    assert_eq!(
+        page,
+        "<p>Hi Ana</p><ul><li aria-current=\"true\">a</li><li>b</li></ul><button>Export</button>"
+    );
+
+    let user: Option<&str> = None;
+    let missing: Option<String> = None;
+    let page = html! {
+        @if let Some(name) = user { <p>{name}</p> } @else { <a href="/login" title?={missing}>"Sign in"</a> }
+        <input name="q" required autofocus?={user.is_none()} value?={Some("<x>")} />
+    };
+    assert_eq!(
+        page,
+        "<a href=\"/login\">Sign in</a><input name=\"q\" required autofocus value=\"&lt;x&gt;\" />"
+    );
+}

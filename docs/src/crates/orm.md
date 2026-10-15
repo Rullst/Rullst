@@ -56,7 +56,9 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 
 Rullst ORM generates Active Record operations and a fluent query builder from
 `#[derive(Orm)]`. SQLx remains available for queries that do not fit the
-generated API.
+generated API. Both work with SQLite, PostgreSQL and MySQL/MariaDB; Turso/libSQL
+and the side stores have their own APIs, as
+[Database Support](../database-support.md) lists.
 
 **Key Features:**
 - **Generated CRUD:** Insert, update, delete, restore, and find operations for

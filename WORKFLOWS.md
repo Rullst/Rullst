@@ -586,7 +586,9 @@ only a live Stripe API response can reach are left to provider sandbox
 testing) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
-entry needs the same one-line justification.
+entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
+entry only when its exact cargo-mutants name is also listed in
+`.github/mutants-pr-equivalents.txt`.
 
 | Mutant | Why it is equivalent |
 | --- | --- |

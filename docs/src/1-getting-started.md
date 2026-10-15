@@ -268,12 +268,17 @@ The wizard deliberately makes two separate decisions:
 
 1. Choose the primary **SQLx Active Record** backend: **SQLite**,
    **PostgreSQL**, **MySQL**, or **MariaDB**. MariaDB uses the MySQL wire
-   protocol but has its own executable container contract. The blank/API
-   starter can instead select **Turso/libSQL** as its primary typed ORM.
-2. Optionally add **Turso/libSQL** edge SQL to a SQLx application, **MongoDB**
-   documents, **DuckDB** analytics, or **SurrealDB** documents/graph reads.
-   These use explicit capability APIs and do not silently replace the primary
-   pool.
+   protocol but has its own executable container contract. The Blank starter
+   (web page or JSON API) can instead select **Turso/libSQL** as its primary
+   database, through a separate adapter that has no Nexus, Studio database
+   pages, `Schema` migrations, `artisan!` or SQLx query builder.
+2. Optionally add side stores: **Turso/libSQL** edge SQL, **MongoDB**
+   documents, **DuckDB** analytics, **SurrealDB** documents/graph reads,
+   **Qdrant** vectors or **Redis** structures. They use their own APIs and do
+   not replace the primary pool.
+
+[Database Support](database-support.md) lists what each backend works with;
+read it before you choose.
 
 After generation, the default flow compiles the new application once and runs
 its initial migration. A clean first build can take several minutes for larger
