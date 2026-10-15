@@ -8,8 +8,11 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
 mod exact_json;
+mod memo_value;
 #[doc(hidden)]
 pub use exact_json::is_exact_json;
+#[doc(hidden)]
+pub use memo_value::MemoValue;
 
 /// Maximum number of memoized entries kept by the process.
 const MAX_ENTRIES: usize = 4_096;

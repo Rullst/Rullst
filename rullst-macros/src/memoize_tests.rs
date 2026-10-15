@@ -40,8 +40,13 @@ fn memoize_skips_arguments_and_results_json_would_conflate() {
         syn::parse_str("fn ratio(a: f64, b: f64) -> Option<f64> { Some(a / b) }").expect("fn");
     let expanded = expand_memoize(&function).to_string();
 
-    for argument in ["a", "b", "result"] {
+    for argument in ["a", "b"] {
         let probe = format!("rullst :: cache :: memory :: is_exact_json (& {argument})");
         assert!(expanded.contains(&probe), "missing {probe}");
     }
+    // Results go through `MemoValue`, whose serde impl runs the same probe.
+    assert!(expanded.contains("rullst :: cache :: memory :: MemoValue :: to_memo (& result)"));
+    assert!(expanded.contains(
+        "< Option < f64 > as rullst :: cache :: memory :: MemoValue > :: from_memo (& cached)"
+    ));
 }

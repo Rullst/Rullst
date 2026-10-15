@@ -400,3 +400,31 @@ async fn memory_inspection_flags_only_entries_beyond_the_limit_and_sweeps_keep_l
         Some("abc")
     );
 }
+
+mod memoized_views {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub(super) static BADGE_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[crate::memoize]
+    pub(super) fn badge(label: String) -> crate::html::Markup {
+        BADGE_CALLS.fetch_add(1, Ordering::SeqCst);
+        crate::html! { <span class="badge">{label}</span> }
+    }
+}
+
+#[test]
+fn memoize_caches_views_that_return_markup() {
+    use std::sync::atomic::Ordering;
+
+    let first = memoized_views::badge("<new>".to_string());
+    let second = memoized_views::badge("<new>".to_string());
+    assert_eq!(first, "<span class=\"badge\">&lt;new&gt;</span>");
+    assert_eq!(second, first);
+    assert_eq!(memoized_views::BADGE_CALLS.load(Ordering::SeqCst), 1);
+    // The cached copy is still Markup, so a page inserts it as HTML.
+    assert_eq!(
+        crate::html! { <p>{second}</p> },
+        "<p><span class=\"badge\">&lt;new&gt;</span></p>"
+    );
+}
