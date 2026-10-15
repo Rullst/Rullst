@@ -147,6 +147,25 @@ fn sqlite_alter_returns_a_typed_error_for_changes_it_cannot_make() {
         3
     );
 
+    // A foreign key on an existing column is refused even when the call
+    // also adds other columns.
+    let mut existing = Blueprint::new();
+    existing.integer("pages");
+    existing.foreign("author_id").references("users", "id");
+    assert!(matches!(
+        existing.alter_statements("posts", "sqlite", false),
+        Err(Error::UnsupportedSchemaChange { ref change, .. }) if change.contains("existing column `author_id`")
+    ));
+    // A foreign key on the only added column is its REFERENCES clause.
+    let mut only = Blueprint::new();
+    only.integer("author_id");
+    only.foreign("author_id").references("users", "id");
+    assert_eq!(
+        only.alter_statements("posts", "sqlite", false)
+            .expect("foreign key on the added column"),
+        ["ALTER TABLE \"posts\" ADD COLUMN author_id INTEGER REFERENCES \"users\" (id);"]
+    );
+
     // A NOT NULL column with a default can be added.
     let mut table = Blueprint::new();
     table

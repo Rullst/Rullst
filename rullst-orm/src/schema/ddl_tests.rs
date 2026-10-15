@@ -390,3 +390,50 @@ fn timestamps_stay_text_on_the_any_pool() {
     );
     assert!(table.create_statements("notes", "mysql", true).is_ok());
 }
+
+#[test]
+fn auto_increment_integer_keys_are_serial_on_postgres() {
+    let mut table = Blueprint::new();
+    table.id();
+    for (name, col_type) in [("legacy_id", "INT"), ("wide_id", "BIGINT")] {
+        let column = table.integer(name);
+        column.col_type = col_type.to_string();
+        column.is_auto_increment = true;
+    }
+    table.big_integer("total").not_null();
+    assert_eq!(
+        table.render(None, "postgres", false).expect("PostgreSQL"),
+        "id SERIAL PRIMARY KEY,\n    \
+         legacy_id SERIAL,\n    \
+         wide_id BIGSERIAL,\n    \
+         total BIGINT NOT NULL"
+    );
+    assert_eq!(
+        table.render(None, "mysql", false).expect("MySQL"),
+        "id INTEGER PRIMARY KEY AUTO_INCREMENT,\n    \
+         legacy_id INT AUTO_INCREMENT,\n    \
+         wide_id BIGINT AUTO_INCREMENT,\n    \
+         total BIGINT NOT NULL"
+    );
+}
+
+#[test]
+fn current_timestamp_defaults_of_other_typed_columns_stay_plain() {
+    // Only date/time columns spell the current time in their own form.
+    let mut table = Blueprint::new();
+    table
+        .float("observed")
+        .default(ColumnDefault::CurrentTimestamp);
+    assert_eq!(
+        table.render(None, "postgres", false).expect("PostgreSQL"),
+        "observed DOUBLE PRECISION DEFAULT CURRENT_TIMESTAMP"
+    );
+    assert_eq!(
+        table.render(None, "mysql", false).expect("MySQL"),
+        "observed DOUBLE DEFAULT CURRENT_TIMESTAMP"
+    );
+    assert_eq!(
+        table.render(None, "sqlite", false).expect("SQLite"),
+        "observed REAL DEFAULT CURRENT_TIMESTAMP"
+    );
+}
