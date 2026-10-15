@@ -75,7 +75,7 @@ Check, in this order:
 2. Security (AGENTS.md 3.4): SQL built from input instead of SQLx parameters or `sanitize_identifier`; production routes without CSRF, secure headers or WAF; webhook signatures compared without constant time; parameterized routes (`/{id}`) without an ownership check (`RbacGuard::authorize_owner_or_role` or `UserContext`) or without a `// rullst-access: public|owner|role|admin — reason` comment on the line before; new `unsafe` without a safety comment; secrets in code or logs.
 3. Panics in production paths: `unwrap()`, `expect()` or `panic!` outside tests (zero-panic policy, AGENTS.md 3.1).
 4. Missing or weakened tests for changed behaviour.
-5. Rullst rules: boolean attributes in `html!` are quoted (`disabled="true"`); new string constructors take `impl Into<String>`; static dispatch over `dyn Trait`; source files stay under about 500 lines.
+5. Rullst rules: boolean attributes in `html!` are bare (`disabled`) or conditional (`disabled?={flag}`), never `disabled="false"`; new string constructors take `impl Into<String>`; static dispatch over `dyn Trait`; source files stay under about 500 lines.
 
 Report only real problems in the changed lines, most severe first, at most 30. Answer with exactly one fenced block whose info string is `rullst-review` and whose body is one JSON object:
 

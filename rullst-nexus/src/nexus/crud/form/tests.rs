@@ -382,3 +382,39 @@ fn utc_fields_are_labelled_as_utc() {
         "{html}"
     );
 }
+
+#[test]
+fn the_edit_form_reads_visible_non_password_fields() {
+    let mut entry = RegistryEntry {
+        table: "members",
+        label: "Members",
+        icon: "M",
+        pk: "id",
+        pk_columns: Vec::new(),
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number),
+            FieldMeta::new("name", "Name", FieldKind::Text),
+            FieldMeta::new("api_key", "API key", FieldKind::Password),
+            FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+            FieldMeta::new("created_at", "Created", FieldKind::DateTime).readonly(),
+        ],
+    };
+    assert_eq!(
+        record_sql(&entry, false, "postgres"),
+        "SELECT id, name, CAST(created_at AS TEXT) AS created_at FROM members WHERE id = $1 LIMIT 1"
+    );
+    assert_eq!(
+        record_sql(&entry, false, "sqlite"),
+        "SELECT id, name, created_at FROM members WHERE id = ? LIMIT 1"
+    );
+    // With nothing readable, the form still reads the record key.
+    entry.fields = vec![
+        FieldMeta::new("api_key", "API key", FieldKind::Password),
+        FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
+    ];
+    assert_eq!(
+        record_sql(&entry, false, "postgres"),
+        "SELECT id FROM members WHERE id = $1 LIMIT 1"
+    );
+}

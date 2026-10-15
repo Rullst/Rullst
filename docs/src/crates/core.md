@@ -134,6 +134,8 @@ the task (`0 0 1 * 1` is the 1st plus every Monday); a field starting with `*`
 keeps the intersection. Earlier releases passed the fields to the `cron`
 crate unchanged, where 1 was Sunday and 0 was rejected. Messaging's durable
 recurring publications keep their documented `cron`-crate projection.
+See [time zones for scheduled tasks](#time-zones-for-scheduled-tasks) to
+match the fields against a local clock instead of UTC.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained
@@ -432,6 +434,49 @@ recurring task, with the tick as the start and `tick + max_delay` as the
 deadline. Ticks that pass while a deferred run waits are skipped, as for a slow
 run. Scheduled tasks do not consult an intensity source; a task can enqueue a
 job with `dispatch_deferred_with` instead.
+
+### Time zones for scheduled tasks
+
+`Scheduler::task` matches its five fields against UTC. With the optional
+`scheduler-tz` feature (v13; `rullst` and `rullst-core` both have it),
+`Scheduler::task_in_tz` matches them against the wall clock of a named IANA
+time zone, so "07:00 in Brasília" is written as it is said:
+
+```rust,ignore
+use rullst::Scheduler;
+
+let scheduler = Scheduler::new()
+    // 07:00 São Paulo time, which is 10:00 UTC.
+    .task_in_tz("0 7 * * *", "America/Sao_Paulo", || async {
+        // send the morning digest
+    })?
+    // Every ten minutes; the zone does not matter for this one.
+    .task("*/10 * * * *", || async {})?;
+```
+
+An unknown zone name, such as `Brasilia`, is rejected when the task is
+registered with `SchedulerError::InvalidTimeZone { zone, message }`; a bad
+expression still returns `SchedulerError::InvalidCron`. The day-of-month and
+day-of-week fields also follow the local date: `30 22 * * 5` in São Paulo runs
+on Friday evening local time, which is Saturday 01:30 UTC.
+
+In zones with daylight saving, one rule applies:
+
+- A wall time that a gap skips (clocks move forward) runs at the first
+  instant after the gap. In `America/New_York`, `30 2 * * *` runs at 03:00
+  EDT on the day clocks spring forward, and `*/15 * * * *` runs once at
+  03:00 for the skipped 02:00 to 02:45 and then continues at 03:15.
+- A wall time that a fold repeats (clocks move back) runs once, at its first
+  occurrence. `30 1 * * *` runs at 01:30 EDT and not again at 01:30 EST, and
+  an hourly task runs at 01:00 EDT and next at 02:00 EST.
+
+The zone rules come from the system database (`/usr/share/zoneinfo`) when it
+has the zone, so operating-system updates refresh them; otherwise the copy
+bundled with the `jiff` dependency is used, which keeps minimal container
+images without `tzdata` working. A task's label in scheduler errors is the
+expression followed by the zone, such as `0 7 * * * [America/Sao_Paulo]`.
+There is no time-zone form of `deferrable_task`: its ticks stay in UTC and
+its `TimeWindow`s use a fixed UTC offset.
 
 ### Axum First-Class Escape Hatches & Tower Interoperability
 

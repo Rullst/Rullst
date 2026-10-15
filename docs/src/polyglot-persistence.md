@@ -1,31 +1,41 @@
 # Polyglot Persistence
 
 > [!IMPORTANT]
-> Dependency examples target `12.1.0`. Check the [release record](v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use path dependencies only when intentionally testing checkout-local changes.
+> This page describes the v13 prerelease source, and its dependency examples
+> pin the published `13.0.0-alpha.1` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.1"` would also accept later alphas
+> (see the [v13 migration guide](migration-v13.md)). For the stable line, use
+> `rullst@12` and check the [release record](v12.md). Commit `Cargo.lock` for
+> reproducible builds, and use path dependencies only for checkout-local review.
 
-Rullst v12 keeps explicit relational and specialized persistence contracts.
-SQLx Active Record supports SQLite, PostgreSQL, MySQL, and MariaDB. The bounded
-blank/API profile can instead use Turso/libSQL as its typed primary ORM.
-MongoDB is for documents, DuckDB is for embedded OLAP/analytics, SurrealDB
-exposes documents plus bounded read-only graph queries, Qdrant exposes dense
-vector search, and Redis exposes selected native structures. No optional adapter
+Rullst keeps explicit relational and specialized persistence contracts. SQLx
+Active Record supports SQLite, PostgreSQL, MySQL and MariaDB. The Blank starter
+can instead use Turso/libSQL as its primary database, through a separate typed
+adapter. MongoDB is for documents, DuckDB for embedded OLAP/analytics,
+SurrealDB for documents plus bounded read-only graph queries, Qdrant for dense
+vector search and Redis for selected native structures. No optional adapter
 silently changes the application's primary database.
+
+Only the SQLx backends work with the `#[derive(Orm)]` query builder, `Schema`,
+`artisan!`, `Server::with_db`, Nexus and Studio's database pages. The
+[Database Support](database-support.md) table lists, backend by backend, what
+works, which `cargo rullst new` starters accept it and which CI test runs it
+against a real server.
 
 ## Choose the smallest feature
 
-Using the umbrella crate:
+Using the umbrella crate, next to the primary database profile:
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", features = ["orm-mongodb"] }
+rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["strict-postgres", "orm-mongodb"] }
 ```
 
 Available umbrella features are `orm-turso`, `orm-mongodb`, `orm-duckdb`,
-`orm-surrealdb`, `orm-qdrant`, `orm-redis`, and the convenience
-`orm-polyglot`. Direct `rullst-orm` users select `turso`, `mongodb`, `duckdb`,
-`surrealdb`, `qdrant`, `redis`, or `polyglot`.
+`orm-surrealdb`, `orm-qdrant` and `orm-redis`. Direct `rullst-orm` users select
+`turso`, `mongodb`, `duckdb`, `surrealdb`, `qdrant` or `redis`. There is no
+feature that enables them all: 13.0 removed the `polyglot` and `orm-polyglot`
+aggregates, so list the adapters the application uses.
 
 Features are additive. Prefer one adapter unless the application genuinely
 uses several, and inspect the final dependency graph with:
@@ -34,10 +44,11 @@ uses several, and inspect the final dependency graph with:
 cargo tree -e features
 ```
 
-The project wizard first asks for a primary backend. SQLite, PostgreSQL, MySQL,
-and MariaDB use SQLx; Turso is available as a typed primary for the blank/API
-starter. The wizard then offers explicit additive capability adapters. For a
-hybrid SQLx application, use one or more explicit flags:
+The project wizard first asks for a primary backend. SQLite, PostgreSQL, MySQL
+and MariaDB use SQLx; Turso is offered as the primary database of the Blank
+starter only, and its choice states what it does not integrate with. The
+wizard then offers the side stores, each described as one. For a hybrid SQLx
+application, use one or more explicit flags:
 
 ```bash
 cargo rullst new edge_app --default --database mariadb --turso --mongodb \
@@ -49,6 +60,12 @@ container contract. `--turso` is additive; `--database turso` is the explicit
 primary selection and currently rejects SQLx-specific non-blank blueprints.
 
 ## Turso / libSQL as the primary ORM
+
+Turso-primary is an alternative to SQLx, not another SQLx backend. It works
+through `TursoOrm`, `TursoModel`, `TursoRepository` and `TursoMigration`, and
+does not integrate with `Schema`, `artisan!`, `Server::with_db`, Nexus or
+Studio's database pages; `#[derive(Orm)]` generates the separate `TursoModel`
+API described below.
 
 ```bash
 cargo rullst new edge_app --default --api --database turso

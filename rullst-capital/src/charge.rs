@@ -385,5 +385,67 @@ mod tests {
             assert!(!request_debug.contains(secret));
         }
         assert!(!receipt_debug.contains(first.charge_id()));
+        assert!(
+            request_debug.starts_with("ChargeRequest"),
+            "{request_debug}"
+        );
+        assert!(
+            request_debug.contains("amount_minor: 1099"),
+            "{request_debug}"
+        );
+        assert!(
+            request_debug.contains("currency: \"usd\""),
+            "{request_debug}"
+        );
+        assert!(
+            receipt_debug.starts_with("ChargeReceipt"),
+            "{receipt_debug}"
+        );
+        assert!(
+            receipt_debug.contains("provider: \"stripe\""),
+            "{receipt_debug}"
+        );
+        assert!(receipt_debug.contains("status: Mock"), "{receipt_debug}");
+    }
+
+    fn receipt(amount_minor: u64, currency: &str) -> Result<ChargeReceipt, CapitalError> {
+        ChargeReceipt::from_verified_provider_response(
+            "fixture",
+            "charge_42",
+            ChargeStatus::Succeeded,
+            amount_minor,
+            currency,
+            "owner@example.com",
+        )
+    }
+
+    #[test]
+    fn receipt_bounds_amount_and_lowercase_currency() {
+        let largest = receipt(99_999_999, "usd").expect("largest amount");
+        assert_eq!(largest.charge_id(), "charge_42");
+        assert_eq!(largest.amount_minor(), 99_999_999);
+        for (amount, currency) in [
+            (0, "usd"),
+            (100_000_000, "usd"),
+            (1, "usdx"),
+            (1, "us"),
+            (1, "USD"),
+        ] {
+            assert!(
+                matches!(
+                    receipt(amount, currency),
+                    Err(CapitalError::ProviderRequestFailed(_))
+                ),
+                "{amount} {currency}"
+            );
+        }
+    }
+
+    #[test]
+    fn email_with_whitespace_is_rejected() {
+        assert!(matches!(
+            ChargeRequest::new(1, "USD", "cus", "own er@example.com", "pm", "key"),
+            Err(CapitalError::InvalidCharge(_))
+        ));
     }
 }

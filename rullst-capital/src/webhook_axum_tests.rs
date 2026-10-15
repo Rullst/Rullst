@@ -200,3 +200,57 @@ fn state_constructors_debug_resolution_statuses_and_poisoning_fail_closed() {
         Err(CapitalError::General(message)) if message.contains("poisoned")
     ));
 }
+
+async fn reached_handler() -> StatusCode {
+    StatusCode::NO_CONTENT
+}
+
+#[tokio::test]
+async fn global_middlewares_reject_duplicate_headers_before_provider_lookup() {
+    let production = Router::new()
+        .route("/webhook", post(reached_handler))
+        .layer(middleware::from_fn(verify_webhook));
+    let local = Router::new()
+        .route("/webhook", post(reached_handler))
+        .layer(middleware::from_fn(verify_webhook_mock_local));
+    for app in [production, local] {
+        let mut duplicated = request(payload(), Some("mock_axum_signature"));
+        for value in ["first", "second"] {
+            duplicated
+                .headers_mut()
+                .append("webhook-id", HeaderValue::from_static(value));
+        }
+        assert_eq!(
+            app.oneshot(duplicated).await.unwrap().status(),
+            StatusCode::BAD_REQUEST
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_single_standard_webhook_header_is_accepted() {
+    for name in ["webhook-id", "webhook-timestamp", "webhook-signature"] {
+        let mut single = request(payload(), Some("mock_axum_signature"));
+        single
+            .headers_mut()
+            .insert(name, HeaderValue::from_static("only"));
+        assert_eq!(
+            app(state(true)).oneshot(single).await.unwrap().status(),
+            StatusCode::NO_CONTENT,
+            "{name}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_body_of_exactly_two_mebibytes_reaches_signature_verification() {
+    let body = vec![b'x'; 2_097_152];
+    assert_eq!(
+        app(state(true))
+            .oneshot(request(body, Some("wrong")))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+}

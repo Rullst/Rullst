@@ -970,8 +970,9 @@ optional `schedules-postgres`, with an explicit facade feature. It coordinates
 bounded UTC cron occurrences across instances through one authoritative PostgreSQL
 database and relays them to the existing static `MessageBroker` contract. Core's
 process-local `Scheduler` retains its API; it evaluates POSIX five-field
-expressions in UTC (weekday 0/7=Sun, either restricted day field matches),
-unlike the projection below. A broker publication is
+expressions in UTC (weekday 0/7=Sun, either restricted day field matches), or
+in a named IANA zone through the opt-in `scheduler-tz` `task_in_tz` (section
+4.3), unlike the projection below. A broker publication is
 not proof of handler completion or an exactly-once external effect.
 
 Require a server-owned namespace, immutable limits and explicit encrypted storage
@@ -1764,6 +1765,31 @@ the same server-authoritative controls.
   `Markup::from_trusted`) is the explicit escape hatch for trusted HTML
   produced outside `html!`, such as a sanitizer's or renderer's output. It
   is never needed for `html!` output and must never wrap request data.
+* **Attributes:** `name="text"` is author-owned source and written as it is.
+  `name={value}` is always written with the value escaped: a `bool` as
+  `"true"`/`"false"` (what `aria-*` and `data-*` expect) and `None` as an
+  empty value. Since 13.0.0-alpha.2 a bare `name` (`<input required
+  disabled>`) is written without a value, and a conditional `name?={value}`
+  is decided at runtime through `rullst::html::OptionalAttribute`: a `bool`
+  writes the bare name or nothing, and an `Option<T>` writes `name="value"`,
+  escaped exactly like `name={value}` (URL attributes keep the scheme check
+  above), or nothing for `None`. Any other value type is a compile-time
+  error at the expression. HTML boolean attributes mean presence, so
+  `disabled="false"` still disables a control: use `disabled?={flag}`. The
+  quoted forms keep compiling. Attribute names are Rust identifiers (keywords
+  included) joined by `-`, so no quote, `=`, `>` or whitespace can reach the
+  output through a name; `:` and `@` name forms are not supported. A
+  conditional value on an event-handler attribute is rejected like a dynamic
+  one, while a bare handler name is static.
+* **Control flow:** Since 13.0.0-alpha.2, `@if condition { … }` (also
+  `@if let PATTERN = value`), `@else if …`, `@else { … }` and
+  `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
+  heads are parsed like Rust's own `if`/`for` heads and keep caller name
+  resolution. No other node can start with `@`, so the forms are
+  unambiguous. A plain `else` after an `@if` body and any other `@` form
+  (`@match`, `@let`, `@while`) are compile-time errors: `match` and other
+  control flow stay Rust expressions that return `Markup` inside `{…}`,
+  which keeps the grammar small without losing expressiveness.
 * **Element names and the doctype:** Element names (opening and closing) may
   be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
   letter case) is emitted as written; it must precede every other node
@@ -1797,7 +1823,105 @@ the same server-authoritative controls.
   // `rendered` is Markup: another html! inserts it without escaping it again.
   let card = html! { <section>{rendered}</section> };
   assert!(card.starts_with("<section><div class=\"user-badge\">"));
+
+  // Bare and conditional attributes, `@if` and `@for`.
+  let tasks = [("Write tests", true), ("<Ship>", false)];
+  let list = html! {
+      <ul>
+          @for (title, done) in tasks {
+              <li><input type="checkbox" disabled checked?={done} />{title}</li>
+          }
+      </ul>
+      @if tasks.is_empty() { <p>"Nothing to do"</p> }
+  };
+  assert_eq!(
+      list,
+      "<ul><li><input type=\"checkbox\" disabled checked />Write tests</li>\
+       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>"
+  );
   ```
+
+### 4.2.1. Translations and Locale Negotiation (`rullst::i18n`, since 13.0.0-alpha.2)
+* **Placement:** the runtime is the Core module `rullst::i18n` (no Cargo
+  feature, not built for `wasm32`); the catalog macro is
+  `rullst_macros::i18n_catalog`, re-exported as `rullst::i18n::catalog!`.
+  Guide: [Translations and Locales](i18n.md).
+* **Catalogs:** `catalog!(default = "tag", dir = "path")` (`dir` defaults to
+  `locales`, relative to `CARGO_MANIFEST_DIR`; absolute paths are rejected)
+  reads every `*.toml` file of the directory at compile time, at most 64
+  files of at most 1 MiB. The file stem is the locale tag,
+  `language[-Script][-REGION]` in canonical case. Nested tables form dotted
+  keys of ASCII letters, digits, `_` and `-`. A table whose entries are all
+  strings named after CLDR categories and that has `other` is a plural
+  message; only `one` and `other` are accepted. Templates use `{name}`
+  placeholders (Rust identifiers that are not keywords) and `{{`/`}}`.
+* **Compile-time checks:** the build fails on a key missing from any locale,
+  differing placeholder sets or plural/single shapes between locales, a
+  malformed template, a plural message whose forms do not match the locale's
+  rule, a non-canonical file tag, and a `default` without a file (at most 30
+  catalog errors are listed). Each file is tracked with `include_bytes!`, so
+  edits rebuild the crate; adding a file needs a rebuild trigger.
+* **Generated items:** in the invoking module, `pub static LOCALES:
+  rullst::i18n::Locales` (tags sorted, default index) and `macro_rules! t`
+  re-exported with `pub(crate) use t;`. `t!(locale, "key", name = expr, …)`
+  takes a `Locale` or `&Locale` and a string-literal key; an unknown key (with
+  a near-miss suggestion), a missing, unexpected or repeated argument, and a
+  plural message without `count` are compile errors at the caller's tokens.
+  Arguments are evaluated once, in call order. After a catalog error the
+  macro still defines both items so that only the catalog error is reported.
+* **Output and escaping:** `t!` returns `Cow<'static, str>` plain text
+  (borrowed when the message has no placeholders) that `html!` escapes in
+  text and attributes; arguments use `Display`. A key ending in `_html`
+  returns `Markup`: its catalog template is trusted and its arguments are
+  HTML-escaped.
+* **Plural rules:** `count` accepts any integer through `PluralCount` (the
+  absolute value, saturating at `u64::MAX`). `one` is selected for exactly 1
+  in `en`, `es`, `de`, `it`, `nl` and `pt-PT`, for 0 and 1 in `pt`, `pt-BR`
+  and `fr` (any region for `fr`), never in `ja`, `zh` and `ko` (which must
+  not define `one`). A plural message in any other language or Portuguese
+  region is a compile error. CLDR's `many` (millions in `es`, `fr`, `it`,
+  `pt`) uses `other`.
+* **Message selection:** a call selects the catalog locale with the
+  `Locale`'s tag, else one with the same language (the catalog default
+  first), else the catalog default, so a `Locale` from another crate's list
+  still renders.
+* **`Locale` and `Locales`:** `Locale` is `Copy` and exposes `tag()` and
+  `Display`; it is obtained from `Locales::get` (ignoring ASCII case),
+  `iter`, `default_locale`, `negotiate`, `cookie_locale`, `accept_language`
+  or the extractor. `Locales::new(&'static [&'static str], default)` validates
+  1–64 canonical, distinct tags and a listed default, returning
+  `LocaleError` (`Empty`, `TooMany`, `InvalidTag`, `DuplicateTag`,
+  `UnknownDefault`; non-exhaustive).
+* **Negotiation:** `Locales::negotiate(&HeaderMap)` returns the first
+  supported tag in a `rullst_locale` cookie (`LOCALE_COOKIE`, across all
+  `Cookie` headers), else the best match of the first `Accept-Language`
+  header, else the default. An `Accept-Language` value over 4,096 bytes is
+  ignored; only its first 32 ranges are read, and ranges over 35 bytes, with
+  `q=0` or with a weight outside RFC 9110's `0[.ddd]`/`1[.000]` are skipped.
+  Ranges are ordered by weight with header order kept on ties; each matches a
+  supported tag exactly (ignoring case), else by primary language (the
+  default first, then list order), and `*` matches the default.
+* **Layer and extractor:** `Locales::layer(&'static self)` returns
+  `LocaleLayer`, whose service inserts the negotiated `Locale` into the
+  request extensions. `Locale` implements `FromRequestParts`; without the
+  layer it rejects with `MissingLocale`, a `500` naming the layer.
+* **Switch route:** `Locales::switch_route(&'static self)` is a `POST`
+  `MethodRouter` reading a URL-encoded body of at most 4,096 bytes (`413`
+  above) with `locale` and optional `next`. A malformed form or an
+  unsupported locale is `400` without a cookie. Otherwise it sets
+  `rullst_locale=<tag>; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`,
+  with `; Secure` when the request's `Environment` extension (else the
+  detected environment, else secure) requires secure defaults, and answers
+  `303 See Other` to `next` if it is at most 2,048 bytes of printable ASCII
+  starting with one `/` and containing no `\`, else to `/`. With
+  `HX-Request: true` it answers `204` with `HX-Redirect` instead of
+  `Location`. CSRF protection comes from the application's
+  `csrf_middleware`/security baseline; the route does not exempt itself.
+* **Page language:** handlers pass `locale.tag()` to
+  `render_page_with_lang` for `<html lang>`.
+* **Out of scope:** runtime-loaded catalogs, other plural categories,
+  script-aware matching, and date/number formatting. `rullst-mail`'s
+  `MailLocale` remains separate (`MailLocale::from_preference(locale.tag())`).
 
 ### 4.3. Durable Queue Timing and Completion History
 * SQLite and Redis persist `dispatch_at` for at most 366 days and never claim a
@@ -1813,6 +1937,19 @@ the same server-authoritative controls.
   `dispatch_at`, so stored rows and keys are unchanged; Core ships no network
   source and makes no emissions claim. `Scheduler::deferrable_task` applies the
   window rule to each tick within a maximum delay.
+* `Scheduler::task` matches POSIX five-field cron against UTC. The v13 opt-in
+  `scheduler-tz` Core/facade feature adds
+  `Scheduler::task_in_tz(expression, zone, handler)`, which matches the same
+  fields, day fields included, against the wall clock of an IANA time zone.
+  An unknown zone is rejected at registration with
+  `SchedulerError::InvalidTimeZone { zone, message }`. A wall time that a
+  daylight-saving gap skips runs at the first instant after the gap (several
+  skipped matches run once there); a wall time that a fold repeats runs once,
+  at its first occurrence, and no match in the repeated hour runs a second
+  time. Zone rules come from the system zoneinfo database when it has the
+  zone, otherwise from the database bundled with the `jiff` dependency. Fixed
+  instants in tests cover São Paulo, New York's gap and fold, and UTC
+  equivalence with `Scheduler::task`. `deferrable_task` has no time-zone form.
 * SQLite claims pending jobs in order of their due time, and an immediately
   dispatched job is due at its enqueue time. A scheduled job, or one handed
   back for lack of a handler, that became due earlier is therefore claimed
@@ -2586,9 +2723,28 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.8. Polyglot Persistence Boundary
 
-* Optional persistence adapters are disabled by default and selected with
-  `mongodb`, `duckdb`, `turso`, `surrealdb`, `qdrant`, or the `polyglot` convenience
-  feature. The umbrella crate exposes matching `orm-*` features.
+* Optional persistence adapters are disabled by default and selected one at a
+  time with `mongodb`, `duckdb`, `turso`, `surrealdb` or `qdrant`; the umbrella
+  crate exposes matching `orm-*` features. 13.0 removed the `polyglot` and
+  `orm-polyglot` aggregates, which enabled every adapter at once, including
+  DuckDB's bundled C++ build.
+* Only the SQLx backends (SQLite, PostgreSQL, MySQL/MariaDB) integrate with the
+  `#[derive(Orm)]` query builder, `Schema`, `artisan!`/`db:*`,
+  `Server::with_db`, Nexus and Studio's database pages, and every
+  `cargo rullst new` starter accepts them. Turso/libSQL is the primary database
+  of the Blank starter only: `#[orm(backend = "turso")]` derives the separate
+  `TursoModel` API, migrations are SQL `TursoMigration`s, the starter answers
+  `db:migrate`/`db:rollback`/`db:status` itself and `TursoStore::transaction`
+  runs atomic statement batches; it integrates with none of the SQLx parts
+  above. MongoDB, DuckDB, SurrealDB, Qdrant and Redis data structures are side
+  stores with their own APIs and no transactions. `cargo rullst new` states
+  these limits next to the Turso and side-store choices in the wizard, in
+  `--help` and on the review/dry-run screen. Live CI contracts are
+  `matrix_postgres`, `matrix_mysql`, `matrix_mariadb`, `matrix_turso`,
+  `matrix_mongodb`, `matrix_surrealdb`, `matrix_qdrant` and
+  `matrix_redis_data`; SQLite and DuckDB run in-process. The
+  [Database Support](database-support.md) table is the user-facing statement
+  of this boundary and must change with it.
 * `DocumentRepository<T>` provides create, find, replace, delete, and
   deterministic bounded listing. Collection names, document IDs, offsets and
   limits are validated before reaching a driver.
@@ -3041,8 +3197,8 @@ explicit application work.
 Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
 accepts only bounded finite positive values with no more decimals than the
 currency's ISO 4217 minor unit (none for JPY, three for KWD, two by default),
-converts them to integer minor units of that currency, and requires the exact
-item sum. HTML and PDF amounts use the same number of decimals, so the minor
+converts them to 1 to 99,999,999 integer minor units of that currency, and
+requires the exact item sum. HTML and PDF amounts use the same number of decimals, so the minor
 units match a provider receipt for zero- and three-decimal currencies too.
 
 The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its

@@ -123,3 +123,7 @@ fn field(destination: &mut Vec<u8>, value: &[u8]) -> Result<()> {
     destination.extend_from_slice(value);
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "crypto_tests.rs"]
+mod tests;

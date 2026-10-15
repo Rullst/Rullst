@@ -29,13 +29,19 @@ impl BlueprintChoice {
 }
 
 /// Primary relational databases accepted by non-interactive generation.
+/// The variant comments are the `--database` value help that `--help` lists.
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DatabaseChoice {
+    /// SQLite through SQLx; every starter (the default)
     Sqlite,
+    /// PostgreSQL through SQLx; every starter
     Postgres,
+    /// MySQL through SQLx; every starter
     Mysql,
+    /// MariaDB through SQLx's MySQL driver; every starter
     Mariadb,
+    /// Turso/libSQL (Blank/API only; no Nexus, Studio, Schema or SQLx ORM)
     Turso,
 }
 

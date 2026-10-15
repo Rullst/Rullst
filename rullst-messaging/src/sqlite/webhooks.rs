@@ -188,3 +188,7 @@ impl<C: Clock> SqliteBroker<C> {
         finish(tx, result, "finish webhook retention").await
     }
 }
+
+#[cfg(test)]
+#[path = "webhooks_tests.rs"]
+mod tests;

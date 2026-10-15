@@ -10,6 +10,12 @@
   a 256 KiB body ceiling, correlation checks, same-origin paths, CSRF header
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
+- **Translations and Locales (v13):** `rullst::i18n::catalog!` loads one
+  TOML catalog per locale at compile time and fails the build on missing keys
+  or mismatched placeholders; the generated `t!` returns text that `html!`
+  escapes, with `one`/`other` plurals. `Locales` negotiates the locale from a
+  cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
+  `POST` switch route. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
 - **Distributed Tracing Candidate (v13):** Optional `telemetry::distributed`
   adds explicit parent trust, approved operation labels, minimized OTLP export
@@ -86,9 +92,13 @@
   HTMX requests their error fragment with `200 OK` plus an
   `X-Rullst-Validation-Status` header carrying the REST status; other clients
   keep `400`, `413`, `415` or `422` JSON.
-- **POSIX Cron in UTC:** `Scheduler::task` evaluates five-field POSIX
-  expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and names, and a day
-  matching either restricted day field runs the task.
+- **POSIX Cron in UTC or a Named Time Zone:** `Scheduler::task` evaluates
+  five-field POSIX expressions in UTC: weekdays 0-7 (0 and 7 are Sunday) and
+  names, and a day matching either restricted day field runs the task. With
+  the optional `scheduler-tz` feature (v13), `Scheduler::task_in_tz(expr,
+  "America/Sao_Paulo", handler)` matches the fields against that IANA zone's
+  wall clock; a time skipped by a daylight-saving gap runs when the gap ends
+  and a repeated time runs once, at its first occurrence.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.
@@ -135,19 +145,20 @@ Most developers will not depend on `rullst-core` directly, as it is re-exported 
 
 If you are developing a plugin or advanced middleware for the Rullst ecosystem, you can add it explicitly:
 
-Install the exact stable train with
-`cargo add rullst-core@12.1.0`.
+This README describes the v13 prerelease; Cargo never selects a
+prerelease on its own, so pin it exactly (the stable line is `rullst-core@12`):
+`cargo add rullst-core@=13.0.0-alpha.1`.
 
 Core is runtime-only by default. Add just the database capabilities the
 application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.1.0", features = ["orm", "queue-sqlite", "offline-sync"] }
+rullst-core = { version = "=13.0.0-alpha.1", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
-Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`, or
-`telemetry` only when that integration is required. `orm` adds no SQLx driver:
+Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`,
+`scheduler-tz` or `telemetry` only when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
 SQLite). The primary `rullst` crate keeps `orm`, `drivers-all` and
 `queue-sqlite` in its default feature set for application compatibility.

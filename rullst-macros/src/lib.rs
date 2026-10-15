@@ -8,6 +8,7 @@ use syn::parse_macro_input;
 #[cfg(test)]
 mod billable_tests;
 mod html_parser;
+mod i18n;
 mod live_parser;
 mod memoize;
 #[cfg(test)]
@@ -49,6 +50,45 @@ mod server_function;
 /// Element names may be Rust keywords, such as SVG's `<use href="#icon" />`.
 /// A document may start with `<!DOCTYPE html>`, which is emitted as written.
 ///
+/// # Attributes
+///
+/// - `name="text"` is written as it is (author-owned source).
+/// - `name={value}` is always written, with the value escaped; a `bool` is
+///   written as `"true"`/`"false"`, as `aria-*` attributes expect.
+/// - A bare `name` is written without a value: `<input required disabled>`.
+/// - `name?={value}` is present or absent at runtime: a `bool` writes the bare
+///   name or nothing, an `Option<T>` writes `name="value"` (escaped like
+///   `name={value}`) or nothing. HTML boolean attributes mean presence, so
+///   `disabled="false"` would still disable: write `disabled?={locked}`.
+///
+/// # Control flow
+///
+/// `@if`/`@else if`/`@else` (including `@if let`) and `@for pattern in
+/// iterable` take `html!` nodes in their braces. For `match` and other
+/// control flow, interpolate a Rust expression that returns `Markup`.
+///
+/// ```rust,ignore
+/// use rullst::html;
+///
+/// let user: Option<&str> = Some("Ana");
+/// let items = ["a", "b"];
+/// let page = html! {
+///     @if let Some(name) = user { <p>"Hi " {name}</p> } @else { <a href="/login">"Sign in"</a> }
+///     <ul>
+///         @for (index, item) in items.iter().enumerate() {
+///             <li aria-current?={(index == 0).then_some("true")}>{item}</li>
+///         }
+///     </ul>
+///     <button disabled?={items.is_empty()}>"Export"</button>
+/// };
+/// assert_eq!(
+///     page,
+///     "<p>Hi Ana</p><ul><li aria-current=\"true\">a</li><li>b</li></ul><button>Export</button>"
+/// );
+/// ```
+///
+/// This example is compiled and asserted in `rullst/tests/html_snapshot_tests.rs`.
+///
 /// # Composing views
 ///
 /// Interpolating a `Markup` built by another `html!` call inserts it as it
@@ -83,6 +123,19 @@ pub fn html(input: TokenStream) -> TokenStream {
     let document = parse_macro_input!(input as html_parser::HtmlDocument);
     let expanded = document.to_tokens();
     expanded.into()
+}
+
+#[doc = include_str!("i18n/catalog.md")]
+#[proc_macro]
+pub fn i18n_catalog(input: TokenStream) -> TokenStream {
+    i18n::expand_catalog(input.into()).into()
+}
+
+/// Expands a `t!` call against the catalog that `catalog!` encoded into it.
+#[doc(hidden)]
+#[proc_macro]
+pub fn __i18n_translate(input: TokenStream) -> TokenStream {
+    i18n::expand_translate(input.into()).into()
 }
 
 /// Proc macro attribute to define a Wasm Island client component.

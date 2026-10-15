@@ -1,10 +1,12 @@
 # Rullst Mail 📬
 
 > [!IMPORTANT]
-> The dependency example targets `12.1.0`. This page describes the v13
-> prerelease `main` source: items marked (v13) and other recent fixes are not in the
-> published 12.1.x crates. Check the [release record](../v12.md) for
-> publication status; use a path dependency only for checkout-local review.
+> This page describes the v13 prerelease, published as `13.0.0-alpha.1`. Cargo
+> never selects a prerelease on its own, so its dependency examples pin that
+> version exactly; for the stable line use `rullst-mail@12` and check the
+> [release record](../v12.md). Use a path dependency only for checkout-local
+> review. Items marked (v13) and other recent fixes are not in the published
+> 12.1.x crates.
 
 > **Vision preserved:** additional providers and air-gapped/zero-leak ambitions
 > were not silently removed; see their status and recommendation in the
@@ -440,7 +442,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12.1.0", features = ["aws-ses"] }
+rullst-mail = { version = "=13.0.0-alpha.1", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

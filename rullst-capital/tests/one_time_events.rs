@@ -1,5 +1,5 @@
 use ring::hmac;
-use rullst_capital::StripeProvider;
+use rullst_capital::{CapitalError, StripeProvider};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
@@ -98,4 +98,71 @@ fn subscription_connected_account_and_inconsistent_payloads_are_rejected() {
                 .is_err()
         );
     }
+}
+
+#[test]
+fn verified_one_time_event_exposes_identity_digests_and_mode() {
+    let provider = StripeProvider::new("sk_test_contract", "whsec_contract");
+    let now = chrono::Utc::now().timestamp();
+    let body = serde_json::to_vec(&event(
+        "checkout.session.completed",
+        json!({"object":"checkout.session","id":"cs_test_checkout","mode":"payment","livemode":false,"payment_intent":"pi_checkout"}),
+        now,
+    ))
+    .unwrap();
+    let verified = provider
+        .verify_one_time_event(&body, &headers(&body, now))
+        .unwrap();
+    assert_eq!(verified.event_id(), "evt_one_time");
+    assert_eq!(
+        verified.payload_digest().as_slice(),
+        ring::digest::digest(&ring::digest::SHA256, &body).as_ref()
+    );
+    // Versioned digest over mode, id, type, session and payment intent.
+    assert_eq!(
+        hex::encode(verified.mutation_digest()),
+        "f7142cc3eb47b19dfa688850a54eb4fa06654d2571bf9ffe88f3840f77bff46e"
+    );
+    let debug = format!("{verified:?}");
+    assert!(debug.starts_with("StripeOneTimeEvent"), "{debug}");
+    assert!(debug.contains("livemode: false"), "{debug}");
+
+    let live = StripeProvider::new("sk_live_contract", "whsec_contract");
+    let mut refund = event(
+        "charge.refunded",
+        json!({"object":"charge","id":"ch_live","livemode":true,"payment_intent":"pi_live"}),
+        now,
+    );
+    refund["livemode"] = json!(true);
+    let body = serde_json::to_vec(&refund).unwrap();
+    let verified = live
+        .verify_one_time_event(&body, &headers(&body, now))
+        .unwrap();
+    assert!(verified.livemode());
+    assert_eq!(
+        hex::encode(verified.mutation_digest()),
+        "727ae40bccbb48ea9b9b5d6a448cd0b5e299b8cc34863c5d62b4ddba5629fd75"
+    );
+}
+
+#[test]
+fn one_time_payload_size_is_checked_before_the_verification_mode() {
+    let mock = StripeProvider::new("mock_key", "mock_secret");
+    let headers = HashMap::new();
+    let invalid = CapitalError::PayloadParseError("Invalid Stripe one-time event".into());
+    let mock_refused = CapitalError::MockWebhookNotAllowed("stripe".into());
+    assert_eq!(
+        mock.verify_one_time_event(b"", &headers).unwrap_err(),
+        invalid
+    );
+    assert_eq!(
+        mock.verify_one_time_event(&vec![b'x'; 2_097_152], &headers)
+            .unwrap_err(),
+        mock_refused
+    );
+    assert_eq!(
+        mock.verify_one_time_event(&vec![b'x'; 2_097_153], &headers)
+            .unwrap_err(),
+        invalid
+    );
 }

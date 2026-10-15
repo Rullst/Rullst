@@ -18,8 +18,9 @@ pub(crate) fn new_command(command: Command) -> Command {
                 .help("Selects the starter blueprint; the wizard skips that question")
         })
         .mut_arg("database", |arg| {
-            arg.requires(Resettable::Reset)
-                .help("Selects the primary relational backend; the wizard skips that question")
+            arg.requires(Resettable::Reset).help(
+                "Selects the primary database (--help lists what each one supports); the wizard skips that question",
+            )
         })
         .mut_arg("no_database", |arg| {
             arg.requires(Resettable::Reset)
@@ -30,8 +31,9 @@ pub(crate) fn new_command(command: Command) -> Command {
                 .help("Enables the Rullst AI facade; the wizard skips that question")
         })
         .mut_arg("redis", |arg| {
-            arg.requires(Resettable::Reset)
-                .help("Enables the Redis-backed adapters; the wizard skips that question")
+            arg.requires(Resettable::Reset).help(
+                "Enables Redis queues, cache and the Redis-structures side store; the wizard skips that question",
+            )
         })
         .arg(
             Arg::new("dry_run")
@@ -204,6 +206,38 @@ mod tests {
             legacy.kind(),
             clap::error::ErrorKind::MissingRequiredArgument
         );
+    }
+
+    /// `new --help` with its runtime help, whitespace collapsed.
+    fn long_help() -> String {
+        let mut command = crate::cli::Cli::command().mut_subcommand("new", new_command);
+        let help = command
+            .find_subcommand_mut("new")
+            .expect("new subcommand")
+            .render_long_help()
+            .to_string();
+        help.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
+    #[test]
+    fn help_states_the_turso_limits_and_names_the_side_stores() {
+        let help = long_help();
+        for expected in [
+            "Selects the primary database (--help lists what each one supports); the wizard skips that question",
+            "sqlite: SQLite through SQLx; every starter (the default)",
+            "postgres: PostgreSQL through SQLx; every starter",
+            "mysql: MySQL through SQLx; every starter",
+            "mariadb: MariaDB through SQLx's MySQL driver; every starter",
+            "turso: Turso/libSQL (Blank/API only; no Nexus, Studio, Schema or SQLx ORM)",
+            "Enables Redis queues, cache and the Redis-structures side store; the wizard skips that question",
+            "--turso Adds Turso/libSQL as a side store (edge SQL) beside the primary database",
+            "--mongodb Adds MongoDB as a side store (document CRUD)",
+            "--duckdb Adds DuckDB as a side store (in-process analytics; longer first build)",
+            "--surrealdb Adds SurrealDB as a side store (documents and read-only graph queries)",
+            "--qdrant Adds Qdrant as a side store (dense-vector search)",
+        ] {
+            assert!(help.contains(expected), "missing {expected:?} in:\n{help}");
+        }
     }
 
     #[test]

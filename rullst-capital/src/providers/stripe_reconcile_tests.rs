@@ -175,3 +175,29 @@ fn open_expired_and_truncated_recovery_contracts() {
             .is_empty()
     );
 }
+
+#[test]
+fn checkout_snapshot_exposes_the_provider_state() {
+    let snapshot = parse_checkout(&request(), &body(), false).unwrap();
+    assert_eq!(snapshot.id(), "cs_fixed");
+    assert_eq!(snapshot.status(), "complete");
+    assert_eq!(snapshot.expires_at(), 1_800_000_000);
+    let debug = format!("{snapshot:?}");
+    assert!(debug.starts_with("StripeCheckoutSnapshot"), "{debug}");
+    assert!(debug.contains("status: \"complete\""), "{debug}");
+    assert!(!debug.contains("cs_fixed") && !debug.contains("sub_owner"));
+}
+
+#[tokio::test]
+async fn offline_keys_return_a_deterministic_bound_portal() {
+    for key in ["", "mock_key"] {
+        let provider = super::super::StripeProvider::new(key, "whsec_fixture");
+        assert_eq!(
+            provider
+                .create_bound_customer_portal("cus_owner", "https://app.example/account")
+                .await
+                .unwrap(),
+            "https://mock.stripe.invalid/portal/cus_owner"
+        );
+    }
+}

@@ -1,0 +1,15 @@
+# Fixture catalog for tests/i18n_catalog.rs.
+[nav]
+language = "Language"
+
+[dashboard]
+title = "Dashboard"
+greeting = "Hello, {name}!"
+compare = "{a} < {b} & {{braces}}"
+
+[inbox.unread]
+one = "You have one unread message"
+other = "You have {count} unread messages"
+
+[legal]
+terms_html = "I accept the <a href=\"/terms\">terms</a>, {name}"

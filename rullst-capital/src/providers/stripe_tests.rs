@@ -148,3 +148,117 @@ async fn test_stripe_provider_methods() {
     assert!(provider.handle_webhook(payload, &empty_headers).is_err());
     assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
 }
+
+fn mock_signed() -> HashMap<String, String> {
+    HashMap::from([("stripe-signature".to_string(), "mock_bounds".to_string())])
+}
+
+fn subscription_payload(email: &str) -> Vec<u8> {
+    serde_json::to_vec(&serde_json::json!({
+        "type": "customer.subscription.updated",
+        "data": {"object": {
+            "object": "subscription", "id": "sub_bounds", "customer": "cus_bounds",
+            "customer_email": email, "status": "active",
+            "items": {"has_more": false, "data": [{"price": {"id": "price_bounds"}}]}
+        }}
+    }))
+    .unwrap()
+}
+
+#[test]
+fn subscription_webhook_payload_bounds_are_inclusive() {
+    let provider = StripeProvider::new("mock_key", "mock_bounds");
+    let too_large = CapitalError::PayloadParseError(
+        "Stripe: subscription payload exceeds the supported bound".into(),
+    );
+    let not_json = CapitalError::PayloadParseError("Stripe: invalid subscription JSON".into());
+    assert_eq!(
+        provider.handle_webhook(b"", &mock_signed()).unwrap_err(),
+        too_large
+    );
+    assert_eq!(
+        provider
+            .handle_webhook(&vec![b'x'; 2_097_152], &mock_signed())
+            .unwrap_err(),
+        not_json
+    );
+    assert_eq!(
+        provider
+            .handle_webhook(&vec![b'x'; 2_097_153], &mock_signed())
+            .unwrap_err(),
+        too_large
+    );
+    // The envelope verifier applies the same 2 MiB bound before delegating.
+    assert_eq!(
+        provider
+            .verify_subscription_event(&vec![b'x'; 2_097_152], &mock_signed())
+            .unwrap_err(),
+        not_json
+    );
+}
+
+#[test]
+fn subscription_contact_email_is_bounded_and_printable() {
+    let provider = StripeProvider::new("mock_key", "mock_bounds");
+    let longest = format!("{}@example.io", "a".repeat(243));
+    assert_eq!(longest.len(), 254);
+    let event = provider
+        .handle_webhook(&subscription_payload(&longest), &mock_signed())
+        .unwrap();
+    assert_eq!(event.customer_email, longest);
+    for invalid in [
+        format!("{}@example.io", "a".repeat(244)),
+        "a\u{7}@x.io".to_string(),
+    ] {
+        assert!(matches!(
+            provider.handle_webhook(&subscription_payload(&invalid), &mock_signed()),
+            Err(CapitalError::PayloadParseError(_))
+        ));
+    }
+}
+
+#[test]
+fn signature_header_of_exactly_4096_bytes_is_parsed() {
+    let provider = StripeProvider::new("mock_key", "header-secret");
+    let payload = b"bounded header";
+    let now = 1_800_000_000;
+    let key = hmac::Key::new(hmac::HMAC_SHA256, b"header-secret");
+    let mut context = hmac::Context::with_key(&key);
+    context.update(format!("{now}.").as_bytes());
+    context.update(payload);
+    let prefix = format!("t={now},v1={},v0=", hex::encode(context.sign().as_ref()));
+    let header = format!("{prefix}{}", "x".repeat(4096 - prefix.len()));
+    assert_eq!(header.len(), 4096);
+    provider.verify_signature_at(payload, &header, now).unwrap();
+    let longer = format!("{header}x");
+    assert!(matches!(
+        provider.verify_signature_at(payload, &longer, now),
+        Err(CapitalError::InvalidSignature(_))
+    ));
+}
+
+#[tokio::test]
+async fn offline_keys_skip_id_validation_and_live_keys_enforce_it() {
+    // An empty or mock key never reaches the provider, so the ID is not checked;
+    // a live key validates the URL segment before any request is built.
+    for key in ["", "mock_key"] {
+        let provider = StripeProvider::new(key, "whsec_unused");
+        provider
+            .cancel_subscription("not a path segment")
+            .await
+            .unwrap();
+        provider
+            .pause_subscription("not a path segment")
+            .await
+            .unwrap();
+    }
+    let live = StripeProvider::new("sk_live_unused", "whsec_unused");
+    assert!(matches!(
+        live.cancel_subscription("not a path segment").await,
+        Err(CapitalError::SubscriptionError(_))
+    ));
+    assert!(matches!(
+        live.pause_subscription("..").await,
+        Err(CapitalError::SubscriptionError(_))
+    ));
+}

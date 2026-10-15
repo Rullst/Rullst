@@ -3,7 +3,8 @@ run-name: "Mutation diff gate: PR #${{ github.event.pull_request.number }}"
 
 # Mutates only the Rust lines a pull request changes, so the score of the
 # manual mutants.yml campaign does not decay with every merge. A missed mutant
-# needs a test, or an entry in WORKFLOWS.md "Accepted equivalent mutants".
+# needs a test, or an entry in WORKFLOWS.md "Accepted equivalent mutants" plus
+# its exact name in .github/mutants-pr-equivalents.txt.
 on:
   pull_request:
     branches: [main]
@@ -12,6 +13,7 @@ on:
       - ".cargo/mutants.toml"
       - ".github/mutants-pr.sh"
       - ".github/mutants-pr-exclude.txt"
+      - ".github/mutants-pr-equivalents.txt"
       - ".github/workflows/mutants-pr.yml"
 
 concurrency:
@@ -45,12 +47,12 @@ jobs:
           fetch-depth: 2
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # stable
         with:
           toolchain: 1.99.0
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-mutants@27.1.0
 
@@ -108,12 +110,12 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # stable
         with:
           toolchain: 1.99.0
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-mutants@27.1.0
 
@@ -155,7 +157,7 @@ jobs:
               while IFS= read -r mutant; do
                 echo "::error file=${mutant%%:*}::Missed mutant: $mutant"
               done < mutants.out/missed.txt
-              echo "Add a test that fails with each missed mutant, or document it in WORKFLOWS.md \"Accepted equivalent mutants\"." >&2
+              echo "Add a test that fails with each missed mutant, or document it in WORKFLOWS.md \"Accepted equivalent mutants\" and add its exact name to .github/mutants-pr-equivalents.txt." >&2
               exit 1
               ;;
             *)
@@ -165,7 +167,7 @@ jobs:
           esac
 
       - name: Upload shard results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: mutants-pr-out-${{ matrix.index }}

@@ -173,9 +173,11 @@ fn summary_reflects_api_database_free_features_and_unavailable_previews() {
     edge.database = Database::Provider("Turso");
     edge.requested = vec![PolyglotIntegration::Turso];
     let text = texts(summary(&edge, None, 3000).lines()).join("\n");
-    assert!(text.contains("Database     Turso / libSQL"), "{text}");
+    // The review repeats the Turso limits; the primary is not an add-on.
     assert!(
-        text.contains("Features     none"),
-        "the primary is not an add-on: {text}"
+        text.contains(
+            "Database     Turso / libSQL\n             Blank/API only; no Nexus, Studio, Schema or SQLx ORM\nFeatures     none"
+        ),
+        "{text}"
     );
 }
