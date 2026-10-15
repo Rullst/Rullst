@@ -404,7 +404,7 @@ is classified for `rullst-upgrade-rules-v4`:
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (54 rows).
 
-The catalog has 103 rules. A row can map to several rules and a rule to
+The catalog has 104 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 
