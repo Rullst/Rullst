@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792087002534,
+  "lastUpdate": 1792103650222,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14239,6 +14239,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 376,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16647b9064d5517f3dc755bceb0c471f8f2ff269",
+          "message": "Merge pull request #503 from Rullst/test/v13-messaging-mutation\n\ntest(messaging): kill surviving mutants across webhooks, storage, schedules and Redis Streams",
+          "timestamp": "2026-10-15T19:10:27-03:00",
+          "tree_id": "20576ae64e48d7176c69d8764a866aca4ca71ecc",
+          "url": "https://github.com/Rullst/Rullst/commit/16647b9064d5517f3dc755bceb0c471f8f2ff269"
+        },
+        "date": 1792103649577,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1680,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 301,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 419,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
