@@ -90,6 +90,11 @@ fn dry_runs_preview_exactly_the_files_a_real_run_writes_and_write_nothing() {
         assert!(preview.status.success(), "{preview_text}");
         assert!(preview_text.contains("Dry run: nothing was created."));
         assert!(preview_text.contains("Runs         no commands; files only"));
+        assert_eq!(
+            preview_text.contains("Blank/API only; no Nexus, Studio, Schema or SQLx ORM"),
+            profile.contains(&"turso"),
+            "{profile:?}: only a Turso primary repeats its limits"
+        );
         assert!(
             !preview_text.contains('\x1b'),
             "plain output outside a terminal"

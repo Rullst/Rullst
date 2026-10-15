@@ -258,19 +258,19 @@ The choices that materially change the generated application:
     `rullst::health::health_router()`, so the `/health` and `/ready` probes
     written by `make:k8s`, `deploy` and `foundry:deploy` answer `200` without
     authentication.
-  * `--turso`: Adds the direct Hrana HTTP v3 Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
-  * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
-  * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.
-  * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.
-  * `--qdrant`: Enables bounded dense-vector Qdrant operations and generates empty/`mock_*`-compatible environment fields; it is additive, not the SQL primary.
+  * `--turso`: Adds Turso/libSQL as a side store beside the primary database: the direct Hrana HTTP v3 adapter, checked migrations and its real-SQL offline development fallback. It does not imply transparent replication.
+  * `--mongodb`: Adds MongoDB as a side store: typed document CRUD and its deterministic offline store.
+  * `--duckdb`: Adds DuckDB as a side store for in-process analytics; the optional native dependency increases the first build time.
+  * `--surrealdb`: Adds SurrealDB as a side store: HTTP document CRUD and bounded read-only graph queries.
+  * `--qdrant`: Adds Qdrant as a side store for bounded dense-vector operations and generates empty/`mock_*`-compatible environment fields; it is not the SQL primary.
   * `--nix` (**Experimental**): Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
   * `--buildah` (**Experimental**): Adds rootless Buildah container-build files where supported. The image is tagged with the lowercase, `-`-separated form of the package name (`my_startup` becomes `my-startup:latest`), the same name `make:k8s` uses, because OCI repository and Kubernetes names reject uppercase letters and `_`.
   * `--default`: Skips every question and uses deterministic defaults for anything no flag sets (name `app`, Blank, SQLite, no features), intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects the blueprint; the wizard skips that question.
-  * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend; the wizard skips that question. Network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
+  * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary database; the wizard skips that question. Network databases must be configured before migration bootstrap. The SQLx backends (`sqlite`, `postgres`, `mysql`, `mariadb`) work with every starter. `turso` is accepted only with the Blank starter (web page or `--api`) and has no Nexus, Studio database pages, `Schema` migrations or SQLx ORM; the wizard's choice, `--help` and the review/dry-run screen say so. See [Database Support](database-support.md).
   * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
-  * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
+  * `--redis`: Enables the umbrella Redis queue and cache capabilities and the Redis-structures side store (the direct ORM Redis feature).
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. `cargo rullst dev` applies pending migrations when it starts; run `cargo rullst db:migrate` explicitly otherwise.
   * `--dry-run` (v13): Prints the plan (the answers, a compact file tree with the exact number of files and the commands it would run) and exits without creating anything. With `--default` it never prompts; in a terminal without `--default` the wizard's review ends with *Finish the dry run*.
   * `--vcs <git|none>` (v13, default `git`): Like `cargo new`, initializes a Git repository in the new project when `git` is installed and the destination is not already inside a Git work tree; `none` skips it. The generated `.gitignore` keeps `.env`, `.env.*` (except `.env.example`) and `/target` out. Without Git, `new` prints a warning and keeps the project; `cargo rullst audit` checks committed secrets through Git.
@@ -419,7 +419,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (99 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (103 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed

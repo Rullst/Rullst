@@ -98,6 +98,7 @@ fn open_session_is_bound_to_customer_reference_mode_redirects_and_line_items() {
         ("cancel_url", json!("https://other.example/")),
         ("livemode", json!("false")),
         ("expires_at", json!(-1)),
+        ("expires_at", json!(0)),
         ("url", json!("https://secret@checkout.stripe.com/session")),
     ] {
         let mut bad = valid.clone();
@@ -228,4 +229,16 @@ fn invalid_identity_keys_and_redirects_fail_before_dispatch() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn debug_output_names_the_request_and_session() {
+    let request = request();
+    let debug = format!("{request:?}");
+    assert!(debug.starts_with("StripeCheckoutRequest"), "{debug}");
+    let session = parse_response(&request, &response()).unwrap();
+    let debug = format!("{session:?}");
+    assert!(debug.starts_with("StripeCheckoutSession"), "{debug}");
+    assert!(debug.contains("status: Created"), "{debug}");
+    assert!(debug.contains("livemode: Some(false)"), "{debug}");
 }

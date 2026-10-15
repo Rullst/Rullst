@@ -283,6 +283,80 @@ mod tests {
         ));
     }
 
+    fn invalid_message(result: Result<Vec<u8>, CapitalError>) -> String {
+        match result {
+            Err(CapitalError::InvalidInvoice(message)) => message,
+            other => panic!("expected an invalid invoice, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn custom_font_size_is_checked_before_parsing() {
+        let invoice = invoice("Subscription");
+        let size = "PDF font must contain 1 byte to 8 MiB";
+        let unparsable = "PDF font could not be parsed";
+        assert_eq!(invalid_message(invoice.generate_pdf_with_font(b"")), size);
+        assert_eq!(
+            invalid_message(invoice.generate_pdf_with_font(&vec![0; 8_388_608])),
+            unparsable
+        );
+        assert_eq!(
+            invalid_message(invoice.generate_pdf_with_font(&vec![0; 8_388_609])),
+            size
+        );
+    }
+
+    #[test]
+    fn a_custom_font_document_may_exceed_one_mebibyte() {
+        // Font parsers ignore bytes after the last table, but the whole font
+        // program is embedded, and pseudo-random bytes do not compress.
+        let mut font = BuiltinFont::Helvetica.get_subset_font().bytes;
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        font.extend((0..1_200_000).map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state.to_le_bytes()[0]
+        }));
+        let bytes = invoice("Subscription")
+            .generate_pdf_with_font(&font)
+            .expect("a document below 16 MiB");
+        assert!(bytes.len() > 1_100_000, "{}", bytes.len());
+    }
+
+    #[test]
+    fn wrapped_description_keeps_its_amount_on_the_first_line() {
+        let description = format!("{}{}", "a".repeat(64), "tail");
+        let bytes = invoice(&description).generate_pdf().expect("bounded PDF");
+        let parsed = PdfDocument::parse(&bytes, &PdfParseOptions::default(), &mut Vec::new())
+            .expect("parse generated PDF");
+        let text = parsed
+            .extract_text()
+            .into_iter()
+            .flatten()
+            .collect::<String>();
+        assert!(
+            text.contains(&format!("{} | 49.90 BRL\r\n  tail", "a".repeat(64))),
+            "{text:?}"
+        );
+        assert!(
+            text.starts_with("Invoice INV-2026-1\r\nBilled To: "),
+            "{text:?}"
+        );
+        // One line break between consecutive lines and none before the first.
+        let operations = &parsed.pages[0].ops;
+        let breaks = operations
+            .iter()
+            .filter(|operation| matches!(operation, Op::AddLineBreak))
+            .count();
+        let shown = operations
+            .iter()
+            .filter(|operation| matches!(operation, Op::ShowText { .. }))
+            .count();
+        assert_eq!(shown, 8);
+        assert_eq!(breaks, 7);
+    }
+
     #[test]
     fn renderer_paginates_bounded_long_invoices() {
         let mut invoice = invoice("Subscription");

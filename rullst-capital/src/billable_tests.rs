@@ -198,3 +198,34 @@ async fn explicit_subscription_handle_is_static_bounded_and_redacted() {
     assert!(SubscriptionHandle::new(&provider, "line\nbreak").is_err());
     assert!(SubscriptionHandle::new(&provider, "x".repeat(513)).is_err());
 }
+
+#[tokio::test]
+async fn subscription_handle_returns_provider_errors() {
+    // A live key validates the ID as a URL segment before any request is built,
+    // so these provider errors reach the caller without network access.
+    let provider = StripeProvider::new("sk_live_unused", "whsec_unused");
+    let handle = SubscriptionHandle::new(&provider, "sub/other").expect("bounded handle ID");
+    for result in [
+        handle.cancel().await,
+        handle.pause().await,
+        handle.apply_coupon("PROMO10").await,
+        handle.extend_trial(15).await,
+    ] {
+        assert!(matches!(result, Err(CapitalError::SubscriptionError(_))));
+    }
+}
+
+#[tokio::test]
+async fn billable_trial_end_requires_a_subscription() {
+    assert!(matches!(
+        TestUser.set_trial_end(1_800_000_000).await,
+        Err(CapitalError::SubscriptionError(_))
+    ));
+}
+
+#[test]
+fn grace_period_reaches_exactly_366_days() {
+    let grace = GracePeriod::new(0, 31_622_400).expect("366-day grace period");
+    assert_eq!(grace.remaining_seconds(0), 31_622_400);
+    assert!(GracePeriod::new(0, 31_622_401).is_err());
+}

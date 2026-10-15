@@ -102,4 +102,25 @@ fn scope_rejects_unbounded_input_and_redacts_configuration() {
     let scope = StripeInboxScope::platform("private_namespace", "acct_private", true).unwrap();
     let debug = format!("{scope:?}");
     assert!(!debug.contains("private"));
+    assert!(debug.starts_with("StripeInboxScope"), "{debug}");
+    assert!(debug.contains("connected: false"), "{debug}");
+    assert!(debug.contains("livemode: true"), "{debug}");
+}
+
+#[tokio::test]
+async fn inbox_debug_shows_only_backend_scope_and_capacity() {
+    if !stripe_inbox_support::supports_backend(SqlWebhookBackend::Sqlite) {
+        return;
+    }
+    let db = pool("sqlite::memory:").await;
+    let debug = format!(
+        "{:?}",
+        inbox(&db, SqlWebhookBackend::Sqlite, "debug_scope", 7)
+    );
+    assert!(debug.starts_with("SqlStripeEventInbox"), "{debug}");
+    assert!(debug.contains("backend: Sqlite"), "{debug}");
+    assert!(debug.contains("StripeInboxScope"), "{debug}");
+    assert!(debug.contains("capacity: 7"), "{debug}");
+    assert!(!debug.contains("debug_scope") && !debug.contains("acct_inbox"));
+    db.close().await;
 }

@@ -353,3 +353,56 @@ async fn sqlite_keys_that_differ_only_by_case_stay_distinct() {
     assert_case_sensitive_keys(&store).await;
     close_and_remove(store, &path).await;
 }
+
+#[test]
+fn units_limits_and_identifiers_are_inclusive_bounds() {
+    let largest = 9_223_372_036_854_775_807_u64;
+    let request = QuotaRequest::try_new(subject("acme"), "projects", "event", largest, largest)
+        .expect("largest signed 64-bit units and limit");
+    assert_eq!((request.units(), request.limit()), (largest, largest));
+    for (units, limit) in [(largest + 1, 1), (1, largest + 1)] {
+        assert!(matches!(
+            QuotaRequest::try_new(subject("acme"), "projects", "event", units, limit),
+            Err(QuotaError::InvalidRequest(_))
+        ));
+    }
+    assert!(BillingSubject::try_new("k".repeat(32), "id").is_ok());
+    assert!(BillingSubject::try_new("k".repeat(33), "id").is_err());
+}
+
+#[tokio::test]
+async fn debug_output_names_types_and_keeps_only_public_fields() {
+    let workspace = subject("secret-workspace");
+    let debug = format!("{workspace:?}");
+    assert!(debug.starts_with("BillingSubject"), "{debug}");
+    assert!(debug.contains("kind: \"workspace\""), "{debug}");
+    let request = request(&workspace, "secret-event", 1, 2);
+    let debug = format!("{request:?}");
+    assert!(debug.starts_with("QuotaRequest"), "{debug}");
+    assert!(debug.contains("subject: BillingSubject"), "{debug}");
+    assert!(debug.contains("feature: \"projects\""), "{debug}");
+    assert!(debug.contains("units: 1, limit: 2"), "{debug}");
+    let store = InMemoryQuotaStore::default();
+    assert_eq!(
+        format!("{store:?}"),
+        "InMemoryQuotaStore { state: [REDACTED] }"
+    );
+    let grant = store.reserve(&request).await.expect("grant");
+    let debug = format!("{grant:?}");
+    assert!(debug.starts_with("QuotaGrant"), "{debug}");
+    assert!(debug.contains("used_after: 1"), "{debug}");
+    assert!(debug.contains("replay: false"), "{debug}");
+    assert!(!debug.contains("secret-"), "{debug}");
+}
+
+#[cfg(feature = "quota-sql")]
+#[tokio::test]
+async fn sql_store_debug_shows_only_the_backend() {
+    let store = SqlQuotaStore::connect("sqlite::memory:")
+        .await
+        .expect("SQLite quota store");
+    let debug = format!("{store:?}");
+    assert!(debug.starts_with("SqlQuotaStore"), "{debug}");
+    assert!(debug.contains("backend: Sqlite"), "{debug}");
+    store.pool().close().await;
+}
