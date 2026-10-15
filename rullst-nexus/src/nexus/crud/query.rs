@@ -42,6 +42,8 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
         FieldKind::Boolean => "boolean",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime",
+        FieldKind::Time => "time",
+        FieldKind::DateTimeUtc => "datetime_utc",
         FieldKind::Password => "password",
         FieldKind::Json => "json",
         FieldKind::ForeignKey { .. } => "relation",
@@ -56,7 +58,7 @@ pub fn field_kind_sql(kind: &FieldKind) -> &'static str {
         FieldKind::Number | FieldKind::Integer { .. } => "INTEGER",
         FieldKind::Boolean => "INTEGER",
         FieldKind::ForeignKey { .. } => "INTEGER",
-        FieldKind::Date | FieldKind::DateTime => "TEXT",
+        FieldKind::Date | FieldKind::DateTime | FieldKind::Time | FieldKind::DateTimeUtc => "TEXT",
         FieldKind::Json => "TEXT",
         FieldKind::Enum { .. } => "TEXT",
         _ => "TEXT",
@@ -73,7 +75,8 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
         FieldKind::Number | FieldKind::Integer { .. } => "number",
         FieldKind::Password => "password",
         FieldKind::Date => "date",
-        FieldKind::DateTime => "datetime-local",
+        FieldKind::DateTime | FieldKind::DateTimeUtc => "datetime-local",
+        FieldKind::Time => "time",
         FieldKind::ForeignKey { .. } => "select",
         FieldKind::Enum { .. } => "select",
         _ => "text",
@@ -427,6 +430,40 @@ mod tests {
         assert!(
             sql.ends_with(" ORDER BY id DESC LIMIT 15 OFFSET 0"),
             "{sql}"
+        );
+    }
+
+    #[test]
+    fn every_field_kind_has_a_label() {
+        let relation = FieldKind::ForeignKey {
+            table: "teams",
+            label_col: "name",
+        };
+        let options = FieldKind::Enum { options: vec!["a"] };
+        let labels = [
+            (FieldKind::Text, "text"),
+            (FieldKind::Textarea, "textarea"),
+            (FieldKind::Email, "email"),
+            (FieldKind::Url, "url"),
+            (FieldKind::Number, "number"),
+            (FieldKind::Integer { min: 0, max: 1 }, "integer"),
+            (FieldKind::Boolean, "boolean"),
+            (FieldKind::Date, "date"),
+            (FieldKind::DateTime, "datetime"),
+            (FieldKind::Time, "time"),
+            (FieldKind::DateTimeUtc, "datetime_utc"),
+            (FieldKind::Password, "password"),
+            (FieldKind::Json, "json"),
+            (relation, "relation"),
+            (options, "enum"),
+        ];
+        for (kind, label) in labels {
+            assert_eq!(field_kind_label(&kind), label);
+        }
+        assert_eq!(field_kind_input_type(&FieldKind::Time), "time");
+        assert_eq!(
+            field_kind_input_type(&FieldKind::DateTimeUtc),
+            "datetime-local"
         );
     }
 

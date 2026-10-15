@@ -10,7 +10,9 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
 use crate::nexus::crud::dialect::{placeholder, select_column, tenant_predicate};
-use crate::nexus::crud::input::{datetime_local_value, is_local_date};
+use crate::nexus::crud::input::{
+    datetime_local_value, is_local_date, time_input_value, utc_input_value,
+};
 use crate::nexus::crud::key::{RecordKey, key_predicate};
 use crate::nexus::crud::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
@@ -217,10 +219,16 @@ pub(super) fn form_html(
                 };
 
                 let input_widget = render_field_widget(f, &stored, is_edit, entry.key_columns());
+                // The picker shows the UTC wall time; say so.
+                let zone = if matches!(f.kind, FieldKind::DateTimeUtc) {
+                    " (UTC)"
+                } else {
+                    ""
+                };
                 let _ = write!(
                     acc,
                     "<div class=\"nexus-form-group\">\
-                 <label class=\"nexus-label\">{}</label>\
+                 <label class=\"nexus-label\">{}{zone}</label>\
                  {input_widget}\
                  </div>",
                     escape_str(f.label)
@@ -384,7 +392,8 @@ fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
             FieldKind::Url => shown("url"),
             FieldKind::Number | FieldKind::Integer { .. } => shown("number"),
             FieldKind::Date => shown("date"),
-            FieldKind::DateTime => shown("datetime-local"),
+            FieldKind::DateTime | FieldKind::DateTimeUtc => shown("datetime-local"),
+            FieldKind::Time => shown("time"),
             _ => shown("text"),
         };
     }
@@ -397,6 +406,14 @@ fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
         FieldKind::Date if is_local_date(text) => shown("date"),
         FieldKind::DateTime => match datetime_local_value(text) {
             Some(local) => ("datetime-local", local),
+            None => shown("text"),
+        },
+        FieldKind::DateTimeUtc => match utc_input_value(text) {
+            Some(utc) => ("datetime-local", utc),
+            None => shown("text"),
+        },
+        FieldKind::Time => match time_input_value(text) {
+            Some(time) => ("time", time),
             None => shown("text"),
         },
         _ => shown("text"),

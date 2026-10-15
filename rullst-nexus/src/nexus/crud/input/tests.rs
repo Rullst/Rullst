@@ -266,10 +266,22 @@ fn bounds_controls_and_protected_metadata_fail_closed() {
 #[test]
 fn leap_year_rules_and_error_messages_are_stable() {
     let field = FieldMeta::new("date", "Date", FieldKind::Date);
-    for valid in ["2000-02-29", "2024-02-29", "2026-04-30", "2026-12-31"] {
+    for valid in [
+        "2000-02-29",
+        "2024-02-29",
+        "2026-04-30",
+        "2026-12-31",
+        "0001-01-01",
+    ] {
         assert!(validate_date(&field, valid).is_ok(), "rejected {valid}");
     }
-    for invalid_date in ["2100-02-29", "2026-02-29", "2026-11-31", "2026-00-10"] {
+    for invalid_date in [
+        "2100-02-29",
+        "2026-02-29",
+        "2026-11-31",
+        "2026-00-10",
+        "0000-01-01",
+    ] {
         assert!(
             validate_date(&field, invalid_date).is_err(),
             "accepted {invalid_date}"
@@ -442,4 +454,78 @@ fn every_composite_key_column_is_entered_on_create_and_protected_on_update() {
         ));
     }
     assert!(validate_form_values(&entry, pairs("role"), FormMode::Update).is_ok());
+}
+
+#[test]
+fn time_and_utc_values_are_validated_and_canonical() {
+    let entry = RegistryEntry {
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("opens_at", "Opens", FieldKind::Time),
+            FieldMeta::new("paid_at", "Paid", FieldKind::DateTimeUtc),
+        ],
+        ..entry()
+    };
+    let values = validate_form_values(
+        &entry,
+        vec![
+            ("opens_at".to_owned(), "08:05".to_owned()),
+            ("paid_at".to_owned(), "2026-10-15T09:30-03:00".to_owned()),
+        ],
+        FormMode::Update,
+    )
+    .expect("valid time and instant");
+    assert_eq!(values[0].value.as_deref(), Some("08:05:00"));
+    assert_eq!(
+        values[1].value.as_deref(),
+        Some("2026-10-15T12:30:00+00:00")
+    );
+    assert!(values.iter().all(|value| value.typed.is_some()));
+
+    // Emptied, they are NULL on update and the column default on create.
+    let emptied = || {
+        vec![
+            ("opens_at".to_owned(), String::new()),
+            ("paid_at".to_owned(), String::new()),
+        ]
+    };
+    let update = validate_form_values(&entry, emptied(), FormMode::Update).expect("valid");
+    assert!(
+        update
+            .iter()
+            .all(|value| value.value.is_none() && value.typed.is_none())
+    );
+    assert!(
+        validate_form_values(&entry, emptied(), FormMode::Create)
+            .expect("valid")
+            .is_empty()
+    );
+
+    for (field, invalid) in [
+        ("opens_at", "8:05"),
+        ("opens_at", "08:05 PM"),
+        ("paid_at", "2026-10-15"),
+        ("paid_at", "2026-10-15T09:30+0300"),
+    ] {
+        assert!(
+            matches!(
+                validate_form_values(
+                    &entry,
+                    vec![(field.to_owned(), invalid.to_owned())],
+                    FormMode::Update
+                ),
+                Err(FormInputError::InvalidField { .. })
+            ),
+            "{field} accepted {invalid}"
+        );
+    }
+    // Text values bind as text.
+    let profile = semantic_entry();
+    let text = validate_form_values(
+        &profile,
+        vec![("name".to_owned(), "Ada".to_owned())],
+        FormMode::Update,
+    )
+    .expect("valid");
+    assert!(text[0].typed.is_none());
 }

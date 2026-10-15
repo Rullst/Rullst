@@ -249,3 +249,97 @@ async fn creating_a_composite_record_accepts_every_key_column() {
     .await;
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
+
+#[test]
+fn fields_bind_their_typed_value_else_their_text_else_null() {
+    let entry = RegistryEntry {
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new("due_on", "Due", FieldKind::Date),
+            FieldMeta::new("paid_at", "Paid", FieldKind::DateTimeUtc),
+            FieldMeta::new("score", "Score", FieldKind::Number),
+        ],
+        ..single()
+    };
+    let values = validate_form_values(
+        &entry,
+        form(&[
+            ("title", "Ada"),
+            ("due_on", "2026-10-15"),
+            ("paid_at", "2026-10-15T09:30"),
+            ("score", ""),
+        ]),
+        FormMode::Update,
+    )
+    .expect("valid form");
+    let bound = |driver| {
+        values
+            .iter()
+            .map(|value| format!("{:?}", bound_value(value, driver)))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        bound("postgres"),
+        [
+            "String(\"Ada\")",
+            "Date(2026-10-15)",
+            "DateTime(2026-10-15T09:30:00Z)",
+            "Null"
+        ]
+    );
+    assert_eq!(bound("mysql")[2], "NaiveDateTime(2026-10-15T09:30:00)");
+}
+
+#[tokio::test]
+async fn malformed_dates_and_times_are_validation_errors() {
+    let entry = RegistryEntry {
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("id", "ID", FieldKind::Number),
+            FieldMeta::new("due_on", "Due", FieldKind::Date),
+            FieldMeta::new("opens_at", "Opens", FieldKind::Time),
+            FieldMeta::new("paid_at", "Paid", FieldKind::DateTimeUtc),
+        ],
+        ..single()
+    };
+    let state = state(&entry);
+    let headers = HeaderMap::new();
+    for (field, value, reason) in [
+        ("due_on", "2026-02-30", "must use a valid YYYY-MM-DD date"),
+        ("due_on", "0000-01-01", "must use a valid YYYY-MM-DD date"),
+        (
+            "opens_at",
+            "25:00",
+            "must use a valid HH:MM[:SS[.fraction]] time",
+        ),
+        (
+            "paid_at",
+            "2026-10-15T09:30+25:00",
+            "must use a valid date-time; one without an offset is UTC",
+        ),
+    ] {
+        let response = update_record(
+            &state,
+            &entry,
+            "7",
+            &principal(),
+            None,
+            &headers,
+            form(&[(field, value)]),
+        )
+        .await;
+        assert_eq!(
+            response.status(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{value}"
+        );
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .expect("bounded body");
+        assert_eq!(
+            String::from_utf8_lossy(&body),
+            format!("Invalid Notes form: field `{field}` {reason}")
+        );
+    }
+}

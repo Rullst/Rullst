@@ -5,7 +5,10 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
-use super::dialect::{ValueSql, placeholder, tenant_predicate, write_value_sql};
+use rullst_orm::RullstValue;
+use rullst_orm::value::BindRullstValue;
+
+use super::dialect::{ValueSql, driver_value, placeholder, tenant_predicate, write_value_sql};
 use super::handlers::tenant_for_entry;
 use super::input::{FormInputError, FormMode, ValidatedFieldValue, validate_form_values};
 use super::key::{RecordKey, key_predicate, record_address};
@@ -34,7 +37,7 @@ pub(super) async fn create_record(
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let mut keys = Vec::new();
     let mut expressions = Vec::new();
-    let mut values: Vec<Option<String>> = Vec::new();
+    let mut values: Vec<RullstValue> = Vec::new();
     let submitted_key = submitted_address(entry, &data);
     for value in data {
         // An empty key column is left to the database (an identity column).
@@ -50,7 +53,7 @@ pub(super) async fn create_record(
         ) {
             ValueSql::Bind(expression) => {
                 expressions.push(expression);
-                values.push(value.value);
+                values.push(bound_value(&value, driver));
             }
             ValueSql::Literal(literal) => expressions.push(literal.to_string()),
         }
@@ -58,7 +61,7 @@ pub(super) async fn create_record(
     if let (Some(tenant_column), Some(tenant_id)) = (entry.tenant_column, tenant_id) {
         keys.push(tenant_column);
         expressions.push(placeholder(values.len() + 1, driver));
-        values.push(Some(tenant_id.to_string()));
+        values.push(RullstValue::String(tenant_id.to_string()));
     }
     if keys.is_empty() {
         return (StatusCode::BAD_REQUEST, "No writable values were provided.").into_response();
@@ -82,7 +85,7 @@ pub(super) async fn create_record(
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
     for value in &values {
-        query = query.bind(value.as_deref());
+        query = query.bind_rullst_value(value);
     }
     let result = match query.execute(&mut *transaction).await {
         Ok(result) if result.rows_affected() > 0 => result,
@@ -159,7 +162,7 @@ pub(super) async fn update_record(
         ) {
             ValueSql::Bind(expression) => {
                 updates.push(format!("{column} = {expression}"));
-                bound_values.push(value.value.as_deref());
+                bound_values.push(bound_value(value, driver));
             }
             ValueSql::Literal(literal) => updates.push(format!("{column} = {literal}")),
         }
@@ -179,9 +182,9 @@ pub(super) async fn update_record(
         Err(_) => return database_failure("update", entry.table),
     };
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    // Only submitted fields are written; `None` stores SQL NULL.
-    for value in bound_values {
-        query = query.bind(value);
+    // Only submitted fields are written; `Null` stores SQL NULL.
+    for value in &bound_values {
+        query = query.bind_rullst_value(value);
     }
     query = key.bind(query);
     if let Some(tenant_id) = tenant_id {
@@ -295,6 +298,16 @@ pub(super) async fn delete_record(
         return database_failure("delete", entry.table);
     }
     (StatusCode::OK, "Record deleted successfully.").into_response()
+}
+
+/// The value bound for a validated field: its typed date or time, else its
+/// text, else SQL NULL.
+pub(super) fn bound_value(value: &ValidatedFieldValue<'_>, driver: &str) -> RullstValue {
+    match (&value.typed, &value.value) {
+        (Some(typed), _) => driver_value(typed.clone(), driver),
+        (None, Some(text)) => RullstValue::String(text.clone()),
+        (None, None) => RullstValue::Null,
+    }
 }
 
 /// Whether a submitted key value is absent or only whitespace.

@@ -33,12 +33,26 @@ pub enum FieldKind {
     },
     /// A boolean checkbox.
     Boolean,
-    /// Date picker (YYYY-MM-DD).
+    /// Date picker (`YYYY-MM-DD`, year 0001 to 9999), for `date()` columns
+    /// and `chrono::NaiveDate` fields. The value is bound as a date, so a
+    /// native `DATE` column accepts it.
     Date,
-    /// Date + time picker (`datetime-local`). A local value is stored as
-    /// `YYYY-MM-DD HH:MM:SS[.fraction]`, the text form of `CURRENT_TIMESTAMP`;
-    /// a value with a `Z` or `±HH:MM` offset is stored as entered.
+    /// Date + time picker (`datetime-local`), for `timestamp()` columns,
+    /// `chrono::NaiveDateTime` fields and text date-time columns. A local
+    /// value is bound as a date-time without a zone; a text column stores it
+    /// as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text form of
+    /// `CURRENT_TIMESTAMP`. A value with a `Z` or `±HH:MM` offset is bound as
+    /// text, as entered, so only a text column accepts it.
     DateTime,
+    /// Time-of-day picker (`HH:MM[:SS[.fraction]]`), for `time()` columns and
+    /// `chrono::NaiveTime` fields; bound as a time. Added in v13.
+    Time,
+    /// A UTC instant, for `timestamp_tz()` columns and `chrono::DateTime<Utc>`
+    /// fields. The `datetime-local` input shows and accepts the UTC wall
+    /// time, labelled `(UTC)`: a value without an offset is UTC, and one with
+    /// `Z`, `±HH:MM` or `±HH` (typed in the text input shown for a value the
+    /// picker cannot hold) is converted to UTC. Added in v13.
+    DateTimeUtc,
     /// A password or secret field that hides its value.
     ///
     /// The list shows a fixed mask, the column is neither selected for the

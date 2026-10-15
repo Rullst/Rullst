@@ -320,3 +320,65 @@ fn every_key_column_is_read_only_on_edit_and_the_address_is_encoded() {
     let other = render_field_widget(&field, &value("x"), true, &["user_id"]);
     assert!(other.contains("name=\"lesson_id\"") && !other.contains(" readonly"));
 }
+
+#[test]
+fn time_and_utc_fields_use_pickers_only_for_values_they_hold_exactly() {
+    let html = widget(FieldKind::Time, StoredValue::Absent);
+    assert!(
+        html.contains("type=\"time\" name=\"field\" value=\"\""),
+        "{html}"
+    );
+    let html = widget(FieldKind::Time, value("09:30:00.500000"));
+    assert!(
+        html.contains("type=\"time\" name=\"field\" value=\"09:30:00.500\""),
+        "{html}"
+    );
+    let html = widget(FieldKind::Time, value("09:30:00.123456"));
+    assert!(
+        html.contains("type=\"text\" name=\"field\" value=\"09:30:00.123456\""),
+        "{html}"
+    );
+
+    let html = widget(FieldKind::DateTimeUtc, StoredValue::Absent);
+    assert!(
+        html.contains("type=\"datetime-local\" name=\"field\" value=\"\""),
+        "{html}"
+    );
+    // PostgreSQL's text of a TIMESTAMPTZ, shown as its UTC wall time.
+    let html = widget(FieldKind::DateTimeUtc, value("2026-10-15 11:30:00+02"));
+    assert!(
+        html.contains("type=\"datetime-local\" name=\"field\" value=\"2026-10-15T09:30:00\""),
+        "{html}"
+    );
+    let stored = "2026-10-15 09:30:00.123456+00";
+    let html = widget(FieldKind::DateTimeUtc, value(stored));
+    assert!(
+        html.contains(&format!("type=\"text\" name=\"field\" value=\"{stored}\"")),
+        "{html}"
+    );
+}
+
+#[test]
+fn utc_fields_are_labelled_as_utc() {
+    let entry = RegistryEntry {
+        table: "payments",
+        label: "Payments",
+        icon: "P",
+        pk: "id",
+        pk_columns: Vec::new(),
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("paid_at", "Paid at", FieldKind::DateTimeUtc),
+            FieldMeta::new("due_on", "Due on", FieldKind::Date),
+        ],
+    };
+    let html = form_html(&entry, None, None);
+    assert!(
+        html.contains("<label class=\"nexus-label\">Paid at (UTC)</label>"),
+        "{html}"
+    );
+    assert!(
+        html.contains("<label class=\"nexus-label\">Due on</label>"),
+        "{html}"
+    );
+}
