@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792054699688,
+  "lastUpdate": 1792056897299,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16447,6 +16447,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4088,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8ae277200e4ca45ff49c9820f57eb39ec7b84e5",
+          "message": "Merge pull request #489 from Rullst/dependabot/cargo/main/tokio-tungstenite-0.30.0\n\nbuild(deps): Bump tokio-tungstenite from 0.29.0 to 0.30.0",
+          "timestamp": "2026-10-15T06:19:30-03:00",
+          "tree_id": "8fb7ef8a3128b469519799e85d150ce463f0b7dc",
+          "url": "https://github.com/Rullst/Rullst/commit/e8ae277200e4ca45ff49c9820f57eb39ec7b84e5"
+        },
+        "date": 1792056896729,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 990,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 767,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1768,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4567,
+            "range": "± 109",
             "unit": "ns/iter"
           }
         ]
