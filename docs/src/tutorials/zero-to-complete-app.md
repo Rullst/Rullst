@@ -156,7 +156,7 @@ Now mount the routes in the `router()` function of `src/main.rs`. Add them
 the pages include, and wrap each one in the starter's `auth_middleware`:
 
 ```rust,ignore
-{{#include zero-to-complete-app/main.rs:44:55}}
+{{#include zero-to-complete-app/main.rs:57:68}}
 ```
 
 The whole file is in [`zero-to-complete-app/main.rs`](zero-to-complete-app/main.rs).
@@ -171,7 +171,11 @@ session cookie, and `auth_middleware` turns it into the user id that the
 handlers read as `Extension<i32>`. Anyone else is redirected to `/login`. The
 cookie carries the account's session epoch: the dashboard's *Sign out
 everywhere* button (`POST /logout/everywhere`) increments it, which ends the
-session on every device.
+session on every device. The starter also has *Change password*
+(`/password/change`), which keeps only the current browser signed in, and
+*Forgot your password?* (`/password/forgot`), which emails a single-use link
+that expires in 30 minutes; see
+[Tutorial 11](11-authentication-system.md#what-the-scaffold-currently-enforces).
 
 Being signed in is not enough to open a note, though: `/notes/{id}` must
 check that the note belongs to that user. Otherwise anyone could read another

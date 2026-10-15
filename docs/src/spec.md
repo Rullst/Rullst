@@ -722,15 +722,67 @@ epoch check. `rullst-auth` has no session middleware: the application stores
 the epoch per user, checks it on every request and increments it atomically for
 sign-out everywhere, a password change or reset, and account deactivation.
 
+For an application that keeps its own users table, v13 adds single-use
+password-reset token primitives. `PasswordResetToken::generate` draws 32 bytes
+from the operating system's CSPRNG and encodes them as 64 lowercase hex
+characters (which the mail pipeline's secret redaction leaves intact in a
+`token=` link); `Debug` redacts it and its memory is zeroed on drop. Only
+`digest()`, a domain-separated SHA-256 (`rullst.auth.password-reset.v1`) in
+lowercase hex, is stored. `password_reset_token_digest` returns `None` for any
+submitted value that is not 64 lowercase hex characters, so malformed input
+never reaches a lookup, and `password_reset_digests_match` compares a stored
+digest in constant time and never matches a stored value that is not a
+64-character digest. Expiry, single use and one live token per account are
+rules of the application's store.
+
 The `cargo rullst auth`, SaaS and LMS scaffolds store `users.session_epoch`
 (`BIGINT NOT NULL DEFAULT 0`, excluded from ORM writes with `#[orm(skip)]` so a
 full-row save cannot undo a bump), issue epoch cookies at sign-in and
 registration, refuse a cookie with another epoch in `auth_middleware`, and add
 `POST /logout/everywhere`, which increments the epoch in one `UPDATE` and clears
-the browser cookie. Plain logout still clears only the current browser. They
-generate no password change or reset flow; such handlers must call
-`User::revoke_sessions`. Revoking one device and listing sessions require
-server-side sessions (`SqlRecoveryStore`).
+the browser cookie. Plain logout still clears only the current browser.
+Revoking one device and listing sessions require server-side sessions
+(`SqlRecoveryStore`).
+
+The same scaffolds generate a password change and a password reset by email
+(`src/controllers/password_controller.rs`, `src/models/password_reset.rs` and
+a `password_reset_tokens` migration) and enable the `mail` feature. Every
+submission is behind CSRF and the per-client `credential_rate_limit`, and every
+new password follows the registration policy (12 characters to 72 bytes) and
+must match its confirmation.
+
+- `GET`/`POST /password/change`, behind `auth_middleware`, verifies the current
+  password with Argon2id on the bounded blocking pool (an account without a
+  password hash never passes) and answers a wrong one with the generic "The
+  current password is incorrect". `User::change_password` stores the new hash
+  and increments the epoch in one `UPDATE` that applies only while the account
+  is still at the epoch of the asking cookie; that browser receives a cookie
+  with the new epoch, so only it stays signed in. A cookie revoked meanwhile
+  changes nothing and is sent to `/login`.
+- `POST /password/forgot` answers with the same page, after at least 400 ms,
+  whether or not the email has an account. For an account it issues a
+  `PasswordResetToken` and stores only its digest with Unix-second expiry and
+  creation times in `password_reset_tokens`, whose primary key is `user_id`:
+  one live token per account, replaced by a new request, except that a request
+  less than 60 seconds after the previous one for the same account issues and
+  sends nothing. Tokens expire after 30 minutes. The link is
+  `RULLST_PUBLIC_ORIGIN/password/reset?token=…` (process environment, then
+  `.env`), validated by `ActionLink` and never derived from the request; when
+  the origin is unset, development and test use `http://localhost:3000`, and
+  staging and production log an error and send nothing. `AccountMail`
+  delivers it through the `Mail` facade in a background task, so delivery
+  never delays the answer. In a debug build in development without
+  `MAIL_DRIVER`, where the default log driver records only metadata, the link
+  is also printed to standard output.
+- `GET /password/reset?token=…` shows the form only for a live token, with
+  `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. `POST
+  /password/reset` looks the digest up before any Argon2 work, then, in one
+  transaction, deletes the token only while it is still live, stores the new
+  hash and increments the epoch; a malformed, unknown, expired, used or
+  replaced token changes nothing. A completed reset signs nobody in: it
+  redirects to `/login?reset=done`, which shows a notice.
+- A completed change or reset emails a "password changed" notice. Deleting an
+  account leaves its reset token row, which no longer redeems.
 
 ### v13 active-session management (source admitted, prerelease)
 
