@@ -80,7 +80,7 @@ fn html_macro_renders_a_doctype_keyword_elements_and_nested_views() {
 fn html_macro_renders_bare_and_conditional_attributes_and_control_blocks() {
     // The `html!` documentation example in rullst-macros.
     let user: Option<&str> = Some("Ana");
-    let items = ["a", "b"];
+    let items: Vec<&str> = "a b".split(' ').collect();
     let page = html! {
         @if let Some(name) = user { <p>"Hi " {name}</p> } @else { <a href="/login">"Sign in"</a> }
         <ul>
