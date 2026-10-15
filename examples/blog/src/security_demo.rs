@@ -52,7 +52,7 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
     let nav = render_showcase_nav("/security-demo");
     let head_assets = render_head_assets();
 
-    let mut test_result_html = String::new();
+    let mut test_result_html = html::Markup::default();
 
     if let Some(prompt_input) = query.custom_prompt.as_deref().filter(|s| !s.is_empty()) {
         let report = LlmFirewall::inspect_prompt(prompt_input);
@@ -175,10 +175,10 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Security - RASP & Zero-Trust Threat Protection"</title>
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(nav) }
+                { nav }
                 <div class="container">
                     <div class="card">
                         <div class="card-header">
@@ -213,7 +213,7 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
                             </form>
                         </div>
 
-                        { rullst::html::RawHtml(test_result_html) }
+                        { test_result_html }
                     </div>
 
                     <div class="card">

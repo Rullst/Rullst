@@ -106,7 +106,7 @@ async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) 
     };
 
     let body = render_pricing_page(nav, head_assets, free_can_post, &csrf_token, simulated);
-    Html(body)
+    Html(body.into_string())
 }
 
 /// Generates a real quota result for the community tier.

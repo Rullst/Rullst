@@ -20,12 +20,12 @@ pub async fn live_demo() -> impl IntoResponse {
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <meta name="htmx-config" content="{&quot;includeIndicatorStyles&quot;:false}" />
             <title>"Rullst LiveView - Real-time WebSockets Feed"</title>
-            { rullst::html::RawHtml(head_assets) }
+            { head_assets }
             <script src="/assets/vendor/htmx-1.9.12.min.js"></script>
             <script src="/assets/vendor/htmx-ext-ws-1.9.12.js"></script>
         </head>
         <body>
-            { rullst::html::RawHtml(nav) }
+            { nav }
             <div class="container">
                 <div class="card">
                     <h1 class="card-title">
@@ -37,7 +37,7 @@ pub async fn live_demo() -> impl IntoResponse {
                     </p>
 
                     <div class="panel centered">
-                        { rullst::html::RawHtml(component_mount) }
+                        { component_mount }
                     </div>
                 </div>
             </div>

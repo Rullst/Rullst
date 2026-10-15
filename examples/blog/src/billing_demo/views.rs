@@ -5,12 +5,12 @@ use rullst::html;
 
 /// Renders the complete HTML Pricing and Gateway Showcase page.
 pub fn render_pricing_page(
-    nav: String,
-    head_assets: String,
+    nav: html::Markup,
+    head_assets: html::Markup,
     free_can_post: bool,
     csrf_token: &str,
     simulated_checkout_url: Option<(String, String)>, // (provider_id, url)
-) -> String {
+) -> html::Markup {
     let gateways = all_gateways();
     let configured_count = gateways.iter().filter(|g| g.is_configured()).count();
     let total_count = gateways.len();
@@ -25,13 +25,13 @@ pub fn render_pricing_page(
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Capital — Offline Adapter Capability Showcase"</title>
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(nav) }
+                { nav }
                 <div class="container">
 
-                    { rullst::html::RawHtml(checkout_result_html) }
+                    { checkout_result_html }
 
                     <div class="card pricing-hero">
                         <div class="card-header wrap">
@@ -164,7 +164,7 @@ pub fn render_pricing_page(
                         </div>
 
                         <div class="gateway-grid">
-                            { rullst::html::RawHtml(gateways_cards_html) }
+                            { gateways_cards_html }
                         </div>
                     </div>
 
@@ -177,7 +177,7 @@ pub fn render_pricing_page(
                         </p>
 
                         <div class="config-accordion">
-                            { rullst::html::RawHtml(config_accordions_html) }
+                            { config_accordions_html }
                         </div>
                     </div>
 
@@ -188,7 +188,7 @@ pub fn render_pricing_page(
 }
 
 /// Renders every gateway card.
-fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
+fn render_gateway_cards(gateways: &[GatewayInfo]) -> html::Markup {
     gateways
         .iter()
         .map(|g| {
@@ -240,7 +240,7 @@ fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
 }
 
 /// Renders the accordion configuration guides for each gateway.
-fn render_config_guide(gateways: &[GatewayInfo]) -> String {
+fn render_config_guide(gateways: &[GatewayInfo]) -> html::Markup {
     gateways
         .iter()
         .map(|g| {
@@ -294,30 +294,27 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
 }
 
 /// Renders the result of a simulated checkout creation if triggered.
-fn render_checkout_result(simulated: Option<(String, String)>) -> String {
-    if let Some((provider, url)) = simulated {
-        html! {
-            <div id="offline-fixture-result" class="fixture-result">
-                <div class="fixture-result-header">
-                    <span class="fixture-result-title">
-                        "🧪 Offline Adapter Result for: " <strong>{provider.to_uppercase()}</strong>
-                    </span>
-                    <span class="stat-badge live">"OFFLINE FIXTURE"</span>
-                </div>
-                <p class="fixture-result-label">"Adapter output (no live request was made):"</p>
-                <div class="code-box">
-                    {&url}
-                </div>
-                <div class="fixture-result-actions">
-                    <a href="/pricing" class="btn btn-small">
-                        "Clear Simulation"
-                    </a>
-                </div>
+fn render_checkout_result(simulated: Option<(String, String)>) -> Option<html::Markup> {
+    let (provider, url) = simulated?;
+    Some(html! {
+        <div id="offline-fixture-result" class="fixture-result">
+            <div class="fixture-result-header">
+                <span class="fixture-result-title">
+                    "🧪 Offline Adapter Result for: " <strong>{provider.to_uppercase()}</strong>
+                </span>
+                <span class="stat-badge live">"OFFLINE FIXTURE"</span>
             </div>
-        }
-    } else {
-        String::new()
-    }
+            <p class="fixture-result-label">"Adapter output (no live request was made):"</p>
+            <div class="code-box">
+                {&url}
+            </div>
+            <div class="fixture-result-actions">
+                <a href="/pricing" class="btn btn-small">
+                    "Clear Simulation"
+                </a>
+            </div>
+        </div>
+    })
 }
 
 #[cfg(test)]
@@ -329,8 +326,14 @@ mod tests {
         let html = render_checkout_result(Some((
             "stripe".to_string(),
             "https://example.invalid/pay?recipient=a&plan=pro_plan".to_string(),
-        )));
+        )))
+        .expect("a simulated checkout renders a result");
         assert!(html.contains("recipient=a&amp;plan=pro_plan"));
         assert!(!html.contains("&amp;amp;"));
+    }
+
+    #[test]
+    fn no_simulation_renders_no_result() {
+        assert_eq!(render_checkout_result(None), None);
     }
 }

@@ -25,7 +25,7 @@ impl CounterComponent {
         self.count -= 1;
     }
 
-    pub fn render(&self) -> String {
+    pub fn render(&self) -> html::Markup {
         // `Live::mount` supplies the `hx-ext="ws"` wrapper; the root needs a
         // stable id so HTMX can swap the re-rendered markup it receives.
         html! {

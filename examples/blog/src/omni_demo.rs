@@ -17,10 +17,10 @@ pub async fn omni_page() -> impl IntoResponse {
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Omni - Desktop and Mobile Shells"</title>
-                { rullst::html::RawHtml(head_assets) }
+                { head_assets }
             </head>
             <body>
-                { rullst::html::RawHtml(nav) }
+                { nav }
                 <div class="container">
                     <div class="card">
                         <h1 class="card-title">
