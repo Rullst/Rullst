@@ -57,6 +57,17 @@ jobs:
       uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
       with:
         category: "/language:rust"
+        # Uploaded after the test-fixture filter below.
+        upload: never
+        output: ${{ runner.temp }}/codeql-sarif
+
+    - name: Drop hard-coded-crypto results in test-only files
+      run: python3 -I .github/filter-codeql-test-fixtures.py "$RUNNER_TEMP/codeql-sarif/rust.sarif"
+
+    - name: Upload CodeQL results
+      uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      with:
+        sarif_file: ${{ runner.temp }}/codeql-sarif/rust.sarif
 
   analyze-javascript:
     name: Analyze (JavaScript)

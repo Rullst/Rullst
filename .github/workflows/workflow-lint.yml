@@ -81,6 +81,7 @@ jobs:
           python3 .github/test-package-release.py
           python3 .github/test-check-package-reproducibility.py
           python3 .github/test-crates-ownership-policy.py
+          python3 .github/test-filter-codeql-test-fixtures.py
 
       - name: Enforce canonical Action reference syntax
         run: |
