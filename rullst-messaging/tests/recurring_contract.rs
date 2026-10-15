@@ -9,12 +9,16 @@ mod claims;
 mod failures;
 #[path = "recurring/lifecycle.rs"]
 mod lifecycle;
+#[path = "recurring/retries.rs"]
+mod retries;
 #[path = "recurring/rotation.rs"]
 mod rotation;
 #[path = "recurring/skew.rs"]
 mod skew;
 #[path = "recurring/support.rs"]
 mod support;
+#[path = "recurring/tampering.rs"]
+mod tampering;
 use support::*;
 
 #[test]
@@ -54,6 +58,9 @@ async fn postgres_recurring_contract() {
     skew::run(&url).await;
     rotation::run(&url).await;
     claims::run(&url).await;
+    claims::run_commit_edges(&url).await;
+    retries::run(&url).await;
+    tampering::run(&url).await;
     #[cfg(feature = "sqlite")]
     broker::run(&url).await;
 }

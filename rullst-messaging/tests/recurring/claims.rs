@@ -78,3 +78,41 @@ pub async fn run(url: &str) {
     admin.close().await;
     store.close().await;
 }
+
+/// Whichever clock reading the claim's commit observes, no lease that has
+/// already expired at that reading is returned.
+pub async fn run_commit_edges(url: &str) {
+    let start = ManualClock::new().now_millis().unwrap();
+    for offset in 1..=6 {
+        let namespace = unique();
+        let clock = SteppingClock {
+            now: Arc::new(AtomicI64::new(start)),
+            step: Arc::new(AtomicI64::new(0)),
+        };
+        let store =
+            PostgresRecurringStore::initialize(url, config(&namespace), keys(), clock.clone())
+                .await
+                .unwrap();
+        let schedule = RecurringDefinition::new(
+            "minutely",
+            "* * * * *",
+            start - 60_000,
+            MissedRunPolicy::CatchUp,
+            ScheduledMessage::new("scheduled", "account.reminder", b"{}".to_vec()).unwrap(),
+        )
+        .unwrap();
+        store.create(schedule).await.unwrap();
+        let closing = store.tick(1).await.unwrap().remove(0);
+        clock.set(start + 60_000, 0);
+        store.tick(1).await.unwrap();
+        clock.set(closing.expires_at_ms() - offset, 1);
+        let leases = store.claim(10).await.unwrap();
+        // The stepping clock has returned every value below `now`.
+        let last_reading = clock.now.load(Ordering::SeqCst) - 1;
+        assert!(!leases.is_empty(), "{offset}");
+        for lease in &leases {
+            assert!(lease.lease_expires_at_ms() > last_reading, "{offset}");
+        }
+        store.close().await;
+    }
+}
