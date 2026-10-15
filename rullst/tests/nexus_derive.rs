@@ -155,3 +155,31 @@ fn derive_nexus_bounds_integer_fields_by_their_rust_type() {
     );
     assert_eq!(fields[4].kind, FieldKind::Number);
 }
+
+/// A composite key: both columns name the record and both are entered.
+#[derive(Nexus)]
+#[allow(dead_code)]
+#[nexus(table = "lesson_progress", primary_key = "user_id, lesson_id")]
+struct LessonProgress {
+    user_id: i32,
+    lesson_id: i32,
+    percent: i32,
+}
+
+#[test]
+fn derive_nexus_declares_composite_primary_keys() {
+    assert_eq!(LessonProgress::nexus_pk(), "user_id");
+    assert_eq!(LessonProgress::nexus_pk_columns(), ["user_id", "lesson_id"]);
+    assert_eq!(DerivedArticle::nexus_pk_columns(), ["uuid"]);
+    for field in LessonProgress::nexus_fields()
+        .into_iter()
+        .filter(|field| field.name != "percent")
+    {
+        assert!(!field.hidden && !field.readonly, "{}", field.name);
+    }
+    let _router = rullst::nexus::Nexus::new()
+        .register::<LessonProgress>()
+        .with_auth("composite-admin", "composite-key-test-credential")
+        .try_build()
+        .expect("a derived composite key passes registry validation");
+}
