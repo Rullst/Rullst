@@ -294,3 +294,108 @@ async fn provider_error_is_bounded_and_callback_without_code_is_rejected() {
         Err(ConnectError::Token(_))
     ));
 }
+
+#[tokio::test]
+async fn challenge_expires_ten_minutes_after_it_starts() {
+    let unix_now = || {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("test clock is after the epoch")
+            .as_secs()
+    };
+    let before = unix_now();
+    let authorization =
+        begin_oauth_session(&new_session(), &provider("https://idp.example/authorize"))
+            .await
+            .expect("OAuth challenge must succeed");
+    let after = unix_now();
+    let expires_at = authorization.expires_at_unix_seconds();
+    assert!(
+        (before + 600..=after + 600).contains(&expires_at),
+        "expiry {expires_at} not ten minutes after {before}..={after}"
+    );
+    let debug = format!("{authorization:?}");
+    assert!(debug.contains("OAuthAuthorization"), "{debug}");
+    assert!(debug.contains("[REDACTED]"), "{debug}");
+    assert!(debug.contains(&expires_at.to_string()), "{debug}");
+}
+
+#[test]
+fn auth_session_debug_reports_only_presence_flags() {
+    let session = AuthSession {
+        callback: AuthCallback {
+            code: Some("authorization-code".to_string()),
+            state: Some("callback-state".to_string()),
+            error: None,
+            error_description: None,
+        },
+        expected_nonce: Some("expected-nonce".to_string()),
+        code_verifier: None,
+    };
+    let debug = format!("{session:?}");
+    assert!(debug.contains("AuthSession"), "{debug}");
+    assert!(debug.contains("has_expected_nonce: true"), "{debug}");
+    assert!(debug.contains("has_code_verifier: false"), "{debug}");
+    assert!(!debug.contains("authorization-code"), "{debug}");
+}
+
+#[test]
+fn provider_errors_are_reported_up_to_128_characters() {
+    let failed = |error: &str| AuthSession {
+        callback: AuthCallback {
+            code: None,
+            state: Some("callback-state".to_string()),
+            error: Some(error.to_string()),
+            error_description: None,
+        },
+        expected_nonce: None,
+        code_verifier: None,
+    };
+    let message = failed("access_denied")
+        .exchange_params()
+        .expect_err("provider error")
+        .to_string();
+    assert!(message.contains("access_denied"), "{message}");
+
+    let message = failed(&"é".repeat(300))
+        .exchange_params()
+        .expect_err("provider error")
+        .to_string();
+    assert!(message.contains(&"é".repeat(128)), "{message}");
+    assert!(!message.contains(&"é".repeat(129)), "{message}");
+}
+
+#[test]
+fn managed_query_needs_exactly_one_matching_state_challenge_and_s256_method() {
+    let check = |query: &str| {
+        let url = url::Url::parse(&format!("https://idp.example/authorize?{query}"))
+            .expect("test URL must parse");
+        validate_managed_query(&url, "expected-state", "expected-challenge")
+    };
+    assert!(
+        check(
+            "client_id=app&state=expected-state&code_challenge=expected-challenge\
+             &code_challenge_method=S256"
+        )
+        .is_ok()
+    );
+    for query in [
+        "state=other&code_challenge=expected-challenge&code_challenge_method=S256",
+        "state=expected-state&code_challenge=other&code_challenge_method=S256",
+        "state=expected-state&code_challenge=expected-challenge&code_challenge_method=plain",
+        "code_challenge=expected-challenge&code_challenge_method=S256",
+        "state=expected-state&code_challenge_method=S256",
+        "state=expected-state&code_challenge=expected-challenge",
+    ] {
+        assert!(
+            matches!(
+                check(query),
+                Err(ConnectError::InvalidConfiguration {
+                    field: "authorization_url",
+                    ..
+                })
+            ),
+            "accepted {query}"
+        );
+    }
+}
