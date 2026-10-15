@@ -321,3 +321,59 @@ async fn normal_gate_uses_system_time_and_rejects_expired_state() {
         Err(EntitlementError::Denied)
     );
 }
+
+#[tokio::test]
+async fn a_clock_at_the_unix_epoch_is_valid() {
+    let scope = scope("tenant", "owner");
+    let state = EntitlementSnapshot::from_reconciled(
+        scope.clone(),
+        "price_pro",
+        EntitlementStatus::Active,
+        EntitlementMode::Live,
+        0,
+        10,
+    )
+    .unwrap();
+    EntitlementGate::new(policy(EntitlementMode::Live))
+        .authorize_with_clock(&scope, &Store::new(Some(state)), &Clock::new(0, 0))
+        .await
+        .unwrap();
+}
+
+#[test]
+fn system_clock_reads_the_current_time() {
+    // 2020-09-13; any real clock reading is later.
+    assert!(SystemEntitlementClock::default().unix_seconds().unwrap() > 1_600_000_000);
+}
+
+#[test]
+fn identifier_limits_are_inclusive() {
+    let subject = || BillingSubject::try_new("user", "owner").unwrap();
+    assert!(EntitlementScope::new("t".repeat(128), subject()).is_ok());
+    assert!(EntitlementScope::new("t".repeat(129), subject()).is_err());
+    assert!(
+        EntitlementPolicy::new("f".repeat(128), ["price_pro"], EntitlementMode::Live, 30).is_ok()
+    );
+    assert!(
+        EntitlementPolicy::new("f".repeat(129), ["price_pro"], EntitlementMode::Live, 30).is_err()
+    );
+    assert!(
+        EntitlementPolicy::new("feature", ["p".repeat(200)], EntitlementMode::Live, 30).is_ok()
+    );
+    assert!(
+        EntitlementPolicy::new("feature", ["p".repeat(201)], EntitlementMode::Live, 30).is_err()
+    );
+}
+
+#[test]
+fn debug_output_names_the_type_and_its_public_state() {
+    let scope = scope("tenant", "owner");
+    assert_eq!(format!("{scope:?}"), "EntitlementScope([REDACTED])");
+    let state = format!("{:?}", snapshot(scope, EntitlementMode::Sandbox));
+    assert!(state.starts_with("EntitlementSnapshot"), "{state}");
+    assert!(state.contains("status: Active"), "{state}");
+    assert!(state.contains("mode: Sandbox"), "{state}");
+    let policy = format!("{:?}", policy(EntitlementMode::Live));
+    assert!(policy.starts_with("EntitlementPolicy"), "{policy}");
+    assert!(policy.contains("max_age_seconds: 30"), "{policy}");
+}

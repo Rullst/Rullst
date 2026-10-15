@@ -224,3 +224,18 @@ fn invalid_signatures_are_rejected_and_mock_events_cannot_pass_real_mode_gate() 
             .is_err()
     );
 }
+
+#[test]
+fn real_mutation_digest_matches_its_versioned_encoding() {
+    let event = verify(&snapshot()).unwrap();
+    // SHA-256 of the v1 domain tag, [livemode, real] = [0, 1], created_at and
+    // ends_at as big-endian i64, then each length-prefixed identity field.
+    assert_eq!(
+        hex::encode(event.mutation_digest()),
+        "0f0c6c4f27fb88aadb2017bf437068ccef668210f85f1b7ba6979d9b7ad0144c"
+    );
+    let debug = format!("{event:?}");
+    assert!(debug.starts_with("StripeSubscriptionEvent"), "{debug}");
+    assert!(debug.contains("verification_mode: Real"), "{debug}");
+    assert!(debug.contains("livemode: false"), "{debug}");
+}
