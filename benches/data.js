@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792024056109,
+  "lastUpdate": 1792033815250,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -26549,6 +26549,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1176,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "957360190191e39d0c3b0f8c4d763d947826b3be",
+          "message": "Merge pull request #476 from Rullst/ci/dependabot-v12-pkcs1-hold\n\nci(dependabot): hold pkcs1 on v12 at the rc.4 pin",
+          "timestamp": "2026-10-14T23:50:22-03:00",
+          "tree_id": "71caa386084396a1b9ae211607a7431d5b08b2fc",
+          "url": "https://github.com/Rullst/Rullst/commit/957360190191e39d0c3b0f8c4d763d947826b3be"
+        },
+        "date": 1792033812450,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 640,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 911,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 656,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1888,
+            "range": "± 30",
             "unit": "ns/iter"
           }
         ]
