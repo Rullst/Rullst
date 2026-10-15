@@ -37,9 +37,15 @@ they do not establish an end-to-end administration journey without JavaScript.
 Since this review, the existing shell serves its stylesheet, script, vendored
 htmx 2.0.4 and logo same-origin under `/nexus/assets` without inline code or
 external fonts, so it runs under the default production nonce CSP. A
-configurable mount path, a translation catalog and the host-session mode
-remain open. Likewise, built-in Basic/loopback policies do not provide a public
-integration contract for an application's existing sessions.
+configurable mount path and a translation catalog remain open. Since
+13.0.0-alpha.2 the host-session identity part of stage 1 exists:
+`NexusAuthPolicy::application` asks an application `NexusAuthorizer` to
+validate the session and the administrator permission on every request before
+data access, and Nexus creates the principal only after it allows the request
+(see the [Nexus guide](4-rullst-nexus.md#using-the-applications-sign-in)). It
+is a read-write mode with Nexus's CSRF, role and audit boundaries, not the
+read-only mode with domain-service writes planned below; the SaaS and LMS
+starters use it with a generated `users.is_admin` check.
 
 ## Delivery order
 

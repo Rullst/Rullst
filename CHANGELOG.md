@@ -233,6 +233,42 @@ A prepared version section does not establish that its tag or crates exist.
   helpers. Existing projects keep their code until edited.
 - Nexus lists and forms read date and date-time fields as text on PostgreSQL
   and MySQL/MariaDB, so native date/time columns display instead of `-`.
+- Nexus can use the application's own sign-in (dogfooding #26):
+  `NexusAuthPolicy::application(authorizer)` asks an application
+  `NexusAuthorizer` on every request, so an administrator already signed in to
+  the application is not asked to sign in again. `NexusAccess::allow(actor_id)`
+  admits the request under that audit actor, `SignIn` redirects page requests
+  to `/login` (or `NexusApplicationAuth::with_login_path`) and answers
+  fragments and mutations `401` with `HX-Redirect`, `Deny` answers `403`, and
+  an authorizer error `503`. CSRF, the role layer, tenant scope and the audit
+  are unchanged; `local_development_or_application` keeps loopback access in
+  debug builds.
+- **Behaviour change:** new SaaS and LMS projects open Nexus in release builds
+  to the signed-in user whose new `users.is_admin` column is true (default
+  false, never written by ORM saves, editable in Nexus), checked through the
+  epoch-checked login cookie on every request; they no longer need or list
+  `NEXUS_ADMIN_*`. `make:auth` users get the same column. Grant the first
+  administrator with `UPDATE users SET is_admin = TRUE WHERE email = '…';`.
+- **Behaviour change:** new Blog, Portfolio and ERP projects start without
+  Nexus (the ERP also without its back office) when a release build lacks
+  `NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD`, and print one line naming
+  them, instead of refusing to start (dogfooding #25). Nexus itself stays
+  closed; a weak or placeholder credential still stops startup.
+- Nexus registers tables with composite primary keys (dogfooding #27), such as
+  `lesson_progress (user_id, lesson_id)`: `NexusModel::nexus_pk_columns()`,
+  `#[nexus(primary_key = "user_id, lesson_id")]` or several
+  `#[nexus(primary_key)]` fields. A record is addressed by its key values,
+  each percent-encoded and joined by `,`; list, edit, update, delete, batch
+  and create bind every key column. **Breaking:** `RegistryEntry` gains
+  `pk_columns`, so a struct literal of it needs `pk_columns: Vec::new()`.
+- Nexus writes date and time fields as typed values, so native PostgreSQL
+  `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` columns accept edits, and a
+  malformed value is a `422`. New `FieldKind::Time` (a `time` input) and
+  `FieldKind::DateTimeUtc` (a `datetime-local` input labelled `(UTC)` that
+  shows and accepts UTC and converts an entered offset). **Behaviour change:**
+  `#[derive(Nexus)]` maps `chrono::DateTime<Utc>` fields to `DateTimeUtc`
+  instead of `DateTime` and `NaiveTime` to `Time`, and year `0000` dates are
+  rejected.
 
 ### Mutation testing
 
