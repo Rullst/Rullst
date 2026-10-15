@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792042998737,
+  "lastUpdate": 1792050667210,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16351,6 +16351,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4545,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f98a1b57c211482f9bd253ec707dcdd403cbc00e",
+          "message": "Merge pull request #486 from Rullst/ci/dependabot-v12-xml-sec-hold\n\nci(dependabot): hold xml-sec on v12 at the 0.1.17 pin",
+          "timestamp": "2026-10-15T04:31:45-03:00",
+          "tree_id": "5a29135712cb1a34c34b9683e6bd3fd68cfe7ecb",
+          "url": "https://github.com/Rullst/Rullst/commit/f98a1b57c211482f9bd253ec707dcdd403cbc00e"
+        },
+        "date": 1792050666298,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 964,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 766,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1738,
+            "range": "± 111",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4556,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
