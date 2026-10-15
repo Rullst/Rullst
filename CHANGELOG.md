@@ -196,7 +196,8 @@ A prepared version section does not establish that its tag or crates exist.
   resolves: list the adapters the application uses instead (`orm-turso`,
   `orm-mongodb`, `orm-duckdb`, `orm-surrealdb`, `orm-qdrant`, or `turso`,
   `mongodb`, `duckdb`, `surrealdb`, `qdrant` on `rullst-orm`). The individual
-  features are unchanged.
+  features are unchanged. `cargo rullst upgrade` reports a manifest that still
+  names them (`V13-POLYGLOT-FEATURE`).
 
 ### Mutation testing
 
