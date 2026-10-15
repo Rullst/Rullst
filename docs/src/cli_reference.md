@@ -1245,14 +1245,25 @@ Creates an authentication starting point in your codebase, including:
 - Encrypted-session middleware that inserts the signed-in user's id as
   `Extension<i32>` and refuses a cookie whose session epoch is no longer the
   account's.
-- HTML Views for Login and Signup.
+- A password controller (`src/controllers/password_controller.rs`), a reset
+  token model (`src/models/password_reset.rs`) and a
+  `password_reset_tokens` migration: **change password** (signed in; checks the
+  current password, keeps only the asking browser signed in) and **reset by
+  email** (a 30-minute single-use token stored as a SHA-256 digest, one live
+  token per account, the same answer for unknown emails; a reset signs out
+  every device and redirects to `/login?reset=done`). Reset links use
+  `RULLST_PUBLIC_ORIGIN`, never the request's `Host` header.
+- HTML Views for Login, Signup, Forgot password, Reset password and Change
+  password.
 
 It targets the SQLx ORM: Turso-primary projects are rejected. The command
-enables the `orm` and `auth` umbrella features, registers the generated
+enables the `orm`, `auth` and `mail` umbrella features, registers the generated
 `controllers`, `middlewares`, `models` and `pages` modules in `src/lib.rs` (or
 `src/main.rs`), and refreshes the migration registry. It fails before writing
-anything when `src/models/user.rs`, `src/controllers/auth_controller.rs`,
-`src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists, or
+anything when `src/models/user.rs`, `src/models/password_reset.rs`,
+`src/controllers/auth_controller.rs`, `src/controllers/password_controller.rs`,
+`src/middlewares/auth_middleware.rs` or `src/pages/auth.rs` already exists,
+when a `*_create_password_reset_tokens_table.rs` migration exists, or
 when a `*_create_users.rs`/`*_create_users_table.rs` migration already creates
 the users table (the blank database starter and the SaaS/LMS blueprints ship
 one). It also refuses a project without a SQL migration runner (`pub mod
@@ -1261,9 +1272,12 @@ migrations;` in `src/main.rs` or `src/lib.rs` plus a
 starters include), such as a `--no-database` starter, because nothing would
 compile or apply the users migration. Generated code names the ORM through the
 `rullst::orm` facade, so no direct `rullst-orm` dependency is needed. Mounting
-routes (including `POST /logout/everywhere` behind `auth_middleware`) and the
-security baseline remains application work, as does calling
-`User::revoke_sessions` after a password change or reset you add.
+routes (including `POST /logout/everywhere` and `/password/change` behind
+`auth_middleware`, and `credential_rate_limit` on the password submissions),
+the security baseline and the mail settings (`MAIL_DRIVER`, `MAIL_FROM`,
+`RULLST_PUBLIC_ORIGIN`) remain application work, as does calling
+`User::revoke_sessions` when you deactivate an account. The SaaS and LMS
+starters ship the same password flows already mounted.
 
 ### `cargo rullst make:mfa`
 Scaffolds a server-side RFC 6238 TOTP second factor: `src/controllers/mfa.rs`

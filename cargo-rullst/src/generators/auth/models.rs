@@ -57,8 +57,9 @@ pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
 
     /// Signs out every device of this account: one UPDATE increments
     /// `session_epoch`, so each login cookie issued before stops matching.
-    /// "Sign out everywhere" calls it; call it too after a password change
-    /// or reset and when you deactivate or delete the account.
+    /// "Sign out everywhere" calls it; call it too when you deactivate or
+    /// delete the account. Password changes and resets bump the epoch in the
+    /// same UPDATE that stores the new hash.
     pub async fn revoke_sessions(id: i32) -> Result<(), rullst::orm::Error> {
         let increment = if rullst::db::Orm::driver()? == "postgres" {
             "UPDATE users SET session_epoch = session_epoch + 1 WHERE id = $1"
@@ -70,6 +71,36 @@ pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
             .execute(rullst::db::Orm::pool()?)
             .await?;
         Ok(())
+    }
+
+    /// Stores a new password hash and signs out every device in one UPDATE,
+    /// but only while the account is still at `epoch`, the epoch of the
+    /// cookie that asked. Returns the new epoch for that browser's next
+    /// cookie, or `None` when its sessions were revoked meanwhile and nothing
+    /// changed.
+    pub async fn change_password(
+        id: i32,
+        epoch: u64,
+        password_hash: &str,
+        updated_at: &str,
+    ) -> Result<Option<u64>, rullst::orm::Error> {
+        let (Ok(current), Some(next)) = (i64::try_from(epoch), epoch.checked_add(1)) else {
+            return Ok(None);
+        };
+        let update = if rullst::db::Orm::driver()? == "postgres" {
+            "UPDATE users SET password_hash = $1, updated_at = $2, session_epoch = session_epoch + 1 WHERE id = $3 AND session_epoch = $4"
+        } else {
+            "UPDATE users SET password_hash = ?, updated_at = ?, session_epoch = session_epoch + 1 WHERE id = ? AND session_epoch = ?"
+        };
+        let changed = rullst::db::sqlx::query(update)
+            .bind(password_hash)
+            .bind(updated_at)
+            .bind(id)
+            .bind(current)
+            .execute(rullst::db::Orm::pool()?)
+            .await?
+            .rows_affected();
+        Ok((changed == 1).then_some(next))
     }
 "##;
 
@@ -189,17 +220,34 @@ mod tests {
                 "pub async fn revoke_sessions(id: i32) -> Result<(), rullst::orm::Error> {"
             )
         );
+        // revoke_sessions and change_password, each in both dialects.
         assert_eq!(
             model
                 .matches("session_epoch = session_epoch + 1 WHERE id = ")
                 .count(),
-            2
+            4
         );
         assert!(!USER_MODEL_SOURCE.contains("UPDATE users"));
         assert_eq!(
             with_session_epoch_methods("a__RULLST_SESSION_EPOCH_METHODS__b"),
             format!("a{SESSION_EPOCH_METHODS}b")
         );
+    }
+
+    #[test]
+    fn password_changes_bump_the_epoch_only_from_the_asking_session() {
+        let model = with_session_epoch_methods(USER_MODEL_SOURCE);
+        assert!(model.contains(
+            "\"UPDATE users SET password_hash = ?, updated_at = ?, session_epoch = session_epoch + 1 WHERE id = ? AND session_epoch = ?\""
+        ));
+        assert!(model.contains(
+            "\"UPDATE users SET password_hash = $1, updated_at = $2, session_epoch = session_epoch + 1 WHERE id = $3 AND session_epoch = $4\""
+        ));
+        assert!(model.contains(
+            "let (Ok(current), Some(next)) = (i64::try_from(epoch), epoch.checked_add(1)) else {\n            return Ok(None);"
+        ));
+        assert!(model.contains("            .bind(current)\n"));
+        assert!(model.contains("Ok((changed == 1).then_some(next))"));
     }
 
     #[test]

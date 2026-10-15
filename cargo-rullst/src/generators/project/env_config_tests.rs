@@ -166,6 +166,42 @@ fn buildah_image_name_cannot_inject_shell_commands() {
 }
 
 #[test]
+fn account_starters_list_the_origin_of_password_reset_links() {
+    for (blueprint, listed) in [
+        (crate::blueprints::SAAS_BLUEPRINT_ID, true),
+        (crate::blueprints::LMS_BLUEPRINT_ID, true),
+        (BLANK_BLUEPRINT_ID, false),
+    ] {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_env_and_configs(
+            root.path(),
+            false,
+            "Sqlite",
+            &[],
+            blueprint,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        for filename in [".env", ".env.example"] {
+            let generated =
+                fs::read_to_string(root.path().join(filename)).expect("environment file");
+            assert_eq!(
+                generated.contains("\nRULLST_PUBLIC_ORIGIN=\n"),
+                listed,
+                "{blueprint} {filename}"
+            );
+            assert_eq!(
+                generated.contains(
+                    "# Canonical HTTPS origin (no path) that password reset emails link to"
+                ),
+                listed,
+                "{blueprint} {filename}"
+            );
+        }
+    }
+}
+
+#[test]
 fn the_json_api_token_is_random_in_env_and_empty_in_the_example() {
     let root = tempfile::tempdir().expect("temporary project");
     generate_env_and_configs(

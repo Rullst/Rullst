@@ -16,9 +16,12 @@ cargo rullst auth
 
 The current command creates:
 
-- `src/models/user.rs`;
-- `src/migrations/m<timestamp>_create_users_table.rs` and the migrations module;
-- `src/controllers/auth_controller.rs`;
+- `src/models/user.rs` and `src/models/password_reset.rs`;
+- `src/migrations/m<timestamp>_create_users_table.rs`,
+  `src/migrations/m<timestamp>_create_password_reset_tokens_table.rs` and the
+  migrations module;
+- `src/controllers/auth_controller.rs` and
+  `src/controllers/password_controller.rs`;
 - `src/middlewares/auth_middleware.rs`;
 - `src/pages/auth.rs`;
 - the corresponding module declarations, including `controllers`,
@@ -27,8 +30,9 @@ The current command creates:
   `.rullst/context-map.json` and `diagram.md` (a hand-written `diagram.md` is
   left unchanged).
 
-It also enables the `orm` and `auth` umbrella features in `Cargo.toml`. It
-fails before writing anything when one of those files exists or when a
+It also enables the `orm`, `auth` and `mail` umbrella features in
+`Cargo.toml`. It fails before writing anything when one of those files exists,
+when a `*_create_password_reset_tokens_table.rs` migration exists, or when a
 `*_create_users.rs`/`*_create_users_table.rs` migration already creates the
 users table (the blank database starter ships one); add the account columns
 with `cargo rullst make:migration` in that case. Turso-primary projects are not
@@ -71,9 +75,42 @@ let signed_in = routes![
 .layer(from_fn(auth_middleware));
 ```
 
+Mount the password flows the same way: the reset routes are public, the change
+routes need `auth_middleware`, and every submission is rate limited.
+
+```rust,ignore
+use crate::controllers::password_controller;
+
+let password_reset = routes![
+    get("/password/forgot" => password_controller::forgot_password_view),
+    get("/password/reset" => password_controller::reset_password_view),
+]
+// Reset requests send mail and resets run Argon2id.
+.route("/password/forgot", post(password_controller::forgot_password_submit)
+    .layer(from_fn(auth_controller::credential_rate_limit)))
+.route("/password/reset", post(password_controller::reset_password_submit)
+    .layer(from_fn(auth_controller::credential_rate_limit)));
+
+let password_change = routes![
+    get("/password/change" => password_controller::change_password_view),
+]
+.route("/password/change", post(password_controller::change_password_submit)
+    .layer(from_fn(auth_controller::credential_rate_limit)))
+.layer(from_fn(auth_middleware));
+```
+
 `credential_rate_limit` allows ten submissions per minute for each connecting
 peer. Behind a reverse proxy, configure `[security] trusted_proxies` so clients
 do not share the proxy's budget.
+
+Reset emails go through the `Mail` facade: set `MAIL_DRIVER` and `MAIL_FROM`
+for staging and production, and `RULLST_PUBLIC_ORIGIN` to the application's
+HTTPS origin (for example `https://app.example.com`), which every reset link
+uses. Links are never built from the request's `Host` header. Without
+`RULLST_PUBLIC_ORIGIN`, development links point to `http://localhost:3000`,
+and staging and production log an error instead of sending a link. In
+development the default mail driver logs only metadata, so a debug build
+without `MAIL_DRIVER` also prints the reset link to the terminal.
 
 The generated form pages expect the Core CSRF and CSP-nonce extensions. Apply
 the canonical security baseline and place authenticated routes behind the
@@ -89,8 +126,9 @@ cargo rullst dev
 ```
 
 Before production, exercise registration, login, logout, sign-out everywhere,
-invalid credentials, duplicate email, expired/tampered/revoked cookies, CSRF
-failure, rate limiting, and key rotation. Configure a strong `APP_KEY` through a secret manager and HTTPS at the
+password change and reset, invalid credentials, duplicate email,
+expired/tampered/revoked cookies and reset links, CSRF failure, rate limiting,
+mail delivery from your provider, and key rotation. Configure a strong `APP_KEY` through a secret manager and HTTPS at the
 edge.
 
 ---
@@ -112,11 +150,32 @@ edge.
   `User::revoke_sessions` increments it in one `UPDATE`, ending every cookie of
   the account; the *Sign out everywhere* button (`logout_everywhere`) calls it.
   Plain logout clears only the current browser's cookie. Call
-  `User::revoke_sessions` too from the password change or reset you add, and
-  when you deactivate an account. See
+  `User::revoke_sessions` when you deactivate an account. See
   [encrypted sessions](../crates/auth.md#revocable-cookies-the-session-epoch).
+- **Change password** (`/password/change`, signed in) asks for the current
+  password, the new one and a confirmation. A wrong current password gets the
+  generic "The current password is incorrect". The new password follows the
+  registration policy. `User::change_password` stores the new hash and
+  increments the session epoch in one `UPDATE` that only applies while the
+  account is still at the epoch of the asking cookie; that browser receives a
+  cookie with the new epoch and every other device is signed out. A reset
+  link requested before the change stops working.
+- **Forgot password** (`/password/forgot`) answers with the same page, after at
+  least 400 ms, whether or not the email has an account. For an account it
+  creates a `PasswordResetToken` (32 random bytes from the operating system),
+  stores only its SHA-256 digest in `password_reset_tokens` with a 30-minute
+  expiry, and emails the link in the background. The table keeps one token per
+  account: a new request replaces the previous token, but requests for the
+  same account less than 60 seconds apart send nothing.
+- **Reset password** (`/password/reset?token=…`) shows the form only for a live
+  token, without caching and with `Referrer-Policy: no-referrer`. Submitting
+  it deletes the token, stores the new hash and increments the session epoch
+  in one transaction, so the link works once and every device is signed out.
+  The user is not signed in: the page redirects to `/login?reset=done`. Both
+  flows email a "password changed" notice.
 
 These controls do not replace application review. Add account verification,
-password change and reset/recovery, abuse controls, audit policy, MFA/passkeys,
-per-device session management, and privacy/retention behavior according to the
-product's threat model.
+abuse controls, audit policy, MFA/passkeys, per-device session management, and
+privacy/retention behavior according to the product's threat model. A reset
+link proves only access to the mailbox; for high-value accounts, add a second
+factor to recovery.

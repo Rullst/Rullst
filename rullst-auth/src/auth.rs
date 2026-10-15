@@ -3,6 +3,7 @@ pub mod passkey;
 
 mod app_key;
 mod password;
+mod reset_token;
 mod session;
 mod session_claims;
 
@@ -14,6 +15,9 @@ pub use app_key::{get_app_key, parse_app_key_from_toml, validate_app_key};
 pub use password::{
     dummy_verify, hash_password, hash_password_async, needs_rehash, verify_password,
     verify_password_async,
+};
+pub use reset_token::{
+    PasswordResetToken, password_reset_digests_match, password_reset_token_digest,
 };
 pub use session::{
     decrypt_session, encrypt_session, extract_session_cookie, make_login_cookie, make_logout_cookie,

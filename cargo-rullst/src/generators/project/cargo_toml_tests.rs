@@ -64,11 +64,12 @@ fn stable_blueprint_ids_enable_only_their_required_domain_features() {
         &isolated_root(),
     )
     .expect("LMS manifest");
-    assert!(saas.contains("\"auth\""));
+    assert!(saas.contains("\"auth\", \"mail\""));
     assert!(saas.contains("\"capital\""));
-    assert!(lms.contains("\"auth\""));
+    assert!(lms.contains("\"auth\", \"mail\""));
     assert!(!lms.contains("\"capital\""));
     assert!(!blog.contains("\"auth\""));
+    assert!(!blog.contains("\"mail\""));
     assert!(!blog.contains("\"capital\""));
 }
 

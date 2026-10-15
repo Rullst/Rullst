@@ -193,6 +193,27 @@ A prepared version section does not establish that its tag or crates exist.
   Zone rules come from the system database, with a copy bundled through the
   new `jiff` dependency as a fallback. `Scheduler::task` is unchanged and
   stays in UTC.
+- `rullst-auth` adds single-use password reset tokens for applications that
+  keep their own users table: `PasswordResetToken::generate` draws 32 bytes
+  from the operating system and writes them as 64 lowercase hex characters,
+  `digest()` is the SHA-256 to store, `password_reset_token_digest` turns a
+  submitted value into the digest to look up (malformed values have none) and
+  `password_reset_digests_match` compares digests in constant time.
+- New SaaS, LMS and `cargo rullst auth` projects can change and reset
+  passwords. *Change password* (`/password/change`, signed in) checks the
+  current password, applies the registration policy, keeps only the browser
+  that made the change signed in and cancels a pending reset link. *Forgot your password?*
+  (`/password/forgot`) gives the same answer whether or not the email has an
+  account and emails a link that works once and expires after 30 minutes; a
+  new request replaces the previous link. A completed reset signs out every
+  device and sends the user to the login page. Links use
+  `RULLST_PUBLIC_ORIGIN` (new in the SaaS and LMS `.env`), never the request's
+  `Host` header; mail goes through the `Mail` facade, so staging and
+  production need `MAIL_DRIVER` and `MAIL_FROM`. These projects now enable the
+  `mail` feature, and the login page takes a `notice` argument. Existing
+  projects are not changed; the
+  [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
+  lists the steps to add the flows.
 
 ### Mutation testing
 

@@ -1,3 +1,4 @@
 pub mod user;
+pub mod password_reset;
 pub mod subscription;
 pub mod billing_customer;

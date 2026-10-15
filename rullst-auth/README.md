@@ -122,8 +122,43 @@ if the current browser should stay signed in.
 
 `cargo rullst auth` and the SaaS and LMS starters generate this wiring: a
 `users.session_epoch` column, epoch cookies at sign-in and registration, the
-check in `auth_middleware`, `User::revoke_sessions` and a
-`POST /logout/everywhere` route.
+check in `auth_middleware`, `User::revoke_sessions`, a
+`POST /logout/everywhere` route, and a password change and a password reset
+that increment the epoch (below).
+
+### Password reset tokens
+
+For a users table the application owns, `PasswordResetToken` is the emailed
+secret of a reset link (new in v13): 32 bytes from the operating system's
+CSPRNG, written as 64 lowercase hex characters. Email
+`expose()` and store only `digest()`, a domain-separated SHA-256:
+
+```rust
+use rullst_auth::{
+    AuthError, PasswordResetToken, password_reset_digests_match, password_reset_token_digest,
+};
+
+// On a reset request: email `token.expose()` in a link such as
+// https://app.example.com/password/reset?token=…, and store the digest with
+// the account id and an expiry.
+let token = PasswordResetToken::generate()?;
+let stored = token.digest();
+
+// When the link comes back: a malformed value has no digest, so it never
+// reaches the database; look the digest up and compare in constant time.
+let submitted = password_reset_token_digest(token.expose()).ok_or(AuthError::InvalidCredentials)?;
+assert!(password_reset_digests_match(&stored, &submitted));
+# Ok::<(), AuthError>(())
+```
+
+Expiry, single use and one live token per account belong to the
+application's store. The generated `password_reset_tokens` table keeps one
+token per account (its primary key), expires it after 30 minutes and deletes
+it in the transaction that stores the new password hash and increments the
+session epoch. A password change keeps the browser that made it signed in with
+a cookie at the new epoch; a reset signs out every device and redirects to the
+login page. See [Tutorial 11](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces)
+for the generated routes and their answers.
 
 ## Active-session management candidate (v13)
 
