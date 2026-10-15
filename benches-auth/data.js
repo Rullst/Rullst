@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792024644817,
+  "lastUpdate": 1792034550846,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16255,6 +16255,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3194,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "957360190191e39d0c3b0f8c4d763d947826b3be",
+          "message": "Merge pull request #476 from Rullst/ci/dependabot-v12-pkcs1-hold\n\nci(dependabot): hold pkcs1 on v12 at the rc.4 pin",
+          "timestamp": "2026-10-14T23:50:22-03:00",
+          "tree_id": "71caa386084396a1b9ae211607a7431d5b08b2fc",
+          "url": "https://github.com/Rullst/Rullst/commit/957360190191e39d0c3b0f8c4d763d947826b3be"
+        },
+        "date": 1792034550285,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1062,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 799,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1889,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3107,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
