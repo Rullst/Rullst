@@ -6,12 +6,13 @@
 //! build when a key is missing from a locale or its placeholders differ, and
 //! defines `LOCALES` and a `t!` macro next to it:
 //!
-//! ```rust,ignore
-//! // src/i18n.rs
-//! rullst::i18n::catalog!(default = "en");
-//!
-//! // src/pages.rs
-//! use crate::i18n::{t, LOCALES};
+//! ```rust
+//! # extern crate rullst_core as rullst;
+//! # mod i18n {
+//! #     rullst::i18n::catalog!(default = "en", dir = "tests/i18n/locales");
+//! # }
+//! // src/i18n.rs contains `rullst::i18n::catalog!(default = "en");`
+//! use i18n::{LOCALES, t};
 //! use rullst::i18n::Locale;
 //!
 //! async fn dashboard(locale: Locale, htmx: rullst::HtmxRequest) -> rullst::response::Html<String> {
@@ -22,10 +23,17 @@
 //!     rullst::render_page_with_lang(&htmx, locale.tag(), &t!(locale, "dashboard.title"), body)
 //! }
 //!
+//! # fn main() {
 //! let app = rullst::Router::new()
 //!     .route("/", rullst::web::axum::routing::get(dashboard))
 //!     .route("/locale", LOCALES.switch_route())
 //!     .layer(LOCALES.layer());
+//! # let _ = app;
+//!
+//! let pt = LOCALES.get("pt-BR").unwrap();
+//! assert_eq!(t!(pt, "dashboard.greeting", name = "<Ana>"), "Olá, <Ana>!");
+//! assert_eq!(t!(pt, "inbox.unread", count = 0), "Você tem 0 mensagem não lida");
+//! # }
 //! ```
 //!
 //! `t!` returns plain text (`Cow<'static, str>`) that `html!` escapes; only
@@ -36,7 +44,8 @@
 //! `POST` handler that stores a supported locale in that cookie; it relies on
 //! the application's CSRF middleware like every other form.
 //!
-//! The example is compiled and run in `rullst-core/tests/i18n_catalog.rs`.
+//! The example's catalog files are in `rullst-core/tests/i18n/locales`, and
+//! `rullst-core/tests/i18n_catalog.rs` runs them end to end.
 //!
 //! [`Markup`]: crate::html::Markup
 
@@ -118,7 +127,21 @@ pub enum LocaleError {
 
 impl Locales {
     /// Validates a list of canonical tags (`en`, `pt-BR`, `zh-Hant`,
-    /// `es-419`) and the default one.
+    /// `es-419`) and the default one, for an application that negotiates
+    /// locales without a [`catalog!`].
+    ///
+    /// ```
+    /// # extern crate rullst_core as rullst;
+    /// use rullst::i18n::Locales;
+    ///
+    /// let locales = Locales::new(&["en", "pt-BR"], "en")?;
+    /// let best = locales.accept_language("pt-PT, en;q=0.8");
+    /// assert_eq!(best.map(|locale| locale.tag()), Some("pt-BR"));
+    /// // `layer()` and `switch_route()` need a `&'static Locales`.
+    /// let locales: &'static Locales = Box::leak(Box::new(locales));
+    /// let _layer = locales.layer();
+    /// # Ok::<(), rullst::i18n::LocaleError>(())
+    /// ```
     pub fn new(tags: &'static [&'static str], default: &str) -> Result<Self, LocaleError> {
         if tags.is_empty() {
             return Err(LocaleError::Empty);
