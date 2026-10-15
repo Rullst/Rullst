@@ -336,3 +336,72 @@ fn read_dir_reports_missing_empty_and_oversized_directories() {
         Err(vec!["large/en.toml: larger than 1 MiB".to_owned()])
     );
 }
+
+#[test]
+fn keys_may_use_dashes_but_not_be_empty() {
+    let catalog = catalog::build(vec![source("en", "sign-in = \"Sign in\"\n")], "en").unwrap();
+    assert_eq!(
+        catalog.locales[0].messages["sign-in"],
+        Message::Single("Sign in".into())
+    );
+    assert_eq!(
+        errors(vec![source("en", "\"\" = \"x\"\n")], "en"),
+        ["locales/en.toml: key `` may use only ASCII letters, digits, `_` and `-`"]
+    );
+}
+
+#[test]
+fn a_category_table_with_a_non_string_form_is_a_namespace() {
+    assert_eq!(
+        errors(vec![source("en", "[n]\none = 1\nother = \"x\"\n")], "en"),
+        ["locales/en.toml: `n.one` must be a string or a table"]
+    );
+}
+
+#[test]
+fn shape_mismatches_name_the_plural_file_first() {
+    let sources = vec![
+        source("en", "[n]\none = \"a\"\nother = \"b\"\n"),
+        source("es", "n = \"c\"\n"),
+    ];
+    assert_eq!(
+        errors(sources, "en"),
+        ["`n` is a plural message in locales/en.toml but a single message in locales/es.toml"]
+    );
+}
+
+fn scratch_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("rullst-i18n-{name}-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+#[test]
+fn read_dir_accepts_exactly_one_mebibyte() {
+    let root = scratch_dir("limit");
+    let line = |len: usize| format!("a = \"{}\"\n", "x".repeat(len - 7));
+    std::fs::create_dir_all(root.join("at")).unwrap();
+    std::fs::write(root.join("at/en.toml"), line(1024 * 1024)).unwrap();
+    let at_limit = catalog::read_dir(&root, "at").map(|sources| sources.len());
+    std::fs::remove_dir_all(&root).unwrap();
+    assert_eq!(at_limit, Ok(1));
+}
+
+#[test]
+fn read_dir_accepts_at_most_64_catalogs() {
+    let root = scratch_dir("count");
+    for dir in ["64", "65"] {
+        std::fs::create_dir_all(root.join(dir)).unwrap();
+    }
+    for i in 0..65 {
+        std::fs::write(root.join(format!("65/l{i}.toml")), "").unwrap();
+        if i < 64 {
+            std::fs::write(root.join(format!("64/l{i}.toml")), "").unwrap();
+        }
+    }
+    let at_limit = catalog::read_dir(&root, "64").map(|sources| sources.len());
+    let over = catalog::read_dir(&root, "65").map(|sources| sources.len());
+    std::fs::remove_dir_all(&root).unwrap();
+    assert_eq!(at_limit, Ok(64));
+    assert_eq!(over, Err(vec!["`65` has more than 64 catalogs".to_owned()]));
+}

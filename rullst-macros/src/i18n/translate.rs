@@ -280,8 +280,7 @@ fn segments(
 /// The closest known key within a small edit distance, for typos.
 pub(crate) fn suggest<'a>(key: &str, keys: impl Iterator<Item = &'a str>) -> Option<&'a str> {
     let limit = (key.chars().count() / 3).max(2);
-    keys.filter(|candidate| candidate.len() <= 128 && key.len() <= 128)
-        .map(|candidate| (distance(key, candidate), candidate))
+    keys.map(|candidate| (distance(key, candidate), candidate))
         .filter(|(distance, _)| *distance <= limit)
         .min_by_key(|(distance, _)| *distance)
         .map(|(_, candidate)| candidate)

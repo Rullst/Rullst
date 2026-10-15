@@ -27,6 +27,9 @@ legal.terms_html = "Read the <a href='/t'>terms</a>, {name}"
 [inbox]
 one = "One message"
 other = "{count} messages"
+[visits]
+one = "{name} visited once"
+other = "{name} visited {count} times"
 "#;
 const PT: &str = r#"
 nav.home = "Início"
@@ -35,6 +38,9 @@ legal.terms_html = "Leia os <a href='/t'>termos</a>, {name}"
 [inbox]
 one = "{count} mensagem"
 other = "{count} mensagens"
+[visits]
+one = "{name} visitou {count} vez"
+other = "{name} visitou {count} vezes"
 "#;
 
 fn expand(call: TokenStream) -> syn::Result<String> {
@@ -172,6 +178,10 @@ fn arguments_must_match_the_placeholders() {
         [
             "missing argument `count` (the number that selects the plural form) for `inbox`; it takes count"
         ]
+    );
+    assert_eq!(
+        errors(quote! { locale, "visits", count = 2 }),
+        ["missing argument `name` for `visits`; it takes count, name"]
     );
     assert_eq!(
         errors(quote! { locale, "pair", c = 1, a = 1 }),

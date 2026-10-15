@@ -52,9 +52,6 @@ impl PluralRule {
 /// Returns the canonical spelling of `language[-Script][-REGION]`
 /// (`pt-BR`, `zh-Hant`, `es-419`), or `None` for anything else.
 pub(crate) fn canonical(tag: &str) -> Option<String> {
-    if tag.len() > 16 {
-        return None;
-    }
     let mut subtags = tag.split('-');
     let language = subtags.next()?;
     if !(2..=3).contains(&language.len()) || !language.bytes().all(|b| b.is_ascii_alphabetic()) {

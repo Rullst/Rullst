@@ -200,3 +200,46 @@ fn the_rejection_is_a_server_error() {
     let response = MissingLocale.into_response();
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
+
+/// A service that is never ready, to show the layer forwards readiness.
+#[derive(Clone)]
+struct NeverReady;
+
+impl tower_service::Service<axum::http::Request<Body>> for NeverReady {
+    type Response = Response;
+    type Error = &'static str;
+    type Future = std::future::Ready<Result<Response, &'static str>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Err("inner not ready"))
+    }
+
+    fn call(&mut self, _request: axum::http::Request<Body>) -> Self::Future {
+        std::future::ready(Err("called"))
+    }
+}
+
+#[tokio::test]
+async fn the_service_forwards_readiness_and_inserts_the_locale() {
+    use tower_layer::Layer;
+    let mut service = LOCALES.layer().layer(NeverReady);
+    let ready =
+        std::future::poll_fn(|cx| tower_service::Service::poll_ready(&mut service, cx)).await;
+    assert_eq!(ready, Err("inner not ready"));
+
+    let echo = tower::service_fn(|request: axum::http::Request<Body>| async move {
+        let tag = request
+            .extensions()
+            .get::<Locale>()
+            .map(|locale| locale.tag());
+        Ok::<_, std::convert::Infallible>(tag)
+    });
+    let request = axum::http::Request::get("/")
+        .header(header::ACCEPT_LANGUAGE, "pt")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        LOCALES.layer().layer(echo).oneshot(request).await,
+        Ok(Some("pt-BR"))
+    );
+}
