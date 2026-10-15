@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792050667210,
+  "lastUpdate": 1792054699688,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16399,6 +16399,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4556,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bb3f6a3a3649d7a030e3a4bac22840ff634c30e",
+          "message": "Merge pull request #487 from Rullst/feat/v13-html-markup\n\nfeat(html)!: html! returns a Markup type so nested views render as HTML",
+          "timestamp": "2026-10-15T05:39:27-03:00",
+          "tree_id": "4b7eedbaabcdeb27fedd2c9067cd5e9c6d9cd5bb",
+          "url": "https://github.com/Rullst/Rullst/commit/5bb3f6a3a3649d7a030e3a4bac22840ff634c30e"
+        },
+        "date": 1792054699020,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 895,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 773,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1670,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4088,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
