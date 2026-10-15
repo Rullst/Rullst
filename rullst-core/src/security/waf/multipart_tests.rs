@@ -95,7 +95,13 @@ fn reporting_logs_the_rule_and_path_without_the_field() {
     let logs = String::from_utf8_lossy(&capture.0.lock().unwrap()).into_owned();
     assert_eq!(logs.lines().count(), 1, "{logs}");
     assert!(logs.contains("WARN"), "{logs}");
-    assert!(logs.contains("rule=\"multipart-field-signature\""), "{logs}");
+    assert!(
+        logs.contains("rule=\"multipart-field-signature\""),
+        "{logs}"
+    );
     assert!(logs.contains("path=\"/upload\""), "{logs}");
-    assert!(!logs.contains("script") && !logs.contains("comment"), "{logs}");
+    assert!(
+        !logs.contains("script") && !logs.contains("comment"),
+        "{logs}"
+    );
 }

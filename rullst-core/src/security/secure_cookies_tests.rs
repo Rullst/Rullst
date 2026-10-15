@@ -115,7 +115,11 @@ async fn the_baseline_marks_session_cookies_secure_over_https_in_every_environme
         );
         // An HTTPS request URI (HTTP/2 over TLS).
         assert_eq!(
-            cookies(&app, request("https://app.example/", "192.0.2.1:5000", false)).await,
+            cookies(
+                &app,
+                request("https://app.example/", "192.0.2.1:5000", false)
+            )
+            .await,
             vec![secure.clone()]
         );
         // Plain HTTP, and a forwarded scheme from an untrusted peer.
