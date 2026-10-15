@@ -39,12 +39,18 @@ These staging and production defaults apply to both strategies:
   environment or `.env`. Behind a reverse proxy on the same host, set
   `HOST=127.0.0.1` so the plain-HTTP port is reachable only through the proxy
   (Foundry does this for you). Inside a container keep `0.0.0.0` and publish
-  the port only to the proxy's network.
+  the port only to the proxy's network. The server prints the address it
+  listens on at startup (`Rullst framework serving on http://0.0.0.0:3000
+  (every network interface)`); since 13.0.0-alpha.2, when that is every
+  interface and a trusted reverse proxy is configured (`[security]
+  trusted_proxies` or `Server::trusted_proxies`), the same line suggests
+  `HOST=127.0.0.1`.
 - **Caching.** The security baseline adds `Cache-Control: no-store` to every
   response without a `Cache-Control` of its own; the standard `/static` mount
   sets its own. Downloads, feeds and other responses that browsers or a CDN
-  may cache must set the header themselves, for example
-  `Cache-Control: private, max-age=300`.
+  may cache choose a policy with `rullst::cache_control::public(max_age)` or
+  `private(max_age)` (13.0.0-alpha.2) on their route, or set the header
+  themselves; see [downloads and feeds](10-static-assets-and-compression.md#downloads-and-feeds).
 
 ---
 

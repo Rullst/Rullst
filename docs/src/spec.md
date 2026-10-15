@@ -1560,7 +1560,12 @@ the same server-authoritative controls.
   `trusted_proxy_header` and `trust_forwarded_proto`, validated with the rest
   of the security configuration; an explicit builder policy replaces it. Only
   the real proxy networks may be listed, because any host inside them can
-  choose the client address.
+  choose the client address. Since 13.0.0-alpha.2 the static server's
+  startup line (`Rullst framework serving on http://<address>`) marks an
+  address that covers every interface (`0.0.0.0` or `::`, the staging and
+  production default without `HOST`) and, when a trusted proxy policy is
+  enabled, suggests `HOST=127.0.0.1` so a proxy on the same host cannot be
+  bypassed; the default bind address is unchanged.
 * **Default Dynamic Cache Boundary:** `headers_middleware` supplies
   `Cache-Control: no-store` only when the handler has not already selected an
   explicit cache policy. Versioned public/static responses can therefore opt

@@ -3,6 +3,7 @@ use crate::lifecycle::ApplicationLifecycle;
 use crate::scheduler::Scheduler;
 
 mod environment;
+mod listen;
 mod shutdown;
 mod startup;
 
@@ -269,6 +270,12 @@ impl Server {
     /// [`ServerError::InvalidAddress`] instead of being resolved, so a shell
     /// that exports `HOST` as the machine name (tcsh does) cannot silently
     /// bind a LAN interface; set `HOST` explicitly in that case.
+    ///
+    /// Once bound it prints the listen address. When that covers every
+    /// interface (`0.0.0.0` or `::`) and a trusted reverse proxy is configured
+    /// ([`Self::trusted_proxies`] or `[security] trusted_proxies`), the line
+    /// suggests `HOST=127.0.0.1`, so clients cannot bypass a proxy on the
+    /// same host.
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self, port: u16) -> Result<(), ServerError> {
         self.run_with_shutdown(port, shutdown_signal()).await

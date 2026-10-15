@@ -297,9 +297,13 @@ impl Server {
         F: std::future::Future<Output = ()> + Send + 'static,
     {
         let lifecycle = self.lifecycle.clone();
+        let behind_trusted_proxy = self.trusted_proxy_layer().is_some();
         let app = self.into_static_app(app_config.security, environment)?;
 
-        println!("Rullst framework serving on http://{}", addr);
+        println!(
+            "{}",
+            super::listen::listen_notice(addr, behind_trusted_proxy)
+        );
         println!(
             "🚀 Visit: http://localhost:{} to see the result!",
             addr.port()
