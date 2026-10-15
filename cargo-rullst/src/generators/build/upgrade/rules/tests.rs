@@ -116,6 +116,21 @@ fn review_rules_report_the_first_location_and_must_change_every_one() {
 }
 
 #[test]
+fn matching_database_error_text_is_reviewed() {
+    assert_only(
+        r#"
+async fn register(user: &mut User) -> Result<bool, rullst::orm::Error> {
+    match user.save().await {
+        Err(rullst::orm::Error::DatabaseError(message)) if message.contains("UNIQUE") => Ok(false),
+        other => other.map(|()| true),
+    }
+}
+"#,
+        &["V13-ORM-CONSTRAINT-ERRORS"],
+    );
+}
+
+#[test]
 fn calls_match_their_paths_but_not_definitions_or_similar_names() {
     assert_only(
         r#"

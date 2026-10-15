@@ -154,6 +154,9 @@ rules! {
     ORM_MISSING_ROW: "V13-ORM-MISSING-ROW", Review, "ORM instance mutations",
         "deleting, force-deleting or saving a missing row now fails with `RecordNotFound`",
         "Accept `RecordNotFound` where deletes were idempotent; `restore()` of a live row is a no-op.";
+    ORM_CONSTRAINT_ERRORS: "V13-ORM-CONSTRAINT-ERRORS", Review, "ORM constraint errors",
+        "unique and foreign-key violations now return `UniqueViolation`/`ForeignKeyViolation` instead of `DatabaseError`",
+        "Match `Error::UniqueViolation { .. }` and `Error::ForeignKeyViolation { .. }` instead of `DatabaseError` messages such as `UNIQUE constraint failed`, `duplicate key` or `Duplicate entry`.";
     ORM_SANDBOX_TEST: "V13-ORM-SANDBOX-TEST", Review, "ORM sandbox tests",
         "`#[rullst_orm::test]` now keeps the declared return type; an `Err` result fails the test",
         "Make the signature match the body (a `Termination` type such as `Result<(), E: Debug>`) and assert post-commit effects in a committing test.";

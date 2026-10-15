@@ -84,12 +84,7 @@ fn generate_fetch(method: &str, value_type: TokenStream) -> TokenStream {
             let query_bindings = self.__rullst_pluck_bindings();
             let mut query = rullst_orm::_sqlx::query_as::<_, (#value_type,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
             for binding in &query_bindings {
-                match binding {
-                    rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                    rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                    rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                    rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                }
+                query = rullst_orm::value::BindRullstValue::bind_rullst_value(query, binding);
             }
             let rows = if let Some(timeout) = rullst_orm::schema::get_query_timeout() {
                 tokio::time::timeout(timeout, query.fetch_all(executor))
@@ -100,5 +95,19 @@ fn generate_fetch(method: &str, value_type: TokenStream) -> TokenStream {
             };
             Ok(rows.into_iter().map(|(value,)| value).collect())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn plucked_values_bind_through_the_shared_helper() {
+        let generated =
+            super::generate_fetch("pluck_strings_with_executor", quote::quote!(String)).to_string();
+        assert!(generated.contains("async fn pluck_strings_with_executor"));
+        assert!(generated.contains(
+            "query = rullst_orm :: value :: BindRullstValue :: bind_rullst_value (query , binding) ;"
+        ));
+        assert!(!generated.contains("RullstValue :: String"));
     }
 }

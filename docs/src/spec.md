@@ -1756,6 +1756,31 @@ Ok(())
 }
 ```
 
+`save()` of a persisted model is a full-row `UPDATE` of every persisted column
+except the soft-delete marker, so the last writer wins: a column another writer
+changed after the handle was loaded is overwritten with the handle's value. An
+`INSERT` likewise binds every persisted field, so database column defaults
+do not apply to them. The generated `save()` rustdoc and the ORM guide name
+the two supported alternatives: `update_partial()` (§5.4.1), which merges
+selected fields into the freshly read and, on PostgreSQL and MySQL/MariaDB,
+locked row, and one atomic raw statement such as
+`UPDATE ... SET xp = xp + ? WHERE id = ?` for counters, which bypasses the
+model lifecycle (tenant scope, policy, hooks, audit, cache). The driver
+contract runs that counter and the stale-handle overwrite on SQLite,
+PostgreSQL, MySQL and MariaDB.
+
+`From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
+`RecordNotFound`, a unique or primary-key violation to
+`UniqueViolation { constraint }` and a foreign-key violation to
+`ForeignKeyViolation { constraint }` (both v13, `#[non_exhaustive]` variants);
+every other database error stays `DatabaseError(String)`. `constraint` is the
+name PostgreSQL reports and `None` on SQLite and MySQL/MariaDB. Their `Display`
+names only the constraint, never the database message, which can quote the
+rejected value. Generated model writes and builders reach the caller through
+this conversion, and `Orm::raw` uses it too; `Orm::transaction`, generic over
+its closure's error type, still reports a failed closure as
+`DatabaseError("Transaction failed: ...")`.
+
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
 errors. Every SQLx model requires a persisted named `id` field; a model
@@ -1876,6 +1901,18 @@ while portability and semantic review remain the model author's responsibility.
   make unknown columns unrepresentable on typed paths. String-column builders,
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
+* `RullstValue`, `#[non_exhaustive]` since v13, carries `String`, `Int`
+  (`i32`), `Float`, `Bool`, `I64` and `Null`. `i64` and `u32` convert to `I64`
+  and `Option<T>` to `T`'s value or `Null`; an integer literal stays `Int`.
+  Generated builders and `Orm::raw` bind every value through one hidden
+  `BindRullstValue` helper: `I64` as `i64` and `Null` as a text-typed SQL
+  `NULL`, which PostgreSQL accepts in a non-text column only through a cast.
+  A comparison with `Null` never matches (and PostgreSQL rejects it against a
+  non-text column), so `where_null` expresses that filter. Tenant IDs take the
+  same values: an `I64` tenant gets its own audit (`i64:`) and cache keys but
+  does not convert to an `i32` tenant field (generated queries fail with
+  `Validation`, §5.4), and a `Null` tenant fails the audit lookup with
+  `Validation`.
 * A per-column helper (`where_{column}`, `or_where_{column}`,
   `where_not_{column}`, `order_by_{column}`, `order_by_{column}_desc`) is not
   generated when its name equals a fixed builder method (for example
@@ -2942,7 +2979,7 @@ provider](capital-custom-provider.md)); the
 * **Key Rotation:** Built-in keyring support (`decrypt_with_keyring`) can read
   prior keys while new writes use the active key. Deployment coordination,
   re-encryption, key custody and retirement remain operator responsibilities.
-* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Versioned envelopes name their key ID; pre-v12 `SecretString` ciphertext names none, so it is tried with the current key and then every keyring key (`default` first), and AES-GCM authentication accepts only the key that wrote it. Rullst does not provide key custody or automatic retirement.
+* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Each is read from the process environment first and then from `./.env` (v13), the precedence of `APP_KEY` and `rullst::config::project_setting`; the file never overrides or enters the process environment, and a malformed or unreadable `.env` fails the lookup with an error that names at most the entry number. Versioned envelopes name their key ID; pre-v12 `SecretString` ciphertext names none, so it is tried with the current key and then every keyring key (`default` first), and AES-GCM authentication accepts only the key that wrote it. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
 * **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Header values are decoded lossily in RASP and Core's WAF, so an obs-text byte (0x80-0xFF) that hyper accepts cannot hide the rest of a value. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. In `User-Agent` only, a complete PowerShell product token (`PowerShell/<version>` or `WindowsPowerShell/<version>`, delimited by whitespace) does not match the `powershell` keyword, so stock PowerShell HTTP clients are served; other occurrences and every other signature still match. The `| sh` signature matches only when `sh` ends at a word boundary and `; cat` only when a path-like argument follows, so "| shopping" and "dogs; cat food" pass. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
