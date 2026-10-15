@@ -54,3 +54,6 @@ fn current(clock: &impl Clock) -> Result<i64> {
             }
         })
 }
+
+#[cfg(test)]
+mod tests;

@@ -105,4 +105,34 @@ mod tests {
             ));
         }
     }
+
+    #[test]
+    fn each_local_host_form_keeps_its_tls_mode() {
+        for value in [
+            "postgres://db.example/mail?host=/var/run/postgresql",
+            "postgres://localhost/mail",
+            "postgres://127.0.0.1/mail",
+            "postgres://[::1]/mail",
+        ] {
+            assert!(
+                !matches!(
+                    options(value).unwrap().get_ssl_mode(),
+                    PgSslMode::VerifyFull
+                ),
+                "{value}"
+            );
+        }
+    }
+
+    #[test]
+    fn urls_are_bounded_at_exactly_8_kib() {
+        let prefix = "postgres://localhost/";
+        let longest = format!("{prefix}{}", "d".repeat(8_192 - prefix.len()));
+        assert_eq!(longest.len(), 8_192);
+        assert!(options(&longest).is_ok());
+        assert!(matches!(
+            options(&format!("{longest}d")),
+            Err(RecurringError::InvalidInput("database URL"))
+        ));
+    }
 }
