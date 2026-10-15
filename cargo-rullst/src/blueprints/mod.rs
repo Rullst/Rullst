@@ -299,6 +299,84 @@ mod tests {
     }
 
     #[test]
+    fn auth_starters_revoke_login_cookies_by_session_epoch() {
+        // A stateless login cookie stayed valid for 30 days after logout or
+        // a password change; the epoch lets the account end every copy.
+        let file = |manifest: &[(&str, String)], wanted: &str| {
+            manifest
+                .iter()
+                .find_map(|(path, source)| (*path == wanted).then(|| source.clone()))
+                .unwrap_or_else(|| panic!("missing {wanted}"))
+        };
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            if !matches!(blueprint, "lms" | "saas") {
+                continue;
+            }
+            let user = file(&manifest, "src/models/user.rs");
+            syn::parse_file(&user).unwrap_or_else(|error| panic!("{blueprint}: {error}"));
+            assert!(!user.contains("__RULLST"), "{blueprint}: unresolved marker");
+            assert!(user.contains("    #[orm(skip)]\n    pub session_epoch: i64,\n}"));
+            assert!(user.contains("#[derive(Debug, Clone, Default, FromRow, Orm)]"));
+            assert!(user.contains(
+                "pub fn accepts_session(&self, claims: &rullst::auth::SessionClaims) -> bool {"
+            ));
+            assert!(user.contains(
+                "pub async fn revoke_sessions(id: i32) -> Result<(), rullst::orm::Error> {"
+            ));
+            assert!(
+                user.contains(
+                    "\"UPDATE users SET session_epoch = session_epoch + 1 WHERE id = $1\""
+                )
+            );
+            assert!(
+                user.contains(
+                    "\"UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?\""
+                )
+            );
+
+            let middleware = file(&manifest, "src/middlewares/auth_middleware.rs");
+            assert!(middleware.contains("rullst::auth::decrypt_session_claims(&cookie, &app_key)"));
+            assert!(middleware.contains("Ok(Some(user)) if user.accepts_session(&claims) => {"));
+            assert!(!middleware.contains("decrypt_session(&"), "{blueprint}");
+
+            let migration = manifest
+                .iter()
+                .filter(|(path, source)| {
+                    path.starts_with("src/migrations/")
+                        && source.contains("Schema::create(\"users\"")
+                })
+                .map(|(_, source)| source.as_str())
+                .collect::<Vec<_>>();
+            assert_eq!(migration.len(), 1, "{blueprint}: one users migration");
+            assert!(migration[0].contains(
+                "table.big_integer(\"session_epoch\").not_null().default(ColumnDefault::Integer(0));"
+            ));
+
+            let routers = manifest
+                .iter()
+                .filter(|(path, _)| matches!(*path, "src/main.rs" | "src/lib.rs"))
+                .map(|(_, source)| source.as_str())
+                .collect::<String>();
+            let route = match blueprint {
+                "saas" => {
+                    ".route(\"/logout/everywhere\", rullst::routing::post(controllers::auth_controller::logout_everywhere)\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))"
+                }
+                _ => {
+                    "post(\"/logout/everywhere\" => controllers::auth_controller::logout_everywhere),"
+                }
+            };
+            assert!(
+                routers.contains(route),
+                "{blueprint}: unmounted sign-out everywhere"
+            );
+            assert!(
+                file(&manifest, "src/pages/auth.rs").contains("action=\"/logout/everywhere\""),
+                "{blueprint}: no sign-out everywhere form"
+            );
+        }
+    }
+
+    #[test]
     fn content_blueprints_render_under_the_production_csp() {
         // Production headers send `style-src 'self' 'nonce-…'; font-src 'self';
         // img-src 'self' data:`, which blocks style attributes, nonce-less
