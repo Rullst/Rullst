@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792057209758,
+  "lastUpdate": 1792071275706,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14094,6 +14094,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 394,
+            "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7c487a7743f3d5028feeea84f89dce6d1729de4",
+          "message": "Merge pull request #495 from Rullst/feat/v13-html-attrs-scheduler-tz\n\nfeat(html,scheduler): valueless and conditional attributes, @if/@for, and time-zone schedules",
+          "timestamp": "2026-10-15T10:09:37-03:00",
+          "tree_id": "e109c9b55e7a69b389ed3f6f6d698fce7ff10eb3",
+          "url": "https://github.com/Rullst/Rullst/commit/d7c487a7743f3d5028feeea84f89dce6d1729de4"
+        },
+        "date": 1792071274987,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1691,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 309,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 441,
             "range": "± 4",
             "unit": "ns/iter"
           }
