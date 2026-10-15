@@ -157,8 +157,8 @@ fn unwrapped_type_name(field_type: &Type) -> String {
 }
 
 /// The chrono date/time widget of a field, by path segment rather than by
-/// spelling: `DateTime<Utc>` and `NaiveDateTime` under any `chrono::` prefix
-/// are date-times, `NaiveDate` is a date.
+/// spelling: `DateTime<Utc>` under any `chrono::` prefix is a UTC instant,
+/// `NaiveDateTime` a date-time, `NaiveDate` a date and `NaiveTime` a time.
 fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
     let mut field_type = field_type;
     if let Some(inner) = option_inner(field_type) {
@@ -171,6 +171,7 @@ fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
     match segment.ident.to_string().as_str() {
         "NaiveDateTime" => Some(quote!(::rullst::nexus::FieldKind::DateTime)),
         "NaiveDate" => Some(quote!(::rullst::nexus::FieldKind::Date)),
+        "NaiveTime" => Some(quote!(::rullst::nexus::FieldKind::Time)),
         "DateTime" => {
             let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
                 return None;
@@ -180,7 +181,7 @@ fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
                 Some(syn::GenericArgument::Type(Type::Path(zone)))
                     if zone.path.segments.last().is_some_and(|zone| zone.ident == "Utc")
             );
-            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTime))
+            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTimeUtc))
         }
         _ => None,
     }
@@ -275,6 +276,8 @@ fn configured_field_kind(field: &syn::Field, options: &FieldOptions) -> syn::Res
         "boolean" => quote!(::rullst::nexus::FieldKind::Boolean),
         "date" => quote!(::rullst::nexus::FieldKind::Date),
         "datetime" => quote!(::rullst::nexus::FieldKind::DateTime),
+        "time" => quote!(::rullst::nexus::FieldKind::Time),
+        "datetime_utc" => quote!(::rullst::nexus::FieldKind::DateTimeUtc),
         "password" => quote!(::rullst::nexus::FieldKind::Password),
         "json" => quote!(::rullst::nexus::FieldKind::Json),
         "enum" => return enum_field_kind(field, &options.options),

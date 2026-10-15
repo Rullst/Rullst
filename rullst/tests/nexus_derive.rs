@@ -183,3 +183,27 @@ fn derive_nexus_declares_composite_primary_keys() {
         .try_build()
         .expect("a derived composite key passes registry validation");
 }
+
+/// Chrono fields get the matching date/time widget.
+#[derive(Nexus)]
+#[allow(dead_code)]
+#[nexus(table = "appointments")]
+struct Appointment {
+    id: i64,
+    due_on: rullst::orm::chrono::NaiveDate,
+    opens_at: Option<rullst::orm::chrono::NaiveTime>,
+    starts_at: rullst::orm::chrono::NaiveDateTime,
+    paid_at: rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc>,
+}
+
+#[test]
+fn derive_nexus_maps_chrono_fields_to_date_and_time_widgets() {
+    let kinds = Appointment::nexus_fields()
+        .into_iter()
+        .map(|field| (field.name, field.kind))
+        .collect::<Vec<_>>();
+    assert_eq!(kinds[1], ("due_on", FieldKind::Date));
+    assert_eq!(kinds[2], ("opens_at", FieldKind::Time));
+    assert_eq!(kinds[3], ("starts_at", FieldKind::DateTime));
+    assert_eq!(kinds[4], ("paid_at", FieldKind::DateTimeUtc));
+}

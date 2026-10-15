@@ -357,21 +357,32 @@ fn infers_chrono_widgets_from_any_path_spelling() {
             starts_at: chrono::NaiveDateTime,
             ends_at: Option<NaiveDateTime>,
             day: chrono::NaiveDate,
+            opens_at: Option<chrono::NaiveTime>,
             local_at: DateTime<chrono::FixedOffset>,
+            #[nexus(kind = "time")]
+            closes_at: String,
+            #[nexus(kind = "datetime_utc")]
+            settled_at: String,
         }
     };
     let output = expand_nexus(&input)
         .expect("valid Nexus derive")
         .to_string();
-    for name in [
-        "published_at",
-        "edited_at",
-        "archived_at",
-        "starts_at",
-        "ends_at",
-    ] {
+    // A UTC instant is shown and accepted as UTC.
+    for name in ["published_at", "edited_at", "archived_at", "settled_at"] {
         let meta = field_meta(&output, name).expect("field metadata");
-        assert!(meta.contains("FieldKind :: DateTime"), "{name}: {meta}");
+        assert!(
+            meta.contains("FieldKind :: DateTimeUtc ,"),
+            "{name}: {meta}"
+        );
+    }
+    for name in ["starts_at", "ends_at"] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(meta.contains("FieldKind :: DateTime ,"), "{name}: {meta}");
+    }
+    for name in ["opens_at", "closes_at"] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(meta.contains("FieldKind :: Time ,"), "{name}: {meta}");
     }
     let day = field_meta(&output, "day").expect("day metadata");
     assert!(day.contains("FieldKind :: Date ,"), "{day}");
