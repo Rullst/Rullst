@@ -13,15 +13,13 @@ pub fn generate_auth_views() -> Result<(), Box<dyn std::error::Error>> {
 use rullst::server::Html;
 
 pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Html<String> {
-    let error_html = if let Some(err) = error {
+    let error_html = error.map(|err| {
         html! {
             <div class="error" role="alert">
                 {err}
             </div>
         }
-    } else {
-        String::new()
-    };
+    });
 
     Html(html! {
         <html lang="en">
@@ -33,7 +31,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Ht
             <body>
                 <div class="card">
                     <h1>"Welcome Back"</h1>
-                    { rullst::html::RawHtml(error_html) }
+                    { error_html }
                     <form method="post" action="/login">
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
@@ -49,19 +47,17 @@ pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Ht
                 </div>
             </body>
         </html>
-    })
+    }.into_string())
 }
 
 pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Html<String> {
-    let error_html = if let Some(err) = error {
+    let error_html = error.map(|err| {
         html! {
             <div class="error" role="alert">
                 {err}
             </div>
         }
-    } else {
-        String::new()
-    };
+    });
 
     Html(html! {
         <html lang="en">
@@ -73,7 +69,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) ->
             <body>
                 <div class="card">
                     <h1>"Create Account"</h1>
-                    { rullst::html::RawHtml(error_html) }
+                    { error_html }
                     <form method="post" action="/register">
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
@@ -93,7 +89,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) ->
                 </div>
             </body>
         </html>
-    })
+    }.into_string())
 }
 
 pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Html<String> {
@@ -107,7 +103,7 @@ pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Ht
                 </form>
             </body>
         </html>
-    })
+    }.into_string())
 }
 "##;
     write_new(&pages_path, pages_template.as_bytes())?;

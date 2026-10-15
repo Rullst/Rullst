@@ -139,7 +139,7 @@ fn safe_link(url: &str) -> &str {
     }
 }
 
-fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {
+fn render_sidebar(profile: &Profile, skills: &[Skill]) -> html::Markup {
     html! {
         <aside class="sidebar">
             <div class="profile-head">
@@ -162,43 +162,43 @@ fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {
             <div>
                 <div class="skill-cat">"Technical Skills"</div>
                 <div class="tags">
-                    { rullst::html::RawHtml::new(skills.iter().map(|s| html! {
+                    { skills.iter().map(|s| html! {
                         <span class="tag">{&s.name}</span>
-                    }).collect::<Vec<_>>().join("")) }
+                    }).collect::<html::Markup>() }
                 </div>
             </div>
         </aside>
     }
 }
 
-fn render_content(projects: &[Project], experiences: &[Experience]) -> String {
+fn render_content(projects: &[Project], experiences: &[Experience]) -> html::Markup {
     html! {
         <main class="content">
             <section>
                 <h2 class="section-title">"Experience"</h2>
                 <div class="timeline">
-                    { rullst::html::RawHtml::new(experiences.iter().map(|e| html! {
+                    { experiences.iter().map(|e| html! {
                         <div class="timeline-item">
                             <div class="exp-period">{&e.period}</div>
                             <h3 class="exp-role">{&e.role}</h3>
                             <div class="exp-company">{&e.company}</div>
                             <p class="exp-desc">{&e.description}</p>
                         </div>
-                    }).collect::<Vec<_>>().join("")) }
+                    }).collect::<html::Markup>() }
                 </div>
             </section>
 
             <section>
                 <h2 class="section-title">"Projects Showcase"</h2>
                 <div class="projects-grid">
-                    { rullst::html::RawHtml::new(projects.iter().map(|p| html! {
+                    { projects.iter().map(|p| html! {
                         <div class="project-card">
                             <h3 class="project-title">{&p.title}</h3>
                             <p class="project-desc">{&p.description}</p>
                             <div class="tags"><span class="tag">{&p.tags}</span></div>
                             <a href={safe_link(&p.url)} target="_blank" class="project-link">"View Project →"</a>
                         </div>
-                    }).collect::<Vec<_>>().join("")) }
+                    }).collect::<html::Markup>() }
                 </div>
             </section>
         </main>
@@ -211,7 +211,7 @@ pub fn render(
     experiences: &[Experience],
     skills: &[Skill],
     csp_nonce: &str,
-) -> String {
+) -> html::Markup {
     html! {
         <html lang="en">
             <head>
@@ -219,6 +219,7 @@ pub fn render(
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Developer — AI & Rust Portfolio"</title>
                 <link rel="icon" type="image/png" href="/static/rullst.png" />
+                // Trusted CSS built outside `html!`: inserted without escaping.
                 <style nonce={csp_nonce}>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>
             <body>
@@ -228,8 +229,8 @@ pub fn render(
                 <div class="glow-blob glow-2"></div>
                 
                 <div class="layout">
-                    { rullst::html::RawHtml(render_sidebar(profile, skills)) }
-                    { rullst::html::RawHtml(render_content(projects, experiences)) }
+                    { render_sidebar(profile, skills) }
+                    { render_content(projects, experiences) }
                 </div>
             </body>
         </html>
