@@ -164,6 +164,12 @@ fn mysql_rejects_keys_on_text_columns() {
             );
         }
     }
+    // Timestamps are TEXT on the Any pool, DATETIME(6) with strict MySQL.
+    let mut table = Blueprint::new();
+    table.timestamps();
+    table.index(&["created_at"]);
+    assert!(table.create_statements("events", "mysql", true).is_err());
+    assert!(table.create_statements("events", "mysql", false).is_ok());
 }
 
 #[test]
@@ -337,6 +343,52 @@ fn the_any_pool_rejects_native_temporal_columns_on_postgres_and_mysql() {
             .create_statements("events", "sqlite", true)
             .is_ok()
     );
+}
+
+#[test]
+fn timestamps_are_utc_instants_on_strict_pools() {
+    let mut table = Blueprint::new();
+    table.timestamps();
+    assert_eq!(table.columns[0].name, "created_at");
+    assert_eq!(table.columns[1].name, "updated_at");
+    assert_eq!(table.columns[0].col_type, "TIMESTAMPTZ");
+    assert!(table.columns.iter().all(|column| column.is_nullable));
+    assert_eq!(
+        table.render(None, "postgres", false).expect("PostgreSQL"),
+        "created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,\n    \
+         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP"
+    );
+    assert_eq!(
+        table.render(None, "mysql", false).expect("MySQL"),
+        "created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),\n    \
+         updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)"
+    );
+    assert_eq!(
+        table.render(None, "sqlite", false).expect("SQLite"),
+        "created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now')),\n    \
+         updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now'))"
+    );
+}
+
+#[test]
+fn timestamps_stay_text_on_the_any_pool() {
+    let mut table = Blueprint::new();
+    table.timestamps();
+    for driver in ["postgres", "sqlite"] {
+        assert_eq!(
+            table.render(None, driver, true).expect("DDL"),
+            "created_at TEXT DEFAULT CURRENT_TIMESTAMP,\n    \
+             updated_at TEXT DEFAULT CURRENT_TIMESTAMP",
+            "{driver}"
+        );
+        assert!(table.create_statements("notes", driver, true).is_ok());
+    }
+    assert_eq!(
+        table.render(None, "mysql", true).expect("MySQL"),
+        "created_at TEXT DEFAULT (CURRENT_TIMESTAMP),\n    \
+         updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)"
+    );
+    assert!(table.create_statements("notes", "mysql", true).is_ok());
 }
 
 /// Additions to an existing `posts` table.

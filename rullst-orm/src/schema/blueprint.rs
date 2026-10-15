@@ -189,22 +189,25 @@ impl Blueprint {
         self.add_column(name, "TEXT")
     }
 
-    /// Adds nullable `created_at`/`updated_at` text columns that default to the
-    /// database's current timestamp.
+    /// Adds nullable `created_at`/`updated_at` columns that default to the
+    /// database's current time.
     ///
-    /// SQLite and PostgreSQL receive `TEXT DEFAULT CURRENT_TIMESTAMP`.
-    /// MySQL/MariaDB reject a literal default on a `TEXT` column, so they
-    /// receive the expression form `TEXT DEFAULT (CURRENT_TIMESTAMP)`
-    /// (MySQL 8.0.13+, MariaDB 10.2.1+). The column stays `TEXT` on every
-    /// driver so SQLx's `Any` driver can decode it as a string.
+    /// With a strict driver feature (`strict-postgres`, `strict-mysql`,
+    /// `strict-sqlite`, which generated projects use) they are
+    /// [`Blueprint::timestamp_tz`] columns for `chrono::DateTime<Utc>` fields:
+    /// `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP` on PostgreSQL,
+    /// `DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)` on MySQL/MariaDB and RFC 3339
+    /// `TEXT` on SQLite. Since v13; alpha.1 created `TEXT` columns.
+    ///
+    /// The SQLx `Any` pool (the `drivers-all` default without a strict
+    /// feature) cannot read date/time columns, so there they stay the
+    /// alpha.1 `TEXT DEFAULT CURRENT_TIMESTAMP` columns for `String` fields
+    /// (`DEFAULT (CURRENT_TIMESTAMP)` on MySQL/MariaDB).
     pub fn timestamps(&mut self) {
-        let mut created = Column::new("created_at", "TEXT");
-        created.default(ColumnDefault::CurrentTimestamp);
-        self.columns.push(created);
-
-        let mut updated = Column::new("updated_at", "TEXT");
-        updated.default(ColumnDefault::CurrentTimestamp);
-        self.columns.push(updated);
+        for name in ["created_at", "updated_at"] {
+            self.add_driver_typed_column(name, DriverType::AutoTimestamp)
+                .default(ColumnDefault::CurrentTimestamp);
+        }
     }
 
     pub fn soft_deletes(&mut self) {

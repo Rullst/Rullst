@@ -24,6 +24,10 @@ pub(super) enum DriverType {
     Timestamp,
     /// A UTC instant (`chrono::DateTime<Utc>`).
     TimestampTz,
+    /// `timestamps()`: a [`DriverType::TimestampTz`] with a strict driver, and
+    /// the alpha.1 `TEXT` column with the SQLx `Any` pool, which cannot read
+    /// date/time columns.
+    AutoTimestamp,
 }
 
 impl DriverType {
@@ -36,7 +40,7 @@ impl DriverType {
             Self::Date => "DATE",
             Self::Time => "TIME",
             Self::Timestamp => "TIMESTAMP",
-            Self::TimestampTz => "TIMESTAMPTZ",
+            Self::TimestampTz | Self::AutoTimestamp => "TIMESTAMPTZ",
         }
     }
 
@@ -49,8 +53,20 @@ impl DriverType {
         )
     }
 
-    pub(super) fn for_driver(self, driver: &str, _any_pool: bool) -> &'static str {
-        match (self, driver) {
+    /// The kind actually rendered: `timestamps()` keeps `TEXT` on the `Any` pool.
+    fn resolved(self, any_pool: bool) -> Option<Self> {
+        match (self, any_pool) {
+            (Self::AutoTimestamp, true) => None,
+            (Self::AutoTimestamp, false) => Some(Self::TimestampTz),
+            (kind, _) => Some(kind),
+        }
+    }
+
+    pub(super) fn for_driver(self, driver: &str, any_pool: bool) -> &'static str {
+        let Some(kind) = self.resolved(any_pool) else {
+            return "TEXT";
+        };
+        match (kind, driver) {
             (Self::Double, "postgres") => "DOUBLE PRECISION",
             (Self::Double, "mysql") => "DOUBLE",
             (Self::Double, _) => "REAL",
@@ -73,11 +89,14 @@ impl DriverType {
     pub(super) fn default_sql(
         self,
         driver: &str,
-        _any_pool: bool,
+        any_pool: bool,
         default: &ColumnDefault,
         column: &str,
     ) -> Result<String, Error> {
-        match (self, driver, default) {
+        let Some(kind) = self.resolved(any_pool) else {
+            return Ok(default.to_sql());
+        };
+        match (kind, driver, default) {
             (Self::Boolean, "postgres", ColumnDefault::Integer(0)) => Ok("FALSE".to_string()),
             (Self::Boolean, "postgres", ColumnDefault::Integer(1)) => Ok("TRUE".to_string()),
             (Self::Boolean, "postgres", ColumnDefault::Integer(_)) => Err(Error::Validation(
