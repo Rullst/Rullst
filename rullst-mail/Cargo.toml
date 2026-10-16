@@ -1,6 +1,6 @@
 [package]
 name = "rullst-mail"
-version = "13.0.0-alpha.1"
+version = "13.0.0-alpha.2"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
