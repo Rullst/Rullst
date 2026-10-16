@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792121427939,
+  "lastUpdate": 1792123397611,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16273,6 +16273,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 583,
             "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20fcb9f612263f0a01e3bf3b5d140daeeaec4a81",
+          "message": "Merge pull request #506 from Rullst/chore/v13-release-13.0.0-alpha.2\n\nchore(release): prepare 13.0.0-alpha.2",
+          "timestamp": "2026-10-16T00:44:48-03:00",
+          "tree_id": "280be5a6bb0b09ef715d418fed5c5fc936958629",
+          "url": "https://github.com/Rullst/Rullst/commit/20fcb9f612263f0a01e3bf3b5d140daeeaec4a81"
+        },
+        "date": 1792123396682,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5455,
+            "range": "± 106",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 567,
+            "range": "± 8",
             "unit": "ns/iter"
           },
           {
