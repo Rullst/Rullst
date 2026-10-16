@@ -467,8 +467,9 @@ defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidenc
 
 ### v13 source-train and adoption preparation
 
-The development train uses `13.0.0-alpha.1` consistently for the existing
-publishable packages and their internal requirements. This prepares the CLI's
+The development train uses one version, currently `13.0.0-alpha.2`, for every
+publishable package, and exact (`=13.0.0-alpha.2`) internal requirements, so
+Cargo cannot pair packages from different prereleases. This prepares the CLI's
 actual major-version behavior; it is not a publication or stable-release claim.
 The privacy package joins the candidate inventory with explicit optional facade
 features; it was first published in the 13.0.0-alpha.1 prerelease on

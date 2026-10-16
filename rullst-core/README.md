@@ -155,14 +155,14 @@ If you are developing a plugin or advanced middleware for the Rullst ecosystem, 
 
 This README describes the v13 prerelease; Cargo never selects a
 prerelease on its own, so pin it exactly (the stable line is `rullst-core@12`):
-`cargo add rullst-core@=13.0.0-alpha.1`.
+`cargo add rullst-core@=13.0.0-alpha.2`.
 
 Core is runtime-only by default. Add just the database capabilities the
 application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.1", features = ["orm", "queue-sqlite", "offline-sync"] }
+rullst-core = { version = "=13.0.0-alpha.2", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
 Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`,

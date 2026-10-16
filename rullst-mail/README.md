@@ -444,7 +444,7 @@ prerelease, so the version is pinned exactly; the stable line is
 
 ```toml
 [dependencies]
-rullst-mail = { version = "=13.0.0-alpha.1", features = ["aws-ses"] }
+rullst-mail = { version = "=13.0.0-alpha.2", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

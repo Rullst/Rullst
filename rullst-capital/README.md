@@ -348,7 +348,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 
 ```toml
 [dependencies]
-rullst-capital = "=13.0.0-alpha.1"
+rullst-capital = "=13.0.0-alpha.2"
 ```
 
 Native invoice PDF is independently opt-in. One-call Mail delivery uses the
@@ -356,21 +356,21 @@ downstream `rullst-mail/capital-invoice` feature, or `rullst/capital-mail` when
 using the umbrella crate:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.1", features = ["capital-mail"] }
+rullst = { version = "=13.0.0-alpha.2", features = ["capital-mail"] }
 ```
 
 Durable relational quota accounting is separately opt-in:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.1", features = ["capital-quota-sql"] }
-# Or directly: rullst-capital = { version = "=13.0.0-alpha.1", features = ["quota-sql"] }
+rullst = { version = "=13.0.0-alpha.2", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "=13.0.0-alpha.2", features = ["quota-sql"] }
 ```
 
 Durable cross-process webhook replay claims are independently opt-in:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.1", features = ["capital-webhook-sql"] }
-# Or directly: rullst-capital = { version = "=13.0.0-alpha.1", features = ["webhook-sql"] }
+rullst = { version = "=13.0.0-alpha.2", features = ["capital-webhook-sql"] }
+# Or directly: rullst-capital = { version = "=13.0.0-alpha.2", features = ["webhook-sql"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on

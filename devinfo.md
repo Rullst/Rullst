@@ -8,7 +8,7 @@ in this file.
 ## Work on the checkout source
 
 From the repository root, install the CLI from the exact checkout (on `main`,
-the v13 prerelease `13.0.0-alpha.1` CLI; on `v12`, the 12.x maintenance CLI):
+the v13 prerelease `13.0.0-alpha.2` CLI; on `v12`, the 12.x maintenance CLI):
 
 ```bash
 cargo install --locked --path cargo-rullst
@@ -20,7 +20,7 @@ the generator can select sibling framework crates as path dependencies. A plain
 `cargo install cargo-rullst` installs the latest published stable release
 (Cargo skips prereleases). To use the latest stable CLI explicitly, install it
 with `--version '^12' --locked`; the published v13 prerelease needs its exact
-version, `--version =13.0.0-alpha.1 --locked`.
+version, `--version =13.0.0-alpha.2 --locked`.
 
 ## Required local verification
 

@@ -92,7 +92,7 @@ and flush/shutdown. Enable the feature and opt in to the prerelease explicitly:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.1", features = ["telemetry"] }
+rullst-core = { version = "=13.0.0-alpha.2", features = ["telemetry"] }
 ```
 
 ```env

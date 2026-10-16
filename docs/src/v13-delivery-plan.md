@@ -36,8 +36,8 @@ not a requirement to finish every theme before measuring effort, failures,
 performance and maintenance. Use findings to select later work; this adds no
 release gate, paid resource, live-account test or claim of superiority.
 
-The owner asked about an alpha-first release on September 22. The current
-`13.0.0-alpha.1` source version supports that evaluation path: consumers opt in
+The owner asked about an alpha-first release on September 22. The
+`13.0.0-alpha.N` prerelease versions support that evaluation path: consumers opt in
 explicitly and APIs may change before stable v13. Alpha, beta and RC labels do
 not waive the applicable verification, ownership or protected-publication
 checks. Choosing a prerelease label does not authorize an upload; stable

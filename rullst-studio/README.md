@@ -50,7 +50,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 (the stable line is `rullst-studio@12`):
 
 ```bash
-cargo add rullst-studio@=13.0.0-alpha.1
+cargo add rullst-studio@=13.0.0-alpha.2
 ```
 
 ### Launching the Studio

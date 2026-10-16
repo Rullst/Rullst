@@ -1,7 +1,7 @@
 # Rullst Studio 📊
 
 > [!IMPORTANT]
-> This page describes the v13 prerelease, published as `13.0.0-alpha.1`. Cargo
+> This page describes the v13 prerelease, published as `13.0.0-alpha.2`. Cargo
 > never selects a prerelease on its own, so its dependency example pins that
 > version exactly; for the stable line use `rullst-studio@12` and check the
 > [release record](../v12.md). Use a path dependency only for checkout-local
@@ -54,7 +54,7 @@ views from the sources explicitly supplied by the application.
 ## 🚀 Quickstart
 
 Install the v13 prerelease with an exact pin:
-`cargo add rullst-studio@=13.0.0-alpha.1`.
+`cargo add rullst-studio@=13.0.0-alpha.2`.
 
 ### Launching the Studio
 

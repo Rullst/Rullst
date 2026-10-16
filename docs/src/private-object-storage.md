@@ -17,10 +17,10 @@ below, also enable the facade's `security` feature.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["storage-s3", "security"] }
+rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["storage-s3", "security"] }
 ```
 
-The version above is the 13.0.0-alpha.1 prerelease, which `cargo add rullst`
+The version above is the 13.0.0-alpha.2 prerelease, which `cargo add rullst`
 does not select; name it explicitly. Final release admission remains separate.
 
 ```rust,no_run

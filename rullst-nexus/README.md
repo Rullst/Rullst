@@ -4,9 +4,9 @@
 models. It provides server-rendered CRUD views, server-side field policies, RBAC enforcement,
 telemetry, and the optional AI assistant.
 
-This README describes the v13 prerelease (`13.0.0-alpha.1`). Cargo never
+This README describes the v13 prerelease (`13.0.0-alpha.2`). Cargo never
 selects a prerelease on its own, so pin it exactly, for example
-`rullst = { version = "=13.0.0-alpha.1", default-features = false, features = ["nexus", "strict-postgres"] }`.
+`rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["nexus", "strict-postgres"] }`.
 
 Since 12.1.0, Nexus includes the fixes for mobile drawer dismissal, keyboard
 focus and no-JavaScript navigation. Applications upgrading from 12.0 that use
