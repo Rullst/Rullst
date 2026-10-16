@@ -20,11 +20,7 @@ impl MutableSuppressionStore for PostgresSuppressionStore {
     async fn record(&self, event: SuppressionEvent) -> Result<SuppressionRecord, SuppressionError> {
         bounded(async {
             let (mut tx, current) = self.begin().await?;
-            let observed = i64::try_from(event.observed_at())
-                .map_err(|_| SuppressionError::InvalidEvent("observation time"))?;
-            if observed <= 0 || observed > current + 300 {
-                return Err(SuppressionError::InvalidEvent("observation time"));
-            }
+            let observed = observation_time(event.observed_at(), current)?;
             let event_tag = self.tag(
                 b"event-identity",
                 &[event.provider().as_bytes(), event.event_id().as_bytes()],
@@ -94,6 +90,28 @@ impl MutableSuppressionStore for PostgresSuppressionStore {
     }
 }
 
+/// Accepts an event time in `1..=current + 300`.
+pub(super) fn observation_time(observed_at: u64, current: i64) -> Result<i64, SuppressionError> {
+    let observed = i64::try_from(observed_at)
+        .map_err(|_| SuppressionError::InvalidEvent("observation time"))?;
+    if observed <= 0 || observed > current + 300 {
+        return Err(SuppressionError::InvalidEvent("observation time"));
+    }
+    Ok(observed)
+}
+
+/// Accepts stored recipient times with `1 <= first <= last <= current + 300`.
+pub(super) fn check_stored_times(
+    first: i64,
+    last: i64,
+    current: i64,
+) -> Result<(), SuppressionError> {
+    if first <= 0 || last < first || last > current + 300 {
+        return Err(SuppressionError::CorruptStorage("recipient time"));
+    }
+    Ok(())
+}
+
 impl PostgresSuppressionStore {
     pub(super) async fn fetch(
         &self,
@@ -122,9 +140,7 @@ impl PostgresSuppressionStore {
         let last: i64 = row
             .try_get("last_seen_at")
             .map_err(|_| unavailable("decode time"))?;
-        if first <= 0 || last < first || last > current + 300 {
-            return Err(SuppressionError::CorruptStorage("recipient time"));
-        }
+        check_stored_times(first, last, current)?;
         validate_identifier(&provider, MAX_PROVIDER_BYTES, "provider")
             .map_err(|_| SuppressionError::CorruptStorage("provider"))?;
         Ok(Some(SuppressionRecord {
