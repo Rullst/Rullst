@@ -114,9 +114,19 @@ fn generated_billing_rows_get_real_timestamps() {
             source.matches("let created_at = utc_timestamp();").count(),
             2
         );
-        assert_eq!(source.matches("updated_at: created_at.clone(),").count(), 2);
-        assert!(source.contains(
-            "format!(\"{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}\")"
-        ));
+        assert!(!source.contains("__UTC_TIMESTAMP_FN__") && !source.contains("__UPDATED_AT__"));
+        if backend == ProjectOrmBackend::Sqlx {
+            // `timestamps()` columns hold `chrono` instants on SQLx pools.
+            assert_eq!(source.matches("updated_at: created_at,").count(), 2);
+            assert!(source.contains(
+                "fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {\n    rullst::orm::chrono::Utc::now()\n}"
+            ));
+            assert!(!source.contains("{year:04}"));
+        } else {
+            assert_eq!(source.matches("updated_at: created_at.clone(),").count(), 2);
+            assert!(source.contains(
+                "format!(\"{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}\")"
+            ));
+        }
     }
 }

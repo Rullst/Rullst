@@ -31,6 +31,17 @@ pub enum RullstError {
         /// does, SQLite and MySQL/MariaDB do not.
         constraint: Option<String>,
     },
+    /// The connected database cannot make this schema change, for example
+    /// adding a foreign key to an existing SQLite table. `Schema::table`
+    /// returns it before running any statement. Match it as
+    /// `UnsupportedSchemaChange { .. }`. Added in v13.
+    #[non_exhaustive]
+    UnsupportedSchemaChange {
+        /// The SQL dialect: `sqlite`, `postgres` or `mysql`.
+        driver: String,
+        /// The change that cannot be made, and the usual alternative.
+        change: String,
+    },
     /// A serialization or deserialization error (e.g., JSON).
     SerializationError(String),
     /// A cache or event-related error.
@@ -60,6 +71,9 @@ impl fmt::Display for RullstError {
             }
             RullstError::ForeignKeyViolation { constraint } => {
                 write_violation(f, "foreign key", constraint.as_deref())
+            }
+            RullstError::UnsupportedSchemaChange { driver, change } => {
+                write!(f, "Unsupported schema change on {driver}: {change}")
             }
             RullstError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
             RullstError::CacheError(msg) => write!(f, "Cache error: {}", msg),
@@ -203,6 +217,18 @@ mod tests {
         assert_eq!(
             unnamed.to_string(),
             "Database error: foreign key constraint violated"
+        );
+    }
+
+    #[test]
+    fn unsupported_schema_changes_name_the_driver_and_change() {
+        let error = RullstError::UnsupportedSchemaChange {
+            driver: "sqlite".to_string(),
+            change: "adding a foreign key to an existing table".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Unsupported schema change on sqlite: adding a foreign key to an existing table"
         );
     }
 

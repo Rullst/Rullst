@@ -16,7 +16,8 @@ For a counter, run one atomic statement such as \
 (`$1`, `$2` on PostgreSQL); raw SQL skips the model's tenant scope, policy, hooks, \
 audit and cache invalidation.
 
-An insert also sends every field, so database column defaults do not apply.";
+An insert also sends every field, so database column defaults do not apply, \
+except to fields marked `#[orm(db_default)]`, which inserts and updates never write.";
 
 pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
@@ -485,6 +486,7 @@ mod tests {
                 doc.contains("database column defaults do not apply"),
                 "{doc}"
             );
+            assert!(doc.contains("marked `#[orm(db_default)]`"), "{doc}");
         }
     }
 

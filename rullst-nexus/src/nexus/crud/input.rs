@@ -3,7 +3,12 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use rullst_orm::RullstValue;
+
 use crate::nexus::types::{FieldKind, FieldMeta, RegistryEntry};
+
+mod temporal;
+pub(super) use temporal::{has_offset, time_input_value, utc_input_value};
 
 const MAX_FORM_PAIRS: usize = 256;
 const MAX_SHORT_TEXT_BYTES: usize = 4 * 1024;
@@ -23,6 +28,9 @@ pub(super) struct ValidatedFieldValue<'a> {
     pub(super) field: &'a FieldMeta,
     /// `None` is SQL NULL: an emptied field whose kind cannot store `''`.
     pub(super) value: Option<String>,
+    /// The typed value of a date or time, bound instead of `value`'s text so
+    /// native date/time columns accept it.
+    pub(super) typed: Option<RullstValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,7 +84,7 @@ pub(super) fn validate_form_values<'a>(
         };
         let protected = field.hidden
             || field.readonly
-            || matches!(mode, FormMode::Update) && field.name == entry.pk;
+            || matches!(mode, FormMode::Update) && entry.is_key_column(field.name);
         if protected {
             return Err(FormInputError::UnknownOrProtectedField);
         }
@@ -136,20 +144,30 @@ fn normalize_values<'a>(
             })?
     };
     if value.is_empty() && !stores_empty_text(&field.kind) {
-        return Ok(ValidatedFieldValue { field, value: None });
+        return Ok(ValidatedFieldValue {
+            field,
+            value: None,
+            typed: None,
+        });
     }
     validate_semantic_value(field, &value)?;
-    let value = match field.kind {
-        FieldKind::DateTime => canonical_datetime(value),
+    let (value, typed) = match field.kind {
         // Validation parsed it; store `7` for `+7` or `007`.
-        FieldKind::Integer { .. } => value
-            .parse::<i64>()
-            .map_or(value, |number| number.to_string()),
-        _ => value,
+        FieldKind::Integer { .. } => (
+            value
+                .parse::<i64>()
+                .map_or(value, |number| number.to_string()),
+            None,
+        ),
+        _ => temporal::normalize(&field.kind, value).ok_or(FormInputError::InvalidField {
+            field: field.name,
+            reason: "must use a valid date or time",
+        })?,
     };
     Ok(ValidatedFieldValue {
         field,
         value: Some(value),
+        typed,
     })
 }
 
@@ -222,6 +240,17 @@ fn validate_semantic_value(field: &FieldMeta, value: &str) -> Result<(), FormInp
         }
         FieldKind::Date => validate_date(field, value),
         FieldKind::DateTime => validate_datetime(field, value),
+        FieldKind::Time => match temporal::time(value) {
+            Some(_) => Ok(()),
+            None => invalid(field, "must use a valid HH:MM[:SS[.fraction]] time"),
+        },
+        FieldKind::DateTimeUtc => match temporal::utc(value) {
+            Some(_) => Ok(()),
+            None => invalid(
+                field,
+                "must use a valid date-time; one without an offset is UTC",
+            ),
+        },
         FieldKind::Json => serde_json::from_str::<serde_json::Value>(value)
             .map(|_| ())
             .map_err(|_| FormInputError::InvalidField {
@@ -297,8 +326,9 @@ fn validate_date(field: &FieldMeta, value: &str) -> Result<(), FormInputError> {
     let year = parse_date_part(parts.next(), 4);
     let month = parse_date_part(parts.next(), 2);
     let day = parse_date_part(parts.next(), 2);
+    // HTML dates and PostgreSQL have no year 0.
     let valid = match (year, month, day, parts.next()) {
-        (Some(year), Some(month @ 1..=12), Some(day), None) => {
+        (Some(year @ 1..), Some(month @ 1..=12), Some(day), None) => {
             (1..=days_in_month(year, month)).contains(&day)
         }
         _ => false,

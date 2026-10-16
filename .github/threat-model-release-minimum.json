@@ -224,7 +224,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "nexus::crud::query::tests::scoped_query_without_context_is_empty_by_construction",
-      "source": "rullst-nexus/src/nexus/crud/query.rs",
+      "source": "rullst-nexus/src/nexus/crud/query_tests.rs",
       "marker": "TM-NEXUS-02"
     },
     {
@@ -566,7 +566,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "uploads::tests::upload_policy_rejects_spoofing_active_content_and_unsafe_names",
-      "source": "rullst-core/src/uploads.rs",
+      "source": "rullst-core/src/uploads_tests.rs",
       "marker": "TM-ACADEMY-09"
     },
     {

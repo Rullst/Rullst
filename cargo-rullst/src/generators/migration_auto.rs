@@ -6,10 +6,11 @@ use super::super::schema_diff::{ParsedField, ParsedTable};
 
 /// How a supported field type is declared.
 struct ColumnKind {
-    /// `Blueprint` method used when the whole table is created.
+    /// `Blueprint` method that declares the column.
     blueprint: &'static str,
-    /// SQLite column type used when the column is added to an existing table.
-    sql_type: &'static str,
+    /// Column type of a raw `ALTER TABLE ... ADD COLUMN`, or `None` for a
+    /// date/time type, whose per-driver type `Schema::table` chooses.
+    sql_type: Option<&'static str>,
     /// Literal that fills existing rows when a required column is added, or
     /// `None` when no neutral value decodes (a date or an encrypted value).
     backfill: Option<&'static str>,
@@ -20,14 +21,18 @@ struct ColumnKind {
 /// becoming TEXT, which SQLx cannot decode into the field.
 fn column_kind(rust_type: &str) -> Option<ColumnKind> {
     let (blueprint, sql_type, backfill) = match rust_type {
-        "i8" | "i16" | "i32" => ("integer", "INTEGER", Some("0")),
-        "i64" => ("big_integer", "BIGINT", Some("0")),
-        "f32" | "f64" => ("float", "REAL", Some("0.0")),
-        "bool" => ("boolean", "INTEGER", Some("0")),
-        "String" => ("string", "TEXT", Some("''")),
-        "SecretString" | "NaiveDate" | "NaiveDateTime" | "NaiveTime" | "DateTime" | "Json" => {
-            ("string", "TEXT", None)
-        }
+        "i8" | "i16" | "i32" => ("integer", Some("INTEGER"), Some("0")),
+        "i64" => ("big_integer", Some("BIGINT"), Some("0")),
+        "f32" | "f64" => ("float", Some("REAL"), Some("0.0")),
+        "bool" => ("boolean", Some("INTEGER"), Some("0")),
+        "String" => ("string", Some("TEXT"), Some("''")),
+        "SecretString" | "Json" => ("string", Some("TEXT"), None),
+        // Native date/time columns: `chrono` fields need them on PostgreSQL
+        // and MySQL/MariaDB, where a TEXT column does not decode.
+        "DateTime" => ("timestamp_tz", None, None),
+        "NaiveDateTime" => ("timestamp", None, None),
+        "NaiveDate" => ("date", None, None),
+        "NaiveTime" => ("time", None, None),
         _ => return None,
     };
     Some(ColumnKind {
@@ -64,26 +69,31 @@ fn create_column(table: &str, field: &ParsedField) -> Result<String, String> {
 
 /// The statement adding `field` to an existing table. A required field gets a
 /// typed `NOT NULL DEFAULT` so existing rows still decode; one without a
-/// neutral value is refused.
+/// neutral value is refused. A date/time column is added with `Schema::table`,
+/// which picks its type for the connected driver.
 fn add_column(table: &str, field: &ParsedField) -> Result<String, String> {
     let kind = supported(table, field)?;
     let name = &field.name;
-    let sql_type = kind.sql_type;
-    let (comment, definition) = if field.is_option {
-        (String::new(), sql_type.to_string())
-    } else {
-        let Some(backfill) = kind.backfill else {
-            return Err(format!(
-                "`{table}.{name}` is a required `{}` added to an existing table, so its rows would hold NULL; make the field `Option<{}>` or write the migration with `cargo rullst make:migration`",
-                field.rust_type, field.rust_type
-            ));
-        };
-        (
+    if !field.is_option && kind.backfill.is_none() {
+        return Err(format!(
+            "`{table}.{name}` is a required `{}` added to an existing table, so its rows would hold NULL; make the field `Option<{}>` or write the migration with `cargo rullst make:migration`",
+            field.rust_type, field.rust_type
+        ));
+    }
+    let Some(sql_type) = kind.sql_type else {
+        return Ok(format!(
+            "        Schema::table(\"{table}\", |table| {{\n            table.{}(\"{name}\");\n        }}).await?;\n",
+            kind.blueprint
+        ));
+    };
+    let (comment, definition) = match kind.backfill.filter(|_| !field.is_option) {
+        None => (String::new(), sql_type.to_string()),
+        Some(backfill) => (
             format!(
                 "        // Existing rows receive DEFAULT {backfill}; review before applying.\n"
             ),
             format!("{sql_type} NOT NULL DEFAULT {backfill}"),
-        )
+        ),
     };
     Ok(format!(
         "{comment}        rullst_orm::sqlx::query(\"ALTER TABLE {table} ADD COLUMN {name} {definition}\").execute(rullst_orm::Orm::pool()?).await?;\n"

@@ -47,6 +47,7 @@ fn starter_is_small_explicit_and_excludes_academy_verticals() {
         "src/models/course.rs",
         "src/models/enrollment.rs",
         "src/pages/lms.rs",
+        "src/middlewares/nexus_access.rs",
         "static/media/memory-safety.en.vtt",
     ] {
         assert!(
@@ -68,9 +69,9 @@ fn starter_is_small_explicit_and_excludes_academy_verticals() {
         );
     }
     // 27 files plus the password change/reset controller, its token model
-    // and its migration.
+    // and its migration, and the Nexus authorizer.
     assert!(
-        manifest.len() <= 30,
+        manifest.len() <= 31,
         "starter emitted {} files",
         manifest.len()
     );

@@ -1,0 +1,5 @@
+/// The current UTC time for the `created_at`/`updated_at` columns of
+/// `timestamps()`. The ORM inserts every field, so the model must carry it.
+fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {
+    rullst::orm::chrono::Utc::now()
+}

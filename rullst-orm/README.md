@@ -612,12 +612,34 @@ because a text parameter has no operator against a named enum type. This
 covers `where_eq`, `where_in`, the generated `where_<column>` helpers and
 their `or_`/`not_` variants; `where_like` and raw SQL are unchanged.
 
-`table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
-that default to the current timestamp. MySQL/MariaDB reject a literal default
-on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
-builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
-defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
-SQLite and PostgreSQL DDL is unchanged.
+### Constraints, indexes and dates
+
+The `Blueprint` declares `Column::unique()`, table-level `unique(&[...])`,
+`index(&[...])`, `unique_index(&[...])`, foreign keys
+(`foreign("user_id").references("users", "id").on_delete(ForeignKeyAction::Cascade)`,
+or `foreign_id("user_id", "users")` to add the column too) and a validated
+`check("...")` of trusted developer SQL. PostgreSQL and SQLite create indexes
+with `CREATE INDEX IF NOT EXISTS` after the table; MySQL/MariaDB declare them in
+`CREATE TABLE` and cannot index a `TEXT` column, so give indexed strings a
+`VARCHAR` `col_type`. `Schema::table("posts", |table| ...)` adds columns,
+indexes and constraints to an existing table; SQLite changes it cannot make
+(adding a foreign key to an existing column, a CHECK) return
+`Error::UnsupportedSchemaChange` before any statement runs.
+
+`date()`, `time()`, `timestamp()` and `timestamp_tz()` hold
+`chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields
+(`rullst_orm::chrono`): native `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` on
+PostgreSQL, `DATE`/`TIME(6)`/`DATETIME(6)` (UTC) on MySQL/MariaDB and ISO-8601
+text that sorts by time on SQLite. `table.timestamps()` adds nullable
+`created_at`/`updated_at` `timestamp_tz()` columns that default to the current
+time, and `#[orm(db_default)]` leaves a field to its database default. Those
+columns and fields need a strict driver feature: the SQLx `Any` pool cannot
+read date/time values, so there the native helpers fail on PostgreSQL and
+MySQL/MariaDB and `timestamps()` keeps `TEXT DEFAULT CURRENT_TIMESTAMP`
+columns for `String` fields (`DEFAULT (CURRENT_TIMESTAMP)` on MySQL/MariaDB,
+MySQL 8.0.13+, MariaDB 10.2.1+). See the
+[ORM guide](https://rullst.github.io/Rullst/book/crates/orm.html#constraints-indexes-and-foreign-keys)
+for every DDL form.
 
 `table.float(...)` and `table.boolean(...)` map to `f64` and `bool` model
 fields. PostgreSQL receives `DOUBLE PRECISION` and `BOOLEAN` (an integer

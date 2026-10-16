@@ -114,6 +114,14 @@ let current = Event::find(event.id).await?;
 # }
 ```
 
+`TursoOrm::init_from_env` reads `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and
+`TURSO_OFFLINE_PATH` from the process environment only. The Turso blank starter
+(`cargo rullst new --database turso`) instead reads them with
+`rullst::config::project_setting`, which falls back to `./.env` without loading
+it into the process, and passes them to `TursoConfig::new` and
+`with_offline_path`; since 13.0.0-alpha.2 it no longer calls
+`dotenvy::dotenv()` or depends on `dotenvy`.
+
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
 migrations, status, and rollback. An equality filter whose value encodes as

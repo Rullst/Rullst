@@ -27,6 +27,9 @@ mod exemption_tests;
 mod limits_tests;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+mod multipart_tests;
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests;
 
 const MAX_INSPECTED_REQUEST_BYTES: usize = 1024 * 1024;
@@ -71,6 +74,8 @@ enum Rule {
     BodyUnreadable,
     /// The textual body is not UTF-8.
     BodyNotUtf8,
+    /// A `multipart/form-data` text field carries a signature.
+    MultipartField,
 }
 
 impl Rule {
@@ -86,6 +91,7 @@ impl Rule {
             Self::BodyEncoding => "body-encoding",
             Self::BodyTooLarge | Self::BodyUnreadable => "body-too-large",
             Self::BodyNotUtf8 => "body-not-utf8",
+            Self::MultipartField => "multipart-field-signature",
         }
     }
 
@@ -96,7 +102,12 @@ impl Rule {
                 StatusCode::FORBIDDEN,
                 "Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF.",
             ),
-            Self::PathTraversal | Self::Query | Self::Referer | Self::Cookie | Self::Body => (
+            Self::PathTraversal
+            | Self::Query
+            | Self::Referer
+            | Self::Cookie
+            | Self::Body
+            | Self::MultipartField => (
                 StatusCode::FORBIDDEN,
                 "Access Denied: Malicious pattern detected by Rullst Shield WAF.",
             ),
@@ -241,14 +252,70 @@ fn path_contains_traversal(path: &str) -> bool {
         .any(|pattern| decoded.contains(pattern))
 }
 
+/// Whether `waf_body_exempt_paths` lists this request's exact path.
+fn body_path_is_exempt(req: &Request) -> bool {
+    security_config(req)
+        .waf_body_exempt_paths
+        .iter()
+        .any(|path| path == req.uri().path())
+}
+
 /// Whether the WAF reads this request's body: a declared textual media type
 /// on a path that `waf_body_exempt_paths` does not list.
 fn body_is_inspected(req: &Request) -> bool {
-    should_inspect_body(req.headers())
-        && !security_config(req)
-            .waf_body_exempt_paths
-            .iter()
-            .any(|path| path == req.uri().path())
+    should_inspect_body(req.headers()) && !body_path_is_exempt(req)
+}
+
+/// How [`crate::uploads::Multipart`] treats an injection signature in a
+/// `multipart/form-data` text field.
+///
+/// The WAF does not read multipart bodies. Instead it inserts this request
+/// extension for a multipart body on a path that `waf_body_exempt_paths` does
+/// not list, so the extractor inspects each text field (its name and value,
+/// like a URL-encoded form body) exactly where and how the WAF runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MultipartFieldInspection {
+    /// Staging and production: a signature refuses the request.
+    Enforce,
+    /// Development: a signature is logged, as the report-only WAF does.
+    Report,
+}
+
+impl MultipartFieldInspection {
+    /// Whether a text field named `name` holding `value` must be refused.
+    /// In report mode a signature is logged with `path`, and never refused.
+    pub(crate) fn refuses(self, path: &str, name: &str, value: &str) -> bool {
+        if !contains_malicious_pattern(name) && !contains_malicious_pattern(value) {
+            return false;
+        }
+        match self {
+            Self::Enforce => true,
+            Self::Report => {
+                report::would_refuse(Rule::MultipartField, path);
+                false
+            }
+        }
+    }
+}
+
+/// The response for a multipart text field that [`MultipartFieldInspection`]
+/// refuses: the same `403` as a refused form body.
+pub(crate) fn multipart_field_refusal() -> Response {
+    Rule::MultipartField.refusal()
+}
+
+/// Marks a `multipart/form-data` request on an inspected path, so the upload
+/// extractor inspects its text fields with `mode`.
+fn mark_multipart_fields(req: &mut Request, mode: MultipartFieldInspection) {
+    let multipart = req
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(super::media_type::essence)
+        .is_some_and(|media_type| media_type.eq_ignore_ascii_case("multipart/form-data"));
+    if multipart && !body_path_is_exempt(req) {
+        req.extensions_mut().insert(mode);
+    }
 }
 
 /// The rule an inspected body breaks before it is read: an encoding or a
@@ -354,7 +421,13 @@ async fn inspect_and_restore_body(req: Request) -> Result<Request, Rule> {
 /// about those requests is. `Server` mounts it in staging and production; in
 /// development it mounts a report-only variant that logs, at `warn` level,
 /// the rule and path of each request this middleware would refuse.
-pub async fn waf_middleware(req: Request, next: Next) -> Response {
+///
+/// A `multipart/form-data` body is not read here: on a path that
+/// `waf_body_exempt_paths` does not list, [`crate::uploads::Multipart`]
+/// applies the same signatures to each text field it reads and refuses the
+/// request with the same `403`.
+pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
+    mark_multipart_fields(&mut req, MultipartFieldInspection::Enforce);
     if let Some(rule) = screen_head(&req) {
         return rule.refusal();
     }

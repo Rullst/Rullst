@@ -190,7 +190,8 @@ pub(crate) const CAPABILITIES: [Capability; 5] = [
                 "",
                 &[
                     "Debug builds allow loopback access without credentials; release",
-                    "builds require both (password of at least 16 characters).",
+                    "builds require both (password of at least 16 characters), unless",
+                    "Nexus uses the application's sign-in (NexusAuthPolicy::application).",
                 ],
             ),
             entry("NEXUS_ADMIN_PASSWORD", "", &[]),

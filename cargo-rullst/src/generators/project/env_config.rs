@@ -195,7 +195,17 @@ MAIL_FROM=
     env_content.push_str(mail_template);
     env_example_content.push_str(mail_template);
 
-    if blueprint_selection != BLANK_BLUEPRINT_ID {
+    if blueprint_selection == SAAS_BLUEPRINT_ID || blueprint_selection == LMS_BLUEPRINT_ID {
+        // These starters admit their own administrators to Nexus.
+        let nexus_template = r#"
+# ── Nexus Admin ──
+# Release builds open /nexus to signed-in users whose `is_admin` is true; no
+# NEXUS_ADMIN_* credentials are used. Grant the first administrator with
+# UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';
+"#;
+        env_content.push_str(nexus_template);
+        env_example_content.push_str(nexus_template);
+    } else if blueprint_selection != BLANK_BLUEPRINT_ID {
         let mut rng = rand::rng();
         let nexus_username = format!("nexus_{}", Alphanumeric.sample_string(&mut rng, 12));
         let nexus_password = Alphanumeric.sample_string(&mut rng, 32);

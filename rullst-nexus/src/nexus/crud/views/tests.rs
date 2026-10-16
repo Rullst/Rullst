@@ -16,6 +16,7 @@ async fn table_view_escapes_metadata_and_only_offers_supported_batch_actions() {
         label: "<img src=x onerror=alert(1)>",
         icon: "📰",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("title", "<script>alert(1)</script>", FieldKind::Text),
@@ -54,6 +55,7 @@ async fn password_columns_have_no_sort_link() {
         label: "Accounts",
         icon: "A",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("name", "Name", FieldKind::Text),
@@ -73,6 +75,7 @@ async fn live_search_keeps_the_sort_and_rebuilds_pagination_outside_the_bulk_for
         label: "Articles",
         icon: "A",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -150,6 +153,7 @@ async fn models_without_a_searchable_column_offer_no_search() {
         label: "Orders",
         icon: "O",
         pk: "id",
+        pk_columns: Vec::new(),
         tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),

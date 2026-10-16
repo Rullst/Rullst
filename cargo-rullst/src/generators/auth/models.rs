@@ -9,6 +9,7 @@ use std::path::Path;
 
 /// The `User` model written by `cargo rullst auth`.
 const USER_MODEL_SOURCE: &str = r##"use rullst::db::{Orm, FromRow};
+use rullst::orm::chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Default, FromRow, Orm)]
 #[orm(table = "users")]
@@ -19,8 +20,16 @@ pub struct User {
     pub password_hash: Option<String>,
     pub oauth_provider: Option<String>,
     pub oauth_id: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
+    // `timestamps()` columns: TIMESTAMPTZ on PostgreSQL, DATETIME(6) on
+    // MySQL/MariaDB and RFC 3339 text on SQLite.
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    // Lets this account into Nexus (`/nexus`) under the application's
+    // sign-in. ORM writes skip this column, so neither a form nor a full-row
+    // save grants it: set it to true with your database client for the first
+    // administrator, who can then grant others in Nexus.
+    #[orm(skip)]
+    pub is_admin: bool,
     // Login cookies carry the epoch they were issued with. ORM writes skip
     // this column, so a full-row save never undoes `revoke_sessions`.
     #[orm(skip)]
@@ -82,7 +91,7 @@ pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
         id: i32,
         epoch: u64,
         password_hash: &str,
-        updated_at: &str,
+        updated_at: rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc>,
     ) -> Result<Option<u64>, rullst::orm::Error> {
         let (Ok(current), Some(next)) = (i64::try_from(epoch), epoch.checked_add(1)) else {
             return Ok(None);
@@ -169,6 +178,8 @@ impl Migration for MigrationImpl {{
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();
             table.timestamps();
+            // Grants Nexus under the application's sign-in; see the User model.
+            table.boolean("is_admin").not_null().default(ColumnDefault::Integer(0));
             // Bumped to revoke every login cookie of the account.
             table.big_integer("session_epoch").not_null().default(ColumnDefault::Integer(0));
         }}).await?;

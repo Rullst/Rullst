@@ -14,8 +14,10 @@ mod missing_rows;
 mod nested_transaction;
 mod offset_paging;
 mod qualified_scopes;
+mod schema_constraints;
 mod search_relevance;
 mod soft_delete_lifecycle;
+mod temporal;
 mod timestamps;
 mod wide_values;
 
@@ -34,5 +36,7 @@ pub async fn exercise() {
     qualified_scopes::exercise().await;
     atomic_counters::exercise().await;
     constraint_violations::exercise().await;
+    schema_constraints::exercise().await;
+    temporal::exercise().await;
     wide_values::exercise().await;
 }

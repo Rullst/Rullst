@@ -171,6 +171,9 @@ fn auto_migration_columns_follow_the_rust_field_types() {
             field("score", "f64", false),
             field("published", "bool", false),
             field("published_at", "NaiveDateTime", true),
+            field("seen_at", "DateTime", true),
+            field("born_on", "NaiveDate", false),
+            field("opens", "NaiveTime", true),
         ],
     );
     let source = render_auto_migration(
@@ -186,7 +189,10 @@ fn auto_migration_columns_follow_the_rust_field_types() {
         "table.integer(\"rank\");",
         "table.float(\"score\").not_null();",
         "table.boolean(\"published\").not_null();",
-        "table.string(\"published_at\");",
+        "table.timestamp(\"published_at\");",
+        "table.timestamp_tz(\"seen_at\");",
+        "table.date(\"born_on\").not_null();",
+        "table.time(\"opens\");",
     ] {
         assert!(source.contains(line), "{line}\n{source}");
     }
@@ -197,7 +203,7 @@ fn auto_migration_columns_follow_the_rust_field_types() {
     let mut db_schema = std::collections::HashMap::new();
     db_schema.insert(
         "posts".to_string(),
-        vec!["id".to_string(), "title".to_string()],
+        vec!["id".to_string(), "title".to_string(), "born_on".to_string()],
     );
     let source = render_auto_migration("m0_auto_sync", &[posts], &db_schema)
         .unwrap()
@@ -207,12 +213,15 @@ fn auto_migration_columns_follow_the_rust_field_types() {
         "ALTER TABLE posts ADD COLUMN rank INTEGER\")",
         "ALTER TABLE posts ADD COLUMN score REAL NOT NULL DEFAULT 0.0",
         "ALTER TABLE posts ADD COLUMN published INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE posts ADD COLUMN published_at TEXT\")",
+        "Schema::table(\"posts\", |table| {\n            table.timestamp(\"published_at\");\n        }).await?;",
+        "Schema::table(\"posts\", |table| {\n            table.timestamp_tz(\"seen_at\");\n        }).await?;",
+        "Schema::table(\"posts\", |table| {\n            table.time(\"opens\");\n        }).await?;",
     ] {
         assert!(source.contains(statement), "{statement}\n{source}");
     }
     assert!(source.contains("// Existing rows receive DEFAULT 0; review before applying."));
     assert!(!source.contains("ADD COLUMN views TEXT"));
+    assert!(!source.contains("ADD COLUMN published_at"));
     syn::parse_file(&source).expect("typed ALTER migration should parse");
 
     // Unmappable types and required columns without a neutral value fail

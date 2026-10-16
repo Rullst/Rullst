@@ -11,6 +11,7 @@ macro_rules! tutorial {
     };
 }
 
+tutorial!(form_uploads, "../../docs/src/form-uploads.md");
 tutorial!(
     private_object_storage,
     "../../docs/src/private-object-storage.md"

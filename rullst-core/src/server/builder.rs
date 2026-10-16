@@ -3,6 +3,7 @@ use crate::lifecycle::ApplicationLifecycle;
 use crate::scheduler::Scheduler;
 
 mod environment;
+mod listen;
 mod shutdown;
 mod startup;
 
@@ -22,6 +23,11 @@ pub enum ServerError {
     /// A configured database could not be initialized.
     #[error("database initialization failed: {0}")]
     Database(String),
+
+    /// Startup migrations ([`Server::auto_migrate`]) could not run or one of
+    /// them failed; the server does not start.
+    #[error("startup migrations failed: {0}")]
+    Migration(String),
 
     /// A configured background scheduler could not be started or stopped.
     #[error("scheduler lifecycle failed: {0}")]
@@ -91,6 +97,9 @@ pub struct Server {
     pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
     pub(crate) trusted_proxy: Option<crate::security::TrustedProxyConfig>,
     pub(crate) dev_queue: Option<std::sync::Arc<crate::queue::Queue>>,
+    pub(crate) auto_migrate: Option<bool>,
+    #[cfg(feature = "orm")]
+    pub(crate) migrations: Option<Vec<Box<dyn rullst_orm::schema::Migration>>>,
 }
 
 impl Server {
@@ -108,6 +117,9 @@ impl Server {
             machine_endpoints: None,
             trusted_proxy: None,
             dev_queue: None,
+            auto_migrate: None,
+            #[cfg(feature = "orm")]
+            migrations: None,
         }
     }
 
@@ -126,6 +138,9 @@ impl Server {
             machine_endpoints: None,
             trusted_proxy: None,
             dev_queue: None,
+            auto_migrate: None,
+            #[cfg(feature = "orm")]
+            migrations: None,
         }
     }
 
@@ -145,6 +160,50 @@ impl Server {
     /// fails closed with [`ServerError::Database`].
     pub fn with_db<S: Into<String>>(mut self, db_url: S) -> Self {
         self.db_url = Some(db_url.into());
+        self
+    }
+
+    /// Registers the application's migrations, which the server applies at
+    /// startup when [`Self::auto_migrate`] or `RULLST_AUTO_MIGRATE` enables
+    /// it. Registering them alone changes nothing.
+    ///
+    /// ```rust,no_run
+    /// # use rullst_core::{Server, routes, routing::get};
+    /// # fn migrations() -> Vec<Box<dyn rullst_orm::schema::Migration>> { Vec::new() }
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// Server::new(routes![get("/" => || async { "OK" })])
+    ///     .with_migrations(migrations())
+    ///     .auto_migrate(true)
+    ///     .run(3000)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "orm")]
+    pub fn with_migrations(
+        mut self,
+        migrations: Vec<Box<dyn rullst_orm::schema::Migration>>,
+    ) -> Self {
+        self.migrations = Some(migrations);
+        self
+    }
+
+    /// Applies pending migrations at startup, after the database pool opens
+    /// and before the server binds its port. Off by default.
+    ///
+    /// `RULLST_AUTO_MIGRATE` (`true`/`false`, also `1`/`0`, `yes`/`no`,
+    /// `on`/`off`), read from the process environment and then `.env`,
+    /// overrides this setting, so an operator can turn it on or off per
+    /// deployment. When enabled, the migrations registered with
+    /// `with_migrations` (feature `orm`) run under the runner's lock:
+    /// PostgreSQL `pg_advisory_lock`, MySQL/MariaDB `GET_LOCK`, and for an
+    /// SQLite file an exclusive lock on `<database>.rullst-migrate.lock`, so
+    /// replicas starting together apply each migration once. A failed
+    /// migration, a missing registry or database, or a lock that cannot be
+    /// taken stops startup with [`ServerError::Migration`]. Without the `orm`
+    /// feature, enabling it fails with [`ServerError::Database`].
+    pub fn auto_migrate(mut self, enabled: bool) -> Self {
+        self.auto_migrate = Some(enabled);
         self
     }
 
@@ -269,6 +328,12 @@ impl Server {
     /// [`ServerError::InvalidAddress`] instead of being resolved, so a shell
     /// that exports `HOST` as the machine name (tcsh does) cannot silently
     /// bind a LAN interface; set `HOST` explicitly in that case.
+    ///
+    /// Once bound it prints the listen address. When that covers every
+    /// interface (`0.0.0.0` or `::`) and a trusted reverse proxy is configured
+    /// ([`Self::trusted_proxies`] or `[security] trusted_proxies`), the line
+    /// suggests `HOST=127.0.0.1`, so clients cannot bypass a proxy on the
+    /// same host.
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self, port: u16) -> Result<(), ServerError> {
         self.run_with_shutdown(port, shutdown_signal()).await

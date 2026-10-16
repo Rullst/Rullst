@@ -10,6 +10,7 @@ const MAX_LABEL_BYTES: usize = 256;
 const MAX_ICON_BYTES: usize = 64;
 const MAX_ENUM_OPTIONS: usize = 128;
 const MAX_ENUM_OPTION_BYTES: usize = 128;
+const MAX_KEY_COLUMNS: usize = 8;
 
 pub(super) fn validate_registry(registry: &[RegistryEntry]) -> Result<(), NexusBuildError> {
     if registry.len() > MAX_REGISTERED_MODELS {
@@ -26,6 +27,7 @@ pub(super) fn validate_registry(registry: &[RegistryEntry]) -> Result<(), NexusB
             entry.pk,
             "a primary-key name is not a bounded ASCII identifier",
         )?;
+        validate_key_columns(entry)?;
         if let Some(tenant_column) = entry.tenant_column {
             validate_identifier(
                 tenant_column,
@@ -55,7 +57,6 @@ fn validate_fields(entry: &RegistryEntry) -> Result<(), NexusBuildError> {
         return invalid("a registered model must expose between 1 and 128 fields");
     }
     let mut names = BTreeSet::new();
-    let mut has_primary_key = false;
     for field in &entry.fields {
         validate_identifier(field.name, "a field name is not a bounded ASCII identifier")?;
         validate_display_text(
@@ -66,10 +67,13 @@ fn validate_fields(entry: &RegistryEntry) -> Result<(), NexusBuildError> {
         if !names.insert(field.name) {
             return invalid("a registered model contains duplicate field names");
         }
-        has_primary_key |= field.name == entry.pk;
         validate_field_kind(&field.kind)?;
     }
-    if !has_primary_key {
+    if !entry
+        .key_columns()
+        .iter()
+        .all(|column| names.contains(column))
+    {
         return invalid("the registered primary key is not present in the field metadata");
     }
     if let Some(tenant_column) = entry.tenant_column {
@@ -81,12 +85,35 @@ fn validate_fields(entry: &RegistryEntry) -> Result<(), NexusBuildError> {
                 reason: "the registered tenant column is absent from field metadata",
             })?;
         if !tenant_field.readonly
-            || tenant_column == entry.pk
+            || entry.is_key_column(tenant_column)
             || !matches!(tenant_field.kind, FieldKind::Text)
         {
             return invalid(
                 "a tenant column must be a readonly text non-primary-key field controlled by Nexus",
             );
+        }
+    }
+    Ok(())
+}
+
+/// A composite key lists distinct identifiers, at most eight, starting with
+/// `pk`, so `pk` and the key columns can never disagree.
+fn validate_key_columns(entry: &RegistryEntry) -> Result<(), NexusBuildError> {
+    let columns = &entry.pk_columns;
+    if columns.len() > MAX_KEY_COLUMNS {
+        return invalid("a primary key has more than 8 columns");
+    }
+    if columns.first().is_some_and(|first| *first != entry.pk) {
+        return invalid("the first primary-key column differs from the registered primary key");
+    }
+    let mut unique = BTreeSet::new();
+    for column in columns {
+        validate_identifier(
+            column,
+            "a primary-key column is not a bounded ASCII identifier",
+        )?;
+        if !unique.insert(*column) {
+            return invalid("a primary-key column is listed more than once");
         }
     }
     Ok(())
@@ -168,6 +195,7 @@ mod tests {
             label: "Articles",
             icon: "A",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
@@ -223,5 +251,95 @@ mod tests {
             .readonly()
             .hidden();
         assert!(validate_registry(&[valid_tenant]).is_ok());
+    }
+
+    /// `progress (user_id, lesson_id)` with a tenant column and eight
+    /// further integer columns `k0`..`k7`.
+    fn composite_entry() -> RegistryEntry {
+        let mut fields = vec![
+            FieldMeta::new("user_id", "User", FieldKind::Number),
+            FieldMeta::new("lesson_id", "Lesson", FieldKind::Number),
+            FieldMeta::new("tenant_id", "Tenant", FieldKind::Text)
+                .readonly()
+                .hidden(),
+        ];
+        for name in ["k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7"] {
+            fields.push(FieldMeta::new(name, "Key", FieldKind::Number));
+        }
+        RegistryEntry {
+            table: "progress",
+            label: "Progress",
+            icon: "P",
+            pk: "user_id",
+            pk_columns: vec!["user_id", "lesson_id"],
+            tenant_column: Some("tenant_id"),
+            fields,
+        }
+    }
+
+    fn reason(entry: RegistryEntry) -> Option<&'static str> {
+        match validate_registry(&[entry]) {
+            Ok(()) => None,
+            Err(NexusBuildError::InvalidModelMetadata { reason }) => Some(reason),
+            Err(other) => panic!("unexpected error {other:?}"),
+        }
+    }
+
+    #[test]
+    fn composite_keys_are_bounded_distinct_registered_columns() {
+        assert_eq!(reason(composite_entry()), None);
+
+        let mut eight = composite_entry();
+        eight.pk = "k0";
+        eight.pk_columns = vec!["k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7"];
+        assert_eq!(reason(eight), None);
+        let mut nine = composite_entry();
+        nine.pk_columns = vec!["user_id", "k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7"];
+        assert_eq!(reason(nine), Some("a primary key has more than 8 columns"));
+
+        let mut reordered = composite_entry();
+        reordered.pk_columns = vec!["lesson_id", "user_id"];
+        assert_eq!(
+            reason(reordered),
+            Some("the first primary-key column differs from the registered primary key")
+        );
+
+        let mut repeated = composite_entry();
+        repeated.pk_columns = vec!["user_id", "user_id"];
+        assert_eq!(
+            reason(repeated),
+            Some("a primary-key column is listed more than once")
+        );
+
+        let mut unsafe_name = composite_entry();
+        unsafe_name.pk_columns = vec!["user_id", "lesson_id;DROP"];
+        assert_eq!(
+            reason(unsafe_name),
+            Some("a primary-key column is not a bounded ASCII identifier")
+        );
+
+        let mut unregistered = composite_entry();
+        unregistered.pk_columns = vec!["user_id", "course_id"];
+        assert_eq!(
+            reason(unregistered),
+            Some("the registered primary key is not present in the field metadata")
+        );
+
+        let mut tenant_key = composite_entry();
+        tenant_key.pk_columns = vec!["user_id", "tenant_id"];
+        assert_eq!(
+            reason(tenant_key),
+            Some(
+                "a tenant column must be a readonly text non-primary-key field controlled by Nexus"
+            )
+        );
+
+        // A single key named only by `pk` still has to be registered.
+        let mut missing = valid_entry();
+        missing.pk = "uuid";
+        assert_eq!(
+            reason(missing),
+            Some("the registered primary key is not present in the field metadata")
+        );
     }
 }

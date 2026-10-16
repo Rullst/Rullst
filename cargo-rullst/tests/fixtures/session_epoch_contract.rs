@@ -20,7 +20,7 @@ async fn generated_session_epoch_contract() {
     rullst::orm::Orm::init("sqlite::memory:").await.unwrap();
     for migration in crate::migrations::get_migrations() { migration.up().await.unwrap(); }
     rullst::db::sqlx::query("INSERT INTO users (id,name,email,created_at,updated_at) VALUES (?,?,?,?,?)")
-        .bind(1).bind("Member").bind("member@example.test").bind("2026-10-14").bind("2026-10-14")
+        .bind(1).bind("Member").bind("member@example.test").bind("2026-10-14T00:00:00+00:00").bind("2026-10-14T00:00:00+00:00")
         .execute(rullst::orm::Orm::pool().unwrap()).await.unwrap();
     assert_eq!(stored_epoch().await, 0);
     let key = rullst::auth::get_app_key().unwrap();

@@ -229,7 +229,8 @@ fn turso_primary_uses_hrana_features_without_a_direct_sqlx_driver() {
 
     assert!(manifest.contains("\"orm-turso\""));
     assert!(manifest.contains("features = [\"turso\"]"));
-    assert!(manifest.contains("dotenvy = \"0.15\""));
+    // The starter reads its Turso settings with `rullst::config::project_setting`.
+    assert!(!manifest.contains("dotenvy"));
     assert!(!manifest.lines().any(|line| line.starts_with("sqlx = ")));
 }
 

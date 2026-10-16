@@ -37,13 +37,24 @@ or more than millisecond precision (and any value a number, date, e-mail or URL
 input would alter) is shown in a text input, a single-line value with line
 breaks or other control characters is shown read-only in a text area (declare
 `kind = "textarea"` to edit multi-line text), and an undecodable value renders
-empty with a note. An emptied number, relation, date, date-time, enum or JSON
+empty with a note. An emptied number, relation, date, time, date-time, enum or JSON
 field is stored as NULL, never `''` (a new record omits it so the column default
-applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
-a `Z` or `±HH:MM` offset and use a `T` or space separator. A local date-time is
-stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text that `CURRENT_TIMESTAMP` and
-SQLx write, so text comparisons and ordering agree with application rows; a
-value with an offset is stored as entered. API clients should send only the fields they intend to
+applies); text, textarea, e-mail and URL fields store `''`.
+
+Date and time fields are parsed by kind and bound as typed values, so native
+`DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` columns accept them as well as
+text columns: `Date` (`YYYY-MM-DD`, year 0001 to 9999, from `NaiveDate`),
+`Time` (`HH:MM[:SS[.fraction]]`, a `time` input, from `NaiveTime`), `DateTime`
+(a local `datetime-local` value with a `T` or space separator, from
+`NaiveDateTime`) and `DateTimeUtc` (from `DateTime<Utc>`). A `datetime-local`
+input has no zone, so a `DateTimeUtc` field is labelled `(UTC)`, shows the
+stored instant converted to UTC and reads a submitted value without an offset
+as UTC; one with `Z`, `±HH:MM` or `±HH` is converted. In a text column a local
+date-time is stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text that
+`CURRENT_TIMESTAMP` and SQLx write, so text comparisons and ordering agree with
+application rows, and a `DateTimeUtc` value as RFC 3339
+(`2026-10-15T09:30:00+00:00`); a `DateTime` value with an offset can only come
+from a text column and is stored as entered. API clients should send only the fields they intend to
 change. A rejected value answers `422` with a plain-text reason, which the
 panel shows as a toast. A `FieldKind::Number` field accepts any finite number,
 while `FieldKind::Integer { min, max }` accepts only a whole number in that
@@ -58,14 +69,16 @@ Opening the edit form of a missing, other-tenant or misspelled key returns
 `404` (and a failed query `500`) instead of an empty editable form. The form
 reads only the registered visible, non-password columns.
 
-Form values are bound as text. PostgreSQL has no assignment cast from text,
+Other form values are bound as text. PostgreSQL has no assignment cast from text,
 so there Nexus writes `number` and `integer` values through `NUMERIC`, relation values that
-are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
-`'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
-and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
-are written as text, so keep dates, date-times, JSON and enum values in text
-columns, as Rullst's schema builder does; native `DATE`, `TIMESTAMP`, `JSONB`,
-`UUID` or enum columns are not supported by Nexus.
+are canonical integers (or empty) through `BIGINT`, Booleans as untyped
+`'0'`/`'1'` literals and dates and times (including NULL) through `DATE`,
+`TIME`, `TIMESTAMP` or `TIMESTAMPTZ` casts: integer, numeric, floating-point,
+`BOOLEAN`, date/time and text columns, and the `INTEGER` columns of
+`Blueprint::boolean`, all accept them. MySQL/MariaDB receive a `DateTimeUtc`
+value as its UTC wall time, which their `DATETIME` columns hold. Other kinds
+are written as text, so keep JSON and enum values in text columns; native
+`JSONB`, `UUID` or enum columns are not supported by Nexus.
 
 The panel addresses records under `/nexus/table/{table}/record/{key}` (with
 `/edit` for the form), so a key named `new`, `search` or `batch` never collides
@@ -75,6 +88,16 @@ other keys.
 Record keys follow the registered primary-key kind: a `number`, `integer` (or
 relation) key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
 other kind is compared as text, even when it looks numeric.
+
+A composite primary key, such as `lesson_progress (user_id, lesson_id)`, is
+declared with `#[nexus(primary_key = "user_id, lesson_id")]`, with
+`#[nexus(primary_key)]` on each key field, or by returning the columns from
+`NexusModel::nexus_pk_columns()` (at most 8 registered columns, none the tenant
+column). Every key column is entered on create, read-only on edit and bound in
+every list, edit, update, delete and batch predicate. A record is addressed by
+its values in key order, each percent-encoded and joined by `,` (`7,intro`; a
+text value `a,b` becomes `a%2Cb`); only that canonical spelling with one value
+per column names a record, and the audit records it as the key.
 
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
 visible text, textarea, e-mail and URL columns. It is case-insensitive on
@@ -205,9 +228,51 @@ the `Extension<T>` extractor.
 without the credentials it returns `NexusBuildError::MissingCredential`, so an
 application that propagates the error does not start. To serve the
 application without Nexus until the credentials are configured, match that
-variant and skip `nest_axum`; the
+variant and skip `nest_axum`, as the generated Blog, Portfolio and ERP starters
+do; the
 [Nexus guide](https://github.com/Rullst/Rullst/blob/main/docs/src/4-rullst-nexus.md#serving-the-application-without-nexus)
 shows the pattern.
+
+### The application's own sign-in
+
+`NexusAuthPolicy::application(authorizer)` lets an application with its own
+login decide, so a signed-in administrator does not sign in twice. The
+authorizer implements `NexusAuthorizer` and is asked on every request, with the
+request's method, URI, headers and extensions, before any data is read:
+
+```rust,ignore
+use axum::http::request::Parts;
+use rullst_nexus::{NexusAccess, NexusAuthPolicy, NexusAuthorizer, NexusAuthorizerError};
+
+struct Admins;
+
+impl NexusAuthorizer for Admins {
+    async fn authorize(&self, request: &Parts) -> Result<NexusAccess, NexusAuthorizerError> {
+        let Some(user) = current_user(&request.headers).await? else {
+            return Ok(NexusAccess::SignIn); // 303 to /login, or 401 + HX-Redirect
+        };
+        Ok(if user.is_admin {
+            NexusAccess::allow(format!("user:{}", user.id)) // the audit actor
+        } else {
+            NexusAccess::Deny // 403
+        })
+    }
+}
+
+let policy = NexusAuthPolicy::application(Admins);
+```
+
+An authorizer error answers `503` and is logged; an actor ID that the audit
+cannot store unchanged (empty, over 255 bytes, padded or with control
+characters) also answers `503`. Signed-out page requests (`GET`/`HEAD` without
+`HX-Request`) are redirected to `/login` with `303`; fragments and other
+methods get `401` with an `HX-Redirect` header. Choose another page with
+`NexusAuthPolicy::Application(NexusApplicationAuth::new(Admins).with_login_path("/sign-in"))`;
+a path that is not a single-slash local path of at most 512 visible ASCII
+characters fails `try_build()` with `NexusBuildError::InvalidLoginPath`. The
+policy needs no TLS evidence; CSRF, the administrator role layer, tenant scope
+and the audit are unchanged. `local_development_or_application(authorizer)`
+uses loopback access in debug builds instead.
 
 Set unique values for `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` in the process environment
 or the project's `.env`; the password must contain at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, which the Basic Auth
@@ -243,11 +308,14 @@ accepts the request only with a single `Sec-Fetch-Site: same-origin`, a header
 page scripts cannot set, so documents of other origins or local ports stay
 rejected.
 
-Generated applications use
+The generated Blog, Portfolio and ERP starters use
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select
 that loopback-only policy, while release builds require the validated
-environment credentials above. Applications can always select either policy
-explicitly when testing a production topology.
+environment credentials above. The SaaS and LMS starters use
+`local_development_or_application` with a generated authorizer that admits the
+user of the epoch-checked login cookie whose `users.is_admin` is true.
+Applications can always select a policy explicitly when testing a production
+topology.
 
 ## Password fields
 

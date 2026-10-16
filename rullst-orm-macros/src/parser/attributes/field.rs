@@ -10,6 +10,9 @@ pub(in crate::parser) struct FieldAttributes {
     pub is_skipped: bool,
     pub is_masked: bool,
     pub is_encrypted: bool,
+    /// `#[orm(db_default)]`: generated INSERT and full-row UPDATE statements
+    /// leave the column to the database.
+    pub is_db_default: bool,
     /// `#[sqlx(json)]` (`Some(false)`) or `#[sqlx(json(nullable))]`
     /// (`Some(true)`): generated writes bind the value as SQLx JSON.
     pub sqlx_json: Option<bool>,
@@ -88,6 +91,10 @@ impl FieldAttributes {
             "encrypted" => {
                 mark_once(seen, "encrypted", &meta)?;
                 self.is_encrypted = true;
+            }
+            "db_default" => {
+                mark_once(seen, "db_default", &meta)?;
+                self.is_db_default = true;
             }
             "cascade_soft_delete" => {
                 mark_once(seen, "cascade_soft_delete", &meta)?;
@@ -259,6 +266,12 @@ impl FieldAttributes {
                 "morph_name is supported only on polymorphic relations",
             ));
         }
+        if self.is_db_default && (self.is_relation() || self.is_skipped || self.is_encrypted) {
+            return Err(syn::Error::new(
+                span,
+                "db_default requires a persisted, unencrypted non-relation field",
+            ));
+        }
         if self.embedding_for.is_some() && (self.is_relation() || self.is_skipped) {
             return Err(syn::Error::new(
                 span,
@@ -276,6 +289,7 @@ impl Default for FieldAttributes {
             is_skipped: false,
             is_masked: false,
             is_encrypted: false,
+            is_db_default: false,
             sqlx_json: None,
             rag_context: false,
             embedding_for: None,
@@ -390,6 +404,47 @@ mod tests {
                 Err(error) => error,
             };
             assert!(error.to_string().contains("duplicate"), "{error}");
+        }
+    }
+
+    #[test]
+    fn db_default_needs_a_plain_persisted_column() {
+        use syn::parse_quote;
+
+        let accepted: syn::DeriveInput = parse_quote! {
+            #[orm(tenant_column = "school")]
+            struct Note {
+                id: i32,
+                school: String,
+                #[orm(db_default)]
+                created_at: Option<DateTime<Utc>>,
+            }
+        };
+        let parsed = crate::parser::parse(&accepted).expect("db_default on a plain column");
+        assert_eq!(parsed.db_default_fields.len(), 1);
+        assert_eq!(parsed.db_default_fields[0], "created_at");
+        assert!(
+            parsed
+                .normal_fields
+                .iter()
+                .any(|field| field == "created_at")
+        );
+
+        let rejected: [syn::DeriveInput; 6] = [
+            parse_quote! { struct Note { #[orm(db_default)] id: i32 } },
+            parse_quote! {
+                #[orm(tenant_column = "school")]
+                struct Note { id: i32, #[orm(db_default)] school: String }
+            },
+            parse_quote! { struct Note { id: i32, #[orm(db_default, skip)] cache: String } },
+            parse_quote! { struct Note { id: i32, #[orm(db_default, encrypted)] body: String } },
+            parse_quote! {
+                struct Note { id: i32, #[orm(db_default, belongs_to = "User")] user: Option<User> }
+            },
+            parse_quote! { struct Note { id: i32, #[orm(db_default, db_default)] at: String } },
+        ];
+        for input in rejected {
+            assert!(crate::parser::parse(&input).is_err(), "{}", input.ident);
         }
     }
 }

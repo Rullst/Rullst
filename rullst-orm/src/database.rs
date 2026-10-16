@@ -18,6 +18,14 @@ pub type RullstDatabase = sqlx::MySql;
 ))]
 pub type RullstDatabase = sqlx::Sqlite;
 
+/// Whether the ORM runs on the SQLx `Any` pool (no strict driver feature),
+/// which carries only integer, float, text and blob values.
+pub(crate) const ANY_POOL: bool = cfg!(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)));
+
 pub trait QueryResultExt {
     fn get_last_insert_id(&self) -> i64;
 }

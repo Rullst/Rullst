@@ -224,7 +224,9 @@ An inventory-oriented back-office starter. It features:
 The dashboard lists customer names and revenue, so every ERP route shares the
 Nexus administrator policy described below: loopback-only in a debug build and
 Basic Auth with the `NEXUS_ADMIN_*` credentials behind verified TLS in a release
-build. Per-employee accounts and roles remain application work.
+build. A release build without those credentials starts but serves only
+`/health` and `/ready`, and prints which variable is missing. Per-employee
+accounts and roles remain application work.
 
 An order reserves its stock with one conditional `UPDATE` and records the order
 in the same transaction, so concurrent sales cannot oversell and a failed
@@ -253,13 +255,23 @@ both control surfaces during local development:
 
 This convenience cannot be enabled in a release binary through `RULLST_ENV` or
 the legacy `APP_ENV` alias. A
-release build does not start the generated Studio task and requires unique
-`NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` values before Nexus can be
-constructed. Without them the generated `router()` returns an error and the
-whole application refuses to start; to serve it without Nexus until they are
-set, see [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
-Put production Nexus behind a verified TLS boundary and explicit
-application authorization; do not expose Studio publicly. Studio has no
+release build does not start the generated Studio task, and Nexus needs a
+real sign-in:
+
+- **SaaS and LMS** admit the user signed in to the application whose
+  `users.is_admin` column is true, checked on every request; no extra
+  credentials. Grant the first administrator with your database client
+  (`UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`); that
+  administrator can grant others from the Users model in Nexus. See
+  [using the application's sign-in](4-rullst-nexus.md#using-the-applications-sign-in).
+- **Blog, Portfolio and ERP** require unique `NEXUS_ADMIN_USERNAME` and
+  `NEXUS_ADMIN_PASSWORD` values (Basic Auth behind verified TLS). Without them
+  the application starts without `/nexus` (the ERP without its back office)
+  and prints one line naming the missing variable; see
+  [serving the application without Nexus](4-rullst-nexus.md#serving-the-application-without-nexus).
+
+Put production Nexus behind a verified TLS boundary; do not expose Studio
+publicly. Studio has no
 production mode: it runs only in debug builds and on loopback.
 
 ## 5. Database configuration and specialized stores

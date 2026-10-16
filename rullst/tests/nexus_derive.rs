@@ -155,3 +155,55 @@ fn derive_nexus_bounds_integer_fields_by_their_rust_type() {
     );
     assert_eq!(fields[4].kind, FieldKind::Number);
 }
+
+/// A composite key: both columns name the record and both are entered.
+#[derive(Nexus)]
+#[allow(dead_code)]
+#[nexus(table = "lesson_progress", primary_key = "user_id, lesson_id")]
+struct LessonProgress {
+    user_id: i32,
+    lesson_id: i32,
+    percent: i32,
+}
+
+#[test]
+fn derive_nexus_declares_composite_primary_keys() {
+    assert_eq!(LessonProgress::nexus_pk(), "user_id");
+    assert_eq!(LessonProgress::nexus_pk_columns(), ["user_id", "lesson_id"]);
+    assert_eq!(DerivedArticle::nexus_pk_columns(), ["uuid"]);
+    for field in LessonProgress::nexus_fields()
+        .into_iter()
+        .filter(|field| field.name != "percent")
+    {
+        assert!(!field.hidden && !field.readonly, "{}", field.name);
+    }
+    let _router = rullst::nexus::Nexus::new()
+        .register::<LessonProgress>()
+        .with_auth("composite-admin", "composite-key-test-credential")
+        .try_build()
+        .expect("a derived composite key passes registry validation");
+}
+
+/// Chrono fields get the matching date/time widget.
+#[derive(Nexus)]
+#[allow(dead_code)]
+#[nexus(table = "appointments")]
+struct Appointment {
+    id: i64,
+    due_on: rullst::orm::chrono::NaiveDate,
+    opens_at: Option<rullst::orm::chrono::NaiveTime>,
+    starts_at: rullst::orm::chrono::NaiveDateTime,
+    paid_at: rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc>,
+}
+
+#[test]
+fn derive_nexus_maps_chrono_fields_to_date_and_time_widgets() {
+    let kinds = Appointment::nexus_fields()
+        .into_iter()
+        .map(|field| (field.name, field.kind))
+        .collect::<Vec<_>>();
+    assert_eq!(kinds[1], ("due_on", FieldKind::Date));
+    assert_eq!(kinds[2], ("opens_at", FieldKind::Time));
+    assert_eq!(kinds[3], ("starts_at", FieldKind::DateTime));
+    assert_eq!(kinds[4], ("paid_at", FieldKind::DateTimeUtc));
+}

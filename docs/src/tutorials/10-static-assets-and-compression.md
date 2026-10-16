@@ -109,6 +109,40 @@ curl -sI -H 'If-None-Match: "<etag from above>"' \
   http://127.0.0.1:3000/static/css/app.css   # HTTP/1.1 304 Not Modified
 ```
 
+### Downloads and feeds
+
+Dynamic responses keep `Cache-Control: no-store` unless the route chooses a
+policy. Since 13.0.0-alpha.2, `rullst::cache_control` labels the `2xx` and
+`304` responses of a route that do not already have a `Cache-Control`; errors
+keep `no-store`:
+
+```rust,no_run
+use rullst::{Router, cache_control, routing::get};
+use std::time::Duration;
+
+# async fn calendar_feed() -> &'static str { "BEGIN:VCALENDAR" }
+# async fn latest_report() -> &'static str { "report" }
+let app = Router::new()
+    // The same for every visitor: browsers and CDNs may keep it 5 minutes.
+    .route(
+        "/calendar.ics",
+        get(calendar_feed).layer(cache_control::public(Duration::from_secs(300))),
+    )
+    // A user's own download: only their browser may keep it for an hour.
+    .route(
+        "/reports/latest",
+        get(latest_report).layer(cache_control::private(Duration::from_secs(3600))),
+    );
+```
+
+A handler can also return the policy with one response:
+`(CacheControl::private(Duration::from_secs(60)), body)`. Use `public` only
+when the response is the same for every visitor, because a shared cache
+serves one visitor's copy to the next. The CSRF middleware never sets its
+`rullst_csrf` cookie on a response that shared caches may store (`public` or
+`s-maxage` without `private` or `no-store`), so a feed fetched without cookies
+stays cacheable and never hands out a visitor's token.
+
 ---
 
 ## Key takeaways
