@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792118331455,
+  "lastUpdate": 1792121633742,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12361,6 +12361,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 20,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d08dfa2a343124a318505a6f9af29b9a05c8d50",
+          "message": "Merge pull request #505 from Rullst/test/v13-sensitive-mutation\n\ntest(connect,mail,ai): kill surviving mutants in the security-sensitive files",
+          "timestamp": "2026-10-16T00:08:22-03:00",
+          "tree_id": "975f204d98e7470181b805cab5e6e4cde567066c",
+          "url": "https://github.com/Rullst/Rullst/commit/2d08dfa2a343124a318505a6f9af29b9a05c8d50"
+        },
+        "date": 1792121632918,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
