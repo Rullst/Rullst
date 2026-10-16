@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 
 use super::{Storage, StorageDriver, StorageError, normalized_object_key};
 use crate::security::TenantContext;
@@ -73,6 +73,7 @@ impl TenantStorage {
     /// With `create`, the directory is created first (after rejecting symlinks
     /// below the base), so the first tenant to write owns it. Without it, a
     /// missing directory is left to the operation, which reports `NotFound`.
+    /// A directory below a regular file is an I/O error on every platform.
     pub(super) async fn confine_local_root(&self, create: bool) -> Result<(), StorageError> {
         #[cfg(feature = "storage-s3")]
         if self.storage.cloud.is_some() {
@@ -93,6 +94,17 @@ impl TenantStorage {
         let canonical = match tokio::fs::canonicalize(&tenant_dir).await {
             Ok(canonical) => canonical,
             Err(error) if !create && error.kind() == std::io::ErrorKind::NotFound => {
+                // Unix reports a directory below a regular file as `ENOTDIR`,
+                // which the arm below returns as an I/O error. Windows reports
+                // it as missing (`ERROR_PATH_NOT_FOUND`), so check the nearest
+                // existing ancestor there: a blocked tenant root is not a
+                // tenant without objects.
+                #[cfg(windows)]
+                if regular_file_above(&tenant_dir).await.is_some() {
+                    return Err(StorageError::Io(
+                        "the tenant directory is below a regular file".to_string(),
+                    ));
+                }
                 return Ok(());
             }
             Err(error) => return Err(StorageError::from(error)),
@@ -109,6 +121,25 @@ impl TenantStorage {
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
         self.storage.url(&self.object_key(relative_path)?)
     }
+}
+
+/// The nearest existing ancestor of `path` when it is not a directory.
+///
+/// Only Windows needs it in confinement (see `confine_local_root`); it is
+/// compiled everywhere so that its tests run on every platform.
+#[cfg_attr(not(windows), allow(dead_code))]
+async fn regular_file_above(path: &Path) -> Option<PathBuf> {
+    let mut ancestor = path.parent();
+    while let Some(candidate) = ancestor {
+        if candidate.as_os_str().is_empty() {
+            return None;
+        }
+        if let Ok(metadata) = tokio::fs::metadata(candidate).await {
+            return (!metadata.is_dir()).then(|| candidate.to_path_buf());
+        }
+        ancestor = candidate.parent();
+    }
+    None
 }
 
 /// Re-checks that the tenant identifier is a single normal path segment.
@@ -308,6 +339,8 @@ mod tests {
         );
     }
 
+    // Fails on Windows without the `regular_file_above` check: the OS reports
+    // the blocked tenant directory as missing there, not as `ENOTDIR`.
     #[tokio::test]
     async fn a_tenant_root_below_a_regular_file_is_an_io_error() {
         let suffix = uuid::Uuid::new_v4();
@@ -326,6 +359,29 @@ mod tests {
             acme.delete("secret.txt").await,
             Err(StorageError::Io(_))
         ));
+        std::fs::remove_dir_all(root).expect("tenant storage cleanup");
+    }
+
+    #[tokio::test]
+    async fn the_nearest_existing_ancestor_decides_whether_a_file_blocks_a_path() {
+        let suffix = uuid::Uuid::new_v4();
+        let root = std::env::temp_dir().join(format!("rullst-tenant-ancestor-{suffix}"));
+        std::fs::create_dir_all(root.join("dir")).expect("directory ancestor");
+        std::fs::write(root.join("file"), b"not a directory").expect("file ancestor");
+
+        assert_eq!(
+            regular_file_above(&root.join("file").join("acme").join("x")).await,
+            Some(root.join("file"))
+        );
+        assert_eq!(
+            regular_file_above(&root.join("dir").join("acme")).await,
+            None
+        );
+        assert_eq!(
+            regular_file_above(&root.join("missing").join("acme")).await,
+            None
+        );
+        assert_eq!(regular_file_above(Path::new("acme")).await, None);
         std::fs::remove_dir_all(root).expect("tenant storage cleanup");
     }
 }
