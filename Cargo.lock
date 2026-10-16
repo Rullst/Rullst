@@ -6516,6 +6516,7 @@ version = "13.0.0-alpha.2"
 dependencies = [
  "proc-macro2",
  "quote",
+ "serde_json",
  "syn 3.0.8",
  "toml",
  "trybuild",
