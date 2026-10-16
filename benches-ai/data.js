@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792118239642,
+  "lastUpdate": 1792121543088,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14335,6 +14335,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 431,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d08dfa2a343124a318505a6f9af29b9a05c8d50",
+          "message": "Merge pull request #505 from Rullst/test/v13-sensitive-mutation\n\ntest(connect,mail,ai): kill surviving mutants in the security-sensitive files",
+          "timestamp": "2026-10-16T00:08:22-03:00",
+          "tree_id": "975f204d98e7470181b805cab5e6e4cde567066c",
+          "url": "https://github.com/Rullst/Rullst/commit/2d08dfa2a343124a318505a6f9af29b9a05c8d50"
+        },
+        "date": 1792121542160,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1771,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 349,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 442,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
