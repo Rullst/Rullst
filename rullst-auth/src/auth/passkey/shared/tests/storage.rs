@@ -102,6 +102,76 @@ pub(super) async fn quotas_expiry_configuration_and_corruption(url: &str) {
     raw.close().await;
 }
 
+/// Each stored-row check fails closed on its own, a full 1024-byte allowlist
+/// round-trips, and confirmation rechecks the consumed issue time and lifetime
+/// against this store.
+pub(super) async fn stored_rows_and_confirmation(url: &str) {
+    let (raw, a, b, _) = reset(url).await;
+    let credentials: Vec<[u8; 32]> = (0..32).map(|id| [id; 32]).collect();
+    let full = CeremonyIntent::new(
+        [50; 32],
+        [7; 32],
+        CeremonyKind::Authentication,
+        credentials.clone(),
+    )
+    .unwrap();
+    a.issue(&full).await.unwrap();
+    let consumed = b
+        .consume([50; 32], [7; 32], CeremonyKind::Authentication)
+        .await
+        .unwrap();
+    assert_eq!(consumed.intent().credentials(), credentials.as_slice());
+    sqlx::query(
+        "ALTER TABLE rullst_passkey_ceremony.pending DROP CONSTRAINT pending_binding_check, DROP CONSTRAINT pending_kind_check",
+    )
+    .execute(&raw)
+    .await
+    .unwrap();
+    // The clock stays at 1000, so each row is issued at 1000 and expires at 1030.
+    for (id, tamper) in [
+        (
+            51,
+            "UPDATE rullst_passkey_ceremony.pending SET binding=pg_catalog.substr(binding,1,31) WHERE challenge=$1",
+        ),
+        (
+            52,
+            "UPDATE rullst_passkey_ceremony.pending SET kind=3 WHERE challenge=$1",
+        ),
+        (
+            53,
+            "UPDATE rullst_passkey_ceremony.pending SET issued_at=1010, expires_at=1040 WHERE challenge=$1",
+        ),
+        (
+            54,
+            "UPDATE rullst_passkey_ceremony.pending SET expires_at=1010 WHERE challenge=$1",
+        ),
+    ] {
+        a.issue(&intent(id)).await.unwrap();
+        sqlx::query(tamper)
+            .bind([id; 32].as_slice())
+            .execute(&raw)
+            .await
+            .unwrap();
+        assert!(
+            matches!(
+                b.consume([id; 32], [7; 32], CeremonyKind::Registration)
+                    .await,
+                Err(Error::Corrupt)
+            ),
+            "{tamper}"
+        );
+    }
+    for (issued_at, expires_at) in [(1010, 1040), (1000, 1060)] {
+        let foreign = ConsumedCeremony::from_stored(intent(55), issued_at, expires_at).unwrap();
+        assert!(matches!(a.confirm(&foreign).await, Err(Error::Corrupt)));
+    }
+    let own = ConsumedCeremony::from_stored(intent(55), 1000, 1030).unwrap();
+    a.confirm(&own).await.unwrap();
+    a.close().await;
+    b.close().await;
+    raw.close().await;
+}
+
 /// Separate hosts cross each whole-second boundary at slightly different
 /// instants. A host whose clock trails the shared high-water mark by less
 /// than the tolerance adopts it; a larger regression fails closed as a clock

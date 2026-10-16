@@ -1,14 +1,23 @@
 //! Connection-reuse tests against a minimal in-process RESP server.
 
 use super::*;
+use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
 
-/// Answers every `EVAL` with an admitted fixed-window decision and every
-/// other command with `+OK`, counting the TCP connections it accepts.
+/// Admitted fixed-window decision: the first request of a 60 s window.
+const ADMITTED: &[u8] = b"*2\r\n:1\r\n:60000\r\n";
+
+/// Scripted `EVAL` replies, shared by every connection, used before
+/// [`ADMITTED`].
+type Replies = Arc<Mutex<VecDeque<&'static [u8]>>>;
+
+/// Answers every `EVAL` with the next scripted reply, then with an admitted
+/// fixed-window decision, and every other command with `+OK`, counting the
+/// TCP connections it accepts.
 struct FakeRedis {
     address: SocketAddr,
     accepted: Arc<AtomicUsize>,
@@ -18,6 +27,11 @@ struct FakeRedis {
 
 impl FakeRedis {
     async fn start() -> Self {
+        Self::start_with(&[]).await
+    }
+
+    async fn start_with(replies: &[&'static [u8]]) -> Self {
+        let replies: Replies = Arc::new(Mutex::new(replies.iter().copied().collect()));
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let accepted = Arc::new(AtomicUsize::new(0));
@@ -26,7 +40,7 @@ impl FakeRedis {
         let server = tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
                 counter.fetch_add(1, Ordering::SeqCst);
-                tokio::spawn(serve(stream, epochs.clone()));
+                tokio::spawn(serve(stream, epochs.clone(), Arc::clone(&replies)));
             }
         });
         Self {
@@ -63,7 +77,7 @@ impl Drop for FakeRedis {
     }
 }
 
-async fn serve(stream: TcpStream, mut epochs: watch::Receiver<u64>) {
+async fn serve(stream: TcpStream, mut epochs: watch::Receiver<u64>, replies: Replies) {
     epochs.borrow_and_update();
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
@@ -76,7 +90,8 @@ async fn serve(stream: TcpStream, mut epochs: watch::Receiver<u64>) {
             return;
         };
         let reply: &[u8] = if command.eq_ignore_ascii_case("EVAL") {
-            b"*2\r\n:1\r\n:60000\r\n"
+            let scripted = replies.lock().unwrap().pop_front();
+            scripted.unwrap_or(ADMITTED)
         } else {
             b"+OK\r\n"
         };
@@ -167,5 +182,49 @@ async fn a_broken_connection_is_replaced() {
     );
     assert_eq!(redis.accepted(), 2);
     limiter.check("again").await.unwrap();
+    assert_eq!(redis.accepted(), 2);
+}
+
+#[tokio::test]
+async fn window_replies_without_a_count_or_an_expiry_are_rejected() {
+    let redis = FakeRedis::start_with(&[
+        // A counter without an expiry.
+        b"*2\r\n:1\r\n:-1\r\n",
+        // A counter that was not incremented.
+        b"*2\r\n:0\r\n:60000\r\n",
+        // A window that expires right now is still valid.
+        b"*2\r\n:1\r\n:0\r\n",
+    ])
+    .await;
+    let limiter = redis.limiter();
+    for _ in 0..2 {
+        assert_eq!(
+            limiter.check("client").await.err(),
+            Some(RateLimitError::InvalidBackendResponse)
+        );
+    }
+    assert_eq!(
+        limiter.check("client").await.unwrap(),
+        RateLimitDecision {
+            allowed: true,
+            remaining: 999,
+            retry_after: Duration::ZERO,
+        }
+    );
+    // A well-formed but invalid reply keeps the connection.
+    assert_eq!(redis.accepted(), 1);
+}
+
+#[tokio::test]
+async fn an_unparsable_reply_replaces_the_connection() {
+    // `?` starts no RESP type, so the client fails with a parse error that
+    // leaves the connection unusable without dropping it.
+    let redis = FakeRedis::start_with(&[b"?\r\n"]).await;
+    let limiter = redis.limiter();
+    assert!(matches!(
+        limiter.check("client").await,
+        Err(RateLimitError::Backend(_))
+    ));
+    assert!(limiter.check("client").await.unwrap().allowed);
     assert_eq!(redis.accepted(), 2);
 }

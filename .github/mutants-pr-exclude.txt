@@ -10,12 +10,14 @@
 # Generated-project integration suites are too slow to rerun per mutant.
 cargo-rullst/**
 
-# Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;`.
+# Test-only modules included with `#[cfg(test)] #[path = "..."] mod ...;` or
+# `#[cfg(test)] mod tests;` backed by a `tests/` directory under `src/`.
 # cargo-mutants does not see the `cfg(test)` on the parent's declaration and
 # would mutate test helpers. (`*_test.rs` is not listed: rullst-orm-macros'
 # `sandbox_test.rs` is production code.)
 **/*_tests.rs
 **/tests.rs
+**/tests/**
 
 # PostgreSQL: .github/check-passkey-postgres.py, check-privacy-postgres.py
 # and check-mail-postgres.py.
