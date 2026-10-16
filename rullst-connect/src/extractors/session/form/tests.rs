@@ -188,3 +188,28 @@ async fn missing_session_layer_is_a_server_error() {
         StatusCode::INTERNAL_SERVER_ERROR
     );
 }
+
+#[tokio::test]
+async fn bodies_of_up_to_16_kib_are_read() {
+    let (session, state, _) = started().await;
+    let padded = |total: usize| {
+        let base = format!("{}&pad=", apple_body(&state));
+        format!("{base}{}", "a".repeat(total - base.len()))
+    };
+    let oversized = padded(16_385);
+    assert_eq!(oversized.len(), 16_385);
+    let rejected = post(&session, oversized).await;
+    assert_eq!(
+        rejected.expect_err("one byte over the limit"),
+        StatusCode::PAYLOAD_TOO_LARGE
+    );
+
+    let largest = padded(16_384);
+    assert_eq!(largest.len(), 16_384);
+    let callback = post(&session, largest)
+        .await
+        .expect("a 16 KiB body is within the limit");
+    let debug = format!("{callback:?}");
+    assert!(debug.contains("AuthSessionForm"), "{debug}");
+    assert!(debug.contains("has_expected_nonce: true"), "{debug}");
+}

@@ -6,6 +6,8 @@
 use super::{AiError, Message};
 use rullst_core::security::mask_pii;
 
+#[cfg(test)]
+mod boundary_tests;
 mod markdown_images;
 #[cfg(test)]
 mod markdown_tests;

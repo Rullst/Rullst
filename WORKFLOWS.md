@@ -585,10 +585,16 @@ the `rullst-capital` campaign (targeted runs of every file; mutants that
 only a live Stripe API response can reach are left to provider sandbox
 testing), the `rullst-messaging` campaign (targeted runs of every file,
 with the recurring PostgreSQL and Redis Streams contract runs for those
-adapters) and the service-backed campaign (the `passkey-postgres`,
+adapters), the service-backed campaign (the `passkey-postgres`,
 `auth-recovery-postgres`, `privacy-postgres` and `mail-postgres` contract
-runs, and targeted runs of the Redis rate limiter with the Redis service)
-gave every missed mutant in their files a test, except these.
+runs, and targeted runs of the Redis rate limiter with the Redis service) and
+the sensitive-file campaign (targeted runs of the OAuth/OIDC, attachment,
+link-security, tracking, egress and guardrail files of `rullst-connect`,
+`rullst-mail` and `rullst-ai`; the peer-address, status and content-type checks
+of `EgressFetcher::fetch_bytes` run only after a connection to a public HTTPS
+origin, which the egress policy refuses to loopback test servers, and are left
+to live integration testing) gave every missed mutant in their files a test,
+except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -683,6 +689,17 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-messaging/src/schedules/delivery.rs`: `verify`, `lease.namespace != … \|\| now >= lease.expires` with `&&` | Occurrence IDs digest their namespace, so another namespace's lease is not found by its ID, and an expired lease fails the commit deadline; both return the same `InvalidLease`. |
 | `rullst-messaging/src/wire.rs`: `FIXED_BYTES`, a `2 + 2` with `2 * 2`, and `Reader::is_finished` with `true` | `2 * 2` equals `2 + 2`; `decode` re-encodes the envelope and compares it with the frame, which rejects trailing bytes with the same `InvalidWireEnvelope`. |
 | `rullst-messaging/src/redis_streams/transport.rs`: `Remote::decode`, delete the `"missing" \| "corrupt"` arm | The catch-all arm returns the same `CorruptStorage`. |
+| `rullst-connect/src/provider/id_token.rs`: `validate_claims_with_presenters`, the `\|\|` before `nonce.is_empty()` with `&&` | `verify_nonce` compares SHA-256 digests, so a nonce empty on one side only already fails it, and two empty nonces still satisfy the joined condition. |
+| `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
+| `rullst-mail/src/security.rs`: `href_values`, `value_start + length + 1` with `-` or `*` | The scan resumes on the closing quote or the byte before it (the opening quote for an empty value), and no `href` match can contain a quote. |
+| `rullst-mail/src/inspection/sniff.rs`: `root_element`, `open < close` with `<=` | Both are positions just after one byte, a `[` and a `>`, so they are never equal. |
+| `rullst-ai/src/ai/egress.rs`: `EgressPolicy::strict` with `Default::default()` | `strict` already returns `Self::default()`. |
+| `rullst-ai/src/ai/egress.rs`: `is_public_ipv6`, `is_unspecified() \|\| is_loopback()` with `&&` | `::` and `::1` lie outside `2000::/3`, which the next clause rejects. |
+| `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `open_tag_end`, the self-closing `then_some(index + 1)` with `-` or `*` | The tag then ends on or just before its `/`; the byte before that `/` is whitespace, a quote or a name byte, never a bracket. |
+| `rullst-ai/src/ai/guardrails/markdown_images.rs`: `definition_destination`, the `<...>` end `end + 1` with `*` | It drops only the closing `>` or line ending, which neither the scheme nor the authority check reads. |
+| `rullst-ai/src/ai/guardrails/markdown_code.rs`: `indentation`, the tab step `4 - column % 4` with `4 + column % 4` | Indentation is only compared with 4, and either step takes a tab to at least four columns. |
+| `rullst-ai/src/ai/guardrails/tax_ids.rs`: `token_end`, `bytes.get(index + 1)` with `index - 1` | A separator then joins when a digit precedes it instead of follows it, but the end moves only on digits and a second separator stops both scans, so every token ends at the same digit. |
+| `rullst-ai/src/ai/guardrails/tax_ids.rs`: `is_valid_tax_id`, the CNPJ `all_digits && token.len() == 14` with `\|\|` | `digit_values` still requires exactly 14 digits, which only a 14-digit token or the CNPJ layout holds. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
@@ -731,6 +748,25 @@ every test of the file reaches, so no single test can fail first:
   `||`, so pruning or eviction never removes an entry; and
   `rullst-security/src/rasp/user_agent.rs`: the version scan's `index += 1`
   replaced by `*=`.
+- `rullst-mail/src/security.rs`: the redaction scans, where
+  `start + relative_end` in `redact_values_after` becomes `-`, `offset +
+  relative` in `redact_aws_access_keys` or `redact_labelled_private_keys`
+  becomes `*`, or `start + prefix.len()` becomes `-` or `*`, and the
+  `href_values` scan, where `index += 1` in `skip_whitespace` or the
+  non-match `pos += 1` becomes `*=`, or the `pos += 4` after an `href` without
+  `=` becomes `-=`; each scan restarts before the same match.
+- `rullst-ai/src/ai/guardrails/tax_ids.rs`: `mask_tax_ids` without the `!`
+  of its digit test or with `start += 1` as `-=` or `*=`, `token_end`
+  returning `0` or `1`, and its `index += 1` steps as `-=` or `*=`;
+  `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `code_span_hides_bracket`
+  with either backtick test negated, `index += run` as `-=` or `*=` or
+  `index += 1` as `*=`, and the whitespace steps of `open_tag_end` as `*=`;
+  `rullst-ai/src/ai/guardrails/markdown_images.rs`: the `index += 1` steps of
+  `unescaped_close` and `label_end` as `-=` or `*=`; and
+  `rullst-ai/src/ai/guardrails/markdown_code.rs`: the index steps of `lines`,
+  `mark_fenced` and `span_contents` as `*=`, and `blank_code` with
+  `code[group_start] || is_blank(...)` as `&&`, which stops on a blank line.
+  The guardrail tests reach these scans, which then never finish.
 
 `rullst-security/src/timing_guard.rs`: `TimingScope::finish` with the jitter
 `%` replaced by `+` does not loop: it sleeps for up to 72 minutes in the
@@ -738,6 +774,10 @@ real-time padding tests.
 
 A targeted run sets each test binary's address space to 8 GiB, so a loop that
 does allocate aborts its tests and counts as caught instead.
+`rullst-ai/src/ai/guardrails/markdown_code.rs`: `blank_code` with
+`group_start += 1` replaced by `*=` does allocate, but it repeats one line
+forever; on a blank line the output grows one byte per turn and reaches that
+limit only after the timeout.
 
 ### Owned-server contract mutation runs
 

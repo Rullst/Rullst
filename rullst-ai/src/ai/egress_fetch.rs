@@ -319,6 +319,8 @@ mod tests {
             ))
         ));
         assert_eq!(body, b"1234");
+        append_bounded(&mut body, b"5", 5).expect("a chunk may fill the budget exactly");
+        assert_eq!(body, b"12345");
     }
 
     #[test]

@@ -489,3 +489,8 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::panic)]
+#[path = "egress_tests.rs"]
+mod policy_tests;

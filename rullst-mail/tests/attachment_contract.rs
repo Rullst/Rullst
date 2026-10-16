@@ -177,3 +177,156 @@ fn from_file_stops_reading_an_endless_device() {
     let error = Attachment::from_file("/dev/zero").expect_err("endless device");
     assert_eq!(error.kind(), std::io::ErrorKind::FileTooLarge);
 }
+
+fn validation_message(message: &Message) -> String {
+    match DeliveryPipeline::prepare(message) {
+        Err(MailError::ValidationError(error)) => error,
+        Err(other) => panic!("expected a validation error, got {other:?}"),
+        Ok(_) => panic!("expected a validation error, the message was accepted"),
+    }
+}
+
+fn with_attachment(attachment: Attachment) -> Message {
+    base_message().attach(attachment)
+}
+
+#[test]
+fn from_file_infers_the_mime_type_of_common_extensions() {
+    let directory = std::env::temp_dir().join(format!(
+        "rullst-mail-mime-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    std::fs::create_dir(&directory).expect("fixture directory");
+    for (name, expected) in [
+        ("image.png", "image/png"),
+        ("photo.jpg", "image/jpeg"),
+        ("photo.jpeg", "image/jpeg"),
+        ("anim.gif", "image/gif"),
+        ("logo.svg", "image/svg+xml"),
+        ("table.csv", "text/csv"),
+        ("data.json", "application/json"),
+        ("feed.xml", "application/xml"),
+        ("bundle.zip", "application/zip"),
+        ("notes.txt", "text/plain"),
+        ("unknown.bin", "application/octet-stream"),
+    ] {
+        let path = directory.join(name);
+        std::fs::write(&path, b"fixture").expect("fixture file");
+        let attachment = Attachment::from_file(&path).expect("readable fixture");
+        assert_eq!(attachment.filename, name);
+        assert_eq!(attachment.mime_type, expected, "{name}");
+        assert_eq!(attachment.content, b"fixture");
+    }
+    std::fs::remove_dir_all(&directory).expect("remove fixtures");
+}
+
+#[test]
+fn preflight_accepts_exactly_32_attachments() {
+    let mut message = base_message();
+    for index in 0..32 {
+        message = message.attach_bytes(format!("attachment-{index}.txt"), Vec::new(), "text/plain");
+    }
+    DeliveryPipeline::prepare(&message).expect("32 attachments are within the limit");
+}
+
+#[test]
+fn preflight_accepts_attachment_bytes_up_to_both_limits() {
+    let largest = base_message().attach_bytes(
+        "largest.bin",
+        vec![0; 20_971_520],
+        "application/octet-stream",
+    );
+    DeliveryPipeline::prepare(&largest).expect("a 20 MiB attachment is within the limit");
+
+    let half = 13_107_200;
+    let aggregate = |second: usize| {
+        base_message()
+            .attach_bytes("first.bin", vec![0; half], "application/octet-stream")
+            .attach_bytes("second.bin", vec![0; second], "application/octet-stream")
+    };
+    DeliveryPipeline::prepare(&aggregate(half)).expect("25 MiB in total is within the limit");
+    assert!(validation_message(&aggregate(half + 1)).contains("aggregate attachment"));
+}
+
+#[test]
+fn preflight_bounds_attachment_filenames() {
+    let longest = "f".repeat(255);
+    DeliveryPipeline::prepare(&with_attachment(Attachment::new(
+        longest,
+        b"x".to_vec(),
+        "text/plain",
+    )))
+    .expect("a 255-byte filename is within the limit");
+    for filename in [
+        String::new(),
+        "   ".to_string(),
+        "f".repeat(256),
+        ".".to_string(),
+        "..".to_string(),
+        "dir\\file.txt".to_string(),
+        "line\nbreak.txt".to_string(),
+    ] {
+        let error = validation_message(&with_attachment(Attachment::new(
+            filename.clone(),
+            b"x".to_vec(),
+            "text/plain",
+        )));
+        assert!(error.contains("bounded basename"), "{filename:?}: {error}");
+    }
+}
+
+#[test]
+fn preflight_bounds_attachment_mime_types() {
+    let longest = format!("application/{}", "m".repeat(115));
+    assert_eq!(longest.len(), 127);
+    DeliveryPipeline::prepare(&with_attachment(Attachment::new(
+        "file.bin",
+        b"x".to_vec(),
+        longest,
+    )))
+    .expect("a 127-byte MIME type is within the limit");
+
+    let too_long = format!("application/{}", "m".repeat(116));
+    for (mime_type, expected) in [
+        (String::new(), "bounded ASCII"),
+        (too_long, "bounded ASCII"),
+        ("image/pñg".to_string(), "bounded ASCII"),
+        ("text/plain/extra".to_string(), "parameter-free"),
+        ("/plain".to_string(), "parameter-free"),
+        ("text/".to_string(), "parameter-free"),
+        ("text".to_string(), "parameter-free"),
+        ("te xt/plain".to_string(), "parameter-free"),
+    ] {
+        let error = validation_message(&with_attachment(Attachment::new(
+            "file.bin",
+            b"x".to_vec(),
+            mime_type.clone(),
+        )));
+        assert!(error.contains(expected), "{mime_type:?}: {error}");
+    }
+}
+
+#[test]
+fn preflight_bounds_content_ids() {
+    let longest = "c".repeat(128);
+    let referenced = |cid: &str| {
+        Message::new()
+            .to("alice@example.com")
+            .subject("CID bounds")
+            .html(format!("<img src=\"cid:{cid}\">"))
+            .attach_cid(cid, "logo.png", b"image".to_vec(), "image/png")
+    };
+    DeliveryPipeline::prepare(&referenced(&longest)).expect("a 128-byte CID is within the limit");
+    for cid in [String::new(), "c".repeat(129)] {
+        let error = validation_message(&referenced(&cid));
+        assert!(
+            error.contains("without angle brackets"),
+            "CID of {} bytes: {error}",
+            cid.len()
+        );
+    }
+}

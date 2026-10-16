@@ -258,5 +258,39 @@ mod tests {
         ] {
             assert!(!plain_inline_link(content), "{content:?}");
         }
+        // An angle destination must close with `>` before another `<`.
+        assert!(!plain_inline_link("<a< \"t\""));
+        // A title may contain a quote escaped by an odd backslash run.
+        assert!(plain_inline_link("a.png \"x\\\"y\""));
+        assert!(!plain_inline_link("a.png \"x\\\\\"y\""));
+    }
+
+    #[test]
+    fn open_tags_follow_the_attribute_grammar() {
+        for rest in ["<ab title='>]'>", "<a title='>]'/>", "<a b ='>]'>"] {
+            assert!(raw_html_hides_bracket(rest), "{rest:?}");
+        }
+        for rest in [
+            // A tag name starts with a letter.
+            "<1 a='>]'>",
+            // Attributes need preceding whitespace and a valid first byte.
+            "<a(x='>]'>",
+            "<a x='1'y='>]'>",
+        ] {
+            assert!(!raw_html_hides_bracket(rest), "{rest:?}");
+        }
+    }
+
+    #[test]
+    fn whitespace_after_an_attribute_equals_sign_is_skipped() {
+        // A scan that stops advancing must fail this test, not hang it.
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(raw_html_hides_bracket("<a b= '>]'>"));
+        });
+        assert_eq!(
+            receiver.recv_timeout(std::time::Duration::from_secs(10)),
+            Ok(true)
+        );
     }
 }

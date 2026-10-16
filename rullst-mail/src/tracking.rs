@@ -437,3 +437,7 @@ fn escape_html_attribute(value: &str) -> String {
 #[cfg(test)]
 #[path = "tracking_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tracking_contract_tests.rs"]
+mod contract_tests;
