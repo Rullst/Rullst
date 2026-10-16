@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792123397611,
+  "lastUpdate": 1792163555624,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16344,6 +16344,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01aa4b10455ebeefeb63b0814dbbf5bbfbba7b53",
+          "message": "Merge pull request #508 from Rullst/fix/v13-alpha2-release-blockers\n\nfix(release): unblock 13.0.0-alpha.2 admission (zip yank, SemVer baselines, ASan, Windows, coverage, Miri)",
+          "timestamp": "2026-10-16T11:50:54-03:00",
+          "tree_id": "fe0405f9c082bf894f99511d58ddc388dd04579f",
+          "url": "https://github.com/Rullst/Rullst/commit/01aa4b10455ebeefeb63b0814dbbf5bbfbba7b53"
+        },
+        "date": 1792163554594,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4451,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 525,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 4,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 16,
             "range": "± 0",
             "unit": "ns/iter"
           }
