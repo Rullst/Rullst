@@ -26,6 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         rullst::Server::new(__PROJECT_NAME_SAFE__::router()?)
     };
-    server.run(3000).await?;
+    server
+        .with_migrations(crate::migrations::get_migrations())
+        .run(3000)
+        .await?;
     Ok(())
 }

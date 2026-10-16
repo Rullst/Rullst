@@ -65,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("🚀 ERP Pocket server starting on port 3000...");
     Server::new(router)
+        .with_migrations(crate::migrations::get_migrations())
         .run(3000)
         .await?;
 

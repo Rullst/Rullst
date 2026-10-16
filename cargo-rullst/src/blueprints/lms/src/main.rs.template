@@ -83,7 +83,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     }
-    Server::new(router()?).run(3000).await?;
+    Server::new(router()?)
+        .with_migrations(crate::migrations::get_migrations())
+        .run(3000)
+        .await?;
     Ok(())
 }
 

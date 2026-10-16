@@ -131,8 +131,15 @@ Server::new(router())
 `RULLST_AUTO_MIGRATE` (`true` or `false`; `1`/`0`, `yes`/`no` and `on`/`off`
 also work), from the process environment and then `.env`, overrides
 `auto_migrate`, so a deployment that runs `db:migrate` as a separate job can
-set `RULLST_AUTO_MIGRATE=false`. Generated starters do not call
-`with_migrations` yet: add the line above to `src/main.rs`.
+set `RULLST_AUTO_MIGRATE=false`. Projects that `cargo rullst new` generates
+with an SQLx database (Blank, Blank API, SaaS, LMS, Blog, Portfolio and ERP)
+already call `with_migrations` but not `auto_migrate`, so setting
+`RULLST_AUTO_MIGRATE=true` is enough; a project generated before
+13.0.0-alpha.2 needs the line above in `src/main.rs`. A Turso starter applies
+its migrations with its own `db:migrate` command and registers none with the
+server, so `RULLST_AUTO_MIGRATE=true` there stops startup with
+`startup migrations failed: no migrations are registered; call
+Server::with_migrations`: leave it unset and run `db:migrate`.
 
 Replicas that start together apply each migration once: the runner holds a
 PostgreSQL advisory lock or a MySQL/MariaDB `GET_LOCK` lock, and for an SQLite
