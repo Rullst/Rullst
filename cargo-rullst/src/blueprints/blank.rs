@@ -60,6 +60,13 @@ pub fn file_manifest(
     } else {
         ""
     };
+    // SQLx migrations run at startup only when `RULLST_AUTO_MIGRATE` (or
+    // `Server::auto_migrate`) enables it. Turso keeps its own `db:migrate`.
+    let server_migrations = if db_needed && !turso_primary {
+        "        .with_migrations(crate::migrations::get_migrations())\n"
+    } else {
+        ""
+    };
     let migrations_mod_declaration = if db_needed {
         "pub mod migrations;\n"
     } else {
@@ -79,6 +86,7 @@ pub fn file_manifest(
             .replace("__DB_MODEL_CODE__", db_model_code)
             .replace("__DB_STATUS_CODE__", db_status_code)
             .replace("__ARTISAN_CALL__", artisan_call)
+            .replace("__SERVER_MIGRATIONS__", server_migrations)
     };
 
     let mut manifest = Vec::new();

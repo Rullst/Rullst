@@ -27,7 +27,9 @@ __ARTISAN_CALL__
         rullst::Server::new(router)
     };
 
-    server.run(3000).await?;
+    server
+__SERVER_MIGRATIONS__        .run(3000)
+        .await?;
 
     Ok(())
 }

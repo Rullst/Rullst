@@ -33,7 +33,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         rullst::Server::new(router)
     };
 
-    server.run(3000).await?;
+    server
+        .with_migrations(crate::migrations::get_migrations())
+        .run(3000)
+        .await?;
 
     Ok(())
 }

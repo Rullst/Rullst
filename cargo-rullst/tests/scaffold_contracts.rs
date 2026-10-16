@@ -323,6 +323,45 @@ fn blank_hot_reload_uses_the_host_verified_database_state() {
 }
 
 #[test]
+fn only_blank_sqlx_profiles_register_migrations_with_the_server() {
+    for api in [false, true] {
+        for hot_reload in [false, true] {
+            for (db_needed, orm_pattern, registers) in [
+                (true, "Active Record", true),
+                (true, "Turso Active Record", false),
+                (false, "Active Record", false),
+            ] {
+                let files = blueprints::blank::file_manifest(
+                    "migrating-app",
+                    "migrating_app",
+                    api,
+                    hot_reload,
+                    db_needed,
+                    orm_pattern,
+                    "Zero-Bundle HTMX",
+                );
+                let main = files
+                    .iter()
+                    .find(|(path, _)| *path == "src/main.rs")
+                    .map(|(_, source)| source.as_str())
+                    .expect("generated main.rs");
+                let case = format!("api={api} hot={hot_reload} {orm_pattern} db={db_needed}");
+                assert_eq!(
+                    main.matches(
+                        "        .with_migrations(crate::migrations::get_migrations())\n        .run(3000)\n"
+                    )
+                    .count(),
+                    usize::from(registers),
+                    "{case}"
+                );
+                assert!(!main.contains("__SERVER_MIGRATIONS__"), "{case}");
+                assert!(!main.contains("auto_migrate"), "{case}");
+            }
+        }
+    }
+}
+
+#[test]
 fn blank_turso_reads_its_settings_without_loading_dotenv() {
     // The Turso starter called `dotenvy::dotenv()`, exporting `.env` into the
     // process, unlike every other starter.
