@@ -18,9 +18,8 @@ cargo rullst --help
 Run `cargo rullst new` from this root when validating checkout-local changes so
 the generator can select sibling framework crates as path dependencies. A plain
 `cargo install cargo-rullst` installs the latest published stable release
-(Cargo skips prereleases). To use the latest stable CLI explicitly, install it
-with `--version '^12' --locked`; the published v13 prerelease needs its exact
-version, `--version =13.0.0-alpha.2 --locked`.
+(Cargo skips prereleases), which is the end-of-life 12.x line; install the v13
+prerelease with its exact version, `--version =13.0.0-alpha.2 --locked`.
 
 ## Required local verification
 

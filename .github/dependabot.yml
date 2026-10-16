@@ -1,5 +1,5 @@
 version: 2
-# Main develops v13; v12 receives compatible stable maintenance.
+# Main develops v13; v12 reached end of life on 16 October 2026 (no updates).
 # This configuration takes effect from the repository default branch.
 updates:
   - package-ecosystem: "cargo"
@@ -55,61 +55,6 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     target-branch: "main"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "08:00"
-      timezone: "America/Sao_Paulo"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-    # Review/test the tools together, including all CodeQL sub-actions.
-    groups:
-      ci-tools:
-        patterns:
-          - "*"
-  - package-ecosystem: "cargo"
-    directory: "/"
-    target-branch: "v12"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "08:00"
-      timezone: "America/Sao_Paulo"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "rust"
-    # v12 takes compatible maintenance only; majors are evaluated on main first.
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
-      # Held for Smithy JSON 0.63 compatibility; see rullst-mail/Cargo.toml.
-      - dependency-name: "aws-smithy-types"
-      # Held at =0.8.0-rc.4: sad-rsa 0.10.2 (via xml-sec) does not build with
-      # rc.5; see rullst-capital/Cargo.toml on v12.
-      - dependency-name: "pkcs1"
-      # Held at =0.1.17: with 0.1.19 the NFS-e DPS XMLDSig no longer verifies
-      # (rullst-capital fiscal journal/protocol tests, #484); the NFS-e stack
-      # is pinned exactly in rullst-capital/Cargo.toml on v12.
-      - dependency-name: "xml-sec"
-    groups:
-      opentelemetry-family:
-        patterns:
-          - "opentelemetry*"
-          - "tracing-opentelemetry"
-        update-types:
-          - "major"
-          - "minor"
-          - "patch"
-      safe-updates:
-        update-types:
-          - "minor"
-          - "patch"
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    target-branch: "v12"
     schedule:
       interval: "weekly"
       day: "monday"

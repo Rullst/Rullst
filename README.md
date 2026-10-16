@@ -46,15 +46,15 @@
 ## ⚡ Rullst in 30 seconds
 
 ```bash
-cargo install cargo-rullst --version '^12' --locked
+cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
 cargo rullst new my_app    # choose Blank/API, Blog, SaaS, LMS, Portfolio or ERP
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save
 ```
 
 That's it: a running application, generated as readable Rust you can change —
-no hidden runtime magic. The selector installs the latest stable v12 CLI; use a
-full version such as `--version 12.1.2` to reproduce a specific release.
+no hidden runtime magic. This installs the 13.0.0-alpha.2 prerelease; the v12
+line reached end of life on 16 October 2026 (see below).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
 · [Zero-to-Hero tutorial](https://rullst.github.io/Rullst/book/tutorials/01-hello-world.html)
@@ -381,12 +381,16 @@ migrate production data. [Assisted upgrade tutorial](https://rullst.github.io/Ru
 
 ## 🚀 What's next: v13
 
-This `main` branch is where **v13** is being built (`13.0.0-alpha.2`). The
-commands above install the stable **v12** line, maintained on the
-[`v12`](https://github.com/Rullst/Rullst/tree/v12) branch; v5 is no longer maintained.
-The latest v13 prerelease, `13.0.0-alpha.2`, is on crates.io. Cargo never
+This `main` branch is where **v13** is being built; its latest prerelease,
+`13.0.0-alpha.2`, is on crates.io. **The v12 line reached end of life on
+16 October 2026**: 12.3.0 is its last release and the
+[`v12`](https://github.com/Rullst/Rullst/tree/v12) branch is frozen (v5 is no
+longer maintained either). crates.io has since yanked the `zip` releases that
+12.x's Studio needs, so a new 12.x project no longer resolves its
+dependencies; existing projects with a `Cargo.lock` keep building. Cargo never
 selects a prerelease on its own, so `cargo install cargo-rullst` and
-`cargo add rullst` still pick 12.x. To try v13, name the exact prerelease:
+`cargo add rullst` without a version still pick 12.x. Name the exact
+prerelease:
 
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.2 --locked

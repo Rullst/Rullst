@@ -115,11 +115,12 @@ look for a build or startup diagnostic.
 
 ## 6. Continue with the CLI
 
-The v12 CLI can generate complete starters and project modules. Install it
-from crates.io:
+The CLI can generate complete starters and project modules. Install the v13
+prerelease from crates.io (name the exact version; Cargo never picks a
+prerelease on its own):
 
 ```bash
-cargo install cargo-rullst --version '^12' --locked
+cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
 cargo rullst --help
 ```
 

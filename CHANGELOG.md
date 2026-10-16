@@ -46,6 +46,9 @@ its credentials are missing.
 
 ### Known limitations
 
+- The v12 line reached end of life on 16 October 2026; 12.3.0 is its last
+  release. crates.io has yanked the `zip` releases that 12.x's Studio needs, so
+  a new 12.x project no longer resolves its dependencies; use this release.
 - Deprecation: the Omni Tauri shells (`cargo rullst make:omni`,
   `cargo rullst omni android`) and the native-only `offline-sync` feature are
   planned for removal in 13.0.0-alpha.3. A first-class PWA generator

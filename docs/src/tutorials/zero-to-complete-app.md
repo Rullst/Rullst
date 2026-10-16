@@ -17,14 +17,8 @@ to the tutorial that explains it in depth.
 
 ## 1. Install Rust and the CLI
 
-Install Rust from [rustup.rs](https://rustup.rs/), then the stable CLI:
-
-```bash
-cargo install cargo-rullst --version '^12' --locked
-```
-
-To follow the **New in 13.0** steps, install the v13 prerelease CLI instead.
-Cargo never selects a prerelease on its own, so name the exact version, as
+Install Rust from [rustup.rs](https://rustup.rs/), then the v13 prerelease
+CLI. Cargo never selects a prerelease on its own, so name the exact version, as
 described in [Getting Started](../1-getting-started.md#1-installation):
 
 ```bash

@@ -24,9 +24,10 @@ Intentions, not promises; dates follow the evidence gates described below.
   alpha.1 dogfooding fixes), then further alphas, betas and a release candidate
   driven by user feedback, then `13.0.0` stable with the
   [maturity tiers](docs/src/maturity.md) applying from that release.
-- **v12:** compatible maintenance on the `v12` branch under the
-  [compatibility policy](docs/src/compatibility-policy.md): security fixes,
-  dependency advisories and deprecation notices that ease the move to v13.
+- **v12:** end of life on 16 October 2026; 12.3.0 is the last release and the
+  `v12` branch is frozen. Its unpublished fixes (PR #500 and the RustSec
+  updates) stay on the branch; new 12.x projects no longer resolve their
+  dependencies after crates.io yanked the `zip` releases its Studio needs.
 - **Assurance:** OpenSSF Best Practices Silver, mutation testing extended from the
   critical v13 code to the whole workspace, and an independent review prepared
   with the [external audit kit](docs/src/external-audit-kit.md).
@@ -787,18 +788,13 @@ above.
 - **Feedback from the platforms built on alpha.2.** The maintainer is building
   platforms on 13.0.0-alpha.2. Their reports choose the fixes and priorities
   for alpha.3, as the alpha.1 report did for alpha.2.
-- **The pending v12 patch release.** `v12` has the `money_to_minor`
-  rounds-to-zero fix for `Invoice` amounts
-  ([PR #500](https://github.com/Rullst/Rullst/pull/500)) and the RustSec
-  dependency updates (`ammonia` 4.2.3, `quinn-proto`, `rustls`) merged after
-  12.3.0, but no 12.x patch publishes them yet.
 
 ### Published and planned release lines
 
 | Version | Status | Honest scope |
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
-| **v12.x** | `[~] Active stable maintenance` | Preserve published releases; prioritize reviewed compatible fixes and dependency updates. Patch releases must retain the supported compiler and public contracts. |
+| **v12.x** | `[x] End of life` | Ended on 16 October 2026 with 12.3.0 as the last release; the `v12` branch is frozen. New 12.x projects no longer resolve dependencies after crates.io yanked the `zip` releases its Studio needs; use v13. |
 | **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
 | **v12.1.1** | `[x] Published patch` | All sixteen packages were published from `d27db26c` on 24 September 2026 UTC; see the [publication record](docs/src/v12.md#1211-published-maintenance-release). |
 | **v12.1.2** | `[x] Published patch` | Tagged `v12.1.2` on 28 September 2026 UTC from the `v12` maintenance line; its publication evidence is kept in the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
