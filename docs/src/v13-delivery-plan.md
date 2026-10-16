@@ -1,5 +1,12 @@
 # v13 delivery plan and evidence
 
+**13.0.0-alpha.2 prepared on October 16, 2026.** It carries the fixes from the
+alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema`
+date/time and Nexus changes (see the changelog). It is published only after
+its exact-SHA admission passes and its tag is pushed; the publication will be
+recorded here. Work planned next is under
+[Planned for 13.0.0-alpha.3](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3).
+
 **13.0.0-alpha.1 published on October 11, 2026.** Tag `v13.0.0-alpha.1` points
 at `fc44bf76`. [Release run 38151068563](https://github.com/Rullst/Rullst/actions/runs/38151068563)
 followed an exact-SHA admission of all 28 required workflows. Its fuzz evidence
