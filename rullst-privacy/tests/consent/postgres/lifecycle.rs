@@ -197,3 +197,37 @@ pub(super) async fn scope_expiry_quota_and_reopen(url: &str, database: &mut PgCo
     assert_eq!(revision, 2);
     reopened.close().await;
 }
+
+/// A declined choice is stored, read back by another pool and never allows.
+pub(super) async fn declined_choice_round_trip(url: &str, database: &mut PgConnection) {
+    reset(database).await;
+    let first = PostgresConsentStore::initialize(url, 10).await.unwrap();
+    let second = PostgresConsentStore::connect(url, 10).await.unwrap();
+    let declined = ConsentGate::new(first.clone())
+        .unwrap()
+        .choose_with_clock(
+            &subject(),
+            &purpose(),
+            &submission(0, ConsentChoice::Declined),
+            0,
+            &Clock::at(1000),
+        )
+        .await
+        .unwrap();
+    assert_eq!(declined.choice(), ConsentChoice::Declined);
+    let gate = ConsentGate::new(second.clone()).unwrap();
+    let current = gate
+        .current_with_clock(&subject(), &purpose(), &Clock::at(1000))
+        .await
+        .unwrap();
+    assert_eq!(current.choice(), ConsentChoice::Declined);
+    assert_eq!(current.revision(), 1);
+    assert!(
+        !gate
+            .allows_with_clock(&subject(), &purpose(), &Clock::at(1000))
+            .await
+            .unwrap()
+    );
+    first.close().await;
+    second.close().await;
+}

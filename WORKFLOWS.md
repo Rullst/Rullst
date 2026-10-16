@@ -583,9 +583,12 @@ adapters), the first part of the `rullst-core` campaign (its security
 and correctness files and about half of the rest, with the Redis service),
 the `rullst-capital` campaign (targeted runs of every file; mutants that
 only a live Stripe API response can reach are left to provider sandbox
-testing) and the `rullst-messaging` campaign (targeted runs of every file,
+testing), the `rullst-messaging` campaign (targeted runs of every file,
 with the recurring PostgreSQL and Redis Streams contract runs for those
-adapters) gave every missed mutant in their files a test, except these.
+adapters) and the service-backed campaign (the `passkey-postgres`,
+`auth-recovery-postgres`, `privacy-postgres` and `mail-postgres` contract
+runs, and targeted runs of the Redis rate limiter with the Redis service)
+gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -770,7 +773,12 @@ second.
 The MySQL statement files `rullst-capital/src/quota/sql/mysql.rs` and
 `rullst-ai/src/ai/memory/sql/mysql.rs` hold only string constants, so
 cargo-mutants generates no mutant for them. The privacy URL policy in
-`postgres_connection.rs` and the capacity check have unit tests.
+`postgres_connection.rs` and the capacity check have unit tests. So do the
+mail adapter's clock, event-time, stored-time and URL checks, the privacy
+choice-code decoding, and, in `passkey-postgres` and
+`auth-recovery-postgres`, most branches of `manager.rs` and the recovery
+files: a contract run reports those mutants as missed, and a targeted run
+of the file catches them.
 
 ### Fuzzing and OSS-Fuzz
 

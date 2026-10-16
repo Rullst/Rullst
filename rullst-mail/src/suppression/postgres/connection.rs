@@ -105,4 +105,33 @@ mod tests {
             ));
         }
     }
+
+    #[test]
+    fn urls_of_up_to_8192_bytes_are_accepted() {
+        let base = "postgres://localhost/";
+        let longest = format!("{base}{}", "a".repeat(8_192 - base.len()));
+        assert_eq!(longest.len(), 8_192);
+        assert!(options(&longest).is_ok());
+        let longer = format!("{longest}a");
+        assert!(matches!(
+            options(&longer),
+            Err(SuppressionError::InvalidConfiguration("database URL"))
+        ));
+    }
+
+    #[test]
+    fn a_loopback_host_or_a_socket_keeps_the_requested_tls_mode() {
+        for value in [
+            "postgres://localhost/mail?sslmode=disable",
+            "postgres://127.0.0.1/mail?sslmode=disable",
+            "postgres://[::1]/mail?sslmode=disable",
+            // A socket path is local even when the URL also names a remote host.
+            "postgres://db.example/mail?host=/var/run/postgresql&sslmode=disable",
+        ] {
+            assert!(
+                matches!(options(value).unwrap().get_ssl_mode(), PgSslMode::Disable),
+                "{value}"
+            );
+        }
+    }
 }

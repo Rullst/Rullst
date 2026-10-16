@@ -77,6 +77,7 @@ async fn shared_consent_contract() {
     lifecycle::bootstrap_and_runtime_role(&url, &mut database).await;
     lifecycle::concurrent_grants_and_withdrawal(&url, &mut database).await;
     lifecycle::scope_expiry_quota_and_reopen(&url, &mut database).await;
+    lifecycle::declined_choice_round_trip(&url, &mut database).await;
     failures::schema_and_durability(&url, &mut database).await;
     failures::failure_cancellation_and_clock_wait(&url, &mut database).await;
     reset(&mut database).await;

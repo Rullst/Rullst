@@ -178,12 +178,7 @@ impl PostgresConsentStore {
         let Some((revision, version, choice, changed, expiry)) = row else {
             return Ok(absent);
         };
-        let choice = match choice {
-            1 => ConsentChoice::Granted,
-            2 => ConsentChoice::Declined,
-            3 => ConsentChoice::Withdrawn,
-            _ => return Err(ConsentError::StoreConfiguration),
-        };
+        let choice = stored_choice(choice)?;
         let purpose = ConsentPurpose::new(purpose_id, version)
             .map_err(|_| ConsentError::StoreConfiguration)?;
         ConsentRecord::from_stored(
@@ -194,6 +189,16 @@ impl PostgresConsentStore {
             changed,
             expiry,
         )
+    }
+}
+
+/// Decodes a stored choice code; any other code is corrupt state.
+fn stored_choice(code: i64) -> Result<ConsentChoice, ConsentError> {
+    match code {
+        1 => Ok(ConsentChoice::Granted),
+        2 => Ok(ConsentChoice::Declined),
+        3 => Ok(ConsentChoice::Withdrawn),
+        _ => Err(ConsentError::StoreConfiguration),
     }
 }
 
@@ -240,4 +245,19 @@ impl ConsentStore for PostgresConsentStore {
 
 fn unavailable(_: sqlx::Error) -> ConsentError {
     ConsentError::StoreUnavailable
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_three_written_choice_codes_decode() {
+        assert_eq!(stored_choice(1), Ok(ConsentChoice::Granted));
+        assert_eq!(stored_choice(2), Ok(ConsentChoice::Declined));
+        assert_eq!(stored_choice(3), Ok(ConsentChoice::Withdrawn));
+        for code in [0, 4, -1] {
+            assert_eq!(stored_choice(code), Err(ConsentError::StoreConfiguration));
+        }
+    }
 }
