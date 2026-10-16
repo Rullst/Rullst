@@ -134,11 +134,15 @@ impl Locales {
     /// # extern crate rullst_core as rullst;
     /// use rullst::i18n::Locales;
     ///
+    /// use std::sync::OnceLock;
+    ///
+    /// static LOCALES: OnceLock<Locales> = OnceLock::new();
+    ///
     /// let locales = Locales::new(&["en", "pt-BR"], "en")?;
     /// let best = locales.accept_language("pt-PT, en;q=0.8");
     /// assert_eq!(best.map(|locale| locale.tag()), Some("pt-BR"));
     /// // `layer()` and `switch_route()` need a `&'static Locales`.
-    /// let locales: &'static Locales = Box::leak(Box::new(locales));
+    /// let locales: &'static Locales = LOCALES.get_or_init(|| locales);
     /// let _layer = locales.layer();
     /// # Ok::<(), rullst::i18n::LocaleError>(())
     /// ```
