@@ -18,15 +18,6 @@ class MailSmithyConstraint(unittest.TestCase):
         self.assertEqual(manifest["features"]["default"], [])
         self.assertIn("aws-smithy-types", manifest["package"]["metadata"]["cargo-machete"]["ignored"])
 
-    def test_published_baseline_keeps_its_source_and_comparison(self):
-        script = (ROOT / ".github/check-semver.sh").read_text()
-        self.assertIn('"$package" == "rullst-mail" && "$baseline" == "12.0.0"', script)
-        self.assertIn('[dependencies.aws-smithy-types]', script)
-        self.assertIn('version = "=1.6.3"', script)
-        self.assertIn('cargo semver-checks check-release', script)
-        self.assertNotIn('--no-default-features', script)
-        self.assertNotIn('--exclude-features', script)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,103 +1,85 @@
 #!/usr/bin/env python3
-"""Exercise the actual baseline guard with Cargo's offline dependency resolver."""
+"""Exercise the SemVer job's locked baseline and its feature selection."""
 
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
-import tempfile
-import textwrap
 import unittest
 from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("check-semver.sh").read_text()
-MATCH = re.search(r"      if ! grep -Eq [^\n]*tinyvec[^\n]*\n.*?      fi", SCRIPT, re.DOTALL)
+MATCH = re.search(r"^heuristic_features_filter='\n(.*?)^'$", SCRIPT, re.DOTALL | re.MULTILINE)
 if MATCH is None:
-    raise RuntimeError("Cannot locate the tinyvec baseline guard.")
-GUARD = textwrap.dedent(MATCH.group())
+    raise RuntimeError("Cannot locate the SemVer feature filter.")
+FEATURE_FILTER = MATCH.group(1)
 
 
-class BaselineConstraintTests(unittest.TestCase):
-    def setUp(self) -> None:
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        self.vendor = self.root / "vendor"
-        self.vendor.mkdir()
-        config = self.root / ".cargo"
-        config.mkdir()
-        (config / "config.toml").write_text(
-            '[source.crates-io]\nreplace-with = "fixture"\n'
-            f'[source.fixture]\ndirectory = {json.dumps(str(self.vendor))}\n'
+def package(name: str, features: dict[str, list[str]], dependencies: list[dict]) -> dict:
+    return {"name": name, "features": features, "dependencies": dependencies}
+
+
+def selected_features(metadata: dict, name: str) -> list[str]:
+    result = subprocess.run(
+        ["jq", "-r", "--arg", "package", name, FEATURE_FILTER],
+        input=json.dumps(metadata), capture_output=True, text=True, check=True, timeout=30,
+    )
+    output = result.stdout.strip()
+    return output.split(",") if output else []
+
+
+class FeatureSelectionTests(unittest.TestCase):
+    def test_every_public_feature_and_implicit_optional_dependency_is_selected(self) -> None:
+        metadata = {"packages": [
+            package("other", {"ignored": []}, []),
+            package(
+                "subject",
+                {
+                    "default": ["std"],
+                    "std": [],
+                    "duckdb": ["dep:duckdb"],
+                    "unstable": [],
+                    "unstable-api": [],
+                    "unstable_api": [],
+                    "nightly": [],
+                    "bench": [],
+                    "no_std": [],
+                    "_internal": [],
+                },
+                [
+                    {"name": "duckdb", "optional": True},
+                    {"name": "redis", "optional": True},
+                    {"name": "serde", "optional": False},
+                    {"name": "tokio-postgres", "rename": "postgres", "optional": True},
+                    {"name": "redis", "optional": True, "target": "cfg(unix)"},
+                ],
+            ),
+        ]}
+        self.assertEqual(
+            selected_features(metadata, "subject"),
+            ["default", "duckdb", "postgres", "redis", "std"],
         )
-        self.manifest = self.root / "Cargo.toml"
-        self.manifest.write_text(
-            '[package]\nname = "baseline-fixture"\nversion = "0.0.0"\nedition = "2024"\n'
-            '[lib]\npath = "lib.rs"\n'
-        )
-        (self.root / "lib.rs").write_text("pub fn original_api() {}\n")
 
-    def vendor_tinyvec(self, version: str) -> None:
-        package = self.vendor / f"tinyvec-{version}"
-        package.mkdir()
-        (package / "Cargo.toml").write_text(
-            f'[package]\nname = "tinyvec"\nversion = "{version}"\n'
-            '[lib]\npath = "lib.rs"\n'
-        )
-        (package / "lib.rs").write_text("")
-        (package / ".cargo-checksum.json").write_text('{"files":{},"package":null}')
+    def test_a_package_without_features_selects_none(self) -> None:
+        metadata = {"packages": [package("subject", {}, [])]}
+        self.assertEqual(selected_features(metadata, "subject"), [])
 
-    def apply_guard(self) -> None:
-        subprocess.run(
-            ["bash", "-euo", "pipefail", "-c", GUARD],
-            env=dict(os.environ, baseline_root=str(self.root)), check=True,
-            capture_output=True, text=True, timeout=30,
-        )
-        self.assertEqual((self.root / "lib.rs").read_text(), "pub fn original_api() {}\n")
 
-    def resolve(self) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            ["cargo", "metadata", "--offline", "--format-version", "1"],
-            cwd=self.root, capture_output=True, text=True, check=False, timeout=30,
-        )
+class LockedBaselineTests(unittest.TestCase):
+    def test_both_sides_are_documented_from_their_committed_lockfiles(self) -> None:
+        self.assertIn('.cargo_vcs_info.json', SCRIPT)
+        self.assertIn('git archive --format=tar "$source_commit"', SCRIPT)
+        self.assertIn('--locked', SCRIPT)
+        self.assertIn('--baseline-rustdoc "$baseline_json"', SCRIPT)
+        self.assertIn('--current-rustdoc "$current_json"', SCRIPT)
+        self.assertIn('cargo semver-checks check-release', SCRIPT)
 
-    def test_published_orm_patch_pin_resolves_without_a_second_exact_pin(self) -> None:
-        for version in ("1.13.2", "1.13.3"):
-            self.vendor_tinyvec(version)
-        orm = self.root / "orm"
-        orm.mkdir()
-        (orm / "Cargo.toml").write_text(
-            '[package]\nname = "rullst-orm"\nversion = "12.1.0"\n'
-            '[lib]\npath = "lib.rs"\n[dependencies.tinyvec]\nversion = "=1.13.3"\n'
-        )
-        (orm / "lib.rs").write_text("")
-        with self.manifest.open("a") as manifest:
-            manifest.write('[dependencies.rullst-orm]\npath = "orm"\n')
-        self.apply_guard()
-        result = self.resolve()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        versions = [p["version"] for p in json.loads(result.stdout)["packages"] if p["name"] == "tinyvec"]
-        self.assertEqual(versions, ["1.13.3"])
-
-    def test_existing_published_constraint_is_not_rewritten(self) -> None:
-        self.vendor_tinyvec("1.13.2")
-        with self.manifest.open("a") as manifest:
-            manifest.write('[dependencies.tinyvec]\nversion = "=1.13.2"\n')
-        original = self.manifest.read_bytes()
-        self.apply_guard()
-        self.assertEqual(self.manifest.read_bytes(), original)
-        result = self.resolve()
-        self.assertEqual(result.returncode, 0, result.stderr)
-
-    def test_guard_still_excludes_the_known_broken_release(self) -> None:
-        self.vendor_tinyvec("1.13.0")
-        self.apply_guard()
-        result = self.resolve()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("tinyvec", result.stderr)
+    def test_the_comparison_keeps_every_feature(self) -> None:
+        self.assertNotIn('--no-default-features', SCRIPT)
+        self.assertNotIn('--exclude-features', SCRIPT)
+        self.assertNotIn('--only-explicit-features', SCRIPT)
 
 
 if __name__ == "__main__":

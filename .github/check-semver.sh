@@ -10,6 +10,64 @@ trap 'rm -rf -- "${semver_tmp:?}"' EXIT
 metadata_path="$semver_tmp/metadata.json"
 cargo metadata --no-deps --format-version 1 > "$metadata_path"
 
+# Both sides of the comparison are documented from a workspace with its
+# committed Cargo.lock: the current tree here, and the published baseline's
+# source commit. cargo-semver-checks would instead re-resolve each crate from
+# scratch, and crates.io has yanked releases the published graphs need (every
+# zip before 9.0.3: utoipa-swagger-ui in 13.0.0-alpha.1 Studio, libduckdb-sys
+# for the ORM `duckdb` feature), so that resolution fails. The JSON is built the
+# way cargo-semver-checks 0.51 builds it, with its default feature selection.
+rustdoc_target="${CARGO_TARGET_DIR:-$repository_root/target}/semver-rustdoc"
+
+# Every feature (explicit, and implicit for optional dependencies without a
+# `dep:` reference) except cargo-semver-checks' heuristically private ones:
+# unstable, nightly, bench, no_std and the _, unstable- and unstable_ prefixes.
+heuristic_features_filter='
+  def private_feature:
+    . as $feature
+    | (["unstable", "nightly", "bench", "no_std"] | any(. == $feature))
+      or startswith("_") or startswith("unstable-") or startswith("unstable_");
+  .packages[]
+  | select(.name == $package)
+  | ([.features[][] | select(startswith("dep:")) | ltrimstr("dep:")]) as $explicit
+  | ([.dependencies[] | select(.optional) | (.rename // .name)]
+     | unique
+     | map(select(. as $dependency | $explicit | any(. == $dependency) | not))) as $implicit
+  | ((.features | keys) + $implicit)
+  | unique
+  | map(select(private_feature | not))
+  | join(",")
+'
+
+# Usage: rustdoc_json WORKSPACE_MANIFEST PACKAGE METADATA_JSON OUTPUT_JSON
+rustdoc_json() {
+  local workspace_manifest=$1 package=$2 package_metadata=$3 output=$4
+  local features lib_name
+  features=$(jq -r --arg package "$package" "$heuristic_features_filter" "$package_metadata")
+  lib_name=$(
+    jq -er --arg package "$package" '
+      [.packages[] | select(.name == $package) | .targets[]
+       | select(any(.kind[]; . == "lib")) | .name][0]
+    ' "$package_metadata"
+  )
+  local -a feature_arguments=()
+  if [[ -n "$features" ]]; then
+    feature_arguments=(--features "$features")
+  fi
+  RUSTC_BOOTSTRAP=1 \
+    RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }--cap-lints=allow" \
+    RUSTDOCFLAGS="${RUSTDOCFLAGS:+$RUSTDOCFLAGS }-Z unstable-options --document-private-items --document-hidden-items --output-format=json --cap-lints=allow" \
+    cargo doc \
+      --manifest-path "$workspace_manifest" \
+      --locked \
+      --package "$package" \
+      --lib \
+      --no-deps \
+      --target-dir "$rustdoc_target" \
+      ${feature_arguments[@]+"${feature_arguments[@]}"}
+  cp "$rustdoc_target/doc/${lib_name//-/_}.json" "$output"
+}
+
 package_list="$semver_tmp/packages.txt"
 case $# in
   0)
@@ -118,36 +176,68 @@ while IFS= read -r package; do
       tar --extract --file "$archive_path" --directory "$semver_tmp" \
         --no-same-owner --no-same-permissions
 
-      # tinyvec 1.13.0 had an upstream alloc-only compilation regression. The
-      # workspace and published ORM constrain resolution to a fixed release.
-      # Use a compatible minimum in this separate graph: an exact 1.13.2 pin
-      # conflicts with the published 12.1.0 ORM's exact 1.13.3 dependency.
-      # Preserve any existing baseline constraint and all baseline Rust source.
-      if ! grep -Eq '^\[dependencies\.tinyvec\][[:space:]]*$' "$baseline_root/Cargo.toml"; then
-        {
-          printf '\n[dependencies.tinyvec]\n'
-          printf 'version = "1.13.2"\n'
-          printf 'default-features = false\n'
-        } >> "$baseline_root/Cargo.toml"
+      # The published package names the commit it was built from. Rebuild
+      # that commit's workspace with its own Cargo.lock, after checking that
+      # its library source is the published one.
+      vcs_member="$package-$baseline/.cargo_vcs_info.json"
+      if ! grep -Fxq "$vcs_member" "$archive_members" ||
+        ! grep -Fxq "$package-$baseline/Cargo.toml.orig" "$archive_members"; then
+        echo "Published package $package $baseline does not record its source commit and manifest" >&2
+        exit 1
+      fi
+      vcs_info="$semver_tmp/$package-$baseline.vcs.json"
+      tar -xOf "$archive_path" "$vcs_member" > "$vcs_info"
+      if jq -e '.git.dirty == true' "$vcs_info" >/dev/null; then
+        echo "Published package $package $baseline was packaged from a modified tree" >&2
+        exit 1
+      fi
+      source_commit=$(jq -er '.git.sha1 | select(test("^[0-9a-f]{40}$"))' "$vcs_info")
+      package_path=$(
+        jq -er '.path_in_vcs | select(test("^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"))' "$vcs_info"
+      )
+      if ! git cat-file -e "$source_commit^{commit}" 2>/dev/null; then
+        git fetch --quiet --no-tags --depth=1 origin "$source_commit"
+      fi
+      baseline_tree="$semver_tmp/source-$source_commit"
+      if [[ ! -d "$baseline_tree" ]]; then
+        mkdir "$baseline_tree"
+        git archive --format=tar "$source_commit" | tar -x -C "$baseline_tree"
+      fi
+      if ! cmp -s "$baseline_root/Cargo.toml.orig" "$baseline_tree/$package_path/Cargo.toml"; then
+        echo "Published $package $baseline manifest differs from commit $source_commit" >&2
+        exit 1
+      fi
+      while IFS= read -r member; do
+        relative=${member#"$package-$baseline/"}
+        case "$relative" in
+          */) continue ;;
+          src/* | build.rs) ;;
+          *) continue ;;
+        esac
+        if ! cmp -s "$baseline_root/$relative" "$baseline_tree/$package_path/$relative"; then
+          echo "Published $package $baseline differs from commit $source_commit at $relative" >&2
+          exit 1
+        fi
+      done < "$archive_members"
+
+      baseline_metadata="$semver_tmp/$package-$baseline.metadata.json"
+      cargo metadata --manifest-path "$baseline_tree/Cargo.toml" \
+        --no-deps --format-version 1 > "$baseline_metadata"
+      if ! jq -e --arg package "$package" --arg manifest "/$package_path/Cargo.toml" '
+          any(.packages[]; .name == $package and (.manifest_path | endswith($manifest)))
+        ' "$baseline_metadata" >/dev/null; then
+        echo "Commit $source_commit has no workspace package $package at $package_path" >&2
+        exit 1
       fi
 
-      echo "::group::$package against crates.io $baseline"
-      # The published 12.0.0 mail baseline predates Smithy types 1.7, which
-      # breaks the SDK's JSON 0.63 implementation during fresh resolution.
-      # Match the current resolver-only constraint without changing baseline
-      # Rust source, disabling aws-ses, or suppressing API comparisons.
-      if [[ "$package" == "rullst-mail" && "$baseline" == "12.0.0" ]]; then
-        if ! grep -Eq '^\[dependencies\.aws-smithy-types\][[:space:]]*$' "$baseline_root/Cargo.toml"; then
-          {
-            printf '\n[dependencies.aws-smithy-types]\n'
-            printf 'version = "=1.6.3"\n'
-            printf 'default-features = false\n'
-          } >> "$baseline_root/Cargo.toml"
-        fi
-      fi
+      echo "::group::$package against crates.io $baseline (commit $source_commit)"
+      baseline_json="$semver_tmp/$package-$baseline.baseline.json"
+      current_json="$semver_tmp/$package.current.json"
+      rustdoc_json "$baseline_tree/Cargo.toml" "$package" "$baseline_metadata" "$baseline_json"
+      rustdoc_json "$repository_root/Cargo.toml" "$package" "$metadata_path" "$current_json"
       cargo semver-checks check-release \
-        --package "$package" \
-        --baseline-root "$baseline_root"
+        --baseline-rustdoc "$baseline_json" \
+        --current-rustdoc "$current_json"
       echo "::endgroup::"
       ;;
     404)
