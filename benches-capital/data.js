@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792103740701,
+  "lastUpdate": 1792118331455,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12324,6 +12324,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "64b045338908522b64f1754c29a3a560667084cd",
+          "message": "Merge pull request #501 from Rullst/test/v13-wave3-mutation\n\ntest(auth,mail,privacy,security): kill surviving service-backed mutants",
+          "timestamp": "2026-10-15T23:12:42-03:00",
+          "tree_id": "c6fd2b34c906c6fa896a502290dee48fdf0b0ad4",
+          "url": "https://github.com/Rullst/Rullst/commit/64b045338908522b64f1754c29a3a560667084cd"
+        },
+        "date": 1792118330923,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           },
