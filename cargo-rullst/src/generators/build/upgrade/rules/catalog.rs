@@ -42,7 +42,7 @@ rules! {
         "Optionally override `list_job_previews` in the custom driver to cut payloads and errors in the store; the default projection keeps working.";
     UTOIPA_6: "V13-STUDIO-UTOIPA-6", MustChange, "Studio API playground",
         "`Studio::with_openapi` now takes a utoipa 6 `OpenApi`; this workspace declares an older utoipa",
-        "Upgrade `utoipa` to 6 (and `utoipa-axum` to 0.3, `utoipa-swagger-ui` to 10 when used) in Cargo.toml and adapt the OpenAPI derives.";
+        "Upgrade `utoipa` to 6 (and `utoipa-axum` to 0.3 when used) in Cargo.toml and adapt the OpenAPI derives; Studio renders its own API reference, so it needs no `utoipa-swagger-ui`.";
     STUDIO_TABLE_VALUES: "V13-STUDIO-TABLE-VALUES", Review, "Studio local access and table view",
         "`get_any_value_as_string` reports undecodable values as `unreadable` instead of `NULL`",
         "Update callers or tests that expected `NULL` for non-UTF-8 BLOBs or a text `NULL`.";

@@ -3749,8 +3749,8 @@ provider](capital-custom-provider.md)); the
   scoping, audit, rollback or shared-production administration. The ER diagram
   inspects the same relational backends with bound lookup values and strict
   normalized Mermaid identifiers, lists each column once and pairs composite
-  foreign-key columns by key position. Swagger requires an application-supplied
-  `OpenApi`.
+  foreign-key columns by key position. The read-only API reference requires an
+  application-supplied `OpenApi`.
 * Request SSE records method, URI, status, and latency without bodies or headers.
   Environment values are redacted by default; an allowlisted value is also
   redacted when it carries URL user information, a bearer token or a

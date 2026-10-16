@@ -11,7 +11,7 @@ workspace is not a supported release merely because its manifest exists.
 ## Source branches
 
 The permanent branches are `main` (v13 development; latest prerelease 13.0.0-alpha.2), `v12`
-(supported 12.x maintenance) and `gh-pages` (generated site/benchmark data).
+(frozen; 12.x reached end of life on 16 October 2026) and `gh-pages` (generated site/benchmark data).
 Use short-lived feature, fix and Dependabot branches with a pull request to the
 appropriate protected base. Remove those temporary branches after their changes
 are integrated; a superseded PR must identify the replacement preserving its

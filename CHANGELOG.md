@@ -46,6 +46,14 @@ its credentials are missing.
 
 ### Known limitations
 
+- The v12 line reached end of life on 16 October 2026; 12.3.0 is its last
+  release. crates.io has yanked the `zip` releases that 12.x's Studio needs, so
+  a new 12.x project no longer resolves its dependencies; use this release.
+- Deprecation: the Omni Tauri shells (`cargo rullst make:omni`,
+  `cargo rullst omni android`) and the native-only `offline-sync` feature are
+  planned for removal in 13.0.0-alpha.3. A first-class PWA generator
+  (`make:pwa`), Google Play packaging through a Trusted Web Activity and a
+  Microsoft Store guide replace them; see the ROADMAP.
 - No security-support commitment for v13 prereleases yet; see `SECURITY.md`.
   Pin an exact version (`=13.0.0-alpha.2`) and read the changelog before you
   upgrade.
@@ -83,6 +91,12 @@ its credentials are missing.
   within the first 64 KiB of the body, before any file field, unless the form
   sends the `X-CSRF-Token` header. Uploaded files are not inspected by the WAF,
   scanned for malware or stripped of metadata.
+- A new project that enables `orm-duckdb` (or `rullst-orm`'s `duckdb` feature)
+  cannot resolve its dependencies: `libduckdb-sys` needs a `zip` 6 release, and
+  crates.io has yanked every `zip` release before 9.0.3. Projects whose
+  `Cargo.lock` already pins `libduckdb-sys` keep building. This lasts until
+  duckdb-rs publishes a release that uses `zip` 9; other features do not
+  depend on `zip`.
 - `Scheduler::task_in_tz` has no `deferrable_task` equivalent: deferrable
   tasks tick in UTC and their windows use a fixed UTC offset.
 - Generated password reset links expire after 30 minutes, the longest lifetime
@@ -114,6 +128,14 @@ its credentials are missing.
   lockfiles move `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338, -0340, -0343)
   and `rustls` to 0.23.46 (RUSTSEC-2026-0346 to -0349). Applications should
   run `cargo update -p ammonia -p quinn-proto -p rustls`.
+- Studio's API playground no longer embeds Swagger UI: its
+  `utoipa-swagger-ui` build dependency needs a `zip` release that crates.io
+  has yanked, which broke dependency resolution for every new project.
+  `/studio/api` is now a server-rendered, read-only reference of the supplied
+  OpenAPI operations, with no script or remote asset; `/studio/api/` redirects
+  there and `/studio/api/openapi.json` still serves the document.
+- On Windows, tenant storage now reports a tenant directory below a regular
+  file as an I/O error, as on Unix.
 
 ### Fixes for 13.0.0-alpha.1 known issues
 

@@ -25,15 +25,15 @@ unpublished tag is not a distributed release by itself. Check the latest stable
 patch on [crates.io](https://crates.io/crates/rullst) and the
 [maintained release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md).
 
-`main` develops the next major release. Stable 12.x fixes belong to the protected
-[`v12` maintenance branch](https://github.com/Rullst/Rullst/tree/v12). Moving
-development to `main` does not change the supported-version table or republish
-existing crates.
+`main` develops the next major release. The v12 line reached end of life on
+16 October 2026: the [`v12` branch](https://github.com/Rullst/Rullst/tree/v12)
+is frozen and no further 12.x release is planned. Until 13.0.0 is stable,
+security reports are handled on `main` for the latest v13 prerelease.
 
 | Version | Supported | Status |
 | :--- | :---: | :--- |
-| **12.x** | :white_check_mark: | Current supported stable line; use its latest published stable patch. |
-| **13.x development** | :x: | Development work and evaluation prereleases such as 13.0.0-alpha.2; no stable security-support commitment yet. |
+| **12.x** | :x: | End of life since 16 October 2026; 12.3.0 is the last release. crates.io yanked the `zip` releases its Studio needs, so new 12.x projects no longer resolve dependencies. Move to v13. |
+| **13.x development** | :x: | Prereleases such as 13.0.0-alpha.2: reports are triaged on `main` and fixed in the next prerelease; no stable security-support commitment until 13.0.0. |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |

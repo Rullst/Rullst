@@ -14,7 +14,7 @@ Rullst Studio is the visual development environment and dashboard for managing y
   allowlist; composite primitive keys are supported, backend-specific values
   stay read-only, deletion requires exact textual confirmation, and every write
   requires the unforgeable verified-loopback/same-origin request marker.
-- [~] **API Playground**: Interactive Swagger UI for an `OpenApi` document explicitly supplied through `Studio::with_openapi`. Studio does not infer a complete specification from arbitrary Axum routes.
+- [~] **API Playground**: Server-rendered, read-only API reference for an `OpenApi` document explicitly supplied through `Studio::with_openapi`, plus the document as JSON. Studio does not infer a complete specification from arbitrary Axum routes and has no in-page request runner.
 
 ## Phase 2: Observability & Profiling
 - [~] **Real-time Request Logger**: Bounded SSE view of method, URI, status, and latency for the routes carrying its middleware. Bodies and headers are deliberately not captured by default because they can contain credentials or personal data.

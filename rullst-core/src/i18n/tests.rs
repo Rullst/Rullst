@@ -1,5 +1,16 @@
 use super::*;
 
+/// 65 canonical tags, one over the 64-tag cap: `xa`..`xz` twice, then
+/// `xa`..`xm`. A `static` gives `Locales::new` its `'static` list without
+/// leaking memory (LeakSanitizer runs this suite).
+static TOO_MANY_TAGS: [&str; 65] = [
+    "xa", "xb", "xc", "xd", "xe", "xf", "xg", "xh", "xi", "xj", "xk", "xl", "xm", "xn", "xo", "xp",
+    "xq", "xr", "xs", "xt", "xu", "xv", "xw", "xx", "xy", "xz", "xa", "xb", "xc", "xd", "xe", "xf",
+    "xg", "xh", "xi", "xj", "xk", "xl", "xm", "xn", "xo", "xp", "xq", "xr", "xs", "xt", "xu", "xv",
+    "xw", "xx", "xy", "xz", "xa", "xb", "xc", "xd", "xe", "xf", "xg", "xh", "xi", "xj", "xk", "xl",
+    "xm",
+];
+
 #[test]
 fn a_locale_list_finds_tags_ignoring_case_and_keeps_order() {
     let locales = Locales::new(&["en", "pt-BR", "es-419"], "pt-BR").unwrap();
@@ -34,13 +45,13 @@ fn a_locale_list_rejects_empty_invalid_duplicate_and_unknown_default() {
         Locales::new(&["en"], &long).unwrap_err(),
         LocaleError::UnknownDefault("x".repeat(64))
     );
-    let many: Vec<&'static str> = (0..65)
-        .map(|i| &*Box::leak(format!("x{}", char::from(b'a' + (i % 26) as u8)).into_boxed_str()))
-        .collect();
-    let many: &'static [&'static str] = Box::leak(many.into_boxed_slice());
-    assert_eq!(Locales::new(many, "xa").unwrap_err(), LocaleError::TooMany);
+    assert_eq!(
+        Locales::new(&TOO_MANY_TAGS, "xa").unwrap_err(),
+        LocaleError::TooMany
+    );
     assert!(
-        Locales::new(&many[..64], "xa").is_err_and(|e| e == LocaleError::DuplicateTag("xa".into()))
+        Locales::new(&TOO_MANY_TAGS[..64], "xa")
+            .is_err_and(|e| e == LocaleError::DuplicateTag("xa".into()))
     );
 }
 

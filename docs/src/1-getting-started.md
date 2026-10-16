@@ -22,21 +22,13 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **For Windows:**
 Download and run `rustup-init.exe` from the website.
 
-Next, install the stable **Rullst CLI** from the same release train as the
-framework. This book is built from `main`, where v13 is in development, so
-request the v12 line explicitly:
-
-```bash
-cargo install cargo-rullst --version '^12' --locked
-```
-
-The `^12` selector installs the latest stable v12 CLI. To reproduce a specific
-release, pass its full version, such as `--version 12.1.2`, after checking
-[publication status](v12.md).
-
-To evaluate the v13 prerelease instead, name its exact version. Cargo never
-selects a prerelease on its own, so neither a plain `cargo install
-cargo-rullst` nor `^13` installs it:
+Next, install the **Rullst CLI** from the same release train as the
+framework. This book is built from `main`, where v13 is in development. The
+v12 line reached end of life on 16 October 2026 (12.3.0 was its last release,
+and a new 12.x project no longer resolves its dependencies after crates.io
+yanked the `zip` releases its Studio needs), so install the v13 prerelease. Name its exact version: Cargo never selects a
+prerelease on its own, so neither a plain `cargo install cargo-rullst` nor
+`^13` installs it:
 
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.2 --locked
@@ -81,8 +73,7 @@ We have completely redesigned the project creation experience. Instead of rememb
 cargo rullst
 ```
 
-It opens an interactive home menu. The example below creates a Portfolio with
-the stable v12 CLI:
+It opens an interactive home menu. The example below creates a Portfolio:
 1. Select **Create New Project**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
 3. **Starter Blueprint**: Choose **Portfolio**. Labels and decorative suffixes

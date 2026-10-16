@@ -27,6 +27,8 @@ toml = { workspace = true }
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(mutants)'] }
 
 [dev-dependencies]
+# Reads `cargo metadata` in the trybuild harness, as trybuild itself does.
+serde_json = { workspace = true, features = ["std"] }
 trybuild = "1.0.121"
 
 [package.metadata.cargo-machete]

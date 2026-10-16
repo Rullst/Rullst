@@ -260,7 +260,10 @@ fn a_valid_catalog_defines_locales_tracking_and_t() {
         &out,
         quote! { pub static LOCALES: rullst::i18n::Locales = rullst::i18n::Locales::__from_catalog(&["en", "pt-BR"], 1usize); },
     );
-    let en = manifest_dir().join("tests/i18n/valid/en.toml");
+    // `read_dir` joins each file name to `<manifest>/<dir>` with the platform
+    // separator: `...\tests/i18n/valid\en.toml` on Windows, which Windows
+    // resolves (rullst-core's `tests/i18n_catalog.rs` compiles there).
+    let en = manifest_dir().join("tests/i18n/valid").join("en.toml");
     let en = en.to_string_lossy();
     contains(&out, quote! { const _: &[u8] = include_bytes!(#en); });
     let sources = catalog::read_dir(manifest_dir(), "tests/i18n/valid").unwrap();
