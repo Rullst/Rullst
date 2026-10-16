@@ -384,7 +384,7 @@ pub(super) fn render_field_widget(
 }
 
 /// Chooses the input type for a single-line kind and the value to show in it.
-fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
+pub(super) fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
     let shown = |input_type| (input_type, text.to_owned());
     if text.is_empty() {
         return match kind {

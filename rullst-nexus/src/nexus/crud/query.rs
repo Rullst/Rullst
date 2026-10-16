@@ -65,24 +65,6 @@ pub fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
-#[cfg(all(test, not(miri)))]
-#[cfg_attr(mutants, mutants::skip)]
-#[allow(dead_code)]
-pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
-    match kind {
-        FieldKind::Email => "email",
-        FieldKind::Url => "url",
-        FieldKind::Number | FieldKind::Integer { .. } => "number",
-        FieldKind::Password => "password",
-        FieldKind::Date => "date",
-        FieldKind::DateTime | FieldKind::DateTimeUtc => "datetime-local",
-        FieldKind::Time => "time",
-        FieldKind::ForeignKey { .. } => "select",
-        FieldKind::Enum { .. } => "select",
-        _ => "text",
-    }
-}
-
 /// Whether `field` is matched by the list search: a visible text, textarea,
 /// e-mail or URL column.
 pub(crate) fn is_searchable(field: &FieldMeta) -> bool {
