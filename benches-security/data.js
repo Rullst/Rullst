@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792118124050,
+  "lastUpdate": 1792121427939,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16219,6 +16219,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 567,
             "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d08dfa2a343124a318505a6f9af29b9a05c8d50",
+          "message": "Merge pull request #505 from Rullst/test/v13-sensitive-mutation\n\ntest(connect,mail,ai): kill surviving mutants in the security-sensitive files",
+          "timestamp": "2026-10-16T00:08:22-03:00",
+          "tree_id": "975f204d98e7470181b805cab5e6e4cde567066c",
+          "url": "https://github.com/Rullst/Rullst/commit/2d08dfa2a343124a318505a6f9af29b9a05c8d50"
+        },
+        "date": 1792121427065,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5382,
+            "range": "± 73",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 583,
+            "range": "± 4",
             "unit": "ns/iter"
           },
           {
