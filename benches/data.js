@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792117191409,
+  "lastUpdate": 1792120539273,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27089,6 +27089,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1969,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d08dfa2a343124a318505a6f9af29b9a05c8d50",
+          "message": "Merge pull request #505 from Rullst/test/v13-sensitive-mutation\n\ntest(connect,mail,ai): kill surviving mutants in the security-sensitive files",
+          "timestamp": "2026-10-16T00:08:22-03:00",
+          "tree_id": "975f204d98e7470181b805cab5e6e4cde567066c",
+          "url": "https://github.com/Rullst/Rullst/commit/2d08dfa2a343124a318505a6f9af29b9a05c8d50"
+        },
+        "date": 1792120536520,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 740,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1044,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 374,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2005,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
