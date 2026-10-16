@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792103532431,
+  "lastUpdate": 1792118124050,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16183,6 +16183,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 17,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "64b045338908522b64f1754c29a3a560667084cd",
+          "message": "Merge pull request #501 from Rullst/test/v13-wave3-mutation\n\ntest(auth,mail,privacy,security): kill surviving service-backed mutants",
+          "timestamp": "2026-10-15T23:12:42-03:00",
+          "tree_id": "c6fd2b34c906c6fa896a502290dee48fdf0b0ad4",
+          "url": "https://github.com/Rullst/Rullst/commit/64b045338908522b64f1754c29a3a560667084cd"
+        },
+        "date": 1792118123437,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5430,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 567,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
