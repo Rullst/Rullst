@@ -29,6 +29,7 @@ fn encrypted_fields_use_the_key_from_dotenv() {
     for key in KEYS {
         unsafe { std::env::remove_var(key) };
     }
+    let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(&project).unwrap();
 
     let encrypted = encrypt_model_field("secret", "accounts", "token").expect("key from .env");
@@ -52,5 +53,7 @@ fn encrypted_fields_use_the_key_from_dotenv() {
     );
     unsafe { std::env::remove_var("RULLST_ENCRYPTION_KEY") };
 
+    // Windows refuses to delete the process's working directory (os error 32).
+    std::env::set_current_dir(original_dir).unwrap();
     std::fs::remove_dir_all(&project).unwrap();
 }
