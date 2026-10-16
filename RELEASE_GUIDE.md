@@ -130,8 +130,9 @@ Before releasing, make sure:
   matches `LiveSecurityEvent`, and any incompatible event change uses a new
   schema version instead of silently changing v1.
 - [ ] Every package in [the release order](.github/release-order.json) has
-  synchronized manifest versions and internal requirements at the selected
-  release version. The current v13 candidate inventory has 20 packages, including
+  synchronized manifest versions and exact internal requirements (`=X.Y.Z`)
+  at the selected release version; `.github/release-preflight.jq` refuses a
+  caret requirement. The current v13 candidate inventory has 20 packages, including
   `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`.
   Labs ships its contracts only; the Labs runner candidate was removed from
   13.0 and is not packaged. A successful archive rehearsal does not by itself

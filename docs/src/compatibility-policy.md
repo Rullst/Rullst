@@ -123,7 +123,8 @@ disclosure and response targets in `SECURITY.md` and the
 Before publishing a stable or prerelease version, the release commit must prove
 the applicable compatibility contract with:
 
-1. synchronized package versions and internal requirements;
+1. synchronized package versions and exact (`=`) internal requirements, so
+   Cargo cannot pair packages from different releases;
 2. the MSRV and multi-OS CI jobs;
 3. full tests, strict Clippy, formatting, docs, and feature-boundary checks;
 4. packaged crates and generated applications tested without monorepo paths;
