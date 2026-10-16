@@ -8,7 +8,7 @@ to guess about application data or security policy.
 > The v13 source rules, the assisted `cargo rullst ai upgrade` session and the
 > rule classification are described in
 > [v12 to v13: source findings](#v12-to-v13-source-findings) and belong to the
-> `13.0.0-alpha.1` prerelease. Install the exact release and complete
+> `13.0.0-alpha.2` prerelease. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
@@ -386,8 +386,11 @@ unchanged. The edit also compiles on 12.3.0, so it can land before the upgrade.
 The rehearsal fixed two gaps: the failed gate gave no hint because
 `V13-CAPITAL-REMOVED` is a review finding (it now repeats the rule's guidance),
 and the rule did not locate `BILLING_STORE_ID` (the SaaS count was 12 before).
-Limits: the review findings were read, not applied; there was no HTTP smoke
-test and no live Stripe call; `V13-NEXUS-DOTENV` and `V13-LMS-RECORD-PROGRESS`
+Limits: the counts were measured against the 13.0.0-alpha.1 workspace and not
+re-measured for 13.0.0-alpha.2, whose catalog adds `V13-HTML-MARKUP-RETURN`,
+`V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS` and
+`V13-POLYGLOT-FEATURE`; the review findings were read, not applied; there was
+no HTTP smoke test and no live Stripe call; `V13-NEXUS-DOTENV` and `V13-LMS-RECORD-PROGRESS`
 locate API use, so they also report on a fresh v13 starter; a project changed
 after generation can have other findings.
 
@@ -644,7 +647,7 @@ File recovery does not replace database backups or application acceptance
 tests, and updating the CLI alone never updates a deployed application.
 
 The 12.1.0 update mechanism does not implement v13 migrations. The
-v13 CLI (13.0.0-alpha.1 prerelease) carries its own rule catalog
+v13 CLI (13.0.0-alpha.2 prerelease) carries its own rule catalog
 ([v12 to v13: source findings](#v12-to-v13-source-findings)); `update guided`
 offers a project update only within the installed CLI's major.
 

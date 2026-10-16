@@ -130,8 +130,9 @@ Before releasing, make sure:
   matches `LiveSecurityEvent`, and any incompatible event change uses a new
   schema version instead of silently changing v1.
 - [ ] Every package in [the release order](.github/release-order.json) has
-  synchronized manifest versions and internal requirements at the selected
-  release version. The current v13 candidate inventory has 20 packages, including
+  synchronized manifest versions and exact internal requirements (`=X.Y.Z`)
+  at the selected release version; `.github/release-preflight.jq` refuses a
+  caret requirement. The current v13 candidate inventory has 20 packages, including
   `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`.
   Labs ships its contracts only; the Labs runner candidate was removed from
   13.0 and is not packaged. A successful archive rehearsal does not by itself
@@ -227,7 +228,7 @@ deliberately (for example, to resolve an advisory). Changes that break Rullst's
 compatibility contract belong to v13.
 Keep the v12 release gates active while v13's own CI policy evolves.
 
-Version 12.1.2 is the latest published stable release. Carry the compatible
+Version 12.3.0 is the latest published stable release. Carry the compatible
 12.1 [update experience](ROADMAP.md#safe-update-experience) into v13 while keeping
 maintenance on `v12`; forward-port applicable fixes through reviewed PRs.
 Synchronize package versions only when the candidate is accepted for release.
@@ -319,8 +320,8 @@ git push origin v13.X.Y
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | Unpublished `13.0.0-alpha.1` development; a branch merge does not publish it |
+| Current `main` line | `13.0.0-alpha.2` prerelease source; only a reviewed tag publishes it, a branch merge does not |
 | Maintenance line | Protected `v12` for compatible 12.x fixes |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
-| Published prerelease | `12.0.0-rc.1` / `v12.0.0-rc.1` |
+| Published v13 prereleases | `13.0.0-alpha.1` / `v13.0.0-alpha.1` (October 11, 2026); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
 | Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [maintained v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |

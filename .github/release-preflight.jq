@@ -33,9 +33,9 @@ def fail($message): error("release preflight: " + $message);
     | $package.dependencies[]
     | select($positions[.name] != null)
     | {package: $package, dependency: .};
-    .dependency.req != ("^" + $version)
+    .dependency.req != ("=" + $version)
   ) then
-    fail("an internal dependency requirement does not match ^" + $version)
+    fail("an internal dependency requirement does not match =" + $version)
   elif any(
     $publishable[] as $package
     | $package.dependencies[]

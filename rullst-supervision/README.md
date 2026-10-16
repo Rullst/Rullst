@@ -58,5 +58,5 @@ repaired retrospectively, as recorded in the
 and package-admission requirements remain separate.
 The standalone package is now included in the v13 release inventory and was
 first published on crates.io as `13.0.0-alpha.1`. Final release acceptance
-remains outstanding; `13.0.0-alpha.1` is a prerelease, not a stable release. Applications
+remains outstanding; `13.0.0-alpha.2` is a prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.

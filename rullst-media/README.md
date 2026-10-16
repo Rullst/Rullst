@@ -37,8 +37,8 @@ Its mock grants are deliberately unusable for browser playback/upload.
 
 There is no default Core/Auth/ORM dependency, framework facade feature or automatic
 blueprint modification. Applications opt in explicitly with
-`rullst-media = { version = "=13.0.0-alpha.1", features = ["bunny", "sqlite"] }`.
-`13.0.0-alpha.1` is a prerelease, not a stable crates.io release.
+`rullst-media = { version = "=13.0.0-alpha.2", features = ["bunny", "sqlite"] }`.
+`13.0.0-alpha.2` is a prerelease, not a stable crates.io release.
 
 ## Server composition
 

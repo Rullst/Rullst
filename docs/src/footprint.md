@@ -1,6 +1,6 @@
 # Measuring an App's Footprint (`cargo rullst footprint`)
 
-**Status:** v13 development source (`13.0.0-alpha.1`). Part of the
+**Status:** v13 development source (`13.0.0-alpha.2`). Part of the
 [green software roadmap](green-software-roadmap.md).
 
 `cargo rullst footprint` runs a short, bounded load against your application

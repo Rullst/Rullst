@@ -1,7 +1,7 @@
 # Rullst Connect 🦀
 
 > [!IMPORTANT]
-> This page describes the v13 prerelease, published as `13.0.0-alpha.1`. Cargo
+> This page describes the v13 prerelease, published as `13.0.0-alpha.2`. Cargo
 > never selects a prerelease on its own, so its dependency examples pin that
 > version exactly; for the stable line use `rullst-connect@12` and check the
 > [release record](../v12.md). Use a path dependency only for checkout-local
@@ -189,7 +189,7 @@ For a reproducible application, install the exact registry version instead.
 
 v13 prerelease command (the stable line is `rullst-connect@12`):
 ```bash
-cargo add rullst-connect@=13.0.0-alpha.1
+cargo add rullst-connect@=13.0.0-alpha.2
 cargo add secrecy
 ```
 
@@ -197,14 +197,14 @@ For the recommended Axum session transaction, enable `axum-session` and add a
 `tower-sessions` store:
 
 ```toml
-rullst-connect = { version = "=13.0.0-alpha.1", features = ["axum-session"] }
+rullst-connect = { version = "=13.0.0-alpha.2", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "=13.0.0-alpha.1"
+rullst-connect = "=13.0.0-alpha.2"
 secrecy = "0.10"
 tokio = { version = "1.52", features = ["full"] }
 ```

@@ -20,7 +20,8 @@ for Humans and AI."**
 Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` (published as a prerelease on October 11, 2026),
-  then further alphas, betas and a release candidate
+  `13.0.0-alpha.2` (release candidate prepared on October 16, 2026, with the
+  alpha.1 dogfooding fixes), then further alphas, betas and a release candidate
   driven by user feedback, then `13.0.0` stable with the
   [maturity tiers](docs/src/maturity.md) applying from that release.
 - **v12:** compatible maintenance on the `v12` branch under the
@@ -706,11 +707,12 @@ features, and they add no milestone to the counts above.
   output and add nginx, with the readiness/drain and trusted-proxy contracts
   that `rullst-core` already exposes.
 
-### Planned after 13.0.0-alpha.2
+### Planned for 13.0.0-alpha.3
 
-Recorded on 15 October 2026 with the maintainer. These are planned work items
-for the v13 prerelease cycle, not shipped features, and they add no milestone
-to the counts above.
+Recorded on 15 October 2026 with the maintainer and extended on 16 October,
+when 13.0.0-alpha.2 was prepared. These are planned work items for the next
+prerelease, not shipped features, and they add no milestone to the counts
+above.
 
 - **Studio as a production monitor for several projects.** Today Studio is a
   development tool: it runs inside the application process in debug builds,
@@ -744,6 +746,29 @@ to the counts above.
   is a candidate for a 13.x release if users ask for it. Full parity, which
   would let the ORM core run on a backend other than SQLx, is deferred to a
   later major release because it would put the SQLx drivers at risk.
+- **The rest of the mutation campaign.** Before the alpha.3 version freeze, as
+  the [verification order](docs/src/v13-delivery-plan.md) requires:
+  - `rullst-orm`: 53 missed mutants in waves 1–2, 443 in wave 4 and 32 in the
+    owned-server contract mode. They were measured before the alpha.2
+    `Schema` changes (constraints, indexes, foreign keys, date/time columns),
+    so re-measure the crate first.
+  - `rullst-core`: the files the first pass left
+    ([PR #465](https://github.com/Rullst/Rullst/pull/465)): the wave-4 files
+    not started (`health.rs`, `cache/tenant.rs`, `feature/*`, `html.rs`,
+    `devops.rs`, `production.rs` and a few one-mutant files),
+    `redis_connection.rs`, and hosted reruns of the files checked only
+    locally; the wave-4 list holds 452 mutants.
+  - `rullst-nexus` and the whole of `cargo-rullst`, not measured yet.
+  - The 29 `rullst-capital` mutants that only a live Stripe response reaches
+    stay with provider sandbox testing.
+- **Feedback from the platforms built on alpha.2.** The maintainer is building
+  platforms on 13.0.0-alpha.2. Their reports choose the fixes and priorities
+  for alpha.3, as the alpha.1 report did for alpha.2.
+- **The pending v12 patch release.** `v12` has the `money_to_minor`
+  rounds-to-zero fix for `Invoice` amounts
+  ([PR #500](https://github.com/Rullst/Rullst/pull/500)) and the RustSec
+  dependency updates (`ammonia` 4.2.3, `quinn-proto`, `rustls`) merged after
+  12.3.0, but no 12.x patch publishes them yet.
 
 ### Published and planned release lines
 
@@ -753,7 +778,12 @@ to the counts above.
 | **v12.x** | `[~] Active stable maintenance` | Preserve published releases; prioritize reviewed compatible fixes and dependency updates. Patch releases must retain the supported compiler and public contracts. |
 | **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
 | **v12.1.1** | `[x] Published patch` | All sixteen packages were published from `d27db26c` on 24 September 2026 UTC; see the [publication record](docs/src/v12.md#1211-published-maintenance-release). |
-| **v12.1.2** | `[x] Latest published patch` | Tagged `v12.1.2` on 28 September 2026 UTC from the `v12` maintenance line; its publication evidence is kept in the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
+| **v12.1.2** | `[x] Published patch` | Tagged `v12.1.2` on 28 September 2026 UTC from the `v12` maintenance line; its publication evidence is kept in the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
+| **v12.2.0** | `[x] Published compatible minor` | Tagged `v12.2.0` at `565e222a` on 3 October 2026 from the `v12` maintenance line; see the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
+| **v12.3.0** | `[x] Latest published stable` | Tagged `v12.3.0` at `67b2d0e5` and published on 9 October 2026: hickory 0.26.3, fewer WAF/RASP false positives and deprecations of the Capital and Mail APIs that 13.0 removes. A 12.x patch with the fixes merged on `v12` since then is planned; see [Planned for 13.0.0-alpha.3](#planned-for-1300-alpha3). |
+| **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
+| **v13.0.0-alpha.2** | `[~] Release candidate` | Prepared on 16 October 2026 on `main`: the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. It is published only after its exact-SHA admission passes and its tag is pushed. |
+| **v13.0.0-alpha.3** | `[ ] Planned` | See [Planned for 13.0.0-alpha.3](#planned-for-1300-alpha3). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

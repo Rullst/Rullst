@@ -33,7 +33,7 @@ existing crates.
 | Version | Supported | Status |
 | :--- | :---: | :--- |
 | **12.x** | :white_check_mark: | Current supported stable line; use its latest published stable patch. |
-| **13.x development** | :x: | Development work and evaluation prereleases such as 13.0.0-alpha.1; no stable security-support commitment yet. |
+| **13.x development** | :x: | Development work and evaluation prereleases such as 13.0.0-alpha.2; no stable security-support commitment yet. |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |

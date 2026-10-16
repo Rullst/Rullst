@@ -6,7 +6,7 @@
 > Use path dependencies only when intentionally testing checkout-local changes.
 > The result ordering, SQL fallback, indexed-field, `restore()`/`force_delete()`
 > projection and hit-cap rules below describe the v13 prerelease source
-> (`13.0.0-alpha.1`).
+> (`13.0.0-alpha.2`).
 
 Scout connects a `#[orm(searchable)]` SQLx model to one search backend. The
 model database remains authoritative; the search index is a projection updated

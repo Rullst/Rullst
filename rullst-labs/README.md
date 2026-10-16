@@ -14,7 +14,7 @@ candidate name nor a signed receipt establishes production readiness.
 
 **Maturity: Experimental** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)):
 the API may change between 13.x releases. The crate is in the 13.0 release
-inventory and ships as `13.0.0-alpha.1`; it contains contracts only and never
+inventory and has shipped since `13.0.0-alpha.1`; it contains contracts only and never
 executes learner code. Experimental does not mean broken.
 
 The default feature provides bounded, versioned contracts with no executor or

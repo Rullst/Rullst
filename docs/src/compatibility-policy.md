@@ -1,7 +1,7 @@
 # Compatibility, MSRV, deprecation, and support policy
 
 This policy applies to the packages in the [release inventory](../../.github/release-order.json):
-16 published packages in v12.1 and 20 packages in the v13 prerelease train (13.0.0-alpha.1),
+16 published packages in v12.1 and 20 packages in the v13 prerelease train (13.0.0-alpha.2),
 including `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`. They are released as one synchronized release train
 even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
@@ -10,7 +10,7 @@ workspace is not a supported release merely because its manifest exists.
 
 ## Source branches
 
-The permanent branches are `main` (v13 development; latest prerelease 13.0.0-alpha.1), `v12`
+The permanent branches are `main` (v13 development; latest prerelease 13.0.0-alpha.2), `v12`
 (supported 12.x maintenance) and `gh-pages` (generated site/benchmark data).
 Use short-lived feature, fix and Dependabot branches with a pull request to the
 appropriate protected base. Remove those temporary branches after their changes
@@ -123,7 +123,8 @@ disclosure and response targets in `SECURITY.md` and the
 Before publishing a stable or prerelease version, the release commit must prove
 the applicable compatibility contract with:
 
-1. synchronized package versions and internal requirements;
+1. synchronized package versions and exact (`=`) internal requirements, so
+   Cargo cannot pair packages from different releases;
 2. the MSRV and multi-OS CI jobs;
 3. full tests, strict Clippy, formatting, docs, and feature-boundary checks;
 4. packaged crates and generated applications tested without monorepo paths;

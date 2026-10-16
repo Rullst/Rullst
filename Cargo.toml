@@ -38,23 +38,23 @@ resolver = "2"
 
 [workspace.dependencies]
 # Internal workspace crates
-rullst = { version = "13.0.0-alpha.1", path = "rullst" }
-rullst-core = { version = "13.0.0-alpha.1", path = "rullst-core", default-features = false }
-rullst-orm = { version = "13.0.0-alpha.1", path = "rullst-orm", default-features = false }
-rullst-orm-macros = { version = "13.0.0-alpha.1", path = "rullst-orm-macros" }
-rullst-macros = { version = "13.0.0-alpha.1", path = "rullst-macros" }
-rullst-auth = { version = "13.0.0-alpha.1", path = "rullst-auth" }
-rullst-security = { version = "13.0.0-alpha.1", path = "rullst-security" }
-rullst-capital = { version = "13.0.0-alpha.1", path = "rullst-capital" }
-rullst-studio = { version = "13.0.0-alpha.1", path = "rullst-studio", default-features = false }
-rullst-nexus = { version = "13.0.0-alpha.1", path = "rullst-nexus", default-features = false }
-rullst-mail = { version = "13.0.0-alpha.1", path = "rullst-mail" }
-rullst-messaging = { version = "13.0.0-alpha.1", path = "rullst-messaging" }
-rullst-privacy = { version = "13.0.0-alpha.1", path = "rullst-privacy", default-features = false }
-rullst-ai = { version = "13.0.0-alpha.1", path = "rullst-ai" }
-rullst-connect = { version = "13.0.0-alpha.1", path = "rullst-connect" }
-rullst-iot = { version = "13.0.0-alpha.1", path = "rullst-iot" }
-cargo-rullst = { version = "13.0.0-alpha.1", path = "cargo-rullst" }
+rullst = { version = "=13.0.0-alpha.2", path = "rullst" }
+rullst-core = { version = "=13.0.0-alpha.2", path = "rullst-core", default-features = false }
+rullst-orm = { version = "=13.0.0-alpha.2", path = "rullst-orm", default-features = false }
+rullst-orm-macros = { version = "=13.0.0-alpha.2", path = "rullst-orm-macros" }
+rullst-macros = { version = "=13.0.0-alpha.2", path = "rullst-macros" }
+rullst-auth = { version = "=13.0.0-alpha.2", path = "rullst-auth" }
+rullst-security = { version = "=13.0.0-alpha.2", path = "rullst-security" }
+rullst-capital = { version = "=13.0.0-alpha.2", path = "rullst-capital" }
+rullst-studio = { version = "=13.0.0-alpha.2", path = "rullst-studio", default-features = false }
+rullst-nexus = { version = "=13.0.0-alpha.2", path = "rullst-nexus", default-features = false }
+rullst-mail = { version = "=13.0.0-alpha.2", path = "rullst-mail" }
+rullst-messaging = { version = "=13.0.0-alpha.2", path = "rullst-messaging" }
+rullst-privacy = { version = "=13.0.0-alpha.2", path = "rullst-privacy", default-features = false }
+rullst-ai = { version = "=13.0.0-alpha.2", path = "rullst-ai" }
+rullst-connect = { version = "=13.0.0-alpha.2", path = "rullst-connect" }
+rullst-iot = { version = "=13.0.0-alpha.2", path = "rullst-iot" }
+cargo-rullst = { version = "=13.0.0-alpha.2", path = "cargo-rullst" }
 
 # Shared external dependencies
 tokio = { version = "1.52.3", default-features = false }

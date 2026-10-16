@@ -367,7 +367,7 @@ Install the v13 prerelease with an exact pin (Cargo never selects a
 prerelease on its own; the stable line is `rullst-orm@12`):
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.1
+cargo add rullst-orm@=13.0.0-alpha.2
 cargo add tokio -F full
 ```
 
@@ -538,7 +538,7 @@ async fn for_lesson(lesson_id: Option<i64>) -> Result<Vec<Progress>, rullst_orm:
 From 12.1, a standalone ORM dependency can omit unrelated SQLx drivers:
 
 ```toml
-rullst-orm = { version = "=13.0.0-alpha.1", default-features = false, features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.2", default-features = false, features = ["strict-postgres"] }
 ```
 
 `strict-mysql` and `strict-sqlite` select their respective backends. The default
@@ -568,7 +568,7 @@ enums specifically require `strict-postgres`, because SQLx's dynamic `Any`
 driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "=13.0.0-alpha.1", features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-alpha.2", features = ["strict-postgres"] }
 ```
 
 Then derive one label contract and use it in schema code:
