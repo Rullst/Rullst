@@ -70,9 +70,8 @@ its credentials are missing.
   are not preserved there.
 - `save()` still writes every column of the handle, so the last writer wins;
   use `update_partial()` or one atomic `Orm::raw` `UPDATE` for concurrent edits.
-- Startup migrations are opt-in and the generated starters do not register
-  theirs: run `db:migrate` on each deploy, or add `with_migrations` to
-  `src/main.rs`.
+- Startup migrations are opt-in (`RULLST_AUTO_MIGRATE=true`); Turso starters
+  keep their own `db:migrate` and refuse to start with that variable set.
 - Nexus reads a `datetime-local` value without an offset in a `DateTimeUtc`
   field as UTC, not as the administrator's local time.
 - i18n has only the `one` and `other` plural forms (a plural message in another
