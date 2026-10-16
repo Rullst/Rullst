@@ -39,7 +39,7 @@ updates:
           - "major"
           - "minor"
           - "patch"
-      # utoipa-swagger-ui requires the matching utoipa major; update them together.
+      # utoipa-axum and other utoipa crates require the matching utoipa major; update them together.
       utoipa-family:
         patterns:
           - "utoipa"

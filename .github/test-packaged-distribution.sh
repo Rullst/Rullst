@@ -129,7 +129,12 @@ import tomllib
 from pathlib import Path
 
 manifest = tomllib.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-features = sorted(name for name in manifest.get("features", {}) if name != "default")
+# This consumer resolves its graph fresh, as a new application does. crates.io
+# yanked every zip release before 9.0.3, and libduckdb-sys still requires zip 6,
+# so `orm-duckdb` cannot resolve without an existing lockfile (CHANGELOG known
+# limitation). The workspace's locked builds keep compiling DuckDB.
+unresolvable = {"default", "orm-duckdb"}
+features = sorted(name for name in manifest.get("features", {}) if name not in unresolvable)
 if not features:
     raise SystemExit("packaged rullst manifest has no public features")
 print(", ".join(json.dumps(name) for name in features))

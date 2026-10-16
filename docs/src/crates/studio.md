@@ -21,9 +21,10 @@ views from the sources explicitly supplied by the application.
   to 256 characters in the database and accept search terms up to 256 bytes. SQLite, PostgreSQL, MySQL and
   MariaDB run executable mutation contracts; PostgreSQL runs under both the
   default `sqlx::Any` build and `strict-postgres`.
-- **API playground:** Mount interactive Swagger UI from an `OpenApi` document
-  explicitly supplied by the application; Studio does not infer arbitrary Axum
-  routes.
+- **API reference:** Render the operations of an `OpenApi` document explicitly
+  supplied by the application at `/studio/api` (server-side, no script or
+  remote asset) and serve the document at `/studio/api/openapi.json`; Studio
+  does not infer arbitrary Axum routes or send requests for you.
 - **Worker queue monitoring:** Inspect up to 50 records exposed by a supplied
   Rullst queue and request retries. Records come from the bounded v13
   `list_job_previews` projection: at most 2 KiB of each payload and error

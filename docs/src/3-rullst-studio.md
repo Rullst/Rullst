@@ -85,8 +85,12 @@ mounted push-only ingestion router.
   `/studio/er`: development tools for their corresponding subsystems.
 - `/studio/requests`: the request log, streamed over SSE from
   `/studio/requests/stream`.
-- `/studio/jobs` and `/studio/api`: the queue view and Swagger UI, mounted only
-  when `with_horizon` or `with_openapi` supplies their source.
+- `/studio/jobs` and `/studio/api`: the queue view and the API reference,
+  mounted only when `with_horizon` or `with_openapi` supplies their source.
+  `/studio/api` renders the supplied document's operations, parameters, request
+  bodies and responses on the server (no script or remote asset); the document
+  itself is served at `/studio/api/openapi.json`, and `/studio/api/` redirects
+  to the page.
 
 The radar page polls the `/api/radar` JSON endpoint; `/api/revenue` and
 `/studio/security/stats` also return JSON, and `/metrics` serves the Prometheus
@@ -127,9 +131,11 @@ separate WebSocket telemetry transport or zero runtime overhead.
   every data statement names that schema so that `search_path` cannot select a
   same-named table elsewhere. This does not supply application tenant/RBAC,
   audit history, undo, or a shared-production database administrator.
-- Swagger UI appears only when the application supplies its `OpenApi` document
-  with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
-  routes.
+- The API reference appears only when the application supplies its `OpenApi`
+  document with `Studio::with_openapi`; Studio does not reverse-engineer
+  arbitrary Axum routes. It is read-only: it shows at most 500 operations and
+  512 characters of each text field, and it does not send requests to the
+  application (use the JSON document with an external client for that).
 - The request SSE records method, URI, status and latency. It deliberately does
   not capture bodies or headers, which commonly contain credentials and PII.
 - The jobs view lists the 50 most recent records exposed by a supplied queue;

@@ -4239,7 +4239,7 @@ dependencies = [
  "tar",
  "ureq",
  "vcpkg",
- "zip 6.0.0",
+ "zip",
 ]
 
 [[package]]
@@ -6752,7 +6752,6 @@ dependencies = [
  "tower",
  "urlencoding",
  "utoipa",
- "utoipa-swagger-ui",
 ]
 
 [[package]]
@@ -8691,12 +8690,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "typed-path"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e28f89b80c87b8fb0cf04ab448d5dd0dd0ade2f8891bae878de66a75a28600e"
-
-[[package]]
 name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8903,29 +8896,6 @@ dependencies = [
  "quote",
  "syn 3.0.8",
 ]
-
-[[package]]
-name = "utoipa-swagger-ui"
-version = "10.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f5ec9d7816e4ce8ccb7e0bd7276e090cad0fcb1def4f3540e5b0f7485d7583e"
-dependencies = [
- "axum",
- "base64 0.23.1",
- "mime_guess",
- "regex",
- "serde",
- "serde_json",
- "utoipa",
- "utoipa-swagger-ui-vendored",
- "zip 8.6.0",
-]
-
-[[package]]
-name = "utoipa-swagger-ui-vendored"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552a64d6a0d251ae28bc021838800943cce60c9ec2e60ff331f54e79f696268f"
 
 [[package]]
 name = "uuid"
@@ -9795,20 +9765,6 @@ dependencies = [
  "flate2",
  "indexmap 2.14.1",
  "memchr",
- "zopfli",
-]
-
-[[package]]
-name = "zip"
-version = "8.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
-dependencies = [
- "crc32fast",
- "flate2",
- "indexmap 2.14.1",
- "memchr",
- "typed-path",
  "zopfli",
 ]
 

@@ -364,19 +364,27 @@ async fn test_studio_horizon_jobs_and_purge() {
 async fn test_studio_openapi_uses_canonical_routes() {
     let app = local_studio(Studio::new().with_openapi(utoipa::openapi::OpenApi::default()));
 
+    // The former Swagger UI location redirects to the server-rendered page.
     let redirect = app
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/studio/api")
+                .uri("/studio/api/")
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert!(redirect.status().is_redirection());
+    assert_eq!(redirect.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(
+        redirect
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .unwrap(),
+        "/studio/api"
+    );
 
-    for path in ["/studio/api/", "/studio/api/openapi.json"] {
+    for path in ["/studio/api", "/studio/api/openapi.json"] {
         let response = app
             .clone()
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

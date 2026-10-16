@@ -83,6 +83,12 @@ its credentials are missing.
   within the first 64 KiB of the body, before any file field, unless the form
   sends the `X-CSRF-Token` header. Uploaded files are not inspected by the WAF,
   scanned for malware or stripped of metadata.
+- A new project that enables `orm-duckdb` (or `rullst-orm`'s `duckdb` feature)
+  cannot resolve its dependencies: `libduckdb-sys` needs a `zip` 6 release, and
+  crates.io has yanked every `zip` release before 9.0.3. Projects whose
+  `Cargo.lock` already pins `libduckdb-sys` keep building. This lasts until
+  duckdb-rs publishes a release that uses `zip` 9; other features do not
+  depend on `zip`.
 - `Scheduler::task_in_tz` has no `deferrable_task` equivalent: deferrable
   tasks tick in UTC and their windows use a fixed UTC offset.
 - Generated password reset links expire after 30 minutes, the longest lifetime
