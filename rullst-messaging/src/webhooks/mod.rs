@@ -30,3 +30,6 @@ async fn bounded<T>(operation: impl std::future::Future<Output = Result<T>>) -> 
         .await
         .map_err(|_| WebhookError::Timeout)?
 }
+
+#[cfg(test)]
+mod tests;

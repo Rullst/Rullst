@@ -1,5 +1,7 @@
 //! Deterministic bounded broker used for tests, local development, and contract proofs.
 
+#[cfg(test)]
+mod bounds_tests;
 mod helpers;
 #[cfg(test)]
 mod lock_time_tests;

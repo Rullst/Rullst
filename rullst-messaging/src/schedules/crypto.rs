@@ -230,3 +230,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "crypto_tests.rs"]
+mod bound_tests;

@@ -234,3 +234,7 @@ fn marker_key_id(marker: &str) -> Result<&str> {
         .ok_or(MessagingError::StorageAuthenticationFailed)?;
     Ok(key_id)
 }
+
+#[cfg(test)]
+#[path = "storage_tests.rs"]
+mod tests;
