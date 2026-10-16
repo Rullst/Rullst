@@ -327,6 +327,7 @@ mod tests {
             label: "Products",
             icon: "&#128196;",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number),
@@ -386,6 +387,7 @@ mod tests {
                 label: "<img src=x onerror=alert(1)>",
                 icon: "📄",
                 pk: "id",
+                pk_columns: Vec::new(),
                 tenant_column: None,
                 fields: vec![FieldMeta::new(
                     "title FROM secrets;--",

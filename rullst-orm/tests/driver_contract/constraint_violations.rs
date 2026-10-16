@@ -25,25 +25,22 @@ fn expected_name(driver: &str, name: &str) -> Option<String> {
 
 pub(super) async fn exercise() {
     let driver = Orm::driver().expect("initialized driver");
-    let id = match driver {
-        "postgres" => "SERIAL PRIMARY KEY",
-        "mysql" => "INTEGER PRIMARY KEY AUTO_INCREMENT",
-        _ => "INTEGER PRIMARY KEY AUTOINCREMENT",
-    };
-    // `Schema` has no UNIQUE or FOREIGN KEY yet, so the DDL is raw.
-    Orm::raw(format!(
-        "CREATE TABLE contract_accounts (id {id}, email VARCHAR(191) NOT NULL, \
-         CONSTRAINT contract_accounts_email_key UNIQUE (email))"
-    ))
-    .execute()
+    Schema::create("contract_accounts", |table| {
+        table.id();
+        // MySQL/MariaDB cannot make a TEXT column unique.
+        table.string("email").not_null().col_type = "VARCHAR(191)".to_string();
+        table.unique(&["email"]).name("contract_accounts_email_key");
+    })
     .await
     .expect("create unique contract table");
-    Orm::raw(format!(
-        "CREATE TABLE contract_memberships (id {id}, account_id INTEGER NOT NULL, \
-         CONSTRAINT contract_memberships_account_fkey FOREIGN KEY (account_id) \
-         REFERENCES contract_accounts (id))"
-    ))
-    .execute()
+    Schema::create("contract_memberships", |table| {
+        table.id();
+        table.integer("account_id").not_null();
+        table
+            .foreign("account_id")
+            .references("contract_accounts", "id")
+            .name("contract_memberships_account_fkey");
+    })
     .await
     .expect("create foreign-key contract table");
 

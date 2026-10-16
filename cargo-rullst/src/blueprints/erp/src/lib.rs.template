@@ -6,7 +6,18 @@ __REPO_MOD_DECL__pub mod controllers;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
-    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    let admin_access = match rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env() {
+        Ok(policy) => policy,
+        // The back office fails closed, but the process still starts: a
+        // release build without the credentials serves only `/health` and `/ready`.
+        Err(rullst::nexus::NexusBuildError::MissingCredential { variable }) => {
+            eprintln!("The back office and Nexus are not mounted: {variable} is not set; set NEXUS_ADMIN_USERNAME and NEXUS_ADMIN_PASSWORD (at least 16 characters) to enable them");
+            return Ok(Router::new()
+                .merge_axum(rullst::health::health_router())
+                .layer(rullst::server::from_fn(rullst::security::headers_middleware)));
+        }
+        Err(error) => return Err(error.into()),
+    };
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(admin_access.clone())
         .with_brand("ERP Admin")

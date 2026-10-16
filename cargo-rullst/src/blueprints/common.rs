@@ -153,6 +153,14 @@ pub fn render_page_layout(_frontend_engine: &str) -> String {
     .to_string()
 }
 
+/// The `src/middlewares/nexus_access.rs` of the SaaS and LMS starters: Nexus
+/// under the application's sign-in for users whose `is_admin` is true.
+pub const NEXUS_ACCESS: &str = include_str!("nexus_access.rs.template");
+
+#[cfg(test)]
+#[path = "nexus_access_tests.rs"]
+mod nexus_access_tests;
+
 /// Generates the lib.rs router entry for hot-reload mode,
 /// with dynamic repo_mod_decl injection.
 pub fn hot_reload_lib_rs(routes_block: &str, nexus_block: &str, repo_mod_decl: &str) -> String {

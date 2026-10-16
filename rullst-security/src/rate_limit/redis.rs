@@ -355,4 +355,95 @@ mod tests {
             assert_eq!(limiter.window, Duration::from_millis(1));
         }
     }
+
+    #[test]
+    fn windows_of_up_to_one_day_are_accepted_for_both_modes() {
+        for url in ["mock_rate_limit", "redis://127.0.0.1:6379/"] {
+            let limiter = RedisRateLimiter::new(url, "rullst:test", 1, Duration::from_secs(86_400))
+                .expect("a one-day window");
+            assert_eq!(limiter.window_ms, 86_400_000);
+            assert_eq!(
+                RedisRateLimiter::new(url, "rullst:test", 1, Duration::from_millis(86_400_001))
+                    .err(),
+                Some(RateLimitError::InvalidConfiguration("window"))
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn client_keys_hold_between_1_and_1024_bytes() {
+        let limiter =
+            RedisRateLimiter::new("mock_rate_limit", "rullst:test", 5, Duration::from_secs(60))
+                .expect("mock limiter");
+        for key in [String::new(), "k".repeat(1_025)] {
+            assert_eq!(
+                limiter.check(&key).await.err(),
+                Some(RateLimitError::InvalidConfiguration("client_key"))
+            );
+        }
+        for key in ["k".to_owned(), "k".repeat(1_024)] {
+            assert!(limiter.check(&key).await.expect("bounded key").allowed);
+        }
+    }
+
+    #[tokio::test]
+    async fn every_denied_check_is_counted_as_a_block() {
+        let blocks = || SecurityStore::global().snapshot().rate_limit_blocks;
+        let limiter =
+            RedisRateLimiter::new("mock_rate_limit", "rullst:test", 1, Duration::from_secs(60))
+                .expect("mock limiter");
+        assert!(
+            limiter
+                .check("blocked-client")
+                .await
+                .expect("check")
+                .allowed
+        );
+        let before = blocks();
+        for _ in 0..100 {
+            assert!(
+                !limiter
+                    .check("blocked-client")
+                    .await
+                    .expect("check")
+                    .allowed
+            );
+        }
+        // Concurrent tests can add blocks but never remove them.
+        assert!(blocks() >= before + 100);
+    }
+
+    #[test]
+    fn a_table_with_free_slots_is_not_swept() {
+        let store = OfflineStore::new();
+        let window = Duration::from_secs(60);
+        let start = Instant::now();
+        store.entries.insert("expired".to_owned(), (start, 1));
+        *store.last_sweep.lock().unwrap() = start;
+        assert!(store.admit("new", start + Duration::from_secs(120), window));
+        assert!(store.entries.contains_key("expired"));
+        assert_eq!(store.entries.len(), 2);
+        assert_eq!(*store.last_sweep.lock().unwrap(), start);
+    }
+
+    #[test]
+    fn a_full_table_reclaims_exactly_the_windows_that_have_ended() {
+        let store = OfflineStore::new();
+        let window = Duration::from_secs(60);
+        let start = Instant::now();
+        let now = start + window;
+        // One window ends exactly now; every other one is still active.
+        store.entries.insert("ended".to_owned(), (start, 1));
+        for index in 1..MAX_OFFLINE_KEYS {
+            store.entries.insert(
+                format!("active-{index}"),
+                (start + Duration::from_secs(1), 1),
+            );
+        }
+        *store.last_sweep.lock().unwrap() = start;
+        assert!(store.admit("new", now, window));
+        assert!(!store.entries.contains_key("ended"));
+        assert!(store.entries.contains_key("active-1"));
+        assert_eq!(store.entries.len(), MAX_OFFLINE_KEYS);
+    }
 }

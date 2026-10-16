@@ -1,5 +1,10 @@
 pub use sqlx;
 
+/// The `chrono` crate whose `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and
+/// `NaiveTime` model fields and [`RullstValue`] variants the ORM binds and
+/// decodes (with a strict driver feature; see `Blueprint::timestamp_tz`).
+pub use chrono;
+
 /// Auto-Healing Database Migrations & SQL Interceptor (Milestone 21).
 pub mod auto_healing;
 

@@ -39,6 +39,13 @@
     }
 
     function reportFailure(prefix, response) {
+        // A signed-out session under the application's login: Nexus answers
+        // 401 with the local login page in HX-Redirect, as htmx follows.
+        const signIn = response.status === 401 ? response.headers.get("hx-redirect") : null;
+        if (signIn && signIn.startsWith("/") && !signIn.startsWith("//")) {
+            window.location.assign(signIn);
+            return;
+        }
         response.text().then(text => {
             const message = messageText(text, response.headers.get("content-type"));
             toast(prefix + (message || String(response.status)), "danger");

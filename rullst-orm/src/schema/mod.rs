@@ -1,5 +1,9 @@
+mod alter;
 pub mod blueprint;
 pub mod column;
+mod column_types;
+mod constraints;
+mod ddl;
 mod enums;
 pub mod join;
 pub mod migration;
@@ -11,10 +15,13 @@ pub mod validation;
 #[cfg(test)]
 mod column_type_tests;
 #[cfg(test)]
+mod ddl_tests;
+#[cfg(test)]
 mod tests;
 
 pub use blueprint::Blueprint;
 pub use column::{Column, ColumnDefault};
+pub use constraints::{Check, ForeignKey, ForeignKeyAction, Index, MAX_CHECK_EXPRESSION_BYTES};
 pub use enums::{DatabaseEnum, MAX_DATABASE_ENUM_LABEL_BYTES, MAX_DATABASE_ENUM_VARIANTS};
 pub use join::JoinClause;
 pub use migration::{Migration, run_artisan, run_artisan_with_args};

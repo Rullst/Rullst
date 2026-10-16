@@ -227,10 +227,6 @@ rust-version = "1.96.0"
         ));
     }
 
-    if db_provider == "Turso" {
-        cargo_toml.push_str("dotenvy = \"0.15\"\n");
-    }
-
     if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
         let auth_dep = dependency_line(current_dir, "rullst-auth", crate_version)?;
         cargo_toml.push_str(&auth_dep);

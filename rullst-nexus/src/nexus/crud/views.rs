@@ -1,6 +1,7 @@
 //! HTML rendering components for Nexus CRUD views and forms.
 
 use crate::nexus::crud::batch::supports_deactivation;
+use crate::nexus::crud::key::record_address;
 use crate::nexus::crud::query::{build_table_query, is_searchable};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use std::fmt::Write as _;
@@ -86,7 +87,6 @@ pub async fn render_table_rows(
     }
 
     let table_path = urlencoding::encode(entry.table);
-    let pk = entry.pk;
 
     db_rows.into_iter().fold(
         String::with_capacity(2048),
@@ -129,7 +129,12 @@ pub async fn render_table_rows(
 
             // A row whose key is NULL or undecodable has no address, so it
             // gets neither a batch checkbox nor edit/delete actions.
-            let Some(row_id) = decode_row_key(&row, pk) else {
+            let key = entry
+                .key_columns()
+                .iter()
+                .map(|column| decode_row_key(&row, column))
+                .collect::<Option<Vec<_>>>();
+            let Some(row_id) = key.as_deref().map(record_address) else {
                 let _ = write!(
                     out,
                     "<tr class=\"nexus-tr\"><td class=\"nexus-td\"></td>{cells}\

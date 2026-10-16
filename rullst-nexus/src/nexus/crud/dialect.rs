@@ -1,9 +1,10 @@
 //! SQL dialect details shared by the Nexus CRUD queries.
 
-use std::borrow::Cow;
+use rullst_orm::RullstValue;
 
+use super::input::has_offset;
 use super::query::sanitize_identifier;
-use crate::nexus::types::{FieldKind, RegistryEntry};
+use crate::nexus::types::{FieldKind, FieldMeta};
 
 /// A query built from the ORM pool's database driver.
 pub(crate) type NexusQuery<'q> = rullst_orm::_sqlx::query::Query<
@@ -41,9 +42,13 @@ pub(crate) enum ValueSql {
 ///   `BIGINT`, which assigns to integer and text key columns alike;
 /// - a Boolean (normalized to `0`/`1`) is an untyped literal, the only form
 ///   both the `INTEGER` columns of `Blueprint::boolean` and native `BOOLEAN`
-///   columns accept.
+///   columns accept;
+/// - a date, time or date-time (and its NULL) is cast to `DATE`, `TIME`,
+///   `TIMESTAMP` or `TIMESTAMPTZ`, which native columns need and text columns
+///   accept by assignment; only a [`FieldKind::DateTime`] value with an
+///   offset, which only a text column can hold, stays text.
 ///
-/// Other kinds stay text, matching Rullst's text date-time and JSON columns.
+/// Other kinds stay text, matching Rullst's text and JSON columns.
 pub(crate) fn write_value_sql(
     kind: &FieldKind,
     value: Option<&str>,
@@ -60,6 +65,11 @@ pub(crate) fn write_value_sql(
         (FieldKind::Number | FieldKind::Integer { .. }, _) => {
             ValueSql::Bind(format!("CAST({marker} AS NUMERIC)"))
         }
+        (FieldKind::Date, _) => ValueSql::Bind(format!("CAST({marker} AS DATE)")),
+        (FieldKind::Time, _) => ValueSql::Bind(format!("CAST({marker} AS TIME)")),
+        (FieldKind::DateTimeUtc, _) => ValueSql::Bind(format!("CAST({marker} AS TIMESTAMPTZ)")),
+        (FieldKind::DateTime, Some(value)) if has_offset(value) => ValueSql::Bind(marker),
+        (FieldKind::DateTime, _) => ValueSql::Bind(format!("CAST({marker} AS TIMESTAMP)")),
         (FieldKind::ForeignKey { .. }, None) => ValueSql::Bind(format!("CAST({marker} AS BIGINT)")),
         (FieldKind::ForeignKey { .. }, Some(value))
             if value
@@ -72,60 +82,35 @@ pub(crate) fn write_value_sql(
     }
 }
 
-/// A record key from a URL or batch form, typed by the registered primary key.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum RecordKey<'a> {
-    /// A `number`, `integer` or relation key: bound as a 64-bit integer.
-    Integer(i64),
-    /// Any other key kind: compared as text, so a text key such as `1001`
-    /// is never bound as an integer.
-    Text(&'a str),
+/// The select-list entry that reads `field`. PostgreSQL and MySQL/MariaDB
+/// date, time and date-time columns are read as text: their native `DATE`,
+/// `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` values do not decode as `String`, and
+/// the SQLx `Any` pool cannot decode them at all. A text column reads
+/// unchanged.
+pub(crate) fn select_column(field: &FieldMeta, driver: &str) -> String {
+    let column = sanitize_identifier(field.name);
+    match (&field.kind, driver) {
+        (
+            FieldKind::Date | FieldKind::DateTime | FieldKind::Time | FieldKind::DateTimeUtc,
+            "postgres",
+        ) => format!("CAST({column} AS TEXT) AS {column}"),
+        (
+            FieldKind::Date | FieldKind::DateTime | FieldKind::Time | FieldKind::DateTimeUtc,
+            "mysql",
+        ) => format!("CAST({column} AS CHAR) AS {column}"),
+        _ => column,
+    }
 }
 
-impl<'a> RecordKey<'a> {
-    /// Parses `id` as the model's primary-key kind requires.
-    ///
-    /// A numeric key must be a canonical integer. `+1`, `01` or `1e3` would
-    /// otherwise reach a record whose stored key is spelled differently (Rust
-    /// integer parsing and SQLite numeric affinity both accept them), and the
-    /// audit would name a key that differs from the changed record. `None`
-    /// means `id` cannot name a record of this model.
-    pub(crate) fn parse(entry: &RegistryEntry, id: &'a str) -> Option<Self> {
-        let canonical = id
-            .parse::<i64>()
-            .ok()
-            .filter(|value| value.to_string() == id);
-        let integer_key = entry
-            .fields
-            .iter()
-            .find(|field| field.name == entry.pk)
-            .map(|field| {
-                matches!(
-                    field.kind,
-                    FieldKind::Number | FieldKind::Integer { .. } | FieldKind::ForeignKey { .. }
-                )
-            });
-        match (integer_key, canonical) {
-            (Some(true) | None, Some(value)) => Some(Self::Integer(value)),
-            (Some(true), None) => None,
-            (Some(false) | None, None) | (Some(false), Some(_)) => Some(Self::Text(id)),
+/// The value bound for a typed date or time on `driver`. MySQL and MariaDB
+/// `DATETIME` columns hold UTC without a zone (MariaDB rejects an offset in a
+/// date-time literal), so a UTC instant is bound there as its UTC wall time.
+pub(crate) fn driver_value(value: RullstValue, driver: &str) -> RullstValue {
+    match value {
+        RullstValue::DateTime(instant) if driver == "mysql" => {
+            RullstValue::NaiveDateTime(instant.naive_utc())
         }
-    }
-
-    /// The canonical key text, as recorded by the audit.
-    pub(crate) fn text(self) -> Cow<'a, str> {
-        match self {
-            Self::Integer(value) => Cow::Owned(value.to_string()),
-            Self::Text(value) => Cow::Borrowed(value),
-        }
-    }
-
-    /// Binds the key as its registered kind.
-    pub(crate) fn bind<'q>(self, query: NexusQuery<'q>) -> NexusQuery<'q> {
-        match self {
-            Self::Integer(value) => query.bind(value),
-            Self::Text(value) => query.bind(value.to_owned()),
-        }
+        other => other,
     }
 }
 
@@ -179,73 +164,42 @@ pub(crate) fn search_predicate(column: &str, placeholder: &str, driver: &str) ->
 mod tests {
     use super::*;
 
-    fn entry(pk_kind: FieldKind) -> RegistryEntry {
-        RegistryEntry {
-            table: "records",
-            label: "Records",
-            icon: "R",
-            pk: "id",
-            tenant_column: None,
-            fields: vec![crate::nexus::FieldMeta::new("id", "ID", pk_kind)],
-        }
-    }
-
     #[test]
-    fn integer_keys_are_canonical_integers_and_written_as_numeric() {
-        let integer = entry(FieldKind::Integer {
+    fn integer_columns_are_written_as_numeric_on_postgres() {
+        let integer = FieldKind::Integer {
             min: 0,
             max: i64::MAX,
-        });
-        assert_eq!(RecordKey::parse(&integer, "7"), Some(RecordKey::Integer(7)));
-        assert_eq!(RecordKey::parse(&integer, "07"), None);
+        };
         assert_eq!(
-            write_value_sql(&integer.fields[0].kind, Some("7"), 2, "postgres"),
+            write_value_sql(&integer, Some("7"), 2, "postgres"),
             ValueSql::Bind("CAST($2 AS NUMERIC)".into())
         );
     }
 
     #[test]
-    fn numeric_keys_must_be_canonical_integers() {
-        let numeric = entry(FieldKind::Number);
+    fn date_columns_are_selected_as_text_on_postgres_and_mysql() {
+        let created = crate::nexus::FieldMeta::new("created_at", "Created", FieldKind::DateTime);
+        let born = crate::nexus::FieldMeta::new("born_on", "Born", FieldKind::Date);
+        let title = crate::nexus::FieldMeta::new("title", "Title", FieldKind::Text);
         assert_eq!(
-            RecordKey::parse(&numeric, "1000"),
-            Some(RecordKey::Integer(1000))
+            select_column(&created, "postgres"),
+            "CAST(created_at AS TEXT) AS created_at"
         );
         assert_eq!(
-            RecordKey::parse(&numeric, "-7"),
-            Some(RecordKey::Integer(-7))
-        );
-        for spelling in ["+1000", "01000", "1e3", "1000.0", " 1000", "abc", ""] {
-            assert_eq!(RecordKey::parse(&numeric, spelling), None, "{spelling:?}");
-        }
-        assert_eq!(
-            RecordKey::parse(&numeric, "1000")
-                .map(RecordKey::text)
-                .as_deref(),
-            Some("1000")
-        );
-    }
-
-    #[test]
-    fn text_keys_are_never_bound_as_integers() {
-        let text = entry(FieldKind::Text);
-        assert_eq!(
-            RecordKey::parse(&text, "1001"),
-            Some(RecordKey::Text("1001"))
-        );
-        assert_eq!(RecordKey::parse(&text, "new"), Some(RecordKey::Text("new")));
-
-        // An entry whose key is not registered keeps the integer fallback.
-        let mut unregistered = entry(FieldKind::Text);
-        unregistered.pk = "uuid";
-        assert_eq!(
-            RecordKey::parse(&unregistered, "12"),
-            Some(RecordKey::Integer(12))
+            select_column(&born, "postgres"),
+            "CAST(born_on AS TEXT) AS born_on"
         );
         assert_eq!(
-            RecordKey::parse(&unregistered, "012"),
-            Some(RecordKey::Text("012"))
+            select_column(&created, "mysql"),
+            "CAST(created_at AS CHAR) AS created_at"
         );
+        assert_eq!(
+            select_column(&born, "mysql"),
+            "CAST(born_on AS CHAR) AS born_on"
+        );
+        assert_eq!(select_column(&created, "sqlite"), "created_at");
+        assert_eq!(select_column(&title, "postgres"), "title");
+        assert_eq!(select_column(&title, "mysql"), "title");
     }
 
     #[test]
@@ -280,11 +234,6 @@ mod tests {
             (FieldKind::Boolean, Some("1"), ValueSql::Literal("'1'")),
             (FieldKind::Boolean, Some("0"), ValueSql::Literal("'0'")),
             (FieldKind::Text, Some("1"), ValueSql::Bind("$3".into())),
-            (
-                FieldKind::DateTime,
-                Some("2026-01-01T10:00"),
-                ValueSql::Bind("$3".into()),
-            ),
         ];
         for (kind, value, expected) in cases {
             assert_eq!(
@@ -301,6 +250,86 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn postgres_writes_cast_dates_and_times_for_native_columns() {
+        let cases = [
+            (FieldKind::Date, Some("2026-10-15"), "CAST($4 AS DATE)"),
+            (FieldKind::Date, None, "CAST($4 AS DATE)"),
+            (FieldKind::Time, Some("09:30:00"), "CAST($4 AS TIME)"),
+            (FieldKind::Time, None, "CAST($4 AS TIME)"),
+            (
+                FieldKind::DateTime,
+                Some("2026-10-15 09:30:00"),
+                "CAST($4 AS TIMESTAMP)",
+            ),
+            (FieldKind::DateTime, None, "CAST($4 AS TIMESTAMP)"),
+            // Only a text column holds a date-time with an offset.
+            (FieldKind::DateTime, Some("2026-10-15T09:30:00Z"), "$4"),
+            (FieldKind::DateTime, Some("2026-10-15 09:30-03:00"), "$4"),
+            (
+                FieldKind::DateTimeUtc,
+                Some("2026-10-15T09:30:00+00:00"),
+                "CAST($4 AS TIMESTAMPTZ)",
+            ),
+            (FieldKind::DateTimeUtc, None, "CAST($4 AS TIMESTAMPTZ)"),
+        ];
+        for (kind, value, expected) in cases {
+            assert_eq!(
+                write_value_sql(&kind, value, 4, "postgres"),
+                ValueSql::Bind(expected.into()),
+                "{kind:?} {value:?}"
+            );
+            for driver in ["sqlite", "mysql"] {
+                assert_eq!(
+                    write_value_sql(&kind, value, 4, driver),
+                    ValueSql::Bind("?".into())
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn time_columns_are_selected_as_text_on_postgres_and_mysql() {
+        let opens = crate::nexus::FieldMeta::new("opens_at", "Opens", FieldKind::Time);
+        let paid = crate::nexus::FieldMeta::new("paid_at", "Paid", FieldKind::DateTimeUtc);
+        assert_eq!(
+            select_column(&opens, "postgres"),
+            "CAST(opens_at AS TEXT) AS opens_at"
+        );
+        assert_eq!(
+            select_column(&paid, "mysql"),
+            "CAST(paid_at AS CHAR) AS paid_at"
+        );
+        assert_eq!(select_column(&paid, "sqlite"), "paid_at");
+    }
+
+    #[test]
+    fn mysql_binds_a_utc_instant_as_its_utc_wall_time() {
+        let instant = rullst_orm::chrono::DateTime::parse_from_rfc3339("2026-10-15T09:30:00.5Z")
+            .expect("valid instant")
+            .with_timezone(&rullst_orm::chrono::Utc);
+        assert_eq!(
+            format!(
+                "{:?}",
+                driver_value(RullstValue::DateTime(instant), "mysql")
+            ),
+            "NaiveDateTime(2026-10-15T09:30:00.500)"
+        );
+        for driver in ["postgres", "sqlite"] {
+            assert_eq!(
+                format!("{:?}", driver_value(RullstValue::DateTime(instant), driver)),
+                "DateTime(2026-10-15T09:30:00.500Z)"
+            );
+        }
+        assert_eq!(
+            format!(
+                "{:?}",
+                driver_value(RullstValue::String("x".into()), "mysql")
+            ),
+            "String(\"x\")"
+        );
     }
 
     #[test]

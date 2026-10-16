@@ -419,7 +419,7 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
-The v13 CLI's `rullst-upgrade-rules-v4` catalog (103 rules) parses Rust sources
+The v13 CLI's `rullst-upgrade-rules-v4` catalog (104 rules) parses Rust sources
 (with `syn`; comments, doc comments and strings never match an API rule), Cargo
 manifests and generated project files, and reports each finding as
 `MUST-CHANGE` (a compile-breaking or API-shape change) or `REVIEW` (changed
@@ -835,7 +835,7 @@ It runs only at the root of a Rullst project (a `Cargo.toml` whose
 | `mail` | `mail` | `MAIL_FROM`, `# MAIL_DRIVER`, `# RESEND_API_KEY` | `make:mail Welcome`, `dev` |
 | `auth` | `auth` | `APP_KEY` placeholder | `auth`, `make:mfa` |
 | `ai` | `ai` | `OPENAI_API_KEY=mock_openai_key`, commented Anthropic, Gemini and Ollama entries | `make:chat-session`, `ai connect` |
-| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds) | `dev`, then `/nexus` |
+| `nexus` | `nexus` | empty `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` (required by release builds unless Nexus uses the application's sign-in, `NexusAuthPolicy::application`) | `dev`, then `/nexus` |
 | `studio` | `studio` | none | `dev`, then `http://127.0.0.1:5555` |
 
 Running it again changes nothing and reports that the capability is already

@@ -13,7 +13,7 @@ directly, because generated code calls the matching runtime API.
 | `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. The declared return type is kept, so a test returning `Result` can use `?` and fails on `Err` after the rollback. Post-commit effects of sandboxed writes (`committed` observers, cache, Redis, Scout) are discarded like on any rollback. Code that opens a separate connection is outside that sandbox. |
 | `#[derive(PersonalData)]` | Declares application-selected personal-data fields (`#[privacy]`, listed by `ComplianceModel::personal_fields()` in v13) and redacts them from `Debug`; it is metadata, not automatic privacy compliance. Its `PrivacyReport` names the ORM table (`#[orm(table)]` or the `<struct>s` default) and lists as encrypted only `#[orm(encrypted)]` and `SecretString` columns. |
 | `#[derive(Enum)]` | Generates a closed bounded label contract shared by string parsing/display, Serde, `RullstValue` and SQLx codecs. `#[rullst_enum(type_name = "...", rename_all = "snake_case")]` and per-variant `rename` are validated at compile time; schema DDL is owned by `Blueprint::native_enum`. |
-| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. ORM relation fields and `#[orm(skip)]`/`#[sqlx(skip)]` fields are left out of the metadata; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields (only `#[nexus(kind = "password")]` exposes an `#[orm(hidden)]` field, write-only), and `#[orm(masked)]` fields default to `Password`. Other shared `#[orm(...)]` options are skipped. |
+| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. ORM relation fields and `#[orm(skip)]`/`#[sqlx(skip)]` fields are left out of the metadata; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields (only `#[nexus(kind = "password")]` exposes an `#[orm(hidden)]` field, write-only), `#[orm(masked)]` fields default to `Password`, and `#[orm(db_default)]` fields are read-only. Other shared `#[orm(...)]` options are skipped. |
 
 ## Compile-time safety boundaries
 
@@ -49,7 +49,15 @@ The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
 `#[sqlx(json(nullable))]`. `#[orm(skip)]` only removes a field from generated
 SQL; the application's `FromRow` still reads it, so a field without a table
 column also needs `#[sqlx(skip)]` (the two may be combined) or
-`#[sqlx(default)]`. A `#[sqlx(json)]` field is decoded through SQLx `Json`
+`#[sqlx(default)]`. `#[orm(db_default)]` (v13) keeps a field in reads, filters
+and `to_json()` but leaves it out of the generated `INSERT` (so the column
+`DEFAULT` applies) and of the full-row `UPDATE` of `save()`; `update_partial()`
+gets no setter for it and `#[derive(Nexus)]` shows it read-only. It is rejected
+on `id`, the tenant column, relations, skipped and encrypted fields, and by
+Turso-primary models, whose codec writes every field. `chrono`
+date/time fields (`DateTime<Utc>`, `NaiveDateTime`, `NaiveDate`, `NaiveTime`)
+bind through SQLx's codecs, which exist only for the strict driver features.
+A `#[sqlx(json)]` field is decoded through SQLx `Json`
 and generated writes bind it as `Json(value)` (a `json(nullable)` `None` as
 `NULL`), so a Serde-only type works on a JSON column; SQLx provides `Json` only
 for the strict driver features. SQLx mappings such as `rename`, `try_from`, and

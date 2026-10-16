@@ -428,7 +428,8 @@ jobs:
               # --all-features selects the PostgreSQL pool, so the SQLite-backed
               # feature-flag DB tests only run here.
               cargo test -p rullst-core --features orm \
-                --test feature_db_cache --test feature_split_contract --locked
+                --test feature_db_cache --test feature_split_contract \
+                --test startup_migrations --locked
               ;;
             *)
               echo "Unknown strict database feature: $STRICT_DATABASE_FEATURE"

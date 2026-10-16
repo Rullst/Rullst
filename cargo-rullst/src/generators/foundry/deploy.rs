@@ -278,7 +278,7 @@ fn render_configure_command(cfg: &FoundryConfig, bin_name: &str, binary_sha256: 
     reverse_proxy localhost:{app_port}
     encode gzip zstd
     header {{
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Frame-Options DENY
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin

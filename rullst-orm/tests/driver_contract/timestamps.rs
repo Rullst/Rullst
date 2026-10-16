@@ -3,6 +3,39 @@
 use rullst_orm::schema::{Blueprint, ColumnDefault, Schema};
 use rullst_orm::{FromRow, Orm};
 
+/// `timestamps()` creates UTC-instant columns with a strict driver feature
+/// and the alpha.1 TEXT columns on the SQLx `Any` pool.
+#[cfg(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+))]
+type Stamp = rullst_orm::chrono::DateTime<rullst_orm::chrono::Utc>;
+#[cfg(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)))]
+type Stamp = String;
+
+/// Whether a database default filled the column.
+#[cfg(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+))]
+fn filled(stamp: &Option<Stamp>) -> bool {
+    stamp.is_some()
+}
+#[cfg(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)))]
+fn filled(stamp: &Option<Stamp>) -> bool {
+    stamp.as_deref().is_some_and(|value| !value.is_empty())
+}
+
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "contract_timestamped_notes")]
 struct TimestampedNote {
@@ -16,8 +49,8 @@ struct TimestampedNoteView {
     id: i32,
     title: String,
     status: String,
-    created_at: Option<String>,
-    updated_at: Option<String>,
+    created_at: Option<Stamp>,
+    updated_at: Option<Stamp>,
 }
 
 pub(super) async fn exercise() {
@@ -48,20 +81,8 @@ pub(super) async fn exercise() {
     assert_eq!(stored.id, note.id);
     assert_eq!(stored.title, "defaults");
     assert_eq!(stored.status, "draft");
-    assert!(
-        stored
-            .created_at
-            .as_deref()
-            .is_some_and(|value| !value.is_empty()),
-        "{driver} must fill created_at"
-    );
-    assert!(
-        stored
-            .updated_at
-            .as_deref()
-            .is_some_and(|value| !value.is_empty()),
-        "{driver} must fill updated_at"
-    );
+    assert!(filled(&stored.created_at), "{driver} must fill created_at");
+    assert!(filled(&stored.updated_at), "{driver} must fill updated_at");
 
     Schema::drop_if_exists("contract_timestamped_notes")
         .await

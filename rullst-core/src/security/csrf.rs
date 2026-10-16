@@ -53,13 +53,17 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// route extracting `Extension<CsrfToken>` also answers HEAD. `OPTIONS` and
 /// `TRACE` pass through, while state-changing requests must match the
 /// `rullst_csrf` cookie token with either the `X-CSRF-Token` header or form
-/// `_token` field.
+/// `_token` field. The cookie carries `Secure` in staging and production, and
+/// in any environment when the request arrived over HTTPS (an `https`
+/// request URI, or `https` reported by a trusted proxy through
+/// [`super::TrustedProxyLayer`] with `trust_forwarded_proto`).
 ///
 /// An `application/x-www-form-urlencoded` body is buffered (up to 1 MiB) to
 /// read `_token`. A `multipart/form-data` body, such as a file upload, is read
 /// only until its first `_token` field ends, at most 64 KiB, so that field
 /// must precede the file inputs; the whole body then reaches the handler
-/// unchanged.
+/// unchanged. A multipart body without a readable `_token` field is refused
+/// with a `403` that names this rule.
 ///
 /// A `GET` or `HEAD` whose path looks like a static file never mints a token
 /// or sets the cookie: `/robots.txt`, `/sitemap.xml`, `/favicon.ico`, anything
@@ -69,7 +73,9 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// still receives the [`CsrfToken`] from it, so a dynamic page with one of
 /// those suffixes can render a form; a first visit that lands there does not.
 /// The suffixes do not affect state-changing requests, which always need the
-/// token.
+/// token. Nor is the cookie set on a response that shared caches may store
+/// (a `Cache-Control` with `public` or `s-maxage` and without `private` or
+/// `no-store`, such as one labelled by [`crate::cache_control::public`]).
 ///
 /// Applying this middleware more than once to the same request is idempotent. This
 /// matters when an application router adds the explicit development layer and
@@ -173,6 +179,7 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
                 },
                 |cfg| cfg.csrf_same_site.clone(),
             );
+        // `Secure` in staging and production, and over HTTPS everywhere.
         let secure_cookie = req
             .extensions()
             .get::<crate::config::Environment>()
@@ -182,9 +189,15 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
                 crate::config::Environment::detect(None)
                     .map(crate::config::Environment::requires_secure_defaults)
                     .unwrap_or(true)
-            });
+            })
+            || super::secure_cookies::request_is_https(req.uri(), req.extensions());
 
         let mut response = next.run(req).await;
+        // A response that shared caches may store would hand this visitor's
+        // token to others, so it never sets the cookie.
+        if crate::cache_control::allows_shared_caching(response.headers()) {
+            return response;
+        }
 
         let secure_attr = if secure_cookie { "; Secure" } else { "" };
         if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
@@ -294,10 +307,15 @@ async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
         else {
             return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
         };
-        if let Some(token) = body_token
-            && token.len() == cookie_token.len()
-            && token.ct_eq(cookie_token.as_bytes()).into()
-        {
+        let Some(token) = body_token else {
+            // Name the ordering rule: the token may follow the file inputs.
+            return (
+                StatusCode::FORBIDDEN,
+                super::csrf_multipart::MULTIPART_TOKEN_ORDER_MESSAGE,
+            )
+                .into_response();
+        };
+        if token.len() == cookie_token.len() && token.ct_eq(cookie_token.as_bytes()).into() {
             parts.extensions.insert(CsrfToken(cookie_token));
             return next.run(Request::from_parts(parts, body)).await;
         }

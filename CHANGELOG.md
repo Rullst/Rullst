@@ -214,6 +214,54 @@ A prepared version section does not establish that its tag or crates exist.
   projects are not changed; the
   [v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md)
   lists the steps to add the flows.
+- Core adds `rullst::uploads::Multipart`, an extractor for file-upload forms
+  (`multipart/form-data`). `multipart.read(&MultipartPolicy)` enforces
+  explicit limits with safe defaults (10 MiB per file, 16 MiB per body, 4
+  files, 32 fields of 64 KiB, 128-byte field names, 30 s of body inactivity)
+  and stops reading at the first one exceeded with a typed `MultipartError`
+  (413, 400 or 408). Files stay in memory up to 32 KiB and then stream to a
+  private (`0600`) temporary file in a configurable directory, removed when
+  dropped unless `persist_to(path)` keeps it; `persist_to` never overwrites.
+  `allowed_kinds` and `expect_signature(b"%PDF-")` check the bytes, not the
+  declared type, and the client file name is display metadata only. Where
+  the WAF runs, each text field is checked with its signatures (refused in
+  staging and production, logged in development). See the
+  [form uploads guide](https://github.com/Rullst/Rullst/blob/main/docs/src/form-uploads.md).
+- Behaviour change: a multipart form whose `_token` field the CSRF check
+  cannot read (it must come before any file input, within the first 64 KiB)
+  is refused with a 403 that says so, instead of `Invalid or missing CSRF
+  token`. Forms read with `Multipart` get the same 403 in development, where
+  the CSRF middleware is not mounted, so the mistake shows up before a
+  deployment.
+- Behaviour change: the CSRF cookie, and every `rullst_*` cookie such as the
+  login session passing through `Server`, now carries `Secure` in any
+  environment when the request arrived over HTTPS (an `https` request URI,
+  or `X-Forwarded-Proto: https` from a proxy in `[security] trusted_proxies`
+  with `trust_forwarded_proto = true`), not only when `RULLST_ENV` is
+  staging or production. `Secure` is never removed.
+- `Server::with_migrations(...)` plus `.auto_migrate(true)` or
+  `RULLST_AUTO_MIGRATE=true` applies pending migrations at startup, before
+  the server binds; it is off by default. Replicas starting together migrate
+  once (PostgreSQL advisory lock, MySQL `GET_LOCK`, an SQLite lock file), and
+  a failed migration stops startup with `ServerError::Migration`. Generated
+  starters do not register their migrations yet; see the
+  [deploy guide](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/26-one-click-paas-deploy.md#startup-migrations).
+- `rullst::cache_control::public(max_age)` and `private(max_age)` let a
+  download or feed route be cached while every other response keeps
+  `Cache-Control: no-store`; they label only successful responses without a
+  policy of their own. Behaviour change: the CSRF middleware no longer sets
+  its cookie on a response that shared caches may store (`public` or
+  `s-maxage`).
+- The startup line names the listen address and, when it is `0.0.0.0` (the
+  staging and production default) with a trusted reverse proxy configured,
+  suggests `HOST=127.0.0.1`. The default bind address is unchanged.
+- The Foundry Caddyfile sends `Strict-Transport-Security:
+  max-age=31536000; includeSubDomains` like the Core baseline, without
+  `preload`.
+- The Turso blank starter reads `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and
+  `TURSO_OFFLINE_PATH` with `rullst::config::project_setting` instead of
+  loading `.env` into the process with `dotenvy`, like every other starter,
+  and no longer depends on `dotenvy`.
 - New translation API, `rullst::i18n` (dogfooding #16).
   `rullst::i18n::catalog!(default = "en")` loads one TOML catalog per locale
   (`locales/en.toml`, `locales/pt-BR.toml`) when the crate compiles and fails
@@ -235,6 +283,50 @@ A prepared version section does not establish that its tag or crates exist.
   and redirects only to local paths; the CSRF middleware protects it like
   any other form. `Locales::new` offers the same negotiation and switch to
   applications that keep their own message tables.
+- The ORM schema builder declares constraints and indexes (dogfooding #5):
+  `Column::unique()`, table-level `unique(&[...])`, `index(&[...])` and
+  `unique_index(&[...])` (with optional `.name(...)`), foreign keys with
+  `foreign("user_id").references("users", "id").on_delete(ForeignKeyAction::Cascade)`
+  (`Restrict`, `SetNull`, `NoAction`, `on_update`) or the
+  `foreign_id("user_id", "users")` shortcut, and a validated
+  `check("price >= 0")` of trusted developer SQL. PostgreSQL and SQLite create
+  indexes with `CREATE INDEX IF NOT EXISTS` after the table; MySQL/MariaDB
+  declare them in `CREATE TABLE` and reject a key on a `TEXT` column before any
+  DDL runs. Violations surface as `Error::UniqueViolation` and
+  `Error::ForeignKeyViolation`. `Column` gains the public field `is_unique`,
+  so a `Column { .. }` struct literal must set it (prefer `Column::new`).
+- New `Schema::table("posts", |table| ...)` adds columns, indexes, unique
+  constraints, foreign keys and checks to an existing table. SQLite turns a
+  unique constraint into a unique index and a foreign key on a newly added
+  column into its `REFERENCES` clause; a change SQLite cannot make returns the
+  new `Error::UnsupportedSchemaChange` before any statement runs.
+- New date/time columns `date()`, `time()`, `timestamp()` and `timestamp_tz()`
+  (dogfooding #11): `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` on PostgreSQL,
+  `DATE`/`TIME(6)`/`DATETIME(6)` (UTC) on MySQL/MariaDB and ISO-8601 text that
+  sorts by time on SQLite. `#[derive(Orm)]` models read and write
+  `chrono::DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and `NaiveTime` fields
+  (and `Option` of them), re-exported as `rullst_orm::chrono`, and
+  `RullstValue` gains matching variants, so `where_gt("starts_at", Utc::now())`
+  compiles. These need a strict driver feature (`strict-postgres`,
+  `strict-mysql`, `strict-sqlite`); on the SQLx `Any` pool the native helpers
+  fail on PostgreSQL and MySQL/MariaDB with `Error::Validation`, because that
+  pool cannot read date/time values.
+- **Breaking:** with a strict driver feature, `Blueprint::timestamps()` now
+  creates `timestamp_tz()` columns (`TIMESTAMPTZ`, `DATETIME(6)`, RFC 3339 text
+  on SQLite) instead of `TEXT`, so `created_at`/`updated_at` fields of new
+  tables must be `DateTime<Utc>` on PostgreSQL and MySQL/MariaDB. Existing
+  columns are not altered; the `Any` pool keeps `TEXT`. `cargo rullst upgrade`
+  reports `String` timestamps of SQLx models (`V13-TEXT-TIMESTAMPS`).
+- New `#[orm(db_default)]` field option: generated `INSERT`s leave the column
+  to its database default and `save()` never overwrites it (dogfooding #9's
+  `created_at` case).
+- **Breaking:** SaaS, LMS, `make:auth` and SQLx `make:billing` generate
+  `created_at`/`updated_at` as `DateTime<Utc>`; `utc_timestamp()`,
+  `User::change_password` and `password_reset::redeem` take that type, and
+  `make:migration:auto` declares `chrono` fields with the new date/time
+  helpers. Existing projects keep their code until edited.
+- Nexus lists and forms read date and date-time fields as text on PostgreSQL
+  and MySQL/MariaDB, so native date/time columns display instead of `-`.
 - **Breaking:** the `orm-polyglot` feature of `rullst` and the `polyglot`
   feature of `rullst-orm` are removed (dogfooding #4). They enabled every
   optional storage adapter at once, including DuckDB's bundled C++ build,
@@ -255,6 +347,42 @@ A prepared version section does not establish that its tag or crates exist.
   `#[derive(Orm)]`, `Schema`, `artisan!`/`db:*`, `Server::with_db`, Nexus,
   Studio, transactions, starters) and which CI test runs each against a real
   server. Generated projects are unchanged.
+- Nexus can use the application's own sign-in (dogfooding #26):
+  `NexusAuthPolicy::application(authorizer)` asks an application
+  `NexusAuthorizer` on every request, so an administrator already signed in to
+  the application is not asked to sign in again. `NexusAccess::allow(actor_id)`
+  admits the request under that audit actor, `SignIn` redirects page requests
+  to `/login` (or `NexusApplicationAuth::with_login_path`) and answers
+  fragments and mutations `401` with `HX-Redirect`, `Deny` answers `403`, and
+  an authorizer error `503`. CSRF, the role layer, tenant scope and the audit
+  are unchanged; `local_development_or_application` keeps loopback access in
+  debug builds.
+- **Behaviour change:** new SaaS and LMS projects open Nexus in release builds
+  to the signed-in user whose new `users.is_admin` column is true (default
+  false, never written by ORM saves, editable in Nexus), checked through the
+  epoch-checked login cookie on every request; they no longer need or list
+  `NEXUS_ADMIN_*`. `make:auth` users get the same column. Grant the first
+  administrator with `UPDATE users SET is_admin = TRUE WHERE email = '…';`.
+- **Behaviour change:** new Blog, Portfolio and ERP projects start without
+  Nexus (the ERP also without its back office) when a release build lacks
+  `NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD`, and print one line naming
+  them, instead of refusing to start (dogfooding #25). Nexus itself stays
+  closed; a weak or placeholder credential still stops startup.
+- Nexus registers tables with composite primary keys (dogfooding #27), such as
+  `lesson_progress (user_id, lesson_id)`: `NexusModel::nexus_pk_columns()`,
+  `#[nexus(primary_key = "user_id, lesson_id")]` or several
+  `#[nexus(primary_key)]` fields. A record is addressed by its key values,
+  each percent-encoded and joined by `,`; list, edit, update, delete, batch
+  and create bind every key column. **Breaking:** `RegistryEntry` gains
+  `pk_columns`, so a struct literal of it needs `pk_columns: Vec::new()`.
+- Nexus writes date and time fields as typed values, so native PostgreSQL
+  `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` columns accept edits, and a
+  malformed value is a `422`. New `FieldKind::Time` (a `time` input) and
+  `FieldKind::DateTimeUtc` (a `datetime-local` input labelled `(UTC)` that
+  shows and accepts UTC and converts an entered offset). **Behaviour change:**
+  `#[derive(Nexus)]` maps `chrono::DateTime<Utc>` fields to `DateTimeUtc`
+  instead of `DateTime` and `NaiveTime` to `Time`, and year `0000` dates are
+  rejected.
 
 ### Mutation testing
 

@@ -4,14 +4,16 @@ use quote::quote;
 use syn::{Data, DeriveInput, Fields, LitStr, Type, parse_macro_input};
 
 mod integer;
+mod primary_key;
 use integer::{integer_field_kind, is_integer_type};
+use primary_key::{parse_key_list, resolve_primary_key};
 
 #[derive(Default)]
 struct ModelOptions {
     table: Option<String>,
     label: Option<String>,
     icon: Option<String>,
-    primary_key: Option<String>,
+    primary_key: Option<Vec<String>>,
     tenant_column: Option<String>,
 }
 
@@ -72,7 +74,7 @@ fn parse_model_options(input: &DeriveInput) -> syn::Result<ModelOptions> {
             } else if meta.path.is_ident("icon") && attribute.path().is_ident("nexus") {
                 options.icon = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if meta.path.is_ident("primary_key") && attribute.path().is_ident("nexus") {
-                options.primary_key = Some(meta.value()?.parse::<LitStr>()?.value());
+                options.primary_key = Some(parse_key_list(&meta.value()?.parse::<LitStr>()?)?);
             } else if meta.path.is_ident("tenant") {
                 options.tenant_column = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if attribute.path().is_ident("nexus") {
@@ -129,6 +131,9 @@ fn parse_field_options(field: &syn::Field) -> syn::Result<FieldOptions> {
                 options.masked = true;
             } else if meta.path.is_ident("encrypted") {
                 options.encrypted = true;
+            } else if meta.path.is_ident("db_default") {
+                // Generated writes leave the column to the database.
+                options.readonly = true;
             } else {
                 options.relation |= ORM_RELATIONS.iter().any(|key| meta.path.is_ident(key));
                 skip_orm_option(&meta)?;
@@ -152,8 +157,8 @@ fn unwrapped_type_name(field_type: &Type) -> String {
 }
 
 /// The chrono date/time widget of a field, by path segment rather than by
-/// spelling: `DateTime<Utc>` and `NaiveDateTime` under any `chrono::` prefix
-/// are date-times, `NaiveDate` is a date.
+/// spelling: `DateTime<Utc>` under any `chrono::` prefix is a UTC instant,
+/// `NaiveDateTime` a date-time, `NaiveDate` a date and `NaiveTime` a time.
 fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
     let mut field_type = field_type;
     if let Some(inner) = option_inner(field_type) {
@@ -166,6 +171,7 @@ fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
     match segment.ident.to_string().as_str() {
         "NaiveDateTime" => Some(quote!(::rullst::nexus::FieldKind::DateTime)),
         "NaiveDate" => Some(quote!(::rullst::nexus::FieldKind::Date)),
+        "NaiveTime" => Some(quote!(::rullst::nexus::FieldKind::Time)),
         "DateTime" => {
             let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
                 return None;
@@ -175,7 +181,7 @@ fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
                 Some(syn::GenericArgument::Type(Type::Path(zone)))
                     if zone.path.segments.last().is_some_and(|zone| zone.ident == "Utc")
             );
-            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTime))
+            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTimeUtc))
         }
         _ => None,
     }
@@ -270,6 +276,8 @@ fn configured_field_kind(field: &syn::Field, options: &FieldOptions) -> syn::Res
         "boolean" => quote!(::rullst::nexus::FieldKind::Boolean),
         "date" => quote!(::rullst::nexus::FieldKind::Date),
         "datetime" => quote!(::rullst::nexus::FieldKind::DateTime),
+        "time" => quote!(::rullst::nexus::FieldKind::Time),
+        "datetime_utc" => quote!(::rullst::nexus::FieldKind::DateTimeUtc),
         "password" => quote!(::rullst::nexus::FieldKind::Password),
         "json" => quote!(::rullst::nexus::FieldKind::Json),
         "enum" => return enum_field_kind(field, &options.options),
@@ -307,37 +315,6 @@ fn humanize_field_name(field_name: &str) -> String {
     match characters.next() {
         Some(first) => first.to_uppercase().collect::<String>() + characters.as_str(),
         None => String::new(),
-    }
-}
-
-/// The record key: the struct-level `primary_key`, else the one field
-/// annotated `#[nexus(primary_key)]`, else `id`. An annotation outranks the
-/// `id` naming convention whatever the field order, and two annotations, or
-/// one that contradicts the struct-level key, fail compilation.
-fn resolve_primary_key(
-    configured: Option<String>,
-    columns: &[(&syn::Field, String, FieldOptions)],
-) -> syn::Result<String> {
-    let mut annotated = columns.iter().filter(|(_, _, options)| options.primary_key);
-    let first = annotated.next();
-    if let Some((field, _, _)) = annotated.next() {
-        return Err(syn::Error::new_spanned(
-            field,
-            "only one field may declare #[nexus(primary_key)]",
-        ));
-    }
-    match (configured, first) {
-        (Some(configured), Some((field, name, _))) if configured != *name => {
-            Err(syn::Error::new_spanned(
-                field,
-                format!(
-                    "#[nexus(primary_key)] on `{name}` contradicts the struct-level primary key `{configured}`"
-                ),
-            ))
-        }
-        (Some(configured), _) => Ok(configured),
-        (None, Some((_, name, _))) => Ok(name.clone()),
-        (None, None) => Ok("id".to_string()),
     }
 }
 
@@ -412,10 +389,12 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let label = options
             .label
             .unwrap_or_else(|| humanize_field_name(&field_name));
-        // An integer key is taken to be database-generated and stays out of
-        // the forms. Any other key (a UUID, a code) is entered on create;
-        // the runtime still keeps every key read-only on edit.
-        let generated_key = field_name == primary_key && is_integer_type(&field.ty);
+        // A single integer key is taken to be database-generated and stays
+        // out of the forms. Any other key (a UUID, a code, the columns of a
+        // composite key) is entered on create; the runtime still keeps every
+        // key column read-only on edit.
+        let generated_key = matches!(primary_key.as_slice(), [key] if *key == field_name)
+            && is_integer_type(&field.ty);
         let hidden = options.hidden
             || concealed
             || generated_key
@@ -438,15 +417,17 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         });
     }
 
-    if !fields
-        .iter()
-        .filter_map(|field| field.ident.as_ref())
-        .any(|field| field == primary_key.as_str())
-    {
-        return Err(syn::Error::new_spanned(
-            input,
-            format!("Nexus primary key `{primary_key}` is not a field on `{name}`"),
-        ));
+    for column in &primary_key {
+        if !fields
+            .iter()
+            .filter_map(|field| field.ident.as_ref())
+            .any(|field| field == column.as_str())
+        {
+            return Err(syn::Error::new_spanned(
+                input,
+                format!("Nexus primary key `{column}` is not a field on `{name}`"),
+            ));
+        }
     }
     if let Some(tenant_column) = tenant_column.as_deref()
         && !fields
@@ -463,6 +444,14 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let tenant_method = tenant_column
         .as_deref()
         .map(|column| quote!(fn nexus_tenant_column() -> Option<&'static str> { Some(#column) }));
+    let first_key = primary_key.first().map_or("id", String::as_str);
+    let key_columns_method = (primary_key.len() > 1).then(|| {
+        quote!(
+            fn nexus_pk_columns() -> Vec<&'static str> {
+                vec![#(#primary_key),*]
+            }
+        )
+    });
 
     Ok(quote! {
         impl ::rullst::nexus::NexusModel for #name {
@@ -472,7 +461,8 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             fn nexus_fields() -> Vec<::rullst::nexus::FieldMeta> {
                 vec![#(#field_metas),*]
             }
-            fn nexus_pk() -> &'static str { #primary_key }
+            fn nexus_pk() -> &'static str { #first_key }
+            #key_columns_method
             #tenant_method
         }
     })

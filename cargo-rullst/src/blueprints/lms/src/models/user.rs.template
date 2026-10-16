@@ -1,4 +1,5 @@
 use rullst::db::{FromRow, Orm};
+use rullst::orm::chrono::{DateTime, Utc};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
 
 #[derive(Debug, Clone, Default, FromRow, Orm)]
@@ -11,8 +12,14 @@ pub struct User {
     pub password_hash: Option<String>,
     pub oauth_provider: Option<String>,
     pub oauth_id: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    // Lets this account into Nexus (`/nexus`) under the application's
+    // sign-in. ORM writes skip this column, so neither a form nor a full-row
+    // save grants it: set it to true with your database client for the first
+    // administrator, who can then grant others in Nexus.
+    #[orm(skip)]
+    pub is_admin: bool,
     // Login cookies carry the epoch they were issued with. ORM writes skip
     // this column, so a full-row save never undoes `revoke_sessions`.
     #[orm(skip)]
@@ -40,8 +47,9 @@ impl NexusModel for User {
             FieldMeta { name: "password_hash", label: "Password Hash", kind: FieldKind::Text, hidden: true, readonly: true },
             FieldMeta { name: "oauth_provider", label: "OAuth Provider", kind: FieldKind::Text, hidden: false, readonly: true },
             FieldMeta { name: "oauth_id", label: "OAuth ID", kind: FieldKind::Text, hidden: true, readonly: true },
-            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::Text, hidden: false, readonly: true },
+            FieldMeta { name: "is_admin", label: "Nexus administrator", kind: FieldKind::Boolean, hidden: false, readonly: false },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::DateTimeUtc, hidden: false, readonly: true },
         ]
     }
 }

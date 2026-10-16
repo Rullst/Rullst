@@ -1,3 +1,4 @@
+mod application;
 mod browser_boundary;
 mod credentials;
 #[cfg(test)]
@@ -7,6 +8,8 @@ mod rate_limit;
 mod tests;
 mod transport;
 
+pub use application::{NexusAccess, NexusApplicationAuth, NexusAuthorizer, NexusAuthorizerError};
+use application::{application_middleware, validate_login_path};
 use axum::{
     body::Body,
     extract::{ConnectInfo, Request},
@@ -63,6 +66,9 @@ pub enum NexusBuildError {
     LocalAccessRequiresDebugBuild,
     /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
     InvalidModelMetadata { reason: &'static str },
+    /// The login page of [`NexusApplicationAuth::with_login_path`] is not a
+    /// local path. Added in v13.
+    InvalidLoginPath,
 }
 
 impl fmt::Display for NexusBuildError {
@@ -108,6 +114,9 @@ impl fmt::Display for NexusBuildError {
             Self::InvalidModelMetadata { reason } => {
                 write!(formatter, "Nexus rejected registered model metadata: {reason}")
             }
+            Self::InvalidLoginPath => formatter.write_str(
+                "the Nexus login path must be a local path starting with a single '/', of at most 512 visible ASCII characters without '\\'",
+            ),
         }
     }
 }
@@ -201,6 +210,9 @@ pub enum NexusAuthPolicy {
     Basic(NexusBasicAuth),
     /// Credential-free access restricted to verified loopback peers in debug builds.
     LoopbackOnly(LocalNexusAccess),
+    /// The application's own sign-in decides on every request; see
+    /// [`NexusAuthorizer`]. Added in v13.
+    Application(NexusApplicationAuth),
 }
 
 impl NexusAuthPolicy {
@@ -250,6 +262,30 @@ impl NexusAuthPolicy {
         Self::LoopbackOnly(access)
     }
 
+    /// Lets the application's own sign-in decide on every request, so an
+    /// administrator who is signed in to the application is not asked to sign
+    /// in again. Signed-out page requests go to `/login`; use
+    /// [`NexusAuthPolicy::Application`] with
+    /// [`NexusApplicationAuth::with_login_path`] for another page.
+    ///
+    /// Unlike Basic Auth this policy needs no transport evidence: the
+    /// application's session cookie is its own concern. CSRF protection,
+    /// tenant scoping and the mutation audit apply as with every policy.
+    pub fn application(authorizer: impl NexusAuthorizer) -> Self {
+        Self::Application(NexusApplicationAuth::new(authorizer))
+    }
+
+    /// Uses credential-free loopback access in debug builds and the
+    /// application's sign-in ([`Self::application`]) in release builds, as
+    /// the generated SaaS and LMS starters do.
+    pub fn local_development_or_application(authorizer: impl NexusAuthorizer) -> Self {
+        if cfg!(debug_assertions) {
+            Self::loopback_only(LocalNexusAccess::loopback_only())
+        } else {
+            Self::application(authorizer)
+        }
+    }
+
     /// Protects an arbitrary administrator router with the same fail-closed
     /// identity and role boundary used by Nexus.
     ///
@@ -278,6 +314,12 @@ impl NexusAuthPolicy {
             NexusAuthPolicy::LoopbackOnly(_) => {
                 router.layer(axum::middleware::from_fn(loopback_only_middleware))
             }
+            NexusAuthPolicy::Application(access) => {
+                router.layer(axum::middleware::from_fn(move |request, next| {
+                    let access = access.clone();
+                    async move { application_middleware(access, request, next).await }
+                }))
+            }
         })
     }
 }
@@ -295,6 +337,10 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
             } else {
                 Err(NexusBuildError::LocalAccessRequiresDebugBuild)
             }
+        }
+        NexusAuthPolicy::Application(access) => {
+            validate_login_path(access.login_path())?;
+            Ok(NexusAuthPolicy::Application(access))
         }
     }
 }

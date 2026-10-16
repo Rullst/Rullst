@@ -172,12 +172,29 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 .map(|(_, contents)| contents.as_str())
                                 .collect::<Vec<_>>()
                                 .join("\n");
-                            if spec.id != BLANK_BLUEPRINT_ID {
+                            if spec.id == SAAS_BLUEPRINT_ID || spec.id == LMS_BLUEPRINT_ID {
+                                // Release builds admit the application's own
+                                // administrators: no NEXUS_ADMIN_* credentials.
+                                assert!(
+                                    rust_sources.contains(
+                                        "NexusAuthPolicy::local_development_or_application(\n        middlewares::nexus_access::NexusAdmins,"
+                                    ) && rust_sources.contains("Ok(Some(user)) if user.accepts_session(&claims) => Ok(if user.is_admin {"),
+                                    "{case}: Nexus local/application access policy drifted"
+                                );
+                            } else if spec.id != BLANK_BLUEPRINT_ID {
                                 assert!(
                                     rust_sources.contains(
                                         "NexusAuthPolicy::local_development_or_basic_from_env()"
                                     ),
                                     "{case}: Nexus local/release access policy drifted"
+                                );
+                                // Missing credentials leave Nexus unmounted
+                                // instead of stopping the application.
+                                assert!(
+                                    rust_sources.contains(
+                                        "Err(rullst::nexus::NexusBuildError::MissingCredential { variable }) => {\n            eprintln!("
+                                    ),
+                                    "{case}: a release build without Nexus credentials must still start"
                                 );
                             }
                             assert!(
@@ -302,6 +319,45 @@ fn blank_hot_reload_uses_the_host_verified_database_state() {
         assert!(!source.contains("ensure_database_initialized"));
         assert!(!source.contains("Orm::init"));
         assert!(!source.contains("TursoOrm::init_from_env"));
+    }
+}
+
+#[test]
+fn blank_turso_reads_its_settings_without_loading_dotenv() {
+    // The Turso starter called `dotenvy::dotenv()`, exporting `.env` into the
+    // process, unlike every other starter.
+    for api in [false, true] {
+        for hot_reload in [false, true] {
+            let files = blueprints::blank::file_manifest(
+                "turso-app",
+                "turso_app",
+                api,
+                hot_reload,
+                true,
+                "Turso Active Record",
+                "Zero-Bundle HTMX",
+            );
+            let sources = files
+                .iter()
+                .filter(|(path, _)| path.ends_with(".rs"))
+                .map(|(_, source)| source.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            assert!(!sources.contains("dotenvy"));
+            assert!(!sources.contains("init_from_env"));
+            for setting in [
+                "TURSO_DATABASE_URL",
+                "TURSO_AUTH_TOKEN",
+                "TURSO_OFFLINE_PATH",
+            ] {
+                assert!(
+                    sources.contains(&format!("rullst::config::project_setting(\"{setting}\")?")),
+                    "{setting}"
+                );
+            }
+            assert!(sources.contains("TursoOrm::init(turso).await?;"));
+        }
     }
 }
 
@@ -533,6 +589,11 @@ fn extracted_rust_templates_parse_after_substitution() {
                     "__PERSIST_BILLING_UPDATE__",
                     include_str!("../src/generators/billing_persist_sqlx.rs.template"),
                 )
+                .replace(
+                    "__UTC_TIMESTAMP_FN__",
+                    include_str!("../src/generators/billing_timestamp_sqlx.rs.template"),
+                )
+                .replace("__UPDATED_AT__", "updated_at: created_at")
                 .replace("__FOREIGN_KEY__", "user_id")
                 .replace("__OWNER_ID_TYPE__", "i32"),
         ),
@@ -543,6 +604,11 @@ fn extracted_rust_templates_parse_after_substitution() {
                     "__PERSIST_BILLING_UPDATE__",
                     include_str!("../src/generators/billing_persist_turso.rs.template"),
                 )
+                .replace(
+                    "__UTC_TIMESTAMP_FN__",
+                    include_str!("../src/generators/billing_timestamp_turso.rs.template"),
+                )
+                .replace("__UPDATED_AT__", "updated_at: created_at.clone()")
                 .replace("__FOREIGN_KEY__", "team_id")
                 .replace("__OWNER_ID_TYPE__", "i64"),
         ),

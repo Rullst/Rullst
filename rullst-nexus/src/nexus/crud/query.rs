@@ -1,6 +1,6 @@
 //! Query building and parameter extraction for Nexus CRUD.
 
-use super::dialect::{contains_pattern, search_predicate, tenant_predicate};
+use super::dialect::{contains_pattern, search_predicate, select_column, tenant_predicate};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use serde::Deserialize;
 
@@ -42,6 +42,8 @@ pub fn field_kind_label(kind: &FieldKind) -> &'static str {
         FieldKind::Boolean => "boolean",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime",
+        FieldKind::Time => "time",
+        FieldKind::DateTimeUtc => "datetime_utc",
         FieldKind::Password => "password",
         FieldKind::Json => "json",
         FieldKind::ForeignKey { .. } => "relation",
@@ -56,7 +58,7 @@ pub fn field_kind_sql(kind: &FieldKind) -> &'static str {
         FieldKind::Number | FieldKind::Integer { .. } => "INTEGER",
         FieldKind::Boolean => "INTEGER",
         FieldKind::ForeignKey { .. } => "INTEGER",
-        FieldKind::Date | FieldKind::DateTime => "TEXT",
+        FieldKind::Date | FieldKind::DateTime | FieldKind::Time | FieldKind::DateTimeUtc => "TEXT",
         FieldKind::Json => "TEXT",
         FieldKind::Enum { .. } => "TEXT",
         _ => "TEXT",
@@ -73,7 +75,8 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
         FieldKind::Number | FieldKind::Integer { .. } => "number",
         FieldKind::Password => "password",
         FieldKind::Date => "date",
-        FieldKind::DateTime => "datetime-local",
+        FieldKind::DateTime | FieldKind::DateTimeUtc => "datetime-local",
+        FieldKind::Time => "time",
         FieldKind::ForeignKey { .. } => "select",
         FieldKind::Enum { .. } => "select",
         _ => "text",
@@ -119,17 +122,31 @@ pub fn build_table_query(
     let page = page.max(1);
     let offset = page.saturating_sub(1).saturating_mul(limit);
 
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     // Password values are never rendered, so they are never read either.
-    let mut select_cols: Vec<String> = visible_fields
+    let readable: Vec<&FieldMeta> = visible_fields
         .iter()
+        .copied()
         .filter(|f| !matches!(f.kind, FieldKind::Password))
-        .map(|f| sanitize_identifier(f.name))
         .collect();
+    let mut select_cols: Vec<String> = readable.iter().map(|f| select_column(f, driver)).collect();
 
-    let clean_pk = sanitize_identifier(entry.pk);
-    if !select_cols.contains(&clean_pk) {
-        select_cols.insert(0, clean_pk.clone());
-    }
+    // Every key column is read, in key order before the fields, so each row
+    // has an address even when its key is not shown.
+    let key_columns: Vec<String> = entry
+        .key_columns()
+        .iter()
+        .map(|column| sanitize_identifier(column))
+        .collect();
+    let missing_keys = key_columns
+        .iter()
+        .filter(|column| {
+            !readable
+                .iter()
+                .any(|f| sanitize_identifier(f.name) == **column)
+        })
+        .cloned();
+    select_cols.splice(0..0, missing_keys);
 
     let mut select_list = select_cols.join(", ");
     if select_list.is_empty() {
@@ -139,7 +156,6 @@ pub fn build_table_query(
     let mut sql = format!("SELECT {} FROM {}", select_list, clean_table);
     let mut binds = Vec::new();
 
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let mut predicates = Vec::new();
     if !q.is_empty() {
         let text_fields: Vec<String> = entry
@@ -203,7 +219,7 @@ pub fn build_table_query(
     // only the key and visible non-Password fields are sortable.
     let sort_col = sort_by
         .filter(|candidate| {
-            *candidate == entry.pk
+            entry.is_key_column(candidate)
                 || entry.fields.iter().any(|field| {
                     field.name == *candidate
                         && !field.hidden
@@ -216,12 +232,12 @@ pub fn build_table_query(
         .unwrap_or("DESC");
     let clean_sort_col = sanitize_identifier(sort_col);
     // A non-unique sort column has no stable order between separate page
-    // queries; the primary key breaks ties so rows neither repeat nor vanish.
-    let tie_breaker = if clean_sort_col == clean_pk {
-        String::new()
-    } else {
-        format!(", {clean_pk} {sort_dir}")
-    };
+    // queries; the key columns break ties so rows neither repeat nor vanish.
+    let tie_breaker = key_columns
+        .iter()
+        .filter(|column| **column != clean_sort_col)
+        .map(|column| format!(", {column} {sort_dir}"))
+        .collect::<String>();
 
     let _ = std::fmt::Write::write_fmt(
         &mut sql,
@@ -235,170 +251,5 @@ pub fn build_table_query(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn tenant_entry() -> RegistryEntry {
-        RegistryEntry {
-            table: "records",
-            label: "Records",
-            icon: "R",
-            pk: "id",
-            tenant_column: Some("tenant_id"),
-            fields: vec![
-                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
-                FieldMeta::new("tenant_id", "Tenant", FieldKind::Text)
-                    .readonly()
-                    .hidden(),
-                FieldMeta::new("title", "Title", FieldKind::Text),
-            ],
-        }
-    }
-
-    #[test]
-    fn scoped_query_binds_search_before_trusted_tenant() {
-        let entry = tenant_entry();
-        let visible = vec![&entry.fields[0], &entry.fields[2]];
-        let (sql, binds) = build_table_query(
-            &entry,
-            &visible,
-            "needle",
-            1,
-            Some("title"),
-            Some("asc"),
-            Some("tenant-a"),
-        );
-
-        assert!(
-            sql.contains("(title LIKE ? ESCAPE '!')")
-                || sql.contains("(CAST(title AS TEXT) ILIKE $1 ESCAPE '!')")
-        );
-        assert!(sql.contains("tenant_id = ?") || sql.contains("tenant_id = $2"));
-        assert_eq!(binds, ["%needle%", "tenant-a"]);
-    }
-
-    #[test]
-    fn password_columns_are_neither_selected_nor_sortable() {
-        let entry = RegistryEntry {
-            table: "accounts",
-            label: "Accounts",
-            icon: "A",
-            pk: "id",
-            tenant_column: None,
-            fields: vec![
-                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
-                FieldMeta::new("name", "Name", FieldKind::Text),
-                FieldMeta::new("api_key", "API key", FieldKind::Password),
-            ],
-        };
-        let visible = entry.fields.iter().collect::<Vec<_>>();
-        let (sql, _) = build_table_query(
-            &entry,
-            &visible,
-            "needle",
-            1,
-            Some("api_key"),
-            Some("asc"),
-            None,
-        );
-
-        assert!(sql.starts_with("SELECT id, name FROM accounts"), "{sql}");
-        assert!(!sql.contains("api_key"), "{sql}");
-        assert!(sql.contains("ORDER BY id asc"), "{sql}");
-    }
-
-    #[test]
-    fn search_without_a_searchable_column_matches_nothing() {
-        let entry = RegistryEntry {
-            table: "orders",
-            label: "Orders",
-            icon: "O",
-            pk: "id",
-            tenant_column: None,
-            fields: vec![
-                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
-                FieldMeta::new("total", "Total", FieldKind::Number),
-                FieldMeta::new("note", "Note", FieldKind::Text).hidden(),
-            ],
-        };
-        let visible = vec![&entry.fields[0], &entry.fields[1]];
-        let (sql, binds) = build_table_query(&entry, &visible, "refunded", 1, None, None, None);
-        assert!(sql.contains(" WHERE 1 = 0 ORDER BY"), "{sql}");
-        assert!(!sql.contains("note"), "{sql}");
-        assert!(binds.is_empty());
-
-        // An empty query still lists every row.
-        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, None);
-        assert!(!sql.contains("WHERE"), "{sql}");
-    }
-
-    #[test]
-    fn hidden_columns_are_not_sortable() {
-        let entry = RegistryEntry {
-            table: "users",
-            label: "Users",
-            icon: "U",
-            pk: "id",
-            tenant_column: None,
-            fields: vec![
-                FieldMeta::new("id", "ID", FieldKind::Number)
-                    .hidden()
-                    .readonly(),
-                FieldMeta::new("email", "E-mail", FieldKind::Email),
-                FieldMeta::new("password_hash", "Password hash", FieldKind::Text).hidden(),
-            ],
-        };
-        let visible = vec![&entry.fields[1]];
-        let (sql, _) = build_table_query(
-            &entry,
-            &visible,
-            "",
-            1,
-            Some("password_hash"),
-            Some("asc"),
-            None,
-        );
-        assert!(!sql.contains("password_hash"), "{sql}");
-        assert!(sql.contains("ORDER BY id asc LIMIT"), "{sql}");
-
-        // The key stays sortable even when it is hidden.
-        let (sql, _) = build_table_query(&entry, &visible, "", 1, Some("id"), None, None);
-        assert!(sql.contains("ORDER BY id DESC LIMIT"), "{sql}");
-    }
-
-    #[test]
-    fn pages_sorted_by_a_non_unique_column_break_ties_by_primary_key() {
-        let entry = tenant_entry();
-        let visible = vec![&entry.fields[0], &entry.fields[2]];
-        let (sql, _) = build_table_query(
-            &entry,
-            &visible,
-            "",
-            2,
-            Some("title"),
-            Some("asc"),
-            Some("tenant-a"),
-        );
-        assert!(
-            sql.ends_with(" ORDER BY title asc, id asc LIMIT 15 OFFSET 15"),
-            "{sql}"
-        );
-
-        let (sql, _) = build_table_query(&entry, &visible, "", 1, None, None, Some("tenant-a"));
-        assert!(
-            sql.ends_with(" ORDER BY id DESC LIMIT 15 OFFSET 0"),
-            "{sql}"
-        );
-    }
-
-    #[test]
-    // TM-NEXUS-02
-    fn scoped_query_without_context_is_empty_by_construction() {
-        let entry = tenant_entry();
-        let visible = vec![&entry.fields[2]];
-        let (sql, binds) = build_table_query(&entry, &visible, "", 1, None, None, None);
-
-        assert!(sql.contains("WHERE 1 = 0"));
-        assert!(binds.is_empty());
-    }
-}
+#[path = "query_tests.rs"]
+mod tests;

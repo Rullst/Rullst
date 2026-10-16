@@ -149,7 +149,7 @@ fn password_change_checks_the_current_password_and_keeps_this_session() {
     assert!(controller.contains("(claims.user_id == user_id).then_some(claims.epoch)"));
     assert!(
         controller
-            .contains("User::change_password(user_id, epoch, &password_hash, &utc_timestamp())")
+            .contains("User::change_password(user_id, epoch, &password_hash, utc_timestamp())")
     );
     assert!(controller.contains(
         "rullst_auth::make_login_cookie_with_epoch(user_id, next_epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)"

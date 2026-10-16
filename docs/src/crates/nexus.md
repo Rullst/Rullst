@@ -45,7 +45,17 @@ shared state with `.layer(Extension(state))`). A release build without the
 credentials makes `local_development_or_basic_from_env()` return
 `NexusBuildError::MissingCredential`; the
 [Nexus guide](../4-rullst-nexus.md#serving-the-application-without-nexus)
-shows how to start the application without Nexus in that case.
+shows how to start the application without Nexus in that case, as the
+generated Blog, Portfolio and ERP starters do.
+
+An application with its own login can instead select
+`NexusAuthPolicy::application(authorizer)`: its `NexusAuthorizer` sees each
+request and answers `Allow` (with the audit actor ID), `SignIn` (redirect to
+the login page, or `401` with `HX-Redirect` for fragments and mutations),
+`Deny` (`403`) or an error (`503`). The SaaS and LMS starters use it, through
+`local_development_or_application`, for signed-in users whose `users.is_admin`
+is true; see
+[Using the application's sign-in](../4-rullst-nexus.md#using-the-applications-sign-in).
 
 The serving boundary must preserve the socket address, for example with Axum's
 `into_make_service_with_connect_info::<SocketAddr>()`. Basic Auth additionally
@@ -67,8 +77,10 @@ back office: the dashboard and the inventory mutations.
   bounded/validated registry metadata; parameterized and allowlisted SQL
   identifiers; bound record values; server-side pair/byte limits and semantic
   validation for Boolean, enum, JSON, number, date, e-mail and HTTP(S) URL
-  fields; CRUD, search, pagination, sort and batch operations; CSRF middleware;
-  fail-closed loopback/Basic access; bounded Basic Auth failure throttling;
+  fields; CRUD, search, pagination, sort and batch operations, also for
+  composite primary keys; typed date/time writes that native date/time columns
+  accept; CSRF middleware; fail-closed loopback/Basic access and per-request
+  access through the application's own sign-in; bounded Basic Auth failure throttling;
   opt-in exact text-column tenant scope across every built-in read and mutation,
   derived only from a trusted Core `TenantContext`; and opt-in
   transaction-coupled minimized mutation audit with a fixed cross-database
@@ -79,8 +91,8 @@ back office: the dashboard and the inventory mutations.
   model/field authorization for global models and custom routes; database
   privileges; trusted proxy and TLS configuration; secret rotation; immutable
   external audit delivery, retention and backup; schema/type compatibility
-  (on PostgreSQL Nexus casts number, relation and Boolean writes, but dates,
-  date-times, JSON and enums need text columns); and ownership rules beyond
+  (on PostgreSQL Nexus casts number, relation, Boolean, date and time writes,
+  but editable JSON and enums need text columns); and ownership rules beyond
   the explicit tenant column. The built-in audit
   table is transaction-coupled in the same database, not append-only or
   tamper-evident, and records committed mutations rather than rejected

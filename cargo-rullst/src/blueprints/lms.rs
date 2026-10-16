@@ -139,6 +139,11 @@ pub fn file_manifest(
             "lms/src/models/user.rs.template"
         )),
     ));
+    // Nexus under the learner sign-in, for accounts whose `is_admin` is true.
+    manifest.push((
+        "src/middlewares/nexus_access.rs",
+        common::NEXUS_ACCESS.to_string(),
+    ));
     // Registration creates only the account: the starter has no schools or
     // memberships, and learners enroll in courses from the catalog.
     manifest.push((

@@ -585,13 +585,16 @@ the `rullst-capital` campaign (targeted runs of every file; mutants that
 only a live Stripe API response can reach are left to provider sandbox
 testing), the `rullst-messaging` campaign (targeted runs of every file,
 with the recurring PostgreSQL and Redis Streams contract runs for those
-adapters) and the sensitive-file campaign (targeted runs of the OAuth/OIDC,
-attachment, link-security, tracking, egress and guardrail files of
-`rullst-connect`, `rullst-mail` and `rullst-ai`; the peer-address, status and
-content-type checks of `EgressFetcher::fetch_bytes` run only after a
-connection to a public HTTPS origin, which the egress policy refuses to
-loopback test servers, and are left to live integration testing) gave every
-missed mutant in their files a test, except these.
+adapters), the service-backed campaign (the `passkey-postgres`,
+`auth-recovery-postgres`, `privacy-postgres` and `mail-postgres` contract
+runs, and targeted runs of the Redis rate limiter with the Redis service) and
+the sensitive-file campaign (targeted runs of the OAuth/OIDC, attachment,
+link-security, tracking, egress and guardrail files of `rullst-connect`,
+`rullst-mail` and `rullst-ai`; the peer-address, status and content-type checks
+of `EgressFetcher::fetch_bytes` run only after a connection to a public HTTPS
+origin, which the egress policy refuses to loopback test servers, and are left
+to live integration testing) gave every missed mutant in their files a test,
+except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -678,6 +681,8 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-capital/src/invoice/pdf.rs`: `render_pdf`, `bytes.len() > MAX_PDF_BYTES` with `==` or `>=`, and the `\|\|` with `&&` | The embedded font is at most 8 MiB and a bounded invoice adds well under 1 MiB, so the document never reaches 16 MiB, and printpdf always writes the `%PDF-` header. |
 | `rullst-capital/src/providers/mod.rs`: `http_client` with a leaked default client | Adapters only build requests with it; `execute` always sends them through the bounded client from `http::client`. |
 | `rullst-capital/src/providers/stripe.rs`: `create_customer_portal`, `\|\|` with `&&` | `require_mock_operation` accepts the same empty and `mock_*` keys and the same fixture URL is returned; every other key fails there with the same error. |
+| `rullst-orm/src/value.rs`: the SQLx `Any` pool's `temporal::date_time`, `naive_date_time`, `date` and `time` with `String::new()` or `"xyzzy".into()` | They exist only without a strict driver feature, and the all-feature build selects the PostgreSQL pool; `the_any_pool_binds_dates_as_iso_text` checks their exact text in default-feature builds. |
+| `rullst-orm/src/schema/schema_builder.rs`: `prepare_postgres_enums`, delete `!` in the `!definitions.is_empty()` guard | That guard exists only without `strict-postgres`, which the all-feature build enables; `postgres_enum_preparation_validates_before_any_statement` covers it in default-feature builds. |
 | `rullst-messaging/src/webhooks/signature.rs`: `WebhookSignature::from_headers`, the `\|\|` before `kind.len() > 128`, `timestamp.len() > 12` or `signature.len() != 46`, and `tag.len() != 32 \|\| …`, each with `&&` | `MessageId::from_stored`, `EventKind`, the canonical timestamp parse and the strict `v1=` decode repeat each length check with the same `InvalidSignature`, and 43 strict base64url characters always decode to 32 canonical bytes. |
 | `rullst-messaging/src/sqlite/storage/crypto.rs`: `open`, the `minimum` sum with a `+` replaced so that it shrinks, and `envelope.len() < minimum` with `<=` or `==` | The shortest authentic envelope is 38 bytes; a shorter one fails the key-ID, nonce or tag parse with the same `StorageAuthenticationFailed`. |
 | `rullst-messaging/src/schedules/crypto.rs`: `open`, `value.len() > MAX_CONTENT_BYTES + 128` with `==` or `>=` or its `+` with `*`, the `\|\|` after it with `&&`, and a `+` in `8 + 1 + 1 + 12 + 16` replaced so that the sum shrinks | Sealed values span 38 to 131,173 bytes, so each change only moves which later parse or authentication step rejects a value, with the same `Encryption`. |
@@ -808,7 +813,12 @@ second.
 The MySQL statement files `rullst-capital/src/quota/sql/mysql.rs` and
 `rullst-ai/src/ai/memory/sql/mysql.rs` hold only string constants, so
 cargo-mutants generates no mutant for them. The privacy URL policy in
-`postgres_connection.rs` and the capacity check have unit tests.
+`postgres_connection.rs` and the capacity check have unit tests. So do the
+mail adapter's clock, event-time, stored-time and URL checks, the privacy
+choice-code decoding, and, in `passkey-postgres` and
+`auth-recovery-postgres`, most branches of `manager.rs` and the recovery
+files: a contract run reports those mutants as missed, and a targeted run
+of the file catches them.
 
 ### Fuzzing and OSS-Fuzz
 

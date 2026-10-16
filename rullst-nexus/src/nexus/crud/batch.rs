@@ -9,8 +9,9 @@ use std::sync::Arc;
 
 use crate::nexus::NexusPrincipal;
 use crate::nexus::audit::{MutationAudit, append_mutation, correlation_id};
-use crate::nexus::crud::dialect::{RecordKey, tenant_predicate};
+use crate::nexus::crud::dialect::{placeholder, tenant_predicate};
 use crate::nexus::crud::handlers::tenant_for_entry;
+use crate::nexus::crud::key::{RecordKey, keys_predicate};
 use crate::nexus::crud::query::{BatchActionForm, find_entry, sanitize_identifier};
 use crate::nexus::types::{FieldKind, NexusAuditPolicy, NexusState, RegistryEntry};
 use rullst_core::security::TenantContext;
@@ -93,29 +94,16 @@ fn build_batch_sql(
         return None;
     }
 
-    let placeholders = (1..=selected_count)
-        .map(|index| {
-            if driver == "postgres" {
-                format!("${index}")
-            } else {
-                "?".to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(",");
     let table = sanitize_identifier(entry.table);
-    let primary_key = sanitize_identifier(entry.pk);
+    let selected = keys_predicate(entry, selected_count, driver);
 
     let tenant_predicate = if tenant_scoped {
         let tenant_column = entry.tenant_column?;
-        let placeholder = if driver == "postgres" {
-            format!("${}", selected_count + 1)
-        } else {
-            "?".to_string()
-        };
+        // The key values of every selected record come first.
+        let position = selected_count * entry.key_columns().len() + 1;
         format!(
             " AND {}",
-            tenant_predicate(tenant_column, &placeholder, driver)
+            tenant_predicate(tenant_column, &placeholder(position, driver), driver)
         )
     } else {
         String::new()
@@ -123,7 +111,7 @@ fn build_batch_sql(
 
     match action {
         "delete" => Some(format!(
-            "DELETE FROM {table} WHERE {primary_key} IN ({placeholders}){tenant_predicate}"
+            "DELETE FROM {table} WHERE {selected}{tenant_predicate}"
         )),
         "deactivate" => deactivation_field(entry).map(|field| {
             let field = sanitize_identifier(field);
@@ -131,9 +119,7 @@ fn build_batch_sql(
             // columns `Blueprint::boolean` creates; an untyped '0' literal is
             // accepted by INTEGER and BOOLEAN columns alike.
             let inactive = if driver == "postgres" { "'0'" } else { "FALSE" };
-            format!(
-                "UPDATE {table} SET {field} = {inactive} WHERE {primary_key} IN ({placeholders}){tenant_predicate}"
-            )
+            format!("UPDATE {table} SET {field} = {inactive} WHERE {selected}{tenant_predicate}")
         }),
         _ => None,
     }
@@ -209,7 +195,7 @@ pub async fn nexus_batch_action(
         Err(_) => return batch_failure(entry.table),
     };
     let mut query = query;
-    for key in keys {
+    for key in &keys {
         query = key.bind(query);
     }
     if let Some(tenant_id) = tenant_id {
@@ -284,6 +270,7 @@ mod tests {
             label: "Users",
             icon: "👥",
             pk: "id",
+            pk_columns: Vec::new(),
             tenant_column: None,
             fields,
         }
@@ -360,6 +347,48 @@ mod tests {
             Some(
                 "DELETE FROM users WHERE id IN (?) \
                  AND CAST(tenant_id AS BINARY) = CAST(? AS BINARY)"
+            )
+        );
+    }
+
+    #[test]
+    fn composite_batches_match_each_key_and_bind_the_tenant_last() {
+        let mut entry = entry(vec![FieldMeta::new(
+            "is_active",
+            "Active",
+            FieldKind::Boolean,
+        )]);
+        entry.table = "memberships";
+        entry.pk = "user_id";
+        entry.pk_columns = vec!["user_id", "team_id"];
+        entry.tenant_column = Some("tenant_id");
+        assert_eq!(
+            build_batch_sql(&entry, "delete", 2, "postgres", true).as_deref(),
+            Some(
+                "DELETE FROM memberships WHERE ((user_id = $1 AND team_id = $2) \
+                 OR (user_id = $3 AND team_id = $4)) AND tenant_id = $5"
+            )
+        );
+        assert_eq!(
+            build_batch_sql(&entry, "delete", 1, "postgres", true).as_deref(),
+            Some(
+                "DELETE FROM memberships WHERE ((user_id = $1 AND team_id = $2)) \
+                 AND tenant_id = $3"
+            )
+        );
+        assert_eq!(
+            build_batch_sql(&entry, "delete", 3, "postgres", true).as_deref(),
+            Some(
+                "DELETE FROM memberships WHERE ((user_id = $1 AND team_id = $2) \
+                 OR (user_id = $3 AND team_id = $4) OR (user_id = $5 AND team_id = $6)) \
+                 AND tenant_id = $7"
+            )
+        );
+        assert_eq!(
+            build_batch_sql(&entry, "deactivate", 1, "sqlite", false).as_deref(),
+            Some(
+                "UPDATE memberships SET is_active = FALSE \
+                 WHERE ((user_id = ? AND team_id = ?))"
             )
         );
     }

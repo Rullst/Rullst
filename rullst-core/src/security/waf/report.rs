@@ -2,8 +2,8 @@
 //! logs the requests that staging and production would refuse.
 
 use super::{
-    MAX_INSPECTED_REQUEST_BYTES, Rule, body_is_inspected, screen_body_bytes, screen_body_headers,
-    screen_head,
+    MAX_INSPECTED_REQUEST_BYTES, MultipartFieldInspection, Rule, body_is_inspected,
+    mark_multipart_fields, screen_body_bytes, screen_body_headers, screen_head,
 };
 use axum::{
     body::{Body, Bytes},
@@ -24,8 +24,10 @@ use std::pin::Pin;
 /// The log names only the rule and the path, never the query, headers or
 /// body. A body over the 1 MiB inspection limit is replayed to the handler
 /// in full. A body that fails to arrive gets `400`, as the handler could not
-/// read it either.
-pub(crate) async fn waf_report_middleware(req: Request, next: Next) -> Response {
+/// read it either. [`crate::uploads::Multipart`] logs multipart text fields
+/// the same way.
+pub(crate) async fn waf_report_middleware(mut req: Request, next: Next) -> Response {
+    mark_multipart_fields(&mut req, MultipartFieldInspection::Report);
     if let Some(rule) = screen_head(&req) {
         would_refuse(rule, req.uri().path());
         return next.run(req).await;
@@ -57,7 +59,7 @@ pub(crate) async fn waf_report_middleware(req: Request, next: Next) -> Response 
     next.run(Request::from_parts(parts, body)).await
 }
 
-fn would_refuse(rule: Rule, path: &str) {
+pub(super) fn would_refuse(rule: Rule, path: &str) {
     tracing::warn!(
         target: "rullst::security::waf",
         rule = rule.name(),

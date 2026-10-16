@@ -156,7 +156,7 @@ Now mount the routes in the `router()` function of `src/main.rs`. Add them
 the pages include, and wrap each one in the starter's `auth_middleware`:
 
 ```rust,ignore
-{{#include zero-to-complete-app/main.rs:57:68}}
+{{#include zero-to-complete-app/main.rs:62:73}}
 ```
 
 The whole file is in [`zero-to-complete-app/main.rs`](zero-to-complete-app/main.rs).

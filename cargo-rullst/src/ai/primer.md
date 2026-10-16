@@ -253,8 +253,15 @@ impl Migration for MigrationImpl {
 ```
 
 Column helpers: `id`, `string`, `integer`, `big_integer`, `float`, `boolean`,
-`enum_col(name, variants)`, `timestamps`, `soft_deletes`; modifiers
-`nullable()`, `not_null()` and `default(..)`. Never edit a migration that has
+`enum_col(name, variants)`, `date`, `time`, `timestamp`, `timestamp_tz`,
+`timestamps`, `soft_deletes`, `foreign_id(column, table)`; modifiers
+`nullable()`, `not_null()`, `default(..)` and `unique()`. Table helpers:
+`unique(&[..])`, `index(&[..])`, `unique_index(&[..])`,
+`foreign(column).references(table, "id").on_delete(ForeignKeyAction::Cascade)`
+and `check("..")`; `Schema::table(name, |table| ..)` alters an existing table.
+`timestamps()` columns are `rullst::orm::chrono::DateTime<Utc>` model fields
+(set with `Utc::now()`). On MySQL/MariaDB give indexed strings a type such as
+`.col_type = "VARCHAR(255)".to_string()`. Never edit a migration that has
 already been applied; add a new one. The user applies migrations with
 `cargo rullst db:migrate` and checks them with `cargo rullst db:status`.
 

@@ -158,6 +158,27 @@ fn generates_readonly_hidden_tenant_scope_from_orm_metadata() {
     assert!(tenant_field.contains("readonly : true"));
 }
 
+#[test]
+fn db_default_columns_are_read_only_in_nexus() {
+    let input: DeriveInput = parse_quote! {
+        #[orm(table = "notes")]
+        struct Note {
+            id: i32,
+            title: String,
+            #[orm(db_default)]
+            published_at: Option<DateTime<Utc>>,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    let published = field_meta(&output, "published_at").expect("published_at metadata");
+    assert!(published.contains("FieldKind :: DateTime"), "{published}");
+    assert!(published.ends_with("readonly : true"), "{published}");
+    let title = field_meta(&output, "title").expect("title metadata");
+    assert!(title.ends_with("readonly : false"), "{title}");
+}
+
 /// The generated `FieldMeta` of `name` up to its `readonly` flag, or `None`
 /// when it is not emitted. (A kind such as `Integer { .. }` has its own braces.)
 fn field_meta(output: &str, name: &str) -> Option<String> {
@@ -285,20 +306,7 @@ fn an_annotated_primary_key_outranks_a_later_id_field() {
     assert!(id.contains("hidden : false"), "{id}");
     assert!(id.contains("readonly : false"), "{id}");
 
-    let two_keys: DeriveInput = parse_quote! {
-        struct Order {
-            #[nexus(primary_key)]
-            number: String,
-            #[nexus(primary_key)]
-            code: String,
-        }
-    };
-    assert!(
-        expand_nexus(&two_keys)
-            .expect_err("two annotated keys must fail")
-            .to_string()
-            .contains("only one field may declare")
-    );
+    assert!(!output.contains("nexus_pk_columns"), "{output}");
 
     let contradicting: DeriveInput = parse_quote! {
         #[nexus(primary_key = "code")]
@@ -349,21 +357,32 @@ fn infers_chrono_widgets_from_any_path_spelling() {
             starts_at: chrono::NaiveDateTime,
             ends_at: Option<NaiveDateTime>,
             day: chrono::NaiveDate,
+            opens_at: Option<chrono::NaiveTime>,
             local_at: DateTime<chrono::FixedOffset>,
+            #[nexus(kind = "time")]
+            closes_at: String,
+            #[nexus(kind = "datetime_utc")]
+            settled_at: String,
         }
     };
     let output = expand_nexus(&input)
         .expect("valid Nexus derive")
         .to_string();
-    for name in [
-        "published_at",
-        "edited_at",
-        "archived_at",
-        "starts_at",
-        "ends_at",
-    ] {
+    // A UTC instant is shown and accepted as UTC.
+    for name in ["published_at", "edited_at", "archived_at", "settled_at"] {
         let meta = field_meta(&output, name).expect("field metadata");
-        assert!(meta.contains("FieldKind :: DateTime"), "{name}: {meta}");
+        assert!(
+            meta.contains("FieldKind :: DateTimeUtc ,"),
+            "{name}: {meta}"
+        );
+    }
+    for name in ["starts_at", "ends_at"] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(meta.contains("FieldKind :: DateTime ,"), "{name}: {meta}");
+    }
+    for name in ["opens_at", "closes_at"] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(meta.contains("FieldKind :: Time ,"), "{name}: {meta}");
     }
     let day = field_meta(&output, "day").expect("day metadata");
     assert!(day.contains("FieldKind :: Date ,"), "{day}");

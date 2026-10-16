@@ -76,7 +76,7 @@ async fn generated_entitlement_http_and_revision_contract() {
     for id in 1..=4 {
         rullst::db::sqlx::query("INSERT INTO users (id,name,email,created_at,updated_at) VALUES (?,?,?,?,?)")
             .bind(id).bind(format!("Member {id}")).bind(format!("member{id}@example.test"))
-            .bind("2026-09-20").bind("2026-09-20").execute(pool).await.unwrap();
+            .bind("2026-09-20T00:00:00+00:00").bind("2026-09-20T00:00:00+00:00").execute(pool).await.unwrap();
     }
     seed(1, "acct_contract:test", true).await;
     seed(2, "acct_contract:test", false).await;
@@ -84,7 +84,7 @@ async fn generated_entitlement_http_and_revision_contract() {
     // An editable CMS projection cannot grant access, even with a future end.
     rullst::db::sqlx::query("INSERT INTO subscriptions (user_id,customer_id,subscription_id,plan_id,status,ends_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)")
         .bind(2).bind("cus_forged").bind("sub_forged").bind("price_pro").bind("active").bind(1900000000_i64)
-        .bind("2026-09-20").bind("2026-09-20").execute(pool).await.unwrap();
+        .bind("2026-09-20T00:00:00+00:00").bind("2026-09-20T00:00:00+00:00").execute(pool).await.unwrap();
     let key = rullst::auth::get_app_key().unwrap();
     let sessions = (1..=4).map(|id| rullst::auth::encrypt_session(id, &key).unwrap()).collect::<Vec<_>>();
     let production_router = crate::router().unwrap();

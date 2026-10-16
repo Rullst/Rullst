@@ -10,6 +10,7 @@ mod headers;
 mod machine;
 mod media_type;
 mod pii;
+mod secure_cookies;
 mod tenant_guard;
 mod trusted_proxy;
 mod waf;
@@ -32,6 +33,9 @@ pub use baseline::{
     SecurityBaselineError, apply_security_baseline, apply_security_baseline_with_machine_endpoints,
 };
 pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
+pub(crate) use csrf_multipart::{
+    MAX_TOKEN_PREFIX_BYTES, MULTIPART_TOKEN_ORDER_MESSAGE, form_data_boundary,
+};
 pub use headers::{
     CspNonce, DEFAULT_CSP_TEMPLATE, SecurityHeadersApplied, apply_referrer_policy,
     headers_middleware, render_csp_policy,
@@ -52,3 +56,4 @@ pub use trusted_proxy::{
     TrustedProxyLayer, TrustedProxyService,
 };
 pub use waf::waf_middleware;
+pub(crate) use waf::{MultipartFieldInspection, multipart_field_refusal};

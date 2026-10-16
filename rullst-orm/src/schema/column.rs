@@ -61,6 +61,8 @@ pub struct Column {
     pub is_primary_key: bool,
     pub is_auto_increment: bool,
     pub default_value: Option<ColumnDefault>,
+    /// Emits a column-level `UNIQUE` constraint. Added in v13.
+    pub is_unique: bool,
 }
 
 impl Column {
@@ -76,6 +78,7 @@ impl Column {
             is_primary_key: false,
             is_auto_increment: false,
             default_value: None,
+            is_unique: false,
         }
     }
 
@@ -100,6 +103,15 @@ impl Column {
 
     pub fn primary(&mut self) -> &mut Self {
         self.is_primary_key = true;
+        self
+    }
+
+    /// Adds a column-level `UNIQUE` constraint; the database names it
+    /// (PostgreSQL: `<table>_<column>_key`). MySQL/MariaDB cannot make a
+    /// `TEXT` column unique, so on those a `string()` column needs a bounded
+    /// type such as `VARCHAR(255)` (set [`Column::col_type`]).
+    pub fn unique(&mut self) -> &mut Self {
+        self.is_unique = true;
         self
     }
 }
