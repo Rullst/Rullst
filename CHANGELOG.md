@@ -46,6 +46,11 @@ its credentials are missing.
 
 ### Known limitations
 
+- Deprecation: the Omni Tauri shells (`cargo rullst make:omni`,
+  `cargo rullst omni android`) and the native-only `offline-sync` feature are
+  planned for removal in 13.0.0-alpha.3. A first-class PWA generator
+  (`make:pwa`), Google Play packaging through a Trusted Web Activity and a
+  Microsoft Store guide replace them; see the ROADMAP.
 - No security-support commitment for v13 prereleases yet; see `SECURITY.md`.
   Pin an exact version (`=13.0.0-alpha.2`) and read the changelog before you
   upgrade.

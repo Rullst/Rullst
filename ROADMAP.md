@@ -714,6 +714,29 @@ when 13.0.0-alpha.2 was prepared. These are planned work items for the next
 prerelease, not shipped features, and they add no milestone to the counts
 above.
 
+- **First-class PWA, and retiring Omni.** Decided on 16 October 2026 with the
+  maintainer. The `make:omni` Tauri shells (desktop, Android, iOS) only open the
+  hosted Rullst application in a native webview and deliberately expose no
+  native API to it, so they give the same result as packaging a Progressive Web
+  App, while costing three mandatory release workflows (Android NDK, iOS
+  simulator, desktop on three systems), Tauri upgrades and per-platform signing.
+  alpha.3 replaces them:
+  1. `cargo rullst make:pwa`: web app manifest, icons, a service worker with an
+     offline page and an update prompt, compatible with Core's CSP nonces and
+     `Cache-Control` defaults; browser-side offline data (IndexedDB) where an
+     application needs it.
+  2. Google Play through a Trusted Web Activity: a Bubblewrap configuration
+     (`twa-manifest.json`) and a `/.well-known/assetlinks.json` route fed by
+     the application's signing-key fingerprint. Bubblewrap is the scriptable
+     tool PWABuilder itself uses for Android.
+  3. Microsoft Store: a guide to packaging the same PWA as MSIX with PWABuilder,
+     which Microsoft supports for its store. The Apple App Store usually
+     rejects apps that only wrap a website (guideline 4.2), so iOS users
+     install the PWA from Safari.
+  4. Remove `make:omni`, `cargo rullst omni`, the three Omni release workflows
+     and the native-only `offline-sync` feature, whose only consumer is the
+     Omni shell, before 13.0.0 (the last release where removing them does not
+     wait for v14).
 - **Studio as a production monitor for several projects.** Today Studio is a
   development tool: it runs inside the application process in debug builds,
   listens only on `127.0.0.1:5555` and reads that process's own telemetry,
