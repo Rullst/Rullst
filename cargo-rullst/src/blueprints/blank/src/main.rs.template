@@ -95,7 +95,7 @@ __ARTISAN_CALL__
     }
 
     Server::new(router())
-        .run(3000)
+__SERVER_MIGRATIONS__        .run(3000)
         .await?;
 
     Ok(())

@@ -1786,6 +1786,12 @@ the same server-authoritative controls.
   database, an unparsable value or an untakeable lock stops startup with
   `ServerError::Migration` (or `ServerError::Configuration` for the value);
   without the `orm` feature an enabled setting is `ServerError::Database`.
+  Since 13.0.0-alpha.2 the SQLx starters that `cargo rullst new` generates
+  (Blank, Blank API, SaaS, LMS, Blog, Portfolio, ERP, including their
+  internal hot-reload layouts) call `with_migrations` with their registry and
+  leave `auto_migrate` unset, so only `RULLST_AUTO_MIGRATE` turns it on. Turso
+  starters register none: their migrations run through `db:migrate`, and the
+  variable set to true there fails startup with `ServerError::Migration`.
 * **Application Settings (v13 prerelease):** `rullst::config::project_setting`
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded

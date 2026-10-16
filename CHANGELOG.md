@@ -345,8 +345,11 @@ its credentials are missing.
   `RULLST_AUTO_MIGRATE=true` applies pending migrations at startup, before
   the server binds; it is off by default. Replicas starting together migrate
   once (PostgreSQL advisory lock, MySQL `GET_LOCK`, an SQLite lock file), and
-  a failed migration stops startup with `ServerError::Migration`. Generated
-  starters do not register their migrations yet; see the
+  a failed migration stops startup with `ServerError::Migration`. Projects
+  generated with an SQLx database (Blank, Blank API, SaaS, LMS, Blog,
+  Portfolio, ERP) register their migrations, so `RULLST_AUTO_MIGRATE=true` is
+  all they need; Turso starters keep their own `db:migrate` and refuse to
+  start with that variable set. See the
   [deploy guide](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/26-one-click-paas-deploy.md#startup-migrations).
 - `rullst::cache_control::public(max_age)` and `private(max_age)` let a
   download or feed route be cached while every other response keeps

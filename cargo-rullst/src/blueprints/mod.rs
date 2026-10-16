@@ -167,6 +167,24 @@ mod tests {
     }
 
     #[test]
+    fn sqlx_starters_register_their_migrations_without_enabling_them() {
+        // `RULLST_AUTO_MIGRATE=true` needs the registry; the default stays off.
+        for (blueprint, manifest) in sqlx_blueprint_manifests() {
+            let main = manifest
+                .iter()
+                .find(|(path, _)| *path == "src/main.rs")
+                .map(|(_, source)| source.as_str())
+                .expect("a main.rs");
+            assert_eq!(
+                main.matches("        .with_migrations(crate::migrations::get_migrations())\n        .run(3000)\n").count(),
+                1,
+                "{blueprint}"
+            );
+            assert!(!main.contains("auto_migrate"), "{blueprint}");
+        }
+    }
+
+    #[test]
     fn sqlx_blueprints_avoid_sqlite_only_seed_functions() {
         // `datetime('now')` exists only in SQLite and fails `db:migrate` on
         // PostgreSQL/MySQL/MariaDB; `timestamps()` columns already default to
