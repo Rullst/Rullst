@@ -301,3 +301,43 @@ fn aws_key_ids_are_redacted_only_as_whole_tokens() {
         assert_eq!(redact_email_secrets(kept), kept);
     }
 }
+
+#[test]
+fn private_key_labels_of_up_to_64_bytes_are_redacted() {
+    let label = format!("{}PRIVATE KEY", "A".repeat(53));
+    assert_eq!(label.len(), 64);
+    let block =
+        format!("before\n-----BEGIN {label}-----\nMIIBVQIBADANBg\n-----END {label}-----\nafter");
+    assert_eq!(
+        redact_email_secrets(&block),
+        "before\n[REDACTED PRIVATE KEY]\nafter"
+    );
+}
+
+#[test]
+fn leading_controls_and_unicode_whitespace_do_not_hide_a_scheme() {
+    for url in [
+        "\u{1}javascript:alert(1)",
+        "\u{0}\u{1f}vbscript:msgbox(1)",
+        "\u{a0}javascript:alert(1)",
+        "\u{2003}file:///etc/passwd",
+    ] {
+        assert!(is_dangerous_scheme(url), "{url:?}");
+    }
+    assert!(!is_dangerous_scheme("\u{a0}https://example.com/"));
+}
+
+#[test]
+fn href_scanning_continues_after_every_kind_of_value() {
+    // A bare `href` word must not make the scan skip the attribute after it.
+    assert_eq!(
+        extract_urls("see the href attribute: <a href=/docs>docs</a>"),
+        vec!["/docs"]
+    );
+    // An unquoted value ends at whitespace, `>` or the end of the input.
+    assert_eq!(extract_urls("<a href=/a> <a href=/b>"), vec!["/a", "/b"]);
+    assert_eq!(extract_urls("<a href=/docs"), vec!["/docs"]);
+    // An empty unquoted value is not a link.
+    assert!(extract_urls("<a href=>text</a>").is_empty());
+    assert_eq!(extract_urls(r#"<a href="/a" href='/b'>"#), vec!["/a", "/b"]);
+}

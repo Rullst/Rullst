@@ -250,4 +250,23 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn links_a_browser_cannot_parse_are_still_read_as_text() {
+        // An invalid port makes the WHATWG parser reject the whole link, so
+        // only the textual host and user-info show the spoof.
+        for spoof in [
+            "https://p\u{0430}ypal.com:99999/login",
+            "https://p\u{0430}ypal.com@example.com:99999/",
+            "  https://p\u{0430}ypal.com:99999/",
+        ] {
+            assert!(is_homograph_link(spoof), "{spoof}");
+            assert!(scan_content_security(spoof).is_err(), "{spoof}");
+        }
+        assert!(!is_homograph_link("https://example.com:99999/путь"));
+        // A scheme must be ASCII, so this is a relative path whose first
+        // segment reads as a spoofed host.
+        assert!(is_homograph_link("p\u{0430}ypal.com://example.com/"));
+        assert!(!is_homograph_link("ftp+x://example.com/p\u{0430}ypal"));
+    }
 }

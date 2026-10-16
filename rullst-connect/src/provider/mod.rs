@@ -18,6 +18,9 @@ mod id_token_tests;
 #[cfg(test)]
 mod lifetime_tests;
 
+#[cfg(test)]
+mod token_ops_tests;
+
 pub use jwks::*;
 pub use token_ops::*;
 pub use traits::*;

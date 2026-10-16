@@ -152,3 +152,147 @@ async fn keys_older_than_the_stale_bound_are_rejected_on_refresh_error() {
 fn rejects_a_stale_bound_shorter_than_ttl() {
     assert!(JwksCachePolicy::new(Duration::from_secs(2), Duration::from_secs(1)).is_err());
 }
+
+#[test]
+fn policies_report_their_freshness_and_stale_bounds() {
+    let default = JwksCachePolicy::default();
+    assert_eq!(default.ttl(), Duration::from_secs(900));
+    assert_eq!(default.max_stale(), Duration::from_secs(86_400));
+    let custom = JwksCachePolicy::new(Duration::from_secs(60), Duration::from_secs(120))
+        .expect("valid policy");
+    assert_eq!(custom.ttl(), Duration::from_secs(60));
+    assert_eq!(custom.max_stale(), Duration::from_secs(120));
+}
+
+#[tokio::test]
+async fn get_serves_a_stale_set_on_refresh_error_only_within_the_stale_bound() {
+    let policy =
+        JwksCachePolicy::new(Duration::ZERO, Duration::from_secs(60)).expect("valid policy");
+    let cache = JwksCache::new(policy);
+    let client = SequenceClient {
+        calls: AtomicUsize::new(0),
+        responses: vec![Ok(jwks("known")), Err("offline")],
+    };
+    let url = "https://issuer.example/get-stale-jwks";
+    cache.get(url, &client).await.expect("initial set");
+    let stale = cache.get(url, &client).await.expect("bounded stale set");
+    assert!(stale.find("known").is_some());
+    assert_eq!(client.calls.load(Ordering::SeqCst), 2);
+
+    let policy =
+        JwksCachePolicy::new(Duration::ZERO, Duration::from_secs(1)).expect("valid policy");
+    let expired = JwksCache::new(policy);
+    let keys: JwkSet = serde_json::from_value(jwks("known")).expect("valid JWKS");
+    expired.entries.write().await.insert(
+        url.to_string(),
+        CacheEntry {
+            keys: Arc::new(keys),
+            fetched_at: Instant::now()
+                .checked_sub(Duration::from_secs(2))
+                .expect("test instant supports a two-second offset"),
+            forced_refresh_at: None,
+        },
+    );
+    let offline = SequenceClient {
+        calls: AtomicUsize::new(0),
+        responses: vec![Err("offline")],
+    };
+    let error = expired
+        .get(url, &offline)
+        .await
+        .expect_err("a set older than the stale bound must not be served");
+    assert!(matches!(error, ConnectError::Reqwest(_)));
+}
+
+#[tokio::test]
+async fn clear_forgets_fresh_sets() {
+    let policy = JwksCachePolicy::new(Duration::from_secs(600), Duration::from_secs(1200))
+        .expect("valid policy");
+    let cache = JwksCache::new(policy);
+    let client = SequenceClient {
+        calls: AtomicUsize::new(0),
+        responses: vec![Ok(jwks("first")), Ok(jwks("second"))],
+    };
+    let url = "https://issuer.example/cleared-jwks";
+    assert!(
+        cache
+            .get(url, &client)
+            .await
+            .unwrap()
+            .find("first")
+            .is_some()
+    );
+    assert!(
+        cache
+            .get(url, &client)
+            .await
+            .unwrap()
+            .find("first")
+            .is_some()
+    );
+    assert_eq!(client.calls.load(Ordering::SeqCst), 1, "served fresh");
+
+    cache.clear().await;
+    assert!(
+        cache
+            .get(url, &client)
+            .await
+            .unwrap()
+            .find("second")
+            .is_some()
+    );
+    assert_eq!(client.calls.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test]
+async fn a_zero_forced_refresh_interval_never_throttles_an_unknown_kid() {
+    let cache = JwksCache::new(JwksCachePolicy {
+        ttl: Duration::from_secs(600),
+        max_stale: Duration::from_secs(1200),
+        min_forced_refresh_interval: Duration::ZERO,
+    });
+    let client = SequenceClient {
+        calls: AtomicUsize::new(0),
+        responses: vec![Ok(jwks("current")), Ok(jwks("rotated"))],
+    };
+    let url = "https://issuer.example/unthrottled-jwks";
+    cache
+        .get_for_kid(url, "current", &client)
+        .await
+        .expect("initial key");
+    // A mark the clock has not reached yet: the time since it saturates to zero.
+    cache
+        .entries
+        .write()
+        .await
+        .get_mut(url)
+        .expect("cached entry")
+        .forced_refresh_at = Some(
+        Instant::now()
+            .checked_add(Duration::from_secs(3_600))
+            .expect("test instant supports a one-hour offset"),
+    );
+    let rotated = cache
+        .get_for_kid(url, "rotated", &client)
+        .await
+        .expect("an unknown kid still refreshes");
+    assert!(rotated.find("rotated").is_some());
+    assert_eq!(client.calls.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test]
+async fn the_process_cache_returns_the_fetched_set_for_a_kid() {
+    let client = SequenceClient {
+        calls: AtomicUsize::new(0),
+        responses: vec![Ok(jwks("process-kid"))],
+    };
+    // A URL no other test uses keeps the process-wide cache entry private.
+    let keys = fetch_and_cache_jwks_for_kid(
+        "https://process-cache.example/jwks-for-kid",
+        "process-kid",
+        &client,
+    )
+    .await
+    .expect("fetched set");
+    assert!(keys.find("process-kid").is_some());
+}

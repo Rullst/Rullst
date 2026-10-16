@@ -64,4 +64,18 @@ mod tests {
             assert!(normalize_allowed_host(invalid).is_err(), "{invalid}");
         }
     }
+
+    #[test]
+    fn allowlist_hosts_hold_at_most_253_bytes() {
+        let host = |last_label: usize| {
+            let label = "a".repeat(63);
+            format!("{label}.{label}.{label}.{}", "b".repeat(last_label))
+        };
+        assert_eq!(host(61).len(), 253);
+        assert_eq!(
+            normalize_allowed_host(&host(61)).expect("253-byte host"),
+            host(61)
+        );
+        assert!(normalize_allowed_host(&host(62)).is_err());
+    }
 }
