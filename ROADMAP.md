@@ -20,7 +20,7 @@ for Humans and AI."**
 Intentions, not promises; dates follow the evidence gates described below.
 
 - **v13:** `13.0.0-alpha.1` (published as a prerelease on October 11, 2026),
-  `13.0.0-alpha.2` (release candidate prepared on October 16, 2026, with the
+  `13.0.0-alpha.2` (published as a prerelease on October 17, 2026, with the
   alpha.1 dogfooding fixes), then further alphas, betas and a release candidate
   driven by user feedback, then `13.0.0` stable with the
   [maturity tiers](docs/src/maturity.md) applying from that release.
@@ -801,7 +801,7 @@ above.
 | **v12.2.0** | `[x] Published compatible minor` | Tagged `v12.2.0` at `565e222a` on 3 October 2026 from the `v12` maintenance line; see the [maintained v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md). |
 | **v12.3.0** | `[x] Latest published stable` | Tagged `v12.3.0` at `67b2d0e5` and published on 9 October 2026: hickory 0.26.3, fewer WAF/RASP false positives and deprecations of the Capital and Mail APIs that 13.0 removes. A 12.x patch with the fixes merged on `v12` since then is planned; see [Planned for 13.0.0-alpha.3](#planned-for-1300-alpha3). |
 | **v13.0.0-alpha.1** | `[x] Published prerelease` | Tag `v13.0.0-alpha.1` at `fc44bf76`; all twenty packages were published on 11 October 2026 for evaluation. See the [delivery plan](docs/src/v13-delivery-plan.md). |
-| **v13.0.0-alpha.2** | `[~] Release candidate` | Prepared on 16 October 2026 on `main`: the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. It is published only after its exact-SHA admission passes and its tag is pushed. |
+| **v13.0.0-alpha.2** | `[x] Published prerelease` | All twenty packages were published on 17 October 2026 from tag `v13.0.0-alpha.2` at `0daf4941` ([release run 39041726912](https://github.com/Rullst/Rullst/actions/runs/39041726912)): the fixes from the alpha.1 dogfooding report and the breaking `html!` → `Markup`, `Schema` date/time and Nexus changes. A first tag at `669befe6` failed release verification before publishing anything and was replaced. |
 | **v13.0.0-alpha.3** | `[ ] Planned` | See [Planned for 13.0.0-alpha.3](#planned-for-1300-alpha3). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
