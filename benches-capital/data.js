@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792163768716,
+  "lastUpdate": 1792209576011,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12498,6 +12498,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc08b894708118e69c520c3ace5ca506924c056a",
+          "message": "Merge pull request #511 from Rullst/fix/v13-packaged-exact-pin-check\n\nci(release): accept the exact prerelease pin in the packaged-distribution check",
+          "timestamp": "2026-10-17T00:37:51-03:00",
+          "tree_id": "eae3b07c8a02528beff16b059da9a84f27895d2f",
+          "url": "https://github.com/Rullst/Rullst/commit/bc08b894708118e69c520c3ace5ca506924c056a"
+        },
+        "date": 1792209574961,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
