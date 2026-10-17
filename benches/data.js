@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792162672607,
+  "lastUpdate": 1792208591522,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27251,6 +27251,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1681,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc08b894708118e69c520c3ace5ca506924c056a",
+          "message": "Merge pull request #511 from Rullst/fix/v13-packaged-exact-pin-check\n\nci(release): accept the exact prerelease pin in the packaged-distribution check",
+          "timestamp": "2026-10-17T00:37:51-03:00",
+          "tree_id": "eae3b07c8a02528beff16b059da9a84f27895d2f",
+          "url": "https://github.com/Rullst/Rullst/commit/bc08b894708118e69c520c3ace5ca506924c056a"
+        },
+        "date": 1792208588043,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 571,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 770,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 291,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1503,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
