@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792233498476,
+  "lastUpdate": 1792240769147,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27359,6 +27359,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1980,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0daf49414593a3b7b30d26615be9766c50dcbbe1",
+          "message": "Merge pull request #513 from Rullst/fix/v13-cargo-audit-config\n\nci(release): pass the governed advisory exceptions to the CLI evidence audit",
+          "timestamp": "2026-10-17T09:33:03-03:00",
+          "tree_id": "113aa2fd39e5dd832bc513e59991d6913e92c5af",
+          "url": "https://github.com/Rullst/Rullst/commit/0daf49414593a3b7b30d26615be9766c50dcbbe1"
+        },
+        "date": 1792240766070,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 756,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1014,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 379,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1998,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
