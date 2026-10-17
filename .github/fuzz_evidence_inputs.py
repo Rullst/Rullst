@@ -38,6 +38,9 @@ NON_INPUTS = frozenset({
     ".github/workflows/release.yml", ".github/workflows/workflow-lint.yml",
     # Archive audit policy inspects packaged files and never builds fuzz code.
     ".github/audit-packages.sh", ".github/test-package-release.py",
+    # The packaged-distribution check installs archives and inspects generated
+    # projects; it never builds fuzz code either.
+    ".github/test-packaged-distribution.sh",
     # `#[cfg(test)]` Core modules: fuzz targets never compile library unit tests.
     "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
     "rullst-core/src/server/stack_tests.rs",
