@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792234414841,
+  "lastUpdate": 1792241677706,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16489,6 +16489,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 562,
             "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0daf49414593a3b7b30d26615be9766c50dcbbe1",
+          "message": "Merge pull request #513 from Rullst/fix/v13-cargo-audit-config\n\nci(release): pass the governed advisory exceptions to the CLI evidence audit",
+          "timestamp": "2026-10-17T09:33:03-03:00",
+          "tree_id": "113aa2fd39e5dd832bc513e59991d6913e92c5af",
+          "url": "https://github.com/Rullst/Rullst/commit/0daf49414593a3b7b30d26615be9766c50dcbbe1"
+        },
+        "date": 1792241676863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5442,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 572,
+            "range": "± 4",
             "unit": "ns/iter"
           },
           {
