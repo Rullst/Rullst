@@ -55,7 +55,8 @@ jobs:
               .github/workflows/audit.yml \
               .github/workflows/security-audit.yml \
               .github/workflows/pqc-compliance.yml \
-              .github/workflows/release.yml |
+              .github/workflows/release.yml \
+              .github/workflows/ai-sentinel-pr.yml |
               awk '{print $2}' | sort -u || true
           )"
 

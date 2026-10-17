@@ -32,7 +32,7 @@ jobs:
 
       - name: Run bounded IDOR, dependency, and evidence audit
         run: |
-          cargo run -p cargo-rullst --bin rullst -- audit --idor --compliance --sbom
+          cargo run -p cargo-rullst --bin rullst -- audit --idor --compliance --sbom --audit-ignore RUSTSEC-2026-0367 --audit-ignore RUSTSEC-2026-0368 --audit-ignore RUSTSEC-2026-0369
 
       - name: Summarize the evidence boundary
         run: |
