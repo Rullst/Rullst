@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792209395657,
+  "lastUpdate": 1792234414841,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16452,6 +16452,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "669befe6d90e14444119f01c606abc6542b686f4",
+          "message": "Merge pull request #512 from Rullst/fix/v13-zip-advisory-exception\n\nci(security): time-bounded exception for the zip 6 advisories under DuckDB's build script",
+          "timestamp": "2026-10-17T07:32:15-03:00",
+          "tree_id": "a7ee67b7bef33c07ae59ae46f47eef2850ea56ab",
+          "url": "https://github.com/Rullst/Rullst/commit/669befe6d90e14444119f01c606abc6542b686f4"
+        },
+        "date": 1792234414113,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5418,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 562,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
             "range": "± 0",
             "unit": "ns/iter"
           }
