@@ -88,6 +88,7 @@ class InputTests(unittest.TestCase):
                      "deny.toml", "docs/src/security-advisory-exceptions.md",
                      ".github/workflows/audit.yml", ".github/workflows/security-audit.yml",
                      ".github/workflows/pqc-compliance.yml",
+                     ".github/workflows/ai-sentinel-pr.yml",
                      "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
                      "rullst-core/src/server/stack_tests.rs"):
             self.write(path, "changed test or non-input")
