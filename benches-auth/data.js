@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792234212483,
+  "lastUpdate": 1792241474864,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16975,6 +16975,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4533,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0daf49414593a3b7b30d26615be9766c50dcbbe1",
+          "message": "Merge pull request #513 from Rullst/fix/v13-cargo-audit-config\n\nci(release): pass the governed advisory exceptions to the CLI evidence audit",
+          "timestamp": "2026-10-17T09:33:03-03:00",
+          "tree_id": "113aa2fd39e5dd832bc513e59991d6913e92c5af",
+          "url": "https://github.com/Rullst/Rullst/commit/0daf49414593a3b7b30d26615be9766c50dcbbe1"
+        },
+        "date": 1792241474017,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 968,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 775,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1761,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4548,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
