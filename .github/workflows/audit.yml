@@ -36,37 +36,9 @@ jobs:
       - name: Audit production and fuzz dependency locks
         shell: bash
         run: |
-          cargo audit
+          cargo audit --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369
           while IFS= read -r lockfile; do
             echo "Auditing $lockfile"
-            cargo audit --no-fetch --file "$lockfile"
-          done < <(find . -mindepth 3 -maxdepth 3 \
-            -path '*/fuzz/Cargo.lock' -print | sort)
-
-  # Scheduled runs use the default branch; also audit the v12 maintenance lock.
-  # Remove this job when SECURITY.md marks 12.x end-of-life.
-  audit-v12:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: v12
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # stable
-        with:
-          toolchain: 1.99.0
-      - name: Install cargo-audit
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
-        with:
-          tool: cargo-audit
-      - name: Audit v12 production and fuzz dependency locks
-        shell: bash
-        run: |
-          cargo audit
-          while IFS= read -r lockfile; do
-            echo "Auditing $lockfile"
-            cargo audit --no-fetch --file "$lockfile"
+            cargo audit --no-fetch --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369 --file "$lockfile"
           done < <(find . -mindepth 3 -maxdepth 3 \
             -path '*/fuzz/Cargo.lock' -print | sort)

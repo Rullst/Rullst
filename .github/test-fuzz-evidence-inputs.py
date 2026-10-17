@@ -85,6 +85,9 @@ class InputTests(unittest.TestCase):
                      ".github/billing-csp-browser-smoke.mjs", "Cargo.lock", "WORKFLOWS.md",
                      ".github/audit-packages.sh", ".github/test-package-release.py",
                      ".github/test-packaged-distribution.sh",
+                     "deny.toml", "docs/src/security-advisory-exceptions.md",
+                     ".github/workflows/audit.yml", ".github/workflows/security-audit.yml",
+                     ".github/workflows/pqc-compliance.yml",
                      "rullst-core/src/server/dev_telemetry/n_plus_one_tests.rs",
                      "rullst-core/src/server/stack_tests.rs"):
             self.write(path, "changed test or non-input")

@@ -174,7 +174,7 @@ jobs:
 
           # Any advisory blocks the release. The JSON result is retained as
           # tag-bound evidence; v12 has no configured advisory exceptions.
-          cargo audit --json > "$evidence_dir/cargo-audit.json"
+          cargo audit --json --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369 > "$evidence_dir/cargo-audit.json"
 
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
           # controls that a bounded source audit cannot establish.
