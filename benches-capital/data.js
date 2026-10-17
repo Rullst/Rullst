@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792209576011,
+  "lastUpdate": 1792234619158,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12540,6 +12540,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "669befe6d90e14444119f01c606abc6542b686f4",
+          "message": "Merge pull request #512 from Rullst/fix/v13-zip-advisory-exception\n\nci(security): time-bounded exception for the zip 6 advisories under DuckDB's build script",
+          "timestamp": "2026-10-17T07:32:15-03:00",
+          "tree_id": "a7ee67b7bef33c07ae59ae46f47eef2850ea56ab",
+          "url": "https://github.com/Rullst/Rullst/commit/669befe6d90e14444119f01c606abc6542b686f4"
+        },
+        "date": 1792234618480,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
