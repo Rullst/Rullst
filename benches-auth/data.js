@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792209233194,
+  "lastUpdate": 1792234212483,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -16927,6 +16927,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4130,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "669befe6d90e14444119f01c606abc6542b686f4",
+          "message": "Merge pull request #512 from Rullst/fix/v13-zip-advisory-exception\n\nci(security): time-bounded exception for the zip 6 advisories under DuckDB's build script",
+          "timestamp": "2026-10-17T07:32:15-03:00",
+          "tree_id": "a7ee67b7bef33c07ae59ae46f47eef2850ea56ab",
+          "url": "https://github.com/Rullst/Rullst/commit/669befe6d90e14444119f01c606abc6542b686f4"
+        },
+        "date": 1792234211797,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 972,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 771,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1767,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4533,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
