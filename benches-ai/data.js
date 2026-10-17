@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792209495880,
+  "lastUpdate": 1792234525425,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14527,6 +14527,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 299,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "669befe6d90e14444119f01c606abc6542b686f4",
+          "message": "Merge pull request #512 from Rullst/fix/v13-zip-advisory-exception\n\nci(security): time-bounded exception for the zip 6 advisories under DuckDB's build script",
+          "timestamp": "2026-10-17T07:32:15-03:00",
+          "tree_id": "a7ee67b7bef33c07ae59ae46f47eef2850ea56ab",
+          "url": "https://github.com/Rullst/Rullst/commit/669befe6d90e14444119f01c606abc6542b686f4"
+        },
+        "date": 1792234524737,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1730,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 349,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 443,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
