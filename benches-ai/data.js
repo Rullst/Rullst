@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792163675669,
+  "lastUpdate": 1792209495880,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14479,6 +14479,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 341,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc08b894708118e69c520c3ace5ca506924c056a",
+          "message": "Merge pull request #511 from Rullst/fix/v13-packaged-exact-pin-check\n\nci(release): accept the exact prerelease pin in the packaged-distribution check",
+          "timestamp": "2026-10-17T00:37:51-03:00",
+          "tree_id": "eae3b07c8a02528beff16b059da9a84f27895d2f",
+          "url": "https://github.com/Rullst/Rullst/commit/bc08b894708118e69c520c3ace5ca506924c056a"
+        },
+        "date": 1792209494821,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1448,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 277,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 299,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
