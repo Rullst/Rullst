@@ -3,7 +3,11 @@
 [advisories]
 # Temporary exceptions must have an owner, compensating control, and expiry in
 # docs/src/security-advisory-exceptions.md. Patched or absent advisories are not ignored.
-ignore = []
+ignore = [
+    { id = "RUSTSEC-2026-0367", reason = "zip 6.0.0 is only libduckdb-sys's build dependency (optional duckdb feature); see docs/src/security-advisory-exceptions.md" },
+    { id = "RUSTSEC-2026-0368", reason = "zip 6.0.0 is only libduckdb-sys's build dependency (optional duckdb feature); see docs/src/security-advisory-exceptions.md" },
+    { id = "RUSTSEC-2026-0369", reason = "zip 6.0.0 is only libduckdb-sys's build dependency (optional duckdb feature); see docs/src/security-advisory-exceptions.md" },
+]
 
 [licenses]
 # We allow typical open-source licenses compatible with MIT framework

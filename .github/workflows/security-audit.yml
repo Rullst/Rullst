@@ -82,4 +82,4 @@ jobs:
           ' docs/src/security-advisory-exceptions.md
         
       - name: Run cargo-audit
-        run: cargo audit
+        run: cargo audit --ignore RUSTSEC-2026-0367 --ignore RUSTSEC-2026-0368 --ignore RUSTSEC-2026-0369
