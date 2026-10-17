@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792208591522,
+  "lastUpdate": 1792233498476,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27305,6 +27305,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1503,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "669befe6d90e14444119f01c606abc6542b686f4",
+          "message": "Merge pull request #512 from Rullst/fix/v13-zip-advisory-exception\n\nci(security): time-bounded exception for the zip 6 advisories under DuckDB's build script",
+          "timestamp": "2026-10-17T07:32:15-03:00",
+          "tree_id": "a7ee67b7bef33c07ae59ae46f47eef2850ea56ab",
+          "url": "https://github.com/Rullst/Rullst/commit/669befe6d90e14444119f01c606abc6542b686f4"
+        },
+        "date": 1792233495812,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 753,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 975,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 379,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1980,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
