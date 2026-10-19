@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792241888695,
+  "lastUpdate": 1792404516448,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12607,6 +12607,46 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/0daf49414593a3b7b30d26615be9766c50dcbbe1"
         },
         "date": 1792241887868,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "0daf49414593a3b7b30d26615be9766c50dcbbe1",
+          "message": "Merge pull request #513 from Rullst/fix/v13-cargo-audit-config\n\nci(release): pass the governed advisory exceptions to the CLI evidence audit",
+          "timestamp": "2026-10-17T12:33:03Z",
+          "url": "https://github.com/Rullst/Rullst/commit/0daf49414593a3b7b30d26615be9766c50dcbbe1"
+        },
+        "date": 1792404515612,
         "tool": "cargo",
         "benches": [
           {
