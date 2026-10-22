@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792651103358,
+  "lastUpdate": 1792654450681,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -16714,6 +16714,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "479d9a08c2cab58bac43a443e0f74ead8d572e19",
+          "message": "Merge pull request #520 from Rullst/fix/v13-dx-alpha3\n\nfix(v13): alpha.2 dogfooding fixes for OAuth mock, account mail, production logs and docs",
+          "timestamp": "2026-10-22T04:12:47-03:00",
+          "tree_id": "132ca70210f0a1b35dbb8ecc2447c64a993a469e",
+          "url": "https://github.com/Rullst/Rullst/commit/479d9a08c2cab58bac43a443e0f74ead8d572e19"
+        },
+        "date": 1792654450108,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5407,
+            "range": "± 92",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 560,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
             "range": "± 0",
             "unit": "ns/iter"
           },
