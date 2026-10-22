@@ -46,11 +46,6 @@ pub fn render_showcase_nav(active_route: &str) -> html::Markup {
             "🤖 AI & RAG",
             "Vector semantic search & Prompt Shield",
         ),
-        (
-            "/omni",
-            "📱 Omni App",
-            "Interactive Mobile Viewport Simulator and Desktop Exporter",
-        ),
     ];
 
     let buttons_html: html::Markup = routes

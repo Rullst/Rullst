@@ -1,0 +1,53 @@
+# Progressive Web App
+
+`cargo rullst make:pwa` made this application installable. The files are
+yours to change; running the command again never overwrites them.
+
+| File | Purpose |
+| :--- | :--- |
+| `static/manifest.webmanifest` | Name, colours, start URL and icons that browsers and stores read. |
+| `static/icons/` | Placeholder icons (the Rullst logo). Replace them with your own PNG files of the same sizes. |
+| `src/pwa.rs` | Serves `/sw.js` and `/offline`; `head()` holds the tags each layout includes. |
+| `src/pwa/sw.js` | The service worker. |
+| `static/pwa.js` | Registers the worker and shows the update prompt. |
+
+## Before release
+
+1. Replace the four icons in `static/icons/`. `maskable-512.png` must keep
+   its subject inside the central circle of 80% of the width, because
+   launchers crop it to their own shape.
+2. Serve the application over HTTPS. Browsers register service workers only
+   on HTTPS origins and on `localhost`.
+3. Bump `version` in `Cargo.toml` with each release. The worker names its
+   cache after it, so users get a "new version" prompt and a fresh offline
+   copy; without a version change they keep the files stored at install.
+
+## What the worker stores
+
+- Navigations go to the network first. A page is stored for offline use only
+  when its response allows it; Rullst answers `Cache-Control: no-store` by
+  default, so personal and authenticated pages are never kept on the device.
+  Without the network the worker shows a stored copy or `/offline`.
+- Files under `/static/` whose names carry a content hash
+  (`app.3f9a2c1b.css`) are served from the cache first; other static files
+  go to the network first and fall back to the stored copy.
+- Requests other than GET, other origins, forms, htmx fragments and APIs are
+  never stored.
+
+## Data while offline
+
+Keep the server authoritative. If a page must accept changes offline, queue
+them in IndexedDB with an idempotency key and send them again when the
+connection returns; the server accepts each key once and rejects stale
+writes. The PWA guide shows the pattern:
+https://rullst.github.io/Rullst/book/tutorials/43-progressive-web-apps.html
+## Stores
+
+- Google Play: `cargo rullst make:pwa --android --host <host> --package-id
+  <name>` adds a Bubblewrap configuration for a Trusted Web Activity and
+  `PWA-ANDROID.md` with its steps.
+- Microsoft Store: package the same site with PWABuilder.
+- Apple App Store: not offered; iOS users add the app to the home screen
+  from Safari.
+
+The PWA guide covers each step.

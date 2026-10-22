@@ -15,8 +15,8 @@ better alternative to an existing course.
 
 The browser-accessible web application is canonical. Server-side code owns
 identity, school scope, authorization, course versions, grading, progress,
-achievements and audit. Omni shells may later add narrowly scoped native
-capabilities without becoming a second security or business model.
+achievements and audit. Installing the application as a Progressive Web App
+(`cargo rullst make:pwa`) does not create a second security or business model.
 
 The Academy repository must:
 

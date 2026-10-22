@@ -198,16 +198,15 @@ LiveView, selected Wasm islands, Tera, and packaging helpers are optional
 strategies with separate maturity and operational requirements. Rullst does
 not claim that every frontend mode is interchangeable or bundle-free.
 
-Omni extends that server-first model with a deterministic Tauri shell for
-desktop, Android, and iOS instead of creating a second business backend. Its
-portable versioned client envelope carries no local authority, and the opt-in
-native offline foundation adds bounded idempotent proposals, explicit
-conflict/resync state, account-bound encrypted snapshots, and a coordinator with
-request budgets, timeouts, and cursor checks over application transports.
-Platform secure storage, concrete HTTP/background transport, physical-device
-behavior, signing, and store acceptance remain separate evidence gates; see the
-[web-first Omni guide](tutorials/43-omni-web-first.md) and
-[offline synchronization guide](tutorials/44-omni-offline-sync.md).
+The same server-rendered application becomes installable without a second
+codebase: `cargo rullst make:pwa` adds a web app manifest, a service worker
+with an offline page and an update prompt that work under the default
+Content-Security-Policy, and never keeps `no-store` or private responses on
+the device. The same site can be packaged for Google Play as a Trusted Web
+Activity and for the Microsoft Store with PWABuilder; iOS users add it to the
+home screen from Safari. Store review, signing keys and device testing remain
+the application's work; see the
+[PWA guide](tutorials/43-progressive-web-apps.md).
 
 ### 8. Local control surfaces use real application signals
 

@@ -188,6 +188,40 @@ mixed = ["rullst/polyglot", "rullst-orm/orm-polyglot", "unknown/orm-polyglot", "
 }
 
 #[test]
+fn manifests_report_the_removed_offline_sync_feature() {
+    let manifest = r#"[package]
+name = "app"
+
+[dependencies]
+rullst = { version = "12.3.0", default-features = false, features = ["orm", "offline-sync"] }
+core = { package = "rullst-core", version = "12.3.0", features = ["offline-sync"] }
+rullst-orm = { version = "12.3.0", default-features = false, features = ["offline-sync"] }
+
+[features]
+sync = ["core/offline-sync"]
+"#;
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
+    let mut found: Vec<_> = findings
+        .iter()
+        .map(|finding| (finding.rule.code, finding.line))
+        .collect();
+    found.sort_by_key(|(_, line)| *line);
+    assert_eq!(
+        found,
+        vec![
+            ("V13-OFFLINE-SYNC-REMOVED", 5),
+            ("V13-OFFLINE-SYNC-REMOVED", 6),
+            ("V13-OFFLINE-SYNC-REMOVED", 10)
+        ]
+    );
+    // A package enabling both removed features gets one finding.
+    let both = "[dependencies]\nrullst = { version = \"12.3.0\", default-features = false, features = [\"offline-sync\", \"orm-polyglot\"] }\n";
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), both)]);
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule.code, "V13-POLYGLOT-FEATURE");
+}
+
+#[test]
 fn generated_project_files_are_reviewed() {
     let project = Project::new();
     project
@@ -196,10 +230,8 @@ fn generated_project_files_are_reviewed() {
         .write(".dockerignore", "target\n.env\n")
         .write("Foundry.toml", "[app]\nport = 3000\n")
         .write("docker-compose.prod.yml", "services:\n  app: {}\n")
-        .write(
-            "omni-app/src/lib.rs",
-            "fn run() {\n    if Path::new(\"../Cargo.toml\").exists() {}\n    tauri::Builder::default();\n}\n",
-        )
+        .write("omni-app/tauri.conf.json", "{}\n")
+        .write("omni-app/src/lib.rs", "fn run() { tauri::Builder::default(); }\n")
         .write("rullst-client.ts", "export class RullstClient {}\n")
         .write(".env.example", "APP_KEY=\nOTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318\n")
         .write(
@@ -207,24 +239,21 @@ fn generated_project_files_are_reviewed() {
             "apiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  annotations:\n    kubernetes.io/ingress.class: nginx\n",
         )
         .write(".github/workflows/release.yml", "steps:\n  - run: cargo rullst omni android --release\n")
+        .write("Makefile", "app:\n\tcargo rullst build\nshell:\n\tcargo rullst make:omni --platform desktop\n")
         .write("build.sh", "#!/bin/sh\necho build\n");
     let found = project.findings("[package]\nname = \"my_app\"\n");
     let expected = [
         (".cargo/config.toml", "V13-LINKER-CONFIG", 2),
         (".dockerignore", "V13-DOCKER-CONTEXT", 1),
         (".env.example", "V13-OTLP-ENVIRONMENT", 2),
-        (
-            ".github/workflows/release.yml",
-            "V13-ANDROID-RELEASE-SIGNING",
-            2,
-        ),
+        (".github/workflows/release.yml", "V13-OMNI-REMOVED", 2),
         (".gitignore", "V13-GITIGNORE-DATABASES", 1),
         ("Cargo.toml", "V13-K8S-NAMES", 2),
         ("Foundry.toml", "V13-FOUNDRY-SERVICE", 1),
+        ("Makefile", "V13-OMNI-REMOVED", 4),
         ("docker-compose.prod.yml", "V13-VPS-DEPLOY-PROXY", 1),
         ("k8s/ingress.yaml", "V13-K8S-INGRESS-TLS", 5),
-        ("omni-app/src/lib.rs", "V13-OMNI-BACKEND", 2),
-        ("omni-app/src/lib.rs", "V13-OMNI-RUNNER", 3),
+        ("omni-app/tauri.conf.json", "V13-OMNI-REMOVED", 1),
         ("rullst-client.ts", "V13-TS-CLIENT-REGENERATE", 1),
     ];
     let mut found = found;
@@ -244,16 +273,26 @@ fn current_project_files_produce_no_findings() {
             ".gitignore",
             "/target\n.cargo/config.toml\n*.sqlite\n*.sqlite-shm\n*.sqlite-wal\n",
         )
-        .write(".cargo/config.toml", "rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]\n")
-        .write(".dockerignore", ".env\n.env.*\n!.env.example\n*.sqlite\n")
-        .write("docker-compose.prod.yml", "networks:\n  edge:\n    ipv4_address: 172.31.250.10\n")
         .write(
-            "omni-app/src/lib.rs",
-            "fn run() {\n    println!(\"Launching Omni interface...\");\n    tauri::Builder::default();\n}\n",
+            ".cargo/config.toml",
+            "rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]\n",
         )
+        .write(".dockerignore", ".env\n.env.*\n!.env.example\n*.sqlite\n")
+        .write(
+            "docker-compose.prod.yml",
+            "networks:\n  edge:\n    ipv4_address: 172.31.250.10\n",
+        )
+        // A directory named like the shell, without its files, is not one.
+        .write("omni-app/README.md", "Notes about the retired shell\n")
         .write("rullst-client.ts", "headers['X-CSRF-Token'] = token;\n")
-        .write("k8s/deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n")
-        .write(".github/workflows/ci.yml", "steps:\n  - run: cargo rullst omni android\n");
+        .write(
+            "k8s/deployment.yaml",
+            "apiVersion: apps/v1\nkind: Deployment\n",
+        )
+        .write(
+            ".github/workflows/ci.yml",
+            "steps:\n  - run: cargo rullst make:pwa\n",
+        );
     assert_eq!(project.findings("[package]\nname = \"my-app\"\n"), vec![]);
 }
 

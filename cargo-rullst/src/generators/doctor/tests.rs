@@ -60,7 +60,7 @@ fn rustc_version_parser_enforces_the_declared_msrv() {
         version_token("cargo 1.98.1 (abc 2026)").as_deref(),
         Some("1.98.1")
     );
-    assert_eq!(version_token("Launching Omni interface..."), None);
+    assert_eq!(version_token("Launching interface..."), None);
 }
 
 #[test]
