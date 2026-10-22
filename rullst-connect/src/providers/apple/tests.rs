@@ -617,3 +617,83 @@ async fn test_apple_id_token_invalid_algorithm() {
         matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("Unsupported algorithm"))
     );
 }
+
+#[test]
+fn the_signing_key_is_verified_before_the_first_sign_in() {
+    let ec_pem = "-----BEGIN PRIVATE KEY-----\n\
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkdn4ngP0MJj/+G/Z\n\
+0FgfmUYbc26Oidgl0NZoUXoMm6KhRANCAARcJ2gzcG1e8qufjKrOWQSmC4OoQkAU\n\
+k/Tz7c8S43tqF0VK/mNC462881k2cryVtuV5FkH1XoPACJzJUQ5igUZV\n\
+-----END PRIVATE KEY-----";
+    let apple = |key: &str| {
+        AppleProvider::try_new(
+            "com.example.web",
+            "TEAM123456",
+            "KEY1234567",
+            key,
+            "https://app.example/auth/apple/callback",
+        )
+        .unwrap()
+    };
+    assert!(apple(ec_pem).verify_signing_key().is_ok());
+    for broken in ["not a key", &ec_pem[..120]] {
+        match apple(broken).verify_signing_key() {
+            Err(crate::error::ConnectError::InvalidConfiguration { field, reason }) => {
+                assert_eq!(field, "private_key_pem");
+                assert!(!reason.contains("PRIVATE KEY"));
+            }
+            other => panic!("unexpected result: {:?}", other.err()),
+        }
+    }
+    let mock = AppleProvider::try_new(
+        "mock_apple",
+        "mock_apple",
+        "mock_apple",
+        "mock_apple",
+        "http://localhost:3000/auth/apple/callback",
+    )
+    .unwrap();
+    assert!(mock.verify_signing_key().is_ok());
+}
+
+#[test]
+fn the_first_login_name_comes_from_the_user_field() {
+    assert_eq!(
+        AppleProvider::name_from_user_field(
+            r#"{"name":{"firstName":"Ana","lastName":"Silva"},"email":"x@privaterelay.appleid.com"}"#
+        )
+        .as_deref(),
+        Some("Ana Silva")
+    );
+    assert_eq!(
+        AppleProvider::name_from_user_field(r#"{"name":{"firstName":"  Ana \n Maria\u0007 "}}"#)
+            .as_deref(),
+        Some("Ana Maria")
+    );
+    assert_eq!(
+        AppleProvider::name_from_user_field(r#"{"name":{"lastName":"Silva"}}"#).as_deref(),
+        Some("Silva")
+    );
+    let long = format!(r#"{{"name":{{"firstName":"{}"}}}}"#, "a".repeat(200));
+    assert_eq!(
+        AppleProvider::name_from_user_field(&long).map(|name| name.chars().count()),
+        Some(120)
+    );
+    let oversized = format!(r#"{{"name":{{"firstName":"{}"}}}}"#, "a".repeat(4096));
+    assert_eq!(AppleProvider::name_from_user_field(&oversized), None);
+    let largest = format!(r#"{{"name":{{"firstName":"{}"}}}}"#, "a".repeat(4096 - 25));
+    assert_eq!(largest.len(), 4096);
+    assert!(AppleProvider::name_from_user_field(&largest).is_some());
+    for nothing in [
+        "",
+        "not json",
+        r#"{"email":"x@example.test"}"#,
+        r#"{"name":{"firstName":" "}}"#,
+    ] {
+        assert_eq!(
+            AppleProvider::name_from_user_field(nothing),
+            None,
+            "{nothing}"
+        );
+    }
+}
