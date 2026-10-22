@@ -295,3 +295,33 @@ async fn machine_endpoint_policy_authenticates_hot_swapped_routes() {
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(body_text(response).await, "processed");
 }
+
+#[tokio::test]
+async fn hmr_websocket_forwards_reload_messages_to_the_browser() {
+    use futures_util::StreamExt;
+    use tokio_tungstenite::tungstenite::Message;
+
+    let service = service(axum::Router::new());
+    let sender = service.hmr_sender.clone();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move { axum::serve(listener, service).await });
+    let deadline = std::time::Duration::from_secs(5);
+
+    let (mut socket, _) = tokio::time::timeout(
+        deadline,
+        tokio_tungstenite::connect_async(format!("ws://{address}/_rullst_hmr")),
+    )
+    .await
+    .expect("handshake within the deadline")
+    .expect("HMR handshake");
+    assert_eq!(sender.send("reload".to_string()).unwrap(), 1);
+    let message = tokio::time::timeout(deadline, socket.next())
+        .await
+        .expect("message within the deadline");
+    assert!(
+        matches!(&message, Some(Ok(Message::Text(text))) if text.as_str() == "reload"),
+        "{message:?}"
+    );
+    server.abort();
+}
