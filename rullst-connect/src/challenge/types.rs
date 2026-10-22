@@ -39,13 +39,13 @@ impl ChallengeId {
     }
 
     /// Accepts only the exact shape [`Self::generate`] produces.
+    /// Every strict unpadded encoding of `ID_LENGTH` characters decodes to
+    /// exactly `ID_BYTES` bytes, so the length and the decoding suffice.
     pub fn parse(value: &str) -> Result<Self, ChallengeError> {
-        let decoded = (value.len() == ID_LENGTH)
-            .then(|| URL_SAFE_NO_PAD.decode(value).ok())
-            .flatten();
-        match decoded {
-            Some(bytes) if bytes.len() == ID_BYTES => Ok(Self(value.to_string())),
-            _ => Err(ChallengeError::Invalid("challenge id")),
+        if value.len() == ID_LENGTH && URL_SAFE_NO_PAD.decode(value).is_ok() {
+            Ok(Self(value.to_string()))
+        } else {
+            Err(ChallengeError::Invalid("challenge id"))
         }
     }
 
