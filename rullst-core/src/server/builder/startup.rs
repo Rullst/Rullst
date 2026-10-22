@@ -39,6 +39,11 @@ impl Server {
                 .cloned(),
         );
         self.resolve_trusted_proxy(&app_config.security)?;
+        if let Some(monitor) = self.monitor.as_mut() {
+            let tokens = read_optional_environment_variable(crate::monitor::MONITOR_TOKENS_ENV)?
+                .or_else(|| dotenv.get(crate::monitor::MONITOR_TOKENS_ENV).cloned());
+            monitor.add_environment_tokens(tokens.as_deref());
+        }
         self.log_health_probes = crate::server::console::log_health_probes(
             environment,
             read_optional_environment_variable(crate::server::console::LOG_HEALTH_PROBES_VARIABLE)?,

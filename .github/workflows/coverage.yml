@@ -80,10 +80,13 @@ jobs:
         # strict-* compile profiles. ORM, Studio, Nexus and the public facade
         # own default-SQLite tests that are cfg-excluded from that graph.
         # Exercise those packages without repeating every other workspace test;
-        # cargo-llvm-cov merges both sets of profile data.
+        # cargo-llvm-cov merges both sets of profile data. `rullst` and
+        # `rullst-orm` have no default features since 13.0.0-alpha.3, so the
+        # SQLite-backed profile names them.
         run: |
           cargo llvm-cov --no-report \
-            -p rullst-orm -p rullst-studio -p rullst-nexus -p rullst
+            -p rullst-orm -p rullst-studio -p rullst-nexus -p rullst \
+            --features rullst-orm/drivers-all,rullst/orm,rullst/drivers-all,rullst/queue-sqlite
 
       - name: Run cargo-llvm-cov (outbox and DB matrix contracts)
         # Must run without strict-* features so the cfg gates are satisfied.
@@ -92,7 +95,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           RULLST_REQUIRE_TESTCONTAINERS: "true"
         run: |
-          cargo llvm-cov --no-report -p rullst-orm \
+          cargo llvm-cov --no-report -p rullst-orm --features drivers-all \
             --test outbox_transaction_test \
             --test matrix_postgres --test matrix_mysql \
             -- --test-threads=1
@@ -134,6 +137,9 @@ jobs:
 
       - name: Measure recurring publication, broker recovery and server restart contracts
         run: python3 .github/check-recurring-postgres.py --coverage
+
+      - name: Measure PostgreSQL and MySQL OAuth login-challenge consumption
+        run: python3 .github/check-connect-sql.py --coverage
 
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage

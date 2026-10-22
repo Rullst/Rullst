@@ -1,7 +1,8 @@
 //! Handler execution and outcome recording for the queue worker.
 
 use super::{AbortOnDrop, JobHandler, duration_millis_u64, state_error, wait_for_shutdown};
-use crate::queue::{QueueDriver, QueueError, QueuedJob};
+use crate::queue::activity::InFlight;
+use crate::queue::{QueueActivity, QueueDriver, QueueError, QueuedJob};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::watch;
@@ -30,6 +31,9 @@ struct Claim {
 /// A handler that had already finished (or that blocked past the deadline and
 /// then returned) is completed or failed from its own result, so a success is
 /// never recorded as a timeout or run a second time after shutdown.
+///
+/// `in_flight` counts the job as running in `activity` until this returns;
+/// each successful transition is counted there as well.
 #[cfg_attr(mutants, mutants::skip)]
 pub(super) async fn execute_job(
     driver: Arc<Box<dyn QueueDriver>>,
@@ -37,7 +41,10 @@ pub(super) async fn execute_job(
     job: QueuedJob,
     timeout: Duration,
     mut shutdown: watch::Receiver<bool>,
+    activity: Arc<QueueActivity>,
+    in_flight: InFlight,
 ) -> Result<(), QueueError> {
+    let _in_flight = in_flight;
     let claim = Claim {
         id: job.id.clone(),
         name: job.name.clone(),
@@ -51,7 +58,7 @@ pub(super) async fn execute_job(
     let interruption = tokio::select! {
         biased;
         outcome = &mut execution.0 => {
-            return record_outcome(&**driver, &claim, outcome).await;
+            return record_outcome(&**driver, &claim, outcome, &activity).await;
         }
         _ = &mut deadline => Interruption::Deadline,
         _ = wait_for_shutdown(&mut shutdown) => Interruption::Shutdown,
@@ -68,18 +75,23 @@ pub(super) async fn execute_job(
                     .mark_failed_attempt(job_id, claim.attempt, &failure.to_string())
                     .await
                     .map_err(|error| state_error(job_id, "mark_failed_after_timeout", error))?;
+                activity.failed();
                 Err(failure)
             }
-            Interruption::Shutdown => driver
-                .requeue_attempt(
-                    job_id,
-                    claim.attempt,
-                    "worker shutdown interrupted execution",
-                )
-                .await
-                .map_err(|error| state_error(job_id, "requeue_after_shutdown", error)),
+            Interruption::Shutdown => {
+                driver
+                    .requeue_attempt(
+                        job_id,
+                        claim.attempt,
+                        "worker shutdown interrupted execution",
+                    )
+                    .await
+                    .map_err(|error| state_error(job_id, "requeue_after_shutdown", error))?;
+                activity.retried();
+                Ok(())
+            }
         },
-        finished => record_outcome(&**driver, &claim, finished).await,
+        finished => record_outcome(&**driver, &claim, finished, &activity).await,
     }
 }
 
@@ -87,14 +99,17 @@ async fn record_outcome(
     driver: &dyn QueueDriver,
     claim: &Claim,
     outcome: HandlerOutcome,
+    activity: &QueueActivity,
 ) -> Result<(), QueueError> {
     let job_id = claim.id.as_str();
     let (failure, operation) = match outcome {
         Ok(Ok(())) => {
-            return driver
+            driver
                 .mark_complete_attempt(job_id, claim.attempt)
                 .await
-                .map_err(|error| state_error(job_id, "mark_complete", error));
+                .map_err(|error| state_error(job_id, "mark_complete", error))?;
+            activity.completed();
+            return Ok(());
         }
         Ok(Err(error)) => (
             QueueError::JobFailed(format!("'{}' ({job_id}): {error}", claim.name)),
@@ -115,5 +130,6 @@ async fn record_outcome(
         .mark_failed_attempt(job_id, claim.attempt, &failure.to_string())
         .await
         .map_err(|error| state_error(job_id, operation, error))?;
+    activity.failed();
     Err(failure)
 }

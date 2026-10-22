@@ -321,9 +321,10 @@ pub async fn register_submit(
         updated_at: created_at,
         created_at,
         // Never set at registration: administrators are granted in the
-        // database or in Nexus. ORM writes skip this field.
+        // database or in Nexus. ORM writes leave this `db_default` column to
+        // the database.
         is_admin: false,
-        // The column defaults to 0; ORM writes skip this field.
+        // The column defaults to 0; ORM writes leave it to the database.
         session_epoch: 0,
     };
     let original_id = user.id;

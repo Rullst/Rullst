@@ -25,7 +25,6 @@ or proof that every crate and feature is exercised.
   primitives; they do not prove that a production application mounted every
   middleware or eliminated the represented threat.
 - `/ai-assistant`: local deterministic vector-search and guardrail example.
-- `/omni`: a guide to the CLI-generated Tauri desktop and mobile shells.
 - `/wp-admin`: a deception trap; see the security boundary below.
 - `/robots.txt` (disallows `/nexus`) and `/sitemap.xml` (lists
   `RULLST_PUBLIC_ORIGIN` when it is set).
@@ -134,7 +133,7 @@ logo, HTMX 1.9.12 with its WebSocket extension and Pico.css 2.1.1 are
 same-origin files embedded from `assets/` (provenance and digests are in
 `assets/vendor/README.md`). Pages use classes instead of inline `style`
 attributes and a delegated `data-action` module instead of inline event
-handlers, and `/omni` no longer frames the application. A router test renders
+handlers. A router test renders
 every page and rejects inline styles, handlers, cross-origin subresources and
 frames. This shows the pages work under the policy; it is not a scanner grade.
 

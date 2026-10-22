@@ -13,6 +13,7 @@ pub fn generate_cache_read(parsed: &ParsedModel) -> TokenStream {
     } else {
         quote! { model.__rullst_decrypt_encrypted_fields()?; }
     };
+    let capture_model = crate::models::dirty_tracking::capture(parsed, &quote! { model });
     let redis_cfg = crate::feature_gates::redis();
     quote! {
         #redis_cfg
@@ -45,6 +46,7 @@ pub fn generate_cache_read(parsed: &ParsedModel) -> TokenStream {
                         .map(|item| {
                             let mut model = #name::from_json_value(item)?;
                             #decrypt_model
+                            #capture_model
                             Ok(model)
                         })
                         .collect();

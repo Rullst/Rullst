@@ -57,6 +57,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         } else if let Some(age_gate) = matches.subcommand_matches("make:age-gate") {
             generators::age_gate::run(age_gate)?;
             generators::ai_context::refresh_after_scaffold();
+        } else if let Some(pwa) = matches.subcommand_matches("make:pwa") {
+            generators::pwa::run(pwa)?;
+        } else if let Some(oauth) = matches.subcommand_matches("make:oauth") {
+            generators::oauth::run(oauth)?;
+            generators::ai_context::refresh_after_scaffold();
         } else if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
         } else if let Some(tour) = matches.subcommand_matches("tour") {
@@ -64,14 +69,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         } else if let Some(new) = matches.subcommand_matches("new") {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             generators::project::run_new_command(&cli.command, new)?;
-        } else if let Some(omni) = matches
-            .subcommand_matches("omni")
-            .filter(|m| m.get_flag("release"))
-        {
-            if omni.get_one::<String>("target").map(String::as_str) != Some("android") {
-                return Err("--release currently requires the android Omni target".into());
-            }
-            generators::desktop::run_release(omni)?;
         } else {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             cli::run_cli_command(&cli.command)?;
@@ -91,13 +88,14 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::add::command())
         .subcommand(generators::age_gate::command())
         .subcommand(generators::privacy::command())
+        .subcommand(generators::pwa::command())
+        .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
         .subcommand(generators::footprint::command())
         .subcommand(ai::command())
         .subcommand(tour::command())
         // Extend executable syntax without changing the published v12 enum.
-        .mut_subcommand("omni", generators::desktop::release_command)
         .mut_subcommand("generate:ai-context", generators::ai_context::command)
         .mut_subcommand("new", generators::project::new_command);
     cli::runtime::extend(command)

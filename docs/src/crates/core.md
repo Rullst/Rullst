@@ -7,9 +7,9 @@ helpers.
 Core is runtime-only by default. Enable `orm` for ORM bootstrap/artisan and
 database-backed feature flags, and `queue-sqlite` for the SQLite queue driver.
 `orm` adds no SQLx driver: pair it with `drivers-all` or one `strict-*`
-backend. The umbrella `rullst` crate enables `orm`, `drivers-all` and
-`queue-sqlite` by default, while domain crates opt in only when they actually
-use them.
+backend. The umbrella `rullst` crate enables none of them by default (up to
+13.0.0-alpha.2 its defaults were `orm`, `drivers-all` and `queue-sqlite`), and
+domain crates opt in only when they actually use them.
 
 Queue monitoring capabilities are driver-specific. The trait defaults for
 listing all jobs, retrying failures and purging failures return
@@ -236,6 +236,15 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   pending count of a queue passed to `Server::with_dev_queue`. Bodies,
   headers, cookies, query strings, SQL and bindings are never recorded. See the
   [telemetry guide](../telemetry-guide.md#development-dashboard-endpoint).
+- **Production monitoring endpoint (v13, 13.0.0-alpha.3):**
+  `Server::with_monitor(rullst_core::monitor::Monitor::new())` serves
+  `GET /_rullst/monitor/v1` once `RULLST_MONITOR_TOKENS` (or
+  `Monitor::with_token`, or an application `MonitorAuthorizer`) provides a
+  credential; without one nothing is mounted. It reports request rate,
+  latency and status classes per route pattern, registered queues, N+1
+  fingerprints and the radar, never request data or configuration, and
+  requires TLS evidence in staging and production. See the
+  [production monitoring guide](../production-monitoring.md).
 - **Trusted-proxy client resolution (v13):** `Server::trusted_proxies`
   mounts `security::TrustedProxyLayer` outside every other framework layer.
   Only a socket peer inside the listed networks may report the client through

@@ -7,19 +7,23 @@ use std::{
 
 pub(super) struct Edit {
     path: PathBuf,
-    old: Option<String>,
-    new: String,
+    old: Option<Vec<u8>>,
+    new: Vec<u8>,
 }
 
 impl Edit {
     pub fn replace(path: PathBuf, old: String, new: String) -> Self {
         Self {
             path,
-            old: Some(old),
-            new,
+            old: Some(old.into_bytes()),
+            new: new.into_bytes(),
         }
     }
     pub fn create(path: PathBuf, new: String) -> io::Result<Self> {
+        Self::create_bytes(path, new.into_bytes())
+    }
+    /// [`Self::create`] for a file that is not text, such as an icon.
+    pub fn create_bytes(path: PathBuf, new: Vec<u8>) -> io::Result<Self> {
         reject_links(&path)?;
         if path.try_exists()? {
             return Err(io::Error::new(
@@ -65,7 +69,7 @@ fn reject_links(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn replace(path: &Path, content: &str, create: bool) -> io::Result<()> {
+fn replace(path: &Path, content: &[u8], create: bool) -> io::Result<()> {
     reject_links(path)?;
     let parent = path.parent().ok_or_else(|| {
         io::Error::new(
@@ -75,7 +79,7 @@ fn replace(path: &Path, content: &str, create: bool) -> io::Result<()> {
     })?;
     fs::create_dir_all(parent)?;
     let mut file = tempfile::NamedTempFile::new_in(parent)?;
-    file.write_all(content.as_bytes())?;
+    file.write_all(content)?;
     if let Ok(metadata) = fs::metadata(path) {
         file.as_file().set_permissions(metadata.permissions())?;
     }
@@ -91,7 +95,7 @@ fn replace(path: &Path, content: &str, create: bool) -> io::Result<()> {
 fn unchanged(edit: &Edit) -> io::Result<()> {
     reject_links(&edit.path)?;
     let current = if edit.path.try_exists()? {
-        Some(read(&edit.path)?)
+        Some(fs::read(&edit.path)?)
     } else {
         None
     };
@@ -109,7 +113,7 @@ pub(super) fn apply(edits: &[Edit]) -> io::Result<()> {
 
 fn apply_with(
     edits: &[Edit],
-    mut write: impl FnMut(&Path, &str, bool) -> io::Result<()>,
+    mut write: impl FnMut(&Path, &[u8], bool) -> io::Result<()>,
 ) -> io::Result<()> {
     for edit in edits {
         unchanged(edit)?;
@@ -120,7 +124,7 @@ fn apply_with(
         {
             let mut restored = true;
             for applied in edits[..index].iter().rev() {
-                if read(&applied.path).ok().as_deref() != Some(&applied.new) {
+                if fs::read(&applied.path).ok().as_deref() != Some(applied.new.as_slice()) {
                     restored = false;
                     continue;
                 }
@@ -198,6 +202,36 @@ mod tests {
         assert_eq!(calls, 2);
         assert_eq!(read(&path).unwrap(), "original");
         assert!(!generated.exists());
+    }
+
+    #[test]
+    fn binary_files_are_created_exactly_and_removed_on_rollback() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        let icon = root.join("static/icon.png");
+        let bytes = vec![0x89, b'P', b'N', b'G', 0xff, 0x00];
+        apply(&[Edit::create_bytes(icon.clone(), bytes.clone()).unwrap()]).unwrap();
+        assert_eq!(fs::read(&icon).unwrap(), bytes);
+        assert!(Edit::create_bytes(icon.clone(), bytes.clone()).is_err());
+
+        let second = root.join("static/second.png");
+        let plan = vec![
+            Edit::create_bytes(second.clone(), bytes.clone()).unwrap(),
+            Edit::create(root.join("late.rs"), "late".into()).unwrap(),
+        ];
+        let mut calls = 0;
+        assert!(
+            apply_with(&plan, |path, content, create| {
+                calls += 1;
+                if calls == 2 {
+                    Err(io::Error::other("injected second-write failure"))
+                } else {
+                    replace(path, content, create)
+                }
+            })
+            .is_err()
+        );
+        assert!(!second.exists());
     }
 
     #[cfg(unix)]

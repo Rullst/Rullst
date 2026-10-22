@@ -16,6 +16,7 @@ mod rate_limit;
 #[path = "resilience_shield.rs"]
 mod shield;
 
+pub(crate) use buckets::peer_rate_limit_key;
 use rate_limit::refill_token_count;
 pub use rate_limit::{default_key_extractor, rate_limit_middleware};
 pub use shield::backpressure_middleware;

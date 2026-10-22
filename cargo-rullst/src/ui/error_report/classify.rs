@@ -134,7 +134,7 @@ fn regex(cell: &'static OnceLock<Option<Regex>>, pattern: &str) -> Option<&'stat
 }
 
 /// Tools whose absence is common enough to deserve an install hint.
-const TOOLS: [(&str, &str); 15] = [
+const TOOLS: [(&str, &str); 14] = [
     (
         "rustup",
         "Install Rust with rustup from https://rustup.rs, then open a new shell.",
@@ -179,17 +179,13 @@ const TOOLS: [(&str, &str); 15] = [
         "ssh",
         "Install an OpenSSH client with your system package manager.",
     ),
-    (
-        "tauri",
-        "Run `cargo install tauri-cli` or install it with npm.",
-    ),
 ];
 
 /// The missing tool named by a "not found"-style message.
 fn missing_tool(text: &str) -> Option<(&'static str, &'static str)> {
     static AFTER: OnceLock<Option<Regex>> = OnceLock::new();
     static BEFORE: OnceLock<Option<Regex>> = OnceLock::new();
-    let names = "rustup|rustc|cargo|git|docker|flyctl|railway|wasm-bindgen|kubectl|buildah|nix|protoc|npm|ssh|tauri";
+    let names = "rustup|rustc|cargo|git|docker|flyctl|railway|wasm-bindgen|kubectl|buildah|nix|protoc|npm|ssh";
     let after = regex(
         &AFTER,
         &format!(

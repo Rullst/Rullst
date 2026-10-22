@@ -45,25 +45,6 @@ pub enum DatabaseChoice {
     Turso,
 }
 
-/// Platforms accepted by deterministic Omni scaffolding.
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum OmniPlatformChoice {
-    Desktop,
-    Android,
-    Ios,
-}
-
-impl OmniPlatformChoice {
-    pub(super) const fn as_str(self) -> &'static str {
-        match self {
-            Self::Desktop => "desktop",
-            Self::Android => "android",
-            Self::Ios => "ios",
-        }
-    }
-}
-
 impl DatabaseChoice {
     pub(super) const fn provider(self) -> &'static str {
         match self {

@@ -9,7 +9,8 @@ cargo-fuzz = true
 
 [dependencies.rullst]
 path = ".."
-features = ["auth"]
+default-features = false
+features = ["auth", "orm", "drivers-all", "queue-sqlite"]
 
 [dependencies]
 libfuzzer-sys = "0.4"

@@ -34,10 +34,12 @@ pub mod sqlite;
 /// Background job worker executor.
 pub mod worker;
 
+mod activity;
 mod bounds;
 mod deferral;
 mod error;
 mod preview;
+pub(crate) use activity::{QueueActivity, QueueActivitySnapshot};
 #[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
 pub(crate) use bounds::unix_timestamp_millis_ceil;
 #[cfg(feature = "queue-sqlite")]
@@ -57,6 +59,8 @@ mod sqlite_claim_tests;
 mod test_support;
 #[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
+#[cfg(test)]
+mod worker_activity_tests;
 #[cfg(test)]
 mod worker_lifecycle_tests;
 #[cfg(test)]
@@ -322,6 +326,7 @@ pub trait QueueDriver: Send + Sync {
 /// Provides a driver-agnostic API. Create with `Queue::sqlite()` or `Queue::redis()`.
 pub struct Queue {
     driver: Arc<Box<dyn QueueDriver>>,
+    activity: Arc<QueueActivity>,
 }
 
 impl Queue {
@@ -329,9 +334,7 @@ impl Queue {
     #[cfg(feature = "queue-sqlite")]
     pub async fn sqlite(database_url: impl Into<String>) -> Result<Self, QueueError> {
         let driver = SqliteDriver::new(database_url).await?;
-        Ok(Self {
-            driver: Arc::new(Box::new(driver)),
-        })
+        Ok(Self::custom(Box::new(driver)))
     }
 
     /// Creates a SQLite queue with explicit bounded retention of successful jobs.
@@ -346,9 +349,7 @@ impl Queue {
         let driver = SqliteDriver::new(database_url)
             .await?
             .try_with_completed_history_limit(retained_jobs)?;
-        Ok(Self {
-            driver: Arc::new(Box::new(driver)),
-        })
+        Ok(Self::custom(Box::new(driver)))
     }
 
     /// Create a queue backed by Redis. Requires the `queue-redis` feature.
@@ -356,15 +357,14 @@ impl Queue {
     #[cfg_attr(mutants, mutants::skip)]
     pub fn redis(redis_url: impl Into<String>) -> Result<Self, QueueError> {
         let driver = redis::redis_driver::RedisDriver::new(redis_url)?;
-        Ok(Self {
-            driver: Arc::new(Box::new(driver)),
-        })
+        Ok(Self::custom(Box::new(driver)))
     }
 
     /// Create a queue from any custom driver implementing `QueueDriver`.
     pub fn custom(driver: Box<dyn QueueDriver>) -> Self {
         Self {
             driver: Arc::new(driver),
+            activity: Arc::default(),
         }
     }
 
@@ -440,9 +440,10 @@ impl Queue {
     }
 
     /// Retry a failed job in the queue
-    #[cfg_attr(mutants, mutants::skip)]
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        self.driver.retry_failed_job(job_id).await
+        self.driver.retry_failed_job(job_id).await?;
+        self.activity.retried();
+        Ok(())
     }
 
     /// Purge failed jobs retained by the queue backend.
@@ -468,5 +469,10 @@ impl Queue {
     /// Get an `Arc` reference to the internal driver (for sharing with `Worker`).
     pub(crate) fn driver_ref(&self) -> Arc<Box<dyn QueueDriver>> {
         Arc::clone(&self.driver)
+    }
+
+    /// The process-local worker counters shared with every [`Worker`].
+    pub(crate) fn activity(&self) -> Arc<QueueActivity> {
+        Arc::clone(&self.activity)
     }
 }

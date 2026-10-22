@@ -187,16 +187,13 @@ pub async fn head() {}
                 "cargo",
                 // A `foundry:deploy` build reports its binary outside `target/`,
                 // as with CARGO_TARGET_DIR or a configured build target.
-                "#!/bin/sh\nfor argument in \"$@\"; do\n  if [ \"$argument\" = --message-format=json-render-diagnostics ]; then\n    printf '{\"reason\":\"compiler-artifact\",\"manifest_path\":\"%s/Cargo.toml\",\"target\":{\"kind\":[\"bin\"],\"name\":\"cli-fixture\"},\"profile\":{\"test\":false},\"executable\":\"%s/custom-target/release/cli-fixture\"}\\n' \"$PWD\" \"$PWD\"\n  fi\ndone\necho 'Launching Omni interface...'\nexit 0\n",
+                "#!/bin/sh\nfor argument in \"$@\"; do\n  if [ \"$argument\" = --message-format=json-render-diagnostics ]; then\n    printf '{\"reason\":\"compiler-artifact\",\"manifest_path\":\"%s/Cargo.toml\",\"target\":{\"kind\":[\"bin\"],\"name\":\"cli-fixture\"},\"profile\":{\"test\":false},\"executable\":\"%s/custom-target/release/cli-fixture\"}\\n' \"$PWD\" \"$PWD\"\n  fi\ndone\nexit 0\n",
             ),
             ("rustup", "#!/bin/sh\nexit 0\n"),
             ("rustc", "#!/bin/sh\necho 'rustc 1.98.1 (fixture)'\n"),
             ("docker", "#!/bin/sh\necho 'Docker version fixture'\n"),
             ("git", "#!/bin/sh\necho 'git version fixture'\n"),
-            (
-                "npm",
-                "#!/bin/sh\nif [ \"$1\" = \"install\" ]; then\n  /bin/mkdir -p node_modules/@tauri-apps/cli\n  printf '{}' > node_modules/@tauri-apps/cli/package.json\nfi\nif [ \"$5 $6\" = \"android init\" ]; then\n  /bin/mkdir -p gen/android/app\n  printf '// fixture' > gen/android/app/build.gradle.kts\nfi\nexit 0\n",
-            ),
+            ("npm", "#!/bin/sh\nexit 0\n"),
             ("ssh", "#!/bin/sh\n/bin/cat >/dev/null\nexit 0\n"),
             (
                 "scp",
@@ -932,62 +929,5 @@ fn doctor_reports_outdated_unrecognized_and_failing_toolchains() {
     assert!(
         fixed.contains("installed by --fix"),
         "doctor did not report the repaired components:\n{fixed}"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn omni_scaffold_and_desktop_runner_use_pinned_local_tooling() {
-    let fixture = Fixture::new("omni");
-    let tools = fixture.install_successful_tool_fixtures();
-
-    fixture.succeeds_with_path(
-        &[
-            "make:omni",
-            "--platform",
-            "desktop,android",
-            "--backend-url",
-            "https://api.example.com",
-            "--product-name",
-            "Rullst Fixture",
-            "--identifier",
-            "com.rullst.fixture",
-            "--app-version",
-            "1.2.3",
-        ],
-        &tools,
-    );
-    assert_files(
-        &fixture.root,
-        &[
-            "omni-app/Cargo.toml",
-            "omni-app/package.json",
-            "omni-app/tauri.conf.json",
-            "omni-app/src/lib.rs",
-            "omni-app/icons/icon.svg",
-            "omni-app/node_modules/@tauri-apps/cli/package.json",
-        ],
-    );
-
-    // The runner must report the launch and keep the shell's and backend's
-    // output instead of consuming it while it waits for the marker.
-    fs::write(
-        tools.join("cargo"),
-        "#!/bin/sh\necho 'backend: serving on 3000'\necho 'Launching Omni interface...'\necho 'backend: GET / 200'\nexit 0\n",
-    )
-    .expect("Omni desktop cargo fixture");
-    let desktop = fixture.succeeds_with_path(&["omni", "desktop"], &tools);
-    assert!(
-        desktop.contains("Omni window launched successfully"),
-        "{desktop}"
-    );
-    assert!(desktop.contains("backend: serving on 3000"), "{desktop}");
-    assert!(desktop.contains("backend: GET / 200"), "{desktop}");
-    assert!(
-        fixture
-            .command_with_path(&["omni", "unsupported"], &tools)
-            .status
-            .code()
-            .is_some_and(|code| code != 0)
     );
 }

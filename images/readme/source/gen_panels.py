@@ -39,7 +39,7 @@ FEATURES = [
     ("💳", "Payments &amp; email", "Stripe billing with signed webhooks; Resend, AWS SES, SendPulse and SMTP delivery.", "#14b8a6"),
     ("🧠", "AI built in", "OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking.", "#ec4899"),
     ("📊", "See inside your app", "Studio's live runtime telemetry and the Nexus admin with a security radar.", "#3b82f6"),
-    ("🖥️", "Web first, native too", "HTMX server rendering, JSON APIs, and Tauri desktop and mobile shells via Omni.", "#06b6d4"),
+    ("📱", "Web first, installable", "HTMX server rendering, JSON APIs, and installable PWAs for Google Play and the Microsoft Store.", "#06b6d4"),
 ]
 
 

@@ -39,10 +39,12 @@ pub(super) fn installed() -> bool {
     INSTALLED.load(Ordering::Relaxed)
 }
 
-/// The layer `telemetry::init_telemetry` adds in debug builds. It records
-/// nothing until the development endpoint has been mounted.
-pub(crate) fn debug_layer() -> Option<OrmQueryLayer> {
-    cfg!(debug_assertions).then(OrmQueryLayer::global)
+/// The layer `telemetry::init_telemetry` adds in every build. It is passive
+/// (one span-name comparison per new span) until the development endpoint
+/// has been mounted or a request runs inside a recording scope, which only
+/// the development recorder and the production monitor open.
+pub(crate) fn query_layer() -> OrmQueryLayer {
+    OrmQueryLayer::global()
 }
 
 pub(crate) struct OrmQueryLayer {
@@ -85,7 +87,11 @@ where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
 {
     fn on_new_span(&self, attributes: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        if !is_query_span(attributes.metadata()) || self.recorder().is_none() {
+        if !is_query_span(attributes.metadata()) {
+            return;
+        }
+        let request = RequestOperations::current();
+        if request.is_none() && self.recorder().is_none() {
             return;
         }
         let Some(span) = ctx.span(id) else {
@@ -111,7 +117,7 @@ where
         span.extensions_mut().insert(Started {
             at: Instant::now(),
             labels: labels.0,
-            request: RequestOperations::current(),
+            request,
         });
     }
 
@@ -125,14 +131,11 @@ where
         let elapsed = started.at.elapsed();
         if let Some(request) = &started.request {
             let labels = &started.labels;
-            let fingerprint = crate::query_patterns::orm_fingerprint(
+            request.record(crate::query_patterns::orm_fingerprint(
                 labels.operation.as_deref().unwrap_or("unknown"),
                 labels.model.as_deref(),
                 labels.table.as_deref(),
-            );
-            if let Some(fingerprint) = fingerprint {
-                request.record(fingerprint);
-            }
+            ));
         }
         if let Some(recorder) = self.recorder() {
             recorder.record_query(started.labels, elapsed);

@@ -18,6 +18,43 @@ fn oauth_feature_enables_the_connect_axum_integration() {
     assert_eq!(oauth, ["dep:rullst-connect", "rullst-connect/rullst"]);
 }
 
+/// Each login-challenge store feature selects only its own Connect driver.
+#[test]
+fn oauth_challenge_store_features_select_their_connect_driver() {
+    let manifest: toml::Table = toml::from_str(include_str!("../Cargo.toml")).unwrap();
+    for (feature, driver) in [
+        ("oauth-sqlite", "rullst-connect/sqlite"),
+        ("oauth-postgres", "rullst-connect/postgres"),
+        ("oauth-mysql", "rullst-connect/mysql"),
+    ] {
+        let enabled = manifest["features"][feature]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(toml::Value::as_str)
+            .collect::<Vec<_>>();
+        assert_eq!(enabled, ["oauth", driver], "{feature}");
+    }
+}
+
+#[cfg(feature = "oauth-sqlite")]
+#[test]
+fn oauth_sqlite_feature_exposes_the_sqlite_challenge_store() {
+    let _ = core::any::TypeId::of::<rullst::connect::challenge::SqliteChallengeStore>();
+}
+
+#[cfg(feature = "oauth-postgres")]
+#[test]
+fn oauth_postgres_feature_exposes_the_postgres_challenge_store() {
+    let _ = core::any::TypeId::of::<rullst::connect::challenge::PostgresChallengeStore>();
+}
+
+#[cfg(feature = "oauth-mysql")]
+#[test]
+fn oauth_mysql_feature_exposes_the_mysql_challenge_store() {
+    let _ = core::any::TypeId::of::<rullst::connect::challenge::MySqlChallengeStore>();
+}
+
 #[cfg(feature = "oauth")]
 #[tokio::test]
 async fn oauth_feature_exposes_the_axum_callback_extractor() {

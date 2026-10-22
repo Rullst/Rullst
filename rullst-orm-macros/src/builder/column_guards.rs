@@ -1,7 +1,8 @@
 //! Generated guards for columns that generated query-builder methods must not
-//! filter, order, group or select: skipped fields, which the table does not
-//! have, randomized `#[orm(encrypted)]` ciphertext and `SecretString`
-//! envelopes. A `SecretString` column may still be selected, because its SQLx
+//! filter, order, group or select: skipped fields, which are not database
+//! columns for the ORM (`#[orm(db_default)]` declares a column the database
+//! manages, which stays filterable), randomized `#[orm(encrypted)]` ciphertext
+//! and `SecretString` envelopes. A `SecretString` column may still be selected, because its SQLx
 //! codec decrypts it when the model is decoded. Unquoted SQL identifiers are
 //! case-insensitive, so the guards compare column names ignoring ASCII case.
 
@@ -55,7 +56,7 @@ pub fn generate_column_guards(parsed: &ParsedModel) -> TokenStream {
             let column = column.rsplit('.').next().unwrap_or(column);
             if Self::is_skipped_column(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!(
-                    "column `{}` is declared with `#[orm(skip)]` / `#[sqlx(skip)]` and does not exist in the table; it must not be used in WHERE / ORDER BY / GROUP BY / SELECT",
+                    "column `{}` is declared `#[orm(skip)]` / `#[sqlx(skip)]`, so it is not a database column for the ORM and must not be used in WHERE / ORDER BY / GROUP BY / SELECT; declare a column that the database manages `#[orm(db_default)]` to read and filter it without writing it",
                     column
                 )));
                 true
@@ -75,5 +76,31 @@ pub fn generate_column_guards(parsed: &ParsedModel) -> TokenStream {
                 false
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::generate_column_guards;
+
+    #[test]
+    fn skipped_fields_are_guarded_and_db_default_columns_stay_filterable() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct Member {
+                id: i32,
+                #[orm(db_default)]
+                is_admin: bool,
+                #[orm(skip)]
+                display_badge: String,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let generated = generate_column_guards(&parsed).to_string();
+        assert!(generated.contains("SKIPPED_COLUMNS"), "{generated}");
+        assert!(generated.contains("\"display_badge\""), "{generated}");
+        assert!(!generated.contains("\"is_admin\""), "{generated}");
+        assert!(generated.contains(
+            "so it is not a database column for the ORM and must not be used in WHERE / ORDER BY / GROUP BY / SELECT; declare a column that the database manages `#[orm(db_default)]`"
+        ));
     }
 }

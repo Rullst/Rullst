@@ -145,7 +145,7 @@ async fn repeating_handler() -> &'static str {
 #[tokio::test]
 async fn the_recording_layer_reports_repetitions_by_matched_route() {
     let telemetry = mount(Router::new(), true, Some("0".repeat(32)), None);
-    let subscriber = tracing_subscriber::registry().with(orm_layer::debug_layer().unwrap());
+    let subscriber = tracing_subscriber::registry().with(orm_layer::query_layer());
     let _guard = tracing::subscriber::set_default(subscriber);
     let app = record_responses(
         Router::new()

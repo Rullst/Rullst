@@ -80,7 +80,7 @@ impl RateLimiter {
 /// smallest prefix normally delegated to one subscriber, so rotating source
 /// addresses inside it does not yield fresh buckets. IPv4-mapped IPv6
 /// addresses are keyed as IPv4.
-pub(super) fn peer_rate_limit_key(ip: IpAddr) -> String {
+pub(crate) fn peer_rate_limit_key(ip: IpAddr) -> String {
     match ip.to_canonical() {
         IpAddr::V4(address) => address.to_string(),
         IpAddr::V6(address) => {

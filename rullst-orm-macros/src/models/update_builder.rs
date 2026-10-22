@@ -50,6 +50,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     let inits = fields.iter().map(|(field, _)| quote! { #field: None });
     let (tenant_guard, tenant_clause, tenant_bind) = tenant_scope(parsed);
     let after_fetch = after_fetch_hook(parsed, &quote::format_ident!("candidate"));
+    let capture_candidate = super::dirty_tracking::capture(parsed, &quote! { candidate });
     // The setter stays for compatibility, but the soft-delete marker only
     // changes through delete()/restore()/force_delete().
     let soft_delete_guard = match parsed
@@ -78,7 +79,8 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
 
             fn __rullst_has_partial_changes(&self) -> bool { false #(#changes)* }
 
-            /// Applies selected values to a freshly loaded row and performs a full-row save.
+            /// Applies selected values to a freshly loaded row and saves it: a full-row
+            /// save, or only the changed columns for a model with a `RowSnapshot` field.
             /// Direct calls own the commit. A task-scoped transaction remains caller-owned;
             /// discard/reload the returned model if that enclosing transaction rolls back.
             pub async fn save(self) -> Result<(), rullst_orm::Error> {
@@ -152,6 +154,8 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                     };
                     let mut candidate = row.ok_or(rullst_orm::Error::RecordNotFound)?;
                     candidate.__rullst_decrypt_encrypted_fields()?;
+                    // Only the patched columns that differ from the row are written.
+                    #capture_candidate
                     // The save lifecycle expects the representation every read returns.
                     #after_fetch
                     #(#apply)*

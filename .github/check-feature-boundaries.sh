@@ -97,7 +97,6 @@ rullst-core|drivers-all
 rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
-rullst-core|offline-sync
 rullst-core|scheduler-tz
 rullst-core|storage-s3
 rullst-core|storage-multipart
@@ -112,6 +111,8 @@ rullst-connect|actix
 rullst-connect|retry
 rullst-connect|axum-session
 rullst-connect|sqlite
+rullst-connect|postgres
+rullst-connect|mysql
 rullst-iot|std
 rullst-iot|experimental-simulators
 rullst-security|redis-rate-limit
@@ -179,7 +180,6 @@ rullst|queue-sqlite
 rullst|queue-redis
 rullst|cache-redis
 rullst|redis
-rullst|offline-sync
 rullst|scheduler-tz
 rullst|storage-s3
 rullst|storage-multipart
@@ -216,6 +216,8 @@ rullst|auth-passkey-postgres
 rullst|account-mail-sqlite
 rullst|account-mail-postgres
 rullst|oauth-sqlite
+rullst|oauth-postgres
+rullst|oauth-mysql
 rullst|oauth-mock
 rullst|oauth
 rullst|ai

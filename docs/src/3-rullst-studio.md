@@ -14,6 +14,12 @@ standalone server only in debug builds and link to `http://127.0.0.1:5555`.
 Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
 cannot override that compile-time boundary.
 
+To watch a deployed application, mount the read-only
+[production monitoring endpoint](production-monitoring.md) instead
+(13.0.0-alpha.3): it reports request rates, latency, errors, queues and N+1
+findings behind a token or the application's own sign-in. A Studio mode that
+reads it for several projects is planned as phase 2.
+
 ## Running Studio
 
 Inside a project, the CLI runs the application with the `studio` argument
