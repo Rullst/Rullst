@@ -59,6 +59,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             generators::ai_context::refresh_after_scaffold();
         } else if let Some(pwa) = matches.subcommand_matches("make:pwa") {
             generators::pwa::run(pwa)?;
+        } else if let Some(oauth) = matches.subcommand_matches("make:oauth") {
+            generators::oauth::run(oauth)?;
             generators::ai_context::refresh_after_scaffold();
         } else if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
@@ -87,6 +89,7 @@ pub(crate) fn command() -> clap::Command {
         .subcommand(generators::age_gate::command())
         .subcommand(generators::privacy::command())
         .subcommand(generators::pwa::command())
+        .subcommand(generators::oauth::command())
         .subcommand(generators::api_contract::command())
         .subcommand(generators::deploy_doctor::command())
         .subcommand(generators::footprint::command())

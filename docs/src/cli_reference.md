@@ -1323,6 +1323,77 @@ controller issues a full session after the password. Secrets are stored
 unencrypted in the database, so protect that table and its backups like
 credentials. Recovery codes and factor reset remain application work.
 
+<a id="cargo-rullst-makeoauth-v13-prerelease-preview"></a>
+
+### `cargo rullst make:oauth <provider>` (v13 prerelease preview)
+
+Adds sign-in with an OAuth/OpenID Connect provider to the account model of
+`cargo rullst auth` or of the SaaS and LMS starters. `google` is the provider
+it generates for now; others are refused until they have a generator and tests.
+
+```bash
+cargo rullst make:oauth google
+cargo rullst db:migrate
+```
+
+It writes `src/controllers/oauth/mod.rs` (shared flow, account linking and
+sign-in), `src/controllers/oauth/google.rs` (settings and the
+`GET /auth/google` and `GET /auth/google/callback` handlers),
+`src/models/oauth_identity.rs` and an `oauth_identities` migration (provider
+and subject unique, the user id with `ON DELETE CASCADE`, created at). It
+enables the `oauth` umbrella feature and the challenge store of the project's
+database (`oauth-sqlite`, `oauth-postgres` or `oauth-mysql`), adds an
+application feature `oauth-mock = ["rullst/oauth-mock"]`, and documents the
+settings in `.env.example`. In the SaaS and LMS starters it also mounts both
+routes after the password login, with the same `credential_rate_limit`, calls
+`controllers::oauth::google::initialize()?` at the start of `router()` and
+adds a "Sign in with Google" link to the login page; for a `cargo rullst auth`
+project, whose router is the application's, it prints the routes to mount.
+
+The flow keeps the OAuth state, PKCE verifier and OIDC nonce in
+`rullst_connect_login_challenges` (created on first use) and only an opaque id
+in the `rullst_oauth_challenge` cookie (ten minutes, `HttpOnly`,
+`SameSite=Lax`, `Path=/auth/google`, `Secure` in staging and production); see
+[Tutorial 42](tutorials/42-server-bound-oauth-sessions.md#store-backed-login).
+The callback consumes the challenge once, checks the state, the PKCE verifier,
+the ID token and its nonce, then:
+
+- an identity already in `oauth_identities` signs in to its account;
+- otherwise the email must be verified (`email_verified: true` in the ID
+  token); an unverified email is refused;
+- a verified email that belongs to no account creates one without a password,
+  linked to the identity;
+- a verified email that already belongs to an account is refused by default
+  (`EXISTING_ACCOUNT_POLICY = ExistingAccountPolicy::Refuse` in
+  `src/controllers/oauth/mod.rs`), because registration does not prove that
+  whoever registered the address owns it. `LinkAndResetPassword` links it
+  instead, removes the account's password and signs out every device in the
+  same transaction.
+
+Sign-in issues the password login's cookie, `make_login_cookie_with_epoch` with
+the account's current session epoch; an account whose session epoch the
+password login refuses is refused the same way. The page to return to comes
+from `?next=` on `/auth/google`, and only a same-site absolute path is kept.
+
+Settings (process environment, then `.env`): `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` (neither set turns Google sign-in off and hides the
+link; only one set stops startup), and `GOOGLE_REDIRECT_URL`, which defaults
+to `RULLST_PUBLIC_ORIGIN` followed by `/auth/google/callback`, and to
+`http://localhost:3000/auth/google/callback` in development; staging and
+production without either stop at startup. `mock_*` credentials select the
+offline provider, which signs in `mock@example.invalid` without leaving the
+application: run `cargo run --features oauth-mock` in development. Without
+that feature the application stops at startup with an error naming it, and
+staging and production refuse mock credentials.
+
+The command requires a strict single-database profile (`strict-sqlite`,
+`strict-postgres` or `strict-mysql`, as `cargo rullst new --database ...`
+selects), the `User` model with `session_epoch`, `current_session_epoch` and
+`find_by_email`, the generated `auth_controller` helpers, `src/pages/auth.rs`
+and a migration runner. It refuses Turso-primary projects, and it fails before
+writing anything when any output exists or the provider is already installed.
+It does not edit `auth_controller.rs` or `user.rs`.
+
 ---
 
 ## 🗄️ 3. Database and Migrations (`db:*`)

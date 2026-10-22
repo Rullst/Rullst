@@ -1,6 +1,7 @@
 //! Short-lived OAuth/OIDC challenge lifecycle for tower-sessions.
 
 use super::AuthCallback;
+use crate::configuration::validate_managed_query;
 use crate::error::ConnectError;
 use crate::pkce::{generate_oauth_state, generate_pkce};
 use crate::provider::{ExchangeParams, Provider};
@@ -304,43 +305,6 @@ fn validate_challenge(
 
 fn unix_seconds(now: SystemTime) -> Result<u64, ConnectError> {
     Ok(now.duration_since(UNIX_EPOCH)?.as_secs())
-}
-
-fn validate_managed_query(
-    url: &url::Url,
-    expected_state: &str,
-    expected_challenge: &str,
-) -> Result<(), ConnectError> {
-    let mut state_matches = 0_u8;
-    let mut challenge_matches = 0_u8;
-    let mut method_matches = 0_u8;
-    for (key, value) in url.query_pairs() {
-        match key.as_ref() {
-            "state" if value == expected_state => state_matches = state_matches.saturating_add(1),
-            "code_challenge" if value == expected_challenge => {
-                challenge_matches = challenge_matches.saturating_add(1);
-            }
-            "code_challenge_method" if value == "S256" => {
-                method_matches = method_matches.saturating_add(1);
-            }
-            "state" | "code_challenge" | "code_challenge_method" | "nonce" => {
-                return Err(ConnectError::InvalidConfiguration {
-                    field: "authorization_url",
-                    reason: "provider returned a conflicting managed OAuth parameter".to_string(),
-                });
-            }
-            _ => {}
-        }
-    }
-    if state_matches == 1 && challenge_matches == 1 && method_matches == 1 {
-        Ok(())
-    } else {
-        Err(ConnectError::InvalidConfiguration {
-            field: "authorization_url",
-            reason: "provider did not preserve exactly one state and S256 PKCE challenge"
-                .to_string(),
-        })
-    }
 }
 
 fn session_error(_error: tower_sessions::session::Error) -> ConnectError {

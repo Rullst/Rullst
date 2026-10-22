@@ -805,6 +805,7 @@ second.
 | `mail-postgres` | `rullst-mail/src/suppression/postgres/**` | suppression contract and restart exercise |
 | `recurring-postgres` | `rullst-messaging/src/schedules/**` (`schedules-postgres`) | recurring contract and restart exercise |
 | `messaging-redis` | `rullst-messaging/src/redis_streams/**` | the password, TLS, fault, ordering, outbox and bounds contracts and the AOF restart exercise |
+| `connect-sql` | `rullst-connect/src/challenge/sql/postgres.rs`, `sql/mysql.rs` (the wrapper also owns a MySQL server, which each contract resets by dropping its table) | `postgres_challenge_contract`, `mysql_challenge_contract` |
 
 The MySQL statement files `rullst-capital/src/quota/sql/mysql.rs` and
 `rullst-ai/src/ai/memory/sql/mysql.rs` hold only string constants, so

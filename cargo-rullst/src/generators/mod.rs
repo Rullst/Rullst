@@ -45,6 +45,7 @@ pub mod mail;
 pub mod middleware;
 pub mod migration;
 pub mod model;
+pub(crate) mod oauth;
 pub mod openapi;
 pub(crate) mod output_guard;
 pub(crate) mod platform_name;

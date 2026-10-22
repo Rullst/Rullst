@@ -410,6 +410,8 @@ jobs:
               python3 .github/check-recurring-postgres.py
               python3 .github/check-privacy-postgres.py
               RULLST_PASSKEY_BROWSER_TESTS=1 python3 .github/check-passkey-postgres.py
+              # Starts its own MySQL beside PostgreSQL for the login-challenge store.
+              python3 .github/check-connect-sql.py
               cargo test -p rullst-orm --no-default-features \
                 --features strict-postgres --test matrix_postgres -- --test-threads=1
               cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-postgres \

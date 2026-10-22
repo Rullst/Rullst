@@ -27,6 +27,10 @@ rullst-privacy/src/age_assurance/postgres.rs
 rullst-privacy/src/consent/postgres.rs
 rullst-mail/src/suppression/postgres/**
 
+# PostgreSQL and MySQL login challenges: .github/check-connect-sql.py.
+rullst-connect/src/challenge/sql/postgres.rs
+rullst-connect/src/challenge/sql/mysql.rs
+
 # MySQL/MariaDB live matrices in ci.yml.
 rullst-ai/src/ai/memory/sql/mysql.rs
 rullst-capital/src/quota/sql/mysql.rs

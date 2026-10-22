@@ -146,7 +146,9 @@ the drivers.
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `scheduler-tz` | no | v13: `Scheduler::task_in_tz`, cron tasks in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` with its Axum integration (`rullst-connect/rullst`): the `AuthCallback` extractor and the local mock IdP router |
-| `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap |
+| `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap, and the v13 SQLite login-challenge store (`SqliteChallengeStore`) |
+| `oauth-postgres` | no | v13: `oauth` plus the PostgreSQL login-challenge store (`PostgresChallengeStore`) over the application's pool |
+| `oauth-mysql` | no | v13: `oauth` plus the MySQL/MariaDB login-challenge store (`MySqlChallengeStore`) over the application's pool |
 | `oauth-mock` | no | v13: `oauth` plus `rullst-connect/mock`, so empty or `mock_*` provider credentials build an offline mock provider that signs in a fixed mock user; enable it only in development and test builds |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
@@ -304,7 +306,9 @@ types remain available without a web-framework adapter.
 | `retry` | Retry-aware HTTP client behavior using `reqwest-middleware` and `reqwest-retry` |
 | `reqwest-middleware` | The optional middleware dependency alone; prefer `retry` for retry behavior |
 | `axum-session` | Axum plus a ten-minute, one-active-challenge `tower-sessions` state/PKCE/OIDC-nonce transaction and callback extractor |
-| `sqlite` | File-backed shared-local encrypted token snapshots with persisted quota, restart recovery and exact generation compare-and-swap; remote refresh leases, key custody and multi-host operation remain application concerns |
+| `sqlite` | File-backed shared-local encrypted token snapshots with persisted quota, restart recovery and exact generation compare-and-swap; remote refresh leases, key custody and multi-host operation remain application concerns. v13: also the SQLite login-challenge store over the application's `SqlitePool` |
+| `postgres` | v13: the PostgreSQL login-challenge store over the application's `PgPool` (`DELETE … RETURNING` consumption) |
+| `mysql` | v13: the MySQL/MariaDB login-challenge store over the application's `MySqlPool` (`SELECT … FOR UPDATE` then `DELETE` in one transaction) |
 | `mock` | Deterministic offline provider modules outside test builds |
 
 ### `rullst-messaging`

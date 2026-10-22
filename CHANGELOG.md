@@ -123,6 +123,30 @@ A prepared version section does not establish that its tag or crates exist.
   failed with `ConnectError::Offline`.
 - New `rullst` facade feature `oauth-mock` (`oauth` plus `rullst-connect/mock`)
   for development and test builds that sign in with mock provider credentials.
+- New `rullst_connect::challenge` login challenge store, for applications
+  that sign users in with their own session cookie instead of a
+  `tower-sessions` layer: `begin_login` keeps the OAuth state, PKCE verifier,
+  OIDC nonce and an optional same-site return page in a `ChallengeStore` and
+  returns the provider redirect plus an opaque 256-bit id;
+  `ChallengeCookie` carries only that id in a short `HttpOnly`,
+  `SameSite=Lax` cookie; `finish_login` consumes the challenge exactly once,
+  compares the state in constant time and exchanges the code with the stored
+  verifier and nonce. Stores: a bounded `MemoryChallengeStore`, and
+  `SqlChallengeStore` over the application's SQLx pool, which creates the
+  `rullst_connect_login_challenges` table and consumes each row atomically.
+- New `rullst-connect` features `postgres` and `mysql` (the PostgreSQL and
+  MySQL login challenge stores); the existing `sqlite` feature also adds the
+  SQLite one. New `rullst` facade features `oauth-postgres` and `oauth-mysql`;
+  `oauth-sqlite` now also exposes the SQLite login challenge store.
+- New `cargo rullst make:oauth google` for the `cargo rullst auth`, SaaS and
+  LMS account model: it generates `/auth/google` and `/auth/google/callback`
+  on the login challenge store (behind the password login's rate limit), an
+  `oauth_identities` table, a "Sign in with Google" link and an application
+  feature `oauth-mock`, and signs accounts in with the same session-epoch
+  cookie as the password login. Only an email Google marks as verified links
+  or creates an account; an email that already belongs to an account is
+  refused unless the generated `EXISTING_ACCOUNT_POLICY` is changed to link it
+  (which also removes the account's password and signs out every device).
 - **Behaviour change:** in mock mode, `rullst-connect` authorization URLs now
   point at the configured `redirect_url` with `code=mock_authorization_code`
   and the `state`, as a real provider redirects after consent, instead of
