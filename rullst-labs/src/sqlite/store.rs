@@ -159,9 +159,7 @@ impl<C: Clock> SqliteLabs<C> {
         file.sync_all().map_err(|_| Error::Storage)?;
         drop(file);
         let store = Self::connect(&path, config, key, clock).await?;
-        let mut tx = store
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
+        let mut tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
             .await
             .map_err(storage)?;
         for (_, sql) in SCHEMA {
@@ -175,7 +173,7 @@ impl<C: Clock> SqliteLabs<C> {
             .map_err(storage)?;
         tx.commit().await.map_err(|_| Error::Uncertain)?;
         store.validate().await?;
-        super::transaction::Operation::begin(&store, None)
+        super::transaction::Operation::bootstrap(&store)
             .await?
             .commit()
             .await?;
@@ -197,7 +195,7 @@ impl<C: Clock> SqliteLabs<C> {
         }
         let store = Self::connect(&path, config, key, clock).await?;
         store.validate().await?;
-        super::transaction::Operation::begin(&store, None)
+        super::transaction::Operation::bootstrap(&store)
             .await?
             .commit()
             .await?;
@@ -218,12 +216,14 @@ impl<C: Clock> SqliteLabs<C> {
             // Same waits as the Supervision and Privacy stores: a full-sync WAL
             // commit on a slow disk can hold the write lock for seconds.
             .busy_timeout(Duration::from_secs(5));
-        let pool = SqlitePoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(Duration::from_secs(5))
-            .connect_with(options)
-            .await
-            .map_err(storage)?;
+        let pool = super::establish::retry(|| {
+            SqlitePoolOptions::new()
+                .max_connections(4)
+                .acquire_timeout(Duration::from_secs(5))
+                .connect_with(options.clone())
+        })
+        .await
+        .map_err(storage)?;
         Ok(Self {
             pool,
             config,
@@ -231,10 +231,16 @@ impl<C: Clock> SqliteLabs<C> {
             clock,
         })
     }
+    /// Runs only in `initialize` and `open`, so it retries a connection that
+    /// times out (see `establish`).
     async fn validate(&self) -> Result<(), Error> {
         // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
         // also skip user objects such as a trigger named `sqliteXhook`.
-        let rows:Vec<(String,String)>=sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,4097) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 6").fetch_all(&self.pool).await.map_err(storage)?;
+        let rows: Vec<(String, String)> = super::establish::retry(|| {
+            sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,4097) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 6").fetch_all(&self.pool)
+        })
+        .await
+        .map_err(storage)?;
         if rows.len() != SCHEMA.len()
             || SCHEMA
                 .iter()
@@ -242,10 +248,12 @@ impl<C: Clock> SqliteLabs<C> {
         {
             return Err(Error::Configuration);
         }
-        let config: Vec<(i64, i64, String, i64)> = sqlx::query_as(
-            "SELECT id,version,substr(configuration,1,4097),last_now FROM labs_meta LIMIT 2",
-        )
-        .fetch_all(&self.pool)
+        let config: Vec<(i64, i64, String, i64)> = super::establish::retry(|| {
+            sqlx::query_as(
+                "SELECT id,version,substr(configuration,1,4097),last_now FROM labs_meta LIMIT 2",
+            )
+            .fetch_all(&self.pool)
+        })
         .await
         .map_err(storage)?;
         match config.as_slice() {
@@ -262,7 +270,8 @@ impl<C: Clock> SqliteLabs<C> {
         self.pool.close().await;
     }
 }
-pub(super) fn storage(_: sqlx::Error) -> Error {
+pub(super) fn storage(error: sqlx::Error) -> Error {
+    super::cause::record(&error);
     Error::Storage
 }
 fn resolved(path: &Path) -> Result<PathBuf, Error> {

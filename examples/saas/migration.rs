@@ -1,6 +1,5 @@
 //! Application-owned SQLite schema, inserted into a CLI-generated migration.
-use rullst::db::{Orm, sqlx};
-use rullst_orm::{async_trait, error::RullstError, schema::Migration};
+use rullst::db::{Orm, async_trait, schema::Migration, sqlx};
 
 pub struct MigrationImpl;
 
@@ -10,7 +9,7 @@ impl Migration for MigrationImpl {
         "__JOURNEY_MIGRATION_NAME__"
     }
 
-    async fn up(&self) -> Result<(), RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         let pool = Orm::pool()?;
         sqlx::query(
             "CREATE TABLE journey_memberships (user_id INTEGER NOT NULL REFERENCES users(id), \
@@ -28,7 +27,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         let pool = Orm::pool()?;
         sqlx::query("DROP TABLE journey_notes")
             .execute(pool)

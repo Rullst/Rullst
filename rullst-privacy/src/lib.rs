@@ -8,6 +8,8 @@
 
 #[cfg(any(feature = "postgres", feature = "consent-postgres"))]
 mod postgres_connection;
+#[cfg(any(feature = "sqlite", feature = "consent-sqlite"))]
+mod sqlite_establish;
 
 #[cfg(feature = "age-assurance")]
 pub mod age_assurance;

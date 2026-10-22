@@ -8,7 +8,7 @@ in this file.
 ## Work on the checkout source
 
 From the repository root, install the CLI from the exact checkout (on `main`,
-the v13 prerelease `13.0.0-alpha.2` CLI; on `v12`, the 12.x maintenance CLI):
+the v13 prerelease `13.0.0-alpha.2` CLI; on `v12`, the end-of-life 12.x CLI):
 
 ```bash
 cargo install --locked --path cargo-rullst

@@ -1,7 +1,9 @@
 //! Dedicated encrypted shared-local job plane. It is not an application database
 //! or an execution engine. The host owns trusted local files and backup policy.
+mod cause;
 mod completion;
 mod crypto;
+mod establish;
 mod exercises;
 mod grading;
 mod jobs;

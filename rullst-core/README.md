@@ -177,8 +177,9 @@ rullst-core = { version = "=13.0.0-alpha.2", features = ["orm", "queue-sqlite"] 
 Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`,
 `scheduler-tz` or `telemetry` only when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
-SQLite). The primary `rullst` crate keeps `orm`, `drivers-all` and
-`queue-sqlite` in its default feature set for application compatibility.
+SQLite). Since 13.0.0-alpha.3 the primary `rullst` crate has no default
+feature either: an application that uses the ORM or the SQLite queue enables
+`orm` with `drivers-all` or a `strict-*` backend, and `queue-sqlite`, itself.
 
 Both built-in queue drivers implement `Queue::dispatch_at` for schedules up to
 366 days ahead. SQLite performs an automatic additive schema migration; Redis
