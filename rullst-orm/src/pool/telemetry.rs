@@ -39,6 +39,59 @@ impl Orm {
     ///
     /// The returned future is `Send` when `R` and `E` are, so the call can be
     /// nested in another transaction closure or run in a spawned task.
+    ///
+    /// # Errors
+    ///
+    /// An `Err` returned by the closure reaches the caller unchanged after the
+    /// rollback, so a [`UniqueViolation`](crate::Error::UniqueViolation),
+    /// [`ForeignKeyViolation`](crate::Error::ForeignKeyViolation) or the
+    /// application's own error type keeps its variant. Failures of the
+    /// transaction itself (begin, savepoint, commit, post-commit effects) are
+    /// [`crate::Error`]s converted with `E::from`; a commit rejected by a
+    /// deferred constraint is a typed violation too. Only when the rollback
+    /// after a failed closure also fails does the call return
+    /// `E::from(Error::DatabaseError(..))`, naming both failures.
+    ///
+    /// ```rust,no_run
+    /// use rullst_orm::{Error, Orm};
+    ///
+    /// #[derive(Debug)]
+    /// enum AppError {
+    ///     Orm(Error),
+    ///     EmailTaken,
+    /// }
+    ///
+    /// impl From<Error> for AppError {
+    ///     fn from(error: Error) -> Self {
+    ///         Self::Orm(error)
+    ///     }
+    /// }
+    ///
+    /// impl std::fmt::Display for AppError {
+    ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    ///         match self {
+    ///             Self::Orm(error) => error.fmt(f),
+    ///             Self::EmailTaken => f.write_str("email already registered"),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// async fn register(email: String) -> Result<u64, AppError> {
+    ///     Orm::transaction(move |_| {
+    ///         Box::pin(async move {
+    ///             let inserted = Orm::raw("INSERT INTO members (email) VALUES (?)")
+    ///                 .bind(email)
+    ///                 .execute()
+    ///                 .await;
+    ///             match inserted {
+    ///                 Err(Error::UniqueViolation { .. }) => Err(AppError::EmailTaken),
+    ///                 other => Ok(other?),
+    ///             }
+    ///         })
+    ///     })
+    ///     .await
+    /// }
+    /// ```
     #[tracing::instrument(
         name = "rullst.orm.transaction",
         target = "rullst_orm",
@@ -48,14 +101,14 @@ impl Orm {
             orm.outcome = tracing::field::Empty
         )
     )]
-    pub async fn transaction<F, R, E>(f: F) -> Result<R, crate::Error>
+    pub async fn transaction<F, R, E>(f: F) -> Result<R, E>
     where
         F: FnOnce(
                 SharedTransaction,
             )
                 -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<R, E>> + Send>>
             + Send,
-        E: std::fmt::Display,
+        E: From<crate::Error> + std::fmt::Display,
     {
         Self::record_driver();
         crate::__transaction_access::ensure_allowed()?;
@@ -88,18 +141,15 @@ impl Orm {
                     .await
             }
         };
-        let (value, failure) = match result {
-            Ok(value) => (Some(value), None),
-            Err(error) => (None, Some(error.to_string())),
-        };
+        let failure = result.as_ref().err().map(ToString::to_string);
         let finished = match savepoint {
             Some(savepoint) => finish_savepoint(savepoint, post_commit, failure).await,
             None => finish_transaction(transaction, post_commit, failure).await,
         };
+        // A failed commit, release or rollback replaces the closure's result;
+        // otherwise the closure's own value or error reaches the caller.
         finished?;
-        value.ok_or_else(|| {
-            crate::Error::Internal("managed transaction finished without a value".to_string())
-        })
+        result
     }
 
     fn record_driver() {
@@ -114,6 +164,9 @@ fn record_outcome(outcome: &'static str) {
 }
 
 /// Commits (after a successful closure) or rolls back the owned transaction.
+/// `Ok` means the requested outcome happened; after a failed closure (whose
+/// message `failure` holds) that is a completed rollback, and the caller
+/// returns the closure's own error.
 fn finish_transaction(
     transaction: SharedTransaction,
     post_commit: PostCommitScope,
@@ -156,9 +209,7 @@ fn finish_transaction(
                 )));
             }
             record_outcome("rolled_back");
-            return Err(crate::Error::DatabaseError(format!(
-                "Transaction failed: {error}",
-            )));
+            return Ok(());
         }
         if leaked {
             if let Err(rollback_error) = owned.rollback().await {
@@ -187,7 +238,9 @@ fn finish_transaction(
 }
 
 /// Releases the savepoint and promotes its callbacks to the enclosing commit
-/// boundary, or rolls the savepoint back and discards them.
+/// boundary, or rolls the savepoint back and discards them. As with
+/// [`finish_transaction`], `Ok` after a failed closure means a completed
+/// rollback.
 fn finish_savepoint(
     mut savepoint: ManagedSavepoint,
     post_commit: PostCommitScope,
@@ -203,9 +256,7 @@ fn finish_savepoint(
                 )));
             }
             record_outcome("savepoint_rolled_back");
-            return Err(crate::Error::DatabaseError(format!(
-                "Transaction failed: {error}",
-            )));
+            return Ok(());
         }
         if let Err(error) = savepoint.release().await {
             record_outcome("savepoint_release_failed");

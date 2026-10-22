@@ -7,6 +7,7 @@ mod metadata;
 mod principal;
 pub mod security;
 pub mod telemetry;
+mod time_zone;
 pub mod types;
 pub mod ui;
 
@@ -17,6 +18,7 @@ pub use crud::*;
 pub use principal::*;
 pub use security::*;
 pub use telemetry::*;
+pub use time_zone::*;
 pub use types::*;
 pub use ui::*;
 
@@ -32,6 +34,7 @@ pub struct Nexus {
     brand: String,
     auth: Option<PendingAuthPolicy>,
     audit_policy: NexusAuditPolicy,
+    time_zone: NexusTimeZone,
 }
 
 enum PendingAuthPolicy {
@@ -52,6 +55,7 @@ impl Nexus {
             brand: "Rullst App".to_string(),
             auth: None,
             audit_policy: NexusAuditPolicy::Disabled,
+            time_zone: NexusTimeZone::utc(),
         }
     }
 
@@ -96,6 +100,14 @@ impl Nexus {
     /// mutations fail closed without committing their data changes.
     pub fn with_required_audit(mut self) -> Self {
         self.audit_policy = NexusAuditPolicy::Required;
+        self
+    }
+
+    /// Shows and reads `DateTimeUtc` form values as wall times in `zone`
+    /// (UTC by default) and names the zone next to those fields. Added in
+    /// v13; see [`NexusTimeZone`].
+    pub fn with_time_zone(mut self, zone: NexusTimeZone) -> Self {
+        self.time_zone = zone;
         self
     }
 
@@ -185,7 +197,8 @@ impl Nexus {
             .merge(assets::router())
             .layer(axum::middleware::from_fn(
                 rullst_core::security::csrf_middleware,
-            ));
+            ))
+            .layer(axum::Extension(self.time_zone));
 
         let router = policy.protect_router(router)?;
 

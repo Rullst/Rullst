@@ -39,10 +39,23 @@ pub(super) fn window_rule(
     now_ms: i64,
     run_by_ms: i64,
 ) -> (i64, DeferralReason) {
+    earliest_start(
+        &allowed_intervals(windows, now_ms, run_by_ms),
+        now_ms,
+        run_by_ms,
+    )
+}
+
+/// The time-window rule over already computed allowed `intervals`.
+pub(super) fn earliest_start(
+    intervals: &[(i64, i64)],
+    now_ms: i64,
+    run_by_ms: i64,
+) -> (i64, DeferralReason) {
     if run_by_ms <= now_ms {
         return (now_ms, DeferralReason::Deadline);
     }
-    allowed_intervals(windows, now_ms, run_by_ms)
+    intervals
         .iter()
         .map(|(start, _)| *start)
         .min()

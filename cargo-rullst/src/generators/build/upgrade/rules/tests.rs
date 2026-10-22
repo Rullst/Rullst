@@ -135,6 +135,31 @@ async fn register(user: &mut User) -> Result<bool, rullst::orm::Error> {
 }
 
 #[test]
+fn transactions_in_files_matching_database_error_are_reviewed() {
+    assert_only(
+        r#"
+async fn transfer() -> Result<(), rullst::orm::Error> {
+    let moved = rullst::orm::Orm::transaction(|_| Box::pin(async { debit().await })).await;
+    match moved {
+        Err(Error::DatabaseError(message)) if message.starts_with("Transaction failed") => retry().await,
+        other => other,
+    }
+}
+"#,
+        &["V13-ORM-TRANSACTION-ERRORS", "V13-ORM-CONSTRAINT-ERRORS"],
+    );
+    for source in [
+        "async fn a() -> Result<(), Error> { Orm::transaction(|_| Box::pin(async { Ok(()) })).await }",
+        "async fn a() { let e = Error::DatabaseError(String::new()); Ledger::transaction(e).await; }",
+    ] {
+        assert!(
+            !codes(source).contains(&"V13-ORM-TRANSACTION-ERRORS"),
+            "{source}"
+        );
+    }
+}
+
+#[test]
 fn calls_match_their_paths_but_not_definitions_or_similar_names() {
     assert_only(
         r#"

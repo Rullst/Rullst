@@ -9,9 +9,10 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
+use crate::nexus::NexusTimeZone;
 use crate::nexus::crud::dialect::{placeholder, select_column, tenant_predicate};
 use crate::nexus::crud::input::{
-    datetime_local_value, is_local_date, time_input_value, utc_input_value,
+    datetime_local_value, is_local_date, time_input_value, zoned_input_value,
 };
 use crate::nexus::crud::key::{RecordKey, key_predicate};
 use crate::nexus::crud::query::sanitize_identifier;
@@ -65,7 +66,9 @@ impl IntoResponse for RecordFormError {
 /// Renders HTML form for creating or editing records in the modal dialog.
 ///
 /// An edit form for a record that does not exist or cannot be loaded renders
-/// a short error message instead of an empty, editable form.
+/// a short error message instead of an empty, editable form. `DateTimeUtc`
+/// values are shown in UTC; the panel's own routes use the zone selected with
+/// [`Nexus::with_time_zone`](crate::nexus::Nexus::with_time_zone).
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn render_record_form(
     state: &NexusState,
@@ -73,7 +76,7 @@ pub async fn render_record_form(
     record_id: Option<&str>,
     tenant_id: Option<&str>,
 ) -> String {
-    record_form(state, entry, record_id, tenant_id)
+    record_form(state, entry, record_id, tenant_id, &NexusTimeZone::utc())
         .await
         .unwrap_or_else(|error| {
             format!(
@@ -150,18 +153,19 @@ pub(super) fn record_sql(entry: &RegistryEntry, tenant_scoped: bool, driver: &st
 }
 
 /// Renders the create form (`record_id` is `None`) or the edit form for an
-/// existing record.
+/// existing record, with `DateTimeUtc` values as wall times in `zone`.
 pub(crate) async fn record_form(
     _state: &NexusState,
     entry: &RegistryEntry,
     record_id: Option<&str>,
     tenant_id: Option<&str>,
+    zone: &NexusTimeZone,
 ) -> Result<String, RecordFormError> {
     let row = match record_id {
         Some(id) => Some(load_record(entry, id, tenant_id).await?),
         None => None,
     };
-    Ok(form_html(entry, record_id, row.as_ref()))
+    Ok(form_html(entry, record_id, row.as_ref(), zone))
 }
 
 /// Renders the form for `record_id` from its loaded `row`.
@@ -169,6 +173,7 @@ pub(super) fn form_html(
     entry: &RegistryEntry,
     record_id: Option<&str>,
     row_data: Option<&StoredRow>,
+    zone: &NexusTimeZone,
 ) -> String {
     let is_edit = record_id.is_some();
     let title = if is_edit {
@@ -218,17 +223,18 @@ pub(super) fn form_html(
                     },
                 };
 
-                let input_widget = render_field_widget(f, &stored, is_edit, entry.key_columns());
-                // The picker shows the UTC wall time; say so.
-                let zone = if matches!(f.kind, FieldKind::DateTimeUtc) {
-                    " (UTC)"
+                let input_widget =
+                    render_field_widget(f, &stored, is_edit, entry.key_columns(), zone);
+                // The picker shows the wall time in the panel's zone; name it.
+                let zone_label = if matches!(f.kind, FieldKind::DateTimeUtc) {
+                    format!(" ({})", escape_str(zone.name()))
                 } else {
-                    ""
+                    String::new()
                 };
                 let _ = write!(
                     acc,
                     "<div class=\"nexus-form-group\">\
-                 <label class=\"nexus-label\">{}{zone}</label>\
+                 <label class=\"nexus-label\">{}{zone_label}</label>\
                  {input_widget}\
                  </div>",
                     escape_str(f.label)
@@ -275,6 +281,7 @@ pub(super) fn render_field_widget(
     stored: &StoredValue,
     is_edit: bool,
     key_columns: &[&str],
+    zone: &NexusTimeZone,
 ) -> String {
     let safe_fname = escape_str(f.name);
     let is_readonly = f.readonly || (is_edit && key_columns.contains(&f.name));
@@ -366,7 +373,7 @@ pub(super) fn render_field_widget(
             escape_str(text)
         ),
         kind => {
-            let (input_type, value) = typed_input(kind, text);
+            let (input_type, value) = typed_input(kind, text, zone);
             // The browser steps and flags out-of-range integers; the server
             // still validates every submitted value.
             let bounds = match kind {
@@ -383,8 +390,13 @@ pub(super) fn render_field_widget(
     }
 }
 
-/// Chooses the input type for a single-line kind and the value to show in it.
-pub(super) fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String) {
+/// Chooses the input type for a single-line kind and the value to show in
+/// it; a `DateTimeUtc` instant is shown as its wall time in `zone`.
+pub(super) fn typed_input(
+    kind: &FieldKind,
+    text: &str,
+    zone: &NexusTimeZone,
+) -> (&'static str, String) {
     let shown = |input_type| (input_type, text.to_owned());
     if text.is_empty() {
         return match kind {
@@ -408,10 +420,7 @@ pub(super) fn typed_input(kind: &FieldKind, text: &str) -> (&'static str, String
             Some(local) => ("datetime-local", local),
             None => shown("text"),
         },
-        FieldKind::DateTimeUtc => match utc_input_value(text) {
-            Some(utc) => ("datetime-local", utc),
-            None => shown("text"),
-        },
+        FieldKind::DateTimeUtc => zoned_input_value(text, zone).unwrap_or_else(|| shown("text")),
         FieldKind::Time => match time_input_value(text) {
             Some(time) => ("time", time),
             None => shown("text"),

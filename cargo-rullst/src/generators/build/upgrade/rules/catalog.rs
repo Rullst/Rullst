@@ -160,6 +160,9 @@ rules! {
     ORM_CONSTRAINT_ERRORS: "V13-ORM-CONSTRAINT-ERRORS", Review, "ORM constraint errors",
         "unique and foreign-key violations now return `UniqueViolation`/`ForeignKeyViolation` instead of `DatabaseError`",
         "Match `Error::UniqueViolation { .. }` and `Error::ForeignKeyViolation { .. }` instead of `DatabaseError` messages such as `UNIQUE constraint failed`, `duplicate key` or `Duplicate entry`.";
+    ORM_TRANSACTION_ERRORS: "V13-ORM-TRANSACTION-ERRORS", Review, "ORM transaction errors",
+        "`Orm::transaction` returns its closure's own error after the rollback instead of `DatabaseError(\"Transaction failed: ...\")`",
+        "Match the closure's error (`UniqueViolation`, `ForeignKeyViolation` or the application's own type) instead of `DatabaseError` on the result; the closure's error type must implement `From<rullst_orm::Error>`.";
     ORM_SANDBOX_TEST: "V13-ORM-SANDBOX-TEST", Review, "ORM sandbox tests",
         "`#[rullst_orm::test]` now keeps the declared return type; an `Err` result fails the test",
         "Make the signature match the body (a `Termination` type such as `Result<(), E: Debug>`) and assert post-commit effects in a committing test.";

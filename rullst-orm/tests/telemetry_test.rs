@@ -105,10 +105,17 @@ async fn queries_transactions_and_pool_acquires_emit_redacted_telemetry() {
     .expect("instrumented transaction should commit");
 
     let rollback = Orm::transaction(|_| {
-        Box::pin(async { Err::<(), _>("intentional rollback for telemetry") })
+        Box::pin(async {
+            Err::<(), Error>(Error::Validation(
+                "intentional rollback for telemetry".to_string(),
+            ))
+        })
     })
     .await;
-    assert!(rollback.is_err());
+    assert!(
+        matches!(&rollback, Err(Error::Validation(message)) if message == "intentional rollback for telemetry"),
+        "{rollback:?}"
+    );
 
     let spans = capture.spans.lock().expect("span capture lock");
     assert!(spans.iter().any(|name| name == "rullst.orm.query"));

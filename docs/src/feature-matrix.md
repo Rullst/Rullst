@@ -112,6 +112,7 @@ the drivers.
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
 | `nexus` | no | The generated Nexus administration interface |
+| `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
@@ -148,7 +149,7 @@ the drivers.
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
-| `scheduler-tz` | no | v13: `Scheduler::task_in_tz`, cron tasks in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
+| `scheduler-tz` | no | v13: `Scheduler::task_in_tz` and `Scheduler::deferrable_task_in_tz`, cron tasks (and deferral windows) in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` with its Axum integration (`rullst-connect/rullst`): the `AuthCallback` extractor and the local mock IdP router |
 | `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap, and the v13 SQLite login-challenge store (`SqliteChallengeStore`) |
 | `oauth-postgres` | no | v13: `oauth` plus the PostgreSQL login-challenge store (`PostgresChallengeStore`) over the application's pool |
@@ -222,7 +223,7 @@ Default features: none.
 | `queue-redis` | Redis-backed queues |
 | `cache-redis` | Redis-backed cache storage |
 | `redis` | Convenience alias for both Redis queue and cache backends |
-| `scheduler-tz` | v13: `Scheduler::task_in_tz` for cron tasks in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
+| `scheduler-tz` | v13: `Scheduler::task_in_tz` and `Scheduler::deferrable_task_in_tz` for cron tasks (and deferral windows) in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
 | `storage-s3` | v13 candidate: bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs |
 | `storage-multipart` | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
 | `studio` | Integration marker used by the umbrella Studio boundary; it adds no dependency by itself |
@@ -422,6 +423,7 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 | `rullst-nexus` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-nexus` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
+| `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |

@@ -20,6 +20,7 @@ mod search_relevance;
 mod soft_delete_lifecycle;
 mod temporal;
 mod timestamps;
+mod typed_transaction_errors;
 mod wide_values;
 
 /// Runs every driver-neutral contract against the initialized ORM.
@@ -38,6 +39,7 @@ pub async fn exercise() {
     atomic_counters::exercise().await;
     dirty_tracking::exercise().await;
     constraint_violations::exercise().await;
+    typed_transaction_errors::exercise().await;
     schema_constraints::exercise().await;
     temporal::exercise().await;
     wide_values::exercise().await;

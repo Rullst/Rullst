@@ -191,17 +191,20 @@ fn inputs_show_values_they_can_hold_exactly() {
         assert_eq!(time_input_value(unshowable), None, "{unshowable}");
     }
 
+    let utc = NexusTimeZone::utc();
+    let shown = |text| zoned_input_value(text, &utc);
+    let picker = |value: &str| Some(("datetime-local", value.to_string()));
     assert_eq!(
-        utc_input_value("2026-10-15 11:30:00+02").as_deref(),
-        Some("2026-10-15T09:30:00")
+        shown("2026-10-15 11:30:00+02"),
+        picker("2026-10-15T09:30:00")
     );
     assert_eq!(
-        utc_input_value("2026-10-15T09:30:00.123+00:00").as_deref(),
-        Some("2026-10-15T09:30:00.123")
+        shown("2026-10-15T09:30:00.123+00:00"),
+        picker("2026-10-15T09:30:00.123")
     );
     assert_eq!(
-        utc_input_value("2026-10-15 09:30:00.500000").as_deref(),
-        Some("2026-10-15T09:30:00.500")
+        shown("2026-10-15 09:30:00.500000"),
+        picker("2026-10-15T09:30:00.500")
     );
     for unshowable in [
         "2026-10-15 09:30:00.123456+00",
@@ -209,12 +212,9 @@ fn inputs_show_values_they_can_hold_exactly() {
         "0001-01-01T00:30:00+01:00",
         "legacy",
     ] {
-        assert_eq!(utc_input_value(unshowable), None, "{unshowable}");
+        assert_eq!(shown(unshowable), None, "{unshowable}");
     }
-    assert_eq!(
-        utc_input_value("9999-12-31T23:59:59Z").as_deref(),
-        Some("9999-12-31T23:59:59")
-    );
+    assert_eq!(shown("9999-12-31T23:59:59Z"), picker("9999-12-31T23:59:59"));
 }
 
 #[test]
