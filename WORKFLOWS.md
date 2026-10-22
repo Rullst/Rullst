@@ -447,7 +447,7 @@ higher component result for the repository total.
 ### Formal, dynamic, and stress analysis
 
 - Kani and Miri are manual research evidence scoped to the harnesses/packages
-  that actually execute. Rullst itself remains pinned to stable Rust 1.99.0
+  that actually execute. Rullst itself remains pinned to stable Rust 1.99.1
   and keeps Rust 1.96 as its declared MSRV. Kani builds reviewed upstream
   revision `8fcd6d90ed07b559e553ca8a92b95f2db69b2c78` with the verifier's own pinned
   `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) into a bundle and
@@ -518,7 +518,7 @@ higher component result for the repository total.
   percentage never treats a timeout as caught.
 - Fuzzing and corpus maintenance pin `nightly-2026-08-21` instead of following
   a moving nightly alias. This verifier-only toolchain does not change the
-  framework's stable Rust 1.99.0 toolchain or its Rust 1.96 MSRV. Before a
+  framework's stable Rust 1.99.1 toolchain or its Rust 1.96 MSRV. Before a
   release campaign starts, eleven strict preflight jobs compile every target so a
   stale import or broken fuzz manifest fails in minutes rather than alongside
   hours of valid campaigns. A five-minute one-target diagnostic is correction
