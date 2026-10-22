@@ -277,6 +277,58 @@ mod tests {
         write_line(&mut Broken, format_args!("[HTTP] GET / -> 200"));
     }
 
+    const ELAPSED_CHILD_ENV: &str = "RULLST_ACCESS_LOG_ELAPSED_CHILD";
+    const ELAPSED_CHILD_TEST: &str = "server::console::tests::elapsed_access_log_child";
+
+    /// Runs only inside the child spawned by the parent test below.
+    #[test]
+    fn elapsed_access_log_child() {
+        if std::env::var_os(ELAPSED_CHILD_ENV).is_none() {
+            return;
+        }
+        let elapsed = std::time::Duration::from_micros(1_500_250);
+        log_request("POST", "/courses", 201, elapsed, true);
+    }
+
+    #[test]
+    fn access_log_lines_report_the_elapsed_milliseconds() {
+        if std::env::var_os(ELAPSED_CHILD_ENV).is_some() {
+            return;
+        }
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                ELAPSED_CHILD_TEST,
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .env(ELAPSED_CHILD_ENV, "1")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let mut child_stdout = child.stdout.take().unwrap();
+        let reader = std::thread::spawn(move || {
+            let mut stdout = String::new();
+            let _ = child_stdout.read_to_string(&mut stdout);
+            stdout
+        });
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        while child.try_wait().unwrap().is_none() {
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                let _ = child.wait();
+                panic!("the access-log child exceeded its deadline");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let stdout = reader.join().unwrap();
+        assert!(
+            stdout.contains("[HTTP] POST /courses -> 201 (1500.25 ms)\n"),
+            "{stdout}"
+        );
+    }
+
     const LOG_CHILD_ENV: &str = "RULLST_ACCESS_LOG_CHILD";
     const LOG_CHILD_TEST: &str = "server::console::tests::quiet_probe_access_log_child";
 
