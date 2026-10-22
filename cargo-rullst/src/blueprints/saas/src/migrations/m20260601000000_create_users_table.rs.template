@@ -1,6 +1,6 @@
 use rullst::db::{Orm, sqlx};
-use rullst_orm::schema::{ColumnDefault, Schema, Migration};
-use rullst_orm::async_trait;
+use rullst::db::schema::{ColumnDefault, Schema, Migration};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
