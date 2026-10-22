@@ -65,8 +65,8 @@ authorizer, `with_monitor` mounts nothing: `/_rullst/monitor/v1` answers `404`
 and requests are handled exactly as without the monitor. So the code can stay
 in place and the operator decides per deployment.
 
-`Monitor::with_token` adds a token from your own secret store instead of the
-environment. Generated starters do not call `with_monitor` and their
+`Monitor::with_token` adds a token from your own secret store, in addition to
+the environment's. Generated starters do not call `with_monitor` and their
 `.env.example` does not list `RULLST_MONITOR_TOKENS`, because the variable
 does nothing until the application mounts the monitor.
 
@@ -178,7 +178,7 @@ can revoke one by removing it.
 | `429` | More than 30 requests in a burst (one more each second) from one client, with `Retry-After: 1`; or, after 10 invalid presented tokens, every request from that client until one more attempt is allowed every 90 seconds (`Retry-After: 90`), without evaluating credentials. |
 | `503` | The application authorizer failed. |
 
-Every answer carries `Cache-Control: no-store` and
+Every answer of the mounted endpoint carries `Cache-Control: no-store` and
 `X-Content-Type-Options: nosniff`; staging and production also add the usual
 security headers. The endpoint adds no CORS headers, and because it refuses
 any request with an `Origin`, an application CORS allowlist never releases it

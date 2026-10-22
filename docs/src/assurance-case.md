@@ -41,7 +41,7 @@ stable IDs such as `AUTH-06` or `STUDIO-01`. There are 19 models:
 
 The machine-readable minimum in
 [`.github/threat-model-release-minimum.json`](https://github.com/Rullst/Rullst/blob/main/.github/threat-model-release-minimum.json)
-binds 48 abuse-case IDs to 64 evidence rows and 63 exact tests across thirteen
+binds 52 abuse-case IDs to 70 evidence rows and 69 exact tests across thirteen
 crates. `check-threat-model-release-minimum.sh` rejects missing markers,
 missing tests and filters that match zero tests, then runs each test with
 `--exact`. It runs in four CI shards and again in the release workflow.

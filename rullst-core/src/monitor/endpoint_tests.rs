@@ -41,6 +41,7 @@ async fn status_of(app: &Router, peer: &str, headers: &[(&str, &str)]) -> Status
         .status()
 }
 
+// TM-MONITOR-02: missing, malformed and wrong credentials are indistinguishable.
 #[tokio::test]
 async fn missing_and_invalid_credentials_get_the_same_401() {
     let app = token_app(Environment::Development);
@@ -111,6 +112,7 @@ async fn other_methods_are_not_allowed_and_not_cached() {
     assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
 }
 
+// TM-MONITOR-08: no TLS evidence, no document, whatever the credential.
 #[tokio::test]
 async fn production_refuses_plain_http_before_evaluating_credentials() {
     let authorization = bearer(BASE64_TOKEN);
@@ -389,6 +391,7 @@ async fn each_client_has_its_own_request_budget() {
     );
 }
 
+// TM-MONITOR-02: a locked client's credentials are not evaluated.
 #[tokio::test]
 async fn presented_invalid_tokens_lock_the_client_out_without_evaluation() {
     let app = token_app(Environment::Development);

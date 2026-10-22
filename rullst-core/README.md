@@ -42,6 +42,13 @@
   chain right to left and replaces `ConnectInfo` with the client address, so
   rate limits and lockouts work behind reverse proxies. Malformed chains keep
   the proxy address; list only your real proxy networks.
+- **Production Monitoring Endpoint (v13, 13.0.0-alpha.3):** opt-in
+  `Server::with_monitor` serves a read-only `GET /_rullst/monitor/v1` JSON
+  document (request rate, latency and status classes per route pattern,
+  queues, N+1 fingerprints, process radar) to a bearer token from
+  `RULLST_MONITOR_TOKENS` or to the application's own sign-in, with TLS
+  evidence required in staging and production. Nothing is mounted without a
+  credential. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md).
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for the Development, Test, Staging and Production environments.

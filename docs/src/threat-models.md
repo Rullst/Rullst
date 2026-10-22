@@ -28,11 +28,11 @@ addresses are untrusted unless an explicit proxy policy (Core's
 `TrustedProxyLayer`, see `CORE-03`) establishes the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 48 distinct abuse-case IDs to
-64 evidence rows and 63 exact test executions across thirteen crates. The gate
+`.github/threat-model-release-minimum.json` binds 52 distinct abuse-case IDs to
+70 evidence rows and 69 exact test executions across thirteen crates. The gate
 rejects missing markers, missing tests and zero-test filters before executing
 Core (including trusted-proxy client resolution), ORM, Auth, Connect, Security,
-Messaging, Nexus, Studio, tenant ownership, Capital, AI, Mail, IoT,
+Messaging, Nexus, Studio, the production monitor, tenant ownership, Capital, AI, Mail, IoT,
 generated-default and Academy negatives. Passing that bounded minimum does not
 imply that every case below is closed.
 

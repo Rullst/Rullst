@@ -52,6 +52,7 @@ fn authorization() -> String {
     format!("Bearer {TOKEN}")
 }
 
+// TM-MONITOR-01: no monitor, or one without a credential, mounts nothing.
 #[tokio::test]
 async fn the_monitor_is_off_unless_mounted_with_a_credential() {
     let authorization = authorization();

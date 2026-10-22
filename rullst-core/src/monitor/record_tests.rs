@@ -58,6 +58,7 @@ async fn document(app: &Router) -> String {
     String::from_utf8(body).unwrap()
 }
 
+// TM-MONITOR-04: only route patterns and aggregates leave the process.
 #[tokio::test]
 async fn raw_paths_queries_and_client_data_never_reach_the_document() {
     let installed = installed();

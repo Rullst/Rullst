@@ -97,6 +97,7 @@ fn document(orm_unavailable: Option<&'static str>) -> Value {
     serde_json::to_value(&document).unwrap()
 }
 
+// TM-MONITOR-04: adding a field is a reviewed schema change.
 #[test]
 fn the_document_has_exactly_the_v1_fields() {
     let mut found = BTreeSet::new();
