@@ -67,6 +67,9 @@ pub mod offline_sync;
 #[cfg(not(target_arch = "wasm32"))]
 /// Canonical production middleware ordering contract.
 pub mod production;
+#[cfg(not(target_arch = "wasm32"))]
+/// Digital Asset Links for the Google Play package of a Progressive Web App.
+pub mod pwa;
 pub mod query_patterns;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;

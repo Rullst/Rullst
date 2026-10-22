@@ -126,6 +126,12 @@
   requests, times them out, and detects stalled cursors. Applications still own
   Keychain/Keystore access, atomic platform persistence, authenticated HTTP,
   retry, and background scheduling.
+- **Digital Asset Links (v13):** `pwa::AssetLinks` serves
+  `/.well-known/assetlinks.json` for the Google Play package (Trusted Web
+  Activity) of a Progressive Web App, validating Android package names and
+  SHA-256 certificate fingerprints, and reads them from
+  `RULLST_ANDROID_ASSET_LINKS` or `Rullst.toml`. `htmx::render_page_with_head`
+  adds the PWA head tags to Core's page layout.
 - **Form file uploads (v13):** `uploads::Multipart` reads a
   `multipart/form-data` request under an explicit `MultipartPolicy` (file,
   body, count, field and name limits, an idle timeout), streams each file to
