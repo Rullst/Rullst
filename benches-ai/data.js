@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792697183340,
+  "lastUpdate": 1792701259784,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -15149,6 +15149,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 439,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a4bdd27793b368a011c823b9b427f6e1e51d357",
+          "message": "Merge pull request #527 from Rullst/feat/v13-alpha3-i18n-html\n\nfeat(i18n): CLDR plural rules and formatting; html! @match",
+          "timestamp": "2026-10-22T17:08:12-03:00",
+          "tree_id": "31f01694a9eb862cec819d94fdca51f58b1651ae",
+          "url": "https://github.com/Rullst/Rullst/commit/7a4bdd27793b368a011c823b9b427f6e1e51d357"
+        },
+        "date": 1792701258869,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1697,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 315,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 451,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
