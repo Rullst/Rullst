@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792679372610,
+  "lastUpdate": 1792683055977,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17404,6 +17404,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "make_login_cookie",
             "value": 4273,
+            "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c0b031476984a395d5e5ea361d6d41b3e6040349",
+          "message": "Merge pull request #525 from Rullst/chore/v13-safe-updates\n\nchore(deps): update sha2, actix-web, syn and jiff",
+          "timestamp": "2026-10-22T12:04:36-03:00",
+          "tree_id": "6fac9d5fc3ed466d782a92e6e02bc4d6e413848c",
+          "url": "https://github.com/Rullst/Rullst/commit/c0b031476984a395d5e5ea361d6d41b3e6040349"
+        },
+        "date": 1792683054990,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 975,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 778,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1799,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4271,
             "range": "± 35",
             "unit": "ns/iter"
           }
