@@ -266,6 +266,10 @@ fn signed_downloads_bind_provider_tenant_key_region_and_short_lifetime() {
     );
     assert_eq!(query.get("X-Amz-SignedHeaders").unwrap(), "host");
     assert!(!format!("{grant:?}").contains("X-Amz"));
+    assert!(
+        format!("{grant:?}").starts_with("SignedDownload { expires_at: "),
+        "{grant:?}"
+    );
     assert!(!format!("{grant:?}").contains("school-a"));
     for lifetime in [
         Duration::ZERO,
