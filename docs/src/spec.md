@@ -2079,8 +2079,34 @@ the same server-authoritative controls.
   `csrf_middleware`/security baseline; the route does not exempt itself.
 * **Page language:** handlers pass `locale.tag()` to
   `render_page_with_lang` for `<html lang>`.
+* **Formatting:** Since 13.0.0-alpha.3 `Locale::format_number(impl
+  Into<Decimal>)`, `format_percent(ratio)`, `format_currency(minor_units:
+  i64, Currency)`, `format_date(&impl chrono::Datelike, DateStyle)`,
+  `format_time(&impl chrono::Timelike, TimeStyle)` and `format_datetime`
+  return `String`s with CLDR 48 conventions compiled in (generated from ICU
+  78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
+  runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,
+  `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`,
+  `tr`, `uk` and `zh`; another tag uses its `language-REGION` entry, else its
+  language's, else `en`'s (`Locale::format_data_tag`). Numbers use the
+  locale's decimal and grouping separators, minimum grouping digits (`es`,
+  `it`, `pl`, `pt-PT` write `1234`), minus sign and Latin digits, and show
+  every fraction digit of the `Decimal` (`Decimal::round_half_even` and
+  `round_half_up` round explicitly). Percentages multiply the ratio by 100.
+  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants with localized
+  symbols; `Currency::new(code, minor_digits)` for other ISO codes, written
+  as the code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts
+  in integer minor units, so no floating-point rounding occurs. `DateStyle`
+  is `Short`, `Medium`, `Long`, `Full` (CLDR's date formats) or `Numeric`
+  (CLDR's `yMd` skeleton); `TimeStyle` is `Short` or `Medium` (no zone
+  names); both are `#[non_exhaustive]`. Date and time are joined with CLDR's
+  date-time format for the date style (ICU's `atTime` variant for `Long` and
+  `Full`; `Numeric` joins like `Short`). Values are formatted in their own
+  offset; years before 1 are written as ISO numbers. Outputs keep CLDR's
+  U+202F and U+00A0 spaces. Tests compare every locale with ICU output.
 * **Out of scope:** runtime-loaded catalogs, ordinal plural rules,
-  script-aware matching, and date/number formatting. `rullst-mail`'s
+  script-aware matching, compact and spelled-out numbers, time zone names,
+  non-Gregorian calendars and non-Latin digits. `rullst-mail`'s
   `MailLocale` remains separate (`MailLocale::from_preference(locale.tag())`).
 
 ### 4.3. Durable Queue Timing and Completion History

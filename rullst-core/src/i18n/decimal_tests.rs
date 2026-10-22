@@ -134,3 +134,94 @@ fn integers_convert_without_fraction_digits() {
     );
     assert_eq!(Decimal::from(9usize), Decimal::new(9, 0));
 }
+
+/// `(value, [0, 1, 2 digits half-even], [0, 1, 2 digits half-up])`, from
+/// ICU's `halfEven` and `halfExpand` modes (ICU writes `-0` where a
+/// `Decimal` zero has no sign).
+const ROUNDING: &[(&str, [&str; 3], [&str; 3])] = &[
+    ("2.345", ["2", "2.3", "2.34"], ["2", "2.3", "2.35"]),
+    ("2.355", ["2", "2.4", "2.36"], ["2", "2.4", "2.36"]),
+    ("-2.345", ["-2", "-2.3", "-2.34"], ["-2", "-2.3", "-2.35"]),
+    ("-2.5", ["-2", "-2.5", "-2.50"], ["-3", "-2.5", "-2.50"]),
+    ("0.5", ["0", "0.5", "0.50"], ["1", "0.5", "0.50"]),
+    ("1.5", ["2", "1.5", "1.50"], ["2", "1.5", "1.50"]),
+    ("2.5", ["2", "2.5", "2.50"], ["3", "2.5", "2.50"]),
+    ("-0.5", ["0", "-0.5", "-0.50"], ["-1", "-0.5", "-0.50"]),
+    (
+        "1234.5678",
+        ["1235", "1234.6", "1234.57"],
+        ["1235", "1234.6", "1234.57"],
+    ),
+    ("9.995", ["10", "10.0", "10.00"], ["10", "10.0", "10.00"]),
+    (
+        "-9.995",
+        ["-10", "-10.0", "-10.00"],
+        ["-10", "-10.0", "-10.00"],
+    ),
+    ("0.05", ["0", "0.0", "0.05"], ["0", "0.1", "0.05"]),
+    (
+        "123456789012345678901234567890.125",
+        [
+            "123456789012345678901234567890",
+            "123456789012345678901234567890.1",
+            "123456789012345678901234567890.12",
+        ],
+        [
+            "123456789012345678901234567890",
+            "123456789012345678901234567890.1",
+            "123456789012345678901234567890.13",
+        ],
+    ),
+];
+
+#[test]
+fn rounding_matches_icu_half_even_and_half_expand() {
+    for (value, even, up) in ROUNDING {
+        let decimal: Decimal = value.parse().unwrap();
+        for scale in 0..3u8 {
+            let index = usize::from(scale);
+            assert_eq!(
+                decimal.round_half_even(scale).to_string(),
+                even[index],
+                "{value} even {scale}"
+            );
+            assert_eq!(
+                decimal.round_half_up(scale).to_string(),
+                up[index],
+                "{value} up {scale}"
+            );
+            assert_eq!(decimal.round_half_up(scale).scale(), scale);
+        }
+    }
+}
+
+#[test]
+fn rounding_to_more_digits_pads_or_keeps_the_value() {
+    assert_eq!(
+        Decimal::new(15, 1).round_half_even(3),
+        Decimal::new(1500, 3)
+    );
+    assert_eq!(Decimal::new(15, 1).round_half_up(1), Decimal::new(15, 1));
+    assert_eq!(Decimal::new(-7, 0).round_half_up(2), Decimal::new(-700, 2));
+    // Padding that would overflow `i128` keeps the number as it is.
+    let large = Decimal::new(i128::MAX / 5, 0);
+    assert_eq!(large.round_half_even(1), large);
+    assert_eq!(Decimal::new(1, 0).round_half_up(39), Decimal::new(1, 0));
+    // Dropping 39 or more digits leaves zero.
+    assert_eq!(
+        Decimal::new(i128::MAX, 40).round_half_up(0),
+        Decimal::new(0, 0)
+    );
+    assert_eq!(
+        Decimal::new(i128::MIN, 40).round_half_even(1),
+        Decimal::new(0, 1)
+    );
+    // Exactly 38 dropped digits still compare against the half correctly.
+    let half = Decimal::new(5 * 10i128.pow(37), 38);
+    assert_eq!(half.round_half_up(0), Decimal::new(1, 0));
+    assert_eq!(half.round_half_even(0), Decimal::new(0, 0));
+    assert_eq!(
+        Decimal::new(i128::MIN, 38).round_half_up(0),
+        Decimal::new(-2, 0)
+    );
+}

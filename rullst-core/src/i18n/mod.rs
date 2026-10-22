@@ -47,17 +47,25 @@
 //! The example's catalog files are in `rullst-core/tests/i18n/locales`, and
 //! `rullst-core/tests/i18n_catalog.rs` runs them end to end.
 //!
+//! A [`Locale`] also formats numbers, percentages, money and dates with the
+//! locale's CLDR conventions: [`Locale::format_number`],
+//! [`Locale::format_percent`], [`Locale::format_currency`],
+//! [`Locale::format_date`], [`Locale::format_time`] and
+//! [`Locale::format_datetime`].
+//!
 //! [`Markup`]: crate::html::Markup
 
 use std::fmt;
 
 mod decimal;
+mod format;
 mod http;
 mod negotiate;
 mod plural;
 mod render;
 
 pub use decimal::{Decimal, ParseDecimalError};
+pub use format::{Currency, CurrencyError, DateStyle, TimeStyle};
 pub use http::{LocaleLayer, LocaleService, MissingLocale};
 #[doc(hidden)]
 pub use plural::__Plural;

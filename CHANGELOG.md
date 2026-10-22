@@ -225,6 +225,16 @@ A prepared version section does not establish that its tag or crates exist.
   directory before each build (stable Rust gives `catalog!` no way to watch a
   directory itself; edits to existing files were already tracked). Existing
   applications add the same three-line `build.rs`.
+- `rullst::i18n::Locale` formats numbers, percentages, money and dates with
+  CLDR 48 conventions compiled in for `ar`, `cs`, `de`, `en`, `en-GB`, `es`,
+  `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`, `tr`,
+  `uk` and `zh` (other tags use their language's data, else `en`'s):
+  `format_number`, `format_percent`, `format_currency` (integer minor units
+  and the new `Currency`, with localized symbols for BRL, USD, EUR, GBP and
+  JPY), `format_date`, `format_time` and `format_datetime` (any `chrono` date
+  or time, with the new `DateStyle` and `TimeStyle`), for example
+  `R$ 1.234,56` and `22/10/2026` in `pt-BR`. `Decimal` gains
+  `round_half_even` and `round_half_up`. No new dependency.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

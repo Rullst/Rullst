@@ -71,6 +71,78 @@ impl Decimal {
         }
     }
 
+    /// The number with exactly `scale` fraction digits, rounding a half
+    /// to the even neighbour (CLDR's and ICU's default):
+    /// `2.345` → `2.34`, `2.355` → `2.36`.
+    ///
+    /// A larger `scale` appends zeros (`1.5` → `1.500`); when those would
+    /// not fit in an `i128`, the number is returned unchanged.
+    ///
+    /// ```
+    /// # extern crate rullst_core as rullst;
+    /// use rullst::i18n::Decimal;
+    ///
+    /// assert_eq!(Decimal::new(2345, 3).round_half_even(2), Decimal::new(234, 2));
+    /// assert_eq!(Decimal::new(-25, 1).round_half_even(0), Decimal::new(-2, 0));
+    /// assert_eq!(Decimal::new(15, 1).round_half_even(3), Decimal::new(1500, 3));
+    /// ```
+    pub fn round_half_even(self, scale: u8) -> Self {
+        self.round(scale, |quotient| quotient % 2 != 0)
+    }
+
+    /// The number with exactly `scale` fraction digits, rounding a half
+    /// away from zero (the "commercial" rounding browsers use by default):
+    /// `2.345` → `2.35`, `-2.5` → `-3`.
+    ///
+    /// A larger `scale` appends zeros; when those would not fit in an
+    /// `i128`, the number is returned unchanged.
+    ///
+    /// ```
+    /// # extern crate rullst_core as rullst;
+    /// use rullst::i18n::Decimal;
+    ///
+    /// assert_eq!(Decimal::new(2345, 3).round_half_up(2), Decimal::new(235, 2));
+    /// assert_eq!(Decimal::new(-25, 1).round_half_up(0), Decimal::new(-3, 0));
+    /// ```
+    pub fn round_half_up(self, scale: u8) -> Self {
+        self.round(scale, |_| true)
+    }
+
+    /// Rescales to `scale` digits; `away_on_half` decides a tie from the
+    /// truncated quotient.
+    fn round(self, scale: u8, away_on_half: impl Fn(i128) -> bool) -> Self {
+        let dropped = match scale.cmp(&self.scale) {
+            std::cmp::Ordering::Equal => return self,
+            std::cmp::Ordering::Greater => {
+                let padding = 10i128.checked_pow(u32::from(scale - self.scale));
+                return match padding.and_then(|factor| self.units.checked_mul(factor)) {
+                    Some(units) => Self { units, scale },
+                    None => self,
+                };
+            }
+            std::cmp::Ordering::Less => self.scale - scale,
+        };
+        let Some(divisor) = 10i128.checked_pow(u32::from(dropped)) else {
+            // Every `i128` is below half of 10^39, so it rounds to zero.
+            return Self { units: 0, scale };
+        };
+        let quotient = self.units / divisor;
+        let twice_remainder = (self.units % divisor).unsigned_abs() * 2;
+        let away = match twice_remainder.cmp(&divisor.unsigned_abs()) {
+            std::cmp::Ordering::Greater => true,
+            std::cmp::Ordering::Equal => away_on_half(quotient),
+            std::cmp::Ordering::Less => false,
+        };
+        Self {
+            units: if away {
+                quotient + self.units.signum()
+            } else {
+                quotient
+            },
+            scale,
+        }
+    }
+
     /// The integer part of the absolute value and whether every fraction
     /// digit is zero: the CLDR operands `i` and `t = 0`.
     pub(crate) fn integer_part(self) -> (u128, bool) {
