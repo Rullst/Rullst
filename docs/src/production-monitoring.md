@@ -112,10 +112,10 @@ reason. Browsers cannot read the endpoint from another page; see below.
 ```rust,no_run
 # use rullst::monitor::Monitor;
 # use std::sync::Arc;
-# async fn run() -> Result<(), Box<dyn std::error::Error>> {
-let queue = Arc::new(rullst::Queue::sqlite("sqlite://jobs.db").await?);
+# fn monitor(queue: Arc<rullst::Queue>) -> Monitor {
+// The same Arc<Queue> the application's workers use.
 let monitor = Monitor::new().with_queue("default", queue.clone());
-# Ok(())
+# monitor
 # }
 ```
 
