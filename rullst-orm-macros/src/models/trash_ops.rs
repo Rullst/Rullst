@@ -423,23 +423,5 @@ fn restored_effects(parsed: &ParsedModel) -> TokenStream {
 }
 
 #[cfg(test)]
-mod tests {
-    use syn::{DeriveInput, parse_quote};
-
-    #[test]
-    fn restore_reads_the_restored_row_under_the_query_timeout() {
-        let input: DeriveInput = parse_quote! {
-            struct Note { id: i32, deleted_at: Option<String> }
-        };
-        let parsed = crate::parser::parse(&input).expect("parse model");
-        let generated = super::generate(&parsed).to_string();
-        let reread = generated
-            .split_once("let restored_row")
-            .expect("restored row lookup")
-            .1
-            .split_once("let restored =")
-            .expect("restored row binding")
-            .0;
-        assert!(reread.contains("get_query_timeout"));
-    }
-}
+#[path = "trash_ops_tests.rs"]
+mod tests;

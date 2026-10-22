@@ -165,3 +165,31 @@ fn auditable_save_locks_its_pre_image_before_the_update() {
     assert!(restore.contains("WHERE id = ? FOR UPDATE"));
     assert!(restore.contains("get_query_timeout"));
 }
+
+#[test]
+fn save_assigns_the_active_tenant_and_checks_the_policy() {
+    let input: DeriveInput = parse_quote! {
+        #[orm(table = "lessons", tenant_column = "tenant_id", policy = "LessonPolicy")]
+        struct Lesson { id: i32, tenant_id: String, title: String }
+    };
+    let parsed = crate::parser::parse(&input).expect("parse model");
+    let generated = super::generate(&parsed).to_string();
+    assert!(
+        generated.contains("self . tenant_id = tenant . try_into ()"),
+        "{generated}"
+    );
+    assert!(generated.contains("\"tenant context is required to save `{}`\" , \"lessons\""));
+    assert!(
+        generated.contains("< LessonPolicy as rullst_orm :: Policy < Self >> :: can_create (self)")
+    );
+    assert!(generated.contains("\"Policy prevents creation of this record\""));
+    assert!(
+        generated.contains("< LessonPolicy as rullst_orm :: Policy < Self >> :: can_update (self)")
+    );
+    assert!(generated.contains("\"Policy prevents updating this record\""));
+    assert!(
+        super::tenant_prepare(&parsed)
+            .to_string()
+            .contains("self . tenant_id = tenant . try_into ()")
+    );
+}

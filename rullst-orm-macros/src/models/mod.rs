@@ -130,3 +130,24 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use syn::{DeriveInput, parse_quote};
+
+    fn generated(input: DeriveInput) -> String {
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        super::generate(&parsed, &[]).to_string()
+    }
+
+    #[test]
+    fn only_tenant_models_partition_their_query_cache() {
+        let tenant = generated(parse_quote! {
+            #[orm(tenant_column = "tenant_id")]
+            struct Post { id: i32, tenant_id: String }
+        });
+        assert!(tenant.contains("pub const __RULLST_TENANT_SCOPED_CACHE : bool = true ;"));
+        let global = generated(parse_quote! { struct Post { id: i32 } });
+        assert!(global.contains("pub const __RULLST_TENANT_SCOPED_CACHE : bool = false ;"));
+    }
+}

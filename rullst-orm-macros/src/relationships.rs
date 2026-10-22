@@ -139,3 +139,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         eager_loads: quote! { #(#eager_loads)* },
     }
 }
+
+#[cfg(test)]
+#[path = "relationships_tests.rs"]
+mod tests;

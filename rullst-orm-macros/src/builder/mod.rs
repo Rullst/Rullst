@@ -208,3 +208,7 @@ mod tests {
         assert_eq!(soft_delete_where_clause(&cfg_lit, true), "is_deleted != 0");
     }
 }
+
+#[cfg(test)]
+#[path = "fragment_tests.rs"]
+mod fragment_tests;
