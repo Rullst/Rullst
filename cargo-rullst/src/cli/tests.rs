@@ -253,3 +253,25 @@ fn invalid_pkg_invocations_fail_instead_of_exiting_successfully() {
     .expect_err("an unknown pkg action must fail");
     assert!(typo.to_string().contains("unknown pkg action 'ad'"));
 }
+
+#[test]
+fn studio_starts_the_remote_mode_only_when_asked() {
+    let local = Cli::try_parse_from(["rullst", "studio"]).expect("local Studio");
+    assert!(matches!(
+        local.command,
+        Commands::Studio {
+            remote: false,
+            port: None
+        }
+    ));
+    let remote = Cli::try_parse_from(["rullst", "studio", "--remote", "--port", "7000"])
+        .expect("remote Studio");
+    assert!(matches!(
+        remote.command,
+        Commands::Studio {
+            remote: true,
+            port: Some(7000)
+        }
+    ));
+    assert!(Cli::try_parse_from(["rullst", "studio", "--port", "7000"]).is_err());
+}

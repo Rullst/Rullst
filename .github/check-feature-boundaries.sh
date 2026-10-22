@@ -101,6 +101,7 @@ rullst-core|scheduler-tz
 rullst-core|storage-s3
 rullst-core|storage-multipart
 rullst-core|telemetry
+rullst-studio|remote
 rullst-messaging|sqlite
 rullst-messaging|schedules-postgres
 rullst-messaging|webhooks

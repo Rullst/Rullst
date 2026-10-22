@@ -33,6 +33,10 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Fixes from alpha.2 dogfooding
 
+- Security support for prereleases: until 13.0.0, the latest published
+  prerelease is supported. Critical and High vulnerabilities are fixed in an
+  out-of-cycle prerelease and announced in a GitHub security advisory; earlier
+  prereleases are not patched (`SECURITY.md`).
 - New `cargo rullst make:pwa` makes an application from an HTML starter an
   installable Progressive Web App: a web app manifest, placeholder icons
   (192, 512, maskable 512, apple-touch), `/sw.js` and an `/offline` page
@@ -203,6 +207,26 @@ A prepared version section does not establish that its tag or crates exist.
   strict PostgreSQL pool (`strict-postgres`, also selected by
   `--all-features`). The list showed such a column as "unreadable" and the
   edit form left its checkbox unchecked, so saving the form wrote `0`.
+- New standalone Studio for remote projects, phase 2 of the production
+  monitor (plataforma report #28). `cargo install rullst-studio --features remote --locked`, then
+  `rullst-studio` (or `cargo rullst studio --remote`), serves Studio on
+  `127.0.0.1:5556` without an application process and shows the monitoring
+  document of each project you add (overview, routes, queues and N+1 pages,
+  with a project switcher). Tokens are stored in an owner-only file in your
+  configuration directory, encrypted with a key kept in your data directory.
+  Studio requires `https://` (or `http://` to loopback, for SSH tunnels),
+  never follows redirects and escapes every remote value. It is behind the
+  new non-default `remote` feature of `rullst-studio`, so applications that
+  enable Studio in development do not build its HTTP client or SQLite. See the
+  [production monitoring guide](docs/src/production-monitoring.md#watch-your-projects-from-studio).
+- The standalone Studio keeps history and alerts for the projects you mark as
+  watched (phase 3 of the production monitor): it reads them every 60 seconds
+  while it runs, charts request rate, 5xx rate, p95 latency and pending jobs
+  for the last hour, day or week from a bounded local SQLite file (seven
+  days), and fires per-project alerts (unreachable, 5xx rate, p95, pending
+  jobs, queue failures) with a cool-down, shown in Studio and optionally
+  posted to an `https://` webhook stored encrypted like the tokens. Nothing
+  new is collected on the servers.
 - `html!` gains `@match value { pattern if guard => { nodes } … }`: arms are
   Rust patterns (with `|` alternatives and `name @` bindings) and optional
   guards, bodies are `html!` nodes in braces with the usual escaping and

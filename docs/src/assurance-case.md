@@ -32,7 +32,7 @@ stable IDs such as `AUTH-06` or `STUDIO-01`. There are 19 models:
 | --- | --- |
 | Runtime and network identity | `TM-CORE-1` (readiness and drain), `TM-CORE-2` (client identity behind proxies) |
 | Identity | `TM-AUTH-1` (sessions, passwords, OAuth/OIDC, passkeys), `TM-CONNECT-1` (OAuth token generations) |
-| Administration and tooling | `TM-NEXUS-1` (admin CMS), `TM-STUDIO-1` (local control room), `TM-STUDIO-2` (production monitoring endpoint) |
+| Administration and tooling | `TM-NEXUS-1` (admin CMS), `TM-STUDIO-1` (local control room), `TM-STUDIO-2` (production monitoring endpoint), `TM-STUDIO-3` (Studio remote projects) |
 | Data | `TM-TENANT-1` (multi-tenant access), `TM-ORM-1` (document recovery) |
 | Request defenses | `TM-SEC-1` (payload contracts), `TM-SEC-2` (anomaly and proof-of-work admission), `TM-SEC-3` (security-event journal) |
 | Integrations | `TM-PAY-1` (webhooks and billing), `TM-MAIL-1` (outbound mail), `TM-MESSAGING-1` (messages and wire frames), `TM-AI-1` (prompts, RAG, tools) |
