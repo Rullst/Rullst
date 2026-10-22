@@ -2,6 +2,7 @@
 //! `scheduler-tz` feature) against the wall clock of a named IANA time zone.
 
 use super::cron_expression::CronSchedule;
+use crate::queue::{DeferralReason, ScheduleDeferral};
 use chrono::{DateTime, Utc};
 
 #[cfg(feature = "scheduler-tz")]
@@ -39,6 +40,47 @@ impl TaskSchedule {
             Self::Zoned(schedule) => schedule.next_after(after),
         }
     }
+}
+
+/// A deferrable task's deferral and the clock its windows are read on.
+pub(crate) enum TaskDeferral {
+    /// Windows at their own fixed UTC offsets, as
+    /// [`Scheduler::deferrable_task`](super::Scheduler::deferrable_task) uses.
+    Utc(ScheduleDeferral),
+    /// Windows read as wall times of a time zone.
+    #[cfg(feature = "scheduler-tz")]
+    Zoned(ScheduleDeferral, TimeZone),
+}
+
+impl TaskDeferral {
+    /// The start, in Unix milliseconds, of the run due at `tick_ms`.
+    pub(crate) fn start_for(&self, tick_ms: i64) -> (i64, DeferralReason) {
+        match self {
+            Self::Utc(deferral) => deferral.start_for(tick_ms),
+            #[cfg(feature = "scheduler-tz")]
+            Self::Zoned(deferral, zone) => deferral.start_for_zoned(
+                tick_ms,
+                |instant_ms| wall_ms(zone, instant_ms),
+                |wall| instant_ms(zone, wall),
+            ),
+        }
+    }
+}
+
+/// The wall time in `zone` of the instant `instant_ms`, as Unix milliseconds
+/// of that wall time read as UTC.
+#[cfg(feature = "scheduler-tz")]
+fn wall_ms(zone: &TimeZone, instant_ms: i64) -> Option<i64> {
+    let offset = zone.to_offset(Timestamp::from_millisecond(instant_ms).ok()?);
+    instant_ms.checked_add(i64::from(offset.seconds()) * 1_000)
+}
+
+/// The instant, in Unix milliseconds, of the wall time `wall` in `zone`, by
+/// the daylight-saving rule of [`instant_of_wall`].
+#[cfg(feature = "scheduler-tz")]
+fn instant_ms(zone: &TimeZone, wall: i64) -> Option<i64> {
+    let wall = DateTime::from_timestamp_millis(wall)?;
+    Some(instant_of_wall(zone, &wall)?.timestamp_millis())
 }
 
 /// Upper bound on the wall times one search examines. Only the repeated hour
@@ -83,19 +125,26 @@ impl ZonedCron {
 
     /// The instant at which the task runs for the wall time `wall`.
     fn instant_of(&self, wall: &DateTime<Utc>) -> Option<DateTime<Utc>> {
-        let civil = Offset::UTC.to_datetime(timestamp(wall)?);
-        match self.zone.to_ambiguous_timestamp(civil).offset() {
-            AmbiguousOffset::Unambiguous { offset } => shift(wall, -offset.seconds()),
-            // A wall time that a fold repeats runs once, at its first instant.
-            AmbiguousOffset::Fold { before, .. } => shift(wall, -before.seconds()),
-            // A wall time that a gap skips runs when the gap ends. Read with
-            // the later offset it lies before the transition, which is
-            // therefore the first one following it.
-            AmbiguousOffset::Gap { after, .. } => {
-                let inside_gap = timestamp(&shift(wall, -after.seconds())?)?;
-                let transition = self.zone.following(inside_gap).next()?;
-                DateTime::from_timestamp(transition.timestamp().as_second(), 0)
-            }
+        instant_of_wall(&self.zone, wall)
+    }
+}
+
+/// The instant of the wall time `wall` (a UTC value holding the wall clock)
+/// in `zone`.
+#[cfg(feature = "scheduler-tz")]
+fn instant_of_wall(zone: &TimeZone, wall: &DateTime<Utc>) -> Option<DateTime<Utc>> {
+    let civil = Offset::UTC.to_datetime(timestamp(wall)?);
+    match zone.to_ambiguous_timestamp(civil).offset() {
+        AmbiguousOffset::Unambiguous { offset } => shift(wall, -offset.seconds()),
+        // A wall time that a fold repeats runs once, at its first instant.
+        AmbiguousOffset::Fold { before, .. } => shift(wall, -before.seconds()),
+        // A wall time that a gap skips runs when the gap ends. Read with
+        // the later offset it lies before the transition, which is
+        // therefore the first one following it.
+        AmbiguousOffset::Gap { after, .. } => {
+            let inside_gap = timestamp(&shift(wall, -after.seconds())?)?;
+            let transition = zone.following(inside_gap).next()?;
+            DateTime::from_timestamp(transition.timestamp().as_second(), 0)
         }
     }
 }
@@ -181,8 +230,73 @@ impl Scheduler {
         });
         Ok(self)
     }
+
+    /// Registers a deferrable task, like [`Self::deferrable_task`], whose cron
+    /// fields and windows are wall times of the IANA time zone `time_zone`,
+    /// as for [`Self::task_in_tz`]. Requires the `scheduler-tz` feature.
+    /// Added in v13 (13.0.0-alpha.3).
+    ///
+    /// Ticks follow the daylight-saving rule of [`Self::task_in_tz`], and so
+    /// do window boundaries: a boundary that a gap skips moves to the first
+    /// instant after the gap, and one that a fold repeats is its first
+    /// occurrence. A window that a gap skips entirely does not open that day.
+    /// `max_delay` is real elapsed time after the tick. A
+    /// [`TimeWindow`](crate::queue::TimeWindow) of such a task must not set
+    /// a UTC offset, since the zone supplies it.
+    ///
+    /// ```
+    /// # extern crate rullst_core as rullst;
+    /// use rullst::Scheduler;
+    /// use rullst::queue::{ScheduleDeferral, TimeWindow};
+    /// use std::time::Duration;
+    ///
+    /// // The 18:00 São Paulo report may wait for 22:00–06:00 there.
+    /// let night = ScheduleDeferral::within(Duration::from_secs(12 * 3_600))?
+    ///     .window(TimeWindow::daily(22, 0, 6, 0)?)?;
+    /// let scheduler = Scheduler::new().deferrable_task_in_tz(
+    ///     "0 18 * * *",
+    ///     "America/Sao_Paulo",
+    ///     night,
+    ///     || async { /* build the report */ },
+    /// )?;
+    /// # drop(scheduler);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// # Errors
+    /// Returns [`SchedulerError::InvalidConfiguration`] when a window sets a
+    /// UTC offset, and [`SchedulerError::InvalidCron`] or
+    /// [`SchedulerError::InvalidTimeZone`] like [`Self::task_in_tz`].
+    pub fn deferrable_task_in_tz<F, Fut>(
+        self,
+        cron_expr: &str,
+        time_zone: &str,
+        deferral: ScheduleDeferral,
+        handler: F,
+    ) -> Result<Self, SchedulerError>
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        if deferral.has_utc_offset() {
+            return Err(SchedulerError::InvalidConfiguration(format!(
+                "the windows of a task in {time_zone} are wall times there; remove their UTC offset"
+            )));
+        }
+        let mut scheduler = self.task_in_tz(cron_expr, time_zone, handler)?;
+        if let Some(task) = scheduler.tasks.last_mut()
+            && let TaskSchedule::Zoned(schedule) = &task.schedule
+        {
+            task.deferral = Some(TaskDeferral::Zoned(deferral, schedule.zone.clone()));
+        }
+        Ok(scheduler)
+    }
 }
 
 #[cfg(all(test, feature = "scheduler-tz"))]
 #[path = "scheduler_zone_tests.rs"]
 mod tests;
+
+#[cfg(all(test, feature = "scheduler-tz"))]
+#[path = "scheduler_zone_deferral_tests.rs"]
+mod deferral_tests;

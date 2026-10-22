@@ -291,6 +291,63 @@ A prepared version section does not establish that its tag or crates exist.
   leave a new file that a second `initialize` refused. Other operations keep
   the single 5-second wait. Media's documentation now states that wait as
   5 seconds instead of 3.
+- **Breaking:** `Orm::transaction` returns its closure's error unchanged
+  after the rollback: it now returns `Result<R, E>`, where `E` is the
+  closure's error type and must implement `From<rullst_orm::Error>` and
+  `Display`, instead of `Result<R, rullst_orm::Error>`. A `UniqueViolation` or
+  `ForeignKeyViolation` inside the transaction keeps its variant and an
+  application error its type (alpha.2 turned both into
+  `Error::DatabaseError("Transaction failed: ...")`). Begin, commit and
+  post-commit failures arrive through `E::from`, so a commit rejected by a
+  deferred constraint is a typed violation too. A closure whose error type
+  lacks `From<rullst_orm::Error>`, such as `String`, no longer compiles; code
+  that matched `DatabaseError` on the result must match the closure's error;
+  `cargo rullst upgrade` reports `Orm::transaction` calls in files that
+  mention `DatabaseError` (`V13-ORM-TRANSACTION-ERRORS`). See the migration
+  guide.
+- Nexus shows and reads `DateTimeUtc` fields in the administrator's time
+  zone: the new `Nexus::with_time_zone(NexusTimeZone)` selects UTC (still the
+  default), a fixed offset (`NexusTimeZone::fixed_offset(-180)`) or, with the
+  new `tz` feature of `rullst-nexus` (`nexus-tz` in `rullst`), an IANA zone
+  (`NexusTimeZone::named("America/Sao_Paulo")`) whose rules come from `jiff`,
+  as for `Scheduler::task_in_tz`. The `datetime-local` input shows the stored
+  instant as a wall time in that zone, a submitted value without an offset is
+  read in that zone and stored as UTC, and the label names the zone instead of
+  `(UTC)`. A wall time that a daylight-saving gap skips answers `422` naming
+  the zone; one that a fold repeats is read as its earlier instant, and a
+  stored instant at the later occurrence is shown as its UTC value in a text
+  input so saving the form unchanged keeps it. alpha.2 always read such a
+  value as UTC. The CRUD form handlers take an extra
+  `Option<Extension<NexusTimeZone>>` argument.
+- Multipart uploads now remove the temporary files that a crashed or killed
+  process left behind. Before a process first writes a temporary file to a
+  `temp_dir`, and again after each further 24 hours, it removes the regular
+  files there named exactly `.rullst-upload-<32 lowercase hex digits>.part`
+  and last modified at least 24 hours ago, at most 1,000 per sweep (10,000
+  entries examined). Symbolic links, directories and other names are never
+  touched; an unreadable directory or a file that cannot be removed is a
+  `rullst::uploads` warning, and the upload continues. alpha.2 never removed
+  them.
+- New `Scheduler::deferrable_task_in_tz(expression, zone, deferral, handler)`
+  (feature `scheduler-tz`), the time-zone form of `deferrable_task`: its
+  ticks follow `task_in_tz` and its `TimeWindow`s are wall times of the same
+  IANA zone, so a 22:00–06:00 window stays local across daylight-saving
+  changes. A window boundary that a gap skips moves to the end of the gap,
+  one that a fold repeats is its first occurrence, and a window that a gap
+  skips entirely does not open that day. A window that sets
+  `with_utc_offset_minutes` is rejected with
+  `SchedulerError::InvalidConfiguration`. `deferrable_task` is unchanged.
+- The `Dockerfile` written by `cargo rullst new --docker`, `dockerize` and a
+  first `deploy` builds the dependencies in their own cached layer: a
+  `planner` stage keeps only the manifests, `Cargo.lock` and the toolchain
+  file, with `fn main() {}` standing in for each target and build script, and
+  the builder compiles that skeleton with `cargo build --release --locked`
+  before it copies the sources, so a change to the application's code no
+  longer recompiles every dependency. Workspace members, `src/bin` targets,
+  targets and build scripts with an explicit `path`/`build`, and
+  `rust-toolchain.toml` are kept; the distroless non-root runtime stage is
+  unchanged. Existing Dockerfiles are not rewritten; move one aside and run
+  `cargo rullst dockerize` to regenerate it.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

@@ -2,6 +2,7 @@
 
 use super::headers::FileMeta;
 use super::sniff::Sniffer;
+use super::sweep::{TEMP_PREFIX, TEMP_SUFFIX};
 use super::{MultipartError, MultipartPolicy};
 use crate::uploads::UploadKind;
 use std::fmt;
@@ -103,8 +104,10 @@ impl FileSink {
 
     /// Creates the temporary file and moves the bytes kept in memory to it.
     async fn open_spill(&mut self) -> Result<tokio::fs::File, MultipartError> {
+        // Leftovers of a crashed process are removed first, once a day.
+        super::sweep::sweep_stale(&self.temp_dir).await;
         let path = self.temp_dir.join(format!(
-            ".rullst-upload-{}.part",
+            "{TEMP_PREFIX}{}{TEMP_SUFFIX}",
             uuid::Uuid::new_v4().simple()
         ));
         let mut file = create_new(&path).await.map_err(storage)?;

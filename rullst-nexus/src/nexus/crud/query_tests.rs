@@ -1,4 +1,5 @@
 use super::*;
+use crate::nexus::NexusTimeZone;
 use crate::nexus::crud::form::typed_input;
 
 fn tenant_entry() -> RegistryEntry {
@@ -209,8 +210,14 @@ fn every_field_kind_has_a_label() {
     }
     // Input types come from the form renderer, which every build (Miri
     // included) compiles; its own tests cover each kind.
-    assert_eq!(typed_input(&FieldKind::Time, "").0, "time");
-    assert_eq!(typed_input(&FieldKind::DateTimeUtc, "").0, "datetime-local");
+    assert_eq!(
+        typed_input(&FieldKind::Time, "", &NexusTimeZone::utc()).0,
+        "time"
+    );
+    assert_eq!(
+        typed_input(&FieldKind::DateTimeUtc, "", &NexusTimeZone::utc()).0,
+        "datetime-local"
+    );
 }
 
 #[test]

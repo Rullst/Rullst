@@ -381,8 +381,11 @@ async fn register(email: String) -> Result<Option<Member>, Error> {
 }
 ```
 
-Match the typed error where the write returns it: `Orm::transaction` reports a
-failed closure as `DatabaseError("Transaction failed: ...")`.
+`Orm::transaction` returns its closure's error unchanged after the rollback,
+so a violation inside it keeps its variant too. The closure may return the
+application's own error type when it implements `From<rullst_orm::Error>` and
+`Display`; failures of the transaction itself, such as a commit rejected by a
+deferred constraint, arrive through that conversion.
 
 ### Query values
 

@@ -77,11 +77,40 @@ pub(crate) fn write_docker_files(
     };
 
     let dockerfile = format!(
-        r#"FROM rust:1.99.1-slim-bookworm AS builder
+        r#"# Dependency cache: this stage keeps only the manifests, Cargo.lock and the
+# toolchain file, with `fn main() {{}}` standing in for each target and build
+# script, so the dependency layer of the builder is rebuilt only when those
+# files, or the set of targets, change.
+FROM rust:1.99.1-slim-bookworm AS planner
 WORKDIR /app
 COPY . .
+RUN set -eu; out=/skeleton; \
+    find . -path ./target -prune -o -type f \( -name Cargo.toml -o -name Cargo.lock \
+        -o -name rust-toolchain -o -name rust-toolchain.toml \) -print \
+    | while IFS= read -r file; do \
+        mkdir -p "$out/$(dirname "$file")"; cp "$file" "$out/$file"; \
+        [ "$(basename "$file")" = Cargo.toml ] || continue; \
+        dir=$(dirname "$file"); \
+        for target in src/main.rs src/lib.rs build.rs \
+            $(cd "$dir" && find src/bin -name '*.rs' 2>/dev/null) \
+            $(sed -nE 's/^[[:space:]]*(path|build)[[:space:]]*=[[:space:]]*"([^"]*\.rs)".*/\2/p' "$file"); do \
+            if [ -f "$dir/$target" ]; then \
+                mkdir -p "$out/$dir/$(dirname "$target")"; \
+                echo 'fn main() {{}}' > "$out/$dir/$target"; \
+            fi; \
+        done; \
+    done
+
+FROM rust:1.99.1-slim-bookworm AS builder
+WORKDIR /app
+COPY --from=planner /skeleton/ ./
 # Generate and commit Cargo.lock before building this application image.
 RUN cargo build --release --locked
+COPY . .
+# The real sources replace the stand-ins; touching them makes Cargo rebuild the
+# application's own packages whatever modification time the copy gave them.
+RUN find . -path ./target -prune -o -type f -name '*.rs' -exec touch {{}} + \
+    && cargo build --release --locked
 # The runtime image has no shell, so its directory tree is prepared here.
 RUN install --directory --owner=10001 --group=10001 /runtime/app /runtime/app/data
 
@@ -125,6 +154,28 @@ mod tests {
         let dockerfile =
             fs::read_to_string(root.path().join("Dockerfile")).expect("generated Dockerfile");
         assert!(dockerfile.contains("FROM rust:1.99.1-slim-bookworm AS builder"));
+        // Dependencies build from the planner's skeleton before the sources
+        // are copied, and every build keeps `--locked`.
+        let builder = dockerfile
+            .split_once("FROM rust:1.99.1-slim-bookworm AS builder\n")
+            .expect("builder stage")
+            .1;
+        assert!(
+            builder.starts_with(
+                "WORKDIR /app\nCOPY --from=planner /skeleton/ ./\n# Generate and commit Cargo.lock before building this application image.\nRUN cargo build --release --locked\nCOPY . .\n"
+            ),
+            "{builder}"
+        );
+        assert!(builder.contains(
+            "RUN find . -path ./target -prune -o -type f -name '*.rs' -exec touch {} + \\\n    && cargo build --release --locked\n"
+        ));
+        assert!(dockerfile.starts_with("# Dependency cache:"));
+        assert!(dockerfile.contains("FROM rust:1.99.1-slim-bookworm AS planner\nWORKDIR /app\nCOPY . .\nRUN set -eu; out=/skeleton;"));
+        assert_eq!(dockerfile.matches("cargo build").count(), 2);
+        assert_eq!(
+            dockerfile.matches("cargo build --release --locked").count(),
+            2
+        );
         // The runtime stage is distroless: no shell, no package manager, and
         // the writable `/app/data` tree comes from the builder stage.
         let runtime = dockerfile
@@ -198,6 +249,114 @@ mod tests {
                 dockerignore.lines().any(|line| line == database),
                 "{database}"
             );
+        }
+    }
+
+    /// Runs the planner stage's script on a workspace with a member, build
+    /// script, extra binaries and a custom target path, writing the skeleton
+    /// to a temporary directory instead of `/skeleton`.
+    #[cfg(unix)]
+    #[test]
+    fn the_planner_keeps_manifests_and_stands_in_for_every_target() {
+        let root = tempfile::tempdir().expect("temporary project");
+        let out = tempfile::tempdir().expect("skeleton directory");
+        let project = root.path();
+        let write = |path: &str, text: &str| {
+            let path = project.join(path);
+            fs::create_dir_all(path.parent().expect("parent")).expect("directory");
+            fs::write(path, text).expect("fixture file");
+        };
+        write(
+            "Cargo.toml",
+            "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2024\"\nbuild = \"build.rs\"\n\n[[bin]]\nname = \"extra\"\npath = \"tools/extra.rs\"\n\n[dependencies]\nshared = { path = \"crates/shared\" }\n\n[workspace]\nmembers = [\"crates/*\"]\n",
+        );
+        write("Cargo.lock", "version = 4\n");
+        write("rust-toolchain.toml", "[toolchain]\nchannel = \"1.99.1\"\n");
+        write(
+            "build.rs",
+            "fn main() { println!(\"cargo:rerun-if-changed=build.rs\"); }\n",
+        );
+        write("src/main.rs", "mod routes;\nfn main() { routes::run(); }\n");
+        write("src/routes.rs", "pub fn run() {}\n");
+        write("src/bin/tool.rs", "fn main() { println!(\"tool\"); }\n");
+        write("tools/extra.rs", "fn main() {}\n");
+        write(
+            "crates/shared/Cargo.toml",
+            "[package]\nname = \"shared\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+        );
+        write("crates/shared/src/lib.rs", "pub mod util;\n");
+        write("crates/shared/src/util.rs", "pub fn helper() {}\n");
+        write("target/release/build/stale/Cargo.toml", "[package]\n");
+
+        write_docker_files(project, "demo", None, None).expect("Docker files");
+        let dockerfile = fs::read_to_string(project.join("Dockerfile")).expect("Dockerfile");
+        let script = dockerfile
+            .split_once("RUN ")
+            .and_then(|(_, rest)| rest.split_once("\n\nFROM "))
+            .expect("planner script")
+            .0
+            .replace("out=/skeleton", &format!("out='{}'", out.path().display()));
+        let status = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(&script)
+            .current_dir(project)
+            .status()
+            .expect("run the planner script");
+        assert!(status.success(), "{script}");
+
+        let skeleton = out.path();
+        for (path, text) in [
+            ("Cargo.lock", "version = 4\n"),
+            ("rust-toolchain.toml", "[toolchain]\nchannel = \"1.99.1\"\n"),
+            ("build.rs", "fn main() {}\n"),
+            ("src/main.rs", "fn main() {}\n"),
+            ("src/bin/tool.rs", "fn main() {}\n"),
+            ("tools/extra.rs", "fn main() {}\n"),
+            ("crates/shared/src/lib.rs", "fn main() {}\n"),
+        ] {
+            assert_eq!(
+                fs::read_to_string(skeleton.join(path)).expect(path),
+                text,
+                "{path}"
+            );
+        }
+        assert_eq!(
+            fs::read(skeleton.join("Cargo.toml")).expect("root manifest"),
+            fs::read(project.join("Cargo.toml")).expect("fixture manifest")
+        );
+        assert!(skeleton.join("crates/shared/Cargo.toml").is_file());
+        for absent in [
+            "src/routes.rs",
+            "crates/shared/src/util.rs",
+            "target",
+            "Dockerfile",
+        ] {
+            assert!(!skeleton.join(absent).exists(), "{absent}");
+        }
+        // Cargo reads the skeleton as the same workspace and targets.
+        let metadata = std::process::Command::new(env!("CARGO"))
+            .args([
+                "metadata",
+                "--no-deps",
+                "--offline",
+                "--format-version",
+                "1",
+            ])
+            .current_dir(skeleton)
+            .output()
+            .expect("cargo metadata");
+        assert!(
+            metadata.status.success(),
+            "{}",
+            String::from_utf8_lossy(&metadata.stderr)
+        );
+        let metadata = String::from_utf8_lossy(&metadata.stdout);
+        for target in [
+            "\"name\":\"extra\"",
+            "\"name\":\"tool\"",
+            "\"name\":\"shared\"",
+        ] {
+            assert!(metadata.contains(target), "{target}");
         }
     }
 

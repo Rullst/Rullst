@@ -47,9 +47,15 @@ text columns: `Date` (`YYYY-MM-DD`, year 0001 to 9999, from `NaiveDate`),
 `Time` (`HH:MM[:SS[.fraction]]`, a `time` input, from `NaiveTime`), `DateTime`
 (a local `datetime-local` value with a `T` or space separator, from
 `NaiveDateTime`) and `DateTimeUtc` (from `DateTime<Utc>`). A `datetime-local`
-input has no zone, so a `DateTimeUtc` field is labelled `(UTC)`, shows the
-stored instant converted to UTC and reads a submitted value without an offset
-as UTC; one with `Z`, `±HH:MM` or `±HH` is converted. In a text column a local
+input has no zone, so a `DateTimeUtc` field shows the stored instant as a wall
+time in the panel's time zone, reads a submitted value without an offset as a
+wall time in that zone and is labelled with its name; one with `Z`, `±HH:MM`
+or `±HH` is converted. The zone is UTC unless `Nexus::with_time_zone` selects
+a `NexusTimeZone::fixed_offset(minutes)` or, with the `tz` feature, an IANA
+`NexusTimeZone::named("America/Sao_Paulo")` (v13). There, a wall time that a
+daylight-saving gap skips answers `422`, and one that a fold repeats is read
+as its earlier instant; the later instant is shown as its UTC value in a text
+input so it round-trips. In a text column a local
 date-time is stored as `YYYY-MM-DD HH:MM:SS[.fraction]`, the text that
 `CURRENT_TIMESTAMP` and SQLx write, so text comparisons and ordering agree with
 application rows, and a `DateTimeUtc` value as RFC 3339

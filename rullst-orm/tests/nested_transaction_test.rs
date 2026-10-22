@@ -117,7 +117,10 @@ async fn nested_transactions_use_savepoints_of_the_outer_transaction() {
                 })
             })
             .await;
-            assert!(matches!(nested, Err(Error::DatabaseError(_))), "{nested:?}");
+            assert!(
+                matches!(&nested, Err(Error::Validation(message)) if message == "inner step failed"),
+                "the nested closure's own error: {nested:?}"
+            );
             insert("outer-after").await?;
             Ok::<(), Error>(())
         })
