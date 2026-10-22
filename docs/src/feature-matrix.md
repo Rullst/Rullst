@@ -108,6 +108,7 @@ the drivers.
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
 | `nexus` | no | The generated Nexus administration interface |
+| `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
@@ -418,6 +419,7 @@ The umbrella crate exposes this as `ai-sql-memory`, which also enables `ai`.
 | `rullst-nexus` | `strict-postgres` | PostgreSQL selection in Core and ORM |
 | `rullst-nexus` | `strict-mysql` | MySQL selection in Core and ORM |
 | `rullst-nexus` | `strict-sqlite` | SQLite selection in Core and ORM |
+| `rullst-nexus` | `tz` | v13: `NexusTimeZone::named` for `DateTimeUtc` form values in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
 | `rullst-studio` | `drivers-all` | All three SQLx drivers in Core and ORM (default) |
 | `rullst-studio` | `queue-sqlite` | Core's durable SQLite queue backend (default) |
 | `rullst-studio` | `strict-postgres` | PostgreSQL selection in Core and ORM |

@@ -338,7 +338,7 @@ async fn malformed_dates_and_times_are_validation_errors() {
         (
             "paid_at",
             "2026-10-15T09:30+25:00",
-            "must use a valid date-time; one without an offset is UTC",
+            "must use a valid date-time; one without an offset is in the panel's time zone",
         ),
     ] {
         let response = update_record(

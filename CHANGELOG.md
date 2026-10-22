@@ -211,6 +211,20 @@ A prepared version section does not establish that its tag or crates exist.
   lacks `From<rullst_orm::Error>`, such as `String`, no longer compiles; code
   that matched `DatabaseError` on the result must match the closure's error.
   See the migration guide.
+- Nexus shows and reads `DateTimeUtc` fields in the administrator's time
+  zone: the new `Nexus::with_time_zone(NexusTimeZone)` selects UTC (still the
+  default), a fixed offset (`NexusTimeZone::fixed_offset(-180)`) or, with the
+  new `tz` feature of `rullst-nexus` (`nexus-tz` in `rullst`), an IANA zone
+  (`NexusTimeZone::named("America/Sao_Paulo")`) whose rules come from `jiff`,
+  as for `Scheduler::task_in_tz`. The `datetime-local` input shows the stored
+  instant as a wall time in that zone, a submitted value without an offset is
+  read in that zone and stored as UTC, and the label names the zone instead of
+  `(UTC)`. A wall time that a daylight-saving gap skips answers `422` naming
+  the zone; one that a fold repeats is read as its earlier instant, and a
+  stored instant at the later occurrence is shown as its UTC value in a text
+  input so saving the form unchanged keeps it. alpha.2 always read such a
+  value as UTC. The CRUD form handlers take an extra
+  `Option<Extension<NexusTimeZone>>` argument.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
