@@ -27,17 +27,17 @@ pub(crate) struct Source {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Message {
     Single(String),
-    Plural { one: Option<String>, other: String },
+    /// Templates by CLDR category, in CLDR order (`other` last).
+    Plural(Vec<(&'static str, String)>),
 }
 
 impl Message {
     fn templates(&self) -> impl Iterator<Item = &String> {
-        match self {
-            Self::Single(text) => [None, Some(text)],
-            Self::Plural { one, other } => [one.as_ref(), Some(other)],
-        }
-        .into_iter()
-        .flatten()
+        let (single, forms) = match self {
+            Self::Single(text) => (Some(text), &[][..]),
+            Self::Plural(forms) => (None, &forms[..]),
+        };
+        single.into_iter().chain(forms.iter().map(|(_, text)| text))
     }
 }
 
@@ -200,12 +200,9 @@ fn flatten(
             toml::Value::String(text) => {
                 out.insert(key, Message::Single(text.clone()));
             }
-            toml::Value::Table(inner) if is_plural(inner) => match plural(inner) {
-                Ok(message) => {
-                    out.insert(key, message);
-                }
-                Err(message) => errors.push(format!("{file}: `{key}`: {message}")),
-            },
+            toml::Value::Table(inner) if is_plural(inner) => {
+                out.insert(key, plural(inner));
+            }
             toml::Value::Table(inner) => flatten(file, &key, inner, out, errors),
             _ => errors.push(format!("{file}: `{key}` must be a string or a table")),
         }
@@ -220,17 +217,16 @@ fn is_plural(table: &toml::Table) -> bool {
             .all(|(key, value)| CATEGORIES.contains(&key.as_str()) && value.is_str())
 }
 
-fn plural(table: &toml::Table) -> Result<Message, String> {
-    let form = |name: &str| table.get(name).and_then(|v| v.as_str()).map(str::to_owned);
-    if let Some(category) = table.keys().find(|k| *k != "one" && *k != "other") {
-        return Err(format!(
-            "plural form `{category}` is not supported; Rullst selects only `one` and `other`"
-        ));
-    }
-    Ok(Message::Plural {
-        one: form("one"),
-        other: form("other").unwrap_or_default(),
-    })
+/// The forms of a table that [`is_plural`] accepted, in CLDR order.
+fn plural(table: &toml::Table) -> Message {
+    let forms = CATEGORIES
+        .iter()
+        .filter_map(|category| {
+            let text = table.get(*category)?.as_str()?;
+            Some((*category, text.to_owned()))
+        })
+        .collect();
+    Message::Plural(forms)
 }
 
 /// Checks that keys, message shapes and placeholders agree in every locale.
@@ -256,8 +252,8 @@ fn validate(locales: &[LocaleCatalog], errors: &mut Errors) {
                 reference = Some((locale, message, names));
                 continue;
             };
-            let plural = matches!(message, Message::Plural { .. });
-            if plural != matches!(first_message, Message::Plural { .. }) {
+            let plural = matches!(message, Message::Plural(_));
+            if plural != matches!(first_message, Message::Plural(_)) {
                 let (plural_file, single_file) = if plural {
                     (&locale.file, &first.file)
                 } else {
@@ -300,25 +296,49 @@ fn placeholders(
     Some(names)
 }
 
+/// Checks that a plural message defines exactly the forms its locale's
+/// rule selects (`many` may be left out where it only means millions).
 fn check_plural(locale: &LocaleCatalog, key: &str, message: &Message, errors: &mut Errors) {
-    let Message::Plural { one, .. } = message else {
+    let Message::Plural(forms) = message else {
         return;
     };
-    match locale.rule {
-        None => errors.push(format!(
-            "{}: `{key}` is a plural message, but Rullst has no plural rule for `{}` \
-             (supported: {PLURAL_LANGUAGES}); use separate keys instead",
-            locale.file, locale.tag
-        )),
-        Some(rule) if rule.has_one() && one.is_none() => errors.push(format!(
-            "{}: plural message `{key}` needs a `one` form for `{}`",
-            locale.file, locale.tag
-        )),
-        Some(rule) if !rule.has_one() && one.is_some() => errors.push(format!(
-            "{}: `{}` has no `one` plural form; remove `one` from `{key}`",
-            locale.file, locale.tag
-        )),
-        Some(_) => {}
+    let (file, tag) = (&locale.file, &locale.tag);
+    let Some(rule) = locale.rule else {
+        errors.push(format!(
+            "{file}: `{key}` is a plural message, but Rullst has no plural rule for `{tag}` \
+             (supported: {PLURAL_LANGUAGES}); use separate keys instead"
+        ));
+        return;
+    };
+    let missing: Vec<&str> = rule
+        .required()
+        .iter()
+        .copied()
+        .filter(|category| !forms.iter().any(|(defined, _)| defined == category))
+        .collect();
+    if !missing.is_empty() {
+        let needs = match &missing[..] {
+            [one] => format!("a `{one}` form"),
+            _ => format!("{} forms", and_list(&missing)),
+        };
+        errors.push(format!(
+            "{file}: plural message `{key}` needs {needs} for `{tag}`, which uses {}",
+            and_list(rule.required())
+        ));
+    }
+    for (category, _) in forms.iter().filter(|(category, _)| !rule.allows(category)) {
+        errors.push(format!(
+            "{file}: `{tag}` has no `{category}` plural form; remove `{category}` from `{key}`"
+        ));
+    }
+}
+
+/// "`a`", "`a` and `b`", "`a`, `b` and `c`".
+fn and_list(items: &[&str]) -> String {
+    let quoted: Vec<String> = items.iter().map(|item| format!("`{item}`")).collect();
+    match quoted.split_last() {
+        Some((last, rest)) if !rest.is_empty() => format!("{} and {last}", rest.join(", ")),
+        _ => quoted.concat(),
     }
 }
 

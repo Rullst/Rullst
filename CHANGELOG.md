@@ -219,6 +219,42 @@ A prepared version section does not establish that its tag or crates exist.
   jobs, queue failures) with a cool-down, shown in Studio and optionally
   posted to an `https://` webhook stored encrypted like the tokens. Nothing
   new is collected on the servers.
+- `html!` gains `@match value { pattern if guard => { nodes } … }`: arms are
+  Rust patterns (with `|` alternatives and `name @` bindings) and optional
+  guards, bodies are `html!` nodes in braces with the usual escaping and
+  `Markup` rules, and the compiler checks exhaustiveness at your tokens. An
+  arm without braces is a compile error that shows the braced form. Other
+  `@` forms (`@while`, `@let`) remain compile errors, whose message now lists
+  `@match`.
+- i18n plural messages follow CLDR's cardinal rules for `ar`, `cs`, `de`,
+  `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`/`pt-BR`,
+  `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, with every category the language
+  uses (`zero`, `one`, `two`, `few`, `many`, `other`). `catalog!` requires
+  exactly those categories and names a missing one in the compile error, so
+  a `ru` or `pl` message with `one`/`few`/`many`/`other` now compiles. In
+  `es`, `fr`, `it` and `pt` the `many` form (exact millions) is optional and
+  falls back to `other`. Catalogs and integer counts that worked in alpha.2
+  select the same forms. New `rullst::i18n::Decimal` (units and visible
+  fraction digits, parsed from strings such as `"1.50"`) can be passed as
+  `count`, since CLDR selects by fraction digits too (`1.0` is English
+  `other`), and `Locale::plural_category` returns the new `PluralCategory`
+  without a catalog.
+- Adding or removing an i18n locale file can now rebuild the crate: the
+  i18n guide's setup adds a `build.rs` with
+  `println!("cargo::rerun-if-changed=locales");`, which makes Cargo rescan the
+  directory before each build (stable Rust gives `catalog!` no way to watch a
+  directory itself; edits to existing files were already tracked). Existing
+  applications add the same three-line `build.rs`.
+- `rullst::i18n::Locale` formats numbers, percentages, money and dates with
+  CLDR 48 conventions compiled in for `ar`, `cs`, `de`, `en`, `en-GB`, `es`,
+  `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`, `tr`,
+  `uk` and `zh` (other tags use their language's data, else `en`'s):
+  `format_number`, `format_percent`, `format_currency` (integer minor units
+  and the new `Currency`, with localized symbols for BRL, USD, EUR, GBP and
+  JPY), `format_date`, `format_time` and `format_datetime` (any `chrono` date
+  or time, with the new `DateStyle` and `TimeStyle`), for example
+  `R$ 1.234,56` and `22/10/2026` in `pt-BR`. `Decimal` gains
+  `round_half_even` and `round_half_up`. No new dependency.
 - **Behaviour change:** while the `up()` or `down()` of a migration that
   returns `true` from `within_transaction()` runs, `Orm::pool()`,
   `Orm::read_pool()`, `Orm::try_pool()`, `Orm::try_read_pool()` and

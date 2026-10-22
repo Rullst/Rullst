@@ -1943,11 +1943,18 @@ the same server-authoritative controls.
   `@if let PATTERN = value`), `@else if …`, `@else { … }` and
   `@for PATTERN in iterable { … }` take `html!` nodes in their braces; the
   heads are parsed like Rust's own `if`/`for` heads and keep caller name
-  resolution. No other node can start with `@`, so the forms are
-  unambiguous. A plain `else` after an `@if` body and any other `@` form
-  (`@match`, `@let`, `@while`) are compile-time errors: `match` and other
-  control flow stay Rust expressions that return `Markup` inside `{…}`,
-  which keeps the grammar small without losing expressiveness.
+  resolution. Since 13.0.0-alpha.3, `@match value { PATTERN => { … } … }`
+  does the same for `match`: each arm is a Rust pattern (`|` alternatives
+  and `name @` bindings included) with an optional `if` guard, its body is
+  in braces, and commas between arms are optional. The arms expand to a
+  Rust `match`, so exhaustiveness and pattern errors are reported by the
+  compiler at the caller's tokens, and bodies follow the same escaping and
+  `Markup` rules as every other node. An arm body without braces is a
+  compile-time error that shows the braced form. No other node can start
+  with `@`, so the forms are unambiguous. A plain `else` after an `@if` body
+  and any other `@` form (`@let`, `@while`, `@loop`) are compile-time
+  errors: other control flow stays a Rust expression that returns `Markup`
+  inside `{…}`.
 * **Element names and the doctype:** Element names (opening and closing) may
   be Rust keywords, such as SVG's `<use>`. A leading `<!DOCTYPE html>` (any
   letter case) is emitted as written; it must precede every other node
@@ -1982,7 +1989,7 @@ the same server-authoritative controls.
   let card = html! { <section>{rendered}</section> };
   assert!(card.starts_with("<section><div class=\"user-badge\">"));
 
-  // Bare and conditional attributes, `@if` and `@for`.
+  // Bare and conditional attributes, `@if`, `@for` and `@match`.
   let tasks = [("Write tests", true), ("<Ship>", false)];
   let list = html! {
       <ul>
@@ -1991,11 +1998,17 @@ the same server-authoritative controls.
           }
       </ul>
       @if tasks.is_empty() { <p>"Nothing to do"</p> }
+      @match tasks.iter().filter(|(_, done)| !done).count() {
+          0 => { <p>"All done"</p> }
+          1 => { <p>"One task left"</p> }
+          left => { <p>{left} " tasks left"</p> }
+      }
   };
   assert_eq!(
       list,
       "<ul><li><input type=\"checkbox\" disabled checked />Write tests</li>\
-       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>"
+       <li><input type=\"checkbox\" disabled />&lt;Ship&gt;</li></ul>\
+       <p>One task left</p>"
   );
   ```
 
@@ -2011,14 +2024,20 @@ the same server-authoritative controls.
   `language[-Script][-REGION]` in canonical case. Nested tables form dotted
   keys of ASCII letters, digits, `_` and `-`. A table whose entries are all
   strings named after CLDR categories and that has `other` is a plural
-  message; only `one` and `other` are accepted. Templates use `{name}`
+  message; since 13.0.0-alpha.3 any of `zero`, `one`, `two`, `few`, `many`
+  and `other` the locale's rule selects is accepted. Templates use `{name}`
   placeholders (Rust identifiers that are not keywords) and `{{`/`}}`.
 * **Compile-time checks:** the build fails on a key missing from any locale,
   differing placeholder sets or plural/single shapes between locales, a
   malformed template, a plural message whose forms do not match the locale's
   rule, a non-canonical file tag, and a `default` without a file (at most 30
   catalog errors are listed). Each file is tracked with `include_bytes!`, so
-  edits rebuild the crate; adding a file needs a rebuild trigger.
+  edits rebuild the crate. Stable Rust gives a macro no way to watch a
+  directory, so the documented setup adds a `build.rs` printing
+  `cargo::rerun-if-changed=<dir>`: Cargo then rescans the directory and
+  rebuilds the crate when a locale file is added or removed
+  (`rullst-macros/tests/locale_rebuild.rs` builds a probe crate with and
+  without it).
 * **Generated items:** in the invoking module, `pub static LOCALES:
   rullst::i18n::Locales` (tags sorted, default index) and `macro_rules! t`
   re-exported with `pub(crate) use t;`. `t!(locale, "key", name = expr, …)`
@@ -2032,13 +2051,26 @@ the same server-authoritative controls.
   text and attributes; arguments use `Display`. A key ending in `_html`
   returns `Markup`: its catalog template is trusted and its arguments are
   HTML-escaped.
-* **Plural rules:** `count` accepts any integer through `PluralCount` (the
-  absolute value, saturating at `u64::MAX`). `one` is selected for exactly 1
-  in `en`, `es`, `de`, `it`, `nl` and `pt-PT`, for 0 and 1 in `pt`, `pt-BR`
-  and `fr` (any region for `fr`), never in `ja`, `zh` and `ko` (which must
-  not define `one`). A plural message in any other language or Portuguese
-  region is a compile error. CLDR's `many` (millions in `es`, `fr`, `it`,
-  `pt`) uses `other`.
+* **Plural rules:** Since 13.0.0-alpha.3 forms are selected with CLDR's
+  cardinal rules (checked against CLDR 48's sample numbers) for `ar`, `cs`,
+  `de`, `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt` (`pt`,
+  `pt-BR`), `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, any region or script.
+  A plural message must define exactly the categories its locale's rule
+  selects: `other` only in `ja`, `ko` and `zh`; `one`/`other` in `de`, `en`,
+  `nl` and `tr`; `one`/`few`/`many`/`other` in `cs`, `pl`, `ru` and `uk`;
+  `one`/`few`/`other` in `ro`; `one`/`two`/`other` in `he`; all six in `ar`.
+  `es`, `fr`, `it`, `pt` and `pt-PT` need `one`/`other` and may add `many`,
+  which CLDR selects for exact millions (`other` is used when it is left
+  out). A missing category is a compile error naming it; a category the rule
+  never selects is one too. A plural message in another language, or a
+  Portuguese region other than Brazil and Portugal, is a compile error.
+  `count` accepts any integer and `rullst::i18n::Decimal` through
+  `PluralCount` (the absolute value; integers beyond `u64` saturate). A
+  `Decimal` keeps its visible fraction digits, which CLDR's operands read
+  (`1.0` is English `other`, `1.5` is French `one`); compact exponents are
+  not modelled. `Locale::plural_category(count)` returns the
+  `PluralCategory` (`#[non_exhaustive]`), or `None` for a language without a
+  rule.
 * **Message selection:** a call selects the catalog locale with the
   `Locale`'s tag, else one with the same language (the catalog default
   first), else the catalog default, so a `Locale` from another crate's list
@@ -2077,8 +2109,34 @@ the same server-authoritative controls.
   `csrf_middleware`/security baseline; the route does not exempt itself.
 * **Page language:** handlers pass `locale.tag()` to
   `render_page_with_lang` for `<html lang>`.
-* **Out of scope:** runtime-loaded catalogs, other plural categories,
-  script-aware matching, and date/number formatting. `rullst-mail`'s
+* **Formatting:** Since 13.0.0-alpha.3 `Locale::format_number(impl
+  Into<Decimal>)`, `format_percent(ratio)`, `format_currency(minor_units:
+  i64, Currency)`, `format_date(&impl chrono::Datelike, DateStyle)`,
+  `format_time(&impl chrono::Timelike, TimeStyle)` and `format_datetime`
+  return `String`s with CLDR 48 conventions compiled in (generated from ICU
+  78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
+  runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,
+  `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`,
+  `tr`, `uk` and `zh`; another tag uses its `language-REGION` entry, else its
+  language's, else `en`'s (`Locale::format_data_tag`). Numbers use the
+  locale's decimal and grouping separators, minimum grouping digits (`es`,
+  `it`, `pl`, `pt-PT` write `1234`), minus sign and Latin digits, and show
+  every fraction digit of the `Decimal` (`Decimal::round_half_even` and
+  `round_half_up` round explicitly). Percentages multiply the ratio by 100.
+  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants with localized
+  symbols; `Currency::new(code, minor_digits)` for other ISO codes, written
+  as the code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts
+  in integer minor units, so no floating-point rounding occurs. `DateStyle`
+  is `Short`, `Medium`, `Long`, `Full` (CLDR's date formats) or `Numeric`
+  (CLDR's `yMd` skeleton); `TimeStyle` is `Short` or `Medium` (no zone
+  names); both are `#[non_exhaustive]`. Date and time are joined with CLDR's
+  date-time format for the date style (ICU's `atTime` variant for `Long` and
+  `Full`; `Numeric` joins like `Short`). Values are formatted in their own
+  offset; years before 1 are written as ISO numbers. Outputs keep CLDR's
+  U+202F and U+00A0 spaces. Tests compare every locale with ICU output.
+* **Out of scope:** runtime-loaded catalogs, ordinal plural rules,
+  script-aware matching, compact and spelled-out numbers, time zone names,
+  non-Gregorian calendars and non-Latin digits. `rullst-mail`'s
   `MailLocale` remains separate (`MailLocale::from_preference(locale.tag())`).
 
 ### 4.3. Durable Queue Timing and Completion History

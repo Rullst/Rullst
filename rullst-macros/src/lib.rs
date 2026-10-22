@@ -63,9 +63,12 @@ mod server_function;
 ///
 /// # Control flow
 ///
-/// `@if`/`@else if`/`@else` (including `@if let`) and `@for pattern in
-/// iterable` take `html!` nodes in their braces. For `match` and other
-/// control flow, interpolate a Rust expression that returns `Markup`.
+/// `@if`/`@else if`/`@else` (including `@if let`), `@for pattern in
+/// iterable` and `@match value { pattern if guard => { … } … }` take `html!`
+/// nodes in their braces. `@match` arms are Rust patterns with optional
+/// guards; each body is in braces and the commas between arms are optional.
+/// Rust checks the patterns and exhaustiveness as for its own `match`. For
+/// other control flow, interpolate a Rust expression that returns `Markup`.
 ///
 /// ```rust,ignore
 /// use rullst::html;
@@ -80,10 +83,16 @@ mod server_function;
 ///         }
 ///     </ul>
 ///     <button disabled?={items.is_empty()}>"Export"</button>
+///     @match items.len() {
+///         0 => { <p>"No items"</p> }
+///         n if n > 9 => { <p>"Many items"</p> }
+///         n => { <p>{n} " items"</p> }
+///     }
 /// };
 /// assert_eq!(
 ///     page,
-///     "<p>Hi Ana</p><ul><li aria-current=\"true\">a</li><li>b</li></ul><button>Export</button>"
+///     "<p>Hi Ana</p><ul><li aria-current=\"true\">a</li><li>b</li></ul>\
+///      <button>Export</button><p>2 items</p>"
 /// );
 /// ```
 ///
