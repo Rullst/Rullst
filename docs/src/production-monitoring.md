@@ -1,7 +1,7 @@
 # Production monitoring endpoint
 
-Rullst Studio is a development tool: it runs only in debug builds, on
-`127.0.0.1:5555`, and reads the local process. To watch an application in
+Rullst Studio's local pages are a development tool: they run only in debug
+builds, on `127.0.0.1:5555`, and read the local process. To watch an application in
 staging or production, 13.0.0-alpha.3 adds a read-only monitoring endpoint to
 the application itself:
 
@@ -12,11 +12,11 @@ GET /_rullst/monitor/v1
 It answers a JSON document, versioned as `rullst.monitor.v1`, with request
 rates and latency per route pattern, status classes, queue depth and worker
 activity, possible N+1 queries and the process radar. It never contains
-database rows, request data or configuration. This is phase 1 of the
-[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3):
-phase 2 adds a "remote projects" mode to Studio on your machine that reads this
-endpoint for several projects. Until then, any HTTPS client (curl, a script, an
-uptime tool) can read it.
+database rows, request data or configuration. It is phase 1 of the
+[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3);
+phase 2 is the [standalone Studio](#watch-your-projects-from-studio) on your
+machine, which reads this endpoint for several projects. Any HTTPS client
+(curl, a script, an uptime tool) can read it too.
 
 The endpoint is **off by default**. The threat model is
 [`TM-STUDIO-2`](threat-models.md#tm-studio-2--production-monitoring-endpoint).
@@ -280,6 +280,72 @@ addresses, user identifiers, request or response bodies, SQL text or bound
 values, error messages, environment variables or configuration values. Route
 patterns and queue names are chosen by your code, so keep personal data out of
 them.
+
+## Watch your projects from Studio
+
+The standalone Studio runs on your machine, without an application process,
+and shows the document of each project you add: overview (radar, request
+rate, error rate, latency), routes, queues and N+1 findings, with a project
+switcher in the header. It only connects outwards to your projects; nothing
+new is collected or stored on the servers.
+
+```bash
+cargo install rullst-studio
+rullst-studio                  # http://127.0.0.1:5556/studio
+# or, with the CLI installed:
+cargo rullst studio --remote   # --port 7000 for another port
+```
+
+It listens on `127.0.0.1` only, with the same protections as Studio's local
+pages: loopback peer and `Host`, same-origin forms, and a per-process form
+token. Its pages are the remote ones only: the data browser, `.env` viewer,
+AI and API playgrounds and migration pages do not exist in this mode.
+
+### Add a project
+
+On the **Projects** page, enter a name, the project's base URL and one of the
+tokens of its `RULLST_MONITOR_TOKENS`; give each machine its own token, so you
+can revoke it alone. Studio reads `<base URL>_rullst/monitor/v1`.
+
+- The base URL must use `https://`, or `http://` to a loopback address such as
+  `http://127.0.0.1:9000` (an SSH tunnel). User information, query strings and
+  fragments are refused. Certificates are always validated.
+- The token is sent only as `Authorization: Bearer` to that origin. Studio
+  follows no redirect (a redirect is shown as a status), ignores
+  `HTTP_PROXY`/`HTTPS_PROXY`, and reads at most 1 MiB within 5 seconds.
+  Anything else (an unreachable host, `401`, `426`, an invalid document) is a
+  status on the page, never the remote body.
+- Every value from a project is HTML-escaped: a hostile or compromised
+  application cannot run script in Studio.
+
+### Where your tokens are kept
+
+| File | Location (Linux and macOS / Windows) | Contents |
+| --- | --- | --- |
+| Project list | `$XDG_CONFIG_HOME/rullst/studio/projects.json` (default `~/.config/…`) / `%APPDATA%\rullst\studio\projects.json` | Names, base URLs, encrypted tokens |
+| Key | `$XDG_DATA_HOME/rullst/studio/projects.key` (default `~/.local/share/…`) / `%LOCALAPPDATA%\rullst\studio\projects.key` | 32 random bytes |
+
+Both are created owner-only (`0600` in `0700` directories on Unix) and never
+followed through a symlink; Studio warns when either is readable by other
+users. Each token is encrypted with AES-256-GCM and bound to its project name
+and base URL: if someone edits the URL in the file, the token no longer
+decrypts and is never sent to the new address (remove and add the project
+again). A copy of the project list alone (a dotfile repository, a backup of
+`~/.config`) reveals no token. Malware running as your user can still read
+both files; the operating system keychain is not used.
+
+### Reaching private servers
+
+Studio does not open tunnels itself. Use the tool you already trust:
+
+- **SSH tunnel:** `ssh -N -L 9000:127.0.0.1:3000 deploy@server`, then add
+  `http://127.0.0.1:9000`. On the server, call
+  `Monitor::allow_loopback_plaintext(true)` so the application accepts the
+  tunnel's plain HTTP from loopback in production.
+- **WireGuard or Tailscale:** the monitor still requires TLS evidence in
+  production, so put the application's reverse proxy (with HTTPS) on the VPN
+  address, or use `tailscale serve` to publish it over HTTPS, and add that
+  `https://` URL. Restrict `/_rullst/monitor/` to the VPN range in the proxy.
 
 ## Limits
 

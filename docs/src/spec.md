@@ -3959,6 +3959,40 @@ by the application, which a later Studio "remote projects" mode reads. Guide:
   and attributes operations only inside a recording scope. A release-build
   measurement adds about 0.6 µs per request (guide, "Overhead").
 
+### 10.1.2. Studio remote projects (v13, 13.0.0-alpha.3)
+
+Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
+[production monitoring](production-monitoring.md#watch-your-projects-from-studio).
+
+* **Process.** `rullst_studio::remote::run_remote_studio` (the `rullst-studio`
+  binary, also started by `cargo rullst studio --remote`) listens on
+  `127.0.0.1` only (default port 5556) and needs no application process. Its
+  router applies Studio's loopback boundary (loopback peer and `Host`,
+  same-origin `Origin` on unsafe methods, crate-private marker) in release
+  builds too, and mounts only `/studio` (projects), `/studio/radar`,
+  `/studio/routes`, `/studio/queues`, `/studio/queries` and the assets; local
+  surfaces (data browser, `.env`, AI, API, migrations, jobs, cache,
+  features, requests) answer `404`. Add and remove forms also require a
+  random per-process form token compared in constant time.
+* **Storage.** `projects.json` in `$XDG_CONFIG_HOME`/`~/.config`/`%APPDATA%`
+  under `rullst/studio`, and `projects.key` (32 random bytes) under the data
+  directory (`$XDG_DATA_HOME`/`~/.local/share`/`%LOCALAPPDATA%`). Files are
+  written atomically, owner-only (`0600` in `0700` directories on Unix), read
+  with a size bound, never through a symlink; unknown fields are rejected. At
+  most 32 projects; names are 1–48 of `[A-Za-z0-9._-]` starting with a letter
+  or digit. Tokens are sealed with AES-256-GCM (random 96-bit nonce) with
+  the project name and normalized base URL as associated data; a token that
+  does not decrypt is reported and never sent.
+* **Requests.** Base URLs are `https://`, or `http://` to a loopback host,
+  without user information, query or fragment. Studio sends
+  `GET <base>_rullst/monitor/v1` with `Authorization: Bearer`, follows no
+  redirect, ignores proxy variables, validates certificates, and bounds each
+  read to 1 MiB, 5 s total and 3 s to connect. It accepts only `200`, a JSON
+  content type and `schema: "rullst.monitor.v1"` with bounded lists (512
+  routes, 128 findings, 32 queues) and labels (512 characters); unknown fields
+  are ignored. Failures are fixed statuses; every remote value is
+  HTML-escaped.
+
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
 * **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.

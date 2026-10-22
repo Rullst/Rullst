@@ -73,6 +73,23 @@ so importing the raw browser, `jobs_monitor` or `feature_flags` router cannot
 turn those handlers into an unprotected write API; without the marker they
 return `403`.
 
+### Remote projects (v13, 13.0.0-alpha.3)
+
+The `rullst-studio` binary (`cargo install rullst-studio`, then
+`rullst-studio [--port PORT]`, or `cargo rullst studio --remote`) serves
+Studio on `127.0.0.1:5556` without an application process and reads the
+read-only `/_rullst/monitor/v1` document of the projects you add: overview,
+routes, queues and N+1 pages with a project switcher. It keeps the loopback
+`Host`, same-origin and marker checks above, adds a per-process form token,
+and runs in release builds because it serves no local data: the data
+browser, `.env` viewer, AI and API playgrounds and migration pages are not
+mounted. Projects are stored owner-only in the user's configuration
+directory, with each token AES-256-GCM encrypted under a key in the data
+directory and bound to its name and base URL. Requests require `https://`
+(or `http://` to loopback), follow no redirects, ignore proxy variables and
+read at most 1 MiB in 5 seconds. See the
+[production monitoring guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md#watch-your-projects-from-studio).
+
 **Database selection:** Studio uses the process-wide ORM pool that the
 application initialized (`Server`, Artisan or an explicit `Orm::init`). When no
 pool exists yet, the first database view initializes it once with the resolver

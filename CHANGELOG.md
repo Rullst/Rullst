@@ -199,6 +199,16 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- New standalone Studio for remote projects, phase 2 of the production
+  monitor (plataforma report #28). `cargo install rullst-studio`, then
+  `rullst-studio` (or `cargo rullst studio --remote`), serves Studio on
+  `127.0.0.1:5556` without an application process and shows the monitoring
+  document of each project you add (overview, routes, queues and N+1 pages,
+  with a project switcher). Tokens are stored in an owner-only file in your
+  configuration directory, encrypted with a key kept in your data directory.
+  Studio requires `https://` (or `http://` to loopback, for SSH tunnels),
+  never follows redirects and escapes every remote value. See the
+  [production monitoring guide](docs/src/production-monitoring.md#watch-your-projects-from-studio).
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
