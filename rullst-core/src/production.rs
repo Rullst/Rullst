@@ -360,4 +360,61 @@ mod tests {
         ));
         assert_eq!(AcademyCheckStatus::Skipped.as_str(), "SKIPPED");
     }
+
+    #[test]
+    fn academy_assessment_keeps_each_observation_on_its_own_requirement() {
+        let preset = ProductionPreset::academy();
+        let assessments = preset
+            .assess([
+                (
+                    AcademyProductionRequirement::SchoolMembership,
+                    AcademyCheckStatus::Skipped,
+                ),
+                (
+                    AcademyProductionRequirement::AuthenticatedIdentity,
+                    AcademyCheckStatus::Fail,
+                ),
+                (
+                    AcademyProductionRequirement::TenantIsolation,
+                    AcademyCheckStatus::Pass,
+                ),
+            ])
+            .expect("distinct observations");
+        let observed = assessments
+            .iter()
+            .map(|assessment| {
+                (
+                    assessment.requirement().as_str(),
+                    assessment.status().as_str(),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            observed,
+            [
+                ("authenticated_identity", "FAIL"),
+                ("school_membership", "SKIPPED"),
+                ("active_entitlement", "NOT_EVALUATED"),
+                ("object_authorization", "NOT_EVALUATED"),
+                ("tenant_isolation", "PASS"),
+                ("server_validated_assessment", "NOT_EVALUATED"),
+                ("idempotent_score_events", "NOT_EVALUATED"),
+                ("durable_automation", "NOT_EVALUATED"),
+                ("durable_admin_audit", "NOT_EVALUATED"),
+                ("safe_content_pipeline", "NOT_EVALUATED"),
+                ("privacy_lifecycle", "NOT_EVALUATED"),
+                ("distributed_abuse_control", "NOT_EVALUATED"),
+            ]
+        );
+        assert_eq!(
+            preset.validate([(
+                AcademyProductionRequirement::AuthenticatedIdentity,
+                AcademyCheckStatus::Fail,
+            )]),
+            Err(AcademyPresetError::RequirementNotPassed {
+                requirement: AcademyProductionRequirement::AuthenticatedIdentity,
+                status: AcademyCheckStatus::Fail,
+            })
+        );
+    }
 }
