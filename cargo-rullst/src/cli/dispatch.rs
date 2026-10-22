@@ -268,7 +268,10 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Dash => {
             crate::generators::dev::run_dev_server(true)?;
         }
-        Commands::Studio => {
+        Commands::Studio { remote: true, port } => {
+            super::studio::run_remote(*port)?;
+        }
+        Commands::Studio { remote: false, .. } => {
             run_project_db_command("studio")?;
         }
         Commands::BuildClient { debug } => {

@@ -203,6 +203,26 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- New standalone Studio for remote projects, phase 2 of the production
+  monitor (plataforma report #28). `cargo install rullst-studio --features remote --locked`, then
+  `rullst-studio` (or `cargo rullst studio --remote`), serves Studio on
+  `127.0.0.1:5556` without an application process and shows the monitoring
+  document of each project you add (overview, routes, queues and N+1 pages,
+  with a project switcher). Tokens are stored in an owner-only file in your
+  configuration directory, encrypted with a key kept in your data directory.
+  Studio requires `https://` (or `http://` to loopback, for SSH tunnels),
+  never follows redirects and escapes every remote value. It is behind the
+  new non-default `remote` feature of `rullst-studio`, so applications that
+  enable Studio in development do not build its HTTP client or SQLite. See the
+  [production monitoring guide](docs/src/production-monitoring.md#watch-your-projects-from-studio).
+- The standalone Studio keeps history and alerts for the projects you mark as
+  watched (phase 3 of the production monitor): it reads them every 60 seconds
+  while it runs, charts request rate, 5xx rate, p95 latency and pending jobs
+  for the last hour, day or week from a bounded local SQLite file (seven
+  days), and fires per-project alerts (unreachable, 5xx rate, p95, pending
+  jobs, queue failures) with a cool-down, shown in Studio and optionally
+  posted to an `https://` webhook stored encrypted like the tokens. Nothing
+  new is collected on the servers.
 - `html!` gains `@match value { pattern if guard => { nodes } … }`: arms are
   Rust patterns (with `|` alternatives and `name @` bindings) and optional
   guards, bodies are `html!` nodes in braces with the usual escaping and
