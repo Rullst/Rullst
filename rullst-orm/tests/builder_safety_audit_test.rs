@@ -312,7 +312,7 @@ async fn pluck_uses_the_active_transaction_and_observes_uncommitted_writes() {
         "pluck must not wait for a second pool connection while the transaction owns the only one",
     );
     assert!(
-        matches!(result, Err(Error::DatabaseError(message)) if message.contains("intentional audit rollback"))
+        matches!(result, Err(Error::Validation(message)) if message == "intentional audit rollback")
     );
     assert_eq!(
         AuditRecord::all().await.expect("read after rollback").len(),
@@ -383,7 +383,7 @@ async fn stream_uses_the_active_transaction() {
     .await
     .expect("stream must read its active transaction without acquiring another connection");
     assert!(
-        matches!(result, Err(Error::DatabaseError(message)) if message.contains("intentional stream rollback"))
+        matches!(result, Err(Error::Validation(message)) if message == "intentional stream rollback")
     );
     assert_eq!(AuditRecord::all().await.expect("stream rollback").len(), 2);
 }
@@ -431,7 +431,7 @@ async fn managed_transactions_allow_reentrant_eager_loads_and_after_fetch_hooks(
     .await
     .expect("fetch must release transaction lock before nested reads");
     assert!(
-        matches!(result, Err(Error::DatabaseError(message)) if message.contains("intentional eager rollback"))
+        matches!(result, Err(Error::Validation(message)) if message == "intentional eager rollback")
     );
 }
 

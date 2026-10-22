@@ -143,7 +143,9 @@ async fn mutation_policy_and_hooks_reject_reentry_without_losing_atomicity() {
     )
     .await
     .expect("managed policy reentry must not lock forever");
-    assert!(matches!(managed, Err(Error::DatabaseError(message)) if message.contains("reentrant")));
+    assert!(
+        matches!(managed, Err(Error::Validation(message)) if message.starts_with("reentrant ORM access"))
+    );
     assert_eq!(
         PlainRecord::all()
             .await

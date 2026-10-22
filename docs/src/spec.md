@@ -2309,8 +2309,17 @@ every other database error stays `DatabaseError(String)`. `constraint` is the
 name PostgreSQL reports and `None` on SQLite and MySQL/MariaDB. Their `Display`
 names only the constraint, never the database message, which can quote the
 rejected value. Generated model writes and builders reach the caller through
-this conversion, and `Orm::raw` uses it too; `Orm::transaction`, generic over
-its closure's error type, still reports a failed closure as
+this conversion, and `Orm::raw` uses it too.
+
+`Orm::transaction` returns `Result<R, E>` for a closure error type
+`E: From<rullst_orm::Error> + Display`. After the rollback, the closure's
+`Err` reaches the caller unchanged, so a violation keeps its variant and an
+application error its type. Failures of the transaction itself (begin,
+savepoint, release, commit, post-commit effects) are `rullst_orm::Error`s
+converted with `E::from`; a commit rejected by a deferred constraint is a
+typed violation too. Only a rollback that fails after a failed closure returns
+`E::from(DatabaseError(..))`, naming both errors. 13.0.0-alpha.2 returned
+`Result<R, rullst_orm::Error>` and reported a failed closure as
 `DatabaseError("Transaction failed: ...")`.
 
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
@@ -2696,7 +2705,7 @@ while portability and semantic review remain the model author's responsibility.
   transaction is active on the same task) does not open a second pooled
   transaction. It opens a SQLx-tracked savepoint on the active transaction and
   passes the same shared handle to its closure. An `Err` rolls back only to
-  that savepoint and returns `DatabaseError`; a success releases it, so the
+  that savepoint and is returned unchanged; a success releases it, so the
   nested work commits or rolls back with the outer transaction. Its
   `after_commit` callbacks are promoted to the outer commit boundary only on
   success. Dropping an unfinished nested future rolls its savepoint back.

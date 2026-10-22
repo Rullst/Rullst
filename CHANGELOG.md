@@ -199,6 +199,18 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- **Breaking:** `Orm::transaction` returns its closure's error unchanged
+  after the rollback: it now returns `Result<R, E>`, where `E` is the
+  closure's error type and must implement `From<rullst_orm::Error>` and
+  `Display`, instead of `Result<R, rullst_orm::Error>`. A `UniqueViolation` or
+  `ForeignKeyViolation` inside the transaction keeps its variant and an
+  application error its type (alpha.2 turned both into
+  `Error::DatabaseError("Transaction failed: ...")`). Begin, commit and
+  post-commit failures arrive through `E::from`, so a commit rejected by a
+  deferred constraint is a typed violation too. A closure whose error type
+  lacks `From<rullst_orm::Error>`, such as `String`, no longer compiles; code
+  that matched `DatabaseError` on the result must match the closure's error.
+  See the migration guide.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
