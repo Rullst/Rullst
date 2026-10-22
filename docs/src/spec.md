@@ -3992,6 +3992,23 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   routes, 128 findings, 32 queues) and labels (512 characters); unknown fields
   are ignored. Failures are fixed statuses; every remote value is
   HTML-escaped.
+* **History and alerts (phase 3).** Projects marked *watched* are read every
+  60 s (clamped to 15 s–1 h) while the process runs. Each read stores one row
+  of aggregates (reachable, requests per second, window requests, 5xx rate,
+  p95, total pending and failed queue jobs) in `history.sqlite` in the data
+  directory (created `0600`, directory `0700`); every write deletes rows older
+  than 7 days and beyond 10,080 per project, and keeps the newest 500 alerts.
+  Rules per project (unreachable; 5xx rate, needing 20 window requests; p95;
+  pending jobs; failures between two polls, ignoring counter resets) fire at
+  most once per cool-down (15 minutes, 1–1,440) for each rule, with messages
+  built from fixed wording, the project name and numbers. `/studio/history`
+  charts the samples as inline SVG; `/studio/alerts` lists alerts, sets each
+  project's watch flag, rules and webhook (same form token) and acknowledges
+  alerts. A webhook URL must be `https://` without user information or
+  fragment, is sealed like a token and is never displayed; each alert is
+  posted once as JSON (`source`, `project`, `rule`, `message`, `at`) without
+  redirects or proxies within 5 s, and the fixed outcome is stored on the
+  alert.
 
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.

@@ -764,11 +764,13 @@ above.
      tools (WireGuard, Tailscale, an SSH tunnel), which the guide documents
      instead of Studio implementing VPN access.
   3. History and alerts.
-  Phases 1 and 2 are implemented for 13.0.0-alpha.3: the
-  `/_rullst/monitor/v1` endpoint (`Server::with_monitor`) and the standalone
-  `rullst-studio` binary with overview, routes, queues and N+1 pages. Traces
-  and the security radar are not part of the phase 1 document, so remote mode
-  does not show them yet.
+  All three phases are implemented for 13.0.0-alpha.3: the
+  `/_rullst/monitor/v1` endpoint (`Server::with_monitor`), the standalone
+  `rullst-studio` binary with overview, routes, queues and N+1 pages, and its
+  bounded local history with per-project alerts and an optional webhook.
+  Traces and the security radar are not part of the phase 1 document, so
+  remote mode does not show them yet; desktop notifications are not
+  implemented (alerts show in Studio and can go to a webhook).
   The data browser, `.env` viewer, AI and API playgrounds and migration pages
   stay local-only, because in production they would expose secrets and
   personal data or run arbitrary operations. The work needs a threat-model

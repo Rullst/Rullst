@@ -209,6 +209,14 @@ A prepared version section does not establish that its tag or crates exist.
   Studio requires `https://` (or `http://` to loopback, for SSH tunnels),
   never follows redirects and escapes every remote value. See the
   [production monitoring guide](docs/src/production-monitoring.md#watch-your-projects-from-studio).
+- The standalone Studio keeps history and alerts for the projects you mark as
+  watched (phase 3 of the production monitor): it reads them every 60 seconds
+  while it runs, charts request rate, 5xx rate, p95 latency and pending jobs
+  for the last hour, day or week from a bounded local SQLite file (seven
+  days), and fires per-project alerts (unreachable, 5xx rate, p95, pending
+  jobs, queue failures) with a cool-down, shown in Studio and optionally
+  posted to an `https://` webhook stored encrypted like the tokens. Nothing
+  new is collected on the servers.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

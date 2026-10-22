@@ -91,6 +91,12 @@ directory and bound to its name and base URL. Requests require `https://`
 read at most 1 MiB in 5 seconds. See the
 [production monitoring guide](../production-monitoring.md#watch-your-projects-from-studio).
 
+History and alerts: projects marked as watched are polled every 60 s while
+the binary runs; their aggregates go to a bounded owner-only SQLite file
+(seven days) charted on `/studio/history`, and per-project rules (unreachable,
+5xx rate, p95, pending jobs, queue failures) fire with a cool-down on
+`/studio/alerts`, optionally posted once to an encrypted `https://` webhook.
+
 Studio uses the ORM pool that the application initialized. When none exists,
 its first database view initializes one from the resolver shared by `Server`
 and Artisan (process `DATABASE_URL`, then `./.env`, then `[database].url` in

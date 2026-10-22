@@ -324,6 +324,7 @@ can revoke it alone. Studio reads `<base URL>_rullst/monitor/v1`.
 | --- | --- | --- |
 | Project list | `$XDG_CONFIG_HOME/rullst/studio/projects.json` (default `~/.config/…`) / `%APPDATA%\rullst\studio\projects.json` | Names, base URLs, encrypted tokens |
 | Key | `$XDG_DATA_HOME/rullst/studio/projects.key` (default `~/.local/share/…`) / `%LOCALAPPDATA%\rullst\studio\projects.key` | 32 random bytes |
+| History | `$XDG_DATA_HOME/rullst/studio/history.sqlite` / `%LOCALAPPDATA%\rullst\studio\history.sqlite` | Aggregates of watched projects and fired alerts |
 
 Both are created owner-only (`0600` in `0700` directories on Unix) and never
 followed through a symlink; Studio warns when either is readable by other
@@ -333,6 +334,48 @@ decrypts and is never sent to the new address (remove and add the project
 again). A copy of the project list alone (a dotfile repository, a backup of
 `~/.config`) reveals no token. Malware running as your user can still read
 both files; the operating system keychain is not used.
+
+### History and alerts
+
+On the **Alerts** page, tick **Watch** for a project: while Studio runs, it
+reads that project every 60 seconds and keeps, per poll, only aggregates the
+document already contains: whether it answered, requests per second, window
+requests, 5xx rate, p95 latency, and the pending and failed totals of its
+queues. Routes, queue names and other labels are not stored. The **History**
+page charts them for the last hour, day or week. Samples older than seven
+days, beyond 10,080 per project (a week at one per minute) and alerts beyond
+the newest 500 are deleted on every write; removing a project deletes its
+history. Nothing new is collected on the server.
+
+Each project has alert rules, all off by default:
+
+| Rule | Fires when |
+| --- | --- |
+| Unreachable | the project cannot be read (any status on the overview page) |
+| 5xx rate | the window's 5xx share reaches the percentage, with at least 20 requests in the window |
+| p95 latency | the window's p95 reaches the milliseconds |
+| Pending jobs | the pending jobs of all its queues reach the count |
+| Queue failures | this many jobs failed between two polls (a server restart, which resets the counters, never fires it) |
+
+A rule fires again for the same project only after its cool-down (15 minutes
+by default, 1 to 1,440). Alerts appear on the Alerts page, with a badge until
+you acknowledge them. Optionally, each alert is posted once to a webhook you
+configure (Slack, Teams, a chat bot, your own receiver):
+
+```json
+{"source": "rullst-studio", "project": "shop", "rule": "p95_latency",
+ "message": "shop: p95 latency 412.3 ms (threshold 250 ms)", "at": 1792648800}
+```
+
+The webhook URL is a secret like a token: it is encrypted in the project list
+and never shown again. It must be `https://` without user information. The
+post follows no redirect, ignores proxy variables and gives up after five
+seconds; the outcome (`delivered`, `failed: HTTP 500`, `failed: timeout`…) is
+recorded on the alert, and it is not retried. Alert text is Studio's own
+wording with the project name and numbers, never labels from the remote
+document. Polling stops when Studio stops; for alerts around the clock, run
+`rullst-studio` on an always-on machine or keep using your existing uptime
+monitoring.
 
 ### Reaching private servers
 

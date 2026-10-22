@@ -90,6 +90,12 @@ directory and bound to its name and base URL. Requests require `https://`
 read at most 1 MiB in 5 seconds. See the
 [production monitoring guide](https://github.com/Rullst/Rullst/blob/main/docs/src/production-monitoring.md#watch-your-projects-from-studio).
 
+History and alerts: projects marked as watched are polled every 60 s while
+the binary runs; their aggregates go to a bounded owner-only SQLite file
+(seven days) charted on `/studio/history`, and per-project rules (unreachable,
+5xx rate, p95, pending jobs, queue failures) fire with a cool-down on
+`/studio/alerts`, optionally posted once to an encrypted `https://` webhook.
+
 **Database selection:** Studio uses the process-wide ORM pool that the
 application initialized (`Server`, Artisan or an explicit `Orm::init`). When no
 pool exists yet, the first database view initializes it once with the resolver
