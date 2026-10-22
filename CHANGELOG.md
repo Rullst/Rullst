@@ -231,6 +231,53 @@ A prepared version section does not establish that its tag or crates exist.
   leave a new file that a second `initialize` refused. Other operations keep
   the single 5-second wait. Media's documentation now states that wait as
   5 seconds instead of 3.
+- New `cargo rullst make:oauth github`, `make:oauth microsoft` and
+  `make:oauth apple`, beside `google`, on the same login challenge store,
+  refusals, rate limit, session-epoch sign-in and account-linking policy
+  (refuse by default; only an email the provider verified may create or link
+  an account). Run the command once per provider: the first one creates the
+  shared flow, the `oauth_identities` table and its only migration, and each
+  further provider adds its module, routes, login link and `.env.example`
+  settings, so several providers share one table keyed by provider and
+  subject. GitHub is OAuth 2.0: the subject is the numeric account id, never
+  the login name, and only the primary email GitHub marks verified counts.
+  Microsoft requires `MICROSOFT_TENANT` (`common`, `organizations`,
+  `consumers` or a directory ID): the subject is `<tid>:<oid>`, and the email
+  counts as verified only with the optional `xms_edov` claim, which the app
+  registration must request. Apple answers with a form POST: the command
+  mounts `POST /auth/apple/callback`, lists it in `csrf_signed_webhook_paths`
+  of `Rullst.toml` (the login challenge's state replaces the CSRF token), uses
+  a `SameSite=None; Secure` challenge cookie, signs the five-minute ES256
+  client secret with the `.p8` key from `APPLE_PRIVATE_KEY` (checked at
+  startup, never written to a file) and uses the first-login name only for a
+  new account. Each provider works offline with `mock_*` settings and
+  `--features oauth-mock`.
+- **Behaviour change:** `rullst-connect`'s `GithubProvider` also calls
+  `GET /user/emails`: `ConnectUser::email` is now the address GitHub marks
+  primary and `email_verified` its `verified` flag, instead of the public
+  profile email with `email_verified: None`. Without the `user:email` scope or
+  a primary entry it keeps the public profile email and `None`.
+- New `rullst_connect::providers::MicrosoftOidcProvider` and `MicrosoftTenant`:
+  OpenID Connect sign-in with the Microsoft identity platform for an explicit
+  tenant, verifying the RS256 ID token against the tenant's keys, an issuer
+  bound to the token's `tid` and the tenant choice. The subject is
+  `<tid>:<oid>`; `email_verified` is `Some(true)` only with `xms_edov: true`.
+  The existing Graph-based `MicrosoftProvider` is unchanged.
+- New `ChallengeCookie::for_cross_site_post` (`SameSite=None; Secure`) for a
+  provider that POSTs the callback from its own site, and
+  `AppleProvider::verify_signing_key` (whether the `.p8` key can sign the
+  client secret) and `AppleProvider::name_from_user_field` (the bounded,
+  unsigned first-login name of Apple's `user` form field).
+- **Behaviour change:** `rullst-mail` account emails accept a password reset
+  link lifetime of up to 24 hours (1–1440 minutes; alpha.2 refused more than
+  30, so the email was never sent), state whole hours as hours ("This link
+  expires in 2 hours.") and one minute in the singular. Verification and
+  email-change links keep the 30-minute ceiling.
+- New SaaS, LMS and `cargo rullst auth` projects keep the password reset link
+  lifetime in `RESET_TOKEN_LIFETIME_MINUTES` (still 30 minutes) with a
+  compile-time bound of 10 minutes to 24 hours, and the forgot-password answer
+  now states that value instead of a fixed "30 minutes", like the stored
+  expiry and the email. The authentication tutorial explains the bound.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
