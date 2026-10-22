@@ -206,6 +206,19 @@ A prepared version section does not establish that its tag or crates exist.
   arm without braces is a compile error that shows the braced form. Other
   `@` forms (`@while`, `@let`) remain compile errors, whose message now lists
   `@match`.
+- i18n plural messages follow CLDR's cardinal rules for `ar`, `cs`, `de`,
+  `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`/`pt-BR`,
+  `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, with every category the language
+  uses (`zero`, `one`, `two`, `few`, `many`, `other`). `catalog!` requires
+  exactly those categories and names a missing one in the compile error, so
+  a `ru` or `pl` message with `one`/`few`/`many`/`other` now compiles. In
+  `es`, `fr`, `it` and `pt` the `many` form (exact millions) is optional and
+  falls back to `other`. Catalogs and integer counts that worked in alpha.2
+  select the same forms. New `rullst::i18n::Decimal` (units and visible
+  fraction digits, parsed from strings such as `"1.50"`) can be passed as
+  `count`, since CLDR selects by fraction digits too (`1.0` is English
+  `other`), and `Locale::plural_category` returns the new `PluralCategory`
+  without a catalog.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

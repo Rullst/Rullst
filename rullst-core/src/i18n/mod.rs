@@ -51,13 +51,19 @@
 
 use std::fmt;
 
+mod decimal;
 mod http;
 mod negotiate;
+mod plural;
 mod render;
 
+pub use decimal::{Decimal, ParseDecimalError};
 pub use http::{LocaleLayer, LocaleService, MissingLocale};
 #[doc(hidden)]
-pub use render::{__Catalog, __Forms, __Plural, __Segment, __html, __locale, __text};
+pub use plural::__Plural;
+pub use plural::PluralCategory;
+#[doc(hidden)]
+pub use render::{__Catalog, __Forms, __Segment, __html, __locale, __text};
 #[doc(hidden)]
 pub use rullst_macros::__i18n_translate as __translate;
 #[doc(inline)]
@@ -84,6 +90,30 @@ impl Locale {
     /// The locale's tag, such as `pt-BR`.
     pub fn tag(&self) -> &'static str {
         self.tag
+    }
+
+    /// The CLDR cardinal plural category of `count` in this locale's
+    /// language, or `None` for a language without a documented rule (see
+    /// the [module documentation](self)). A [`Decimal`] keeps its fraction
+    /// digits, which CLDR counts: `1` is `one` in English, `1.0` is `other`.
+    ///
+    /// ```
+    /// # extern crate rullst_core as rullst;
+    /// use rullst::i18n::{Decimal, Locales, PluralCategory};
+    ///
+    /// let locales = Locales::new(&["en", "ru"], "en")?;
+    /// let ru = locales.get("ru").unwrap();
+    /// assert_eq!(ru.plural_category(21), Some(PluralCategory::One));
+    /// assert_eq!(ru.plural_category(3), Some(PluralCategory::Few));
+    /// assert_eq!(ru.plural_category(11), Some(PluralCategory::Many));
+    /// assert_eq!(ru.plural_category(Decimal::new(15, 1)), Some(PluralCategory::Other));
+    /// let en = locales.default_locale();
+    /// assert_eq!(en.plural_category(1), Some(PluralCategory::One));
+    /// assert_eq!(en.plural_category(Decimal::new(10, 1)), Some(PluralCategory::Other));
+    /// # Ok::<(), rullst::i18n::LocaleError>(())
+    /// ```
+    pub fn plural_category(&self, count: impl PluralCount) -> Option<PluralCategory> {
+        __Plural::for_tag(self.tag).map(|rule| rule.category(count.plural_decimal()))
     }
 }
 
@@ -222,13 +252,20 @@ fn is_canonical_tag(tag: &str) -> bool {
     }
 }
 
-/// Integers that select a plural form: `t!(locale, "inbox.unread", count = n)`.
+/// Numbers that select a plural form: `t!(locale, "inbox.unread", count = n)`.
 ///
-/// The form is chosen from the absolute value; values beyond `u64` count
-/// as `u64::MAX`.
+/// Implemented for every integer type and for [`Decimal`]. The form is
+/// chosen from the absolute value; integers beyond `u64` count as
+/// `u64::MAX`.
 pub trait PluralCount {
-    /// The absolute value as `u64`, saturating.
+    /// The absolute value of the integer part as `u64`, saturating.
     fn plural_count(&self) -> u64;
+
+    /// The absolute value with its visible fraction digits, which CLDR rules
+    /// also read. Integers return [`plural_count`](Self::plural_count).
+    fn plural_decimal(&self) -> Decimal {
+        Decimal::from(self.plural_count())
+    }
 }
 
 macro_rules! plural_count {
@@ -260,6 +297,21 @@ plural_count! {
 impl<T: PluralCount + ?Sized> PluralCount for &T {
     fn plural_count(&self) -> u64 {
         (**self).plural_count()
+    }
+
+    fn plural_decimal(&self) -> Decimal {
+        (**self).plural_decimal()
+    }
+}
+
+impl PluralCount for Decimal {
+    fn plural_count(&self) -> u64 {
+        let (integer, _) = self.integer_part();
+        u64::try_from(integer).unwrap_or(u64::MAX)
+    }
+
+    fn plural_decimal(&self) -> Decimal {
+        self.abs()
     }
 }
 

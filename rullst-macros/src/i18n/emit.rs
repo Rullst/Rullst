@@ -139,7 +139,8 @@ pub(crate) fn with_fallback(errors: TokenStream, default: &str) -> TokenStream {
 }
 
 /// Encodes the catalog for `__translate!`:
-/// `[tag Rule, …] default { "key" kind shape [(forms) …] … }`.
+/// `[tag Rule, …] default { "key" kind shape [(category "form" …) …] … }`,
+/// one parenthesized group per locale with `other` last.
 pub(crate) fn encode(catalog: &Catalog) -> TokenStream {
     let locales = catalog.locales.iter().map(|locale| {
         let tag = &locale.tag;
@@ -165,21 +166,22 @@ pub(crate) fn encode(catalog: &Catalog) -> TokenStream {
                 "{}",
                 match message {
                     Message::Single(_) => "single",
-                    Message::Plural { .. } => "plural",
+                    Message::Plural(_) => "plural",
                 }
             );
             let forms = catalog
                 .locales
                 .iter()
                 .map(|locale| match locale.messages.get(key) {
-                    Some(Message::Plural {
-                        one: Some(one),
-                        other,
-                    }) => quote! { (#one #other) },
-                    Some(Message::Plural { one: None, other } | Message::Single(other)) => {
-                        quote! { (#other) }
+                    Some(Message::Plural(forms)) => {
+                        let forms = forms.iter().map(|(category, text)| {
+                            let category = format_ident!("{category}");
+                            quote! { #category #text }
+                        });
+                        quote! { (#(#forms)*) }
                     }
-                    None => quote! { ("") },
+                    Some(Message::Single(text)) => quote! { (other #text) },
+                    None => quote! { (other "") },
                 });
             entries.push(quote! { #key #kind #shape [#(#forms)*] });
         }

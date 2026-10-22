@@ -1994,7 +1994,8 @@ the same server-authoritative controls.
   `language[-Script][-REGION]` in canonical case. Nested tables form dotted
   keys of ASCII letters, digits, `_` and `-`. A table whose entries are all
   strings named after CLDR categories and that has `other` is a plural
-  message; only `one` and `other` are accepted. Templates use `{name}`
+  message; since 13.0.0-alpha.3 any of `zero`, `one`, `two`, `few`, `many`
+  and `other` the locale's rule selects is accepted. Templates use `{name}`
   placeholders (Rust identifiers that are not keywords) and `{{`/`}}`.
 * **Compile-time checks:** the build fails on a key missing from any locale,
   differing placeholder sets or plural/single shapes between locales, a
@@ -2015,13 +2016,26 @@ the same server-authoritative controls.
   text and attributes; arguments use `Display`. A key ending in `_html`
   returns `Markup`: its catalog template is trusted and its arguments are
   HTML-escaped.
-* **Plural rules:** `count` accepts any integer through `PluralCount` (the
-  absolute value, saturating at `u64::MAX`). `one` is selected for exactly 1
-  in `en`, `es`, `de`, `it`, `nl` and `pt-PT`, for 0 and 1 in `pt`, `pt-BR`
-  and `fr` (any region for `fr`), never in `ja`, `zh` and `ko` (which must
-  not define `one`). A plural message in any other language or Portuguese
-  region is a compile error. CLDR's `many` (millions in `es`, `fr`, `it`,
-  `pt`) uses `other`.
+* **Plural rules:** Since 13.0.0-alpha.3 forms are selected with CLDR's
+  cardinal rules (checked against CLDR 48's sample numbers) for `ar`, `cs`,
+  `de`, `en`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt` (`pt`,
+  `pt-BR`), `pt-PT`, `ro`, `ru`, `tr`, `uk` and `zh`, any region or script.
+  A plural message must define exactly the categories its locale's rule
+  selects: `other` only in `ja`, `ko` and `zh`; `one`/`other` in `de`, `en`,
+  `nl` and `tr`; `one`/`few`/`many`/`other` in `cs`, `pl`, `ru` and `uk`;
+  `one`/`few`/`other` in `ro`; `one`/`two`/`other` in `he`; all six in `ar`.
+  `es`, `fr`, `it`, `pt` and `pt-PT` need `one`/`other` and may add `many`,
+  which CLDR selects for exact millions (`other` is used when it is left
+  out). A missing category is a compile error naming it; a category the rule
+  never selects is one too. A plural message in another language, or a
+  Portuguese region other than Brazil and Portugal, is a compile error.
+  `count` accepts any integer and `rullst::i18n::Decimal` through
+  `PluralCount` (the absolute value; integers beyond `u64` saturate). A
+  `Decimal` keeps its visible fraction digits, which CLDR's operands read
+  (`1.0` is English `other`, `1.5` is French `one`); compact exponents are
+  not modelled. `Locale::plural_category(count)` returns the
+  `PluralCategory` (`#[non_exhaustive]`), or `None` for a language without a
+  rule.
 * **Message selection:** a call selects the catalog locale with the
   `Locale`'s tag, else one with the same language (the catalog default
   first), else the catalog default, so a `Locale` from another crate's list
@@ -2060,7 +2074,7 @@ the same server-authoritative controls.
   `csrf_middleware`/security baseline; the route does not exempt itself.
 * **Page language:** handlers pass `locale.tag()` to
   `render_page_with_lang` for `<html lang>`.
-* **Out of scope:** runtime-loaded catalogs, other plural categories,
+* **Out of scope:** runtime-loaded catalogs, ordinal plural rules,
   script-aware matching, and date/number formatting. `rullst-mail`'s
   `MailLocale` remains separate (`MailLocale::from_preference(locale.tag())`).
 

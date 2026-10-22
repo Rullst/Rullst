@@ -10,7 +10,8 @@ rullst::i18n::catalog!(default = "en");
 `dir` (default `"locales"`) is relative to the crate's `Cargo.toml` and holds
 one file per locale named by its tag: `locales/en.toml`,
 `locales/pt-BR.toml`. A tag is `language[-Script][-REGION]` in canonical case.
-Nested TOML tables form dotted keys, and a table whose entries are `one` and
+Nested TOML tables form dotted keys, and a table whose entries are CLDR
+plural categories (`zero`, `one`, `two`, `few`, `many`, `other`) with
 `other` is a plural message:
 
 ```toml
@@ -25,7 +26,9 @@ other = "You have {count} unread messages"
 
 The build fails when a key is missing from any locale, when the same key has
 different placeholders or shapes (plural or single) in two locales, when a
-template has an unbalanced brace, and when `default` has no file. `{{` and
+plural message lacks a category its language's CLDR rule selects (the error
+names it) or has one it never selects, when a template has an unbalanced
+brace, and when `default` has no file. `{{` and
 `}}` write literal braces.
 
 The generated items are:
@@ -36,8 +39,8 @@ The generated items are:
   `use crate::i18n::t;`. An unknown key, a missing or unexpected argument is
   a compile error. It returns `Cow<'static, str>`, plain text that `html!`
   escapes; a key ending in `_html` is trusted HTML and returns `Markup` with
-  its arguments escaped. A plural message takes `count = n` (any integer) and
-  selects `one` or `other` with the locale's rule.
+  its arguments escaped. A plural message takes `count = n` (any integer or a
+  `rullst::i18n::Decimal`) and selects the form with the locale's CLDR rule.
 
 Adding a new locale file does not by itself rebuild the crate: touch the file
 that invokes `catalog!` (edits to existing files are tracked).
