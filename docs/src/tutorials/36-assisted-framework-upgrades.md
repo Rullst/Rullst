@@ -400,14 +400,15 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (10 rows);
+  application source (11 rows);
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (95 rows);
+  the affected API, feature or configuration, which the rules locate (93 rows);
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
   of inputs that previously failed) (57 rows).
 
-The catalog has 106 rules. A row can map to several rules and a rule to
+A row with both a must-change and a review part counts in both. The catalog
+has 105 rules. A row can map to several rules and a rule to
 several rows; when a row changes in a later release, update this table and
 the rule together.
 

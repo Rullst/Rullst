@@ -193,7 +193,7 @@ fn manifests_report_the_removed_offline_sync_feature() {
 name = "app"
 
 [dependencies]
-rullst = { version = "12.3.0", features = ["orm", "offline-sync"] }
+rullst = { version = "12.3.0", default-features = false, features = ["orm", "offline-sync"] }
 core = { package = "rullst-core", version = "12.3.0", features = ["offline-sync"] }
 rullst-orm = { version = "12.3.0", default-features = false, features = ["offline-sync"] }
 
@@ -215,7 +215,7 @@ sync = ["core/offline-sync"]
         ]
     );
     // A package enabling both removed features gets one finding.
-    let both = "[dependencies]\nrullst = { version = \"12.3.0\", features = [\"offline-sync\", \"orm-polyglot\"] }\n";
+    let both = "[dependencies]\nrullst = { version = \"12.3.0\", default-features = false, features = [\"offline-sync\", \"orm-polyglot\"] }\n";
     let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), both)]);
     assert_eq!(findings.len(), 1);
     assert_eq!(findings[0].rule.code, "V13-POLYGLOT-FEATURE");
