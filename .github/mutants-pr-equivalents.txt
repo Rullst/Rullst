@@ -20,3 +20,78 @@ rullst-orm/src/value.rs:86:9: replace temporal::date -> String with String::new(
 rullst-orm/src/value.rs:86:9: replace temporal::date -> String with "xyzzy".into()
 rullst-orm/src/value.rs:90:9: replace temporal::time -> String with String::new()
 rullst-orm/src/value.rs:90:9: replace temporal::time -> String with "xyzzy".into()
+
+# rullst-core (alpha.3 campaign, hosted all-feature runs): each name below has a
+# row in WORKFLOWS.md "Accepted equivalent mutants"; radar.rs entries are
+# compiled only on Windows or other non-Linux targets.
+rullst-core/src/cache/memory/exact_json.rs:23:9: replace <impl fmt::Display for Inexact>::fmt -> fmt::Result with Ok(Default::default())
+rullst-core/src/cache/memory.rs:144:27: replace < with <= in MemoStore::get
+rullst-core/src/cache/memory.rs:165:38: replace < with <= in MemoStore::set
+rullst-core/src/cache.rs:171:77: replace < with <= in MemoryDriver::cleanup_if_due
+rullst-core/src/cache.rs:257:81: replace > with >= in <impl CacheDriver for MemoryDriver>::inspect
+rullst-core/src/config/project_setting.rs:68:13: delete match arm dotenvy::Error::Io(error) in parse_dotenv_entries
+rullst-core/src/feature/db.rs:142:40: replace < with <= in DbFeatureDriver::resolve_with
+rullst-core/src/feature/db.rs:165:40: replace < with <= in DbFeatureDriver::remember
+rullst-core/src/lifecycle.rs:242:54: replace == with != in ApplicationLifecycle::begin_draining
+rullst-core/src/lifecycle.rs:392:22: replace && with || in release_request
+rullst-core/src/live/recovery/session.rs:22:9: delete match arm Ok(Ok(())) in run
+rullst-core/src/live/recovery/session.rs:67:22: replace > with == in send_snapshot
+rullst-core/src/live/recovery/session.rs:67:22: replace > with >= in send_snapshot
+rullst-core/src/live/recovery/types.rs:209:13: replace fields_without_duplicates::<impl serde::de::Visitor<'de> for Fields>::expecting -> fmt::Result with Ok(Default::default())
+rullst-core/src/queue/deferral/planner.rs:74:64: replace < with <= in lowest_intensity
+rullst-core/src/radar.rs:140:5: replace get_windows_memory_mb -> Option<f64> with None
+rullst-core/src/radar.rs:140:5: replace get_windows_memory_mb -> Option<f64> with Some(0.0)
+rullst-core/src/radar.rs:140:5: replace get_windows_memory_mb -> Option<f64> with Some(-1.0)
+rullst-core/src/radar.rs:140:5: replace get_windows_memory_mb -> Option<f64> with Some(1.0)
+rullst-core/src/radar.rs:152:64: replace != with == in get_windows_memory_mb
+rullst-core/src/radar.rs:154:37: replace / with * in get_windows_memory_mb
+rullst-core/src/radar.rs:154:37: replace / with % in get_windows_memory_mb
+rullst-core/src/radar.rs:154:47: replace * with + in get_windows_memory_mb
+rullst-core/src/radar.rs:154:47: replace * with / in get_windows_memory_mb
+rullst-core/src/radar.rs:155:29: replace * with + in get_windows_memory_mb
+rullst-core/src/radar.rs:155:29: replace * with / in get_windows_memory_mb
+rullst-core/src/radar.rs:155:45: replace / with * in get_windows_memory_mb
+rullst-core/src/radar.rs:155:45: replace / with % in get_windows_memory_mb
+rullst-core/src/radar.rs:226:5: replace get_process_cpu_usage -> Option<f64> with None
+rullst-core/src/radar.rs:226:5: replace get_process_cpu_usage -> Option<f64> with Some(0.0)
+rullst-core/src/radar.rs:226:5: replace get_process_cpu_usage -> Option<f64> with Some(-1.0)
+rullst-core/src/radar.rs:226:5: replace get_process_cpu_usage -> Option<f64> with Some(1.0)
+rullst-core/src/radar.rs:231:5: replace get_process_cpu_usage -> Option<f64> with Some(0.0)
+rullst-core/src/radar.rs:231:5: replace get_process_cpu_usage -> Option<f64> with Some(-1.0)
+rullst-core/src/radar.rs:231:5: replace get_process_cpu_usage -> Option<f64> with Some(1.0)
+rullst-core/src/radar.rs:261:5: replace get_windows_process_cpu_usage -> Option<f64> with None
+rullst-core/src/radar.rs:261:5: replace get_windows_process_cpu_usage -> Option<f64> with Some(0.0)
+rullst-core/src/radar.rs:261:5: replace get_windows_process_cpu_usage -> Option<f64> with Some(-1.0)
+rullst-core/src/radar.rs:261:5: replace get_windows_process_cpu_usage -> Option<f64> with Some(1.0)
+rullst-core/src/radar.rs:274:87: replace == with != in get_windows_process_cpu_usage
+rullst-core/src/radar.rs:294:38: replace << with >> in filetime_100ns
+rullst-core/src/radar.rs:294:45: replace | with ^ in filetime_100ns
+rullst-core/src/radar.rs:294:45: replace | with & in filetime_100ns
+rullst-core/src/radar.rs:294:5: replace filetime_100ns -> u64 with 0
+rullst-core/src/radar.rs:294:5: replace filetime_100ns -> u64 with 1
+rullst-core/src/radar.rs:303:5: replace calculate_windows_cpu_percent -> Option<f64> with None
+rullst-core/src/radar.rs:303:5: replace calculate_windows_cpu_percent -> Option<f64> with Some(0.0)
+rullst-core/src/radar.rs:303:5: replace calculate_windows_cpu_percent -> Option<f64> with Some(-1.0)
+rullst-core/src/radar.rs:303:5: replace calculate_windows_cpu_percent -> Option<f64> with Some(1.0)
+rullst-core/src/radar.rs:304:21: replace <= with > in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:308:54: replace / with * in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:308:54: replace / with % in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:309:50: replace * with + in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:309:50: replace * with / in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:310:28: replace / with * in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:310:28: replace / with % in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:310:44: replace * with + in calculate_windows_cpu_percent
+rullst-core/src/radar.rs:310:44: replace * with / in calculate_windows_cpu_percent
+rullst-core/src/rpc.rs:164:13: delete match arm ClientContractError::BodyTooLarge{..} in server::request_contract_failure
+rullst-core/src/rpc.rs:261:67: replace * with + in tests::failure_for
+rullst-core/src/rpc.rs:56:9: replace RpcFailure::from_detail -> Self with Default::default()
+rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with false
+rullst-core/src/server/dylib_loader.rs:9:5: replace is_expected_loaded_library_removal_error -> bool with true
+rullst-core/src/storage/cloud/multipart/codec.rs:302:31: replace > with == in MultipartStorage::open
+rullst-core/src/storage/cloud/multipart/codec.rs:302:31: replace > with >= in MultipartStorage::open
+rullst-core/src/storage/cloud/multipart/codec.rs:308:24: replace < with <= in MultipartStorage::open
+rullst-core/src/storage/cloud/multipart/protocol.rs:12:13: delete field allow_dtd from struct ParsingOptions expression in parse
+rullst-core/src/storage/local_paths.rs:27:20: replace match guard matches!( error.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory ) with true in reject_symlink_components
+rullst-core/src/telemetry/distributed/processor.rs:25:9: replace <impl SpanProcessor for MinimizedProcessor>::on_start with ()
+rullst-core/src/testing/html_normalize.rs:340:18: replace < with <= in mask_csrf_headers
+rullst-core/src/testing/snapshot.rs:240:89: replace + with * in line_diff
