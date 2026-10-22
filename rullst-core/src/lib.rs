@@ -168,7 +168,9 @@ pub mod response {
 #[cfg(not(target_arch = "wasm32"))]
 pub use html::Markup;
 #[cfg(not(target_arch = "wasm32"))]
-pub use htmx::{HtmxRequest, HtmxResponse, render_page, render_page_with_lang};
+pub use htmx::{
+    HtmxRequest, HtmxResponse, render_page, render_page_with_head, render_page_with_lang,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use lifecycle::{
     ApplicationLifecycle, ApplicationLifecycleError, ApplicationPhase, ReadinessSnapshot,
