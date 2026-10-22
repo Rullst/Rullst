@@ -268,6 +268,9 @@ rules! {
     PASSWORD_HASH_HIDDEN: "V13-PASSWORD-HASH-HIDDEN", Review, "SaaS user JSON",
         "`password_hash` is not `#[orm(hidden)]`, so `to_json()`, audit rows and model events carry the hash",
         "Add `#[orm(hidden)]` to the field.";
+    ORM_SKIP_MANAGED_COLUMNS: "V13-ORM-SKIP-MANAGED-COLUMNS", Review, "ORM database-managed columns",
+        "`is_admin`/`session_epoch` is declared `#[orm(skip)]`, which the query builder treats as not a database column, so a filter or ordering on it fails at run time",
+        "Declare the field `#[orm(db_default)]` instead: ORM writes still never touch it, and queries can filter, order and select it.";
     EMPTY_TIMESTAMPS: "V13-EMPTY-TIMESTAMPS", Review, "Registration timestamps",
         "an empty `created_at`/`updated_at` replaces the column default because the ORM inserts every field",
         "Store the current UTC time instead, as the new `utc_timestamp` helper does (`Utc::now()`; see also Billing row timestamps and ORM date/time columns).";

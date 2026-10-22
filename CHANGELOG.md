@@ -23,6 +23,15 @@ A prepared version section does not establish that its tag or crates exist.
   Behaviour changes for models that add the field, including their
   `update_partial()`; models without it keep the full-row `save()`.
   `cargo rullst make:model` adds the field to new models.
+- ORM: a column that the database manages, such as `users.is_admin` and
+  `users.session_epoch`, is declared `#[orm(db_default)]`, which the query
+  builder can filter, order, group and select while ORM writes never touch it.
+  New SaaS, LMS and `cargo rullst auth` `User` models now use it instead of
+  `#[orm(skip)]`, so `User::query().where_eq("is_admin", true)` works (alpha.2
+  failed at run time) and query-cache hits keep the stored values.
+  `#[orm(skip)]` still means "not a database column for the ORM"; its builder
+  error now says so and names `#[orm(db_default)]`. `cargo rullst upgrade`
+  reports alpha.2 models (`V13-ORM-SKIP-MANAGED-COLUMNS`).
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

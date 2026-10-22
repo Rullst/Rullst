@@ -333,7 +333,11 @@ mod tests {
             let user = file(&manifest, "src/models/user.rs");
             syn::parse_file(&user).unwrap_or_else(|error| panic!("{blueprint}: {error}"));
             assert!(!user.contains("__RULLST"), "{blueprint}: unresolved marker");
-            assert!(user.contains("    #[orm(skip)]\n    pub session_epoch: i64,\n}"));
+            assert!(user.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n}"));
+            assert!(
+                !user.contains("#[orm(skip)]"),
+                "{blueprint}: skip is not a column"
+            );
             assert!(user.contains("#[derive(Debug, Clone, Default, FromRow, Orm)]"));
             assert!(user.contains(
                 "pub fn accepts_session(&self, claims: &rullst::auth::SessionClaims) -> bool {"

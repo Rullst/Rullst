@@ -300,8 +300,9 @@ credential-free loopback policy in debug builds.
 The SaaS and LMS starters use it. Their `src/middlewares/nexus_access.rs`
 admits the user of the epoch-checked login cookie whose `users.is_admin` column
 is true, so signing out everywhere or a password change also ends Nexus
-access. `is_admin` defaults to false and ORM writes skip it, so neither a form
-nor a full-row `save()` grants it. Grant the first administrator with your
+access. `is_admin` defaults to false and is declared `#[orm(db_default)]`:
+ORM writes never touch it, so neither a form nor `save()` grants it, while
+`User::query().where_eq("is_admin", true)` still filters on it. Grant the first administrator with your
 database client, for example
 `UPDATE users SET is_admin = TRUE WHERE email = 'you@example.com';`; that
 administrator can then grant others from the Users model in Nexus. `make:auth`

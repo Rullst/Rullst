@@ -25,14 +25,17 @@ pub struct User {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     // Lets this account into Nexus (`/nexus`) under the application's
-    // sign-in. ORM writes skip this column, so neither a form nor a full-row
-    // save grants it: set it to true with your database client for the first
-    // administrator, who can then grant others in Nexus.
-    #[orm(skip)]
+    // sign-in. The database manages this column: ORM inserts and saves never
+    // write it, so neither a form nor `save()` grants it, while queries can
+    // still filter on it (`where_eq("is_admin", true)`). Set it to true with
+    // your database client for the first administrator, who can then grant
+    // others in Nexus.
+    #[orm(db_default)]
     pub is_admin: bool,
-    // Login cookies carry the epoch they were issued with. ORM writes skip
-    // this column, so a full-row save never undoes `revoke_sessions`.
-    #[orm(skip)]
+    // Login cookies carry the epoch they were issued with. ORM inserts and
+    // saves never write this column, so `save()` never undoes
+    // `revoke_sessions`.
+    #[orm(db_default)]
     pub session_epoch: i64,
 }
 
@@ -222,8 +225,10 @@ mod tests {
         ));
         let model = with_session_epoch_methods(USER_MODEL_SOURCE);
         assert!(!model.contains(SESSION_EPOCH_MARKER));
-        assert!(model.contains("    #[orm(skip)]\n    pub session_epoch: i64,\n}"));
-        // The ORM derive fills skipped fields from `Default`.
+        // A database-managed column: read and filterable, never written.
+        assert!(model.contains("    #[orm(db_default)]\n    pub session_epoch: i64,\n}"));
+        assert!(model.contains("    #[orm(db_default)]\n    pub is_admin: bool,\n"));
+        assert!(!model.contains("#[orm(skip)]"));
         assert!(model.contains("#[derive(Debug, Clone, Default, FromRow, Orm)]"));
         assert!(model.contains("pub fn current_session_epoch(&self) -> Option<u64> {"));
         assert!(
