@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792665177520,
+  "lastUpdate": 1792673064918,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12868,6 +12868,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2",
+          "message": "Merge pull request #523 from Rullst/feat/v13-pwa\n\nfeat(cli)!: first-class PWA with Google Play TWA support; retire Omni",
+          "timestamp": "2026-10-22T09:15:11-03:00",
+          "tree_id": "5b4f5126e3f6ce955bef0cdb0eadbf2a5bf37a8e",
+          "url": "https://github.com/Rullst/Rullst/commit/ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2"
+        },
+        "date": 1792673064197,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 18,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
             "range": "± 0",
             "unit": "ns/iter"
           },
