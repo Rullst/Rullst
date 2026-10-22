@@ -192,9 +192,7 @@ impl Scan<'_> {
         }
         // ASCII lower-casing keeps every byte offset.
         let lower = repr.to_ascii_lowercase();
-        let mut searched = 0;
-        while let Some(found) = lower.get(searched..).and_then(|rest| rest.find("</head>")) {
-            let close = searched + found;
+        for (close, _) in lower.match_indices("</head>") {
             let open = lower
                 .get(..close)
                 .and_then(|before| before.rfind("<head"))
@@ -210,7 +208,6 @@ impl Scan<'_> {
                 self.edits.push((at..at, self.tags.to_owned()));
                 self.wired += 1;
             }
-            searched = close + "</head>".len();
         }
     }
 

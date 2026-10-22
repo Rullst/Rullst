@@ -654,11 +654,13 @@ fn android_values_are_validated() {
             "{host}"
         );
     }
-    for host in [
-        "a.dev",
-        &format!("{}.dev", "a".repeat(63)),
-        "app-1.acme.dev",
-    ] {
+    let label = "a".repeat(63);
+    // DNS names hold at most 253 characters.
+    let longest = format!("{label}.{label}.{label}.{}", "b".repeat(61));
+    assert!(
+        refused(Some(&format!("{longest}b")), Some("dev.acme.notes")).starts_with("--host must be")
+    );
+    for host in ["a.dev", &format!("{label}.dev"), "app-1.acme.dev", &longest] {
         assert!(
             PwaValues::resolve(
                 &PwaFlags {

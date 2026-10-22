@@ -182,6 +182,41 @@ fn other_uses_of_the_layout_name_are_left_alone() {
         " ".repeat(70)
     );
     assert!(wired(&deep).source.contains("render_page_with_head(\n"));
+    // rustfmt keeps a call on one line up to 60 columns of arguments and a
+    // 100-column line.
+    let title = |length: usize| format!("\"{}\"", "t".repeat(length - 2));
+    let call = |indent: usize, title: &str| {
+        format!(
+            "fn f() {{\n{}render_page_with_lang(&htmx, \"en\", {title}, content)\n}}",
+            " ".repeat(indent)
+        )
+    };
+    // `&htmx, "en", <title>, crate::pwa::head(), content` is 42 columns plus the title.
+    assert!(wired(&call(4, &title(18))).source.contains(&format!(
+        "    render_page_with_head(&htmx, \"en\", {}, crate::pwa::head(), content)\n",
+        title(18)
+    )));
+    assert!(
+        wired(&call(4, &title(19)))
+            .source
+            .contains("render_page_with_head(\n")
+    );
+    // With 30 columns of arguments, the line is 53 columns plus the indent.
+    let short = |indent: usize| {
+        wired(&format!(
+            "fn f() {{\n{}render_page_with_lang(a, b, c, d)\n}}",
+            " ".repeat(indent)
+        ))
+        .source
+    };
+    assert!(short(47).contains("render_page_with_head(a, b, c, crate::pwa::head(), d)\n"));
+    assert!(short(48).contains("render_page_with_head(\n"));
+    // A path after other code is not a call that starts its line.
+    let assigned = "fn f() { let page = rullst::htmx::render_page_with_lang(&htmx, \"en\", \"A title long enough to wrap\", content); }";
+    assert_eq!(
+        wired(assigned).source,
+        "fn f() { let page = rullst::htmx::render_page_with_head(&htmx, \"en\", \"A title long enough to wrap\", crate::pwa::head(), content); }"
+    );
     // A trailing comma after four arguments is still the layout call.
     assert_eq!(
         wired("fn f() { render_page_with_lang(1, 2, 3, 4,); }").wired,
