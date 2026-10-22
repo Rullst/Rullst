@@ -1,0 +1,416 @@
+//! Sign-in with external identity providers (`cargo rullst make:oauth`).
+//!
+//! The browser keeps only a random challenge id, in the short-lived
+//! `rullst_oauth_challenge` cookie scoped to `/auth/<provider>`. The OAuth
+//! state, the PKCE verifier and the OpenID Connect nonce stay in the
+//! `rullst_connect_login_challenges` table of the application database
+//! (created on first use), and the callback consumes them exactly once.
+//!
+//! Accounts: a provider identity already linked in `oauth_identities`
+//! (provider + subject) signs in. Otherwise the provider must report the
+//! email address as verified: a new address creates an account without a
+//! password, and an address that already belongs to an account follows
+//! `EXISTING_ACCOUNT_POLICY`. Sign-in issues the same `rullst_session`
+//! cookie as the password login, carrying the account's session epoch.
+
+pub mod __PROVIDER__;
+
+use crate::controllers::auth_controller::{
+    get_csp_nonce, get_csrf_token, normalize_email, utc_timestamp, valid_email,
+};
+use crate::models::oauth_identity::{self, OAuthIdentity};
+use crate::models::user::User;
+use crate::pages::auth;
+use rullst::async_runtime::tokio::sync::OnceCell;
+use rullst::auth as rullst_auth;
+use rullst::config::Environment;
+use rullst::connect::ConnectUser;
+use rullst::connect::challenge::{
+    ChallengeCookie, ChallengeError, LoginError, LoginOptions, ReturnPath, SqlChallengeStore,
+    begin_login, finish_login,
+};
+use rullst::connect::extractors::AuthCallback;
+use rullst::connect::provider::Provider;
+use rullst::server::{Extension, HeaderMap, HeaderValue, IntoResponse, Redirect, Response, StatusCode, header};
+
+/// Sign-in attempts the database keeps at once; more are refused until
+/// some finish or expire (each lives at most ten minutes).
+const MAX_LIVE_CHALLENGES: u32 = 10_000;
+/// Where a sign-in lands when it did not start with a `?next=` page.
+const DEFAULT_RETURN_PATH: &str = "/dashboard";
+/// Where callbacks land in development when neither the provider's redirect
+/// URL nor `RULLST_PUBLIC_ORIGIN` is set.
+const DEVELOPMENT_ORIGIN: &str = "http://localhost:3000";
+
+const UNAVAILABLE: &str = "Sign-in is temporarily unavailable. Try again in a moment.";
+const EXPIRED: &str = "That sign-in link expired or was already used. Start again.";
+const UNVERIFIED: &str = "That sign-in could not be verified. Start again.";
+const CANCELLED: &str = "Sign-in was cancelled.";
+const FAILED: &str = "Sign-in with that provider failed. Try again.";
+const UNVERIFIED_EMAIL: &str = "The provider did not confirm this email address, so it cannot sign in here.";
+const EXISTING_ACCOUNT: &str = "An account already uses this email address. Sign in with your password.";
+/// The password login's message when an account cannot start a session.
+const SESSION_ERROR: &str = "Error starting session";
+
+/// What a verified provider email that already belongs to an account does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExistingAccountPolicy {
+    /// Refuse and ask for the password. This is the default because
+    /// registration does not verify that an address belongs to whoever
+    /// registered it: linking would hand the real owner an account someone
+    /// else may still hold the password of.
+    Refuse,
+    /// Link the identity, remove the account's password and sign out every
+    /// device, so a password set by whoever registered the address first
+    /// stops working. The owner can set a new password with "Forgot your
+    /// password?".
+    LinkAndResetPassword,
+}
+
+/// Change to `ExistingAccountPolicy::LinkAndResetPassword` to link accounts
+/// by verified email.
+pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;
+
+/// The login challenges of every provider, in the application database.
+pub(crate) type ChallengeStore = SqlChallengeStore<__CHALLENGE_DATABASE__>;
+static CHALLENGES: OnceCell<ChallengeStore> = OnceCell::const_new();
+
+/// The challenge table, created on first use.
+pub(crate) async fn challenges() -> Result<&'static ChallengeStore, ChallengeError> {
+    CHALLENGES
+        .get_or_try_init(|| async {
+            let pool = rullst::db::Orm::pool()
+                .map_err(|_| ChallengeError::StorageUnavailable("database pool"))?;
+            ChallengeStore::open(pool.clone(), MAX_LIVE_CHALLENGES).await
+        })
+        .await
+}
+
+/// The running environment; unreadable configuration counts as production.
+pub(crate) fn environment() -> Environment {
+    rullst::config::RullstConfig::global()
+        .environment()
+        .unwrap_or(Environment::Production)
+}
+
+/// A setting from the process environment, then `.env`; blank is unset.
+pub(crate) fn setting(name: &str) -> Result<Option<String>, rullst::config::ConfigError> {
+    Ok(rullst::config::project_setting(name)?
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty()))
+}
+
+/// The callback URL to register with the provider: `explicit`, else
+/// `RULLST_PUBLIC_ORIGIN` + `/auth/<provider>/callback`, else the development
+/// origin. Staging and production refuse to guess.
+pub(crate) fn redirect_url(
+    provider: &str,
+    explicit: Option<String>,
+    public_origin: Option<String>,
+    environment: Environment,
+) -> Result<String, String> {
+    if let Some(explicit) = explicit {
+        return Ok(explicit);
+    }
+    let origin = match public_origin {
+        Some(origin) => origin.trim_end_matches('/').to_owned(),
+        None if !environment.requires_secure_defaults() => DEVELOPMENT_ORIGIN.to_owned(),
+        None => {
+            return Err(format!(
+                "set RULLST_PUBLIC_ORIGIN or the {provider} redirect URL before enabling {provider} sign-in"
+            ));
+        }
+    };
+    Ok(format!("{origin}/auth/{provider}/callback"))
+}
+
+/// The challenge cookie of `/auth/<provider>`: `Secure` in staging and
+/// production (and on every HTTPS request, which Rullst Core adds).
+pub(crate) fn challenge_cookie(provider: &str) -> Result<ChallengeCookie, ChallengeError> {
+    ChallengeCookie::new(
+        format!("/auth/{provider}"),
+        environment().requires_secure_defaults(),
+    )
+}
+
+/// What the login page needs to render an error.
+pub(crate) struct PageContext {
+    csrf: String,
+    nonce: String,
+}
+
+pub(crate) fn page_context(
+    headers: &HeaderMap,
+    csrf: &Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: &Option<Extension<rullst::security::CspNonce>>,
+) -> PageContext {
+    let csrf = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str().to_owned())
+        .unwrap_or_else(|| get_csrf_token(headers));
+    PageContext {
+        csrf,
+        nonce: get_csp_nonce(csp_nonce).to_owned(),
+    }
+}
+
+/// The login page with `message`, clearing the provider's challenge cookie.
+pub(crate) fn refused(page: &PageContext, provider: &str, status: StatusCode, message: &str) -> Response {
+    let mut response = (status, auth::login_page(&page.csrf, Some(message), None, &page.nonce)).into_response();
+    if let Ok(value) = challenge_cookie(provider).and_then(|cookie| {
+        HeaderValue::from_str(&cookie.clear()).map_err(|_| ChallengeError::Invalid("cookie"))
+    }) {
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
+}
+
+/// A `303 See Other` to `target` that also sets `cookies`.
+fn redirect_with_cookies(target: &str, cookies: &[String]) -> Response {
+    let mut response = Redirect::to(target).into_response();
+    for cookie in cookies {
+        let Ok(value) = HeaderValue::from_str(cookie) else {
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid cookie").into_response();
+        };
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
+}
+
+/// Stores a fresh challenge and sends the browser to the provider (in mock
+/// mode, straight back to the callback). `next` names a same-site page to
+/// return to; anything else is ignored.
+pub(crate) async fn start<P: Provider + ?Sized>(
+    provider_name: &'static str,
+    provider: &P,
+    options: LoginOptions,
+    next: Option<&str>,
+    page: &PageContext,
+) -> Response {
+    let (store, cookie) = match (challenges().await, challenge_cookie(provider_name)) {
+        (Ok(store), Ok(cookie)) => (store, cookie),
+        (Err(error), _) | (_, Err(error)) => {
+            eprintln!("{provider_name} sign-in could not start: {error}");
+            return refused(page, provider_name, StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE);
+        }
+    };
+    let options = match next.map(ReturnPath::parse) {
+        Some(Ok(path)) => options.with_return_to(path),
+        _ => options,
+    };
+    match begin_login(store, provider, options).await {
+        Ok(redirect) => redirect_with_cookies(redirect.url(), &[redirect.set_cookie(&cookie)]),
+        Err(error) => {
+            eprintln!("{provider_name} sign-in could not start: {error}");
+            refused(page, provider_name, StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE)
+        }
+    }
+}
+
+/// Consumes the challenge named by the cookie, validates the callback,
+/// resolves the account and signs it in.
+pub(crate) async fn complete<P: Provider + ?Sized>(
+    provider_name: &'static str,
+    provider: &P,
+    headers: &HeaderMap,
+    callback: &AuthCallback,
+    page: &PageContext,
+) -> Response {
+    let store = match challenges().await {
+        Ok(store) => store,
+        Err(error) => {
+            eprintln!("{provider_name} sign-in challenge store failed: {error}");
+            return refused(page, provider_name, StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE);
+        }
+    };
+    let challenge_id = ChallengeCookie::read(
+        headers
+            .get_all(header::COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok()),
+    );
+    let login = match finish_login(store, provider, provider_name, challenge_id.as_deref(), callback).await {
+        Ok(login) => login,
+        Err(error) => {
+            let (status, message) = match &error {
+                LoginError::MissingChallenge
+                | LoginError::Challenge(ChallengeError::NotFound | ChallengeError::Expired) => {
+                    (StatusCode::BAD_REQUEST, EXPIRED)
+                }
+                LoginError::Challenge(_) => (StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE),
+                LoginError::Denied(_) => (StatusCode::BAD_REQUEST, CANCELLED),
+                LoginError::Exchange(_) => (StatusCode::BAD_GATEWAY, FAILED),
+                _ => (StatusCode::BAD_REQUEST, UNVERIFIED),
+            };
+            eprintln!("{provider_name} sign-in refused: {error}");
+            return refused(page, provider_name, status, message);
+        }
+    };
+    let (profile, return_to) = login.into_parts();
+    let user = match resolve_account(provider_name, &profile, EXISTING_ACCOUNT_POLICY).await {
+        Ok(user) => user,
+        Err(AccountError::UnverifiedEmail) => {
+            return refused(page, provider_name, StatusCode::FORBIDDEN, UNVERIFIED_EMAIL);
+        }
+        Err(AccountError::ExistingAccount) => {
+            return refused(page, provider_name, StatusCode::CONFLICT, EXISTING_ACCOUNT);
+        }
+        Err(AccountError::InvalidProfile) => {
+            return refused(page, provider_name, StatusCode::BAD_GATEWAY, FAILED);
+        }
+        Err(AccountError::MissingAccount) => {
+            eprintln!("{provider_name} identity is linked to a missing account");
+            return refused(page, provider_name, StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE);
+        }
+        Err(AccountError::Storage(error)) => {
+            eprintln!("{provider_name} account lookup failed: {error}");
+            return refused(page, provider_name, StatusCode::SERVICE_UNAVAILABLE, UNAVAILABLE);
+        }
+    };
+    let session = match session_cookie(&user) {
+        Ok(session) => session,
+        Err(error) => {
+            eprintln!("Session creation failed: {error}");
+            return refused(page, provider_name, StatusCode::FORBIDDEN, SESSION_ERROR);
+        }
+    };
+    let target = return_to
+        .as_ref()
+        .map_or(DEFAULT_RETURN_PATH, ReturnPath::as_str);
+    let mut cookies = vec![session];
+    if let Ok(cookie) = challenge_cookie(provider_name) {
+        cookies.push(cookie.clear());
+    }
+    redirect_with_cookies(target, &cookies)
+}
+
+/// The password login's 30-day `rullst_session` cookie for `user`, carrying
+/// its current session epoch. Both sign-in paths refuse an account whose
+/// `current_session_epoch()` is `None`; if you add an account status (for
+/// example blocked or inactive), check it here and in `login_submit`.
+pub(crate) fn session_cookie(user: &User) -> Result<String, rullst_auth::AuthError> {
+    let epoch = user
+        .current_session_epoch()
+        .ok_or(rullst_auth::AuthError::SessionRevoked)?;
+    rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)
+}
+
+/// Why a provider identity found no account to sign in.
+#[derive(Debug)]
+pub enum AccountError {
+    /// The provider returned no usable subject.
+    InvalidProfile,
+    /// The identity is not linked and the provider did not verify the email.
+    UnverifiedEmail,
+    /// The verified email belongs to an account and the policy refuses linking.
+    ExistingAccount,
+    /// A linked identity points at a missing account.
+    MissingAccount,
+    Storage(rullst::orm::Error),
+}
+
+impl From<rullst::orm::Error> for AccountError {
+    fn from(error: rullst::orm::Error) -> Self {
+        Self::Storage(error)
+    }
+}
+
+impl From<rullst::db::sqlx::Error> for AccountError {
+    fn from(error: rullst::db::sqlx::Error) -> Self {
+        Self::Storage(error.into())
+    }
+}
+
+/// The account for a provider identity, linking or creating it as the
+/// module documentation describes.
+pub async fn resolve_account(
+    provider: &str,
+    profile: &ConnectUser,
+    policy: ExistingAccountPolicy,
+) -> Result<User, AccountError> {
+    let subject = profile.id.as_str();
+    if subject.is_empty() || subject.len() > 255 || subject.chars().any(char::is_control) {
+        return Err(AccountError::InvalidProfile);
+    }
+    if let Some(user_id) = OAuthIdentity::user_id(provider, subject).await? {
+        return User::find(user_id).await?.ok_or(AccountError::MissingAccount);
+    }
+    let email = profile.email.as_deref().map(normalize_email).unwrap_or_default();
+    // Never trust an address the provider did not verify.
+    if profile.email_verified != Some(true) || !valid_email(&email) {
+        return Err(AccountError::UnverifiedEmail);
+    }
+    let user_id = match User::find_by_email(&email).await? {
+        Some(_) if policy == ExistingAccountPolicy::Refuse => {
+            return Err(AccountError::ExistingAccount);
+        }
+        Some(existing) => {
+            link_existing(provider, subject, existing.id).await?;
+            existing.id
+        }
+        None => create_account(provider, profile, &email).await?,
+    };
+    // Read the stored row back so the cookie carries its real session epoch.
+    User::find(user_id).await?.ok_or(AccountError::MissingAccount)
+}
+
+async fn create_account(provider: &str, profile: &ConnectUser, email: &str) -> Result<i32, AccountError> {
+    let now = utc_timestamp();
+    let mut user = User {
+        name: display_name(profile, email),
+        email: email.to_owned(),
+        oauth_provider: Some(provider.to_owned()),
+        oauth_id: Some(profile.id.clone()),
+        created_at: now,
+        updated_at: now,
+        ..User::default()
+    };
+    let mut transaction = rullst::db::Orm::begin_transaction().await?;
+    let created = async {
+        user.save_with_tx(&mut transaction).await?;
+        OAuthIdentity::link_with_tx(&mut transaction, user.id, provider, &profile.id, now).await
+    }
+    .await;
+    finish(transaction, created).await?;
+    Ok(user.id)
+}
+
+async fn link_existing(provider: &str, subject: &str, user_id: i32) -> Result<(), AccountError> {
+    let mut transaction = rullst::db::Orm::begin_transaction().await?;
+    let linked = async {
+        OAuthIdentity::link_with_tx(&mut transaction, user_id, provider, subject, utc_timestamp()).await?;
+        oauth_identity::remove_password_and_sessions_with_tx(&mut transaction, user_id).await
+    }
+    .await;
+    finish(transaction, linked).await
+}
+
+async fn finish(
+    transaction: rullst::orm::db::Transaction<'static>,
+    result: Result<(), rullst::orm::Error>,
+) -> Result<(), AccountError> {
+    match result {
+        Ok(()) => Ok(transaction.commit().await?),
+        Err(error) => {
+            if let Err(rollback) = transaction.rollback().await {
+                eprintln!("Account transaction rollback failed: {rollback}");
+            }
+            Err(error.into())
+        }
+    }
+}
+
+/// The provider's display name, else the email's local part: one line of
+/// at most 120 characters.
+fn display_name(profile: &ConnectUser, email: &str) -> String {
+    let name = profile.name.split_whitespace().collect::<Vec<_>>().join(" ");
+    let name = if name.is_empty() {
+        email.split('@').next().unwrap_or_default().to_owned()
+    } else {
+        name
+    };
+    name.chars()
+        .filter(|character| !character.is_control())
+        .take(120)
+        .collect()
+}

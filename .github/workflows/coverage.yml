@@ -138,6 +138,9 @@ jobs:
       - name: Measure recurring publication, broker recovery and server restart contracts
         run: python3 .github/check-recurring-postgres.py --coverage
 
+      - name: Measure PostgreSQL and MySQL OAuth login-challenge consumption
+        run: python3 .github/check-connect-sql.py --coverage
+
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage
 

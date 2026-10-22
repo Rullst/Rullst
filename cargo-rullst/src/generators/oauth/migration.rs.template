@@ -1,0 +1,34 @@
+use rullst::db::async_trait;
+use rullst::db::schema::{ForeignKeyAction, Migration, Schema};
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "__MIGRATION_NAME__"
+    }
+
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
+        // One row per provider identity linked to a user. The login
+        // challenges live in `rullst_connect_login_challenges`, which the
+        // store creates on first use.
+        Schema::create("oauth_identities", |table| {
+            table.id();
+            table
+                .foreign_id("user_id", "users")
+                .on_delete(ForeignKeyAction::Cascade);
+            // Bounded VARCHAR columns: MySQL/MariaDB cannot index TEXT.
+            table.string("provider").not_null().col_type = "VARCHAR(32)".to_string();
+            table.string("subject").not_null().col_type = "VARCHAR(255)".to_string();
+            table.timestamp_tz("created_at").not_null();
+            table.unique(&["provider", "subject"]);
+            table.index(&["user_id"]);
+        })
+        .await
+    }
+
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("oauth_identities").await
+    }
+}

@@ -1,13 +1,160 @@
 # 42. Server-Bound OAuth/OIDC Sessions
 
-Rullst Connect can manage the browser-to-provider callback challenge for an
-Axum application. The bounded flow generates state and PKCE for OAuth 2.0,
-adds nonce for OpenID Connect, stores the private values in `tower-sessions`,
-and consumes them before validating the callback.
+Rullst Connect manages the browser-to-provider callback challenge: it
+generates state and PKCE for OAuth 2.0, adds a nonce for OpenID Connect, keeps
+those private values on the server and consumes them exactly once before
+validating the callback. It offers two places to keep them:
 
-This removes security-sensitive plumbing from ordinary handlers. It does not
-configure the application's session store, cookie, TLS, account-linking, or
-authorization policy.
+- a **login challenge store** (v13, from 13.0.0-alpha.3) in the application's
+  own database, with only an opaque id in a short-lived cookie. A Rullst
+  application signs users in with its own encrypted session cookie, so this is
+  the path for it, and `cargo rullst make:oauth google` generates it;
+- a **`tower-sessions` session** (`axum-session` feature), for an Axum
+  application that already runs a `SessionManagerLayer`.
+
+Either way this removes security-sensitive plumbing from ordinary handlers. It
+does not choose the application's account-linking or authorization policy.
+
+## Store-backed login
+
+### Generate it
+
+In a project with the `cargo rullst auth`, SaaS or LMS account model:
+
+```bash
+cargo rullst make:oauth google
+cargo rullst db:migrate
+```
+
+The command adds `/auth/google` and `/auth/google/callback` (behind the
+password login's per-client rate limit), a "Sign in with Google" link on the
+login page, an `oauth_identities` table (provider and subject, unique) and the
+`oauth`, `oauth-<database>` and application `oauth-mock` features. The
+generated callback signs the account in with `make_login_cookie_with_epoch`,
+like the password login. A provider email links or creates an account only
+when the ID token reports `email_verified: true`; an email that already
+belongs to an account is refused by default, because registration does not
+prove that the person who registered it owns the address. See
+[`cargo rullst make:oauth`](../cli_reference.md#cargo-rullst-makeoauth-v13-prerelease-preview)
+for the settings and the linking policy.
+
+To try it without a Google project, run with mock credentials and the
+offline provider, which sends the browser straight back to the callback and
+signs in `mock@example.invalid`:
+
+```bash
+GOOGLE_CLIENT_ID=mock_google GOOGLE_CLIENT_SECRET=mock_google \
+  cargo run --features oauth-mock
+```
+
+Without `--features oauth-mock` the application stops at startup with an error
+that names the feature, and staging and production refuse mock credentials.
+
+### Or write the two handlers
+
+The store implements `ChallengeStore`: `MemoryChallengeStore` for tests and one
+process, or `SqlChallengeStore` over the application's own SQLx pool with the
+`sqlite`, `postgres` or `mysql` feature of `rullst-connect` (`oauth-sqlite`,
+`oauth-postgres` or `oauth-mysql` on the `rullst` facade, where the module is
+`rullst::connect::challenge`). `SqlChallengeStore::open` creates its table,
+`rullst_connect_login_challenges`, when it is missing.
+
+```rust
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
+use axum::response::{IntoResponse, Redirect, Response};
+use rullst_connect::challenge::{
+    ChallengeCookie, LoginOptions, MemoryChallengeStore, begin_login, finish_login,
+};
+use rullst_connect::extractors::AuthCallback;
+use rullst_connect::providers::GoogleProvider;
+
+/// A redirect that also sets `cookies`.
+fn redirect(target: &str, cookies: &[String]) -> Response {
+    let mut response = Redirect::to(target).into_response();
+    for cookie in cookies {
+        if let Ok(value) = HeaderValue::from_str(cookie) {
+            response.headers_mut().append(header::SET_COOKIE, value);
+        }
+    }
+    response
+}
+
+/// `GET /auth/google`
+async fn start(
+    store: &MemoryChallengeStore,
+    google: &GoogleProvider,
+    cookie: &ChallengeCookie,
+) -> Response {
+    match begin_login(store, google, LoginOptions::oidc("google")).await {
+        Ok(login) => redirect(login.url(), &[login.set_cookie(cookie)]),
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
+}
+
+/// `GET /auth/google/callback`
+async fn callback(
+    store: &MemoryChallengeStore,
+    google: &GoogleProvider,
+    cookie: &ChallengeCookie,
+    headers: &HeaderMap,
+    params: &AuthCallback,
+) -> Response {
+    let id = ChallengeCookie::read(
+        headers
+            .get_all(header::COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok()),
+    );
+    match finish_login(store, google, "google", id.as_deref(), params).await {
+        Ok(login) if login.user().email_verified == Some(true) => {
+            // Map `login.user().id` (the provider subject) to an account and
+            // add the application's session cookie here.
+            redirect("/dashboard", &[cookie.clear()])
+        }
+        Ok(_) | Err(_) => StatusCode::BAD_REQUEST.into_response(),
+    }
+}
+```
+
+`ChallengeCookie::new("/auth/google", secure)` scopes the cookie to the login
+routes; pass `secure` the way Rullst Core decides it,
+`Environment::requires_secure_defaults()`. The cookie is named
+`rullst_oauth_challenge`, so Core also adds `Secure` to it on every HTTPS
+request.
+
+### Store contract
+
+- `begin_login` stores the provider name, state, PKCE verifier, nonce (OIDC
+  only) and an optional same-site return page (`ReturnPath`: an absolute path,
+  never `//host` or `/\host`), and returns a fresh `ChallengeId`: 256 random
+  bits, 43 base64url characters. The challenge lives ten minutes, or less
+  with `LoginOptions::with_lifetime`.
+- The browser holds only the id, in an `HttpOnly`, `SameSite=Lax` cookie of at
+  most ten minutes. `SameSite=Lax` still sends it with the provider's
+  top-level `GET` redirect. Several cookies of that name with different values
+  are refused rather than guessed.
+- Stores key rows by a SHA-256 digest of the id, never the id. Consumption is
+  one atomic removal: `DELETE … RETURNING` on SQLite and PostgreSQL,
+  `SELECT … FOR UPDATE` then `DELETE` in one transaction on MySQL, a mutex in
+  memory. Of several concurrent callbacks with one id, exactly one finds it.
+- `finish_login` reports a missing cookie, then an unknown, altered, used or
+  expired id, before it reads the callback; from there the challenge is
+  consumed whatever follows. It compares the state in constant time before it
+  trusts a provider `error`, then exchanges the code with the stored verifier
+  and nonce. Errors are typed (`LoginError`, `ChallengeError`) and carry no
+  state, code, verifier, nonce or id.
+- Each store has an entry limit: a save at the limit first deletes expired
+  challenges, then refuses with `ChallengeError::CapacityExceeded`
+  (`purge_expired` deletes them on demand). The limit is exact on SQLite and in
+  memory; on PostgreSQL and MySQL concurrent saves can pass it by at most
+  their number.
+
+Concurrent login tabs each have their own challenge, unlike the one active
+challenge of a `tower-sessions` session.
+
+## Alternative: `tower-sessions`
+
+The rest of this tutorial covers the `axum-session` feature.
 
 ## Enable the session feature
 
@@ -331,17 +478,17 @@ The managed contract is intentionally small:
 
 One active challenge makes replay and lifecycle behavior unambiguous, but it is
 not the best UX for applications that intentionally support concurrent login
-tabs. Such an application should build a bounded transaction store keyed by an
-opaque flow identifier and retain the same expiry, atomic consume, constant-time
-comparison and redaction properties.
+tabs. Such an application should use the [store-backed login](#store-backed-login),
+which keys each attempt by its own opaque id with the same expiry, atomic
+consumption, constant-time comparison and redaction properties.
 
 The generic `tower-sessions` store interface does not expose a distributed
 compare-and-delete. Two requests that already loaded the same record can still
 race even though each removal is saved immediately. Provider authorization
 codes are themselves single-use, but account creation/linking and authenticated
 session establishment must still be idempotent. Deployments requiring a strict
-distributed callback claim should use an application-owned atomic challenge
-store.
+distributed callback claim should use the store-backed login, whose SQL stores
+consume a challenge atomically.
 
 ## What the application still must prove
 
@@ -365,5 +512,7 @@ Before release, test the exact deployed provider and browser path:
    user-visible behavior without logging credentials.
 
 The local Rullst regressions prove generation, round-trip, mismatch, missing
-state, expiry, replacement, replay, typed exchange parameters and redaction.
-They are not provider certification or deployment evidence.
+state, expiry, replacement, replay, typed exchange parameters and redaction,
+and, for the store-backed login, concurrent single consumption on SQLite (and
+on owned PostgreSQL and MySQL servers in CI). They are not provider
+certification or deployment evidence.
