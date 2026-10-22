@@ -399,6 +399,8 @@ fn integer_fields_carry_their_type_range() {
             stock: i32,
             views: Option<u32>,
             rank: u8,
+            offset: i8,
+            port: u16,
             total: u64,
             price: f64,
             #[nexus(kind = "number")]
@@ -427,6 +429,8 @@ fn integer_fields_carry_their_type_range() {
         ),
         ("views", "FieldKind::Integer{min:0i64,max:4294967295i64}"),
         ("rank", "FieldKind::Integer{min:0i64,max:255i64}"),
+        ("offset", "FieldKind::Integer{min:-128i64,max:127i64}"),
+        ("port", "FieldKind::Integer{min:0i64,max:65535i64}"),
         (
             "total",
             "FieldKind::Integer{min:0i64,max:::core::primitive::i64::MAX}",
