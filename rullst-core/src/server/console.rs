@@ -276,4 +276,74 @@ mod tests {
         }
         write_line(&mut Broken, format_args!("[HTTP] GET / -> 200"));
     }
+
+    const LOG_CHILD_ENV: &str = "RULLST_ACCESS_LOG_CHILD";
+    const LOG_CHILD_TEST: &str = "server::console::tests::quiet_probe_access_log_child";
+
+    /// Runs only inside the child spawned by the parent test below, whose
+    /// stdout the access log writes to.
+    #[tokio::test]
+    async fn quiet_probe_access_log_child() {
+        if std::env::var_os(LOG_CHILD_ENV).is_none() {
+            return;
+        }
+        use tower::ServiceExt;
+        let router = axum::Router::new()
+            .route("/orders", axum::routing::get(|| async { "orders" }))
+            .route("/health", axum::routing::get(|| async { "ok" }))
+            .route(
+                "/ready",
+                axum::routing::get(|| async { axum::http::StatusCode::SERVICE_UNAVAILABLE }),
+            )
+            .layer(axum::middleware::from_fn_with_state(
+                false,
+                access_log_middleware,
+            ));
+        for (path, status) in [("/orders", 200), ("/health", 200), ("/ready", 503)] {
+            let response = router
+                .clone()
+                .oneshot(
+                    axum::http::Request::get(path)
+                        .body(axum::body::Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status().as_u16(), status, "{path}");
+        }
+    }
+
+    #[test]
+    fn quiet_probe_access_log_prints_requests_and_failing_probes() {
+        if std::env::var_os(LOG_CHILD_ENV).is_some() {
+            return;
+        }
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", LOG_CHILD_TEST, "--nocapture", "--test-threads=1"])
+            .env(LOG_CHILD_ENV, "1")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let mut child_stdout = child.stdout.take().unwrap();
+        let reader = std::thread::spawn(move || {
+            let mut stdout = String::new();
+            let _ = child_stdout.read_to_string(&mut stdout);
+            stdout
+        });
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        while child.try_wait().unwrap().is_none() {
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                let _ = child.wait();
+                panic!("the access-log child exceeded its deadline");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let stdout = reader.join().unwrap();
+        assert!(stdout.contains("test result: ok. 1 passed"), "{stdout}");
+        assert!(stdout.contains("[HTTP] GET /orders -> 200 ("), "{stdout}");
+        assert!(stdout.contains("[HTTP] GET /ready -> 503 ("), "{stdout}");
+        assert!(!stdout.contains("/health"), "{stdout}");
+    }
 }
