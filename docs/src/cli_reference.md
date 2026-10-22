@@ -239,7 +239,16 @@ The choices that materially change the generated application:
     shared by both files) and the
     host-local `.cargo/config.toml` described below, so the builder's
     `COPY . .` never sends them to a (possibly remote) builder. An existing
-    `.dockerignore` is kept unchanged. Since v13 the runtime
+    `.dockerignore` is kept unchanged. Since 13.0.0-alpha.3 the dependencies
+    are built in their own cached layer without an extra tool: a `planner`
+    stage copies only the manifests, `Cargo.lock` and `rust-toolchain(.toml)`,
+    with `fn main() {}` standing in for every target (`src/main.rs`,
+    `src/lib.rs`, `src/bin/*.rs`, explicit `path = "*.rs"` targets) and build
+    script, and the builder runs `cargo build --release --locked` on that
+    skeleton before `COPY . .`, touches the real `.rs` files and builds again
+    with `--locked`. Docker reuses the dependency layer until a manifest, the
+    lockfile or the set of targets changes; workspace members keep their
+    paths. Since v13 the runtime
     stage is `gcr.io/distroless/cc-debian12:nonroot` (glibc, libgcc, libstdc++,
     CA certificates and tzdata; no shell or package manager). It runs as
     UID/GID 10001 with `HOME=/app`, sets the production bind address and copies

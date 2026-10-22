@@ -245,6 +245,17 @@ A prepared version section does not establish that its tag or crates exist.
   skips entirely does not open that day. A window that sets
   `with_utc_offset_minutes` is rejected with
   `SchedulerError::InvalidConfiguration`. `deferrable_task` is unchanged.
+- The `Dockerfile` written by `cargo rullst new --docker`, `dockerize` and a
+  first `deploy` builds the dependencies in their own cached layer: a
+  `planner` stage keeps only the manifests, `Cargo.lock` and the toolchain
+  file, with `fn main() {}` standing in for each target and build script, and
+  the builder compiles that skeleton with `cargo build --release --locked`
+  before it copies the sources, so a change to the application's code no
+  longer recompiles every dependency. Workspace members, `src/bin` targets,
+  targets and build scripts with an explicit `path`/`build`, and
+  `rust-toolchain.toml` are kept; the distroless non-root runtime stage is
+  unchanged. Existing Dockerfiles are not rewritten; move one aside and run
+  `cargo rullst dockerize` to regenerate it.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 
