@@ -371,6 +371,19 @@ async fn the_default_pipeline_exposes_its_override_layer() {
     overrides.override_enabled("override-only-flag", false);
     assert!(!manager.enabled("override-only-flag").await);
 
+    assert!(!manager.enabled_for("override-target-flag", "user-1").await);
+    overrides.override_enabled("override-target-flag", true);
+    assert!(manager.enabled_for("override-target-flag", "user-1").await);
+    assert_eq!(manager.variant("override-split-flag", "user-1").await, None);
+    overrides.override_variants("override-split-flag", vec![("blue".to_string(), 100)]);
+    assert_eq!(
+        manager
+            .variant("override-split-flag", "user-1")
+            .await
+            .as_deref(),
+        Some("blue")
+    );
+
     assert!(FeatureManager::new().overrides().is_none());
 }
 
