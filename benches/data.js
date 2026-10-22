@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792684406067,
+  "lastUpdate": 1792695994687,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27951,6 +27951,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2270,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec643e00aecb3b3d097a10109c704df94d16bda3",
+          "message": "Merge pull request #528 from Rullst/fix/v13-alpha3-leftovers\n\nfix(v13): Windows SQLite store start-up, migration transactions and stale v12 pointers",
+          "timestamp": "2026-10-22T16:01:18-03:00",
+          "tree_id": "021ec64368af8ca55090ae6d8e995df47d8d8e49",
+          "url": "https://github.com/Rullst/Rullst/commit/ec643e00aecb3b3d097a10109c704df94d16bda3"
+        },
+        "date": 1792695991470,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 757,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1009,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 380,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2301,
+            "range": "± 82",
             "unit": "ns/iter"
           }
         ]
