@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792664048658,
+  "lastUpdate": 1792671897104,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27735,6 +27735,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2264,
             "range": "± 45",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2",
+          "message": "Merge pull request #523 from Rullst/feat/v13-pwa\n\nfeat(cli)!: first-class PWA with Google Play TWA support; retire Omni",
+          "timestamp": "2026-10-22T09:15:11-03:00",
+          "tree_id": "5b4f5126e3f6ce955bef0cdb0eadbf2a5bf37a8e",
+          "url": "https://github.com/Rullst/Rullst/commit/ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2"
+        },
+        "date": 1792671894286,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 765,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 974,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 356,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2062,
+            "range": "± 63",
             "unit": "ns/iter"
           }
         ]
