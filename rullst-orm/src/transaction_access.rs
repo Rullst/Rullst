@@ -140,8 +140,32 @@ mod tests {
         assert!(matches!(spawned, Ok(Ok(()))));
     }
 
+    /// Serializes the tests that change the process-wide stream registry.
+    static REGISTRY: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    #[test]
+    fn without_an_open_stream_the_check_never_waits_for_the_registry() {
+        let _serial = REGISTRY.blocking_lock();
+        let registry = super::streaming_transactions();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let checker = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .expect("runtime");
+            let transaction: SharedTransaction = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+            let result =
+                runtime.block_on(crate::CURRENT_TX.scope(transaction, async { ensure_allowed() }));
+            let _ = sender.send(result.is_ok());
+        });
+        let finished = receiver.recv_timeout(std::time::Duration::from_secs(10));
+        drop(registry);
+        checker.join().expect("checker thread");
+        assert_eq!(finished, Ok(true));
+    }
+
     #[tokio::test]
     async fn a_held_transaction_rejects_other_calls_until_the_hold_drops() {
+        let _serial = REGISTRY.lock().await;
         let held: SharedTransaction = std::sync::Arc::new(tokio::sync::Mutex::new(None));
         let other: SharedTransaction = std::sync::Arc::new(tokio::sync::Mutex::new(None));
         let hold = hold_for_stream(&held);

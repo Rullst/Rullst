@@ -151,3 +151,48 @@ async fn in_memory_sqlite_schema_survives_the_idle_reaper() {
     assert_eq!(rows, 0);
     pool.close().await;
 }
+
+/// A pool of the compiled driver that never connects.
+fn lazy_pool() -> crate::RullstPool {
+    #[cfg(not(any(
+        feature = "strict-postgres",
+        feature = "strict-mysql",
+        feature = "strict-sqlite"
+    )))]
+    sqlx::any::install_default_drivers();
+    let url = if cfg!(feature = "strict-postgres") {
+        "postgres://rullst@127.0.0.1:9/never"
+    } else if cfg!(feature = "strict-mysql") {
+        "mysql://rullst@127.0.0.1:9/never"
+    } else {
+        "sqlite::memory:"
+    };
+    Orm::pool_options()
+        .connect_lazy(url)
+        .expect("a lazy pool never connects")
+}
+
+#[tokio::test]
+async fn read_pool_rotates_over_the_replicas_and_falls_back_to_the_primary() {
+    let state = super::OrmState::new(lazy_pool(), "sqlite", vec![lazy_pool(), lazy_pool()]);
+    let picks: Vec<*const crate::RullstPool> = (0..5)
+        .map(|_| std::ptr::from_ref(state.read_pool()))
+        .collect();
+    let first = std::ptr::from_ref(&state.replicas[0]);
+    let second = std::ptr::from_ref(&state.replicas[1]);
+    assert_eq!(picks, [first, second, first, second, first]);
+
+    let primary_only = super::OrmState::new(lazy_pool(), "sqlite", Vec::new());
+    assert!(std::ptr::eq(
+        primary_only.read_pool(),
+        &primary_only.primary
+    ));
+}
+
+#[test]
+fn pool_options_report_slow_acquisitions_after_half_a_second() {
+    assert_eq!(
+        Orm::pool_options().get_acquire_slow_threshold(),
+        std::time::Duration::from_millis(500)
+    );
+}
