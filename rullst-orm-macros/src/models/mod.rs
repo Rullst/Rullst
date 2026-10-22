@@ -2,11 +2,13 @@ pub mod ai_ops;
 pub mod column_enum;
 pub mod crud_ops;
 pub mod delete_ops;
+pub(crate) mod dirty_tracking;
 pub mod json_ops;
 mod mutation_parts;
 pub mod query_ops;
 pub mod redis_ops;
 mod row_lookup;
+mod save_docs;
 mod save_entrypoints;
 mod trash_ops;
 pub mod update_builder;
@@ -50,6 +52,8 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
     let (update_builder_struct, update_builder_method) = generate_update_builder(parsed);
     let redis_methods = generate_redis_hash_methods(parsed);
     let ai_methods = generate_ai_methods(parsed);
+    let tracking_methods =
+        dirty_tracking::generate_methods(parsed, &save_entrypoints::tenant_prepare(parsed));
     let tenant_scoped = !parsed.tenant_column.is_empty();
     let decrypt_encrypted_fields = parsed.encrypted_fields.iter().map(|field| {
         let field_name = &field.name;
@@ -118,6 +122,7 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
             #update_builder_method
 
             #save_method
+            #tracking_methods
             #delete_methods
             #trash_methods
 

@@ -265,6 +265,9 @@ rules! {
     PASSWORD_HASH_HIDDEN: "V13-PASSWORD-HASH-HIDDEN", Review, "SaaS user JSON",
         "`password_hash` is not `#[orm(hidden)]`, so `to_json()`, audit rows and model events carry the hash",
         "Add `#[orm(hidden)]` to the field.";
+    ORM_SKIP_MANAGED_COLUMNS: "V13-ORM-SKIP-MANAGED-COLUMNS", Review, "ORM database-managed columns",
+        "`is_admin`/`session_epoch` is declared `#[orm(skip)]`, which the query builder treats as not a database column, so a filter or ordering on it fails at run time",
+        "Declare the field `#[orm(db_default)]` instead: ORM writes still never touch it, and queries can filter, order and select it.";
     EMPTY_TIMESTAMPS: "V13-EMPTY-TIMESTAMPS", Review, "Registration timestamps",
         "an empty `created_at`/`updated_at` replaces the column default because the ORM inserts every field",
         "Store the current UTC time instead, as the new `utc_timestamp` helper does (`Utc::now()`; see also Billing row timestamps and ORM date/time columns).";
@@ -316,9 +319,12 @@ rules! {
     K8S_NAMES: "V13-K8S-NAMES", Review, "Kubernetes and Buildah names",
         "the package name is not a lowercase DNS label; v13 derives Kubernetes and image names differently",
         "Regenerate the manifests or Buildah script, or rename the objects and image.";
-    ORM_DEFAULT_FEATURES: "V13-ORM-DEFAULT-FEATURES", Review, "Generated `rullst-orm` dependency",
-        "`rullst-orm` keeps its default `drivers-all`, adding every SQLx driver to a single-backend build",
-        "Add `default-features = false` to the `rullst-orm` dependency and enable any other driver explicitly.";
+    ORM_DEFAULT_FEATURES: "V13-ORM-DEFAULT-FEATURES", Review, "Minimal default features",
+        "this `rullst-orm` dependency relies on the default features, which no longer include `drivers-all`, so it has no SQLx database driver",
+        "Enable the backend the application connects to, for example `default-features = false, features = [\"strict-sqlite\"]` (or `strict-postgres`, `strict-mysql`, or `drivers-all` for all three).";
+    RULLST_DEFAULT_FEATURES: "V13-RULLST-DEFAULT-FEATURES", Review, "Minimal default features",
+        "this `rullst` dependency relies on the default features, which no longer include `orm`, `drivers-all` and `queue-sqlite`",
+        "If the application uses the ORM or the SQLite queue, list them, for example `default-features = false, features = [\"strict-sqlite\", \"queue-sqlite\"]` (`drivers-all` for all three drivers); a database-free application needs no change.";
     POLYGLOT_FEATURE: "V13-POLYGLOT-FEATURE", MustChange, "ORM adapter aggregate features",
         "the `orm-polyglot` (`rullst`) and `polyglot` (`rullst-orm`) features were removed; Cargo refuses a manifest that enables them",
         "Enable only the adapters the application uses: `orm-turso`, `orm-mongodb`, `orm-duckdb`, `orm-surrealdb` or `orm-qdrant` on `rullst`, or `turso`, `mongodb`, `duckdb`, `surrealdb` or `qdrant` on `rullst-orm`.";

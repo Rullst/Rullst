@@ -41,6 +41,17 @@ pub fn generate_execution_methods(
     } else {
         quote! { row.__rullst_decrypt_encrypted_fields()?; }
     };
+    let capture_results = if parsed.snapshot_field.is_some() {
+        let capture = crate::models::dirty_tracking::capture(parsed, &quote! { model });
+        quote! {
+            for model in &mut results {
+                #capture
+            }
+        }
+    } else {
+        quote! {}
+    };
+    let capture_row = crate::models::dirty_tracking::capture(parsed, &quote! { row });
     let pluck_methods = super::pluck::generate_pluck_methods(parsed);
     let bulk_delete = super::bulk_delete::generate_delete_all_methods(parsed);
     let has_after_fetch = !parsed.after_fetch.is_empty();
@@ -129,6 +140,7 @@ pub fn generate_execution_methods(
             #cache_write
 
             #decrypt_results
+            #capture_results
             Ok(results)
         }
 
@@ -298,6 +310,7 @@ pub fn generate_execution_methods(
                 while let Some(row_res) = rullst_orm::_futures::StreamExt::next(&mut db_stream).await {
                     let mut row = row_res.map_err(|e| rullst_orm::Error::DatabaseError(e.to_string()))?;
                     #decrypt_row
+                    #capture_row
                     #hook_after_fetch_single
                     yield row;
                 }
@@ -334,6 +347,7 @@ pub fn generate_execution_methods(
                 while let Some(row_res) = rullst_orm::_futures::StreamExt::next(&mut db_stream).await {
                     let mut row = row_res.map_err(|e| rullst_orm::Error::DatabaseError(e.to_string()))?;
                     #decrypt_row
+                    #capture_row
                     #hook_after_fetch_single
                     yield row;
                 }

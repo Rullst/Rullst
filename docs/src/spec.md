@@ -735,8 +735,8 @@ digest in constant time and never matches a stored value that is not a
 rules of the application's store.
 
 The `cargo rullst auth`, SaaS and LMS scaffolds store `users.session_epoch`
-(`BIGINT NOT NULL DEFAULT 0`, excluded from ORM writes with `#[orm(skip)]` so a
-full-row save cannot undo a bump), issue epoch cookies at sign-in and
+(`BIGINT NOT NULL DEFAULT 0`, excluded from ORM writes with
+`#[orm(db_default)]` so a save cannot undo a bump), issue epoch cookies at sign-in and
 registration, refuse a cookie with another epoch in `auth_middleware`, and add
 `POST /logout/everywhere`, which increments the epoch in one `UPDATE` and clears
 the browser cookie. Plain logout still clears only the current browser.
@@ -2220,15 +2220,17 @@ Ok(())
 }
 ```
 
-`save()` of a persisted model is a full-row `UPDATE` of every persisted column
-except the soft-delete marker, so the last writer wins: a column another writer
-changed after the handle was loaded is overwritten with the handle's value. An
+`save()` of a persisted model without a `RowSnapshot` field is a full-row
+`UPDATE` of every persisted column except the soft-delete marker, so the last
+writer wins: a column another writer changed after the handle was loaded is
+overwritten with the handle's value. An
 `INSERT` likewise binds every persisted field, so database column defaults
 do not apply to them, except to fields marked `#[orm(db_default)]` (v13): the
-generated `INSERT` omits them, so the column `DEFAULT` applies, and the
-full-row `UPDATE` never writes them, so the stored value stays; the handle
-keeps its own value until the row is read again, `update_partial()` has no
-setter for them and `#[derive(Nexus)]` shows them read-only. The option is
+generated `INSERT` omits them, so the column `DEFAULT` applies, and no
+`UPDATE` of `save()` writes them, so the stored value stays; without dirty
+tracking the handle keeps its own value until the row is read again,
+`update_partial()` has no setter for them and `#[derive(Nexus)]` shows them
+read-only. The option is
 rejected on `id`, the tenant column, relations, skipped and encrypted fields,
 and by Turso-primary models. The generated `save()` rustdoc and the ORM guide name
 the two supported alternatives: `update_partial()` (§5.4.1), which merges
@@ -2238,6 +2240,43 @@ locked row, and one atomic raw statement such as
 model lifecycle (tenant scope, policy, hooks, audit, cache). The driver
 contract runs that counter and the stale-handle overwrite on SQLite,
 PostgreSQL, MySQL and MariaDB.
+
+**Dirty tracking (v13).** A SQLx model opts in with exactly one field of type
+`RowSnapshot` (`rullst_orm::RowSnapshot`, matched by its last path segment)
+marked `#[sqlx(skip)]`; a `RowSnapshot` field without `#[sqlx(skip)]`, or a
+second one, fails compilation. The tracked columns are the columns of the
+`UPDATE`: every persisted field except `id`, `#[orm(db_default)]` fields and
+the soft-delete marker. Rows decoded by the generated reads (`get` and the
+methods built on it, relations, streams, query-cache hits and the row
+`update_partial()` locks) record, after decryption and before `after_fetch`,
+one keyed 64-bit SipHash per tracked column of its `serde_json`
+serialization (`SecretString` contributes its plaintext; `#[sqlx(json)]`,
+`Json<T>` and `serde_json::Value` columns their document with object keys
+sorted at every level; a value that cannot be serialized never matches). The
+snapshot is 16 bytes plus 8 per column and stores no value. `save()` of a
+persisted record runs the `before_save` hook and `saving` observers, then
+compares: with no difference it returns `Ok` and runs nothing else (no
+`updating`/`updated`/`saved` observer, `after_save` hook, audit entry or
+post-commit effect); otherwise it runs the `updating` observers, recomputes
+the difference and issues `UPDATE <table> SET <changed columns> WHERE id = ?`
+(plus the tenant predicate) with `RETURNING *` on PostgreSQL and SQLite, or
+followed by `SELECT * ... WHERE id = ?` in the same transaction on
+MySQL/MariaDB. No row is `RecordNotFound` (the tenant-scope `Validation` error
+on tenant models). The handle's unwritten tracked columns,
+`#[orm(db_default)]` columns and soft-delete marker take the stored values,
+so observers, the audit diff, events and the Scout document see the stored
+row, and the snapshot is recaptured. An insert records the snapshot of the
+inserted values. Without a `before_save` hook, policy or registered observer,
+an unchanged `save()`/`save_with_tx()` returns before opening a transaction
+or savepoint (it still applies and checks the tenant context). A failed save
+restores the previous snapshot, so its changes stay pending; a rollback of a
+caller-owned transaction after a successful save is not visible to the
+handle. A record built in code, one from a Redis hash, or after
+`mark_all_dirty()` is untracked and writes every tracked column. Tracked
+models also get `dirty_columns()` and `is_dirty()`. `RowSnapshot` is
+bookkeeping: any two compare equal, hash alike and order equal; `Debug` shows
+only whether it is tracked; it implements no Serde trait. Turso-primary
+models do not track. Models without the field keep the full-row `UPDATE`.
 
 `From<sqlx::Error> for rullst_orm::Error` maps `RowNotFound` to
 `RecordNotFound`, a unique or primary-key violation to
@@ -2279,13 +2318,25 @@ lower-cased on PostgreSQL, so `Schema::create("UserProfiles", ...)` creates the
 queries. MySQL/MariaDB and SQLite keep the name as written.
 
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
-are compatible with generated ORM persistence in v12 and v13. `#[orm(skip)]`
-removes a field from generated SQL (writes, filters and projections) but not
-from the application's SQLx `FromRow`, which still reads the column from
-`SELECT *`. A field without a table column therefore needs `#[sqlx(skip)]`
-(alone or together with `#[orm(skip)]`, which are distinct options) or
-`#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
-generated writes must not touch. `FromRow` decodes a `json` or
+are compatible with generated ORM persistence in v12 and v13. Two field
+options keep a field out of generated writes, with different meanings:
+
+| Option | The column | Generated reads (`FromRow`) | `INSERT` / `save()` / `update_partial()` | WHERE / ORDER BY / GROUP BY / `select` |
+| --- | --- | --- | --- | --- |
+| `#[orm(skip)]` | is not a database column for the ORM | the application's SQLx `FromRow` still reads it unless `#[sqlx(skip)]` | never written | rejected at run time with `Validation` |
+| `#[orm(db_default)]` | exists and is managed by the database (a default, a trigger or explicit SQL) | read | never written (the `INSERT` takes the column `DEFAULT`) | allowed |
+
+`#[orm(skip)]` removes a field from generated SQL (writes, filters and
+projections) but not from the application's SQLx `FromRow`, which still reads
+the column from `SELECT *`. A field without a table column therefore needs
+`#[sqlx(skip)]` (alone or together with `#[orm(skip)]`, which are distinct
+options) or `#[sqlx(default)]`. A column the table has that generated writes
+must not touch is declared `#[orm(db_default)]`, which keeps it filterable;
+the builder's error for a skipped column names that option. Until
+13.0.0-alpha.2 the SaaS, LMS and `cargo rullst auth` `User` models declared
+`is_admin` and `session_epoch` `#[orm(skip)]`; from alpha.3 they use
+`#[orm(db_default)]`, and `cargo rullst upgrade` reports the old declaration
+(`V13-ORM-SKIP-MANAGED-COLUMNS`). `FromRow` decodes a `json` or
 `json(nullable)` field through SQLx `Json`, and generated INSERT/UPDATE
 statements (including `update_partial()`) encode it the same way: the value is
 bound as `sqlx::types::Json(value)`, and a `json(nullable)` `None` as SQL
@@ -2547,7 +2598,7 @@ while portability and semantic review remain the model author's responsibility.
   both contexts from authenticated authority rather than client assertions.
   An auditable `save()` reads the pre-image of its diff inside its savepoint
   with `FOR UPDATE` on PostgreSQL and MySQL/MariaDB, so a concurrent writer
-  cannot change the row between that read and the full-row `UPDATE`. The
+  cannot change the row between that read and the `UPDATE`. The
   old side of a `deleted`, `force_deleted` or `restored` entry is likewise
   the persisted row read the same way just before the statement, not the
   caller's possibly edited or stale handle. These reads, the
@@ -2588,7 +2639,9 @@ while portability and semantic review remain the model author's responsibility.
 * The merged model uses the normal generated save lifecycle, including policy,
   hooks, observers, encrypted fields, atomic audit entries and post-commit
   cache/Scout/observer effects. This is a logical partial change implemented
-  through a full-row save, not a selected-column SQL optimization. Existing
+  through `save()`: a full-row `UPDATE`, or, for a model with a `RowSnapshot`
+  field, an `UPDATE` of the patched columns whose value differs from the
+  locked row (none: no `UPDATE`). Existing
   model hooks can transform that candidate under the normal save contract:
   the loaded row runs `after_fetch` before the patch is merged, as `find()`
   would return it, and `restore_revision` runs it on the restored row before
@@ -3005,16 +3058,23 @@ while portability and semantic review remain the model author's responsibility.
   percent-decoded path SQLx opens (`John%20Doe` is `John Doe`). An explicit
   `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails
   to open instead of becoming a new empty database.
-* ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
-  `drivers-all` convenience feature. A standalone consumer can disable defaults
-  and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables
-  only its own SQLx backend. The strict pool's existing precedence when multiple
+* Since 13.0.0-alpha.3 neither `rullst-orm` nor the `rullst` facade has a
+  default feature (they were `drivers-all`, and `orm`, `drivers-all` and
+  `queue-sqlite`), so a database-free application compiles no SQLx driver. A
+  consumer selects `strict-postgres`, `strict-mysql` or `strict-sqlite`, each
+  enabling only its own SQLx backend, or the `drivers-all` convenience feature
+  for all three. On the `Any` pool, `Orm::init`, `init_with_options` and
+  `init_with_replicas` turn SQLx's `no driver found for URL scheme` error for a
+  `postgres`/`postgresql`, `mysql`/`mariadb` or `sqlite` URL into
+  `Error::Validation` naming the `strict-*` feature (or `drivers-all`) that
+  adds the driver; other connection errors are unchanged. The strict pool's existing precedence when multiple
   strict features are unified remains PostgreSQL, then MySQL, then SQLite.
 * Features are additive. Another dependency enabling ORM defaults, a SQLite
   queue, Turso's offline SQLite transport or another SQLx driver can broaden the
   final graph. Core, Studio, Nexus and the facade propagate an explicitly
   selected backend when defaults are disabled. Studio's SQLite queue is now
-  explicitly optional; defaults retain `drivers-all` and `queue-sqlite`.
+  explicitly optional; Studio's defaults retain `drivers-all` and
+  `queue-sqlite`, and Nexus's `drivers-all`.
   Fifteen standalone normal/build graphs cover ORM/Core/Studio/Nexus/facade
   across all three SQLx backends. Capital/other optional capabilities may
   intentionally broaden those graphs. Turso enables SQLite for its offline

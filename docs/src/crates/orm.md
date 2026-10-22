@@ -179,9 +179,14 @@ and the side stores have their own APIs, as
 Install the v13 prerelease with an exact pin:
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.2
+cargo add rullst-orm@=13.0.0-alpha.2 -F strict-sqlite
 cargo add tokio -F full
 ```
+
+Select the driver of your database: `strict-sqlite`, `strict-postgres` or
+`strict-mysql`, or `drivers-all` for all three on SQLx's dynamic `Any` pool.
+Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
+`Orm::init` fails at startup with an error that names the feature to enable.
 
 ### Zero-to-Hero Example
 
@@ -229,11 +234,74 @@ async fn main() -> Result<(), rullst_orm::Error> {
 
 ### Concurrent updates and counters
 
-`save()` on a loaded model writes every persisted column of that handle, so the
-last writer wins: when two requests load the same row, change different fields
-and save, the second `save()` silently reverts the first one's change. An
-insert also sends every field, so database column defaults (such as
-`DEFAULT CURRENT_TIMESTAMP`) do not apply to model fields.
+By default, `save()` on a loaded model writes every persisted column of that
+handle, so the last writer wins: when two requests load the same row, change
+different fields and save, the second `save()` silently reverts the first
+one's change. An insert also sends every field, so database column defaults
+(such as `DEFAULT CURRENT_TIMESTAMP`) do not apply to model fields, except to
+fields marked `#[orm(db_default)]`.
+
+**Dirty tracking (v13).** Declare one `#[sqlx(skip)]` field of type
+`RowSnapshot`, and `save()` writes only the columns that this handle changed:
+
+```rust,no_run
+use rullst_orm::{FromRow, Orm, RowSnapshot};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "profiles")]
+pub struct Profile {
+    pub id: i32,
+    pub name: String,
+    pub bio: String,
+    #[sqlx(skip)]
+    pub snapshot: RowSnapshot,
+}
+
+async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
+    let mut profile = Profile::find(id)
+        .await?
+        .ok_or(rullst_orm::Error::RecordNotFound)?;
+    profile.name = name;
+    // `profile.dirty_columns()` is now `["name"]`.
+    profile.save().await // UPDATE profiles SET name = ? WHERE id = ?
+}
+```
+
+- Records read through the ORM (`find`, `first`, `get`, `all`, `paginate`,
+  relations, streams, the query cache and the row `update_partial()` reads)
+  remember a 64-bit fingerprint of every column that `save()` updates: 16
+  bytes per record plus 8 per column, never the values. `save()` compares the
+  current values with them: `#[orm(encrypted)]` and `SecretString` fields by
+  plaintext, so an unchanged secret is not encrypted again, JSON fields
+  (`#[sqlx(json)]`, `Json<T>`, `serde_json::Value`) by their canonical
+  document, and other fields by their Serde serialization.
+- The `UPDATE` sets only the changed columns, keeps the tenant predicate and
+  returns the stored row (PostgreSQL and SQLite; MySQL/MariaDB read it again in
+  the same transaction). The columns it did not write, `#[orm(db_default)]`
+  columns and the soft-delete marker take their stored values, so the handle,
+  the audit diff, model events and the search document describe the row as
+  stored. A row deleted meanwhile still fails with `RecordNotFound`.
+- When nothing changed, `save()` runs no `UPDATE`, no `updating`, `updated` or
+  `saved` observers, no `after_save` hook, audit entry or post-commit event.
+  The `before_save` hook and the `saving` observers run first and may change
+  fields; a model with neither, and without a policy, does not even open a
+  transaction.
+- A record built in code holds `RowSnapshot::default()`: `save()` inserts it,
+  or, with a non-zero `id`, writes every column. `mark_all_dirty()` makes a
+  loaded record do the same, for code that relied on overwriting the row.
+  `is_dirty()` tells whether `save()` has anything to write.
+- A failed `save()` keeps its changes pending. When a caller-owned transaction
+  rolls back after a successful `save()`, reload the record or call
+  `mark_all_dirty()`.
+- A `before_save` hook that stamps `updated_at` on every call makes every save
+  write; stamp it only when `self.is_dirty()`.
+- Mark the field `#[serde(skip)]` when the model derives Serde traits. Any two
+  snapshots compare equal and hash alike, so a derived `PartialEq` or `Hash`
+  looks at the columns only. `cargo rullst make:model` adds the field to new
+  models.
+
+Dirty tracking merges edits of different columns. Two writers of the same
+column still race, and the last one wins:
 
 - To change some fields of a row that other requests may edit, use
   `update_partial()`. It reads the current row in a transaction (with
@@ -572,14 +640,29 @@ pub struct Event {
 }
 ```
 
-`#[orm(db_default)]` fields are left out of the generated `INSERT` and of the
-full-row `UPDATE` of `save()`, `update_partial()` has no setter for them and
+`#[orm(db_default)]` fields are left out of the generated `INSERT` and of
+every `UPDATE` of `save()`, `update_partial()` has no setter for them and
 `#[derive(Nexus)]` shows them read-only. Set an `updated_at` without it
-yourself (`Utc::now()`) or maintain it with a trigger.
+yourself (`Utc::now()`) or maintain it with a trigger. A model with a
+`RowSnapshot` field refreshes them from the stored row after each update.
+
+`#[orm(db_default)]` is also the option for any column that the database or
+your own SQL manages, such as the generated `users.is_admin` and
+`users.session_epoch`: queries can filter, order, group and select it, and
+ORM writes never touch it. `#[orm(skip)]` means something else: the field is
+not a database column for the ORM, so a filter, ordering, grouping or
+`select` on it fails with `Error::Validation`. A skipped field that the table
+does not have also needs `#[sqlx(skip)]` (or `#[sqlx(default)]`), because the
+application's SQLx `FromRow` still reads `#[orm(skip)]` fields.
+
+| Option | The column | Filters, ordering, grouping, `select` | ORM writes |
+| --- | --- | --- | --- |
+| `#[orm(skip)]` | is not a database column for the ORM | rejected | never |
+| `#[orm(db_default)]` | exists and is managed by the database | allowed | never |
 
 Date/time columns and `chrono` fields need a strict driver feature
 (`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects
-use). SQLx's dynamic `Any` pool, selected by the `drivers-all` default without a
+use). SQLx's dynamic `Any` pool, selected by `drivers-all` without a
 strict feature, carries only integer, float, text and blob values: it cannot
 decode a `chrono` field, and it cannot read a PostgreSQL or MySQL/MariaDB
 `DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` column at all. On that pool

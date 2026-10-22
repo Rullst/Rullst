@@ -73,26 +73,29 @@ It enables no database, queue or default feature. See
 [private multipart uploads](private-multipart-uploads.md) for server-mediated
 parts, encrypted resumable checkpoints, cleanup responsibilities and admission.
 
-The default `rullst` dependency enables `orm`, `drivers-all` and
-`queue-sqlite`: the ORM with the SQLite, PostgreSQL and MySQL/MariaDB SQLx
-drivers, and Core's durable SQLite queue. Applications that only need the HTTP
-runtime can opt out:
+The default `rullst` dependency enables no feature: since 13.0.0-alpha.3 it
+compiles the HTTP runtime without the ORM, a SQLx driver or Core's durable
+SQLite queue, so a database-free application builds no database code. Up to
+13.0.0-alpha.2 the defaults were `orm`, `drivers-all` and `queue-sqlite`.
+Select what the application uses:
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", default-features = false }
+rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["strict-sqlite", "queue-sqlite"] }
 ```
 
-An application that disables defaults and keeps the ORM must also select
-`drivers-all` or one `strict-*` backend. `orm` itself adds no SQLx driver: it
-compiles, but `Orm::init` and `Server::with_db` then fail at runtime for every
-URL scheme whose driver no other enabled feature happens to add (`queue-sqlite`,
-for example, adds only SQLite).
+Each `strict-*` backend enables `orm`; `drivers-all` enables `orm` with all
+three drivers. `orm` itself adds no SQLx driver: it compiles, but `Orm::init`
+and `Server::with_db` then fail at startup for every URL scheme whose driver
+no other enabled feature happens to add (`queue-sqlite`, for example, adds only
+SQLite), with an error that names the feature to enable. `default-features =
+false` keeps the same graph on 13.0.0-alpha.2, whose defaults still included
+the drivers.
 
 | Feature | Default | Enables |
 | --- | :---: | --- |
-| `orm` | yes | `rullst-orm` and Core's ORM integration, without a SQLx driver; pair it with `drivers-all` or one `strict-*` backend |
-| `drivers-all` | yes | `orm` plus the SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers in the ORM and Core, and in Studio and Nexus when `studio` or `nexus` is enabled |
+| `orm` | no | `rullst-orm` and Core's ORM integration, without a SQLx driver; pair it with `drivers-all` or one `strict-*` backend |
+| `drivers-all` | no | `orm` plus the SQLite, PostgreSQL and MySQL/MariaDB SQLx drivers in the ORM and Core, and in Studio and Nexus when `studio` or `nexus` is enabled |
 | `orm-mongodb` | no | `orm` plus the MongoDB document adapter |
 | `orm-duckdb` | no | `orm` plus the in-process DuckDB analytics adapter |
 | `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL over Hrana HTTP v3, transactions, reversible checked migrations, and a persistent offline fallback |
@@ -101,7 +104,7 @@ for example, adds only SQLite).
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
 | `orm-qdrant` | no | `orm` plus bounded dense-vector Qdrant HTTP operations and offline fallback |
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
-| `queue-sqlite` | yes | Core's durable SQLite queue backend |
+| `queue-sqlite` | no | Core's durable SQLite queue backend |
 | `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
 | `nexus` | no | The generated Nexus administration interface |
@@ -231,10 +234,12 @@ Identity, authorization and tenant policy remain application layers.
 
 ### `rullst-orm`
 
-Default feature: `drivers-all`. With no `strict-*` feature, public pool and
-database aliases use SQLx `Any`, which opens only the drivers compiled in. The
-workspace and the umbrella crate depend on the ORM with `default-features =
-false` and forward `drivers-all` or a `strict-*` backend explicitly.
+No default feature (13.0.0-alpha.2 and earlier defaulted to `drivers-all`).
+With no `strict-*` feature, public pool and database aliases use SQLx `Any`,
+which opens only the drivers compiled in; without any, `Orm::init` fails with
+an error naming the feature to enable. The workspace and the umbrella crate
+depend on the ORM with `default-features = false` and forward `drivers-all`
+or a `strict-*` backend explicitly.
 
 | Feature | Enables |
 | --- | --- |
@@ -254,8 +259,8 @@ false` and forward `drivers-all` or a `strict-*` backend explicitly.
 
 The strict backend selection rules and precedence are the same as the umbrella
 crate. Each `strict-*` feature enables its own SQLx driver and selects concrete
-public types and query paths; disable the ORM defaults to keep the other
-drivers out of the graph.
+public types and query paths; on 13.0.0-alpha.2 and earlier, disable the ORM
+defaults to keep the other drivers out of the graph.
 
 The Polyglot features expose capability-specific APIs under
 `rullst_orm::polyglot`; they do not participate in a shared cross-backend
@@ -450,16 +455,20 @@ documented deterministic offline behavior for empty or `mock_*` credentials.
 
 ## Selection recipes
 
-Minimal HTTP runtime:
+Minimal HTTP runtime (from 13.0.0-alpha.3 the defaults are empty, so
+`default-features = false` changes nothing there):
 
 ```toml
 rullst = { version = "12.1.0", default-features = false }
 ```
 
-SQLite application using the release default:
+SQLite application using the 12.x default, which 13.0.0-alpha.3 and later
+spell out:
 
 ```toml
 rullst = "12.1.0"
+# 13.0.0-alpha.3 and later:
+# rullst = { version = "...", features = ["orm", "drivers-all", "queue-sqlite"] }
 ```
 
 PostgreSQL application with explicit domain integrations:

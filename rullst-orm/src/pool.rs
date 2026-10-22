@@ -151,7 +151,8 @@ impl Orm {
             .max_lifetime(Some(std::time::Duration::from_secs(1800)));
         let pool = Self::retain_memory_database(options, database_url)
             .connect(database_url)
-            .await?;
+            .await
+            .map_err(|error| dsn::connect_error(database_url, error))?;
 
         Self::publish(OrmState::new(
             pool,
@@ -192,7 +193,8 @@ impl Orm {
             .max_lifetime(Some(std::time::Duration::from_secs(1800)));
         let pool = Self::retain_memory_database(options, database_url)
             .connect(database_url)
-            .await?;
+            .await
+            .map_err(|error| dsn::connect_error(database_url, error))?;
 
         Self::publish(OrmState::new(
             pool,
@@ -252,15 +254,19 @@ impl Orm {
             .max_lifetime(Some(std::time::Duration::from_secs(1800)));
         let pool = Self::retain_memory_database(options, primary_url)
             .connect(primary_url)
-            .await?;
+            .await
+            .map_err(|error| dsn::connect_error(primary_url, error))?;
 
         // Prepare every replica before publishing any global state. If one
         // connection fails, `pool` and the successfully prepared replicas are
         // dropped locally and initialization remains retryable.
         let replica_futures: Vec<_> = replica_urls
             .into_iter()
-            .map(|replica_url| {
-                Self::retain_memory_database(Self::pool_options(), replica_url).connect(replica_url)
+            .map(|replica_url| async move {
+                Self::retain_memory_database(Self::pool_options(), replica_url)
+                    .connect(replica_url)
+                    .await
+                    .map_err(|error| dsn::connect_error(replica_url, error))
             })
             .collect();
         let replicas = futures::future::try_join_all(replica_futures).await?;
