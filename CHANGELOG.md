@@ -209,8 +209,10 @@ A prepared version section does not establish that its tag or crates exist.
   post-commit failures arrive through `E::from`, so a commit rejected by a
   deferred constraint is a typed violation too. A closure whose error type
   lacks `From<rullst_orm::Error>`, such as `String`, no longer compiles; code
-  that matched `DatabaseError` on the result must match the closure's error.
-  See the migration guide.
+  that matched `DatabaseError` on the result must match the closure's error;
+  `cargo rullst upgrade` reports `Orm::transaction` calls in files that
+  mention `DatabaseError` (`V13-ORM-TRANSACTION-ERRORS`). See the migration
+  guide.
 - Nexus shows and reads `DateTimeUtc` fields in the administrator's time
   zone: the new `Nexus::with_time_zone(NexusTimeZone)` selects UTC (still the
   default), a fixed offset (`NexusTimeZone::fixed_offset(-180)`) or, with the

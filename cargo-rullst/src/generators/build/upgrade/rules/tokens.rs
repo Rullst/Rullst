@@ -369,6 +369,9 @@ impl Scanner<'_, '_> {
                 }
             }
             [.., "Outbox", _] => self.hit(&OUTBOX_MYSQL_KEYS, at),
+            [.., "Orm", "transaction"] if self.context.text.contains("DatabaseError") => {
+                self.hit(&ORM_TRANSACTION_ERRORS, at);
+            }
             [.., "Profile", "find"] if args.len() == 1 && args[0].to_string() == "1" => {
                 self.hit(&PROFILE_FIND, at);
             }
