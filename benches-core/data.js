@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792664729095,
+  "lastUpdate": 1792672595842,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -27773,6 +27773,78 @@ window.BENCHMARK_DATA = {
             "name": "generate_csrf_token_32_chars",
             "value": 136,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2",
+          "message": "Merge pull request #523 from Rullst/feat/v13-pwa\n\nfeat(cli)!: first-class PWA with Google Play TWA support; retire Omni",
+          "timestamp": "2026-10-22T09:15:11-03:00",
+          "tree_id": "5b4f5126e3f6ce955bef0cdb0eadbf2a5bf37a8e",
+          "url": "https://github.com/Rullst/Rullst/commit/ca3ed12e5300c9a7d6d69dd42c9a69a06953aef2"
+        },
+        "date": 1792672595077,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 27,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 188,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 70,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 172,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 172,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 150,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 159,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 127,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
