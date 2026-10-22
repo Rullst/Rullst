@@ -107,5 +107,18 @@ mod tests {
         let recs_db = agent.analyze_telemetry(500, 100 * 1024 * 1024, 18, 20);
         assert_eq!(recs_db.len(), 1);
         assert_eq!(recs_db[0].metric_name, "db_pool_utilization");
+        assert_eq!(recs_db[0].current_value, 90.0);
+        assert_eq!(recs_db[0].target_value, 60.0);
+        assert_eq!(
+            recs_db[0].recommended_action,
+            "Scale SQLx connection pool max_connections from 20 to 40"
+        );
+    }
+
+    #[test]
+    fn a_pool_without_capacity_is_not_reported_as_saturated() {
+        let agent = DevOpsAgent::new();
+        let recs = agent.analyze_telemetry(500, 100 * 1024 * 1024, 5, 0);
+        assert!(recs.is_empty(), "{recs:?}");
     }
 }
