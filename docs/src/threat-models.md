@@ -194,6 +194,43 @@ Test files named below are under `rullst-core/src/`.
 the same `401`; production plain HTTP → `426`; a raw path with an id and a
 query string never appears in the payload.
 
+## TM-STUDIO-3 — Studio remote projects on the developer's machine
+
+Phase 2 of the
+[Studio production monitor plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-for-1300-alpha3):
+the standalone `rullst-studio` binary runs on a developer's machine without an
+application process, keeps a list of projects (name, base URL, monitor token)
+and renders each project's `rullst.monitor.v1` document (`TM-STUDIO-2`). It
+connects outwards only; the server collects nothing new. Studio's local pages
+(data browser, `.env` viewer, AI and API playgrounds, migrations) are not part
+of this mode.
+
+**Assets:** the monitor tokens of every configured project; the developer's
+local network position; the integrity of what Studio displays; the
+availability of the developer's Studio process.
+
+**Actors:** a malicious or compromised monitored application (or anyone able
+to answer for its origin); a web page open in the developer's browser; another
+local user on the same machine; malware running as the developer; a network
+attacker between Studio and the monitored application; someone who obtains a
+copy of the configuration file (backup, dotfile sync, screen share).
+
+**Trust boundaries:** browser ↔ Studio's loopback listener; Studio ↔ the
+configuration file and its separate key file; Studio ↔ each monitored origin
+over the network.
+
+Test files named below are under `rullst-studio/src/`.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `REMOTE-01` Studio reachable from other machines or pages | Bind `127.0.0.1` only; every route keeps Studio's loopback boundary (loopback peer, loopback `Host`, same-origin `Origin` on unsafe methods, the crate-private marker), which remote mode applies in release builds too because it serves no local data. | Router tests: a non-loopback peer, a public `Host` and a cross-origin form post are refused; the binary has no option to bind another address. |
+| `REMOTE-02` local CSRF against add/remove-project forms | Unsafe methods require a same-origin `Origin` (as for every Studio form) and a per-process random form token compared in constant time; `GET` pages change nothing. | Tests: a post without `Origin`, with another origin, or with a missing or wrong form token leaves the project list unchanged. |
+| `REMOTE-03` token disclosure at rest | Store the project list in the user's configuration directory (`0600` file in a `0700` directory on Unix, never through a symlink, written atomically, bounded size). Encrypt each token with AES-256-GCM under a 256-bit key kept in a separate file in the user's data directory (`0600`), with the project name and base URL as associated data, so a token copied to another project or a URL edited in the file no longer decrypts and is never sent. Tokens never appear in pages, logs, errors or `Debug`. This protects a copied configuration file, not a compromised account: malware running as the developer can read both files. | Tests: encryption round trip, the file never contains the token, a swapped name or edited URL fails to decrypt, a missing key makes tokens unreadable, file and directory permissions on Unix, symlinked files refused. OS keychain integration is not provided. |
+| `REMOTE-04` token sent to the wrong party | Accept only `https` base URLs, or `http` to a loopback host (SSH tunnels). Reject user information, query and fragment. Send the token only in `Authorization: Bearer` to the configured origin's fixed monitor path; follow no redirects; validate certificates (no option to disable it); ignore proxy environment variables. | Tests: `http` to a non-loopback host, user information, query strings and non-HTTP schemes are refused; a redirect to another origin is reported and the second origin never receives the token. |
+| `REMOTE-05` hostile or compromised monitored endpoint | Treat the document as untrusted: bound the response (1 MiB, 5 s total, 3 s to connect), require `200`, JSON and `schema: "rullst.monitor.v1"`, bound every list and string, and HTML-escape every remote value; an error shows a fixed status, never the remote body. | Tests against a local test server: oversized, malformed, wrong-schema, slow and script-in-label documents produce a status message and no `<script>` in the page. |
+| `REMOTE-06` SSRF-like use of the project list | Projects are added only through the protected form; Studio requests only `GET <base>/_rullst/monitor/v1` and renders only the validated schema, so a project pointing at an internal service yields at most a refusal status. At most 32 projects. | Covered by `REMOTE-02`, `REMOTE-04` and `REMOTE-05` tests. Network policy on the developer's machine stays with the developer. |
+| `REMOTE-07` local surfaces leaking into remote mode | The remote router mounts only the remote pages; the data browser, `.env` viewer, AI and API playgrounds and migration pages are absent. | Router test: those paths answer `404` in remote mode. |
+
 ## TM-TENANT-1 — multi-tenant data access
 
 **Assets:** membership, tenant-scoped records, billing/workspace IDs, cache
