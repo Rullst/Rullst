@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792672739094,
+  "lastUpdate": 1792679437368,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -10751,6 +10751,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 383,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1da93205a5ca05d34a1c13c6407da1f5cad79a89",
+          "message": "Merge pull request #524 from Rullst/feat/v13-studio-monitor\n\nfeat(core): read-only production monitoring endpoint (Studio monitor phase 1)",
+          "timestamp": "2026-10-22T11:03:12-03:00",
+          "tree_id": "7283514a8bec773c0160e7129210c9b1ac9d6c8e",
+          "url": "https://github.com/Rullst/Rullst/commit/1da93205a5ca05d34a1c13c6407da1f5cad79a89"
+        },
+        "date": 1792679436761,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 533,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
