@@ -6415,7 +6415,6 @@ dependencies = [
 name = "rullst-core"
 version = "13.0.0-alpha.2"
 dependencies = [
- "aes-gcm",
  "async-trait",
  "aws-credential-types",
  "aws-sigv4",
