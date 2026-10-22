@@ -449,3 +449,5 @@ fn is_html_number(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod widget_tests;
