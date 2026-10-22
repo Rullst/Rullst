@@ -18,6 +18,42 @@ pub(super) fn driver_for_url(database_url: &str) -> &'static str {
     }
 }
 
+/// The SQLx error of an `Any` connection whose URL scheme has no compiled
+/// driver: `no driver found for URL scheme "..."`.
+const MISSING_DRIVER: &str = "no driver found for URL scheme";
+
+/// Explains a connection failure caused by a driver this build lacks. Neither
+/// `rullst` nor `rullst-orm` selects a database driver by default, so an
+/// application names one; any other error is returned unchanged.
+pub(super) fn connect_error(database_url: &str, error: sqlx::Error) -> crate::Error {
+    let missing_driver = matches!(
+        &error,
+        sqlx::Error::Configuration(source) if source.to_string().starts_with(MISSING_DRIVER)
+    );
+    let scheme = database_url
+        .split_once(':')
+        .map_or(database_url, |(scheme, _)| scheme);
+    let feature = if scheme.eq_ignore_ascii_case("postgres")
+        || scheme.eq_ignore_ascii_case("postgresql")
+    {
+        "strict-postgres"
+    } else if scheme.eq_ignore_ascii_case("mysql") || scheme.eq_ignore_ascii_case("mariadb") {
+        "strict-mysql"
+    } else if scheme.eq_ignore_ascii_case("sqlite") {
+        "strict-sqlite"
+    } else {
+        return crate::Error::from(error);
+    };
+    if !missing_driver {
+        return crate::Error::from(error);
+    }
+    crate::Error::Validation(format!(
+        "this build has no database driver for `{scheme}:` URLs; enable the `{feature}` feature \
+         (or `drivers-all` for SQLite, PostgreSQL and MySQL/MariaDB) of `rullst` or `rullst-orm`, \
+         whose default features include no database driver"
+    ))
+}
+
 /// Reports a DSN that still contains a template placeholder such as
 /// `[your-database-id]` or `[YOUR-PASSWORD]`. A bracketed IPv6 literal
 /// host (RFC 3986, optionally with an RFC 6874 `%25` zone identifier) is
@@ -157,7 +193,59 @@ fn percent_decode_utf8(encoded: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{driver_for_url, ensure_configured_dsn, percent_decode_utf8};
+    use super::{connect_error, driver_for_url, ensure_configured_dsn, percent_decode_utf8};
+
+    fn no_driver(scheme: &str) -> sqlx::Error {
+        sqlx::Error::Configuration(format!("no driver found for URL scheme {scheme:?}").into())
+    }
+
+    #[test]
+    fn a_missing_driver_names_the_feature_that_adds_it() {
+        for (url, scheme, feature) in [
+            ("postgres://app@db/app", "postgres", "strict-postgres"),
+            ("PostgreSQL://app@db/app", "PostgreSQL", "strict-postgres"),
+            ("mysql://app@db/app", "mysql", "strict-mysql"),
+            ("mariadb://app@db/app", "mariadb", "strict-mysql"),
+            ("sqlite::memory:", "sqlite", "strict-sqlite"),
+            ("SQLite://data/app.db", "SQLite", "strict-sqlite"),
+        ] {
+            let error = connect_error(url, no_driver(&scheme.to_ascii_lowercase()));
+            assert_eq!(
+                error.to_string(),
+                format!(
+                    "Validation error: this build has no database driver for `{scheme}:` URLs; enable the `{feature}` feature (or `drivers-all` for SQLite, PostgreSQL and MySQL/MariaDB) of `rullst` or `rullst-orm`, whose default features include no database driver"
+                ),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn other_connection_errors_are_unchanged() {
+        // An unknown scheme has no feature to name.
+        let unknown = connect_error("mssql://db/app", no_driver("mssql"));
+        assert!(matches!(
+            unknown,
+            crate::Error::DatabaseError(ref message)
+                if message.contains("no driver found for URL scheme \"mssql\"")
+        ));
+        let configuration = connect_error(
+            "postgres://db/app",
+            sqlx::Error::Configuration("invalid sslmode".into()),
+        );
+        assert!(matches!(
+            configuration,
+            crate::Error::DatabaseError(ref message) if message.contains("invalid sslmode")
+        ));
+        assert!(matches!(
+            connect_error("sqlite::memory:", sqlx::Error::PoolTimedOut),
+            crate::Error::DatabaseError(_)
+        ));
+        assert!(matches!(
+            connect_error("postgres://db/app", sqlx::Error::RowNotFound),
+            crate::Error::RecordNotFound
+        ));
+    }
 
     #[test]
     fn dsn_paths_decode_like_sqlx() {
