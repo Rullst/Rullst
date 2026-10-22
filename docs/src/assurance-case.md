@@ -32,7 +32,7 @@ stable IDs such as `AUTH-06` or `STUDIO-01`. There are 19 models:
 | --- | --- |
 | Runtime and network identity | `TM-CORE-1` (readiness and drain), `TM-CORE-2` (client identity behind proxies) |
 | Identity | `TM-AUTH-1` (sessions, passwords, OAuth/OIDC, passkeys), `TM-CONNECT-1` (OAuth token generations) |
-| Administration and tooling | `TM-NEXUS-1` (admin CMS), `TM-STUDIO-1` (local control room) |
+| Administration and tooling | `TM-NEXUS-1` (admin CMS), `TM-STUDIO-1` (local control room), `TM-STUDIO-2` (production monitoring endpoint) |
 | Data | `TM-TENANT-1` (multi-tenant access), `TM-ORM-1` (document recovery) |
 | Request defenses | `TM-SEC-1` (payload contracts), `TM-SEC-2` (anomaly and proof-of-work admission), `TM-SEC-3` (security-event journal) |
 | Integrations | `TM-PAY-1` (webhooks and billing), `TM-MAIL-1` (outbound mail), `TM-MESSAGING-1` (messages and wire frames), `TM-AI-1` (prompts, RAG, tools) |
@@ -65,6 +65,7 @@ scope, a sample application and tooling.
 | Application ↔ external providers | Webhooks, OAuth/OIDC responses, AI output, provider URLs | Signature checks with constant-time comparison, replay stores, HTTPS-only provider URLs, deny-by-default egress | `TM-PAY-1`, `TM-MAIL-1`, `TM-CONNECT-1`, `TM-AI-1` |
 | Content ↔ model; model output ↔ tools | Retrieved documents and model replies | Prompt-injection filter, PII masking and guarded tool dispatch ([guarded local AI tools](ai-tool-security.md)) | `TM-AI-1` |
 | Developer tools ↔ network | Remote access to Studio and debug endpoints | Debug-only, Development-only, loopback-only mounting; same-origin checks for state changes | `TM-STUDIO-1`, `TM-NEXUS-1` |
+| Monitoring client ↔ application | Requests to the opt-in `/_rullst/monitor/v1` endpoint | Off by default; bearer tokens compared in constant time or the application's authorizer; TLS evidence in staging and production; per-client rate limit and lockout; aggregates keyed by route pattern only (`rullst-core/src/monitor/`) | `TM-STUDIO-2` |
 | Firmware signer ↔ device | OTA manifests | Ed25519 manifest signatures and a caller-provided rollback counter (`rullst-iot/src/ota.rs`) | `TM-IOT-1` |
 | Contributor and CI ↔ repository; tag ↔ artifact ↔ registry | Pull requests, dependencies, build runners | Protected branches with 46 required checks, pinned Actions, release admission of the exact SHA, attestations and reproducible archives ([verifying a release](../../SECURITY.md#verifying-a-release)) | `TM-DEPLOY-1` |
 | CLI ↔ filesystem and processes | Project names, paths, templates | Identifier and path validation in generators; fixed programs with argument arrays | `TM-DEPLOY-1` |
