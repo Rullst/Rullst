@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792651319811,
+  "lastUpdate": 1792654661958,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -12737,6 +12737,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 20,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "479d9a08c2cab58bac43a443e0f74ead8d572e19",
+          "message": "Merge pull request #520 from Rullst/fix/v13-dx-alpha3\n\nfix(v13): alpha.2 dogfooding fixes for OAuth mock, account mail, production logs and docs",
+          "timestamp": "2026-10-22T04:12:47-03:00",
+          "tree_id": "132ca70210f0a1b35dbb8ecc2447c64a993a469e",
+          "url": "https://github.com/Rullst/Rullst/commit/479d9a08c2cab58bac43a443e0f74ead8d572e19"
+        },
+        "date": 1792654661378,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
