@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792683262730,
+  "lastUpdate": 1792685222184,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -17044,6 +17044,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b5ca0d7d9d2817a3868df0130a2086211246ba0",
+          "message": "Merge pull request #526 from Rullst/docs/v13-maintaining-guide\n\ndocs: add a maintenance guide for the maintainer and AI assistants",
+          "timestamp": "2026-10-22T12:48:19-03:00",
+          "tree_id": "9be5341935fc8466a84d6f7061dce1d02a0023a4",
+          "url": "https://github.com/Rullst/Rullst/commit/9b5ca0d7d9d2817a3868df0130a2086211246ba0"
+        },
+        "date": 1792685221568,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5386,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 564,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           }
