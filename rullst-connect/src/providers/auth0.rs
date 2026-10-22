@@ -158,7 +158,7 @@ impl Provider for Auth0Provider {
         }
         if self.credential_mode.is_mock() {
             return crate::configuration::mock_redirect_url(
-                "auth0",
+                &self.redirect_url,
                 self.state.as_deref(),
                 self.pkce_challenge.as_deref(),
             );

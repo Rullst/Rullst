@@ -127,23 +127,33 @@ pub(crate) fn provider_http_client(
     }
 }
 
+/// The fixed authorization code that the offline mock sends to the callback.
+pub(crate) const MOCK_AUTHORIZATION_CODE: &str = "mock_authorization_code";
+
+/// The mock authorization URL: the configured callback with a fixed code, the
+/// state and any PKCE challenge, which is what a real provider redirects to
+/// after the user consents. The browser flow then runs locally without a
+/// login page; `mock_idp` remains the full protocol simulator.
 pub(crate) fn mock_redirect_url(
-    provider: &str,
+    redirect_url: &str,
     state: Option<&str>,
     pkce_challenge: Option<&str>,
 ) -> String {
-    let base = "https://example.invalid/rullst-connect/mock?".to_string();
-    let start = base.len();
-    let mut query = url::form_urlencoded::Serializer::for_suffix(base, start);
-    query.append_pair("provider", provider);
-    if let Some(state) = state {
-        query.append_pair("state", state);
+    let Ok(mut url) = Url::parse(redirect_url) else {
+        return "about:blank".to_string();
+    };
+    {
+        let mut query = url.query_pairs_mut();
+        query.append_pair("code", MOCK_AUTHORIZATION_CODE);
+        if let Some(state) = state {
+            query.append_pair("state", state);
+        }
+        if let Some(challenge) = pkce_challenge {
+            query.append_pair("code_challenge", challenge);
+            query.append_pair("code_challenge_method", "S256");
+        }
     }
-    if let Some(challenge) = pkce_challenge {
-        query.append_pair("code_challenge", challenge);
-        query.append_pair("code_challenge_method", "S256");
-    }
-    query.finish()
+    url.into()
 }
 
 pub(crate) fn validate_redirect_url(value: &str) -> Result<Url, ConnectError> {
@@ -327,6 +337,27 @@ mod tests {
             CredentialMode::Mock
         );
         assert_eq!(credential_mode("client", &secret), CredentialMode::Live);
+    }
+
+    #[test]
+    fn mock_authorization_returns_to_the_configured_callback() {
+        assert_eq!(
+            mock_redirect_url("http://localhost:3000/auth/google/callback", None, None),
+            "http://localhost:3000/auth/google/callback?code=mock_authorization_code"
+        );
+        assert_eq!(
+            mock_redirect_url(
+                "https://app.example/callback?tenant=a",
+                Some("state 1"),
+                Some("challenge-1"),
+            ),
+            "https://app.example/callback?tenant=a&code=mock_authorization_code&state=state+1\
+             &code_challenge=challenge-1&code_challenge_method=S256"
+        );
+        assert_eq!(
+            mock_redirect_url("not a url", Some("s"), None),
+            "about:blank"
+        );
     }
 
     #[test]

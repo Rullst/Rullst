@@ -23,6 +23,12 @@ A prepared version section does not establish that its tag or crates exist.
   failed with `ConnectError::Offline`.
 - New `rullst` facade feature `oauth-mock` (`oauth` plus `rullst-connect/mock`)
   for development and test builds that sign in with mock provider credentials.
+- **Behaviour change:** in mock mode, `rullst-connect` authorization URLs now
+  point at the configured `redirect_url` with `code=mock_authorization_code`
+  and the `state`, as a real provider redirects after consent, instead of
+  `https://example.invalid/rullst-connect/mock`, which a browser could not open.
+  The local browser flow, including the managed `axum-session` transaction,
+  now works without the `mock_idp` fixture.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

@@ -141,7 +141,7 @@ impl Provider for CognitoProvider {
         }
         if self.credential_mode.is_mock() {
             return crate::configuration::mock_redirect_url(
-                "cognito",
+                &self.redirect_url,
                 self.state.as_deref(),
                 self.pkce_challenge.as_deref(),
             );

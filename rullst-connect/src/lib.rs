@@ -237,10 +237,9 @@ mod tests {
             .expect("offline user");
         assert_eq!(user.id, "1");
         assert_eq!(user.email.as_deref(), Some("mock@example.invalid"));
-        assert!(
-            provider
-                .redirect_url()
-                .starts_with("https://example.invalid/")
+        assert_eq!(
+            provider.redirect_url(),
+            "https://app.example/callback?code=mock_authorization_code"
         );
     }
 

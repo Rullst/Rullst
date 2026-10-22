@@ -150,7 +150,7 @@ macro_rules! impl_standard_redirect_url {
             }
             if self.credential_mode.is_mock() {
                 return $crate::configuration::mock_redirect_url(
-                    ::core::any::type_name::<Self>(),
+                    &self.redirect_url,
                     self.state.as_deref(),
                     self.pkce_challenge.as_deref(),
                 );
