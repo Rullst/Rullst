@@ -138,6 +138,13 @@ fn provider_and_resource_configuration_rejects_invalid_values() {
 async fn offline_journey_preserves_tenant_boundaries_and_never_fakes_a_grant() {
     let storage = offline();
     assert!(storage.is_cloud_mock());
+    assert!(!Storage::local("unused").is_cloud_mock());
+    assert!(
+        !Storage::s3("private-files", "us-east-1")
+            .with_cloud_config(CloudStorageConfig::new(live_credentials()))
+            .unwrap()
+            .is_cloud_mock()
+    );
     let membership = TenantMembership::try_new(["school-a", "school-b"]).unwrap();
     let a = TenantStorage::from_context(storage.clone(), &membership.select("school-a").unwrap());
     let b = TenantStorage::from_context(storage.clone(), &membership.select("school-b").unwrap());
