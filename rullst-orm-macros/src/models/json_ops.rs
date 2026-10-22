@@ -86,7 +86,16 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let skip_tail = if skipped_fields.is_empty() {
+    // The `RowSnapshot` field starts untracked without requiring `Default` on
+    // the model; other skipped fields come from the model's `Default`.
+    let snapshot_init = parsed
+        .snapshot_field
+        .iter()
+        .map(|field| quote! { #field: ::core::default::Default::default(), });
+    let skip_tail = if skipped_fields
+        .iter()
+        .all(|field| parsed.snapshot_field.as_ref() == Some(field))
+    {
         // No `#[orm(skip)]` / `#[sqlx(skip)]` fields, so the
         // exhaustive struct literal is fine and we don't force the
         // user model to implement `Default`.
@@ -114,6 +123,7 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
                 #(
                     #relation_field_idents: None,
                 )*
+                #(#snapshot_init)*
                 #skip_tail
             })
         }

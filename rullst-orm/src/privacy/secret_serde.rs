@@ -5,6 +5,8 @@
 //! ciphertext that `Deserialize` turns back into the real value. Generated
 //! audit, event and search projections run inside [`with_redacted_secrets`],
 //! where the value becomes the fixed `"***"` marker and no key is needed.
+//! Dirty-tracking fingerprints (crate-private) hash the plaintext directly and
+//! keep neither the serialized bytes nor the value.
 //! Client input goes through [`deserialize_plaintext_secret`] instead, which
 //! never decrypts.
 
@@ -22,6 +24,7 @@ const SERDE_CONTEXT: &[u8] = b"rullst-orm:secret-string:serde";
 
 thread_local! {
     static REDACTION_DEPTH: Cell<usize> = const { Cell::new(0) };
+    static FINGERPRINT_DEPTH: Cell<usize> = const { Cell::new(0) };
 }
 
 struct RedactionScope;
@@ -53,6 +56,34 @@ fn redacting() -> bool {
     REDACTION_DEPTH.with(|depth| depth.get() > 0)
 }
 
+struct FingerprintScope;
+
+impl FingerprintScope {
+    fn enter() -> Self {
+        FINGERPRINT_DEPTH.with(|depth| depth.set(depth.get().saturating_add(1)));
+        Self
+    }
+}
+
+impl Drop for FingerprintScope {
+    fn drop(&mut self) {
+        FINGERPRINT_DEPTH.with(|depth| depth.set(depth.get().saturating_sub(1)));
+    }
+}
+
+/// Runs `serialize` with every [`SecretString`] serialized as its plaintext,
+/// for the dirty-tracking fingerprint, which hashes the bytes and keeps
+/// neither them nor the value. A randomized envelope would make every
+/// unchanged secret look changed.
+pub(crate) fn with_secret_fingerprints<R>(serialize: impl FnOnce() -> R) -> R {
+    let _scope = FingerprintScope::enter();
+    serialize()
+}
+
+fn fingerprinting() -> bool {
+    FINGERPRINT_DEPTH.with(|depth| depth.get() > 0)
+}
+
 fn encrypt_serialized(plaintext: &str) -> Result<String, PrivacyError> {
     let key_id = current_key_id()?;
     let key = current_key()?;
@@ -72,9 +103,13 @@ fn is_envelope(value: &str) -> bool {
 }
 
 impl Serialize for SecretString {
-    /// Emits an encrypted envelope, or `"***"` inside a redacted projection.
+    /// Emits an encrypted envelope, or `"***"` inside a redacted projection
+    /// (the plaintext only into a crate-private dirty-tracking hash).
     /// Fails when `RULLST_ENCRYPTION_KEY` is not configured.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if fingerprinting() {
+            return serializer.serialize_str(&self.0);
+        }
         if redacting() {
             return serializer.serialize_str(crate::audit::REDACTED_VALUE);
         }

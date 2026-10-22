@@ -104,6 +104,7 @@ pub mod resource;
 pub mod schema;
 pub mod schema_diff;
 pub mod scout;
+pub mod snapshot;
 #[doc(hidden)]
 pub mod telemetry;
 pub mod tenant;
@@ -160,6 +161,7 @@ pub use schema::{DatabaseEnum, JoinClause, SubqueryBuilder};
 #[cfg(feature = "scout-http")]
 pub use scout::{AlgoliaEngine, ElasticsearchEngine, MeilisearchEngine};
 pub use scout::{MockSearchEngine, SearchEngine, get_search_engine, set_search_engine};
+pub use snapshot::RowSnapshot;
 pub use tenant::{get_tenant_id, with_tenant};
 pub use types::Json;
 pub use value::RullstValue;

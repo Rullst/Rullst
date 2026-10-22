@@ -23,12 +23,19 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
         relation_field_idents.push(rel.field_name.clone());
     }
 
-    let skip_tail = if skipped_fields.is_empty() {
+    let snapshot_init = parsed
+        .snapshot_field
+        .iter()
+        .map(|field| quote! { #field: ::core::default::Default::default(), });
+    let only_snapshot_skipped = skipped_fields
+        .iter()
+        .all(|field| parsed.snapshot_field.as_ref() == Some(field));
+    let skip_tail = if only_snapshot_skipped {
         quote! {}
     } else {
         quote! { ..Default::default() }
     };
-    let redis_get_default_bound = if skipped_fields.is_empty() {
+    let redis_get_default_bound = if only_snapshot_skipped {
         quote! {}
     } else {
         quote! { where Self: Default }
@@ -122,6 +129,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
             Ok(Self {
                 #(#from_hash_fields,)*
                 #(#relation_field_idents: None,)*
+                #(#snapshot_init)*
                 #skip_tail
             })
         }
