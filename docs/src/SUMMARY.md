@@ -82,6 +82,7 @@
 - [⚡ Redis Architecture, Caching & Distributed Queues](redis-guide.md)
 - [🛡️ Threat Radar & SOC Master Guide](threat-radar-soc-guide.md)
 - [📡 Telemetry & Distributed Tracing](telemetry-guide.md)
+- [Production Monitoring Endpoint](production-monitoring.md)
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
 - [Writing Your Own Payment Provider](capital-custom-provider.md)
 - [Writing Your Own Mail Transport](mail-custom-transport.md)

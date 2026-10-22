@@ -291,6 +291,60 @@
       "marker": "TM-STUDIO-06"
     },
     {
+      "id": "MONITOR-01",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "server::stack::monitor_tests::the_monitor_is_off_unless_mounted_with_a_credential",
+      "source": "rullst-core/src/server/monitor_stack_tests.rs",
+      "marker": "TM-MONITOR-01"
+    },
+    {
+      "id": "MONITOR-02",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "monitor::endpoint_tests::missing_and_invalid_credentials_get_the_same_401",
+      "source": "rullst-core/src/monitor/endpoint_tests.rs",
+      "marker": "TM-MONITOR-02"
+    },
+    {
+      "id": "MONITOR-02",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "monitor::endpoint_tests::presented_invalid_tokens_lock_the_client_out_without_evaluation",
+      "source": "rullst-core/src/monitor/endpoint_tests.rs",
+      "marker": "TM-MONITOR-02"
+    },
+    {
+      "id": "MONITOR-04",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "monitor::record_tests::raw_paths_queries_and_client_data_never_reach_the_document",
+      "source": "rullst-core/src/monitor/record_tests.rs",
+      "marker": "TM-MONITOR-04"
+    },
+    {
+      "id": "MONITOR-04",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "monitor::payload_tests::the_document_has_exactly_the_v1_fields",
+      "source": "rullst-core/src/monitor/payload_tests.rs",
+      "marker": "TM-MONITOR-04"
+    },
+    {
+      "id": "MONITOR-08",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "monitor::endpoint_tests::production_refuses_plain_http_before_evaluating_credentials",
+      "source": "rullst-core/src/monitor/endpoint_tests.rs",
+      "marker": "TM-MONITOR-08"
+    },
+    {
       "id": "TENANT-02",
       "crate": "rullst-security",
       "target_kind": "integration",

@@ -30,11 +30,13 @@ impl Server {
     }
 
     /// Builds the static application. Outer-to-inner request order:
-    /// (development telemetry recorder) → trusted proxy → security baseline →
-    /// lifecycle → Traffic Shield → rate limit (both skipped for exact health
-    /// probes) → development/static/access log layers → application routes.
-    /// The development reload and telemetry routes and the telemetry recorder
-    /// exist only in a supervised debug Development process.
+    /// (development telemetry recorder) → (monitor recorder) → trusted proxy
+    /// → security baseline → lifecycle → Traffic Shield → rate limit (both
+    /// skipped for exact health probes) → development/static/access log
+    /// layers → application routes. The development reload and telemetry
+    /// routes and the telemetry recorder exist only in a supervised debug
+    /// Development process; the monitor route and its recorder only with
+    /// [`Server::with_monitor`] and a configured credential.
     pub(super) fn into_static_app(
         self,
         security: SecurityConfig,
@@ -42,7 +44,16 @@ impl Server {
     ) -> Result<axum::Router, ServerError> {
         let trusted_proxy = self.trusted_proxy_layer();
         let is_dev = environment.allows_development_tools();
+        let monitor = self
+            .monitor
+            .map(|monitor| crate::monitor::Installed::prepare(monitor, environment))
+            .transpose()
+            .map_err(|error| ServerError::Configuration(error.to_string()))?
+            .flatten();
         let mut app = self.router.into_axum();
+        if let Some(monitor) = &monitor {
+            app = monitor.mount(app);
+        }
         let generation = std::env::var("RULLST_DEV_GENERATION").ok();
         let dev_reload = super::dev_reload::is_enabled(is_dev, generation.as_deref());
         app = super::dev_reload::mount(app, is_dev, generation.clone());
@@ -102,6 +113,10 @@ impl Server {
         if let Some(layer) = trusted_proxy {
             app = app.layer(layer);
         }
+        // Around the framework layers, so their refusals are counted too.
+        if let Some(monitor) = &monitor {
+            app = monitor.record(app);
+        }
         // Around everything, so development telemetry also counts panics
         // answered by the console and responses of the layers above.
         if dev_reload {
@@ -114,3 +129,7 @@ impl Server {
 #[cfg(test)]
 #[path = "stack_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "monitor_stack_tests.rs"]
+mod monitor_tests;
