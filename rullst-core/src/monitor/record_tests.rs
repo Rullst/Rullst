@@ -25,7 +25,7 @@ fn installed() -> Installed {
 fn application() -> Router {
     Router::new()
         // rullst-access: public — test fixture without data.
-        .route("/users/{id}", get_route(|| async { "user" }))
+        .route("/users/{id}", axum::routing::get(|| async { "user" }))
         .route(
             "/",
             get_route(|| async {
@@ -156,6 +156,14 @@ fn orm_find(model: &str, table: &str) {
     .in_scope(|| {});
 }
 
+async fn post_with_comments() -> &'static str {
+    orm_find("Post", "posts");
+    for _ in 0..3 {
+        orm_find("Comment", "comments");
+    }
+    "post"
+}
+
 #[tokio::test]
 async fn orm_operations_of_a_request_are_counted_and_repetitions_found() {
     let subscriber =
@@ -165,16 +173,7 @@ async fn orm_operations_of_a_request_are_counted_and_repetitions_found() {
     let app = installed.record(
         Router::new()
             // rullst-access: public — test fixture without data.
-            .route(
-                "/posts/{id}",
-                get_route(|| async {
-                    orm_find("Post", "posts");
-                    for _ in 0..3 {
-                        orm_find("Comment", "comments");
-                    }
-                    "post"
-                }),
-            ),
+            .route("/posts/{id}", axum::routing::get(post_with_comments)),
     );
     let request = get("/posts/42", CLIENT, &[]);
     assert_eq!(app.oneshot(request).await.unwrap().status(), StatusCode::OK);
