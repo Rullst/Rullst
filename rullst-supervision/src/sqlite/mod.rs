@@ -4,6 +4,7 @@
 #[cfg(feature = "analysis")]
 mod analysis;
 mod authority;
+mod establish;
 mod events;
 mod maintenance;
 mod observations;
@@ -61,7 +62,7 @@ impl<C: Clock> SqliteSupervision<C> {
         drop(file);
         let store = Self::connect(&path, config, clock).await?;
         let prepared = async {
-            let mut tx = store.pool.begin_with("BEGIN IMMEDIATE").await.map_err(storage)?;
+            let mut tx = establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE")).await.map_err(storage)?;
             for (_, statement) in schema::SCHEMA { sqlx::query(*statement).execute(&mut *tx).await.map_err(storage)?; }
             let now = crate::clock::checked_time(store.clock.now()?)?;
             sqlx::query("INSERT INTO rullst_supervision_meta (id,version,config,last_now,revision) VALUES (1,2,?,?,0)")
@@ -93,7 +94,7 @@ impl<C: Clock> SqliteSupervision<C> {
         let store = Self::connect(&path, config, clock).await?;
         let checked = async {
             store.validate_schema().await?;
-            store.begin().await?.finish().await
+            Operation::bootstrap(&store).await?.finish().await
         }
         .await;
         if let Err(error) = checked {
@@ -116,12 +117,14 @@ impl<C: Clock> SqliteSupervision<C> {
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
             .busy_timeout(Duration::from_secs(5));
-        let pool = SqlitePoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(Duration::from_secs(5))
-            .connect_with(options)
-            .await
-            .map_err(storage)?;
+        let pool = establish::retry(|| {
+            SqlitePoolOptions::new()
+                .max_connections(4)
+                .acquire_timeout(Duration::from_secs(5))
+                .connect_with(options.clone())
+        })
+        .await
+        .map_err(storage)?;
         Ok(Self {
             pool,
             config,
@@ -154,10 +157,10 @@ impl<C: Clock> SqliteSupervision<C> {
         key
     }
 
+    /// Runs only in `initialize` and `open`, so it retries a connection that
+    /// times out (see `establish`).
     async fn validate_schema(&self) -> Result<(), Error> {
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
+        let mut tx = establish::retry(|| self.pool.begin_with("BEGIN IMMEDIATE"))
             .await
             .map_err(storage)?;
         // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would

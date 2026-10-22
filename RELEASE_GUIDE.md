@@ -23,7 +23,7 @@ source and generated site data:
 | Reference | What it is | Published to crates.io? |
 |--------|------------|------------------------|
 | `main` | Protected v13 development and release source | Only after an admitted release tag |
-| `v12` | Protected source for compatible 12.x maintenance | Only after its own approved release tag |
+| `v12` | Frozen 12.x source; the line reached end of life on 16 October 2026 | No further release |
 | `gh-pages` | Generated website/benchmark history used by Pages | No |
 | `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
 | `vX.Y.Z[-pre]` | Immutable source snapshot approved for release | Triggers the release workflow |
@@ -206,7 +206,10 @@ independent certification.
 
 ### Phase 4 — Continue v13 while maintaining v12
 
-The `main` branch develops v13; the former `v13` branch is retired. Start
+The v12 line reached end of life on 16 October 2026 (12.3.0 was its last
+release) and the `v12` branch is frozen, so the v12 maintenance steps of this
+phase are historical. The `main` branch develops v13; the former `v13` branch
+is retired. Start
 next-major work from `main` after
 reviewing its roadmap and differences from the published v12 source:
 
@@ -224,14 +227,13 @@ deliberately (for example, to resolve an advisory). Changes that break Rullst's
 compatibility contract belong to v13.
 Keep the v12 release gates active while v13's own CI policy evolves.
 
-Version 12.3.0 is the latest published stable release. Carry the compatible
-12.1 [update experience](ROADMAP.md#safe-update-experience) into v13 while keeping
-maintenance on `v12`; forward-port applicable fixes through reviewed PRs.
+Version 12.3.0, the last 12.x release, is the latest published stable release.
+Carry the compatible 12.1 [update experience](ROADMAP.md#safe-update-experience)
+into v13.
 Synchronize package versions only when the candidate is accepted for release.
 A major upgrade needs its own tested migration rules, not just an updated
 installer. Follow the [v13 delivery plan](docs/src/v13-delivery-plan.md) for
-current priorities. This plan does not itself authorize publication or end
-v12 maintenance.
+current priorities. This plan does not itself authorize publication.
 
 ---
 
@@ -317,7 +319,7 @@ git push origin v13.X.Y
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
 | Current `main` line | `13.0.0-alpha.2` prerelease source; only a reviewed tag publishes it, a branch merge does not |
-| Maintenance line | Protected `v12` for compatible 12.x fixes |
+| Former maintenance line | Frozen `v12`; end of life since 16 October 2026 |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
 | Published v13 prereleases | `13.0.0-alpha.1` / `v13.0.0-alpha.1` (October 11, 2026); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
-| Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [maintained v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |
+| Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |

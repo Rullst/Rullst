@@ -190,7 +190,7 @@ and local revision/state after external work and use bounded durable leases to
 reject concurrent/stale mutation results. Playback is a read: it takes no lease,
 so viewers never wait on one another's provider reads and an abandoned request
 leaves no intent; its short local transactions still serialize, and a lock or
-connection wait over 3 seconds is `Busy`; it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
+connection wait over 5 seconds is `Busy`; it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
 library, store-wide capacity and an optional per-tenant asset quota for shared
 stores, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
@@ -1107,6 +1107,24 @@ time after acquiring its state lock. This
 correction preserves public API/schema and does not add persistent clock
 anti-rollback or change at-least-once delivery semantics.
 
+### v13 shared-local SQLite bootstrap connections
+
+The Labs, Media and Supervision stores and the Privacy consent and age-replay
+SQLite stores bound every wait for a pooled connection at 5 seconds, while
+statements and commits wait for the disk. Establishing a connection (opening
+the file and its WAL, and in `initialize` the WAL conversion with its full
+syncs) runs inside that bound. Loaded hosted Windows runners stall a process's
+file I/O for 5 to 12 seconds at times, so `initialize` failed there with
+`Storage` or `Busy` and left a new file that a second `initialize` refuses.
+Since 13.0.0-alpha.3, the steps of `initialize` and `open` (for the age-replay
+store, `open`, which also creates a missing file) are tried again when their
+connection times out, three attempts in total (about 15 seconds): no other
+task can use the new pool yet, so the timeout means a slow establishment, not
+contention. Every other operation keeps the single 5-second bound and its
+`Busy` or `Storage` result. Labs keeps the SQLite result code, I/O error kind
+or pool condition behind the last `Storage` error of a thread for its test
+fixtures, never a message, SQL text or path.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact
@@ -1588,7 +1606,7 @@ boundaries.
 v13 replaced the complete Academy scaffold with the LMS starter. The generated
 `ActivityEvaluator`, activity attempts, `ScoreEvent` recording, leaderboards and
 the spaced-review queue are no longer generated. Their design remains in the
-git history and on the stable v12 branch; an application that adds them owns
+git history and on the frozen v12 branch; an application that adds them owns
 the same server-authoritative controls.
 
 ## ⚡ 4. Core API Specifications (`rullst-core`)
@@ -1831,6 +1849,18 @@ the same server-authoritative controls.
   leave `auto_migrate` unset, so only `RULLST_AUTO_MIGRATE` turns it on. Turso
   starters register none: their migrations run through `db:migrate`, and the
   variable set to true there fails startup with `ServerError::Migration`.
+* **Transactional Migrations (v13 prerelease):** A migration whose
+  `within_transaction()` returns `true` runs `up()` (or `down()`) and its
+  `migrations` record inside one `Orm::transaction`, which `Schema`, generated
+  model methods, `execute_query!`/`dispatch_executor!` and
+  `Orm::raw(sql).execute()` join. Since 13.0.0-alpha.3, while that body runs
+  on the runner's task, `Orm::pool()`, `Orm::read_pool()`, their `try_` forms
+  and `Orm::begin_transaction()` return `Error::Validation` naming the
+  migration instead of a connection outside the transaction, so the run fails
+  and the migration rolls back unrecorded. A pool obtained before the body
+  ran, another crate's pool and tasks spawned from the body are not detected.
+  PostgreSQL and SQLite roll the DDL back with the record; MySQL/MariaDB
+  commit DDL implicitly.
 * **Application Settings (v13 prerelease):** `rullst::config::project_setting`
   reads one application setting from the process environment, then from
   `./.env`, which never overrides the process environment and is never loaded

@@ -16,10 +16,15 @@ pub trait Migration: Send + Sync {
     /// `Schema` calls, generated model methods, `execute_query!`/
     /// `dispatch_executor!`, and raw SQL sent with
     /// `Orm::raw(sql).execute()` or `.map_to()`, which is the raw-SQL path
-    /// that stays in the transaction. A query sent to `Orm::pool()` directly,
-    /// such as `sqlx::query(sql).execute(Orm::pool()?)`, runs on another
-    /// connection outside the transaction and cannot see its uncommitted
-    /// tables, so a migration that uses one must keep the default `false`.
+    /// that stays in the transaction. `Orm::pool()` and `Orm::read_pool()`
+    /// would hand out another connection, outside the transaction and unable
+    /// to see its uncommitted tables, so while `up()`/`down()` runs they
+    /// return `Error::Validation` and the migration rolls back unrecorded; a
+    /// migration that sends queries such as
+    /// `sqlx::query(sql).execute(Orm::pool()?)` must keep the default
+    /// `false` (13.0.0-alpha.2 let such a query escape the transaction). A
+    /// pool obtained before the migration ran, a pool of another crate or a
+    /// task spawned from `up()` is not detected and still runs outside it.
     /// PostgreSQL and SQLite roll DDL back with the transaction; MySQL and
     /// MariaDB commit implicitly at each DDL statement, so there only data
     /// changes after the last DDL statement are atomic with the record.
@@ -335,7 +340,7 @@ async fn run_pending_migrations(
                 // The change and its record commit (or roll back) together.
                 crate::Orm::transaction(move |_| {
                     Box::pin(async move {
-                        m.up().await?;
+                        crate::__transaction_access::run_migration(name, m.up()).await?;
                         let record = sqlx::query(tracking_sql).bind(name).bind(next_batch);
                         crate::execute_query!(record, execute, pool)?;
                         Ok::<(), Error>(())
@@ -429,7 +434,7 @@ async fn rollback_last_batch(
                 let recorded = name.clone();
                 crate::Orm::transaction(move |_| {
                     Box::pin(async move {
-                        m.down().await?;
+                        crate::__transaction_access::run_migration(m.name(), m.down()).await?;
                         let forget = sqlx::query(forget_sql).bind(recorded);
                         crate::execute_query!(forget, execute, pool)?;
                         Ok::<(), Error>(())

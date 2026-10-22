@@ -4,6 +4,7 @@ use super::{
     AgeError, ReplayDurability, ReplayStore,
     replay::{nonce_digest, validate_claim},
 };
+use crate::sqlite_establish::retry;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::{SqliteConnection, SqlitePool};
 use std::{path::Path, time::Duration};
@@ -69,12 +70,14 @@ impl SqliteReplayStore {
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
             .busy_timeout(Duration::from_secs(5));
-        let pool = SqlitePoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(Duration::from_secs(5))
-            .connect_with(options)
-            .await
-            .map_err(|_| AgeError::StoreUnavailable)?;
+        let pool = retry(|| {
+            SqlitePoolOptions::new()
+                .max_connections(4)
+                .acquire_timeout(Duration::from_secs(5))
+                .connect_with(options.clone())
+        })
+        .await
+        .map_err(|_| AgeError::StoreUnavailable)?;
         let store = Self {
             pool,
             capacity: capacity as i64,
@@ -92,10 +95,10 @@ impl SqliteReplayStore {
         self.pool.close().await;
     }
 
+    /// Runs only in `open`, so it retries a connection that times out while
+    /// it is established (see `sqlite_establish`).
     async fn prepare(&self) -> Result<(), AgeError> {
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
+        let mut tx = retry(|| self.pool.begin_with("BEGIN IMMEDIATE"))
             .await
             .map_err(|_| AgeError::StoreUnavailable)?;
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('rullst_age_replay_meta', 'rullst_age_replay_claims')")
