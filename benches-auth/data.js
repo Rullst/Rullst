@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792685092503,
+  "lastUpdate": 1792696842071,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17501,6 +17501,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4215,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec643e00aecb3b3d097a10109c704df94d16bda3",
+          "message": "Merge pull request #528 from Rullst/fix/v13-alpha3-leftovers\n\nfix(v13): Windows SQLite store start-up, migration transactions and stale v12 pointers",
+          "timestamp": "2026-10-22T16:01:18-03:00",
+          "tree_id": "021ec64368af8ca55090ae6d8e995df47d8d8e49",
+          "url": "https://github.com/Rullst/Rullst/commit/ec643e00aecb3b3d097a10109c704df94d16bda3"
+        },
+        "date": 1792696841148,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 978,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 780,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1787,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4566,
+            "range": "± 88",
             "unit": "ns/iter"
           }
         ]
