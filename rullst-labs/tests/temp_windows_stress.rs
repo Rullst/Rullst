@@ -75,13 +75,6 @@ fn temp_stress_initialize() {
                             )
                             .await
                         });
-                        let elapsed = started.elapsed().as_millis();
-                        if elapsed > 1500 {
-                            eprintln!(
-                                "STRESS-SLOW thread={thread} iteration={iteration} ms={elapsed} ok={}",
-                                result.is_ok()
-                            );
-                        }
                         match result {
                             Ok(store) => {
                                 if iteration % 2 == 0 {
