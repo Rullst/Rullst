@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792650154517,
+  "lastUpdate": 1792653527273,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27573,6 +27573,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2007,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "479d9a08c2cab58bac43a443e0f74ead8d572e19",
+          "message": "Merge pull request #520 from Rullst/fix/v13-dx-alpha3\n\nfix(v13): alpha.2 dogfooding fixes for OAuth mock, account mail, production logs and docs",
+          "timestamp": "2026-10-22T04:12:47-03:00",
+          "tree_id": "132ca70210f0a1b35dbb8ecc2447c64a993a469e",
+          "url": "https://github.com/Rullst/Rullst/commit/479d9a08c2cab58bac43a443e0f74ead8d572e19"
+        },
+        "date": 1792653524794,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 735,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 997,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 384,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2280,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
