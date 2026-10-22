@@ -162,10 +162,15 @@ async fn up(&self) -> Result<(), rullst_orm::Error> {
 }
 ```
 
-A query sent to `Orm::pool()` directly, such as
-`sqlx::query(sql).execute(Orm::pool()?)`, runs on another connection that
+`Orm::pool()` and `Orm::read_pool()` would hand out another connection that
 cannot see the transaction's uncommitted tables and does not roll back with
-it, so keep the default `false` for such a migration. PostgreSQL and SQLite roll the DDL back with the record; MySQL and
+it. Since 13.0.0-alpha.3 they return `Error::Validation`, naming the migration,
+while such a migration's `up()`/`down()` runs, so the migration fails and rolls
+back unrecorded instead of half-applying (`Orm::begin_transaction()` fails the
+same way). Keep the default `false` for a migration that sends queries such as
+`sqlx::query(sql).execute(Orm::pool()?)`. A pool obtained before the migration
+ran, another crate's pool or a task spawned from `up()` is not detected and
+still runs outside the transaction. PostgreSQL and SQLite roll the DDL back with the record; MySQL and
 MariaDB commit each DDL statement implicitly, so there only data changes after
 the last DDL statement are atomic with the record. Statements that refuse to
 run in a transaction block, such as PostgreSQL `CREATE INDEX CONCURRENTLY`,

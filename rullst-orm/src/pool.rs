@@ -285,8 +285,15 @@ impl Orm {
 
     /// Fallible variant of [`Orm::pool`]: returns `Err` instead of panicking
     /// when the ORM has not been initialized yet.
+    ///
+    /// Inside the `up()`/`down()` of a migration whose
+    /// [`within_transaction`](crate::schema::Migration::within_transaction)
+    /// returns `true`, it returns [`Error::Validation`](crate::Error::Validation):
+    /// a query sent to the pool would run on another connection, outside the
+    /// migration's transaction.
     pub fn try_pool() -> Result<&'static RullstPool, crate::Error> {
         crate::__transaction_access::ensure_allowed()?;
+        crate::__transaction_access::ensure_pool_allowed()?;
         Ok(&Self::state()?.primary)
     }
 
@@ -297,10 +304,12 @@ impl Orm {
         Self::try_read_pool()
     }
 
-    /// Fallible variant of [`Orm::read_pool`].
+    /// Fallible variant of [`Orm::read_pool`]. Like [`Orm::try_pool`], it
+    /// fails inside a migration that runs within the runner's transaction.
     #[cfg_attr(test, mutants::skip)]
     pub fn try_read_pool() -> Result<&'static RullstPool, crate::Error> {
         crate::__transaction_access::ensure_allowed()?;
+        crate::__transaction_access::ensure_pool_allowed()?;
         Ok(Self::state()?.read_pool())
     }
 

@@ -255,3 +255,90 @@ fn auto_migration_columns_follow_the_rust_field_types() {
         "{message}"
     );
 }
+
+/// Every SQLx migration the CLI writes, like `make:migration`, imports through
+/// `rullst::db` and returns the facade's `rullst::orm::Error`. Only the ORM's
+/// own artisan template, for projects without the facade, names `rullst_orm`.
+#[test]
+fn every_cli_migration_template_uses_the_facade_paths() {
+    let templates = [
+        (
+            "blank",
+            include_str!(
+                "../blueprints/blank/src/migrations/m20260601000000_create_users_table.rs.template"
+            ),
+        ),
+        (
+            "blog",
+            include_str!(
+                "../blueprints/blog/src/migrations/m20260601000000_create_posts_table.rs.template"
+            ),
+        ),
+        (
+            "erp",
+            include_str!(
+                "../blueprints/erp/src/migrations/m20260601000000_create_erp_tables.rs.template"
+            ),
+        ),
+        (
+            "lms tables",
+            include_str!(
+                "../blueprints/lms/src/migrations/m20260601000000_create_lms_tables.rs.template"
+            ),
+        ),
+        (
+            "lms access",
+            include_str!(
+                "../blueprints/lms/src/migrations/m20260827000000_add_learning_access.rs.template"
+            ),
+        ),
+        (
+            "portfolio",
+            include_str!(
+                "../blueprints/portfolio/src/migrations/m20260701000000_create_portfolio_tables.rs.template"
+            ),
+        ),
+        (
+            "saas",
+            include_str!(
+                "../blueprints/saas/src/migrations/m20260601000000_create_users_table.rs.template"
+            ),
+        ),
+        (
+            "billing",
+            include_str!("billing_migration_sqlx.rs.template"),
+        ),
+        ("oauth", include_str!("oauth/migration.rs.template")),
+        ("mfa", include_str!("auth/mfa_migration.rs.template")),
+        (
+            "password reset",
+            include_str!("auth/password_reset_migration.rs.template"),
+        ),
+    ];
+    for (name, source) in templates {
+        assert_facade_migration(name, source);
+    }
+    // The tutorial and the SaaS journey insert these into CLI-generated
+    // migrations; packaged crates do not ship them.
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    for path in [
+        "docs/src/tutorials/zero-to-complete-app/create_notes.rs",
+        "examples/saas/migration.rs",
+    ] {
+        if let Ok(source) = std::fs::read_to_string(root.join(path)) {
+            assert_facade_migration(path, &source);
+        }
+    }
+}
+
+fn assert_facade_migration(name: &str, source: &str) {
+    assert_eq!(
+        source.matches("Result<(), rullst::orm::Error>").count(),
+        2,
+        "{name}"
+    );
+    assert!(source.contains("async_trait"), "{name}");
+    assert!(source.contains("Migration"), "{name}");
+    assert!(!source.contains("rullst_orm"), "{name}");
+    assert!(!source.contains("RullstError"), "{name}");
+}

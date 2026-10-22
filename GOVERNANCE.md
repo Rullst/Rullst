@@ -29,8 +29,9 @@ Automated checks do not establish independent review.
 
 ## Change and release controls
 
-`v12` maintains the compatible stable line; `main` develops v13. Both require
-pull requests and the named, application-bound checks in their branch policy.
+`main` develops v13; `v12` holds the frozen 12.x line, which reached end of
+life on 16 October 2026. Both remain protected: they require pull requests and
+the named, application-bound checks in their branch policy.
 The public [maintained-branch ruleset](https://github.com/Rullst/Rullst/rules/24080901)
 mirrors their classic protections, including all 46 required checks, an up-to-date
 base, resolved review conversations, and prevention of force pushes and branch

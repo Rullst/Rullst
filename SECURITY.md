@@ -18,12 +18,12 @@ Earlier fixes, such as the 12.1.2 Nexus stored-value escaping, are included.
 An application-specific patch does not update other installations of the
 published framework.
 
-Rullst adopts Semantic Versioning for each published crate. This policy is
-written for the v12 stable release line; crates.io remains authoritative for
-whether an exact package version has been published. Source in a branch or an
-unpublished tag is not a distributed release by itself. Check the latest stable
-patch on [crates.io](https://crates.io/crates/rullst) and the
-[maintained release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md).
+Rullst adopts Semantic Versioning for each published crate; crates.io remains
+authoritative for whether an exact package version has been published. Source
+in a branch or an unpublished tag is not a distributed release by itself. Check
+the published versions on [crates.io](https://crates.io/crates/rullst/versions);
+the [v12 release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
+documents the end-of-life 12.x line.
 
 `main` develops the next major release. The v12 line reached end of life on
 16 October 2026: the [`v12` branch](https://github.com/Rullst/Rullst/tree/v12)
@@ -34,7 +34,7 @@ security reports are handled on `main` for the latest v13 prerelease.
 | :--- | :---: | :--- |
 | **12.x** | :x: | End of life since 16 October 2026; 12.3.0 is the last release. crates.io yanked the `zip` releases its Studio needs, so new 12.x projects no longer resolve dependencies. Move to v13. |
 | **13.x development** | :x: | Prereleases such as 13.0.0-alpha.2: reports are triaged on `main` and fixed in the next prerelease; no stable security-support commitment until 13.0.0. |
-| **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
+| **12.0.0-rc.1** | :x: | Immutable evaluation prerelease of the end-of-life 12.x line; move to v13. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |
 

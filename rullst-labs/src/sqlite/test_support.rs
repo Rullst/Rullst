@@ -78,7 +78,7 @@ pub(super) async fn store(
         Fixed(Arc::new(AtomicI64::new(NOW))),
     )
     .await
-    .unwrap();
+    .unwrap_or_else(|error| panic!("initialize: {error:?} ({:?})", super::cause::last()));
     store
         .register_exercise(&Allow, &reference("teacher"), &exercise("sum", "v1", 579))
         .await

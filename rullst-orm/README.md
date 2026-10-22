@@ -364,7 +364,8 @@ do not authenticate users or decide who may invoke `unscoped()`.
 Add the library to your `Cargo.toml`:
 
 Install the v13 prerelease with an exact pin (Cargo never selects a
-prerelease on its own; the stable line is `rullst-orm@12`):
+prerelease on its own). The v12 line (`rullst-orm@12`) reached end of life on
+16 October 2026:
 
 ```bash
 cargo add rullst-orm@=13.0.0-alpha.2 -F strict-sqlite
@@ -603,7 +604,7 @@ async fn for_lesson(lesson_id: Option<i64>) -> Result<Vec<Progress>, rullst_orm:
 
 ### Selecting an isolated SQLx driver
 
-From 12.1, a standalone ORM dependency can omit unrelated SQLx drivers:
+A standalone ORM dependency compiles only the SQLx drivers it selects:
 
 ```toml
 rullst-orm = { version = "=13.0.0-alpha.2", default-features = false, features = ["strict-postgres"] }

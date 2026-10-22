@@ -1,5 +1,5 @@
-use rullst_orm::schema::{Schema, Migration};
-use rullst_orm::async_trait;
+use rullst::db::schema::{Schema, Migration};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -9,7 +9,7 @@ impl Migration for MigrationImpl {
         "m20261008071503_create_notes"
     }
 
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
         Schema::create("notes", |table| {
             table.id();
             table.integer("user_id").not_null();
@@ -18,7 +18,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
         Schema::drop_if_exists("notes").await
     }
 }

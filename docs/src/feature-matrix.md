@@ -1,9 +1,13 @@
 # Cargo feature matrix
 
 > [!IMPORTANT]
-> Dependency examples target `12.1.0`. Check the [release record](v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use path dependencies only when intentionally testing checkout-local changes.
+> This page describes the v13 prerelease source, and its dependency examples
+> pin the published `13.0.0-alpha.2` exactly: Cargo never selects a prerelease
+> on its own, and a plain `"13.0.0-alpha.2"` would also accept later alphas
+> (see the [v13 migration guide](migration-v13.md)). The v12 line reached end
+> of life on 16 October 2026; see the [release record](v12.md). Commit
+> Cargo.lock for reproducible builds, and use path dependencies only when
+> intentionally testing checkout-local changes.
 
 This page is the public feature contract for the 20 packages in the v13
 [release inventory](../../.github/release-order.json): the 16 published 12.x
@@ -180,7 +184,7 @@ over one file-backed SQLite URL:
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.2", default-features = false, features = [
   "auth-sqlite",
   "capital-quota-sql",
   "mail-sqlite",
@@ -463,23 +467,21 @@ Minimal HTTP runtime (from 13.0.0-alpha.3 the defaults are empty, so
 `default-features = false` changes nothing there):
 
 ```toml
-rullst = { version = "12.1.0", default-features = false }
+rullst = { version = "=13.0.0-alpha.2", default-features = false }
 ```
 
-SQLite application using the 12.x default, which 13.0.0-alpha.3 and later
-spell out:
+SQLite application with the ORM, every SQLx driver and the SQLite queue,
+which were the defaults up to 13.0.0-alpha.2 and must be named since alpha.3:
 
 ```toml
-rullst = "12.1.0"
-# 13.0.0-alpha.3 and later:
-# rullst = { version = "...", features = ["orm", "drivers-all", "queue-sqlite"] }
+rullst = { version = "=13.0.0-alpha.2", features = ["orm", "drivers-all", "queue-sqlite"] }
 ```
 
 PostgreSQL application with explicit domain integrations:
 
 ```toml
 rullst = {
-    version = "12.1.0",
+    version = "=13.0.0-alpha.2",
     default-features = false,
     features = ["strict-postgres", "auth", "security", "telemetry"]
 }
@@ -488,14 +490,14 @@ rullst = {
 Embedded IoT model without the standard library:
 
 ```toml
-rullst-iot = { version = "12.1.0", default-features = false }
+rullst-iot = { version = "=13.0.0-alpha.2", default-features = false }
 ```
 
 Experimental IoT fixtures are deliberately separate:
 
 ```toml
 rullst-iot = {
-    version = "12.1.0",
+    version = "=13.0.0-alpha.2",
     default-features = false,
     features = ["experimental-simulators"]
 }

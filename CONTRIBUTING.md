@@ -97,8 +97,8 @@ release responsibilities and current continuity/review limitations.
 
 - `main`: Protected v13 development. Product work and breaking changes target
   this branch; its contents are not published v12 APIs.
-- `v12`: Protected 12.x maintenance. Compatible fixes, documentation and
-  appropriate dependency updates target this branch.
+- `v12`: Frozen 12.x source. The v12 line reached end of life on 16 October
+  2026 (12.3.0 was its last release), so no change targets this branch.
 - `gh-pages`: Generated site/benchmark data used by the Pages workflow.
 - Feature, fix and Dependabot branches are temporary and are removed after
   integration or verified replacement. The former `v13` branch is retired;

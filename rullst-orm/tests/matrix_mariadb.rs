@@ -93,6 +93,7 @@ async fn test_matrix_mariadb_crud() {
     support::migrations::exercise_foreign_migrations_table().await;
     support::migrations::exercise_concurrent_migration_runners().await;
     support::migrations::exercise_transactional_migrations().await;
+    support::migrations::exercise_pool_access_in_transactional_migrations().await;
     exercise_native_enum().await;
     driver_contract::exercise().await;
 }

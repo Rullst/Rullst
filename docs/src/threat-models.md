@@ -2,7 +2,7 @@
 
 > **Model version:** TM-13.0
 > **Applies to:** the v13 development source and generated applications; the
-> stable v12 branch keeps TM-12.10
+> frozen v12 branch (end of life since 16 October 2026) keeps TM-12.10
 > **Last source review:** 2026-09-03
 > **Status:** maintainer baseline; application owners must extend it for their
 > data, topology and providers. It is not a pentest or certification.

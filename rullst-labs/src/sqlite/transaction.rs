@@ -20,11 +20,28 @@ impl<'a, C: Clock> Operation<'a, C> {
     }
     pub async fn begin(store: &'a SqliteLabs<C>, deadline: Option<i64>) -> Result<Self, Error> {
         let before = checked_time(store.clock.now()?)?;
-        let mut tx = store
+        let tx = store
             .pool
             .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(storage)?;
+        Self::started(store, deadline, before, tx).await
+    }
+    /// [`begin`](Self::begin) for `initialize` and `open`, which retry a
+    /// connection that times out while it is established (see `establish`).
+    pub async fn bootstrap(store: &'a SqliteLabs<C>) -> Result<Self, Error> {
+        let before = checked_time(store.clock.now()?)?;
+        let tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
+            .await
+            .map_err(storage)?;
+        Self::started(store, None, before, tx).await
+    }
+    async fn started(
+        store: &'a SqliteLabs<C>,
+        deadline: Option<i64>,
+        before: i64,
+        mut tx: Transaction<'static, Sqlite>,
+    ) -> Result<Self, Error> {
         let rows: Vec<(i64, i64, String, i64)> = sqlx::query_as(
             "SELECT id,version,substr(configuration,1,4097),last_now FROM labs_meta LIMIT 2",
         )

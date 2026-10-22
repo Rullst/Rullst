@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 tokio::task_local! {
     static IN_MUTATION_CALLBACK: ();
+    static IN_MIGRATION_TRANSACTION: &'static str;
 }
 
 /// Managed transactions whose connection an open generated `stream()` holds,
@@ -22,6 +23,26 @@ type SharedTransaction =
 /// cancellation, or unwind and does not propagate into independently spawned tasks.
 pub async fn run<F: Future>(callback: F) -> F::Output {
     IN_MUTATION_CALLBACK.scope((), callback).await
+}
+
+/// Runs the `up()`/`down()` of the named migration, which the runner applies
+/// inside its transaction. Until `body` finishes, `Orm::pool()` and
+/// `Orm::read_pool()` on this task fail instead of handing out a connection
+/// outside that transaction. Like the transaction itself, the scope does not
+/// propagate into independently spawned tasks.
+pub(crate) async fn run_migration<F: Future>(name: &'static str, body: F) -> F::Output {
+    IN_MIGRATION_TRANSACTION.scope(name, body).await
+}
+
+/// Refuses direct pool access from a migration body that runs inside the
+/// runner's transaction (see [`run_migration`]).
+pub(crate) fn ensure_pool_allowed() -> Result<(), crate::Error> {
+    match IN_MIGRATION_TRANSACTION.try_with(|name| *name) {
+        Ok(name) => Err(crate::Error::Validation(format!(
+            "migration {name} returns true from within_transaction(), so Orm::pool() and Orm::read_pool() are unavailable in its up()/down(): they would run on another connection outside the migration's transaction; use Schema, Orm::raw(sql).execute() or execute_query!, or return false from within_transaction()"
+        ))),
+        Err(_) => Ok(()),
+    }
 }
 
 pub fn ensure_allowed() -> Result<(), crate::Error> {
@@ -82,7 +103,42 @@ fn streaming_transactions() -> std::sync::MutexGuard<'static, Vec<usize>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{SharedTransaction, ensure_allowed, hold_for_stream};
+    use super::{
+        SharedTransaction, ensure_allowed, ensure_pool_allowed, hold_for_stream, run_migration,
+    };
+
+    #[tokio::test]
+    async fn pool_access_fails_only_inside_a_transactional_migration_body() {
+        let expected = "migration m20261022_000001_create_widgets returns true from within_transaction(), so Orm::pool() and Orm::read_pool() are unavailable in its up()/down(): they would run on another connection outside the migration's transaction; use Schema, Orm::raw(sql).execute() or execute_query!, or return false from within_transaction()";
+        let refused = |result: Result<(), crate::Error>| matches!(result, Err(crate::Error::Validation(message)) if message == expected);
+        let (guard, pool, read_pool, begin, nested) =
+            run_migration("m20261022_000001_create_widgets", async {
+                (
+                    ensure_pool_allowed(),
+                    crate::Orm::try_pool().map(|_| ()),
+                    crate::Orm::try_read_pool().map(|_| ()),
+                    crate::Orm::begin_transaction().await.map(|_| ()),
+                    async { ensure_pool_allowed() }.await,
+                )
+            })
+            .await;
+        assert!(refused(guard));
+        assert!(refused(pool));
+        assert!(refused(read_pool));
+        assert!(refused(begin));
+        assert!(refused(nested));
+        // The scope ends with the body: this test never initializes the ORM.
+        assert!(ensure_pool_allowed().is_ok());
+        assert!(matches!(
+            crate::Orm::try_pool(),
+            Err(crate::Error::NotInitialized)
+        ));
+        let spawned = run_migration("m20261022_000001_create_widgets", async {
+            tokio::spawn(async { ensure_pool_allowed() }).await
+        })
+        .await;
+        assert!(matches!(spawned, Ok(Ok(()))));
+    }
 
     #[tokio::test]
     async fn a_held_transaction_rejects_other_calls_until_the_hold_drops() {
