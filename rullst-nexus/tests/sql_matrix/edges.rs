@@ -70,7 +70,14 @@ pub async fn edge_cases(pool: &RullstPool, driver: &str) {
     // Only an exactly representable whole number addresses a record.
     let (status, list) = send(&app, "GET", "/table/nexus_matrix_measurements", "").await;
     assert_eq!(status, StatusCode::OK, "{driver}: {list}");
-    assert!(list.contains("data-nexus-row-id=\"2\""), "{driver}: {list}");
+    let start = list
+        .find("data-nexus-row-id=\"2\"")
+        .unwrap_or_else(|| panic!("{driver}: no row addressed as 2: {list}"));
+    let end = list[start..].find("</tr>").expect("row end") + start;
+    assert!(
+        list[start..end].contains("<td class=\"nexus-td\">whole</td>"),
+        "{driver}: {list}"
+    );
     assert_eq!(list.matches("No usable key").count(), 2, "{driver}: {list}");
 
     execute(pool, "DROP TABLE nexus_matrix_measurements").await;
