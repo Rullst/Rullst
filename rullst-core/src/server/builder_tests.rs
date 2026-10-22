@@ -404,11 +404,22 @@ async fn hot_reload_token_configuration_fails_closed() {
         Err(ServerError::HotReloadConfiguration(message)) if message.contains("missing")
     ));
 
-    environment.set("RULLST_HMR_TOKEN", "too-short");
-    assert!(matches!(
-        resolve_hot_reload_token(),
-        Err(ServerError::HotReloadConfiguration(message)) if message.contains("64 hexadecimal")
-    ));
+    // Each rule alone rejects: a short hexadecimal token, a 64-character
+    // token that is not hexadecimal.
+    for token in [
+        "too-short",
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde",
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg",
+    ] {
+        environment.set("RULLST_HMR_TOKEN", token);
+        assert!(
+            matches!(
+                resolve_hot_reload_token(),
+                Err(ServerError::HotReloadConfiguration(message)) if message.contains("64 hexadecimal")
+            ),
+            "{token}"
+        );
+    }
 
     environment.set(
         "RULLST_HMR_TOKEN",
