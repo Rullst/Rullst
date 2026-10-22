@@ -5,6 +5,7 @@
 
 mod audit;
 mod composite;
+mod edges;
 mod temporal;
 
 use crate::support::{authenticated_test_router, local_request};
@@ -202,6 +203,7 @@ pub async fn exercise(database_url: &str, driver: &str) {
     composite::composite_keys_round_trip(&app, pool, driver).await;
     temporal::native_date_time_columns_round_trip(&app, pool, driver).await;
     audit::required_audit_round_trip(pool, driver).await;
+    edges::edge_cases(pool, driver).await;
 }
 
 /// NEXUS-05 and NX2-04: numbers, relations and both Boolean column shapes
