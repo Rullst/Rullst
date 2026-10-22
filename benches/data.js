@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792403465962,
+  "lastUpdate": 1792646231511,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -27465,6 +27465,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2014,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "564db1c1cf6bc2c5b976dfccdf32878a208da563",
+          "message": "Merge pull request #516 from Rullst/fix/v13-ammonia-4.2.4\n\nfix(deps): RustSec updates (ammonia, rustls-webpki, webpki roots) and DuckDB on zip 9",
+          "timestamp": "2026-10-22T02:11:14-03:00",
+          "tree_id": "76a6e55653335edcaae4122d282d34b7e4d97358",
+          "url": "https://github.com/Rullst/Rullst/commit/564db1c1cf6bc2c5b976dfccdf32878a208da563"
+        },
+        "date": 1792646229078,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 760,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 988,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 373,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2010,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
