@@ -23,7 +23,11 @@ rullst = ["axum"]
 retry = ["dep:reqwest-middleware", "dep:reqwest-retry"]
 reqwest-middleware = ["dep:reqwest-middleware"]
 axum-session = ["axum", "dep:tower-sessions"]
-sqlite = ["dep:hex", "dep:sqlx"]
+# `sqlite`, `postgres` and `mysql` add the SQL login-challenge store for that
+# database; `sqlite` also adds the encrypted token snapshot store.
+sqlite = ["dep:hex", "dep:sqlx", "sqlx/sqlite"]
+postgres = ["dep:sqlx", "sqlx/postgres"]
+mysql = ["dep:sqlx", "sqlx/mysql"]
 mock = []
 
 [dependencies]
@@ -52,7 +56,7 @@ reqwest-retry = { version = "0.9", optional = true }
 tower-sessions = { version = "0.15", optional = true }
 subtle = { workspace = true }
 secrecy = { version = "0.10", features = ["serde"] }
-sqlx = { workspace = true, optional = true, features = ["sqlite", "runtime-tokio"] }
+sqlx = { workspace = true, optional = true, features = ["runtime-tokio"] }
 
 [dev-dependencies]
 axum = { workspace = true }
