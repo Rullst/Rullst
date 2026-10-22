@@ -312,3 +312,15 @@ async fn the_first_upload_written_to_a_directory_sweeps_it_once() {
     drop(spill_into(dir.path()).await);
     assert!(later.exists());
 }
+
+#[test]
+fn a_sweep_task_that_cannot_finish_is_reported_as_an_error() {
+    assert_eq!(
+        join_failed(),
+        SweepOutcome {
+            removed: 0,
+            failed: 0,
+            error: Some(std::io::ErrorKind::Other),
+        }
+    );
+}

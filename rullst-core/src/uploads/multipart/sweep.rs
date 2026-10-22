@@ -64,11 +64,16 @@ pub(super) async fn sweep_stale(dir: &Path) {
     let owned = dir.to_path_buf();
     let outcome = tokio::task::spawn_blocking(move || sweep_dir(&owned, SystemTime::now(), LIMITS))
         .await
-        .unwrap_or(SweepOutcome {
-            error: Some(ErrorKind::Other),
-            ..SweepOutcome::default()
-        });
+        .unwrap_or_else(|_| join_failed());
     report(dir, &outcome);
+}
+
+/// The outcome reported when the blocking sweep task could not finish.
+fn join_failed() -> SweepOutcome {
+    SweepOutcome {
+        error: Some(ErrorKind::Other),
+        ..SweepOutcome::default()
+    }
 }
 
 fn last_sweeps() -> std::sync::MutexGuard<'static, BTreeMap<PathBuf, Instant>> {
