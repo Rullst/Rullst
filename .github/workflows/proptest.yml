@@ -51,7 +51,7 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
-          toolchain: 1.99.0
+          toolchain: 1.99.1
           # The CLI release shards materialize and format fresh applications,
           # then enforce their generated source with `cargo clippy -- -D warnings`.
           components: rustfmt, clippy
@@ -83,7 +83,7 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
-          toolchain: 1.99.0
+          toolchain: 1.99.1
           cache: false
 
       - name: Run Proptests — ORM query builder (sqlite, no strict features)
