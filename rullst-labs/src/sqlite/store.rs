@@ -262,7 +262,8 @@ impl<C: Clock> SqliteLabs<C> {
         self.pool.close().await;
     }
 }
-pub(super) fn storage(_: sqlx::Error) -> Error {
+pub(super) fn storage(error: sqlx::Error) -> Error {
+    super::cause::record(&error);
     Error::Storage
 }
 fn resolved(path: &Path) -> Result<PathBuf, Error> {
