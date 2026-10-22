@@ -33,3 +33,35 @@ async fn directories_and_paths_below_files_are_not_objects() {
         3
     );
 }
+
+/// A link inside the storage root that resolves inside it is still refused:
+/// keys never pass through a symbolic link, in the last segment or before it.
+#[cfg(unix)]
+#[tokio::test]
+async fn keys_through_symbolic_links_inside_the_root_are_refused() {
+    let root = tempfile::tempdir().unwrap();
+    let storage = Storage::local(root.path().to_string_lossy());
+    storage.put("real/doc.txt", b"doc").await.unwrap();
+    let canonical = root.path().canonicalize().unwrap();
+    std::os::unix::fs::symlink(canonical.join("real/doc.txt"), canonical.join("alias.txt"))
+        .unwrap();
+    std::os::unix::fs::symlink(canonical.join("real"), canonical.join("linked")).unwrap();
+
+    for key in ["alias.txt", "linked/doc.txt"] {
+        assert!(
+            matches!(storage.get(key).await, Err(StorageError::PathTraversal(_))),
+            "{key}"
+        );
+        assert!(
+            matches!(
+                storage.put(key, b"new").await,
+                Err(StorageError::PathTraversal(_))
+            ),
+            "{key}"
+        );
+    }
+    assert_eq!(storage.get("real/doc.txt").await.unwrap(), b"doc");
+    // A missing segment is not a link: a new key below it can be written.
+    storage.put("fresh/dir/new.txt", b"new").await.unwrap();
+    assert_eq!(storage.get("fresh/dir/new.txt").await.unwrap(), b"new");
+}
