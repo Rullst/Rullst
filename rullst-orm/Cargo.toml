@@ -54,7 +54,9 @@ tinyvec = { version = "=1.13.3", default-features = false }
 walkdir = "2.5.0"
 
 [features]
-default = ["drivers-all"]
+# No default driver: select `strict-sqlite`, `strict-postgres`, `strict-mysql`
+# or `drivers-all`. Without one, `Orm::init` reports the missing feature.
+default = []
 drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql"]
 redis = ["dep:redis", "dep:sha2", "dep:url", "rullst-orm-macros/redis"]
 mongodb = ["dep:mongodb"]

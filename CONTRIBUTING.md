@@ -82,6 +82,9 @@ verification gates to every contribution, regardless of authorship. See
 2. Use the repository-pinned toolchain in `rust-toolchain.toml`.
 3. Run `cargo build --workspace --all-features` to build the framework.
 4. Run `cargo test --workspace --all-features` to exercise implemented behavior.
+   That graph selects the PostgreSQL pool, so the ORM's SQLite tests also need
+   `cargo test -p rullst-orm --features drivers-all` (`rullst-orm` has no
+   default driver).
 5. Run `cargo fmt --all` to format your code.
 6. If you've added code that should be tested, add tests.
 7. If you've changed APIs, update the documentation.

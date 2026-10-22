@@ -179,9 +179,14 @@ and the side stores have their own APIs, as
 Install the v13 prerelease with an exact pin:
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.2
+cargo add rullst-orm@=13.0.0-alpha.2 -F strict-sqlite
 cargo add tokio -F full
 ```
+
+Select the driver of your database: `strict-sqlite`, `strict-postgres` or
+`strict-mysql`, or `drivers-all` for all three on SQLx's dynamic `Any` pool.
+Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
+`Orm::init` fails at startup with an error that names the feature to enable.
 
 ### Zero-to-Hero Example
 
@@ -657,7 +662,7 @@ application's SQLx `FromRow` still reads `#[orm(skip)]` fields.
 
 Date/time columns and `chrono` fields need a strict driver feature
 (`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects
-use). SQLx's dynamic `Any` pool, selected by the `drivers-all` default without a
+use). SQLx's dynamic `Any` pool, selected by `drivers-all` without a
 strict feature, carries only integer, float, text and blob values: it cannot
 decode a `chrono` field, and it cannot read a PostgreSQL or MySQL/MariaDB
 `DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` column at all. On that pool

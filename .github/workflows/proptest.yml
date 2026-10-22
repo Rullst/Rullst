@@ -91,7 +91,7 @@ jobs:
         # feature = "strict-mysql")))] so it must run without those features.
         env:
           PROPTEST_CASES: 10000
-        run: cargo test -p rullst-orm --test proptest_builder --release
+        run: cargo test -p rullst-orm --features drivers-all --test proptest_builder --release
 
       - name: Run Proptests — rullst-connect PKCE (embedded unit test)
         env:

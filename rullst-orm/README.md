@@ -367,9 +367,14 @@ Install the v13 prerelease with an exact pin (Cargo never selects a
 prerelease on its own; the stable line is `rullst-orm@12`):
 
 ```bash
-cargo add rullst-orm@=13.0.0-alpha.2
+cargo add rullst-orm@=13.0.0-alpha.2 -F strict-sqlite
 cargo add tokio -F full
 ```
+
+Select the driver of your database: `strict-sqlite`, `strict-postgres` or
+`strict-mysql`, or `drivers-all` for all three on SQLx's dynamic `Any` pool.
+Since 13.0.0-alpha.3 the crate enables no driver by default; without one,
+`Orm::init` fails at startup with an error that names the feature to enable.
 
 ### Zero-to-Hero Example
 
@@ -604,8 +609,10 @@ From 12.1, a standalone ORM dependency can omit unrelated SQLx drivers:
 rullst-orm = { version = "=13.0.0-alpha.2", default-features = false, features = ["strict-postgres"] }
 ```
 
-`strict-mysql` and `strict-sqlite` select their respective backends. The default
-`drivers-all` feature preserves the existing three-driver convenience profile.
+`strict-mysql` and `strict-sqlite` select their respective backends, and
+`drivers-all` the three-driver convenience profile. Up to 13.0.0-alpha.2
+`drivers-all` was the default feature; since alpha.3 there is no default
+driver, so `default-features = false` only matters for older versions.
 `Orm::driver()` reads the SQL dialect from the DSN scheme, ignoring case:
 `postgres://` and `postgresql://` are PostgreSQL, and `mysql://` and
 `mariadb://` are MySQL/MariaDB. IPv6 literal hosts use brackets

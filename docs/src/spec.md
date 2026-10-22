@@ -3042,16 +3042,23 @@ while portability and semantic review remain the model author's responsibility.
   percent-decoded path SQLx opens (`John%20Doe` is `John Doe`). An explicit
   `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails
   to open instead of becoming a new empty database.
-* ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
-  `drivers-all` convenience feature. A standalone consumer can disable defaults
-  and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables
-  only its own SQLx backend. The strict pool's existing precedence when multiple
+* Since 13.0.0-alpha.3 neither `rullst-orm` nor the `rullst` facade has a
+  default feature (they were `drivers-all`, and `orm`, `drivers-all` and
+  `queue-sqlite`), so a database-free application compiles no SQLx driver. A
+  consumer selects `strict-postgres`, `strict-mysql` or `strict-sqlite`, each
+  enabling only its own SQLx backend, or the `drivers-all` convenience feature
+  for all three. On the `Any` pool, `Orm::init`, `init_with_options` and
+  `init_with_replicas` turn SQLx's `no driver found for URL scheme` error for a
+  `postgres`/`postgresql`, `mysql`/`mariadb` or `sqlite` URL into
+  `Error::Validation` naming the `strict-*` feature (or `drivers-all`) that
+  adds the driver; other connection errors are unchanged. The strict pool's existing precedence when multiple
   strict features are unified remains PostgreSQL, then MySQL, then SQLite.
 * Features are additive. Another dependency enabling ORM defaults, a SQLite
   queue, Turso's offline SQLite transport or another SQLx driver can broaden the
   final graph. Core, Studio, Nexus and the facade propagate an explicitly
   selected backend when defaults are disabled. Studio's SQLite queue is now
-  explicitly optional; defaults retain `drivers-all` and `queue-sqlite`.
+  explicitly optional; Studio's defaults retain `drivers-all` and
+  `queue-sqlite`, and Nexus's `drivers-all`.
   Fifteen standalone normal/build graphs cover ORM/Core/Studio/Nexus/facade
   across all three SQLx backends. Capital/other optional capabilities may
   intentionally broaden those graphs. Turso enables SQLite for its offline
