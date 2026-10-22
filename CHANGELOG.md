@@ -63,6 +63,21 @@ A prepared version section does not establish that its tag or crates exist.
   PWABuilder packages the same site as MSIX for a Partner Center
   reservation, and iPhone/iPad, where users add the PWA to the home screen
   from Safari; there is no App Store package.
+- **Breaking:** Omni is removed. `cargo rullst make:omni`, `cargo rullst omni`
+  (including `omni android --release`) and their Tauri templates are gone,
+  with the `cargo-rullst` library's `Commands::MakeOmni`, `Commands::Omni`
+  and `OmniPlatformChoice`; the shells exposed no native API, so an installed
+  PWA (`make:pwa`) gives the same result. The `offline-sync` feature of
+  `rullst` and `rullst-core` and the `rullst::offline_sync` module are removed
+  too; Cargo refuses a manifest that still enables the feature. An existing
+  `omni-app/` keeps building with its own Tauri toolchain but receives no
+  further fixes. `cargo rullst upgrade` reports an Omni shell or a script
+  that runs the removed commands (`V13-OMNI-REMOVED`) and a manifest that
+  enables `offline-sync` (`V13-OFFLINE-SYNC-REMOVED`); the migration guide
+  has the replacement steps.
+- The three Omni release workflows (`omni-android.yml`, `omni-desktop.yml`,
+  `omni-ios.yml`) and the `/omni` page of the blog example are removed;
+  release admission no longer requires the workflows.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

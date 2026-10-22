@@ -113,8 +113,6 @@ experimental `rullst-privacy`.
 
 | Generator | Commands | Tier | Why |
 | :--- | :--- | :--- | :--- |
-| Omni desktop and Android | `make:omni --platform desktop`, `make:omni --platform android`, `omni desktop`, `omni android` (including `--release`) | Supported | The maintainer tests these targets directly. CI also generates fresh desktop shells and checks them on Linux, macOS and Windows, and compiles an unsigned Android debug APK. Signing keys, store review and every device or OS version stay outside the promise. |
-| Omni iOS | `make:omni --platform ios`, `omni ios` | Experimental | Not part of the maintainer-tested scope. CI only compiles a fresh shell for a macOS iOS simulator target. |
 | Foundry | `foundry:init`, `foundry:deploy` | Experimental | Assumes a prepared systemd/Caddy VPS with root or passwordless `sudo`. It replaces the global Caddyfile and has no automatic rollback. |
 | Nix | `nixify`, `new --nix` | Experimental | Writes `flake.nix` and `.envrc` as starting points. Reproducibility depends on your pinned inputs. |
 | Buildah | `generate:buildah`, `new --buildah` | Experimental | Rootless image builds depend on the host's Buildah and container setup. |

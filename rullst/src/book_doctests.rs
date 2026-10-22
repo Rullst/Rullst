@@ -202,24 +202,12 @@ tutorial!(
     "../../docs/src/tutorials/43-progressive-web-apps.md"
 );
 tutorial!(
-    tutorial_43_omni_web_first,
-    "../../docs/src/tutorials/43-omni-web-first.md"
-);
-tutorial!(
-    tutorial_44_omni_offline_sync,
-    "../../docs/src/tutorials/44-omni-offline-sync.md"
-);
-tutorial!(
     tutorial_45_accessible_academy_media,
     "../../docs/src/tutorials/45-accessible-academy-media.md"
 );
 tutorial!(
     tutorial_48_local_oidc_testing,
     "../../docs/src/tutorials/48-local-oidc-testing.md"
-);
-tutorial!(
-    tutorial_49_omni_android_signing,
-    "../../docs/src/tutorials/49-omni-android-signing.md"
 );
 tutorial!(
     tutorial_49_brokered_messaging,

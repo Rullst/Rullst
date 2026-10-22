@@ -120,12 +120,6 @@
   sorted snapshot of at most 200 logical keys, UTF-8 value lengths and TTLs
   without returning values. Custom drivers fail explicitly unless they opt in;
   authorization and safe rendering of logical keys remain caller policy.
-- **Offline Sync Foundation:** The optional native `offline-sync` feature
-  provides bounded replay-safe mutations, explicit conflict resolution, and
-  account-bound AES-256-GCM snapshots. Its static-dispatch coordinator bounds
-  requests, times them out, and detects stalled cursors. Applications still own
-  Keychain/Keystore access, atomic platform persistence, authenticated HTTP,
-  retry, and background scheduling.
 - **Digital Asset Links (v13):** `pwa::AssetLinks` serves
   `/.well-known/assetlinks.json` for the Google Play package (Trusted Web
   Activity) of a Progressive Web App, validating Android package names and
@@ -168,10 +162,10 @@ application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-alpha.2", features = ["orm", "queue-sqlite", "offline-sync"] }
+rullst-core = { version = "=13.0.0-alpha.2", features = ["orm", "queue-sqlite"] }
 ```
 
-Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`, `offline-sync`,
+Enable `orm`, `queue-sqlite`, `queue-redis`, `cache-redis`,
 `scheduler-tz` or `telemetry` only when that integration is required. `orm` adds no SQLx driver:
 pair it with `drivers-all` or one `strict-*` backend (`queue-sqlite` adds only
 SQLite). The primary `rullst` crate keeps `orm`, `drivers-all` and

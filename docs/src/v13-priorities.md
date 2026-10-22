@@ -115,7 +115,7 @@ existing counts, not delivered APIs or additional top-level milestones.
 | M13 | Post-quantum web architecture and plugin containment | A concrete protocol/threat model, maintained audited primitives and an interoperability programme. |
 | M16 | Wasm islands and broad hydration/component packaging | A user journey that SSR/HTMX cannot reasonably meet and a supported browser/toolchain matrix. |
 | M20 | New immutable ledger/event-streaming engine | A consistency/recovery requirement unmet by established storage, plus a funded maintenance owner. |
-| M21 | Broader Omni/mobile/offline platform | A real mobile product with physical-device, secure-key, networking and store acceptance resources. Keep existing artifact verification maintained. |
+| M21 | Broader Omni/mobile/offline platform | Omni was retired in 13.0.0-alpha.3 in favour of installable PWAs (`make:pwa`, Google Play TWA, Microsoft Store via PWABuilder). Native capabilities need a real mobile product with physical-device, secure-key, networking and store acceptance resources. |
 | M22 | Agentic infrastructure provisioning | A named operator need and reviewed plans, scoped credentials, audit and rollback; advisory diagnostics already fit A. |
 | M23 | Auto-healing production code or databases | A safely bounded, approved repair contract; no general autonomous mutation promise. |
 | M24 | Additional IoT transport/firmware/hardware integrations | Selected boards, actual devices and transport/rollback interoperability tests. Preserve existing no_std and manifest contracts. |

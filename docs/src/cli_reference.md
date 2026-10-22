@@ -1194,52 +1194,6 @@ flags and adds only the Android files. The JSON API starter, a project without a
 layout, and a router without the health merge are refused; wire such a project
 by hand as the [PWA guide](tutorials/43-progressive-web-apps.md) shows.
 
-### `cargo rullst make:omni`
-**Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
-Experimental for `ios` · [tiers](maturity.md#cli-generators)
-
-Generates a Tauri/Omni shell and development configuration for desktop, Android
-or iOS. Interactive use prompts for platforms. Automation can select one or
-more targets deterministically:
-
-```bash
-cargo rullst make:omni --platform desktop
-cargo rullst make:omni --platform android \
-  --backend-url http://10.0.2.2:3000 --identifier com.acme.myapp
-cargo rullst make:omni --platform ios \
-  --backend-url https://app.example.com --identifier com.acme.myapp
-cargo rullst make:omni --platform desktop,ios \
-  --backend-url https://app.example.com --identifier com.acme.myapp \
-  --product-name "Acme App" --app-version 1.2.3
-```
-
-Mobile generation requires an explicit backend URL. HTTPS is required except
-for the bounded localhost/Android-emulator development hosts; embedded
-credentials are rejected. Mobile also requires an application-owned lowercase
-reverse-DNS `--identifier`; reserved framework and `com.example` placeholders
-are rejected. `--product-name` and `--app-version` are optional validated
-overrides and otherwise inherit the host package metadata. Desktop-only
-development can derive a documented `com.example` placeholder, which must be
-replaced before distribution.
-
-The generator installs an exact Tauri npm CLI, creates platform icons,
-initializes mobile targets non-interactively, emits a restrictive local CSP and
-fails if a requested prerequisite step fails. iOS initialization requires
-macOS and Xcode. Native-side navigation is restricted to the packaged
-bootstrap and the configured backend's exact origin. Remote pages receive no
-privileged Tauri IPC surface; cross-origin OAuth/external-link behavior needs a
-separate reviewed system-browser/deep-link integration.
-
-The canonical product remains the Rullst web application and the generated
-client packages that application; it does not by itself
-implement native plugins, offline synchronization, production network policy,
-release signing, privacy declarations, physical-device validation, Play
-Store/App Store publication or review acceptance. The generated README contains
-the application-owned distribution checklist. Path-aware repository workflows
-generate fresh desktop, Android and iOS shells and compile only their declared
-targets; those runs are packaging evidence, not store, physical-device or
-universal behavior guarantees.
-
 ### `cargo rullst make:iot <DeviceName>`
 **Maturity:** Experimental · [tiers](maturity.md#cli-generators)
 
@@ -1950,36 +1904,6 @@ only under `/opt/rullst/<app>/data`. The current command replaces the global
 `/etc/caddy/Caddyfile`; it does not perform migrations, data backup, external
 reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
-
-### `cargo rullst omni`
-**Maturity:** Supported for `desktop` and `android` (maintainer-tested) ·
-Experimental for `ios` · [tiers](maturity.md#cli-generators)
-
-The 12.1.0 executable added `cargo rullst omni android --release` for
-an explicit Android release build using application-owned signing inputs. It
-does not change the existing Rust `Commands::Omni` variant or start a backend.
-The v13 development CLI additionally requires `--signing-certificate` and
-`--apksigner-jar` (or `RULLST_ANDROID_SIGNING_CERTIFICATE` and
-`RULLST_ANDROID_APKSIGNER_JAR`), verifies one
-fresh release APK against that certificate and reports its SHA-256. Use
-`--apk` to select a relative output when variants are ambiguous and
-`--android-arch` to restrict the native build. Neither a successful build alone
-nor a previous unchanged artifact is accepted as fresh verified output.
-See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
-setup, migration of existing shells and certificate/device verification.
-
-Runs the generated Tauri development client after `make:omni`. Android/iOS
-require their official SDK/toolchain and a reachable backend. For `desktop`, the
-spinner lasts until the shell prints `Launching Omni interface...` (or 200
-output lines arrive); the command then prints the held lines and keeps streaming
-the shell's and its managed backend's standard output until the window closes.
-For `android` and `ios`, the command resolves the Tauri CLI (the local
-`omni-app/node_modules/@tauri-apps/cli` or `cargo tauri`) before it starts the
-backend with `cargo run`, so a missing CLI fails without leaving a backend
-process on port 3000; the backend is stopped when the mobile client exits.
-* **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
-
----
 
 ## 🛡️ 6. Security, Compliance & System Diagnostics
 

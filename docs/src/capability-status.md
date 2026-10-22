@@ -42,7 +42,7 @@ future source changes.
 | Package | Role | Typical user choice |
 | :--- | :--- | :--- |
 | `rullst-core` | Low-level runtime engine: HTTP server, routes, lifecycle, queue/realtime, storage/cache and the default browser-security baseline. It deliberately does not aggregate every domain crate. | Use directly when a library/application wants only the runtime primitives and explicit dependencies. |
-| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Connect, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs (and, from the 13.0.0-alpha.1 prerelease, Privacy) through one dependency. It also exposes the browser/WASM surface used by web-first applications; Omni packaging itself is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
+| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Connect, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs (and, from the 13.0.0-alpha.1 prerelease, Privacy) through one dependency. It also exposes the browser/WASM surface used by web-first applications; PWA packaging (`make:pwa`) is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
 
 ## Documentation maintenance gate
 

@@ -141,7 +141,6 @@ for example, adds only SQLite).
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
-| `offline-sync` | no | Native bounded offline queue, explicit conflict state machine, account-bound encrypted snapshots, and static-dispatch push/pull orchestration; platform storage and concrete transport remain application responsibilities |
 | `scheduler-tz` | no | v13: `Scheduler::task_in_tz`, cron tasks in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap |
@@ -213,7 +212,6 @@ Default features: none.
 | `queue-redis` | Redis-backed queues |
 | `cache-redis` | Redis-backed cache storage |
 | `redis` | Convenience alias for both Redis queue and cache backends |
-| `offline-sync` | Native bounded offline state, AES-256-GCM snapshots, and timeout/budget/cursor-checked transport orchestration; excludes platform storage and a concrete authenticated transport |
 | `scheduler-tz` | v13: `Scheduler::task_in_tz` for cron tasks in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
 | `storage-s3` | v13 candidate: bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs |
 | `storage-multipart` | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
