@@ -31,7 +31,7 @@ serde_json = { workspace = true }
 chrono = { workspace = true, features = ["std", "clock", "serde"] }
 redis = { workspace = true, features = ["tokio-rustls-comp", "connection-manager"], optional = true }
 mongodb = { version = "3.9.1", optional = true }
-duckdb = { version = "1.10505.0", features = ["bundled"], optional = true }
+duckdb = { version = "1.10506.1", features = ["bundled"], optional = true }
 url = { version = "2.5.8", optional = true }
 reqwest = { workspace = true, features = ["json", "rustls", "stream"], optional = true }
 pgvector = { version = "0.4.2", features = ["serde", "sqlx"], optional = true }
