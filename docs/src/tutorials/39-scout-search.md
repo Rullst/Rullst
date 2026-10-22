@@ -1,9 +1,11 @@
 # 39. Scout Search Providers
 
 > [!IMPORTANT]
-> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use path dependencies only when intentionally testing checkout-local changes.
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.2` exactly: Cargo
+> never selects a prerelease on its own, and the v12 line reached end of life
+> on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
+> for reproducible builds. Use path dependencies only when intentionally
+> testing checkout-local changes.
 > The result ordering, SQL fallback, indexed-field, `restore()`/`force_delete()`
 > projection and hit-cap rules below describe the v13 prerelease source
 > (`13.0.0-alpha.2`).
@@ -18,7 +20,7 @@ With the umbrella crate:
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", features = ["orm-scout"] }
+rullst = { version = "=13.0.0-alpha.2", features = ["orm-scout"] }
 ```
 
 Or enable `scout-http` directly on `rullst-orm`. The feature supplies bounded

@@ -254,11 +254,13 @@ impl Service<axum::extract::Request> for HotSwapService {
                 crate::error_console::capture::spawn_capturing(async move { fut.await });
             match handle.await {
                 Ok(Ok(res)) => {
+                    // Hot reload runs only in development, which logs every probe.
                     super::console::log_request(
                         &method,
                         &path,
                         res.status().as_u16(),
                         start.elapsed(),
+                        true,
                     );
                     Ok(res)
                 }

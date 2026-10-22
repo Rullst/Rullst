@@ -40,7 +40,10 @@ async fn test_apple_empty_credentials_use_offline_mock() {
         .await
         .expect("offline user");
     assert_eq!(user.id, "mock-user");
-    assert!(provider.redirect_url().contains("example.invalid"));
+    assert_eq!(
+        provider.redirect_url(),
+        "https://app.example/callback?code=mock_authorization_code"
+    );
 }
 
 #[test]

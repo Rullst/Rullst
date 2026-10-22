@@ -190,7 +190,7 @@ for Axum and Actix. Other hosts can deserialize the framework-neutral
 extractor.
 
 This README describes the v13 prerelease; Cargo never selects a
-prerelease on its own, so pin it exactly (the stable line is `rullst-connect@12`):
+prerelease on its own, so pin it exactly (the v12 line, `rullst-connect@12`, reached end of life on 16 October 2026):
 ```bash
 cargo add rullst-connect@=13.0.0-alpha.2
 ```
@@ -233,18 +233,24 @@ returns a disabled, fail-closed provider when configuration is invalid.
 
 Every provider exposes `credential_mode() -> CredentialMode`. An empty credential or a
 value beginning with `mock_` selects `CredentialMode::Mock` and installs a transport that
-never accesses the network. Functional mock identities are available only in unit tests
-or when the Cargo feature `mock` is explicitly enabled; otherwise token operations return
-`ConnectError::Offline`. This prevents missing production secrets from silently becoming
-a working authentication bypass.
+never accesses the network. That mode needs the Cargo feature `mock` (`oauth-mock` on the
+`rullst` facade). Without it, `try_new`, `Connect::driver` and `OidcProvider::discover`
+return `ConnectError::InvalidConfiguration` for the field `credentials`, and the deprecated
+`new` constructors return a disabled provider, so a missing production secret fails when
+the provider is built and never becomes a working authentication bypass. Enable the
+feature only in development and test builds.
 
 ```toml
 [dev-dependencies]
 rullst-connect = { version = "=13.0.0-alpha.2", features = ["mock"] }
 ```
 
-Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
-reserved `example.invalid` email domain.
+In mock mode the authorization URL is the configured `redirect_url` with the fixed
+`code=mock_authorization_code`, the `state` and any PKCE challenge, as a real provider
+redirects after consent, so the browser flow runs locally without a login page (Apple's
+mock also uses a query string instead of a form post). Mock profiles use the reserved
+`example.invalid` email domain. For a real protocol exchange, use the signed `mock_idp`
+fixture below.
 
 ### Signed local OIDC fixture
 

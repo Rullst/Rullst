@@ -1,9 +1,11 @@
 # 48. Signed Local OIDC Testing
 
 > [!IMPORTANT]
-> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use path dependencies only when intentionally testing checkout-local changes.
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.2` exactly: Cargo
+> never selects a prerelease on its own, and the v12 line reached end of life
+> on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
+> for reproducible builds. Use path dependencies only when intentionally
+> testing checkout-local changes.
 
 Rullst Connect includes an explicitly mounted local identity-provider fixture so
 an application can exercise a cryptographically verified OIDC flow without a
@@ -17,7 +19,7 @@ Enable the Axum feature in development:
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "12.1.0", features = ["axum"] }
+rullst-connect = { version = "=13.0.0-alpha.2", features = ["axum"] }
 ```
 
 Mount the router only on an exact loopback listener:

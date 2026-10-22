@@ -68,7 +68,7 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
         "👉 Mount password_controller's /password/forgot and /password/reset (GET view, POST submit) and, behind auth_middleware, /password/change; put credential_rate_limit on the POST routes."
     );
     println!(
-        "👉 Set RULLST_PUBLIC_ORIGIN (the HTTPS origin reset links use), MAIL_DRIVER and MAIL_FROM before production."
+        "👉 Set RULLST_PUBLIC_ORIGIN (the HTTPS origin reset links use), MAIL_DRIVER and MAIL_FROM before production, and APP_NAME (the product name in account emails)."
     );
     println!(
         "👉 Run `cargo rullst db:migrate` to create the users and password_reset_tokens tables. Call User::revoke_sessions when you deactivate an account."

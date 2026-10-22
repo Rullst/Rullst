@@ -259,6 +259,10 @@ async fn test_oidc_discover_invalid_args() {
         provider.credential_mode(),
         crate::configuration::CredentialMode::Mock
     );
+    assert_eq!(
+        provider.with_state("state-1").redirect_url(),
+        "https://redirect/?code=mock_authorization_code&state=state-1"
+    );
 
     let error = OidcProvider::discover_with_client(
         "http://localhost.evil",

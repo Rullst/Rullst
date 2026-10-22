@@ -1,9 +1,11 @@
 # 22. RAG Systems & Vector Search
 
 > [!IMPORTANT]
-> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
-> for publication status and commit Cargo.lock for reproducible builds.
-> Use path dependencies only when intentionally testing checkout-local changes.
+> Dependency examples pin the v13 prerelease `=13.0.0-alpha.2` exactly: Cargo
+> never selects a prerelease on its own, and the v12 line reached end of life
+> on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
+> for reproducible builds. Use path dependencies only when intentionally
+> testing checkout-local changes.
 
 Rullst provides three deliberately separate vector paths: a deterministic
 in-memory index in `rullst-ai`, parameterized PostgreSQL `pgvector` queries,
@@ -16,7 +18,7 @@ budgets, an embedding model, or a production RAG policy.
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", default-features = false, features = ["ai"] }
+rullst = { version = "=13.0.0-alpha.2", default-features = false, features = ["ai"] }
 serde_json = "1.0"
 ```
 
@@ -49,7 +51,7 @@ Enable the typed vector and concrete PostgreSQL paths:
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.2", default-features = false, features = [
   "orm-pgvector",
   "strict-postgres",
   "ai",
@@ -135,7 +137,7 @@ vector service rather than keeping vectors in PostgreSQL:
 
 ```toml
 [dependencies]
-rullst = { version = "12.1.0", default-features = false, features = [
+rullst = { version = "=13.0.0-alpha.2", default-features = false, features = [
   "orm-qdrant",
   "ai",
 ] }

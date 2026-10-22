@@ -1,6 +1,49 @@
 use axum::Router as AxumRouter;
 
 /// A wrapper around Axum's Router to provide clean integration with Rullst features
+///
+/// # Sharing application state
+///
+/// `Router` wraps an `axum::Router<()>`, whose handlers cannot take
+/// `State<S>`, so it has no `with_state`. Share state in one of two ways:
+///
+/// - add it as a request extension with `.layer(Extension(state))` and read it
+///   with the `Extension<T>` extractor, the way Rullst's own middleware passes
+///   the CSRF token, the CSP nonce and the signed-in user id. Like every
+///   layer, it covers only the routes added before it;
+/// - build the routes that use `State<S>` as an `axum::Router<S>`, call its
+///   `with_state`, and mount the result with [`Router::merge_axum`] or
+///   [`Router::nest_axum`].
+///
+/// ```rust
+/// use rullst_core::Router;
+/// use rullst_core::routing::get;
+/// use rullst_core::web::axum::{self, Extension, extract::State};
+/// use std::sync::Arc;
+///
+/// #[derive(Clone)]
+/// struct AppState {
+///     site_name: Arc<str>,
+/// }
+///
+/// async fn home(Extension(state): Extension<AppState>) -> String {
+///     format!("Welcome to {}", state.site_name)
+/// }
+///
+/// async fn about(State(state): State<AppState>) -> String {
+///     format!("About {}", state.site_name)
+/// }
+///
+/// let state = AppState { site_name: Arc::from("Rullst") };
+/// let stateful = axum::Router::new()
+///     .route("/about", get(about))
+///     .with_state(state.clone());
+/// let app = Router::new()
+///     .route("/", get(home))
+///     .layer(Extension(state))
+///     .merge_axum(stateful);
+/// # let _ = app;
+/// ```
 #[non_exhaustive]
 pub struct Router {
     inner: AxumRouter,

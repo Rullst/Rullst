@@ -14,7 +14,7 @@ impl Provider for AppleProvider {
         }
         if self.credential_mode.is_mock() {
             return crate::configuration::mock_redirect_url(
-                "apple",
+                &self.redirect_url,
                 self.state.as_deref(),
                 self.pkce_challenge.as_deref(),
             );

@@ -68,6 +68,58 @@ Use `nest_axum` or `merge_axum` when integrating a third-party raw
 
 ---
 
+## Step 3: Share application state
+
+`rullst::Router` wraps an `axum::Router<()>`, whose handlers cannot take
+`State<S>`, so it has no `with_state`. Pass shared state in one of two ways:
+
+- **As a request extension.** `.layer(Extension(state))` inserts the value into
+  every request, and handlers read it with `Extension<T>`. Rullst's own
+  middleware passes the CSRF token, the CSP nonce and the signed-in user id
+  this way. Like every layer, it covers only the routes added before it.
+- **With Axum's `State`.** Build the routes that use `State<S>` as an
+  `axum::Router<S>`, call its `with_state`, and mount the result with
+  `merge_axum` (or `nest_axum` under a prefix).
+
+```rust,no_run
+use rullst::{Router, Server, ServerError};
+use rullst::routing::get;
+use rullst::web::axum::{self, Extension, extract::State};
+use std::sync::Arc;
+
+#[derive(Clone)]
+struct AppState {
+    site_name: Arc<str>,
+}
+
+async fn home(Extension(state): Extension<AppState>) -> String {
+    format!("Welcome to {}", state.site_name)
+}
+
+async fn about(State(state): State<AppState>) -> String {
+    format!("About {}", state.site_name)
+}
+
+#[tokio::main]
+async fn main() -> Result<(), ServerError> {
+    let state = AppState { site_name: Arc::from("Rullst") };
+    let stateful = axum::Router::new()
+        .route("/about", get(about))
+        .with_state(state.clone());
+    let app = Router::new()
+        .route("/", get(home))
+        .layer(Extension(state))
+        .merge_axum(stateful);
+
+    Server::new(app).run(3000).await
+}
+```
+
+Keep values in the state cheap to clone (`Arc`, connection pools): each request
+clones it.
+
+---
+
 ## Key takeaways
 
 - Middleware order is security-sensitive. Use the canonical production baseline

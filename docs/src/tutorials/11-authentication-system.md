@@ -112,6 +112,14 @@ and staging and production log an error instead of sending a link. In
 development the default mail driver logs only metadata, so a debug build
 without `MAIL_DRIVER` also prints the reset link to the terminal.
 
+The emails name your product `APP_NAME` (process environment, then `.env`)
+or, when it is unset, the `APPLICATION_NAME` constant at the top of
+`password_controller.rs`, which starts as the package name. They are written
+in the request's language: the locale `LOCALES.layer()` negotiated when the
+application uses `rullst::i18n`, otherwise the browser's `Accept-Language`,
+matched by language to English, Brazilian Portuguese or Spanish, otherwise
+`DEFAULT_MAIL_LOCALE` (English), which you can edit there too.
+
 The generated form pages expect the Core CSRF and CSP-nonce extensions. Apply
 the canonical security baseline and place authenticated routes behind the
 generated authentication middleware.

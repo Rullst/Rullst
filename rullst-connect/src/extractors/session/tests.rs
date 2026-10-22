@@ -112,6 +112,38 @@ async fn oauth_session_uses_pkce_without_an_oidc_nonce() {
 }
 
 #[tokio::test]
+async fn mock_credentials_complete_the_browser_flow_through_the_callback() {
+    let google = crate::providers::GoogleProvider::try_new(
+        "mock_google_client",
+        SecretString::from("mock_google_secret".to_string()),
+        "http://localhost:3000/auth/google/callback",
+    )
+    .expect("mock credentials build an offline provider");
+    let session = new_session();
+    let authorization = begin_oidc_session(&session, &google)
+        .await
+        .expect("mock authorization must satisfy the managed query checks");
+    let url = url::Url::parse(authorization.url()).expect("authorization URL must parse");
+    assert_eq!(url.origin().ascii_serialization(), "http://localhost:3000");
+    assert_eq!(url.path(), "/auth/google/callback");
+    assert_eq!(query_value(&url, "code"), "mock_authorization_code");
+
+    let callback_uri = format!("{}?{}", url.path(), url.query().unwrap_or_default());
+    let auth_session = extract(session, &callback_uri)
+        .await
+        .expect("the redirect lands on a valid callback");
+    let params = auth_session
+        .exchange_params()
+        .expect("validated callback must create exchange parameters");
+    assert_eq!(params.auth_code, "mock_authorization_code");
+    let user = google
+        .get_user(params)
+        .await
+        .expect("mock exchange serves the offline identity");
+    assert_eq!(user.email.as_deref(), Some("mock@example.invalid"));
+}
+
+#[tokio::test]
 async fn mismatched_or_missing_state_consumes_the_challenge() {
     for invalid_uri in [
         "/callback?code=authorization-code&state=wrong",

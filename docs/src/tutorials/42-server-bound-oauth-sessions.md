@@ -11,11 +11,12 @@ authorization policy.
 
 ## Enable the session feature
 
-For `12.1.0` (see [publication status](../v12.md)):
+Pin the v13 prerelease exactly (Cargo never selects a prerelease on its own;
+the v12 line reached end of life, see the [release record](../v12.md)):
 
 ```toml
 [dependencies]
-rullst-connect = { version = "12.1.0", features = ["axum-session"] }
+rullst-connect = { version = "=13.0.0-alpha.2", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 

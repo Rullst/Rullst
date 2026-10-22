@@ -49,7 +49,8 @@ impl Server {
         // Mounted after the reload layer, which would otherwise wrap it.
         app = super::dev_telemetry::mount(app, is_dev, generation, self.dev_queue);
 
-        app = app.layer(axum::middleware::from_fn(
+        app = app.layer(axum::middleware::from_fn_with_state(
+            self.log_health_probes,
             super::console::access_log_middleware,
         ));
 

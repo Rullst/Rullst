@@ -4,8 +4,8 @@
 > This page describes the v13 prerelease source, and its dependency examples
 > pin the published `13.0.0-alpha.2` exactly: Cargo never selects a prerelease
 > on its own, and a plain `"13.0.0-alpha.2"` would also accept later alphas
-> (see the [v13 migration guide](migration-v13.md)). For the stable line, use
-> `rullst@12` and check the [release record](v12.md). Commit `Cargo.lock` for
+> (see the [v13 migration guide](migration-v13.md)). The v12 line (`rullst@12`)
+> reached end of life on 16 October 2026; see the [release record](v12.md). Commit `Cargo.lock` for
 > reproducible builds, and use path dependencies only for checkout-local review.
 
 Rullst keeps explicit relational and specialized persistence contracts. SQLx
