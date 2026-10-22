@@ -23,6 +23,12 @@ pub(crate) struct RemoteState {
     /// Random per process; required by every form that changes state.
     pub(crate) form_token: String,
     pub(crate) monitoring: super::monitoring::Monitoring,
+    /// The local history, when its database could be opened.
+    pub(crate) history: Option<Arc<super::history::History>>,
+    /// Webhook delivery, when the HTTP client could be created.
+    pub(crate) webhooks: Option<super::webhook::WebhookClient>,
+    /// How often watched projects are read.
+    pub(crate) poll_interval: std::time::Duration,
 }
 
 pub(crate) fn router(state: Arc<RemoteState>) -> Router {
@@ -35,6 +41,16 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
         .route("/studio/routes", get(routes_page))
         .route("/studio/queues", get(queues_page))
         .route("/studio/queries", get(queries_page))
+        .route("/studio/history", get(super::settings::history_page))
+        .route("/studio/alerts", get(super::settings::alerts_page))
+        .route(
+            "/studio/alerts/settings",
+            post(super::settings::save_settings),
+        )
+        .route(
+            "/studio/alerts/acknowledge",
+            post(super::settings::acknowledge),
+        )
         .layer(DefaultBodyLimit::max(MAX_FORM_BYTES))
         .with_state(state)
         .nest("/studio/assets", crate::assets::router());
@@ -43,8 +59,9 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
 
 #[derive(Deserialize)]
 pub(crate) struct ProjectQuery {
-    project: Option<String>,
-    notice: Option<String>,
+    pub(crate) project: Option<String>,
+    pub(crate) notice: Option<String>,
+    pub(crate) range: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -90,16 +107,16 @@ pub(crate) fn render(
     title: &str,
     content: &str,
 ) -> Html<String> {
-    let _ = state;
     let chrome = Chrome {
         projects,
         selected,
         active,
+        open_alerts: state.monitoring.open_alerts(),
     };
     Html(pages::layout(&chrome, title, content))
 }
 
-fn storage_error(state: &RemoteState, error: ProjectError) -> Response {
+pub(crate) fn storage_error(state: &RemoteState, error: ProjectError) -> Response {
     let content = pages::notice(
         "error",
         "The project list is unavailable",
@@ -168,7 +185,7 @@ async fn projects_page(
     projects_response(&state, StatusCode::OK, message)
 }
 
-fn refused(state: &RemoteState) -> Response {
+pub(crate) fn refused(state: &RemoteState) -> Response {
     projects_response(
         state,
         StatusCode::FORBIDDEN,
@@ -212,6 +229,9 @@ async fn remove_project(
     match state.store.remove(&form.name) {
         Ok(()) => {
             state.monitoring.forget(&form.name);
+            if let Some(history) = &state.history {
+                let _ = history.forget(&form.name).await;
+            }
             Redirect::to("/studio?notice=removed").into_response()
         }
         Err(error) => projects_response(

@@ -1,6 +1,7 @@
 //! The project list of the standalone Studio: name, base URL and encrypted
 //! monitor token per project, in an owner-only JSON file.
 
+use super::alerts::AlertRules;
 use super::crypto::{Secret, SecretKey};
 use super::paths::StudioPaths;
 use super::secure_file;
@@ -42,6 +43,11 @@ pub enum ProjectError {
     TooMany,
     /// No project has this name.
     NotFound,
+    /// A webhook URL is not `https://` with a host, without user information or
+    /// fragment, or is longer than 2,048 characters.
+    InvalidWebhook,
+    /// An alert threshold is out of range.
+    InvalidRules,
 }
 
 impl fmt::Display for ProjectError {
@@ -59,6 +65,12 @@ impl fmt::Display for ProjectError {
             Self::Duplicate => "a project with this name already exists",
             Self::TooMany => "the project list is full (32 projects)",
             Self::NotFound => "no project has this name",
+            Self::InvalidWebhook => {
+                "the webhook must be an https:// URL without user information or fragment"
+            }
+            Self::InvalidRules => {
+                "thresholds must be positive (a 5xx rate up to 100%, p95 up to 600000 ms) and the cool-down 1 to 1440 minutes"
+            }
         })
     }
 }
@@ -75,6 +87,14 @@ pub struct Project {
     /// The decrypted token, or `None` when it cannot be decrypted (missing or
     /// replaced key, edited name or URL).
     pub token: Option<Secret>,
+    /// Whether the background poller reads this project and keeps history.
+    pub watch: bool,
+    /// Alert thresholds.
+    pub rules: AlertRules,
+    /// Whether a webhook is stored (it may still fail to decrypt).
+    pub webhook_configured: bool,
+    /// The decrypted webhook URL.
+    pub webhook: Option<Secret>,
 }
 
 impl Project {
@@ -98,11 +118,34 @@ struct StoredProject {
     base_url: String,
     /// The token sealed with [`SecretKey::seal`].
     token: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    watch: bool,
+    #[serde(default)]
+    rules: AlertRules,
+    /// The webhook URL sealed with [`SecretKey::seal`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    webhook: Option<String>,
+}
+
+/// What to do with a project's webhook when saving its settings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WebhookChange {
+    /// Keep the stored webhook.
+    Keep,
+    /// Delete the stored webhook.
+    Clear,
+    /// Store this URL (validated, then sealed).
+    Set(String),
 }
 
 /// The associated data binding a sealed token to its project.
 pub(crate) fn token_context(name: &str, base_url: &str) -> Vec<u8> {
     format!("rullst-studio/token\n{name}\n{base_url}").into_bytes()
+}
+
+/// The associated data binding a sealed webhook URL to its project.
+pub(crate) fn webhook_context(name: &str, base_url: &str) -> Vec<u8> {
+    format!("rullst-studio/webhook\n{name}\n{base_url}").into_bytes()
 }
 
 /// Validates a project name.
@@ -209,17 +252,24 @@ impl ProjectStore {
             .into_iter()
             .map(|stored| {
                 let base_url = validate_base_url(&stored.base_url)?;
-                let token = key.as_ref().and_then(|key| {
-                    key.open(
-                        &stored.token,
-                        &token_context(&stored.name, base_url.as_str()),
-                    )
-                    .ok()
+                let open = |sealed: &str, context: Vec<u8>| {
+                    key.as_ref().and_then(|key| key.open(sealed, &context).ok())
+                };
+                let token = open(
+                    &stored.token,
+                    token_context(&stored.name, base_url.as_str()),
+                );
+                let webhook = stored.webhook.as_deref().and_then(|sealed| {
+                    open(sealed, webhook_context(&stored.name, base_url.as_str()))
                 });
                 Ok(Project {
+                    token,
+                    watch: stored.watch,
+                    rules: stored.rules,
+                    webhook_configured: stored.webhook.is_some(),
+                    webhook,
                     name: stored.name,
                     base_url,
-                    token,
                 })
             })
             .collect()
@@ -247,7 +297,53 @@ impl ProjectStore {
             name: name.to_string(),
             base_url: base_url.to_string(),
             token: sealed,
+            watch: false,
+            rules: AlertRules::default(),
+            webhook: None,
         });
+        self.write_file(&file)
+    }
+
+    /// Changes whether `name` is watched, its alert rules and its webhook.
+    pub fn update_settings(
+        &self,
+        name: &str,
+        watch: bool,
+        rules: AlertRules,
+        webhook: WebhookChange,
+    ) -> Result<(), ProjectError> {
+        if !rules.valid() {
+            return Err(ProjectError::InvalidRules);
+        }
+        let webhook_url = match &webhook {
+            WebhookChange::Set(url) => Some(super::webhook::validate_webhook_url(url)?),
+            WebhookChange::Keep | WebhookChange::Clear => None,
+        };
+        let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
+        let mut file = self.read_file()?;
+        let project = file
+            .projects
+            .iter_mut()
+            .find(|project| project.name == name)
+            .ok_or(ProjectError::NotFound)?;
+        project.watch = watch;
+        project.rules = rules;
+        match webhook {
+            WebhookChange::Keep => {}
+            WebhookChange::Clear => project.webhook = None,
+            WebhookChange::Set(_) => {
+                let key = SecretKey::load_or_create(&self.paths.key)
+                    .map_err(|_| ProjectError::Storage)?;
+                let url = webhook_url.ok_or(ProjectError::InvalidWebhook)?;
+                project.webhook = Some(
+                    key.seal(
+                        url.as_str(),
+                        &webhook_context(&project.name, &project.base_url),
+                    )
+                    .map_err(|_| ProjectError::Storage)?,
+                );
+            }
+        }
         self.write_file(&file)
     }
 

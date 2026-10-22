@@ -3,6 +3,8 @@
 //! Every value that came from a remote project or from the project list goes
 //! through [`esc`] before it reaches the HTML.
 
+pub(crate) mod alerts;
+pub(crate) mod history;
 pub(crate) mod monitor;
 pub(crate) mod projects;
 
@@ -14,6 +16,8 @@ pub(crate) enum Page {
     Routes,
     Queues,
     Queries,
+    History,
+    Alerts,
 }
 
 impl Page {
@@ -24,6 +28,8 @@ impl Page {
             Self::Routes => "/studio/routes",
             Self::Queues => "/studio/queues",
             Self::Queries => "/studio/queries",
+            Self::History => "/studio/history",
+            Self::Alerts => "/studio/alerts",
         }
     }
 
@@ -34,12 +40,20 @@ impl Page {
             Self::Routes => "🛣️ Routes",
             Self::Queues => "📬 Queues",
             Self::Queries => "🔁 N+1 Queries",
+            Self::History => "📈 History",
+            Self::Alerts => "🚨 Alerts",
         }
     }
 }
 
 /// Pages shown in the navigation for a selected project.
-const PROJECT_PAGES: [Page; 4] = [Page::Overview, Page::Routes, Page::Queues, Page::Queries];
+const PROJECT_PAGES: [Page; 5] = [
+    Page::Overview,
+    Page::Routes,
+    Page::Queues,
+    Page::Queries,
+    Page::History,
+];
 
 /// HTML-escapes text for element content and quoted attributes.
 pub(crate) fn esc(value: &str) -> String {
@@ -54,7 +68,7 @@ pub(crate) fn query_value(value: &str) -> String {
 /// The link to `page` for `project`.
 pub(crate) fn page_link(page: Page, project: Option<&str>) -> String {
     match project {
-        Some(project) if page != Page::Projects => {
+        Some(project) if page != Page::Projects && page != Page::Alerts => {
             format!("{}?project={}", page.path(), query_value(project))
         }
         _ => page.path().to_string(),
@@ -66,6 +80,8 @@ pub(crate) struct Chrome<'a> {
     pub(crate) projects: &'a [String],
     pub(crate) selected: Option<&'a str>,
     pub(crate) active: Page,
+    /// Unacknowledged alerts, shown as a badge.
+    pub(crate) open_alerts: u64,
 }
 
 /// The Studio page frame for remote mode.
@@ -76,8 +92,16 @@ pub(crate) fn layout(chrome: &Chrome<'_>, title: &str, content: &str) -> String 
         } else {
             "text-slate-300 hover:text-white hover:bg-slate-800"
         };
+        let badge = if page == Page::Alerts && chrome.open_alerts > 0 {
+            format!(
+                r#" <span class="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">{}</span>"#,
+                chrome.open_alerts
+            )
+        } else {
+            String::new()
+        };
         format!(
-            r#"<a href="{href}" class="px-3 py-1 rounded-lg {active} transition flex items-center gap-1 whitespace-nowrap"><span>{label}</span></a>"#,
+            r#"<a href="{href}" class="px-3 py-1 rounded-lg {active} transition flex items-center gap-1 whitespace-nowrap"><span>{label}</span>{badge}</a>"#,
             href = esc(&page_link(page, chrome.selected)),
             label = page.label(),
         )
@@ -88,6 +112,7 @@ pub(crate) fn layout(chrome: &Chrome<'_>, title: &str, content: &str) -> String 
             nav.push_str(&nav_item(page));
         }
     }
+    nav.push_str(&nav_item(Page::Alerts));
 
     let switcher = if chrome.projects.is_empty() {
         String::new()

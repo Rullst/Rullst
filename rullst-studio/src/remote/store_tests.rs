@@ -164,7 +164,15 @@ fn sealed_values_are_bound_to_their_context_and_key() {
     assert_ne!(key.seal(TOKEN, b"context").unwrap(), sealed);
     assert_eq!(key.open(&sealed, b"context").unwrap().expose(), TOKEN);
     assert!(key.open(&sealed, b"other").is_err());
-    assert!(key.open(&sealed.replacen('A', "B", 1), b"context").is_err());
+    // Change the first character of the ciphertext.
+    let (head, ciphertext) = sealed.rsplit_once('.').unwrap();
+    let first = if ciphertext.starts_with('A') {
+        'B'
+    } else {
+        'A'
+    };
+    let tampered = format!("{head}.{first}{}", &ciphertext[1..]);
+    assert!(key.open(&tampered, b"context").is_err());
     assert!(key.open("v2.abc.def", b"context").is_err());
     let other = SecretKey::load_or_create(&directory.path().join("other")).unwrap();
     assert!(other.open(&sealed, b"context").is_err());

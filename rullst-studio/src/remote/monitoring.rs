@@ -4,6 +4,7 @@ use super::client::FetchError;
 use super::document::MonitorDocument;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The outcome of the latest read of one project.
@@ -19,6 +20,8 @@ struct LastRead {
 #[derive(Debug, Default)]
 pub(crate) struct Monitoring {
     last: Mutex<HashMap<String, LastRead>>,
+    /// Unacknowledged alerts, refreshed after each poll and acknowledgement.
+    open_alerts: AtomicU64,
 }
 
 pub(crate) fn unix_now() -> u64 {
@@ -48,6 +51,15 @@ impl Monitoring {
             None => format!("Last read succeeded at Unix time {}.", read.at),
             Some(error) => format!("Last read failed at Unix time {}: {error}.", read.at),
         })
+    }
+
+    /// Alerts not acknowledged yet, as last counted.
+    pub(crate) fn open_alerts(&self) -> u64 {
+        self.open_alerts.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn set_open_alerts(&self, count: u64) {
+        self.open_alerts.store(count, Ordering::Relaxed);
     }
 
     /// Drops what is remembered about a removed project.

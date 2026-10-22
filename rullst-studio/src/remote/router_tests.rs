@@ -15,13 +15,13 @@ use tower::ServiceExt;
 
 const HOST: &str = "127.0.0.1:5556";
 
-struct Studio {
-    app: Router,
-    state: Arc<RemoteState>,
+pub(super) struct Studio {
+    pub(super) app: Router,
+    pub(super) state: Arc<RemoteState>,
     _directory: TempDir,
 }
 
-fn studio() -> Studio {
+pub(super) async fn studio() -> Studio {
     let directory = TempDir::new("router");
     let mut options = RemoteStudioOptions::new(directory.paths());
     options.limits = FetchLimits {
@@ -29,7 +29,7 @@ fn studio() -> Studio {
         timeout: Duration::from_millis(800),
         connect_timeout: Duration::from_millis(500),
     };
-    let state = Arc::new(state(&options).unwrap());
+    let state = Arc::new(state(&options).await.unwrap());
     Studio {
         app: router(state.clone()),
         state,
@@ -58,7 +58,7 @@ fn request(
     request
 }
 
-async fn get(studio: &Studio, uri: &str) -> (StatusCode, String) {
+pub(super) async fn get(studio: &Studio, uri: &str) -> (StatusCode, String) {
     let response = studio
         .app
         .clone()
@@ -72,7 +72,12 @@ async fn get(studio: &Studio, uri: &str) -> (StatusCode, String) {
     (status, String::from_utf8(body.to_vec()).unwrap())
 }
 
-async fn post(studio: &Studio, uri: &str, origin: Option<&str>, body: &str) -> StatusCode {
+pub(super) async fn post(
+    studio: &Studio,
+    uri: &str,
+    origin: Option<&str>,
+    body: &str,
+) -> StatusCode {
     let mut headers = vec![("content-type", "application/x-www-form-urlencoded")];
     if let Some(origin) = origin {
         headers.push(("origin", origin));
@@ -101,11 +106,11 @@ fn add_form(studio: &Studio, name: &str, base_url: &str) -> String {
     )
 }
 
-const ORIGIN: &str = "http://127.0.0.1:5556";
+pub(super) const ORIGIN: &str = "http://127.0.0.1:5556";
 
 #[tokio::test]
 async fn projects_are_added_and_removed_through_the_protected_forms() {
-    let studio = studio();
+    let studio = studio().await;
     let (status, page) = get(&studio, "/studio").await;
     assert_eq!(status, StatusCode::OK);
     assert!(page.contains("No projects yet"));
@@ -131,7 +136,7 @@ async fn projects_are_added_and_removed_through_the_protected_forms() {
 
 #[tokio::test]
 async fn cross_origin_or_tokenless_forms_change_nothing() {
-    let studio = studio();
+    let studio = studio().await;
     let form = add_form(&studio, "shop", "https://shop.example");
     assert_eq!(
         post(&studio, "/studio/projects", None, &form).await,
@@ -170,7 +175,7 @@ async fn cross_origin_or_tokenless_forms_change_nothing() {
 
 #[tokio::test]
 async fn only_direct_loopback_requests_reach_studio() {
-    let studio = studio();
+    let studio = studio().await;
     let remote = studio
         .app
         .clone()
@@ -196,7 +201,7 @@ async fn only_direct_loopback_requests_reach_studio() {
 
 #[tokio::test]
 async fn local_only_pages_do_not_exist_in_remote_mode() {
-    let studio = studio();
+    let studio = studio().await;
     for path in [
         "/studio/db",
         "/studio/env",
@@ -219,7 +224,7 @@ async fn local_only_pages_do_not_exist_in_remote_mode() {
 #[tokio::test]
 async fn the_switcher_selects_projects_and_pages_render_remote_values_escaped() {
     let (base, _) = start(None).await;
-    let studio = studio();
+    let studio = studio().await;
     studio
         .state
         .store
