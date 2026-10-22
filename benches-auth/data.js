@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792700933713,
+  "lastUpdate": 1792705092774,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -17597,6 +17597,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4583,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "10f5e4677b6f939f70bab9682454fb444ef37bf5",
+          "message": "Merge pull request #529 from Rullst/feat/v13-studio-remote\n\nfeat(studio): standalone remote monitoring with project switcher, history and alerts",
+          "timestamp": "2026-10-22T18:17:54-03:00",
+          "tree_id": "e16d87201669fd9f078fb39f89a63cb49fa445c3",
+          "url": "https://github.com/Rullst/Rullst/commit/10f5e4677b6f939f70bab9682454fb444ef37bf5"
+        },
+        "date": 1792705091905,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1001,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 837,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1820,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 5134,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
