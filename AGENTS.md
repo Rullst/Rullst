@@ -9,6 +9,8 @@ Rullst is designed from the ground up to be **AI-Native**, meaning its architect
 ## 📜 1. Single Source of Truth (SST)
 The document [`docs/src/spec.md`](docs/src/spec.md) is our absolute law. Always reference `docs/src/spec.md` before proposing or executing architectural changes, file scaffoldings, or API modifications.
 
+How the repository is maintained day to day (workstation limits, packaging work, CI gates, fuzzing evidence, mutation campaigns, release admission and what needs the maintainer's approval) is described in [`MAINTAINING.md`](MAINTAINING.md).
+
 ---
 
 ## 🏛️ 2. Crate Architecture Overview
