@@ -1,0 +1,66 @@
+//! Provider accounts linked to users (`cargo rullst make:oauth`): one row per
+//! provider and subject, so a provider identity signs in to one account.
+use rullst::db::{Orm, sqlx};
+use rullst::orm::chrono::{DateTime, Utc};
+
+pub struct OAuthIdentity;
+
+impl OAuthIdentity {
+    /// The user linked to `subject` at `provider`, if any.
+    pub async fn user_id(provider: &str, subject: &str) -> Result<Option<i32>, rullst::orm::Error> {
+        let query = if Orm::driver()? == "postgres" {
+            "SELECT user_id FROM oauth_identities WHERE provider = $1 AND subject = $2"
+        } else {
+            "SELECT user_id FROM oauth_identities WHERE provider = ? AND subject = ?"
+        };
+        let row: Option<(i32,)> = sqlx::query_as(query)
+            .bind(provider)
+            .bind(subject)
+            .fetch_optional(Orm::pool()?)
+            .await?;
+        Ok(row.map(|(user_id,)| user_id))
+    }
+
+    /// Links `subject` at `provider` to `user_id`. The unique
+    /// (provider, subject) index refuses a second link of the same identity.
+    pub async fn link_with_tx(
+        transaction: &mut rullst::orm::db::Transaction<'static>,
+        user_id: i32,
+        provider: &str,
+        subject: &str,
+        created_at: DateTime<Utc>,
+    ) -> Result<(), rullst::orm::Error> {
+        let insert = if Orm::driver()? == "postgres" {
+            "INSERT INTO oauth_identities (user_id, provider, subject, created_at) VALUES ($1, $2, $3, $4)"
+        } else {
+            "INSERT INTO oauth_identities (user_id, provider, subject, created_at) VALUES (?, ?, ?, ?)"
+        };
+        sqlx::query(insert)
+            .bind(user_id)
+            .bind(provider)
+            .bind(subject)
+            .bind(created_at)
+            .execute(&mut **transaction)
+            .await?;
+        Ok(())
+    }
+}
+
+/// Removes the password of `user_id` and signs out every device (one
+/// UPDATE that also bumps `session_epoch`), when a verified provider email
+/// is linked to an existing account.
+pub async fn remove_password_and_sessions_with_tx(
+    transaction: &mut rullst::orm::db::Transaction<'static>,
+    user_id: i32,
+) -> Result<(), rullst::orm::Error> {
+    let update = if Orm::driver()? == "postgres" {
+        "UPDATE users SET password_hash = NULL, session_epoch = session_epoch + 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET password_hash = NULL, session_epoch = session_epoch + 1 WHERE id = ?"
+    };
+    sqlx::query(update)
+        .bind(user_id)
+        .execute(&mut **transaction)
+        .await?;
+    Ok(())
+}
