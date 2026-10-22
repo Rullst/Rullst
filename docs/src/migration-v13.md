@@ -2,7 +2,8 @@
 
 **The current source is `13.0.0-alpha.2`, a prerelease, not a stable v13
 release.** The first prerelease, `13.0.0-alpha.1`, was published on October 11, 2026.
-The stable 12.x line lives on `v12`; `main` develops v13. The development packages use the same v13
+The 12.x line, on the frozen `v12` branch, reached end of life on 16 October
+2026 with 12.3.0 as its last release; `main` develops v13. The development packages use the same v13
 version and internal requirements. `rullst-privacy`, `rullst-supervision`,
 `rullst-media` and `rullst-labs` join the candidate package inventory and were
 first published in 13.0.0-alpha.1. Privacy
@@ -10,7 +11,8 @@ has explicit `privacy-*` umbrella features; Supervision, Media and Labs remain
 standalone opt-ins.
 All twenty packages are published together as each v13 prerelease; the current
 one is `13.0.0-alpha.2`. Cargo never selects
-a prerelease on its own, so `cargo add rullst` still selects 12.3.0: opt in with
+a prerelease on its own, so `cargo add rullst` still selects the end-of-life
+12.3.0: opt in with
 an exact requirement such as `rullst = "=13.0.0-alpha.2"`. A plain
 `"13.0.0-alpha.2"` is a caret requirement that also accepts later alphas, which
 may break the API. From 13.0.0-alpha.2 the CLI writes the `=` form; a project
@@ -105,6 +107,7 @@ Rows without rules still need a reading.
 | SQLite DSN paths | The missing-file preparation before connecting percent-decodes the SQLite DSN path as SQLx does, so `sqlite://data%20dir/app.db` creates `data dir/app.db`, the file SQLx opens, instead of a stray `data%20dir/app.db`. Stray encoded-name files left by earlier versions can be removed. |
 | Auto-healing diagnostics | `SchemaErrorInterceptor::diagnose_sql_error` returns `None` for constraint violations, `already exists` errors, other messages that merely mention a relation, and names that are not plain identifiers. Missing-table suggestions use SQLite or MySQL DDL when the message comes from those drivers, and SQLite `no such column` and MySQL `Unknown column`/`Table ... doesn't exist` messages are recognized. |
 | ORM migrations | The `Migration` trait gains `within_transaction()` (default `false`, v13 prerelease API). Returning `true` makes the runner apply `up()`/`down()` and its `migrations` record in one `Orm::transaction`; only statements that join it (`Schema`, `Orm::raw(..).execute()`, `execute_query!`, generated model methods) are covered, and MySQL/MariaDB DDL still commits implicitly. The template written by the ORM artisan `make:migration` now opts in, so such a migration that sends queries to `Orm::pool()` directly must return `false`. Existing migrations keep the separate statements. `db:seed` now fails, without running any seeder, while a migration registered with `artisan!` is not recorded in the `migrations` table; run `db:migrate` first. |
+| ORM transactional migrations and the pool | Since 13.0.0-alpha.3, while the `up()`/`down()` of a migration that returns `true` from `within_transaction()` runs, `Orm::pool()`, `Orm::try_pool()`, `Orm::read_pool()`, `Orm::try_read_pool()` and `Orm::begin_transaction()` return `Error::Validation` naming the migration, instead of a connection outside the migration's transaction; the run then fails (`DatabaseError` with `Transaction failed: Validation error: ...`) and the migration rolls back unrecorded. Send that SQL with `Orm::raw(sql).execute()`, `execute_query!` or `Schema`, or return `false` from `within_transaction()`. Migrations that keep the default `false` are unaffected. |
 | ORM instance mutations | `save()` of a row deleted after it was loaded, and `delete()`/`force_delete()` of a missing row, now fail with `RecordNotFound` (tenant models keep their tenant-scope `Validation` error) instead of returning `Ok` and running observers, audit and post-commit effects. A second soft `delete()` of a trashed row fails the same way instead of re-stamping its deletion time, and `restore()` of a missing or live row is a no-op on every model. `cascade_soft_delete` now also trashes children that the child model's `global_scope` hides. A model whose only persisted field is `id` can now be inserted. An auditable `save()` locks the row it diffs (`FOR UPDATE` on PostgreSQL/MySQL), `deleted`/`force_deleted`/`restored` audit entries record the persisted row instead of the in-memory handle, and that read, revision restores, `restore()` re-reads and `belongs_to_many` pivot loads now fail with the configured query timeout instead of waiting indefinitely. Callers that deleted idempotently must accept `RecordNotFound`. |
 | ORM constraint errors | A unique or primary-key violation now returns `Error::UniqueViolation { constraint, .. }` and a foreign-key violation `Error::ForeignKeyViolation { constraint, .. }`, from generated writes, query builders and `Orm::raw`, instead of `Error::DatabaseError(String)`. Their message names only the constraint (PostgreSQL) instead of quoting the database's text, so code that matched `DatabaseError` or searched the message for `UNIQUE constraint failed`, `duplicate key` or `Duplicate entry` must match the variants instead. Errors returned by `Orm::transaction` itself are unchanged. |
 | ORM encryption key settings | `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and `RULLST_ENCRYPTION_KEYRING` are now also read from `.env` in the current working directory when the process environment does not set them, as `APP_KEY` already was; the process environment still wins and the file is never exported. A `.env` that sets them now takes effect for `#[orm(encrypted)]` fields and `SecretString`, so remove stale entries; a malformed `.env` now fails such a lookup when the process lacks the variable. |
@@ -348,7 +351,7 @@ Pre-release discovery also requires an exact `--to` and `--prerelease`.
 
 To evaluate the published prerelease, install its CLI from crates.io. Cargo
 never selects a prerelease on its own (`cargo install cargo-rullst` installs
-12.x), so name the exact version:
+the end-of-life 12.x CLI), so name the exact version:
 
 ```bash
 cargo install cargo-rullst --version =13.0.0-alpha.2 --locked

@@ -1,0 +1,5 @@
+error: tests/i18n/plural_missing_form/ru.toml: plural message `inbox.unread` needs a `few` form for `ru`, which uses `one`, `few`, `many` and `other`
+  --> tests/ui/i18n_plural_missing_form.rs:16:52
+   |
+16 | rullst_macros::i18n_catalog!(default = "en", dir = "tests/i18n/plural_missing_form");
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

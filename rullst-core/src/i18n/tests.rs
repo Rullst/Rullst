@@ -140,3 +140,29 @@ fn plural_counts_are_absolute_and_saturate() {
     assert_eq!(PluralCount::plural_count(&by_ref), 2);
     assert_eq!(PluralCount::plural_count(&&by_ref), 2);
 }
+
+#[test]
+fn decimals_select_plural_forms_with_their_fraction_digits() {
+    assert_eq!(Decimal::new(-15, 1).plural_count(), 1);
+    assert_eq!(Decimal::new(-15, 1).plural_decimal(), Decimal::new(15, 1));
+    assert_eq!(Decimal::new(i128::MAX, 0).plural_count(), u64::MAX);
+    assert_eq!(Decimal::new(25, 40).plural_count(), 0);
+    assert_eq!((-3i32).plural_decimal(), Decimal::new(3, 0));
+    assert_eq!(u128::MAX.plural_decimal(), Decimal::from(u64::MAX));
+    let by_ref = Decimal::new(25, 1);
+    assert_eq!(PluralCount::plural_decimal(&&by_ref), by_ref);
+    assert_eq!(PluralCount::plural_count(&&by_ref), 2);
+
+    let en = Locale { tag: "en" };
+    assert_eq!(en.plural_category(1), Some(PluralCategory::One));
+    assert_eq!(en.plural_category(-1), Some(PluralCategory::One));
+    assert_eq!(
+        en.plural_category(Decimal::new(10, 1)),
+        Some(PluralCategory::Other)
+    );
+    let ar = Locale { tag: "ar" };
+    assert_eq!(ar.plural_category(0), Some(PluralCategory::Zero));
+    assert_eq!(ar.plural_category(105u16), Some(PluralCategory::Few));
+    assert_eq!(Locale { tag: "sv" }.plural_category(1), None);
+    assert_eq!(Locale { tag: "pt-AO" }.plural_category(1), None);
+}

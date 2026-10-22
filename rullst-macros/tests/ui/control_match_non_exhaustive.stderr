@@ -1,0 +1,20 @@
+error[E0004]: non-exhaustive patterns: `Plan::Team` not covered
+  --> tests/ui/control_match_non_exhaustive.rs:25:16
+   |
+25 |         @match plan {
+   |                ^^^^ pattern `Plan::Team` not covered
+   |
+note: `Plan` defined here
+  --> tests/ui/control_match_non_exhaustive.rs:16:6
+   |
+16 | enum Plan {
+   |      ^^^^
+...
+19 |     Team,
+   |     ---- not covered
+   = note: the matched value is of type `Plan`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+29 ~     },
+30 ~     Plan::Team => todo!();
+   |

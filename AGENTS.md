@@ -9,6 +9,8 @@ Rullst is designed from the ground up to be **AI-Native**, meaning its architect
 ## 📜 1. Single Source of Truth (SST)
 The document [`docs/src/spec.md`](docs/src/spec.md) is our absolute law. Always reference `docs/src/spec.md` before proposing or executing architectural changes, file scaffoldings, or API modifications.
 
+How the repository is maintained day to day (workstation limits, packaging work, CI gates, fuzzing evidence, mutation campaigns, release admission and what needs the maintainer's approval) is described in [`MAINTAINING.md`](MAINTAINING.md).
+
 ---
 
 ## 🏛️ 2. Crate Architecture Overview
@@ -60,7 +62,7 @@ changes.
 
 ### 3.3. HTML Macro Rules (`html!`)
 - Boolean attributes inside `html!` are written bare (`<input required disabled>`) or, when they depend on state, as conditional attributes: `checked?={is_done}` writes `checked` or nothing, and `title?={maybe_title}` omits the attribute for `None`. Presence is the value, so never write `disabled="false"`; `name={flag}` writes the text `"true"`/`"false"` (right for `aria-*`). The older quoted forms (`required="true"`) still compile.
-- Use `@if`/`@else if`/`@else` and `@for` inside `html!` for conditional and repeated nodes; use a `{match …}` expression returning `Markup` for other control flow.
+- Use `@if`/`@else if`/`@else`, `@for` and `@match` (arms `pattern if guard => { nodes }`) inside `html!` for conditional, repeated and matched nodes; use a `{…}` expression returning `Markup` only for other control flow.
 - `html!` returns `rullst::html::Markup`: declare view helpers `-> Markup` and interpolate them directly (`{badge}`); `String` values are always escaped. Reserve `RawHtml`/`Markup::from_trusted` for trusted HTML produced outside `html!`.
 - Prefer zero-bundle HTMX + Tailwind CSS server-side rendering over heavy client-side JS bundles.
 

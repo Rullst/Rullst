@@ -7,7 +7,10 @@ extend-exclude = [
     "rullst-connect/src/providers/apple.rs",
     "rullst-connect/src/providers/google.rs",
     "rullst-connect/src/providers/oidc.rs",
-    "sbom-cyclonedx.json"
+    "sbom-cyclonedx.json",
+    # CLDR month and weekday names in other languages (generated tables).
+    "rullst-core/src/i18n/format/data_dates.rs",
+    "rullst-core/src/i18n/format/cldr_tests.rs"
 ]
 
 [default.extend-words]
