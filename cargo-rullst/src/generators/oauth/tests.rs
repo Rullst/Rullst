@@ -324,11 +324,8 @@ fn an_unrecognized_router_and_page_become_instructions() {
     let notes = installed(&root);
     assert_eq!(read(&root, "src/main.rs"), router);
     assert_eq!(read(&root, "src/pages/auth.rs"), page);
-    assert!(
-        notes
-            .iter()
-            .any(|note| note.starts_with("Mount the routes yourself"))
-    );
+    assert!(notes.iter().any(|note| note
+        == "Mount the routes yourself, behind the CSRF layer: call controllers::oauth::google::initialize()? where the router is built, then route GET /auth/google to controllers::oauth::google::start and GET /auth/google/callback to controllers::oauth::google::callback, each with controllers::auth_controller::credential_rate_limit."));
     assert!(
         notes.iter().any(|note| note
             == "Add {crate::controllers::oauth::google::login_link()} to your login page.")
