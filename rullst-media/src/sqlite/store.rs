@@ -104,9 +104,7 @@ impl<C: Clock> SqliteMedia<C> {
         file.sync_all().map_err(|_| Error::Storage)?;
         drop(file);
         let store = Self::connect(&path, config, clock).await?;
-        let mut tx = store
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
+        let mut tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
             .await
             .map_err(storage)?;
         for (_, sql) in SCHEMA {
@@ -138,7 +136,7 @@ impl<C: Clock> SqliteMedia<C> {
         }
         let store = Self::connect(&path, config, clock).await?;
         store.validate().await?;
-        super::transaction::Operation::begin(&store)
+        super::transaction::Operation::bootstrap(&store)
             .await?
             .commit()
             .await?;
@@ -154,23 +152,27 @@ impl<C: Clock> SqliteMedia<C> {
             // Same waits as the Supervision and Privacy stores: a full-sync WAL
             // commit on a slow disk can hold the write lock for seconds.
             .busy_timeout(Duration::from_secs(5));
-        let pool = SqlitePoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(Duration::from_secs(5))
-            .connect_with(options)
-            .await
-            .map_err(storage)?;
+        let pool = super::establish::retry(|| {
+            SqlitePoolOptions::new()
+                .max_connections(4)
+                .acquire_timeout(Duration::from_secs(5))
+                .connect_with(options.clone())
+        })
+        .await
+        .map_err(storage)?;
         Ok(Self {
             pool,
             config,
             clock,
         })
     }
+    /// Runs only in `initialize` and `open`, so it retries a connection that
+    /// times out (see `establish`).
     async fn validate(&self) -> Result<(), Error> {
         // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
         // also skip user objects such as a trigger named `sqliteXhook`.
-        let rows: Vec<(String,String)> = sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 5")
-            .fetch_all(&self.pool).await.map_err(storage)?;
+        let rows: Vec<(String,String)> = super::establish::retry(|| sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 5")
+            .fetch_all(&self.pool)).await.map_err(storage)?;
         if rows.len() != SCHEMA.len()
             || SCHEMA
                 .iter()

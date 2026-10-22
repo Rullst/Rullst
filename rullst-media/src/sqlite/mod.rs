@@ -1,5 +1,6 @@
 //! Durable shared-local video state and authorized lifecycle orchestration.
 mod access;
+mod establish;
 mod failure;
 mod notifications;
 mod playback;

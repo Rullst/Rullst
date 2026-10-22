@@ -36,7 +36,9 @@ async fn initialized(directory: &tempfile::TempDir) -> PathBuf {
     let path = directory.path().join("labs.sqlite");
     let store = SqliteLabs::initialize(&path, config(10), key(), SystemClock)
         .await
-        .unwrap();
+        .unwrap_or_else(|error| {
+            panic!("initialize: {error:?} ({:?})", super::super::cause::last())
+        });
     store.close().await;
     path
 }

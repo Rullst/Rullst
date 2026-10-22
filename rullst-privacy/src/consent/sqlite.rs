@@ -3,6 +3,7 @@
 //! policy versions before processing resumes, or old grants could reappear.
 
 use super::*;
+use crate::sqlite_establish::retry;
 use sqlx::{
     SqliteConnection, SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
@@ -56,7 +57,7 @@ impl SqliteConsentStore {
         drop(file);
         let store = Self::connect(&path, capacity).await?;
         let prepared = async {
-            let mut tx = store.pool.begin_with("BEGIN IMMEDIATE").await.map_err(unavailable)?;
+            let mut tx = retry(|| store.pool.begin_with("BEGIN IMMEDIATE")).await.map_err(unavailable)?;
             for statement in SCHEMA { sqlx::query(statement).execute(&mut *tx).await.map_err(unavailable)?; }
             sqlx::query("INSERT INTO rullst_consent_meta (id,schema_version,capacity,last_now) VALUES (1,1,?,0)")
                 .bind(store.capacity).execute(&mut *tx).await.map_err(unavailable)?;
@@ -82,9 +83,7 @@ impl SqliteConsentStore {
         }
         let store = Self::connect(&path, capacity).await?;
         let checked = async {
-            let mut tx = store
-                .pool
-                .begin_with("BEGIN IMMEDIATE")
+            let mut tx = retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
                 .await
                 .map_err(unavailable)?;
             store.metadata(&mut tx).await?;
@@ -111,12 +110,14 @@ impl SqliteConsentStore {
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
             .busy_timeout(Duration::from_secs(5));
-        let pool = SqlitePoolOptions::new()
-            .max_connections(4)
-            .acquire_timeout(Duration::from_secs(5))
-            .connect_with(options)
-            .await
-            .map_err(unavailable)?;
+        let pool = retry(|| {
+            SqlitePoolOptions::new()
+                .max_connections(4)
+                .acquire_timeout(Duration::from_secs(5))
+                .connect_with(options.clone())
+        })
+        .await
+        .map_err(unavailable)?;
         Ok(Self {
             pool,
             capacity: capacity as i64,

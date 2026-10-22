@@ -18,7 +18,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
     /// never wait for one another's provider reads, and a failed, timed-out or
     /// dropped request leaves no durable intent behind. Its two short local
     /// transactions still serialize with every other store operation; a lock
-    /// or connection wait over 3 seconds returns `Busy`. A changed observation
+    /// or connection wait over 5 seconds returns `Busy`. A changed observation
     /// is recorded only if the revision is unchanged since the initial load
     /// and no live lease is held; a video that is no longer ready withdraws
     /// publication.
