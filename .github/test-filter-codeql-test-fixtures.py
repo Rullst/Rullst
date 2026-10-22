@@ -66,9 +66,15 @@ class FilterTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue((root / path).is_file(), f"{path} was moved; update PRODUCTION_FILES")
 
+    def test_logged_fixtures_are_dropped_only_in_tests(self):
+        logging = "rust/cleartext-logging"
+        self.assertTrue(FILTER.is_test_fixture(result(logging, "rullst-core/src/htmx_tests.rs")))
+        self.assertTrue(FILTER.is_test_fixture(result(logging, "rullst-auth/tests/a.rs")))
+        self.assertFalse(FILTER.is_test_fixture(result(logging, "rullst-core/src/htmx.rs")))
+
     def test_other_rules_are_kept_even_in_tests(self):
         self.assertFalse(
-            FILTER.is_test_fixture(result("rust/cleartext-logging", "rullst-auth/tests/a.rs"))
+            FILTER.is_test_fixture(result("rust/sql-injection", "rullst-auth/tests/a.rs"))
         )
 
     def test_results_without_a_location_are_kept(self):
@@ -106,7 +112,8 @@ class FilterTests(unittest.TestCase):
             ["rullst-security/src/recovery_codes.rs", "rullst-auth/tests/a.rs"],
         )
         self.assertEqual(filtered["runs"][1]["results"], [])
-        self.assertIn(f"removed 2 {CRYPTO} result(s) in test-only files", output)
+        self.assertIn("removed 2 test-fixture result(s) (rust/cleartext-logging, "
+                      "rust/hard-coded-cryptographic-value) in test-only files", output)
         self.assertEqual(output.count("crypto_tests.rs"), 1)
 
     def test_cli_requires_one_argument(self):

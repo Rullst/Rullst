@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Drop CodeQL hard-coded-crypto results whose literal lives in test-only files.
+"""Drop CodeQL test-fixture results (fixed secrets, logged test data) from test-only files.
 
 Tests use fixed keys, passwords, salts and nonces on purpose (deterministic
 fixtures, mutation-killing assertions). Every new batch of such tests opened
-alerts that were then dismissed one by one as "used in tests". This filter
-removes only `rust/hard-coded-cryptographic-value` results located in files
-that are never part of a production build:
+alerts that were then dismissed one by one as "used in tests", and assertion
+messages that print a fixture (`assert!(…, "{debug}")`) opened
+`rust/cleartext-logging` alerts the same way. This filter removes only results
+of the rules in `RULES` located in files that are never part of a production
+build:
 
 - anything under a `tests/`, `benches/` or `fuzz/` directory;
 - `tests.rs`, `test.rs`, `*_tests.rs` and `*_test.rs` files (in this
   repository these are `#[cfg(test)]` modules).
 
-Every other rule, and this rule anywhere else (`src/`, examples, generator
+Every other rule, and these rules anywhere else (`src/`, examples, generator
 templates), is kept. `PRODUCTION_FILES` lists the files whose names match the
 test pattern but which are compiled into a release build; they are kept too.
 Inline `#[cfg(test)] mod tests` blocks inside production files are not
@@ -25,7 +27,10 @@ import re
 import sys
 from pathlib import Path
 
-RULE = "rust/hard-coded-cryptographic-value"
+RULES = frozenset({
+    "rust/hard-coded-cryptographic-value",
+    "rust/cleartext-logging",
+})
 TEST_PATH = re.compile(
     r"(^|/)(tests|benches|fuzz)/"
     r"|(^|/)(tests?|[^/]+_tests?)\.rs$"
@@ -49,7 +54,7 @@ def result_path(result):
 
 
 def is_test_fixture(result):
-    if result.get("ruleId") != RULE:
+    if result.get("ruleId") not in RULES:
         return False
     path = result_path(result)
     return (
@@ -81,7 +86,7 @@ def main(argv):
     sarif = json.loads(path.read_text(encoding="utf-8"))
     removed = filter_sarif(sarif)
     path.write_text(json.dumps(sarif), encoding="utf-8")
-    print(f"removed {len(removed)} {RULE} result(s) in test-only files")
+    print(f"removed {len(removed)} test-fixture result(s) ({', '.join(sorted(RULES))}) in test-only files")
     for item in sorted(set(removed)):
         print(f"  {item}")
     return 0
