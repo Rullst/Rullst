@@ -120,6 +120,14 @@ async fn read_command(
 fn reply(command: &[String]) -> &'static [u8] {
     let name = command.first().map(|name| name.to_ascii_uppercase());
     match name.as_deref() {
+        // `?` starts no RESP2 or RESP3 type: the client cannot parse it.
+        Some("GET")
+            if command
+                .get(1)
+                .is_some_and(|key| key.contains("malformed-reply")) =>
+        {
+            b"?malformed\r\n"
+        }
         Some("GET") => b"$-1\r\n",
         Some("EXISTS" | "UNLINK" | "RPUSH") => b":0\r\n",
         Some("EVAL") => {
@@ -205,6 +213,35 @@ async fn a_broken_cache_connection_is_replaced() {
     assert_eq!(redis.accepted(), 2);
     driver.get("again").await.unwrap();
     assert_eq!(redis.accepted(), 2);
+}
+
+#[cfg(feature = "cache-redis")]
+#[tokio::test]
+async fn a_malformed_reply_discards_the_connection_for_the_next_operation() {
+    use crate::cache::CacheDriver;
+    use crate::cache::redis_driver::RedisDriver;
+
+    let redis = FakeRedis::start().await;
+    let driver = RedisDriver::new(redis.url()).unwrap();
+    driver.get("before").await.unwrap();
+    assert_eq!(redis.accepted(), 1);
+
+    assert!(driver.get("malformed-reply").await.is_err());
+    // The unparsable reply is unrecoverable: the very next operation
+    // reconnects instead of reusing the desynchronized connection.
+    assert_eq!(driver.get("after").await.unwrap(), None);
+    assert_eq!(redis.accepted(), 2);
+}
+
+#[tokio::test]
+async fn connection_handles_report_the_configured_database() {
+    use redis::aio::ConnectionLike;
+
+    let redis = FakeRedis::start().await;
+    let client = redis::Client::open(format!("redis://{}/3", redis.address)).unwrap();
+    let shared = super::SharedRedisConnection::new(client);
+    let handle = shared.connection().await.unwrap();
+    assert_eq!(handle.get_db(), 3);
 }
 
 #[cfg(feature = "queue-redis")]
