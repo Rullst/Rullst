@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792654567867,
+  "lastUpdate": 1792663451519,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -14813,6 +14813,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 414,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3672ffef75a78ecf4109fa5da2ff4c801206b297",
+          "message": "Merge pull request #521 from Rullst/feat/v13-orm-alpha3\n\nfeat(orm)!: dirty-tracking save(), filterable db_default columns and empty default features",
+          "timestamp": "2026-10-22T06:35:32-03:00",
+          "tree_id": "fc5038663c43ae981f388e615719c0ca4bd9ea0d",
+          "url": "https://github.com/Rullst/Rullst/commit/3672ffef75a78ecf4109fa5da2ff4c801206b297"
+        },
+        "date": 1792663450610,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1704,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 302,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 433,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
