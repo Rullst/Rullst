@@ -225,6 +225,15 @@ A prepared version section does not establish that its tag or crates exist.
   input so saving the form unchanged keeps it. alpha.2 always read such a
   value as UTC. The CRUD form handlers take an extra
   `Option<Extension<NexusTimeZone>>` argument.
+- Multipart uploads now remove the temporary files that a crashed or killed
+  process left behind. Before a process first writes a temporary file to a
+  `temp_dir`, and again after each further 24 hours, it removes the regular
+  files there named exactly `.rullst-upload-<32 lowercase hex digits>.part`
+  and last modified at least 24 hours ago, at most 1,000 per sweep (10,000
+  entries examined). Symbolic links, directories and other names are never
+  touched; an unreadable directory or a file that cannot be removed is a
+  `rullst::uploads` warning, and the upload continues. alpha.2 never removed
+  them.
 
 ## [13.0.0-alpha.2] - 2026-10-16
 

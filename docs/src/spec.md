@@ -1776,7 +1776,13 @@ the same server-authoritative controls.
   and not counted. Larger files stream to `.rullst-upload-<uuid>.part` in
   `temp_dir` (default `std::env::temp_dir()`), created with `create_new` and
   mode `0600` on Unix and removed when the `UploadedFile` drops, also on every
-  error. `UploadedFile::persist_to` never overwrites (an existing path or
+  error. Before a process first writes a temporary file to a directory, and
+  again once 24 hours have passed (13.0.0-alpha.3), it sweeps the leftovers of
+  a crashed process there: regular files named exactly
+  `.rullst-upload-<32 lowercase hex>.part` and modified at least 24 hours ago,
+  never a symbolic link or a directory, examining at most 10,000 entries and
+  removing at most 1,000; a failure is a `rullst::uploads` warning and the
+  upload continues. `UploadedFile::persist_to` never overwrites (an existing path or
   symbolic link is `PersistTargetExists`), requires a file name in an
   existing directory without `..` (`InvalidPersistTarget`), hard-links on the
   same file system, copies otherwise, and syncs the new `0600` file.
