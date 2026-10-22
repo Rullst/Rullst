@@ -71,7 +71,8 @@ pub(super) fn has_placeholder_brackets(database_url: &str) -> bool {
         if address.parse::<std::net::Ipv6Addr>().is_err() {
             return true;
         }
-        rest = &after_open[close + 1..];
+        // The `]` that closes this literal cannot open the next one.
+        rest = &after_open[close..];
     }
     false
 }
@@ -192,7 +193,10 @@ fn percent_decode_utf8(encoded: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{connect_error, driver_for_url, ensure_configured_dsn, percent_decode_utf8};
+    use super::{
+        connect_error, driver_for_url, ensure_configured_dsn, percent_decode_utf8,
+        prepare_sqlite_file,
+    };
 
     fn no_driver(scheme: &str) -> sqlx::Error {
         sqlx::Error::Configuration(format!("no driver found for URL scheme {scheme:?}").into())
@@ -306,5 +310,17 @@ mod tests {
                 "{dsn}"
             );
         }
+    }
+
+    #[test]
+    fn in_memory_dsns_never_create_a_file_named_after_them() {
+        let marker = std::path::Path::new(":memory:");
+        prepare_sqlite_file("sqlite::memory:");
+        let created = marker.exists();
+        if created {
+            // Leave no file behind for the next run.
+            let _ = std::fs::remove_file(marker);
+        }
+        assert!(!created, "sqlite::memory: created a `:memory:` file");
     }
 }
