@@ -80,6 +80,11 @@ mod tests {
         assert_eq!(parse_port(&args(&[])), Ok(None));
         assert_eq!(parse_port(&args(&["--port", "7000"])), Ok(Some(7000)));
         assert_eq!(parse_port(&args(&["--help"])), Err(String::new()));
+        assert_eq!(parse_port(&args(&["-h"])), Err(String::new()));
+        assert_eq!(
+            parse_port(&args(&["--port"])),
+            Err("unexpected arguments".to_string())
+        );
         assert_eq!(
             parse_port(&args(&["--port", "0"])),
             Err("invalid port `0`".to_string())
