@@ -87,3 +87,7 @@ fn unavailable_registry(operation: &str) -> (axum::http::StatusCode, axum::Json<
         }),
     )
 }
+
+#[cfg(test)]
+#[path = "studio_server_tests.rs"]
+mod tests;

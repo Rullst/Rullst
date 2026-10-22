@@ -87,3 +87,7 @@ impl SpanExporter for Destination {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "processor_tests.rs"]
+mod tests;

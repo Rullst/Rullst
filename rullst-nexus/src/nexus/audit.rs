@@ -296,43 +296,5 @@ fn create_table_sql(driver: &str) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn audit_text_and_limits_fail_closed() {
-        assert!(validate_audit_text("actor", "admin", 16).is_ok());
-        assert!(validate_audit_text("actor", " admin", 16).is_err());
-        assert!(validate_audit_text("actor", "a\n", 16).is_err());
-        assert!(validate_audit_text("actor", "12345", 4).is_err());
-    }
-
-    #[test]
-    fn unrepresentable_record_keys_are_recorded_as_absent() {
-        assert_eq!(auditable_record_key("ACME-1"), Some("ACME-1"));
-        let long = "k".repeat(MAX_RECORD_KEY_BYTES + 1);
-        for key in ["ACME ", " ACME", "line\nbreak", "", long.as_str()] {
-            assert_eq!(auditable_record_key(key), None, "{key:?}");
-        }
-    }
-
-    #[test]
-    // TM-NEXUS-06
-    fn schemas_keep_required_identity_and_scope_columns() {
-        for driver in ["sqlite", "postgres", "mysql"] {
-            let schema = create_table_sql(driver);
-            for column in [
-                "actor_id",
-                "tenant_id",
-                "table_name",
-                "record_count",
-                "outcome",
-                "correlation_id",
-                "occurred_at_ms",
-                "format_version",
-            ] {
-                assert!(schema.contains(column), "{driver} schema omitted {column}");
-            }
-        }
-    }
-}
+#[path = "audit_tests.rs"]
+mod tests;

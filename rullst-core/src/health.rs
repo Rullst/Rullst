@@ -250,8 +250,55 @@ mod tests {
     use axum::http::Request;
     use tower::ServiceExt;
 
+    /// Serializes the tests that write the process-wide boot time.
+    static BOOT_CLOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    fn unix_now() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock after 1970")
+            .as_secs()
+    }
+
+    #[tokio::test]
+    async fn uptime_counts_from_the_recorded_boot_time() {
+        let _clock = BOOT_CLOCK.lock().await;
+
+        // No boot time recorded: uptime is zero, not the whole Unix time.
+        START_TIME.store(0, Ordering::Relaxed);
+        let (_, uptime) = time_snapshot();
+        assert!(uptime <= 1, "unset boot time reported uptime {uptime}");
+
+        let before = unix_now();
+        START_TIME.store(before - 100, Ordering::Relaxed);
+        let (now, uptime) = time_snapshot();
+        let after = unix_now();
+        assert!(
+            (before..=after).contains(&now),
+            "{before} <= {now} <= {after}"
+        );
+        assert!(
+            (100..=100 + after - before).contains(&uptime),
+            "uptime {uptime}"
+        );
+
+        // A boot time in the future (clock stepped back) is not negative uptime.
+        START_TIME.store(after + 1_000, Ordering::Relaxed);
+        assert_eq!(time_snapshot().1, 0);
+
+        START_TIME.store(0, Ordering::Relaxed);
+        let before = unix_now();
+        init_health_boot_time();
+        let recorded = recorded_boot_time();
+        assert!(
+            (before..=unix_now()).contains(&recorded),
+            "boot time {recorded}"
+        );
+    }
+
     #[tokio::test]
     async fn test_health_probes_endpoints() {
+        let _clock = BOOT_CLOCK.lock().await;
         init_health_boot_time();
         let app = health_router();
 

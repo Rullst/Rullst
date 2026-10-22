@@ -282,3 +282,31 @@ fn scoped_query_without_context_is_empty_by_construction() {
     assert!(sql.contains("WHERE 1 = 0"));
     assert!(binds.is_empty());
 }
+
+#[test]
+fn tenant_placeholders_follow_the_active_driver() {
+    let entry = tenant_entry();
+    let visible = vec![&entry.fields[2]];
+    let (sql, binds) = build_table_query(&entry, &visible, "", 1, None, None, Some("tenant-a"));
+    let expected = if rullst_core::db::safe_driver() == Some("postgres") {
+        "tenant_id = $1"
+    } else {
+        "tenant_id = ?"
+    };
+    assert!(sql.contains(expected), "{sql}");
+    assert_eq!(binds, ["tenant-a"]);
+}
+
+#[test]
+fn identifiers_keep_at_most_64_safe_characters() {
+    assert_eq!(
+        sanitize_identifier("users; DROP TABLE x"),
+        "usersDROPTABLEx"
+    );
+    assert_eq!(sanitize_identifier(&"a".repeat(64)), "a".repeat(64));
+    assert_eq!(sanitize_identifier(&"a".repeat(70)), "a".repeat(64));
+    assert_eq!(
+        sanitize_identifier(&format!("é{}", "b".repeat(70))),
+        "b".repeat(64)
+    );
+}

@@ -152,17 +152,19 @@ mod tests {
             .await
             .unwrap();
         let wait = std::time::Duration::from_secs(5);
+        // The documented 64 KiB limit, spelled out so the test pins its value.
+        let limit = 65_536;
 
-        let bounded = format!("[{}0]", "0,".repeat(MAX_LIVE_MESSAGE_BYTES / 2 - 2));
-        assert!(bounded.len() <= MAX_LIVE_MESSAGE_BYTES);
+        let bounded = format!("[{}0]", "0,".repeat(limit / 2 - 2));
+        assert_eq!(bounded.len(), limit - 1);
         socket.send(Message::Text(bounded.into())).await.unwrap();
         let reply = tokio::time::timeout(wait, socket.next()).await.unwrap();
         assert!(
             matches!(&reply, Some(Ok(Message::Text(html))) if html.as_str() == "<p id=\"events\">1</p>")
         );
 
-        let oversized = format!("[{}0]", "0,".repeat(MAX_LIVE_MESSAGE_BYTES / 2));
-        assert!(oversized.len() > MAX_LIVE_MESSAGE_BYTES);
+        let oversized = format!("[{}0]", "0,".repeat(limit / 2));
+        assert_eq!(oversized.len(), limit + 3);
         let _ = socket.send(Message::Text(oversized.into())).await;
         let reply = tokio::time::timeout(wait, socket.next()).await.unwrap();
         assert!(

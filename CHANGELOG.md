@@ -203,6 +203,10 @@ A prepared version section does not establish that its tag or crates exist.
   `Server::run`) installs is now present in release builds as well, so the
   monitor can attribute ORM operations to requests. Outside the development
   dashboard and monitored requests it records nothing.
+- Nexus now reads a Boolean field stored in an `INTEGER` column with the
+  strict PostgreSQL pool (`strict-postgres`, also selected by
+  `--all-features`). The list showed such a column as "unreadable" and the
+  edit form left its checkbox unchecked, so saving the form wrote `0`.
 - New standalone Studio for remote projects, phase 2 of the production
   monitor (plataforma report #28). `cargo install rullst-studio --features remote --locked`, then
   `rullst-studio` (or `cargo rullst studio --remote`), serves Studio on

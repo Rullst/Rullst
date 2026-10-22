@@ -121,6 +121,8 @@ async fn handshake_checks_origin_protocol_session_and_tenant() {
     let server = Server::start("sqlite::memory:", 0).await;
     let mut cases = vec![
         (request(&server, "school-a", "unknown"), 401),
+        // The view's own authorization refuses an otherwise valid session.
+        (request(&server, "school-a", app::SUSPENDED), 401),
         (request(&server, "school-b", app::TEACHER), 403),
     ];
     for origin in [Some("https://evil.example"), Some("null"), None] {

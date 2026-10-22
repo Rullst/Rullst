@@ -38,3 +38,7 @@ impl rullst_auth::HasRole for NexusPrincipal {
         role == NEXUS_ADMIN_ROLE
     }
 }
+
+#[cfg(test)]
+#[path = "principal_tests.rs"]
+mod tests;

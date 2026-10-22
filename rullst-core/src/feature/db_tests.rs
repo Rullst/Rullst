@@ -6,6 +6,10 @@ use std::sync::atomic::AtomicUsize;
 
 const TTL: Duration = Duration::from_millis(200);
 
+/// Serializes the tests that depend on the process-wide cache epoch, which
+/// `invalidate_process_cache` advances.
+static EPOCH: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 /// Resolves `flag` through `driver`, counting lookups that actually ran.
 async fn resolve(
     driver: &DbFeatureDriver,
@@ -27,6 +31,7 @@ fn enabled() -> Lookup {
 
 #[tokio::test]
 async fn a_missing_flag_is_cached_for_the_ttl() {
+    let _epoch = EPOCH.lock().await;
     let driver = DbFeatureDriver::with_ttl(TTL);
     let lookups = AtomicUsize::new(0);
 
@@ -48,6 +53,7 @@ async fn a_missing_flag_is_cached_for_the_ttl() {
 
 #[tokio::test]
 async fn a_failed_lookup_is_cached_and_serves_the_last_known_value() {
+    let _epoch = EPOCH.lock().await;
     let driver = DbFeatureDriver::with_ttl(TTL);
     let lookups = AtomicUsize::new(0);
 
@@ -84,6 +90,7 @@ async fn a_failed_lookup_is_cached_and_serves_the_last_known_value() {
 
 #[tokio::test]
 async fn an_uninitialized_pool_is_not_cached() {
+    let _epoch = EPOCH.lock().await;
     let driver = DbFeatureDriver::with_ttl(TTL);
     let lookups = AtomicUsize::new(0);
 
@@ -101,6 +108,7 @@ async fn an_uninitialized_pool_is_not_cached() {
 
 #[tokio::test]
 async fn the_cache_holds_a_bounded_number_of_flag_names() {
+    let _epoch = EPOCH.lock().await;
     let driver = DbFeatureDriver::with_ttl(Duration::from_secs(60));
     let lookups = AtomicUsize::new(0);
     for index in 0..MAX_CACHED_FLAGS + 10 {
@@ -164,4 +172,55 @@ fn an_ab_split_row_is_not_enabled_without_an_identifier() {
         driver.evaluate(true, None, Some("[]".to_string()), "plain", None),
         Some("enabled".to_string())
     );
+}
+
+#[tokio::test]
+async fn invalidation_forces_every_driver_to_look_up_again() {
+    let _epoch = EPOCH.lock().await;
+    let driver = DbFeatureDriver::with_ttl(Duration::from_secs(60));
+    let lookups = AtomicUsize::new(0);
+
+    assert!(
+        resolve(&driver, "cached", &lookups, enabled())
+            .await
+            .is_some()
+    );
+    assert!(
+        resolve(&driver, "cached", &lookups, enabled())
+            .await
+            .is_some()
+    );
+    assert_eq!(lookups.load(Ordering::SeqCst), 1);
+
+    DbFeatureDriver::invalidate_process_cache();
+    assert_eq!(
+        resolve(&driver, "cached", &lookups, Lookup::Missing).await,
+        None
+    );
+    assert_eq!(
+        lookups.load(Ordering::SeqCst),
+        2,
+        "invalidation was ignored"
+    );
+}
+
+#[test]
+fn expired_entries_are_pruned_only_when_the_cache_is_full() {
+    let driver = DbFeatureDriver::with_ttl(Duration::ZERO);
+    driver.remember("expired", None, 1);
+    driver.remember("next", None, 1);
+    assert_eq!(driver.cache.len(), 2, "a cache below its bound was pruned");
+}
+
+#[test]
+fn a_full_cache_drops_entries_from_an_older_epoch() {
+    let driver = DbFeatureDriver::with_ttl(Duration::from_secs(60));
+    for index in 0..MAX_CACHED_FLAGS {
+        driver.remember(&format!("flag-{index}"), None, 7);
+    }
+    assert_eq!(driver.cache.len(), MAX_CACHED_FLAGS);
+
+    driver.remember("current", None, 8);
+    assert_eq!(driver.cache.len(), 1, "stale-epoch entries survived");
+    assert!(driver.cache.contains_key("current"));
 }

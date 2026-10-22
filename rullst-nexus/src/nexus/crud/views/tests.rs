@@ -174,3 +174,74 @@ async fn models_without_a_searchable_column_offer_no_search() {
     assert!(html.contains("Search is not available"), "{html}");
     assert!(!html.contains("No results matching"), "{html}");
 }
+
+#[test]
+fn empty_states_name_the_table_or_the_escaped_search() {
+    assert_eq!(
+        render_empty_state_html(3, "<b>", ""),
+        "<tr><td colspan=\"3\" class=\"nexus-empty-row\">No records found in table `&lt;b&gt;`.</td></tr>"
+    );
+    assert_eq!(
+        render_empty_state_html(4, "posts", "\"x\""),
+        "<tr><td colspan=\"4\" class=\"nexus-empty-row\">&#128269; No results matching \"&quot;x&quot;\"</td></tr>"
+    );
+}
+
+fn sortable_entry() -> RegistryEntry {
+    RegistryEntry {
+        table: "posts",
+        label: "Posts",
+        icon: "P",
+        pk: "id",
+        pk_columns: Vec::new(),
+        tenant_column: None,
+        fields: vec![
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new("body", "Body", FieldKind::Textarea),
+        ],
+    }
+}
+
+async fn view(page: u32, sort_by: Option<&str>, order: Option<&str>) -> String {
+    let view = TableView {
+        page,
+        q: "",
+        sort_by,
+        order,
+        tenant_id: None,
+        csrf_token: None,
+    };
+    table_view(&sortable_entry(), &view).await
+}
+
+#[tokio::test]
+async fn sort_links_toggle_only_the_sorted_column() {
+    let ascending = view(1, Some("title"), Some("asc")).await;
+    assert!(ascending.contains("?sort_by=title&amp;order=desc&amp;q="));
+    assert!(ascending.contains("Title &#9650;</a>"));
+    assert!(ascending.contains("?sort_by=body&amp;order=asc&amp;q="));
+    assert!(ascending.contains(">Body</a>"));
+
+    let descending = view(1, Some("title"), Some("desc")).await;
+    assert!(descending.contains("?sort_by=title&amp;order=asc&amp;q="));
+    assert!(descending.contains("Title &#9660;</a>"));
+    assert!(descending.contains("?sort_by=body&amp;order=asc&amp;q="));
+}
+
+#[tokio::test]
+async fn pagination_links_never_go_below_the_first_page() {
+    for (page, previous, next) in [(1, 1, 2), (2, 1, 3), (3, 2, 4)] {
+        let html = view(page, None, None).await;
+        assert!(html.contains(&format!("Page {page}</div>")), "{page}");
+        assert!(
+            html.contains(&format!(
+                "href=\"/nexus/table/posts?page={previous}&amp;q=\""
+            )),
+            "{page}"
+        );
+        assert!(
+            html.contains(&format!("href=\"/nexus/table/posts?page={next}&amp;q=\"")),
+            "{page}"
+        );
+    }
+}
