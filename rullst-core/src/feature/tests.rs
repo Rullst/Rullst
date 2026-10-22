@@ -221,6 +221,15 @@ fn toml_section_headers_may_carry_comments() {
     assert_eq!(driver.value("name"), None);
 }
 
+#[test]
+fn the_tolerant_reader_skips_comment_lines_inside_features() {
+    let driver = TomlFeatureDriver::new();
+    // `x` is not a TOML value, so the line reader parses this file.
+    driver.load_from_str("[features]\n\n# legacy = true\nbeta = x\n");
+    assert_eq!(driver.value("beta").as_deref(), Some("x"));
+    assert_eq!(driver.value("# legacy"), None);
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn toml_reload_never_exposes_a_partially_loaded_set() {
     let mut content = String::from("[features]\n");
